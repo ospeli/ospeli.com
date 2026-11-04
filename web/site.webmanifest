@@ -2,7 +2,7 @@
   "name": "Ospeli bed board demo",
   "short_name": "Ospeli",
   "description": "Healthcare operations. Map processes. Optimise flow. Improve care.",
-  "start_url": "/",
+  "start_url": "/demo/bed-board/",
   "icons": [
     {
       "src": "/brand/icons/ospeli_app_192.png",

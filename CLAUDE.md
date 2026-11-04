@@ -4,3 +4,4 @@
 - `web/` is plain static HTML, CSS and JS with no build step. Keep pages self-contained and working offline.
 - Run `python scripts/check.py` before committing.
 - Messaging leads with operational clarity; AI is supportive, never the headline.
+- Ospeli is a healthcare operations platform. The bed board is one module; never position the product as bed management.

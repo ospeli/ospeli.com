@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Ospeli · Bed board demo</title>
-<meta name="description" content="Live demo of the Ospeli bed board: a fictional hospital with synthetic data.">
+<title>Ospeli · Healthcare operations</title>
+<meta name="description" content="Ospeli: open, offline-first healthcare operations. Map processes. Optimise flow. Improve care.">
 <meta name="theme-color" content="#0B2F4E">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="favicon.ico">
@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
 <style>
-/* Layout: tablet bed board on warm sand. Ward strip on top, bed grid as the main surface, queue/flow/log as a side rail that stacks on phones. Brand kit v3, light theme only. */
+/* Layout: a ward-board page on warm sand. Bed-state chips are the recurring device; ocean-navy bands frame governance. Brand kit v3, light theme only (the navy-background lockup is not yet in the project). */
 :root {
   color-scheme: light;
   --navy: #0B2F4E;
@@ -24,440 +24,413 @@
   --mango: #EE9B00;
   --coral: #E0583E;
   --seafoam: #94D2BD;
+  --sand: #F6F1E7;
   --bg: #F6F1E7;
   --surface: #FFFFFF;
   --ink: #0B2F4E;
-  --ink-soft: #46617A;
+  --ink-soft: #44607A;
   --line: #E2DACB;
   --line-strong: #CFC5B2;
-  --hi: #0A9396;
-  --hi-wash: #E6F3EF;
+  --band: #0B2F4E;
+  --band-ink: #FFFFFF;
+  --band-soft: #C7D6E1;
+  --wash: #E6F3EF;
   --s-occupied: #0B2F4E;
   --s-discharge: #EE9B00;
-  --s-vacated: #E0583E;
   --s-clean: #7D8C99;
   --s-available: #0A9396;
   --s-allocated: #0B2F4E;
   --s-oos: #B3261E;
-  --alert-ink: #A3261C;
   --f-display: 'Nunito', 'Segoe UI', system-ui, sans-serif;
   --f-body: 'Nunito', 'Segoe UI', system-ui, sans-serif;
-  --shadow: 0 10px 30px -18px rgba(11, 47, 78, 0.5);
 }
 * { box-sizing: border-box; }
-body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
-body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--surface); }
-button { font: inherit; color: inherit; }
-button:focus-visible, select:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
-.wrap { max-width: 1280px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { animation: none !important; transition: none !important; } }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 17px; line-height: 1.6; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 1160px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: -0.01em; color: var(--ink); }
+h1 { font-size: clamp(2.1rem, 4.6vw, 3.4rem); line-height: 1.08; font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); line-height: 1.15; font-weight: 800; }
+h3 { font-size: 1.14rem; line-height: 1.3; font-weight: 700; }
+p { margin: 0; }
+.eyebrow { font-family: var(--f-display); font-weight: 700; font-size: 0.78rem; letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 10px; }
+.eyebrow::before { content: ""; width: 18px; height: 4px; border-radius: 2px; background: var(--coral); }
+.band .eyebrow::before { background: var(--seafoam); }
+a { color: var(--ink); text-decoration-color: var(--coral); text-underline-offset: 3px; }
+a:focus-visible, .btn:focus-visible, button:focus-visible { outline: 3px solid var(--sea); outline-offset: 3px; border-radius: 6px; }
 
-header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); }
-header.top .wrap { display: flex; align-items: center; gap: 12px; padding-block: 8px; flex-wrap: wrap; }
-.brand { display: flex; align-items: center; gap: 8px; font-family: var(--f-display); font-weight: 800; font-size: 1.1rem; }
-.brand svg { width: 38px; height: 38px; }
-.site { color: var(--ink-soft); font-size: 0.88rem; font-weight: 600; }
-.pill { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed var(--line-strong); color: var(--ink-soft); padding: 3px 9px; border-radius: 999px; }
-.spacer { flex: 1; }
-.clock { font-variant-numeric: tabular-nums; font-weight: 700; }
-.ghost { background: transparent; border: 1px solid var(--line-strong); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size: 0.84rem; font-weight: 600; }
-.ghost:hover { border-color: var(--navy); }
-a.ghost { color: var(--ink); text-decoration: none; }
+/* Header */
+header.site { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); }
+header.site .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-block: 8px; }
+.logo { display: block; height: 52px; width: auto; }
+nav.links { display: flex; gap: 22px; align-items: center; font-weight: 600; font-size: 0.97rem; }
+nav.links a { color: var(--ink); text-decoration: none; border-bottom: 2px solid transparent; }
+nav.links a.nl:hover { border-bottom-color: var(--coral); }
+@media (max-width: 760px) { nav.links a.nl { display: none; } }
+.btn { display: inline-flex; align-items: center; gap: 8px; font-family: var(--f-display); font-weight: 800; font-size: 0.95rem; padding: 12px 20px; border-radius: 999px; text-decoration: none; border: 2px solid transparent; transition: transform .15s ease, background .15s ease; cursor: pointer; }
+.btn-primary { background: var(--navy); color: #FFFFFF; }
+.btn-primary:hover { transform: translateY(-1px); }
+.btn-cta { background: var(--coral); color: #FFFFFF; font-size: 1.18rem; padding: 13px 24px; }
+.btn-cta::after { content: "→"; font-weight: 800; }
+.btn-cta:hover { transform: translateY(-1px); background: #CB4C33; }
+.btn-ghost { border-color: var(--line-strong); color: var(--ink); background: transparent; }
+.btn-ghost:hover { border-color: var(--navy); }
+nav.links .btn { padding: 9px 16px; font-size: 0.9rem; }
+nav.links a.btn-primary { color: #FFFFFF; }
 
-.wards { display: flex; gap: 10px; overflow-x: auto; padding-block: 14px 4px; }
-.ward-btn { flex: 1 0 200px; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
-.ward-btn[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink), inset 0 4px 0 0 var(--coral); }
-.ward-btn .wn { font-family: var(--f-display); font-weight: 800; font-size: 0.98rem; }
-.ward-btn .counts { display: flex; gap: 12px; font-size: 0.8rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; flex-wrap: wrap; }
-.ward-btn .counts b { font-weight: 800; color: var(--ink); }
-.ward-btn .counts > span { display: inline-flex; align-items: center; gap: 5px; }
-.ward-btn .c-av::before, .ward-btn .c-oos::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--s-available); }
-.ward-btn .c-oos::before { border-radius: 0; height: 3px; width: 9px; background: var(--s-oos); }
-.ward-btn .c-oos b { color: var(--alert-ink); }
-.ward-btn.has-match { border-color: var(--hi); background: var(--hi-wash); }
+/* Hero */
+.hero .wrap { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 48px; align-items: center; padding-block: 64px 72px; }
+.hero-copy { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.hero-copy .lead { font-size: 1.15rem; color: var(--ink-soft); max-width: 34em; }
+.hero-copy .actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+.tagline { font-family: var(--f-display); font-weight: 600; color: var(--ink); font-size: 1.08rem; }
+@media (max-width: 900px) { .hero .wrap { grid-template-columns: minmax(0, 1fr); padding-block: 40px 48px; gap: 36px; } }
 
-.layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; padding-block: 12px 40px; align-items: start; }
-@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
-
-.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; min-width: 0; }
-.panel-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-.panel-head h2 { font-family: var(--f-display); font-weight: 800; font-size: 1.04rem; margin: 0; text-wrap: balance; }
-.filters { display: flex; gap: 6px; flex-wrap: wrap; }
-.filter { border: 1px solid var(--line-strong); background: transparent; border-radius: 999px; padding: 4px 10px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
-.filter[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
-
-.banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--hi-wash); border: 1px solid var(--hi); color: var(--ink); border-radius: 12px; padding: 10px 14px; margin: 12px 14px 0; font-size: 0.92rem; }
-.banner b { font-weight: 800; }
-
-.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 14px; }
-@media (max-width: 760px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-@media (max-width: 520px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-.bed { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; cursor: pointer; display: flex; flex-direction: column; gap: 5px; min-height: 104px; min-width: 0; position: relative; transition: transform .12s ease, box-shadow .12s ease; }
-.bed:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
-.bed .row1 { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
-.bed .no { font-family: var(--f-display); font-weight: 800; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
-.bed .age { font-size: 0.74rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-.bed .attrs { font-size: 0.72rem; color: var(--ink-soft); }
-.bed .who { font-size: 0.74rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.bed.dim { opacity: 0.38; }
-.bed.match { border-color: var(--hi); box-shadow: inset 0 0 0 2px var(--hi); background: var(--hi-wash); }
-.bed.flash { animation: flash 1.2s ease-out; }
-@keyframes flash { 0% { box-shadow: inset 0 0 0 3px var(--s-available); } 100% { box-shadow: inset 0 0 0 0 transparent; } }
-
-/* State chips: text stays navy; the marker carries colour and shape. */
-.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.76rem; font-weight: 700; line-height: 1.2; color: var(--ink); }
-.chip::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex: none; }
+/* Board mock */
+.board { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 18px 40px -24px rgba(11, 47, 78, 0.45); overflow: hidden; min-width: 0; }
+.board-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.board-head strong { font-family: var(--f-display); font-size: 1rem; font-weight: 800; }
+.board-head .meta { font-size: 0.8rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.sample { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); border: 1px dashed var(--line-strong); padding: 2px 8px; border-radius: 999px; }
+.beds { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 16px 18px; }
+@media (max-width: 460px) { .beds { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bed { border: 1px solid var(--line); border-radius: 10px; padding: 10px; display: flex; flex-direction: column; gap: 6px; min-width: 0; position: relative; }
+.bed .no { font-family: var(--f-display); font-weight: 800; font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+.bed .attrs { font-size: 0.7rem; color: var(--ink-soft); }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.74rem; font-weight: 700; line-height: 1.2; color: var(--ink); }
+.chip::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--c, currentColor); flex: none; }
 .st-occupied { --c: var(--s-occupied); }
-.st-expected_discharge { --c: var(--s-discharge); }
-.st-expected_discharge::before { border-radius: 2px; }
-.st-vacated { --c: var(--s-vacated); }
-.st-vacated::before { background: transparent; border: 2px dashed var(--c); width: 6px; height: 6px; }
-.st-cleaning { --c: var(--s-clean); }
-.st-cleaning::before { background: transparent; border: 2px solid var(--c); width: 6px; height: 6px; }
+.st-discharge { --c: var(--s-discharge); }
+.st-discharge::before { border-radius: 2px; }
+.st-clean { --c: var(--s-clean); }
+.st-clean::before { background: transparent; border: 2px solid var(--c); width: 7px; height: 7px; }
 .st-available { --c: var(--s-available); }
 .st-allocated { --c: var(--s-allocated); }
-.st-allocated::before { border-radius: 1px; transform: rotate(45deg); background: transparent; border: 2px solid var(--c); width: 6px; height: 6px; }
-.st-out_of_service { --c: var(--s-oos); }
-.st-out_of_service::before { border-radius: 0; height: 3px; width: 10px; }
+.st-allocated::before { border-radius: 2px; transform: rotate(45deg); width: 8px; height: 8px; background: transparent; border: 2px solid var(--c); width: 6px; height: 6px; }
+.st-oos { --c: var(--s-oos); }
+.st-oos::before { border-radius: 0; height: 3px; width: 10px; }
+.bed.avail { border-color: var(--s-available); background: var(--wash); box-shadow: inset 0 0 0 1px var(--s-available); }
+.bed.avail .no::after { content: " just freed"; font-family: var(--f-body); font-weight: 700; font-size: 0.68rem; color: var(--ink-soft); }
+.queue { border-top: 1px solid var(--line); padding: 12px 18px 16px; display: flex; flex-direction: column; gap: 8px; }
+.queue .q-title { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); }
+.q-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; font-size: 0.84rem; font-variant-numeric: tabular-nums; }
+.q-row .key { font-weight: 700; }
+.q-row .needs { color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.q-row .match { font-weight: 800; color: var(--ink); }
+@keyframes pulse { 0%, 100% { box-shadow: inset 0 0 0 1px var(--s-available); } 50% { box-shadow: inset 0 0 0 3px var(--s-available); } }
+.bed.avail { animation: pulse 2.4s ease-in-out infinite; }
 
-.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 0 14px 14px; }
+.ops { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 16px 18px; }
+.op { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; border-top: 4px solid var(--navy); }
+.op:nth-child(2) { border-top-color: var(--sea); } .op:nth-child(3) { border-top-color: var(--mango); } .op:nth-child(4) { border-top-color: var(--coral); }
+.op-k { font-size: 0.72rem; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-soft); }
+.op-n { font-family: var(--f-display); font-weight: 800; font-size: 1.7rem; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.op-l { font-size: 0.8rem; color: var(--ink-soft); }
+.modules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.mod { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.mod p { color: var(--ink-soft); font-size: 0.96rem; }
+.mod .st { align-self: flex-start; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; border: 1px dashed var(--line-strong); color: var(--ink-soft); }
+.mod .st.live { border: 0; background: var(--wash); color: var(--ink); }
+.mod a { font-weight: 700; }
+@media (max-width: 900px) { .modules { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 580px) { .modules { grid-template-columns: minmax(0, 1fr); } }
 
-.rail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-.q-list, .log { list-style: none; margin: 0; padding: 6px 0; }
-.q-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); align-items: center; }
-.q-item:last-child { border-bottom: 0; }
-.q-item .key { font-weight: 800; font-variant-numeric: tabular-nums; }
-.q-item .needs { grid-column: 1; font-size: 0.8rem; color: var(--ink-soft); }
-.q-item .wait { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 0.88rem; text-align: right; }
-.q-item .wait.long { color: var(--alert-ink); }
-.q-item .act { grid-column: 2; grid-row: 2; }
-.primary { background: var(--navy); color: #FFFFFF; border: 0; border-radius: 999px; padding: 8px 15px; cursor: pointer; font-weight: 800; font-size: 0.9rem; }
-.primary:hover { background: #154069; }
-.primary[disabled] { opacity: 0.4; cursor: not-allowed; }
-.q-item.active { background: var(--hi-wash); }
-.q-item.active .primary { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 2px var(--navy); }
-.empty { padding: 14px; color: var(--ink-soft); font-size: 0.9rem; }
+/* Sections */
+section { padding-block: 72px; }
+section .wrap > .head { display: flex; flex-direction: column; gap: 12px; max-width: 46em; margin-bottom: 36px; }
+section .wrap > .head p { color: var(--ink-soft); font-size: 1.08rem; }
+.alt { background: var(--surface); border-block: 1px solid var(--line); }
 
-.flow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border-radius: 0 0 14px 14px; overflow: hidden; }
-.flow div { background: var(--surface); padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
-.flow .n { font-family: var(--f-display); font-weight: 800; font-size: 1.45rem; font-variant-numeric: tabular-nums; }
-.flow .l { font-size: 0.77rem; color: var(--ink-soft); font-weight: 600; }
-.def { padding: 10px 14px; font-size: 0.76rem; color: var(--ink-soft); border-top: 1px solid var(--line); }
+.problems { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--line); }
+.problem { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; padding: 22px 0; border-bottom: 1px solid var(--line); }
+.problems .problem:nth-child(odd) { padding-right: 28px; }
+.problems .problem:nth-child(even) { padding-left: 28px; border-left: 1px solid var(--line); }
+.problem .now { color: var(--ink-soft); }
+.problem .then { font-weight: 700; }
+.problem .lbl { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 4px; }
+.problem .then .lbl { color: var(--ink); }
+.problem .then .lbl::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--sea); }
+@media (max-width: 820px) { .problems { grid-template-columns: minmax(0, 1fr); } .problems .problem:nth-child(n) { padding-left: 0; padding-right: 0; border-left: 0; } }
+@media (max-width: 480px) { .problem { grid-template-columns: minmax(0, 1fr); gap: 10px; } }
 
-.log li { padding: 8px 14px; font-size: 0.82rem; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 8px; }
-.log li:last-child { border-bottom: 0; }
-.log .t { font-variant-numeric: tabular-nums; color: var(--ink-soft); font-weight: 600; }
-.log-wrap { max-height: 280px; overflow-y: auto; }
+.steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; counter-reset: step; }
+.steps li { counter-increment: step; display: flex; flex-direction: column; gap: 10px; padding-top: 18px; border-top: 4px solid var(--navy); min-width: 0; }
+.steps li:nth-child(2) { border-top-color: var(--sea); }
+.steps li:nth-child(3) { border-top-color: var(--mango); }
+.steps li:nth-child(4) { border-top-color: var(--coral); }
+.steps li::before { content: "Step " counter(step); font-family: var(--f-display); font-weight: 800; font-size: 0.75rem; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-soft); }
+.steps p { color: var(--ink-soft); font-size: 0.98rem; }
+@media (max-width: 900px) { .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .steps { grid-template-columns: minmax(0, 1fr); } }
 
-/* Action sheet */
-.scrim { position: fixed; inset: 0; background: rgba(11, 47, 78, 0.45); z-index: 40; display: flex; align-items: flex-end; justify-content: center; }
-.sheet { background: var(--surface); width: min(520px, 100%); border-radius: 18px 18px 0 0; padding: 18px max(18px, env(safe-area-inset-left, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 14px; box-shadow: var(--shadow); max-height: 90vh; overflow-y: auto; border-top: 4px solid var(--coral); }
-@media (min-width: 700px) { .scrim { align-items: center; } .sheet { border-radius: 18px; } }
-.sheet h3 { font-family: var(--f-display); font-weight: 800; margin: 0; font-size: 1.2rem; }
-.sheet .sub { color: var(--ink-soft); font-size: 0.88rem; }
-.actions { display: flex; flex-direction: column; gap: 8px; }
-.act-btn { text-align: left; border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 12px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 700; min-height: 48px; }
-.act-btn:hover { border-color: var(--navy); }
-.reason { display: flex; flex-direction: column; gap: 6px; }
-.reason label { font-size: 0.84rem; font-weight: 700; }
-.reason select { padding: 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font: inherit; }
-.sheet-foot { display: flex; gap: 10px; justify-content: flex-end; }
-.note { font-size: 0.8rem; color: var(--ink-soft); }
+.playbooks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.pb { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 22px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.pb .io { display: flex; flex-direction: column; gap: 6px; font-size: 0.92rem; color: var(--ink-soft); }
+.pb .io b { color: var(--ink); font-weight: 700; }
+@media (max-width: 900px) { .playbooks { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 580px) { .playbooks { grid-template-columns: minmax(0, 1fr); } }
+
+.compare { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.col { border-radius: 14px; padding: 26px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.col.generic { border: 1px solid var(--line-strong); }
+.col.ours { background: var(--band); color: var(--band-ink); }
+.col.ours h3 { color: var(--band-ink); }
+.col ul { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: 8px; }
+.col.generic li { color: var(--ink-soft); }
+.col.ours li { color: var(--band-soft); }
+.col.ours li::marker { color: var(--seafoam); }
+.col.ours li b { color: var(--band-ink); }
+@media (max-width: 760px) { .compare { grid-template-columns: minmax(0, 1fr); } }
+
+.facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px 32px; }
+.fact { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.fact p { color: var(--ink-soft); font-size: 0.98rem; }
+@media (max-width: 860px) { .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .facts { grid-template-columns: minmax(0, 1fr); } }
+
+.band { background: var(--band); color: var(--band-ink); }
+.band h2 { color: var(--band-ink); }
+.band .eyebrow { color: var(--band-soft); }
+.band .head p { color: var(--band-soft) !important; }
+.rules { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; }
+.rule { display: flex; gap: 16px; padding: 18px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.14); min-width: 0; }
+.rule .mark { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: rgba(148, 210, 189, 0.16); color: var(--seafoam); }
+.rule h3 { color: var(--band-ink); font-size: 1.04rem; }
+.rule p { color: var(--band-soft); font-size: 0.95rem; margin-top: 4px; }
+@media (max-width: 760px) { .rules { grid-template-columns: minmax(0, 1fr); } }
+
+.pilot .wrap { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 40px; align-items: start; }
+.timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; border-left: 2px solid var(--line-strong); }
+.timeline li { padding: 0 0 22px 22px; position: relative; }
+.timeline li::before { content: ""; position: absolute; left: -7px; top: 6px; width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 3px solid var(--sea); }
+.timeline li:last-child::before { border-color: var(--coral); }
+.timeline .wk { font-family: var(--f-display); font-weight: 800; font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink); }
+.timeline p { color: var(--ink-soft); font-size: 0.98rem; }
+.contact { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 28px; display: flex; flex-direction: column; gap: 16px; min-width: 0; border-top: 4px solid var(--coral); }
+.contact .addr { font-family: var(--f-display); font-weight: 800; font-size: 1.15rem; word-break: break-word; user-select: all; }
+.contact small { color: var(--ink-soft); }
+.copy { align-self: flex-start; cursor: pointer; font: inherit; font-weight: 700; }
+@media (max-width: 860px) { .pilot .wrap { grid-template-columns: minmax(0, 1fr); } }
+
+footer { background: var(--surface); color: var(--ink-soft); border-top: 1px solid var(--line); }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 20px; align-items: center; padding-block: 20px; font-size: 0.92rem; }
+footer .tag { font-weight: 600; color: var(--ink); }
+footer .logo { height: 52px; }
 </style>
 
-<header class="top">
+<header class="site">
   <div class="wrap">
-    <div class="brand">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="256" height="256" role="img" aria-label="Ospeli"><g transform="translate(-10 14)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g></svg>
-      Bed board
-    </div>
-    <span class="site">Example General Hospital</span>
-    <span class="pill">Synthetic data</span>
-    <span class="spacer"></span>
-    <span class="clock" id="clock">--:--</span>
-    <a class="ghost" href="site/">About Ospeli</a>
-    <button class="ghost" id="reset" type="button">Reset demo</button>
+    <a href="#top" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" width="466" height="152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a>
+    <nav class="links" aria-label="Main">
+      <a class="nl" href="#modules">Modules</a>
+      <a class="nl" href="#how">How it works</a>
+      <a class="nl" href="#playbooks">Playbooks</a>
+      <a class="nl" href="#governance">Governance</a>
+      <a class="btn btn-primary" href="#pilot">Start a pilot</a>
+    </nav>
   </div>
 </header>
 
-<main class="wrap">
-  <div class="wards" id="wards" role="group" aria-label="Wards"></div>
-
-  <div class="layout">
-    <section class="panel" aria-labelledby="board-h">
-      <div class="panel-head">
-        <h2 id="board-h">Ward</h2>
-        <span class="spacer"></span>
-        <div class="filters" id="filters" role="group" aria-label="Filter beds"></div>
+<main id="top">
+  <div class="hero">
+    <div class="wrap">
+      <div class="hero-copy">
+        <span class="eyebrow">Healthcare operations</span>
+        <h1>Run the hospital, not the paperwork.</h1>
+        <p class="lead">Ospeli is one operations system for hospitals and clinics: beds, engineering faults, A&amp;E flow, process maps and the playbooks to redesign a department. It captures what happens as it happens, then helps your team fix the flow and prove what changed.</p>
+        <p class="tagline">Map processes. Optimise flow. Improve care.</p>
+        <div class="actions">
+          <a class="btn btn-cta" href="#pilot">Start a pilot conversation</a>
+          <a class="btn btn-ghost" href="demo/">Try the live demo</a>
+        </div>
       </div>
-      <div id="banner"></div>
-      <div class="grid" id="grid"></div>
-      <div class="legend" id="legend"></div>
-    </section>
 
-    <aside class="rail">
-      <section class="panel" aria-labelledby="q-h">
-        <div class="panel-head"><h2 id="q-h">Waiting for a bed</h2></div>
-        <ul class="q-list" id="queue"></ul>
-      </section>
-      <section class="panel" aria-labelledby="f-h">
-        <div class="panel-head"><h2 id="f-h">Today's flow</h2><span class="spacer"></span><span class="note">all wards</span></div>
-        <div class="flow" id="flow"></div>
-        <p class="def">Released = beds that reached Available. Uptake = patients moved in ÷ beds allocated. Decision-to-bed = from decision to admit until the patient is in the bed.</p>
-      </section>
-      <section class="panel" aria-labelledby="l-h">
-        <div class="panel-head"><h2 id="l-h">Activity</h2><span class="spacer"></span><span class="note">every change is time-stamped</span></div>
-        <div class="log-wrap"><ul class="log" id="log"></ul></div>
-      </section>
-    </aside>
+      <div class="board" aria-label="Example operations overview with synthetic data">
+        <div class="board-head">
+          <strong>Operations today · Example General</strong>
+          <span class="sample">Example data</span>
+          <span class="meta">Updated 14:32</span>
+        </div>
+        <div class="ops">
+          <div class="op"><span class="op-k">Beds</span><span class="op-n">6</span><span class="op-l">available now · 4 waiting</span></div>
+          <div class="op"><span class="op-k">Engineering</span><span class="op-n">11</span><span class="op-l">open work orders · 2 overdue</span></div>
+          <div class="op"><span class="op-k">A&amp;E flow</span><span class="op-n">3h 10m</span><span class="op-l">median arrival to decision</span></div>
+          <div class="op"><span class="op-k">Process maps</span><span class="op-n">4</span><span class="op-l">walked this month</span></div>
+        </div>
+        <div class="queue">
+          <span class="q-title">Needs a decision</span>
+          <div class="q-row"><span class="key">Playbook</span><span class="needs">Discharge-before-noon trial on two wards</span><span class="match">Review</span></div>
+          <div class="q-row"><span class="key">Engineering</span><span class="needs">Repeat fault: suction unit, third time this month</span><span class="match">Assign</span></div>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <section class="alt" aria-labelledby="problem-h">
+    <div class="wrap">
+      <div class="head">
+        <span class="eyebrow">The problem</span>
+        <h2 id="problem-h">Large public hospitals run on walking, phoning and paper.</h2>
+        <p>Beds, broken equipment, A&amp;E queues and handoffs are tracked on paper, whiteboards and phone calls, so nobody can see the whole hospital or prove what an improvement changed. Ospeli builds that record first.</p>
+      </div>
+      <div class="problems">
+        <div class="problem"><p class="now"><span class="lbl">Today</span>Free beds are found by walking the wards, with long gaps overnight.</p><p class="then"><span class="lbl">With Ospeli</span>The ward reports a bed's state the moment it changes.</p></div>
+        <div class="problem"><p class="now"><span class="lbl">Today</span>A&amp;E waits are felt but not measured, step by step.</p><p class="then"><span class="lbl">With Ospeli</span>Arrival, triage, decision and bed are timestamped, so the slowest step is visible.</p></div>
+        <div class="problem"><p class="now"><span class="lbl">Today</span>Handoffs wait in trays and on boards until someone notices.</p><p class="then"><span class="lbl">With Ospeli</span>Every handoff is a task with an owner role and an alert.</p></div>
+        <div class="problem"><p class="now"><span class="lbl">Today</span>Faults are reported by phone and lost; simple fixes wait for a technician.</p><p class="then"><span class="lbl">With Ospeli</span>Scan a QR code to report, track the work order, and follow a step guide for simple fixes.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="modules" aria-labelledby="mod-h">
+    <div class="wrap">
+      <div class="head">
+        <span class="eyebrow">Modules</span>
+        <h2 id="mod-h">One system for the whole operation.</h2>
+        <p>Start with the module that hurts most. Each one shares the same hospital model, the same definitions and the same audit trail.</p>
+      </div>
+      <div class="modules">
+        <div class="mod"><span class="st live">Live demo</span><h3>Bed board</h3><p>Bed states, the waiting list, allocation with reasons for declines, and today's flow.</p><a href="demo/bed-board/">Open the demo</a></div>
+        <div class="mod"><span class="st">In build</span><h3>Engineering and maintenance</h3><p>QR fault reports with photos, work-order queues, repeat-fault lists and step guides for simple fixes.</p></div>
+        <div class="mod"><span class="st">In build</span><h3>A&amp;E and patient flow</h3><p>Arrival to bed on one timeline, pressure levels and action cards when the department is under strain.</p></div>
+        <div class="mod"><span class="st">In build</span><h3>Process mapping</h3><p>Walk a process, tap each step, and get a current-state map with times and roles drawn for you.</p></div>
+        <div class="mod"><span class="st">In build</span><h3>Playbooks</h3><p>Flow reports, bottleneck finder, department redesign, structure review and business case packs.</p></div>
+        <div class="mod"><span class="st">In build</span><h3>Guides for administrators</h3><p>Checklists and decision trees for routine operations, with a learning mode for new staff.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="how" aria-labelledby="how-h">
+    <div class="wrap">
+      <div class="head">
+        <span class="eyebrow">How it works</span>
+        <h2 id="how-h">Capture once. Every answer builds on it.</h2>
+        <p>The model is not the hard part. The data, the hospital's structure and the routines that use them are.</p>
+      </div>
+      <ol class="steps">
+        <li><h3>Capture</h3><p>Staff record what happens with one tap on a shared tablet or phone: a bed freed, a fault reported, a patient triaged. It works offline and syncs later. Timestamps are a by-product, not extra work.</p></li>
+        <li><h3>Model</h3><p>Departments, wards, beds, assets, roles and metric definitions are configured once per hospital, without code. Every report uses the same definitions every day.</p></li>
+        <li><h3>Playbooks</h3><p>Ready-made routines turn the day's events into the outputs operations teams already produce: flow reports, redesign options, structure reviews.</p></li>
+        <li><h3>Decide</h3><p>Ospeli suggests; a named person decides. Every suggestion is logged with its inputs and the human action taken.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="playbooks" class="alt" aria-labelledby="pb-h">
+    <div class="wrap">
+      <div class="head">
+        <span class="eyebrow">Playbooks</span>
+        <h2 id="pb-h">The work your operations team does every week, built in.</h2>
+        <p>Each playbook has a fixed input, a fixed analysis and a ready-to-use output. No starting from a blank chat.</p>
+      </div>
+      <div class="playbooks">
+        <div class="pb"><h3>Daily flow report</h3><div class="io"><span><b>Reads:</b> bed and admission events</span><span><b>Produces:</b> beds released, allocated and taken up, delays by reason, the overnight gap</span></div></div>
+        <div class="pb"><h3>Bottleneck finder</h3><div class="io"><span><b>Reads:</b> the event log for a ward or pathway</span><span><b>Produces:</b> where time is lost, ranked, with each metric's definition beside its number</span></div></div>
+        <div class="pb"><h3>Department redesign</h3><div class="io"><span><b>Reads:</b> room list, layout, activity and staffing</span><span><b>Produces:</b> layout and process options with trade-offs and a data sheet</span></div></div>
+        <div class="pb"><h3>Process map</h3><div class="io"><span><b>Reads:</b> captured steps and timestamps</span><span><b>Produces:</b> a current-state flow, then a proposed future state</span></div></div>
+        <div class="pb"><h3>Structure review</h3><div class="io"><span><b>Reads:</b> roles, reporting lines, spans of control, vacancies</span><span><b>Produces:</b> layers and spans analysis, duplication, a proposed structure</span></div></div>
+        <div class="pb"><h3>Business case pack</h3><div class="io"><span><b>Reads:</b> the output of any playbook</span><span><b>Produces:</b> a brief, data sheet and figures ready for executive sign-off</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="why-h">
+    <div class="wrap">
+      <div class="head">
+        <span class="eyebrow">Why not a general AI chat?</span>
+        <h2 id="why-h">A chat assistant starts every conversation empty.</h2>
+        <p>Most of the effort in using general AI for hospital operations goes into explaining the hospital. Ospeli already knows it.</p>
+      </div>
+      <div class="compare">
+        <div class="col generic"><h3>General AI chat</h3><ul><li>Knows only what someone pastes in</li><li>Needs the wards, roles and definitions explained each time</li><li>Gives a different answer to the same question on different days</li><li>Sends whatever you paste to an outside service</li></ul></div>
+        <div class="col ours"><h3>Ospeli</h3><ul><li><b>Holds today's data,</b> captured on the ward as work happens</li><li><b>Knows your hospital:</b> wards, beds, roles and metric definitions</li><li><b>Runs the same playbook the same way,</b> so results compare week to week</li><li><b>Runs on your own server;</b> no patient data leaves the hospital</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="alt" aria-labelledby="built-h">
+    <div class="wrap">
+      <div class="head">
+        <span class="eyebrow">Built for real hospitals</span>
+        <h2 id="built-h">Designed for unreliable networks, shared tablets and tight budgets.</h2>
+      </div>
+      <div class="facts">
+        <div class="fact"><h3>Offline-first</h3><p>A ward keeps working through a network outage and syncs cleanly afterwards.</p></div>
+        <div class="fact"><h3>Runs on your premises</h3><p>One small local server per hospital. Cloud hosting is optional, in-country where the law requires.</p></div>
+        <div class="fact"><h3>Beside your EHR</h3><p>Sits alongside the existing record system and never replaces it. Exchanges data using HL7 FHIR R4 and HL7 v2.</p></div>
+        <div class="fact"><h3>Export anything</h3><p>Any date range exports to CSV and FHIR without a vendor. Your data stays yours.</p></div>
+        <div class="fact"><h3>Commodity hardware</h3><p>Mid-range Android tablets, a mini PC and a UPS. No specialist kit to import.</p></div>
+        <div class="fact"><h3>Open core</h3><p>The core is open source, so a ministry IT team can install and inspect it.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="governance" class="band" aria-labelledby="gov-h">
+    <div class="wrap">
+      <div class="head">
+        <span class="eyebrow">Governance</span>
+        <h2 id="gov-h">Safe to buy, safe to run.</h2>
+        <p>Ospeli is built to the rules a public hospital board and its data protection officer will ask about first.</p>
+      </div>
+      <div class="rules">
+        <div class="rule"><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><div><h3>People decide, Ospeli suggests</h3><p>No allocation, report or clinical draft is issued without a named person's action.</p></div></div>
+        <div class="rule"><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><div><h3>Patient data stays in the hospital</h3><p>Nothing identifiable leaves the site unless the hospital approves that specific flow in writing.</p></div></div>
+        <div class="rule"><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><div><h3>Measures flows, never people</h3><p>Ospeli measures beds, queues and handoffs by role. It never times or ranks a named individual.</p></div></div>
+        <div class="rule"><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><div><h3>Full audit trail</h3><p>Every read and write of patient data is logged in a tamper-evident record.</p></div></div>
+        <div class="rule"><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><div><h3>Synthetic data until you approve</h3><p>Demonstrations and testing use a fictional hospital. Real data is used only after formal written approval.</p></div></div>
+        <div class="rule"><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><div><h3>An off switch for every AI feature</h3><p>Each assistive feature can be turned off per hospital and per ward.</p></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="pilot" class="pilot" aria-labelledby="pilot-h">
+    <div class="wrap">
+      <div>
+        <div class="head" style="margin-bottom: 28px;">
+          <span class="eyebrow">Pilot</span>
+          <h2 id="pilot-h">Start with one to three wards and the bed desk.</h2>
+          <p>A pilot runs alongside your existing paper process. Paper is retired on a ward only if its staff choose to.</p>
+        </div>
+        <ol class="timeline">
+          <li><span class="wk">Weeks 1–2</span><p>Measure today's baselines on paper. Agree ward and bed names. Check clocks. Install tablets.</p></li>
+          <li><span class="wk">Weeks 3–6</span><p>One ward and the allocation desk go live, alongside paper.</p></li>
+          <li><span class="wk">Weeks 7–12</span><p>Two more wards join. Results are measured against the week-one baseline.</p></li>
+        </ol>
+      </div>
+      <div class="contact">
+        <h3>Talk to us about a pilot</h3>
+        <p>Tell us your hospital, the wards you have in mind and who leads operations and nursing.</p>
+        <span class="addr" id="addr">hello@ospeli.com</span>
+        <button type="button" class="btn btn-ghost copy" id="copy-btn">Copy address</button>
+        <small>Ospeli is in early development. Pilots are arranged through each hospital's own procurement route.</small>
+      </div>
+    </div>
+  </section>
 </main>
 
-<div id="sheet-root"></div>
+<footer>
+  <div class="wrap">
+    <svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" width="466" height="152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg>
+    <span class="tag">Map processes. Optimise flow. Improve care.</span>
+    <span>© 2026 Ospeli</span>
+  </div>
+</footer>
 
 <script>
-(function () {
-  var STATES = {
-    occupied: 'Occupied', expected_discharge: 'Expected discharge', vacated: 'Vacated, to clean',
-    cleaning: 'Cleaning', available: 'Available', allocated: 'Allocated', out_of_service: 'Out of service'
-  };
-  var NEXT = {
-    occupied: ['expected_discharge', 'vacated'],
-    expected_discharge: ['vacated', 'occupied'],
-    vacated: ['cleaning'],
-    cleaning: ['available'],
-    available: [],
-    allocated: ['occupied'],
-    out_of_service: ['available']
-  };
-  var ACTION_LABEL = {
-    expected_discharge: 'Flag expected discharge', vacated: 'Patient has left (vacated)', cleaning: 'Cleaning started',
-    available: 'Mark available', occupied: 'Patient moved in', 'occupied_from_ed': 'Cancel expected discharge'
-  };
-  var DECLINE = ['No nurse available', 'Ward full on paper', 'Wrong specialty', 'Bed not clean', 'Patient unsuitable', 'Other'];
-  var OOS = ['Equipment fault', 'Plumbing or leak', 'Electrical', 'Bed frame or mattress', 'Infection control', 'Other'];
-  var ATTR = { o2: 'O₂', suction: 'Suction', monitored: 'Monitored', isolation: 'Isolation', bariatric: 'Bariatric' };
-  var WARDS = [
-    { id: '4B', name: 'Ward 4B · Adult medical', spec: 'Medicine' },
-    { id: '5A', name: 'Ward 5A · Surgical', spec: 'Surgery' },
-    { id: '6C', name: 'Ward 6C · Respiratory', spec: 'Medicine' }
-  ];
-  var S;
-
-  function rng(seed) { return function () { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }; }
-  function now() { return Date.now(); }
-  function mins(n) { return n * 60000; }
-
-  function seed() {
-    var r = rng(42), beds = [], t = now();
-    var pattern = ['occupied','occupied','expected_discharge','occupied','cleaning','available','occupied','vacated','occupied','allocated','out_of_service','occupied'];
-    WARDS.forEach(function (w, wi) {
-      for (var i = 1; i <= 12; i++) {
-        var st = pattern[(i - 1 + wi * 3) % 12];
-        var a = {};
-        if (r() < 0.55 || w.id === '6C') a.o2 = true;
-        if (r() < 0.3) a.suction = true;
-        if (r() < 0.25 || w.id === '6C' && i < 5) a.monitored = true;
-        if (i === 11 || i === 12) a.isolation = true;
-        if (i === 8 && wi === 0) a.bariatric = true;
-        beds.push({ id: w.id + '-' + String(i).padStart(2, '0'), ward: w.id, no: 'B' + String(i).padStart(2, '0'), attrs: a, state: st, since: t - mins(5 + Math.floor(r() * 170)), patient: (st === 'occupied' || st === 'expected_discharge') ? 'P-' + (3100 + wi * 20 + i) : null, reason: st === 'out_of_service' ? 'Equipment fault' : null });
-      }
-    });
-    beds.forEach(function (b) { if (b.state === 'allocated') { b.patient = 'E-22' + (70 + b.no.slice(1) * 1); } });
-    var queue = [
-      { key: 'E-2291', spec: 'Medicine', needs: ['o2'], dta: t - mins(142) },
-      { key: 'E-2296', spec: 'Medicine', needs: ['isolation'], dta: t - mins(98) },
-      { key: 'E-2302', spec: 'Surgery', needs: [], dta: t - mins(64) },
-      { key: 'E-2305', spec: 'Medicine', needs: ['o2', 'monitored'], dta: t - mins(31) }
-    ];
-    return { beds: beds, queue: queue, ward: '4B', filter: null, picking: null,
-      log: [{ t: t - mins(2), text: 'Board opened. Example data loaded.' }],
-      m: { released: 0, allocated: 0, taken: 0, declined: 0, dtb: [] } };
+document.getElementById('copy-btn').addEventListener('click', function () {
+  var t = document.getElementById('addr').textContent;
+  var b = this;
+  function done(msg) { b.textContent = msg; setTimeout(function () { b.textContent = 'Copy address'; }, 1800); }
+  try {
+    navigator.clipboard.writeText(t).then(function () { done('Copied'); }, function () { selectIt(); });
+  } catch (e) { selectIt(); }
+  function selectIt() {
+    var r = document.createRange(); r.selectNodeContents(document.getElementById('addr'));
+    var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); done('Selected, press Ctrl+C');
   }
-
-  try { var saved = JSON.parse(localStorage.getItem('ospeli-board-v1') || 'null'); if (saved && saved.beds) S = saved; } catch (e) {}
-  if (!S) S = seed();
-  function save() { try { localStorage.setItem('ospeli-board-v1', JSON.stringify(S)); } catch (e) {} }
-
-  var $ = function (id) { return document.getElementById(id); };
-  function el(tag, attrs, kids) {
-    var e = document.createElement(tag);
-    if (attrs) for (var k in attrs) { if (k === 'class') e.className = attrs[k]; else if (k === 'text') e.textContent = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else e.setAttribute(k, attrs[k]); }
-    (kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
-    return e;
-  }
-  function hhmm(ts) { var d = new Date(ts); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
-  function dur(ms) { var m = Math.max(0, Math.round(ms / 60000)); return m < 60 ? m + 'm' : Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm'; }
-  function chip(st) { return el('span', { class: 'chip st-' + st, text: STATES[st] }); }
-  function bedById(id) { return S.beds.filter(function (b) { return b.id === id; })[0]; }
-  function fits(b, p) { return b.state === 'available' && p.needs.every(function (n) { return b.attrs[n]; }) && WARDS.filter(function (w) { return w.id === b.ward; })[0].spec === p.spec; }
-  function log(text) { S.log.unshift({ t: now(), text: text }); S.log = S.log.slice(0, 60); }
-
-  function setState(b, to, reason) {
-    var from = b.state;
-    b.state = to; b.since = now(); b.reason = reason || null;
-    if (to === 'available') { S.m.released++; b.patient = null; }
-    if (to === 'vacated') b.patient = null;
-    log(b.ward + ' ' + b.no + ': ' + STATES[from] + ' → ' + STATES[to] + (reason ? ' (' + reason + ')' : ''));
-    save(); render(); flash(b.id);
-  }
-  function flash(id) { var n = document.querySelector('[data-bed="' + id + '"]'); if (n) { n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash'); } }
-
-  function renderWards() {
-    var box = $('wards'); box.textContent = '';
-    WARDS.forEach(function (w) {
-      var bs = S.beds.filter(function (b) { return b.ward === w.id; });
-      var cnt = function (st) { return bs.filter(function (b) { return b.state === st; }).length; };
-      var picking = S.picking && S.queue.filter(function (q) { return q.key === S.picking; })[0];
-      var matches = picking ? bs.filter(function (b) { return fits(b, picking); }).length : 0;
-      var btn = el('button', { type: 'button', class: 'ward-btn' + (matches ? ' has-match' : ''), 'aria-pressed': String(S.ward === w.id), onclick: function () { S.ward = w.id; save(); render(); } }, [
-        el('span', { class: 'wn', text: w.name }),
-        el('span', { class: 'counts' }, [
-          el('span', { class: 'c-av' }, [el('b', { text: String(cnt('available')) }), ' available']),
-          el('span', {}, [el('b', { text: String(cnt('cleaning') + cnt('vacated')) }), ' to clean']),
-          el('span', { class: 'c-oos' }, [el('b', { text: String(cnt('out_of_service')) }), ' out of service']),
-          matches ? el('span', {}, [el('b', { text: String(matches) }), ' match']) : null
-        ])
-      ]);
-      box.appendChild(btn);
-    });
-  }
-
-  function renderFilters() {
-    var box = $('filters'); box.textContent = '';
-    [['', 'All']].concat(Object.keys(ATTR).map(function (k) { return [k, ATTR[k]]; })).forEach(function (f) {
-      box.appendChild(el('button', { type: 'button', class: 'filter', 'aria-pressed': String((S.filter || '') === f[0]), text: f[1], onclick: function () { S.filter = f[0] || null; save(); render(); } }));
-    });
-  }
-
-  function renderBoard() {
-    var w = WARDS.filter(function (x) { return x.id === S.ward; })[0];
-    $('board-h').textContent = w.name;
-    var picking = S.picking && S.queue.filter(function (q) { return q.key === S.picking; })[0];
-    var ban = $('banner'); ban.textContent = '';
-    if (picking) {
-      var any = S.beds.some(function (b) { return fits(b, picking); });
-      ban.appendChild(el('div', { class: 'banner', role: 'status' }, [
-        el('span', {}, ['Choose a bed for ', el('b', { text: picking.key }), ' · ' + picking.spec + (picking.needs.length ? ' · needs ' + picking.needs.map(function (n) { return ATTR[n]; }).join(', ') : '') + '. ' + (any ? 'Matching beds are highlighted.' : 'No matching bed is available yet.')]),
-        el('span', { class: 'spacer' }),
-        el('button', { type: 'button', class: 'ghost', text: 'Cancel', onclick: function () { S.picking = null; save(); render(); } })
-      ]));
-    }
-    var grid = $('grid'); grid.textContent = '';
-    S.beds.filter(function (b) { return b.ward === S.ward; }).forEach(function (b) {
-      var isMatch = picking && fits(b, picking);
-      var dim = (S.filter && !b.attrs[S.filter]) || (picking && !isMatch);
-      var attrs = Object.keys(b.attrs).map(function (k) { return ATTR[k]; }).join(' · ') || 'Standard';
-      var who = b.patient ? (b.state === 'allocated' ? 'For ' + b.patient : b.patient) : (b.reason || '');
-      grid.appendChild(el('button', { type: 'button', class: 'bed' + (isMatch ? ' match' : '') + (dim ? ' dim' : ''), 'data-bed': b.id, 'aria-label': b.no + ', ' + STATES[b.state], onclick: function () { openBed(b.id); } }, [
-        el('span', { class: 'row1' }, [el('span', { class: 'no', text: b.no }), el('span', { class: 'age', text: dur(now() - b.since) })]),
-        chip(b.state),
-        el('span', { class: 'attrs', text: attrs }),
-        who ? el('span', { class: 'who', text: who }) : null
-      ]));
-    });
-    var lg = $('legend'); lg.textContent = '';
-    Object.keys(STATES).forEach(function (k) { lg.appendChild(chip(k)); });
-  }
-
-  function renderQueue() {
-    var ul = $('queue'); ul.textContent = '';
-    if (!S.queue.length) { ul.appendChild(el('li', { class: 'empty', text: 'No one is waiting for a bed.' })); return; }
-    S.queue.slice().sort(function (a, b) { return a.dta - b.dta; }).forEach(function (q) {
-      var w = now() - q.dta;
-      ul.appendChild(el('li', { class: 'q-item' + (S.picking === q.key ? ' active' : '') }, [
-        el('span', { class: 'key', text: q.key }),
-        el('span', { class: 'wait' + (w > mins(120) ? ' long' : ''), text: dur(w) }),
-        el('span', { class: 'needs', text: q.spec + ' · ' + (q.needs.length ? q.needs.map(function (n) { return ATTR[n]; }).join(', ') : 'no special needs') + ' · decided ' + hhmm(q.dta) }),
-        el('span', { class: 'act' }, [el('button', { type: 'button', class: 'primary', text: S.picking === q.key ? 'Choosing…' : 'Find a bed', onclick: function () { S.picking = S.picking === q.key ? null : q.key; var m = S.beds.filter(function (b) { return fits(b, q); })[0]; if (S.picking && m) S.ward = m.ward; save(); render(); } })])
-      ]));
-    });
-  }
-
-  function renderFlow() {
-    var m = S.m;
-    var uptake = m.allocated ? Math.round(100 * m.taken / m.allocated) + '%' : '–';
-    var dtb = m.dtb.length ? dur(m.dtb.slice().sort(function (a, b) { return a - b; })[Math.floor(m.dtb.length / 2)]) : '–';
-    var f = $('flow'); f.textContent = '';
-    [[m.released, 'Beds released'], [m.allocated, 'Allocated'], [m.taken, 'Patients moved in'], [m.declined, 'Declined'], [uptake, 'Uptake'], [dtb, 'Median decision-to-bed']].forEach(function (x) {
-      f.appendChild(el('div', {}, [el('span', { class: 'n', text: String(x[0]) }), el('span', { class: 'l', text: x[1] })]));
-    });
-  }
-
-  function renderLog() {
-    var ul = $('log'); ul.textContent = '';
-    S.log.forEach(function (e) { ul.appendChild(el('li', {}, [el('span', { class: 't', text: hhmm(e.t) }), el('span', { text: e.text })])); });
-  }
-
-  function render() { renderWards(); renderFilters(); renderBoard(); renderQueue(); renderFlow(); renderLog(); $('clock').textContent = hhmm(now()); }
-
-  function closeSheet() { $('sheet-root').textContent = ''; }
-  function sheet(title, sub, body) {
-    var root = $('sheet-root'); root.textContent = '';
-    var scrim = el('div', { class: 'scrim', onclick: function (e) { if (e.target === scrim) closeSheet(); } }, [
-      el('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': title }, [el('h3', { text: title }), sub ? el('p', { class: 'sub', text: sub }) : null].concat(body))
-    ]);
-    root.appendChild(scrim);
-    var f = scrim.querySelector('button, select'); if (f) f.focus();
-  }
-  function reasonPicker(id, label, list) {
-    var sel = el('select', { id: id }, [el('option', { value: '', text: 'Choose a reason' })].concat(list.map(function (r) { return el('option', { value: r, text: r }); })));
-    return { node: el('div', { class: 'reason' }, [el('label', { for: id, text: label }), sel]), sel: sel };
-  }
-
-  function openBed(id) {
-    var b = bedById(id);
-    var picking = S.picking && S.queue.filter(function (q) { return q.key === S.picking; })[0];
-    if (picking && fits(b, picking)) {
-      sheet('Allocate ' + b.ward + ' ' + b.no + ' to ' + picking.key + '?', 'The ward is told straight away. The nurse in charge accepts when the patient arrives, or declines with a reason.', [
-        el('div', { class: 'sheet-foot' }, [
-          el('button', { type: 'button', class: 'ghost', text: 'Cancel', onclick: closeSheet }),
-          el('button', { type: 'button', class: 'primary', text: 'Allocate bed', onclick: function () {
-            b.patient = picking.key; b.allocDta = picking.dta; S.m.allocated++;
-            S.queue = S.queue.filter(function (q) { return q.key !== picking.key; }); S.picking = null;
-            closeSheet(); setState(b, 'allocated');
-          } })
-        ])
-      ]);
-      return;
-    }
-    var acts = el('div', { class: 'actions' });
-    (NEXT[b.state] || []).forEach(function (to) {
-      var label = (b.state === 'expected_discharge' && to === 'occupied') ? 'Cancel expected discharge' : (b.state === 'allocated' && to === 'occupied') ? 'Patient moved in' : (b.state === 'out_of_service' && to === 'available') ? 'Repaired, mark available' : ACTION_LABEL[to];
-      acts.appendChild(el('button', { type: 'button', class: 'act-btn', onclick: function () {
-        if (b.state === 'allocated' && to === 'occupied') { S.m.taken++; if (b.allocDta) S.m.dtb.push(now() - b.allocDta); b.allocDta = null; }
-        closeSheet(); setState(b, to);
-      } }, [chip(to), label]));
-    });
-    var body = [acts];
-    if (b.state === 'allocated') {
-      var dp = reasonPicker('decline-reason', 'Or decline this allocation', DECLINE);
-      body.push(dp.node);
-      body.push(el('button', { type: 'button', class: 'act-btn', onclick: function () {
-        if (!dp.sel.value) { dp.sel.focus(); dp.sel.setAttribute('aria-invalid', 'true'); return; }
-        S.m.declined++; S.queue.push({ key: b.patient, spec: WARDS.filter(function (w) { return w.id === b.ward; })[0].spec, needs: Object.keys(b.attrs).filter(function (k) { return k === 'o2' || k === 'isolation' || k === 'monitored'; }).slice(0, 1), dta: b.allocDta || now() });
-        b.allocDta = null; closeSheet(); setState(b, 'available', 'declined: ' + dp.sel.value);
-      } }, ['Decline allocation']));
-    }
-    if (b.state !== 'out_of_service') {
-      var op = reasonPicker('oos-reason', 'Take out of service', OOS);
-      body.push(op.node);
-      body.push(el('button', { type: 'button', class: 'act-btn', onclick: function () {
-        if (!op.sel.value) { op.sel.focus(); op.sel.setAttribute('aria-invalid', 'true'); return; }
-        closeSheet(); setState(b, 'out_of_service', op.sel.value);
-        log('Work order raised for ' + b.ward + ' ' + b.no + ': ' + op.sel.value + '. Sent to Estates.'); save(); renderLog();
-      } }, [chip('out_of_service'), 'Take out of service and raise work order']));
-    }
-    if (b.state === 'available') body.unshift(el('p', { class: 'note', text: 'To fill this bed, choose a patient under "Waiting for a bed" and press "Find a bed".' }));
-    body.push(el('div', { class: 'sheet-foot' }, [el('button', { type: 'button', class: 'ghost', text: 'Close', onclick: closeSheet })]));
-    sheet(b.ward + ' ' + b.no, STATES[b.state] + ' for ' + dur(now() - b.since) + ' · ' + (Object.keys(b.attrs).map(function (k) { return ATTR[k]; }).join(', ') || 'Standard bed') + (b.patient ? ' · ' + b.patient : ''), body);
-  }
-
-  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('sheet-root').firstChild) closeSheet(); });
-  $('reset').addEventListener('click', function () { S = seed(); save(); render(); });
-  render();
-  setInterval(function () { if (!$('sheet-root').firstChild) render(); else $('clock').textContent = hhmm(now()); }, 30000);
-})();
+});
 </script>
 </body>
 </html>
