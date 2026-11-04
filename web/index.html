@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ospeli · Bed board demo</title>
+<meta name="description" content="Live demo of the Ospeli bed board: a fictional hospital with synthetic data.">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="brand/icons/ospeli_app_180.png">
+<link rel="manifest" href="site.webmanifest">
+<style>body{margin:0}</style>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+/* Layout: tablet bed board on warm sand. Ward strip on top, bed grid as the main surface, queue/flow/log as a side rail that stacks on phones. Brand kit v3, light theme only. */
+:root {
+  color-scheme: light;
+  --navy: #0B2F4E;
+  --sea: #0A9396;
+  --mango: #EE9B00;
+  --coral: #E0583E;
+  --seafoam: #94D2BD;
+  --bg: #F6F1E7;
+  --surface: #FFFFFF;
+  --ink: #0B2F4E;
+  --ink-soft: #46617A;
+  --line: #E2DACB;
+  --line-strong: #CFC5B2;
+  --hi: #0A9396;
+  --hi-wash: #E6F3EF;
+  --s-occupied: #0B2F4E;
+  --s-discharge: #EE9B00;
+  --s-vacated: #E0583E;
+  --s-clean: #7D8C99;
+  --s-available: #0A9396;
+  --s-allocated: #0B2F4E;
+  --s-oos: #B3261E;
+  --alert-ink: #A3261C;
+  --f-display: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  --f-body: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  --shadow: 0 10px 30px -18px rgba(11, 47, 78, 0.5);
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--surface); }
+button { font: inherit; color: inherit; }
+button:focus-visible, select:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+.wrap { max-width: 1280px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); }
+header.top .wrap { display: flex; align-items: center; gap: 12px; padding-block: 8px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 8px; font-family: var(--f-display); font-weight: 800; font-size: 1.1rem; }
+.brand svg { width: 38px; height: 38px; }
+.site { color: var(--ink-soft); font-size: 0.88rem; font-weight: 600; }
+.pill { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed var(--line-strong); color: var(--ink-soft); padding: 3px 9px; border-radius: 999px; }
+.spacer { flex: 1; }
+.clock { font-variant-numeric: tabular-nums; font-weight: 700; }
+.ghost { background: transparent; border: 1px solid var(--line-strong); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size: 0.84rem; font-weight: 600; }
+.ghost:hover { border-color: var(--navy); }
+a.ghost { color: var(--ink); text-decoration: none; }
+
+.wards { display: flex; gap: 10px; overflow-x: auto; padding-block: 14px 4px; }
+.ward-btn { flex: 1 0 200px; text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
+.ward-btn[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink), inset 0 4px 0 0 var(--coral); }
+.ward-btn .wn { font-family: var(--f-display); font-weight: 800; font-size: 0.98rem; }
+.ward-btn .counts { display: flex; gap: 12px; font-size: 0.8rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; flex-wrap: wrap; }
+.ward-btn .counts b { font-weight: 800; color: var(--ink); }
+.ward-btn .counts > span { display: inline-flex; align-items: center; gap: 5px; }
+.ward-btn .c-av::before, .ward-btn .c-oos::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--s-available); }
+.ward-btn .c-oos::before { border-radius: 0; height: 3px; width: 9px; background: var(--s-oos); }
+.ward-btn .c-oos b { color: var(--alert-ink); }
+.ward-btn.has-match { border-color: var(--hi); background: var(--hi-wash); }
+
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; padding-block: 12px 40px; align-items: start; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; min-width: 0; }
+.panel-head { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+.panel-head h2 { font-family: var(--f-display); font-weight: 800; font-size: 1.04rem; margin: 0; text-wrap: balance; }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.filter { border: 1px solid var(--line-strong); background: transparent; border-radius: 999px; padding: 4px 10px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.filter[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+
+.banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--hi-wash); border: 1px solid var(--hi); color: var(--ink); border-radius: 12px; padding: 10px 14px; margin: 12px 14px 0; font-size: 0.92rem; }
+.banner b { font-weight: 800; }
+
+.grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 14px; }
+@media (max-width: 760px) { .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.bed { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 11px; cursor: pointer; display: flex; flex-direction: column; gap: 5px; min-height: 104px; min-width: 0; position: relative; transition: transform .12s ease, box-shadow .12s ease; }
+.bed:hover { transform: translateY(-1px); box-shadow: var(--shadow); }
+.bed .row1 { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; }
+.bed .no { font-family: var(--f-display); font-weight: 800; font-size: 1.05rem; font-variant-numeric: tabular-nums; }
+.bed .age { font-size: 0.74rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.bed .attrs { font-size: 0.72rem; color: var(--ink-soft); }
+.bed .who { font-size: 0.74rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bed.dim { opacity: 0.38; }
+.bed.match { border-color: var(--hi); box-shadow: inset 0 0 0 2px var(--hi); background: var(--hi-wash); }
+.bed.flash { animation: flash 1.2s ease-out; }
+@keyframes flash { 0% { box-shadow: inset 0 0 0 3px var(--s-available); } 100% { box-shadow: inset 0 0 0 0 transparent; } }
+
+/* State chips: text stays navy; the marker carries colour and shape. */
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 0.76rem; font-weight: 700; line-height: 1.2; color: var(--ink); }
+.chip::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--c); flex: none; }
+.st-occupied { --c: var(--s-occupied); }
+.st-expected_discharge { --c: var(--s-discharge); }
+.st-expected_discharge::before { border-radius: 2px; }
+.st-vacated { --c: var(--s-vacated); }
+.st-vacated::before { background: transparent; border: 2px dashed var(--c); width: 6px; height: 6px; }
+.st-cleaning { --c: var(--s-clean); }
+.st-cleaning::before { background: transparent; border: 2px solid var(--c); width: 6px; height: 6px; }
+.st-available { --c: var(--s-available); }
+.st-allocated { --c: var(--s-allocated); }
+.st-allocated::before { border-radius: 1px; transform: rotate(45deg); background: transparent; border: 2px solid var(--c); width: 6px; height: 6px; }
+.st-out_of_service { --c: var(--s-oos); }
+.st-out_of_service::before { border-radius: 0; height: 3px; width: 10px; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 0 14px 14px; }
+
+.rail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.q-list, .log { list-style: none; margin: 0; padding: 6px 0; }
+.q-item { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); align-items: center; }
+.q-item:last-child { border-bottom: 0; }
+.q-item .key { font-weight: 800; font-variant-numeric: tabular-nums; }
+.q-item .needs { grid-column: 1; font-size: 0.8rem; color: var(--ink-soft); }
+.q-item .wait { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 0.88rem; text-align: right; }
+.q-item .wait.long { color: var(--alert-ink); }
+.q-item .act { grid-column: 2; grid-row: 2; }
+.primary { background: var(--navy); color: #FFFFFF; border: 0; border-radius: 999px; padding: 8px 15px; cursor: pointer; font-weight: 800; font-size: 0.9rem; }
+.primary:hover { background: #154069; }
+.primary[disabled] { opacity: 0.4; cursor: not-allowed; }
+.q-item.active { background: var(--hi-wash); }
+.q-item.active .primary { background: var(--surface); color: var(--ink); box-shadow: inset 0 0 0 2px var(--navy); }
+.empty { padding: 14px; color: var(--ink-soft); font-size: 0.9rem; }
+
+.flow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; background: var(--line); border-radius: 0 0 14px 14px; overflow: hidden; }
+.flow div { background: var(--surface); padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+.flow .n { font-family: var(--f-display); font-weight: 800; font-size: 1.45rem; font-variant-numeric: tabular-nums; }
+.flow .l { font-size: 0.77rem; color: var(--ink-soft); font-weight: 600; }
+.def { padding: 10px 14px; font-size: 0.76rem; color: var(--ink-soft); border-top: 1px solid var(--line); }
+
+.log li { padding: 8px 14px; font-size: 0.82rem; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 8px; }
+.log li:last-child { border-bottom: 0; }
+.log .t { font-variant-numeric: tabular-nums; color: var(--ink-soft); font-weight: 600; }
+.log-wrap { max-height: 280px; overflow-y: auto; }
+
+/* Action sheet */
+.scrim { position: fixed; inset: 0; background: rgba(11, 47, 78, 0.45); z-index: 40; display: flex; align-items: flex-end; justify-content: center; }
+.sheet { background: var(--surface); width: min(520px, 100%); border-radius: 18px 18px 0 0; padding: 18px max(18px, env(safe-area-inset-left, 0px)) calc(18px + env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 14px; box-shadow: var(--shadow); max-height: 90vh; overflow-y: auto; border-top: 4px solid var(--coral); }
+@media (min-width: 700px) { .scrim { align-items: center; } .sheet { border-radius: 18px; } }
+.sheet h3 { font-family: var(--f-display); font-weight: 800; margin: 0; font-size: 1.2rem; }
+.sheet .sub { color: var(--ink-soft); font-size: 0.88rem; }
+.actions { display: flex; flex-direction: column; gap: 8px; }
+.act-btn { text-align: left; border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 12px 14px; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 700; min-height: 48px; }
+.act-btn:hover { border-color: var(--navy); }
+.reason { display: flex; flex-direction: column; gap: 6px; }
+.reason label { font-size: 0.84rem; font-weight: 700; }
+.reason select { padding: 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font: inherit; }
+.sheet-foot { display: flex; gap: 10px; justify-content: flex-end; }
+.note { font-size: 0.8rem; color: var(--ink-soft); }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="256" height="256" role="img" aria-label="Ospeli"><g transform="translate(-10 14)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g></svg>
+      Bed board
+    </div>
+    <span class="site">Example General Hospital</span>
+    <span class="pill">Synthetic data</span>
+    <span class="spacer"></span>
+    <span class="clock" id="clock">--:--</span>
+    <a class="ghost" href="site/">About Ospeli</a>
+    <button class="ghost" id="reset" type="button">Reset demo</button>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="wards" id="wards" role="group" aria-label="Wards"></div>
+
+  <div class="layout">
+    <section class="panel" aria-labelledby="board-h">
+      <div class="panel-head">
+        <h2 id="board-h">Ward</h2>
+        <span class="spacer"></span>
+        <div class="filters" id="filters" role="group" aria-label="Filter beds"></div>
+      </div>
+      <div id="banner"></div>
+      <div class="grid" id="grid"></div>
+      <div class="legend" id="legend"></div>
+    </section>
+
+    <aside class="rail">
+      <section class="panel" aria-labelledby="q-h">
+        <div class="panel-head"><h2 id="q-h">Waiting for a bed</h2></div>
+        <ul class="q-list" id="queue"></ul>
+      </section>
+      <section class="panel" aria-labelledby="f-h">
+        <div class="panel-head"><h2 id="f-h">Today's flow</h2><span class="spacer"></span><span class="note">all wards</span></div>
+        <div class="flow" id="flow"></div>
+        <p class="def">Released = beds that reached Available. Uptake = patients moved in ÷ beds allocated. Decision-to-bed = from decision to admit until the patient is in the bed.</p>
+      </section>
+      <section class="panel" aria-labelledby="l-h">
+        <div class="panel-head"><h2 id="l-h">Activity</h2><span class="spacer"></span><span class="note">every change is time-stamped</span></div>
+        <div class="log-wrap"><ul class="log" id="log"></ul></div>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<div id="sheet-root"></div>
+
+<script>
+(function () {
+  var STATES = {
+    occupied: 'Occupied', expected_discharge: 'Expected discharge', vacated: 'Vacated, to clean',
+    cleaning: 'Cleaning', available: 'Available', allocated: 'Allocated', out_of_service: 'Out of service'
+  };
+  var NEXT = {
+    occupied: ['expected_discharge', 'vacated'],
+    expected_discharge: ['vacated', 'occupied'],
+    vacated: ['cleaning'],
+    cleaning: ['available'],
+    available: [],
+    allocated: ['occupied'],
+    out_of_service: ['available']
+  };
+  var ACTION_LABEL = {
+    expected_discharge: 'Flag expected discharge', vacated: 'Patient has left (vacated)', cleaning: 'Cleaning started',
+    available: 'Mark available', occupied: 'Patient moved in', 'occupied_from_ed': 'Cancel expected discharge'
+  };
+  var DECLINE = ['No nurse available', 'Ward full on paper', 'Wrong specialty', 'Bed not clean', 'Patient unsuitable', 'Other'];
+  var OOS = ['Equipment fault', 'Plumbing or leak', 'Electrical', 'Bed frame or mattress', 'Infection control', 'Other'];
+  var ATTR = { o2: 'O₂', suction: 'Suction', monitored: 'Monitored', isolation: 'Isolation', bariatric: 'Bariatric' };
+  var WARDS = [
+    { id: '4B', name: 'Ward 4B · Adult medical', spec: 'Medicine' },
+    { id: '5A', name: 'Ward 5A · Surgical', spec: 'Surgery' },
+    { id: '6C', name: 'Ward 6C · Respiratory', spec: 'Medicine' }
+  ];
+  var S;
+
+  function rng(seed) { return function () { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }; }
+  function now() { return Date.now(); }
+  function mins(n) { return n * 60000; }
+
+  function seed() {
+    var r = rng(42), beds = [], t = now();
+    var pattern = ['occupied','occupied','expected_discharge','occupied','cleaning','available','occupied','vacated','occupied','allocated','out_of_service','occupied'];
+    WARDS.forEach(function (w, wi) {
+      for (var i = 1; i <= 12; i++) {
+        var st = pattern[(i - 1 + wi * 3) % 12];
+        var a = {};
+        if (r() < 0.55 || w.id === '6C') a.o2 = true;
+        if (r() < 0.3) a.suction = true;
+        if (r() < 0.25 || w.id === '6C' && i < 5) a.monitored = true;
+        if (i === 11 || i === 12) a.isolation = true;
+        if (i === 8 && wi === 0) a.bariatric = true;
+        beds.push({ id: w.id + '-' + String(i).padStart(2, '0'), ward: w.id, no: 'B' + String(i).padStart(2, '0'), attrs: a, state: st, since: t - mins(5 + Math.floor(r() * 170)), patient: (st === 'occupied' || st === 'expected_discharge') ? 'P-' + (3100 + wi * 20 + i) : null, reason: st === 'out_of_service' ? 'Equipment fault' : null });
+      }
+    });
+    beds.forEach(function (b) { if (b.state === 'allocated') { b.patient = 'E-22' + (70 + b.no.slice(1) * 1); } });
+    var queue = [
+      { key: 'E-2291', spec: 'Medicine', needs: ['o2'], dta: t - mins(142) },
+      { key: 'E-2296', spec: 'Medicine', needs: ['isolation'], dta: t - mins(98) },
+      { key: 'E-2302', spec: 'Surgery', needs: [], dta: t - mins(64) },
+      { key: 'E-2305', spec: 'Medicine', needs: ['o2', 'monitored'], dta: t - mins(31) }
+    ];
+    return { beds: beds, queue: queue, ward: '4B', filter: null, picking: null,
+      log: [{ t: t - mins(2), text: 'Board opened. Example data loaded.' }],
+      m: { released: 0, allocated: 0, taken: 0, declined: 0, dtb: [] } };
+  }
+
+  try { var saved = JSON.parse(localStorage.getItem('ospeli-board-v1') || 'null'); if (saved && saved.beds) S = saved; } catch (e) {}
+  if (!S) S = seed();
+  function save() { try { localStorage.setItem('ospeli-board-v1', JSON.stringify(S)); } catch (e) {} }
+
+  var $ = function (id) { return document.getElementById(id); };
+  function el(tag, attrs, kids) {
+    var e = document.createElement(tag);
+    if (attrs) for (var k in attrs) { if (k === 'class') e.className = attrs[k]; else if (k === 'text') e.textContent = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else e.setAttribute(k, attrs[k]); }
+    (kids || []).forEach(function (c) { if (c) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+    return e;
+  }
+  function hhmm(ts) { var d = new Date(ts); return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+  function dur(ms) { var m = Math.max(0, Math.round(ms / 60000)); return m < 60 ? m + 'm' : Math.floor(m / 60) + 'h ' + String(m % 60).padStart(2, '0') + 'm'; }
+  function chip(st) { return el('span', { class: 'chip st-' + st, text: STATES[st] }); }
+  function bedById(id) { return S.beds.filter(function (b) { return b.id === id; })[0]; }
+  function fits(b, p) { return b.state === 'available' && p.needs.every(function (n) { return b.attrs[n]; }) && WARDS.filter(function (w) { return w.id === b.ward; })[0].spec === p.spec; }
+  function log(text) { S.log.unshift({ t: now(), text: text }); S.log = S.log.slice(0, 60); }
+
+  function setState(b, to, reason) {
+    var from = b.state;
+    b.state = to; b.since = now(); b.reason = reason || null;
+    if (to === 'available') { S.m.released++; b.patient = null; }
+    if (to === 'vacated') b.patient = null;
+    log(b.ward + ' ' + b.no + ': ' + STATES[from] + ' → ' + STATES[to] + (reason ? ' (' + reason + ')' : ''));
+    save(); render(); flash(b.id);
+  }
+  function flash(id) { var n = document.querySelector('[data-bed="' + id + '"]'); if (n) { n.classList.remove('flash'); void n.offsetWidth; n.classList.add('flash'); } }
+
+  function renderWards() {
+    var box = $('wards'); box.textContent = '';
+    WARDS.forEach(function (w) {
+      var bs = S.beds.filter(function (b) { return b.ward === w.id; });
+      var cnt = function (st) { return bs.filter(function (b) { return b.state === st; }).length; };
+      var picking = S.picking && S.queue.filter(function (q) { return q.key === S.picking; })[0];
+      var matches = picking ? bs.filter(function (b) { return fits(b, picking); }).length : 0;
+      var btn = el('button', { type: 'button', class: 'ward-btn' + (matches ? ' has-match' : ''), 'aria-pressed': String(S.ward === w.id), onclick: function () { S.ward = w.id; save(); render(); } }, [
+        el('span', { class: 'wn', text: w.name }),
+        el('span', { class: 'counts' }, [
+          el('span', { class: 'c-av' }, [el('b', { text: String(cnt('available')) }), ' available']),
+          el('span', {}, [el('b', { text: String(cnt('cleaning') + cnt('vacated')) }), ' to clean']),
+          el('span', { class: 'c-oos' }, [el('b', { text: String(cnt('out_of_service')) }), ' out of service']),
+          matches ? el('span', {}, [el('b', { text: String(matches) }), ' match']) : null
+        ])
+      ]);
+      box.appendChild(btn);
+    });
+  }
+
+  function renderFilters() {
+    var box = $('filters'); box.textContent = '';
+    [['', 'All']].concat(Object.keys(ATTR).map(function (k) { return [k, ATTR[k]]; })).forEach(function (f) {
+      box.appendChild(el('button', { type: 'button', class: 'filter', 'aria-pressed': String((S.filter || '') === f[0]), text: f[1], onclick: function () { S.filter = f[0] || null; save(); render(); } }));
+    });
+  }
+
+  function renderBoard() {
+    var w = WARDS.filter(function (x) { return x.id === S.ward; })[0];
+    $('board-h').textContent = w.name;
+    var picking = S.picking && S.queue.filter(function (q) { return q.key === S.picking; })[0];
+    var ban = $('banner'); ban.textContent = '';
+    if (picking) {
+      var any = S.beds.some(function (b) { return fits(b, picking); });
+      ban.appendChild(el('div', { class: 'banner', role: 'status' }, [
+        el('span', {}, ['Choose a bed for ', el('b', { text: picking.key }), ' · ' + picking.spec + (picking.needs.length ? ' · needs ' + picking.needs.map(function (n) { return ATTR[n]; }).join(', ') : '') + '. ' + (any ? 'Matching beds are highlighted.' : 'No matching bed is available yet.')]),
+        el('span', { class: 'spacer' }),
+        el('button', { type: 'button', class: 'ghost', text: 'Cancel', onclick: function () { S.picking = null; save(); render(); } })
+      ]));
+    }
+    var grid = $('grid'); grid.textContent = '';
+    S.beds.filter(function (b) { return b.ward === S.ward; }).forEach(function (b) {
+      var isMatch = picking && fits(b, picking);
+      var dim = (S.filter && !b.attrs[S.filter]) || (picking && !isMatch);
+      var attrs = Object.keys(b.attrs).map(function (k) { return ATTR[k]; }).join(' · ') || 'Standard';
+      var who = b.patient ? (b.state === 'allocated' ? 'For ' + b.patient : b.patient) : (b.reason || '');
+      grid.appendChild(el('button', { type: 'button', class: 'bed' + (isMatch ? ' match' : '') + (dim ? ' dim' : ''), 'data-bed': b.id, 'aria-label': b.no + ', ' + STATES[b.state], onclick: function () { openBed(b.id); } }, [
+        el('span', { class: 'row1' }, [el('span', { class: 'no', text: b.no }), el('span', { class: 'age', text: dur(now() - b.since) })]),
+        chip(b.state),
+        el('span', { class: 'attrs', text: attrs }),
+        who ? el('span', { class: 'who', text: who }) : null
+      ]));
+    });
+    var lg = $('legend'); lg.textContent = '';
+    Object.keys(STATES).forEach(function (k) { lg.appendChild(chip(k)); });
+  }
+
+  function renderQueue() {
+    var ul = $('queue'); ul.textContent = '';
+    if (!S.queue.length) { ul.appendChild(el('li', { class: 'empty', text: 'No one is waiting for a bed.' })); return; }
+    S.queue.slice().sort(function (a, b) { return a.dta - b.dta; }).forEach(function (q) {
+      var w = now() - q.dta;
+      ul.appendChild(el('li', { class: 'q-item' + (S.picking === q.key ? ' active' : '') }, [
+        el('span', { class: 'key', text: q.key }),
+        el('span', { class: 'wait' + (w > mins(120) ? ' long' : ''), text: dur(w) }),
+        el('span', { class: 'needs', text: q.spec + ' · ' + (q.needs.length ? q.needs.map(function (n) { return ATTR[n]; }).join(', ') : 'no special needs') + ' · decided ' + hhmm(q.dta) }),
+        el('span', { class: 'act' }, [el('button', { type: 'button', class: 'primary', text: S.picking === q.key ? 'Choosing…' : 'Find a bed', onclick: function () { S.picking = S.picking === q.key ? null : q.key; var m = S.beds.filter(function (b) { return fits(b, q); })[0]; if (S.picking && m) S.ward = m.ward; save(); render(); } })])
+      ]));
+    });
+  }
+
+  function renderFlow() {
+    var m = S.m;
+    var uptake = m.allocated ? Math.round(100 * m.taken / m.allocated) + '%' : '–';
+    var dtb = m.dtb.length ? dur(m.dtb.slice().sort(function (a, b) { return a - b; })[Math.floor(m.dtb.length / 2)]) : '–';
+    var f = $('flow'); f.textContent = '';
+    [[m.released, 'Beds released'], [m.allocated, 'Allocated'], [m.taken, 'Patients moved in'], [m.declined, 'Declined'], [uptake, 'Uptake'], [dtb, 'Median decision-to-bed']].forEach(function (x) {
+      f.appendChild(el('div', {}, [el('span', { class: 'n', text: String(x[0]) }), el('span', { class: 'l', text: x[1] })]));
+    });
+  }
+
+  function renderLog() {
+    var ul = $('log'); ul.textContent = '';
+    S.log.forEach(function (e) { ul.appendChild(el('li', {}, [el('span', { class: 't', text: hhmm(e.t) }), el('span', { text: e.text })])); });
+  }
+
+  function render() { renderWards(); renderFilters(); renderBoard(); renderQueue(); renderFlow(); renderLog(); $('clock').textContent = hhmm(now()); }
+
+  function closeSheet() { $('sheet-root').textContent = ''; }
+  function sheet(title, sub, body) {
+    var root = $('sheet-root'); root.textContent = '';
+    var scrim = el('div', { class: 'scrim', onclick: function (e) { if (e.target === scrim) closeSheet(); } }, [
+      el('div', { class: 'sheet', role: 'dialog', 'aria-modal': 'true', 'aria-label': title }, [el('h3', { text: title }), sub ? el('p', { class: 'sub', text: sub }) : null].concat(body))
+    ]);
+    root.appendChild(scrim);
+    var f = scrim.querySelector('button, select'); if (f) f.focus();
+  }
+  function reasonPicker(id, label, list) {
+    var sel = el('select', { id: id }, [el('option', { value: '', text: 'Choose a reason' })].concat(list.map(function (r) { return el('option', { value: r, text: r }); })));
+    return { node: el('div', { class: 'reason' }, [el('label', { for: id, text: label }), sel]), sel: sel };
+  }
+
+  function openBed(id) {
+    var b = bedById(id);
+    var picking = S.picking && S.queue.filter(function (q) { return q.key === S.picking; })[0];
+    if (picking && fits(b, picking)) {
+      sheet('Allocate ' + b.ward + ' ' + b.no + ' to ' + picking.key + '?', 'The ward is told straight away. The nurse in charge accepts when the patient arrives, or declines with a reason.', [
+        el('div', { class: 'sheet-foot' }, [
+          el('button', { type: 'button', class: 'ghost', text: 'Cancel', onclick: closeSheet }),
+          el('button', { type: 'button', class: 'primary', text: 'Allocate bed', onclick: function () {
+            b.patient = picking.key; b.allocDta = picking.dta; S.m.allocated++;
+            S.queue = S.queue.filter(function (q) { return q.key !== picking.key; }); S.picking = null;
+            closeSheet(); setState(b, 'allocated');
+          } })
+        ])
+      ]);
+      return;
+    }
+    var acts = el('div', { class: 'actions' });
+    (NEXT[b.state] || []).forEach(function (to) {
+      var label = (b.state === 'expected_discharge' && to === 'occupied') ? 'Cancel expected discharge' : (b.state === 'allocated' && to === 'occupied') ? 'Patient moved in' : (b.state === 'out_of_service' && to === 'available') ? 'Repaired, mark available' : ACTION_LABEL[to];
+      acts.appendChild(el('button', { type: 'button', class: 'act-btn', onclick: function () {
+        if (b.state === 'allocated' && to === 'occupied') { S.m.taken++; if (b.allocDta) S.m.dtb.push(now() - b.allocDta); b.allocDta = null; }
+        closeSheet(); setState(b, to);
+      } }, [chip(to), label]));
+    });
+    var body = [acts];
+    if (b.state === 'allocated') {
+      var dp = reasonPicker('decline-reason', 'Or decline this allocation', DECLINE);
+      body.push(dp.node);
+      body.push(el('button', { type: 'button', class: 'act-btn', onclick: function () {
+        if (!dp.sel.value) { dp.sel.focus(); dp.sel.setAttribute('aria-invalid', 'true'); return; }
+        S.m.declined++; S.queue.push({ key: b.patient, spec: WARDS.filter(function (w) { return w.id === b.ward; })[0].spec, needs: Object.keys(b.attrs).filter(function (k) { return k === 'o2' || k === 'isolation' || k === 'monitored'; }).slice(0, 1), dta: b.allocDta || now() });
+        b.allocDta = null; closeSheet(); setState(b, 'available', 'declined: ' + dp.sel.value);
+      } }, ['Decline allocation']));
+    }
+    if (b.state !== 'out_of_service') {
+      var op = reasonPicker('oos-reason', 'Take out of service', OOS);
+      body.push(op.node);
+      body.push(el('button', { type: 'button', class: 'act-btn', onclick: function () {
+        if (!op.sel.value) { op.sel.focus(); op.sel.setAttribute('aria-invalid', 'true'); return; }
+        closeSheet(); setState(b, 'out_of_service', op.sel.value);
+        log('Work order raised for ' + b.ward + ' ' + b.no + ': ' + op.sel.value + '. Sent to Estates.'); save(); renderLog();
+      } }, [chip('out_of_service'), 'Take out of service and raise work order']));
+    }
+    if (b.state === 'available') body.unshift(el('p', { class: 'note', text: 'To fill this bed, choose a patient under "Waiting for a bed" and press "Find a bed".' }));
+    body.push(el('div', { class: 'sheet-foot' }, [el('button', { type: 'button', class: 'ghost', text: 'Close', onclick: closeSheet })]));
+    sheet(b.ward + ' ' + b.no, STATES[b.state] + ' for ' + dur(now() - b.since) + ' · ' + (Object.keys(b.attrs).map(function (k) { return ATTR[k]; }).join(', ') || 'Standard bed') + (b.patient ? ' · ' + b.patient : ''), body);
+  }
+
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && $('sheet-root').firstChild) closeSheet(); });
+  $('reset').addEventListener('click', function () { S = seed(); save(); render(); });
+  render();
+  setInterval(function () { if (!$('sheet-root').firstChild) render(); else $('clock').textContent = hhmm(now()); }, 30000);
+})();
+</script>
+</body>
+</html>
