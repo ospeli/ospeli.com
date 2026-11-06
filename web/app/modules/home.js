@@ -2,6 +2,7 @@
 import { h } from './ui.js';
 import { MODULES, ROLE_MODULES, moduleById } from './registry.js';
 import { roleById } from '../core/model.js';
+import { loadSyntheticHospital, currentHour } from '../core/generator.js';
 
 const card = (m) => h('a', { class: `card${m.load ? '' : ' is-soon'}`, href: `#/${m.id}` },
   h('h3', {}, m.name, m.load ? null : h('span', { class: 'pill pill-soon' }, `Week ${m.week}`)),
@@ -11,8 +12,8 @@ export async function render(el, ctx) {
   const role = roleById(ctx.role);
   const mine = (ROLE_MODULES[ctx.role] || []).map(moduleById).filter(Boolean);
   const others = MODULES.filter((m) => m.id !== 'home' && !mine.includes(m));
-  const [beds, wards, events, audit] = await Promise.all([
-    ctx.core.listEntities('bed'), ctx.core.listEntities('ward'), ctx.core.events(), ctx.core.auditLog(),
+  const [beds, wards, eventCount, auditCount] = await Promise.all([
+    ctx.core.listEntities('bed'), ctx.core.listEntities('ward'), ctx.core.eventCount(), ctx.core.db.count('audit'),
   ]);
 
   el.append(
@@ -31,9 +32,16 @@ export async function render(el, ctx) {
       h('div', { class: 'stats' },
         h('div', { class: 'stat' }, h('b', {}, wards.length), h('span', {}, 'Wards')),
         h('div', { class: 'stat' }, h('b', {}, beds.length), h('span', {}, 'Beds')),
-        h('div', { class: 'stat' }, h('b', {}, events.length), h('span', {}, 'Events logged')),
-        h('div', { class: 'stat' }, h('b', {}, audit.length), h('span', {}, 'Audit entries'))),
-      beds.length ? null : h('p', { class: 'meta section' },
-        'No hospital loaded yet. The synthetic "Example General Hospital" arrives with the next build.')),
+        h('div', { class: 'stat' }, h('b', {}, eventCount), h('span', {}, 'Events logged')),
+        h('div', { class: 'stat' }, h('b', {}, auditCount), h('span', {}, 'Audit entries'))),
+      beds.length ? null : h('div', { class: 'card notice section' },
+        h('p', {}, 'No hospital is loaded on this device.'),
+        h('button', { class: 'btn', type: 'button', onclick: async (ev) => {
+          ev.target.disabled = true;
+          ev.target.textContent = 'Loading…';
+          await loadSyntheticHospital(ctx.core, { end: currentHour() });
+          ctx.toast('Example General Hospital loaded');
+          location.reload();
+        } }, 'Load Example General Hospital'))),
   );
 }

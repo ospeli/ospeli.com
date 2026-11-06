@@ -1,6 +1,7 @@
 // Data and audit: export, import and reset this device's data; view and verify the audit trail.
 import { h, fmtTime } from './ui.js';
 import { roleById } from '../core/model.js';
+import { loadSyntheticHospital, currentHour, HOSPITAL_NAME } from '../core/generator.js';
 
 const roleName = (id) => (id === 'system' ? 'System' : roleById(id)?.name || id);
 
@@ -70,6 +71,17 @@ export async function render(el, ctx) {
     await refresh();
   } }, 'Reset device data');
 
+  const gen = await core.getMeta('generator');
+  const reloadBtn = h('button', { class: 'btn btn-ghost', type: 'button', onclick: async () => {
+    if (!confirm(`Replace all data on this device with a fresh ${HOSPITAL_NAME}? Export first if you want to keep it.`)) return;
+    reloadBtn.disabled = true;
+    await core.reset();
+    const res = await loadSyntheticHospital(core, { end: currentHour() });
+    await core.record(ctx.role, 'data.synthetic-loaded', null, { seed: res.meta.seed, end: res.meta.end });
+    ctx.toast(`${HOSPITAL_NAME} loaded`);
+    location.reload();
+  } }, 'Load a fresh copy');
+
   el.append(
     h('div', { class: 'page-head' },
       h('div', {},
@@ -88,6 +100,11 @@ export async function render(el, ctx) {
         h('p', {}, 'Load an Ospeli export file. It is checked first, including the audit trail; a bad file changes nothing.'),
         h('div', { class: 'actions' }, h('label', { class: 'btn btn-ghost', for: 'import-file' }, 'Choose file…'), file),
         status),
+      h('div', { class: 'card' },
+        h('h2', {}, HOSPITAL_NAME),
+        h('p', {}, 'A fictional hospital with 6 wards, 120 beds and 30 days of generated activity. Every name and number is synthetic.'),
+        gen ? h('p', { class: 'meta', 'data-test': 'generator-meta' }, `Seed ${gen.seed}, data up to ${fmtTime(gen.end)}.`) : null,
+        h('div', { class: 'actions' }, reloadBtn)),
       h('div', { class: 'card' },
         h('h2', {}, 'Reset'),
         h('p', {}, 'Clear all data on this device. This cannot be undone.'),

@@ -4,6 +4,7 @@ import { openStorage } from './core/db.js';
 import { ROLES, roleById } from './core/model.js';
 import { MODULES, moduleById, parseRoute } from './modules/registry.js';
 import { renderSoon } from './modules/soon.js';
+import { loadSyntheticHospital, currentHour } from './core/generator.js';
 
 const $ = (sel) => document.querySelector(sel);
 const main = $('#main');
@@ -89,6 +90,12 @@ async function route(ctx) {
 async function boot() {
   const adapter = await openStorage('ospeli');
   const core = await Core.open({ adapter });
+  // First run on this device: load the synthetic Example General Hospital.
+  if (!(await core.getMeta('firstRunDone')) && (await core.listEntities('site')).length === 0) {
+    main.innerHTML = '<p class="loading">Setting up Example General Hospital (synthetic data)…</p>';
+    await loadSyntheticHospital(core, { end: currentHour() });
+  }
+  await core.setMeta('firstRunDone', true);
   const saved = await core.getMeta('role');
   const ctx = { core, role: roleById(saved) ? saved : 'ward-nurse', storage: adapter.kind, routed: false };
   window.ospeli = { core, version: '0.1.0' }; // handy for debugging and end-to-end tests

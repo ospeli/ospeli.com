@@ -74,11 +74,13 @@ test('keyboard: the first Tab reaches the skip link, and controls are labelled',
 test('data persists in IndexedDB across reloads', async () => {
   const { context, page } = await openPage(env);
   assert.equal(await page.evaluate(() => window.ospeli.core.db.kind), 'indexeddb');
+  const before = await page.evaluate(async () => (await window.ospeli.core.events()).length);
   await page.evaluate(() => window.ospeli.core.appendEvent({ type: 'bed.vacated', subject: 'bed-x', actorRole: 'ward-nurse' }));
   await page.reload();
   await page.waitForSelector('html[data-ready="true"]');
-  const n = await page.evaluate(async () => (await window.ospeli.core.events()).length);
-  assert.equal(n, 1);
+  const after = await page.evaluate(async () => (await window.ospeli.core.events()).length);
+  assert.equal(after, before + 1);
+  assert.equal(await page.evaluate(async () => (await window.ospeli.core.listEntities('bed')).length), 120, 'the hospital is not loaded twice');
   await context.close();
 });
 
@@ -100,13 +102,14 @@ test('works offline after the first load', async () => {
 
 test('export, refuse a tampered file, then import a good one', async () => {
   const { context, page, errors } = await openPage(env, { path: '#/data' });
-  await page.evaluate(() => window.ospeli.core.appendEvent({ type: 'bed.vacated', subject: 'bed-x', actorRole: 'ward-nurse' }));
+  const count = await page.evaluate(async () => (await window.ospeli.core.events()).length);
   const [download] = await Promise.all([page.waitForEvent('download'), page.click('text=Export JSON')]);
   const file = path.join(os.tmpdir(), `ospeli-e2e-${Date.now()}.json`);
   await download.saveAs(file);
   const data = JSON.parse(await readFile(file, 'utf8'));
   assert.equal(data.format, 'ospeli-export');
-  assert.equal(data.events.length, 1);
+  assert.equal(data.events.length, count);
+  assert.equal(data.entities.filter((e) => e.type === 'bed').length, 120);
   assert.equal(data.audit.at(-1).action, 'data.exported');
 
   const bad = structuredClone(data); bad.audit[0].actorRole = 'coo';
@@ -121,7 +124,7 @@ test('export, refuse a tampered file, then import a good one', async () => {
   await page.setInputFiles('#import-file', file);
   await page.waitForFunction(() => /Imported/.test(document.querySelector('[data-test="import-status"]').textContent));
   const n = await page.evaluate(async () => (await window.ospeli.core.events()).length);
-  assert.equal(n, 1);
+  assert.equal(n, count, 'the event added after export is gone after import');
   assert.match(await page.textContent('[data-test="audit-status"]'), /^Intact/);
   assert.deepEqual(errors, []);
   await context.close();

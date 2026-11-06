@@ -78,6 +78,7 @@ test('the event log is append-only, ordered and filterable', async () => {
   assert.deepEqual([a.seq, b.seq], [1, 2]);
   assert.equal(b.data.minutes, 40);
   assert.equal((await core.events({ type: 'bed.vacated' })).length, 2);
+  assert.equal(await core.eventCount(), 3);
   assert.equal((await core.events({ subject: 'bed-1-01' })).length, 2);
   assert.equal((await core.events({ since: '2026-11-02T00:00:00Z' })).length, 1);
   assert.equal((await core.events({ type: ['bed.vacated', 'bed.cleaned'], until: '2026-11-02T00:00:00Z' })).length, 2);

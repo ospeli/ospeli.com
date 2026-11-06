@@ -165,6 +165,8 @@ export class Core {
       && (until == null || e.at < until));
   }
 
+  eventCount() { return this.db.count('events'); }
+
   // ---- audit log ----
   record(actorRole, action, target = null, detail = null) {
     return this._serial(async () => {
