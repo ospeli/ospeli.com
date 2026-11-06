@@ -1,0 +1,15 @@
+{
+  "name": "Ospeli · Healthcare operations",
+  "short_name": "Ospeli",
+  "description": "Offline-first healthcare operations. Fictional hospital, synthetic data only.",
+  "id": "/app/",
+  "start_url": "/app/",
+  "scope": "/app/",
+  "display": "standalone",
+  "theme_color": "#0B2F4E",
+  "background_color": "#F6F1E7",
+  "icons": [
+    { "src": "/brand/icons/ospeli_app_192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/brand/icons/ospeli_app_512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
