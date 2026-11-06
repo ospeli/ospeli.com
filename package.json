@@ -1,0 +1,11 @@
+{
+  "name": "ospeli-web",
+  "private": true,
+  "type": "module",
+  "description": "Test tooling only. The site and app have no build step.",
+  "scripts": {
+    "test": "node --test tests/unit/*.test.mjs",
+    "test:e2e": "node --test --test-concurrency=1 tests/e2e/*.test.mjs",
+    "serve": "node scripts/serve.mjs"
+  }
+}
