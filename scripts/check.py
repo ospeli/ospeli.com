@@ -37,6 +37,26 @@ for page in pages:
         if not target.exists():
             errors.append(f"{rel}: broken link {ref}")
 
+# The app must open offline: every file in web/app/ that the app loads is precached by sw.js.
+APP = ROOT / "app"
+sw = APP / "sw.js"
+if sw.exists():
+    m = re.search(r"PRECACHE\s*=\s*\[(.*?)\]", sw.read_text(encoding="utf-8"), re.S)
+    listed = set(re.findall(r"'([^']+)'", m.group(1))) if m else set()
+    if not m:
+        errors.append("app/sw.js: PRECACHE list not found")
+    for ref in listed:
+        target = APP / ref
+        if ref.endswith("/"):
+            target = target / "index.html"
+        if not target.resolve().exists():
+            errors.append(f"app/sw.js: precached file missing: {ref}")
+    for f in APP.rglob("*"):
+        if f.suffix in (".js", ".css", ".woff2", ".webmanifest", ".html") and f.name != "sw.js":
+            rel = f.relative_to(APP).as_posix()
+            if rel not in listed:
+                errors.append(f"app/sw.js: {rel} is not precached, so it will not work offline")
+
 for e in errors:
     print("FAIL", e)
 print(f"Checked {len(pages)} pages, {len(errors)} problems")

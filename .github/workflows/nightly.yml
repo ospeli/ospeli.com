@@ -1,4 +1,4 @@
-name: Build and deploy demo
+name: Test and deploy
 
 on:
   push:
@@ -24,8 +24,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Check pages, links and synthetic-data rule
+      - name: Check pages, links, offline cache and synthetic-data rule
         run: python scripts/check.py
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Unit tests
+        run: npm test
+      - name: Install Playwright (tests only; the site has no build step)
+        run: |
+          npm install --no-save --no-package-lock playwright@1.63.0
+          npx playwright install --with-deps chromium
+      - name: End-to-end tests
+        run: npm run test:e2e
 
   deploy:
     needs: check

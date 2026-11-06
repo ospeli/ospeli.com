@@ -1,0 +1,128 @@
+import { test, before, after } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile, writeFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { startApp, openPage } from './helpers.mjs';
+
+let env;
+before(async () => { env = await startApp(); });
+after(async () => { await env.close(); });
+
+for (const width of [360, 390, 1024, 1280]) {
+  test(`shell loads cleanly at ${width}px with no horizontal scroll`, async () => {
+    const { context, page, errors } = await openPage(env, { width });
+    assert.equal(await page.locator('.badge-synthetic').isVisible(), true);
+    assert.equal(await page.locator('.brand img').evaluate((img) => img.complete && img.naturalWidth > 0), true);
+    assert.equal(await page.locator('h1').textContent(), 'Ward nurse');
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    assert.ok(overflow <= 0, `page scrolls sideways by ${overflow}px`);
+    for (const route of ['data', 'beds', 'engineering']) {
+      await page.goto(`${env.appUrl}#/${route}`);
+      await page.waitForSelector('main h1');
+      const o = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+      assert.ok(o <= 0, `${route} scrolls sideways by ${o}px`);
+    }
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}
+
+test('every role can be chosen; the choice persists and is audited', async () => {
+  const { context, page, errors } = await openPage(env);
+  const options = await page.locator('#role-select option').allTextContents();
+  assert.deepEqual(options, ['Ward nurse', 'Bed manager', 'Estates tech', 'A&E nurse in charge', 'Ops manager', 'COO']);
+  await page.selectOption('#role-select', 'estates-tech');
+  await page.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Estates tech');
+  const first = await page.locator('[data-test="role-shortcuts"] h3').first().textContent();
+  assert.match(first, /^Engineering/);
+  await page.reload();
+  await page.waitForSelector('html[data-ready="true"]');
+  assert.equal(await page.inputValue('#role-select'), 'estates-tech');
+  assert.equal(await page.locator('main h1').textContent(), 'Estates tech');
+  const audit = await page.evaluate(() => window.ospeli.core.auditLog());
+  assert.equal(audit.at(-1).action, 'role.changed');
+  assert.equal(audit.at(-1).actorRole, 'estates-tech');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('phone menu opens the module list and marks the current page', async () => {
+  const { context, page } = await openPage(env, { width: 390 });
+  assert.equal(await page.locator('#nav').isVisible(), false);
+  await page.click('#menu-btn');
+  assert.equal(await page.getAttribute('#menu-btn', 'aria-expanded'), 'true');
+  await page.click('#nav a[data-module="engineering"]');
+  await page.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Engineering');
+  assert.equal(await page.locator('#nav').isVisible(), false);
+  assert.equal(await page.getAttribute('#nav a[data-module="engineering"]', 'aria-current'), 'page');
+  assert.match(await page.locator('main').textContent(), /Coming in week 2/);
+  await context.close();
+});
+
+test('keyboard: the first Tab reaches the skip link, and controls are labelled', async () => {
+  const { context, page } = await openPage(env);
+  await page.keyboard.press('Tab');
+  assert.equal(await page.evaluate(() => document.activeElement.className), 'skip');
+  const unlabelled = await page.evaluate(() => [...document.querySelectorAll('button, select, input, a')]
+    .filter((el) => !(el.getAttribute('aria-label') || el.textContent.trim() || el.labels?.length || el.querySelector('img[alt]')))
+    .map((el) => el.outerHTML.slice(0, 80)));
+  assert.deepEqual(unlabelled, []);
+  await context.close();
+});
+
+test('data persists in IndexedDB across reloads', async () => {
+  const { context, page } = await openPage(env);
+  assert.equal(await page.evaluate(() => window.ospeli.core.db.kind), 'indexeddb');
+  await page.evaluate(() => window.ospeli.core.appendEvent({ type: 'bed.vacated', subject: 'bed-x', actorRole: 'ward-nurse' }));
+  await page.reload();
+  await page.waitForSelector('html[data-ready="true"]');
+  const n = await page.evaluate(async () => (await window.ospeli.core.events()).length);
+  assert.equal(n, 1);
+  await context.close();
+});
+
+test('works offline after the first load', async () => {
+  const { context, page, errors } = await openPage(env);
+  await page.evaluate(async () => { await navigator.serviceWorker.ready; });
+  // Wait until the service worker controls the page (first visit is uncontrolled).
+  await page.reload();
+  await page.waitForFunction(() => !!navigator.serviceWorker.controller);
+  await context.setOffline(true);
+  await page.goto(`${env.appUrl}#/data`);
+  await page.waitForSelector('html[data-ready="true"]');
+  assert.equal(await page.locator('main h1').textContent(), 'Your data stays on this device');
+  const faces = await page.evaluate(async () => (await document.fonts.load('800 16px Nunito')).length);
+  assert.ok(faces >= 1, 'Nunito 800 did not load from the offline cache');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('export, refuse a tampered file, then import a good one', async () => {
+  const { context, page, errors } = await openPage(env, { path: '#/data' });
+  await page.evaluate(() => window.ospeli.core.appendEvent({ type: 'bed.vacated', subject: 'bed-x', actorRole: 'ward-nurse' }));
+  const [download] = await Promise.all([page.waitForEvent('download'), page.click('text=Export JSON')]);
+  const file = path.join(os.tmpdir(), `ospeli-e2e-${Date.now()}.json`);
+  await download.saveAs(file);
+  const data = JSON.parse(await readFile(file, 'utf8'));
+  assert.equal(data.format, 'ospeli-export');
+  assert.equal(data.events.length, 1);
+  assert.equal(data.audit.at(-1).action, 'data.exported');
+
+  const bad = structuredClone(data); bad.audit[0].actorRole = 'coo';
+  const badFile = `${file}.bad.json`;
+  await writeFile(badFile, JSON.stringify(bad));
+  await page.setInputFiles('#import-file', badFile);
+  await page.waitForFunction(() => /Import refused/.test(document.querySelector('[data-test="import-status"]').textContent));
+  assert.match(await page.textContent('[data-test="import-status"]'), /audit trail broken/);
+
+  await page.evaluate(() => window.ospeli.core.appendEvent({ type: 'bed.cleaned', subject: 'bed-x', actorRole: 'ward-nurse' }));
+  page.once('dialog', (d) => d.accept());
+  await page.setInputFiles('#import-file', file);
+  await page.waitForFunction(() => /Imported/.test(document.querySelector('[data-test="import-status"]').textContent));
+  const n = await page.evaluate(async () => (await window.ospeli.core.events()).length);
+  assert.equal(n, 1);
+  assert.match(await page.textContent('[data-test="audit-status"]'), /^Intact/);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
