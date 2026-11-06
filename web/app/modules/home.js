@@ -3,6 +3,8 @@ import { h } from './ui.js';
 import { MODULES, ROLE_MODULES, moduleById } from './registry.js';
 import { roleById } from '../core/model.js';
 import { loadSyntheticHospital, currentHour } from '../core/generator.js';
+import { kpiContext, kpiTiles } from './kpi-tiles.js';
+import { KPIS } from '../core/kpi.js';
 
 const card = (m) => h('a', { class: `card${m.load ? '' : ' is-soon'}`, href: `#/${m.id}` },
   h('h3', {}, m.name, m.load ? null : h('span', { class: 'pill pill-soon' }, `Week ${m.week}`)),
@@ -11,6 +13,8 @@ const card = (m) => h('a', { class: `card${m.load ? '' : ' is-soon'}`, href: `#/
 export async function render(el, ctx) {
   const role = roleById(ctx.role);
   const mine = (ROLE_MODULES[ctx.role] || []).map(moduleById).filter(Boolean);
+  // KPIs this role owns first, then the rest.
+  const kpiIds = [...KPIS.filter((k) => k.owner === ctx.role), ...KPIS.filter((k) => k.owner !== ctx.role)].map((k) => k.id);
   const others = MODULES.filter((m) => m.id !== 'home' && !mine.includes(m));
   const [beds, wards, eventCount, auditCount] = await Promise.all([
     ctx.core.listEntities('bed'), ctx.core.listEntities('ward'), ctx.core.eventCount(), ctx.core.db.count('audit'),
@@ -22,7 +26,11 @@ export async function render(el, ctx) {
         h('p', { class: 'eyebrow' }, 'Today'),
         h('h1', {}, `${role.name}`),
         h('p', {}, 'Your shortcuts for this role. Change role at the top of the screen.'))),
-    h('h2', {}, 'Your shortcuts'),
+    beds.length ? h('section', { class: 'section', style: 'margin-top:0', 'aria-labelledby': 'kpi-h' },
+      h('h2', { id: 'kpi-h' }, 'Key numbers'),
+      h('p', { class: 'meta' }, 'Last 7 days, calculated from the event log. Tap a number to see how it is defined.'),
+      kpiTiles(kpiIds, await kpiContext(ctx.core))) : null,
+    h('h2', { class: 'section' }, 'Your shortcuts'),
     h('div', { class: 'grid', 'data-test': 'role-shortcuts' }, mine.map(card)),
     h('section', { class: 'section', 'aria-labelledby': 'all-h' },
       h('h2', { id: 'all-h' }, 'All modules'),

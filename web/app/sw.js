@@ -1,7 +1,7 @@
 // Ospeli app service worker: precache the shell so the app opens offline.
 // Strategy: serve from cache at once, refresh the cache from the network in the background.
 // Bump VERSION when the precache list changes. scripts/check.py checks that every file exists.
-const VERSION = 'ospeli-app-v2';
+const VERSION = 'ospeli-app-v3';
 const PRECACHE = [
   './',
   'index.html',
@@ -12,12 +12,14 @@ const PRECACHE = [
   'core/core.js',
   'core/db.js',
   'core/generator.js',
+  'core/kpi.js',
   'core/model.js',
   'modules/registry.js',
   'modules/ui.js',
   'modules/soon.js',
   'modules/home.js',
   'modules/data.js',
+  'modules/kpi-tiles.js',
   'fonts/nunito-latin-400-normal.woff2',
   'fonts/nunito-latin-600-normal.woff2',
   'fonts/nunito-latin-700-normal.woff2',
