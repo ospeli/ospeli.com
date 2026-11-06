@@ -218,6 +218,86 @@ footer { background: var(--surface); color: var(--ink-soft); border-top: 1px sol
 footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 20px; align-items: center; padding-block: 20px; font-size: 0.92rem; }
 footer .tag { font-weight: 600; color: var(--ink); }
 footer .logo { height: 52px; }
+
+/* Accordions: open on wider screens, collapsible on phones */
+details.acc > summary { list-style: none; }
+details.acc > summary::-webkit-details-marker { display: none; }
+@media (min-width: 641px) { details.acc > summary { pointer-events: none; } .acc-sum { display: none; } }
+.rule > summary { display: flex; gap: 16px; align-items: flex-start; }
+.rule.acc { flex-direction: column; gap: 0; }
+.rule > p { padding-left: 44px; }
+.lead-short, .swipe-hint, .steps .short, .contact .mail, .dots { display: none; }
+
+/* Phones */
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  section { padding-block: 44px; }
+  section .wrap > .head { margin-bottom: 20px; gap: 8px; }
+  section .wrap > .head p { font-size: 1rem; }
+  h2 { font-size: 1.55rem; }
+  .eyebrow { font-size: 0.72rem; letter-spacing: 0.16em; }
+  .logo { height: 40px; }
+  header.site .wrap { padding-block: 6px; }
+
+  /* Hero: short, one clear action */
+  .hero .wrap { padding-block: 28px 36px; gap: 28px; }
+  .hero-copy { gap: 16px; }
+  h1 { font-size: 2rem; }
+  .lead-long { display: none; }
+  .lead-short { display: block; font-size: 1.05rem; }
+  .tagline { font-size: 0.98rem; }
+  .hero-copy .actions { flex-direction: column; align-items: stretch; gap: 10px; }
+  .hero-copy .actions .btn { justify-content: center; width: 100%; }
+  .btn-cta { font-size: 1.05rem; }
+  .board .queue { display: none; }
+  .board-head { padding: 12px 14px; }
+  .board-head .meta { display: none; }
+  .ops { padding: 12px; gap: 8px; }
+  .op { padding: 10px 12px; }
+  .op-n { font-size: 1.45rem; }
+
+  /* Swipe rows: one card at a time, next card peeks in */
+  .swipe-hint { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 700; color: var(--ink-soft); margin: -6px 0 10px; }
+  .swipe-hint::after { content: "→"; color: var(--coral); font-weight: 800; }
+  .swipe { display: flex !important; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; margin-inline: -20px; padding: 2px 20px 6px; scroll-padding-inline: 20px; scrollbar-width: none; border-top: 0 !important; overscroll-behavior-x: contain; }
+  .swipe::-webkit-scrollbar { display: none; }
+  .swipe > * { flex: 0 0 84%; scroll-snap-align: start; }
+  .swipe:focus-visible { outline: 3px solid var(--sea); outline-offset: -3px; }
+  .dots { display: flex; justify-content: center; gap: 6px; margin-top: 12px; }
+  .dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); transition: width .2s ease, background .2s ease; }
+  .dots span.on { width: 20px; border-radius: 4px; background: var(--navy); }
+  .problems .problem, .problems .problem:nth-child(n) { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 18px; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+  .mod, .pb { padding: 18px; }
+
+  /* Steps: 2 x 2 tiles with one line each */
+  .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 14px; }
+  .steps li { padding-top: 12px; gap: 6px; }
+  .steps .long { display: none; }
+  .steps .short { display: block; font-size: 0.92rem; }
+
+  /* Accordions */
+  details.acc > summary { cursor: pointer; position: relative; padding-right: 30px; }
+  details.acc > summary::after { content: ""; position: absolute; right: 4px; top: 50%; width: 9px; height: 9px; border-right: 2.5px solid var(--ink-soft); border-bottom: 2.5px solid var(--ink-soft); transform: translateY(-70%) rotate(45deg); transition: transform .2s ease; }
+  details.acc[open] > summary::after { transform: translateY(-30%) rotate(-135deg); }
+  .facts { display: block; border-top: 1px solid var(--line); }
+  .fact { border-bottom: 1px solid var(--line); gap: 0; }
+  .fact > summary { padding: 14px 0; }
+  .fact > p { padding-bottom: 14px; margin-top: -4px; }
+  .rule { flex-direction: column; gap: 0; padding: 14px 0; }
+  .rule > summary { align-items: center; }
+  .rule > p { padding-left: 44px; padding-top: 6px; }
+  .band details.acc > summary::after { border-color: var(--band-soft); }
+  .compare-wrap > .acc-sum { display: block; font-weight: 800; color: var(--ink); padding: 14px 18px; border: 1px solid var(--line-strong); border-radius: 12px; margin-bottom: 12px; }
+  .compare-wrap > .acc-sum::after { right: 18px !important; }
+  .col { padding: 20px; }
+
+  /* Pilot */
+  .pilot .wrap { gap: 28px; }
+  .contact { padding: 22px; }
+  .contact .mail { display: inline-flex; justify-content: center; }
+  .contact .copy { align-self: stretch; justify-content: center; }
+  footer .wrap { flex-direction: column; align-items: flex-start; }
+}
 </style>
 
 <header class="site">
@@ -239,7 +319,8 @@ footer .logo { height: 52px; }
       <div class="hero-copy">
         <span class="eyebrow">Healthcare operations</span>
         <h1>Run the hospital, not the paperwork.</h1>
-        <p class="lead">Ospeli is one operations system for hospitals and clinics: beds, engineering faults, A&amp;E flow, process maps and the playbooks to redesign a department. It captures what happens as it happens, then helps your team fix the flow and prove what changed.</p>
+        <p class="lead lead-long">Ospeli is one operations system for hospitals and clinics: beds, engineering faults, A&amp;E flow, process maps and the playbooks to redesign a department. It captures what happens as it happens, then helps your team fix the flow and prove what changed.</p>
+        <p class="lead lead-short">One operations system for beds, engineering, A&amp;E flow and process maps. It captures what happens, then helps your team fix the flow.</p>
         <p class="tagline">Map processes. Optimise flow. Improve care.</p>
         <div class="actions">
           <a class="btn btn-cta" href="#pilot">Start a pilot conversation</a>
@@ -275,7 +356,8 @@ footer .logo { height: 52px; }
         <h2 id="problem-h">Large public hospitals run on walking, phoning and paper.</h2>
         <p>Beds, broken equipment, A&amp;E queues and handoffs are tracked on paper, whiteboards and phone calls, so nobody can see the whole hospital or prove what an improvement changed. Ospeli builds that record first.</p>
       </div>
-      <div class="problems">
+      <p class="swipe-hint" aria-hidden="true">Swipe to see more</p>
+      <div class="problems swipe" tabindex="0" aria-label="problems, scroll sideways">
         <div class="problem"><p class="now"><span class="lbl">Today</span>Free beds are found by walking the wards, with long gaps overnight.</p><p class="then"><span class="lbl">With Ospeli</span>The ward reports a bed's state the moment it changes.</p></div>
         <div class="problem"><p class="now"><span class="lbl">Today</span>A&amp;E waits are felt but not measured, step by step.</p><p class="then"><span class="lbl">With Ospeli</span>Arrival, triage, decision and bed are timestamped, so the slowest step is visible.</p></div>
         <div class="problem"><p class="now"><span class="lbl">Today</span>Handoffs wait in trays and on boards until someone notices.</p><p class="then"><span class="lbl">With Ospeli</span>Every handoff is a task with an owner role and an alert.</p></div>
@@ -291,7 +373,8 @@ footer .logo { height: 52px; }
         <h2 id="mod-h">One system for the whole operation.</h2>
         <p>Start with the module that hurts most. Each one shares the same hospital model, the same definitions and the same audit trail.</p>
       </div>
-      <div class="modules">
+      <p class="swipe-hint" aria-hidden="true">Swipe to see more</p>
+      <div class="modules swipe" tabindex="0" aria-label="modules, scroll sideways">
         <div class="mod"><span class="st live">Live demo</span><h3>Bed board</h3><p>Bed states, the waiting list, allocation with reasons for declines, and today's flow.</p><a href="demo/bed-board/">Open the demo</a></div>
         <div class="mod"><span class="st">In build</span><h3>Engineering and maintenance</h3><p>QR fault reports with photos, work-order queues, repeat-fault lists and step guides for simple fixes.</p></div>
         <div class="mod"><span class="st">In build</span><h3>A&amp;E and patient flow</h3><p>Arrival to bed on one timeline, pressure levels and action cards when the department is under strain.</p></div>
@@ -310,10 +393,10 @@ footer .logo { height: 52px; }
         <p>The model is not the hard part. The data, the hospital's structure and the routines that use them are.</p>
       </div>
       <ol class="steps">
-        <li><h3>Capture</h3><p>Staff record what happens with one tap on a shared tablet or phone: a bed freed, a fault reported, a patient triaged. It works offline and syncs later. Timestamps are a by-product, not extra work.</p></li>
-        <li><h3>Model</h3><p>Departments, wards, beds, assets, roles and metric definitions are configured once per hospital, without code. Every report uses the same definitions every day.</p></li>
-        <li><h3>Playbooks</h3><p>Ready-made routines turn the day's events into the outputs operations teams already produce: flow reports, redesign options, structure reviews.</p></li>
-        <li><h3>Decide</h3><p>Ospeli suggests; a named person decides. Every suggestion is logged with its inputs and the human action taken.</p></li>
+        <li><h3>Capture</h3><p class="short">One tap on a shared tablet or phone. Works offline.</p><p class="long">Staff record what happens with one tap on a shared tablet or phone: a bed freed, a fault reported, a patient triaged. It works offline and syncs later. Timestamps are a by-product, not extra work.</p></li>
+        <li><h3>Model</h3><p class="short">Wards, beds, roles and definitions, set up once.</p><p class="long">Departments, wards, beds, assets, roles and metric definitions are configured once per hospital, without code. Every report uses the same definitions every day.</p></li>
+        <li><h3>Playbooks</h3><p class="short">Routines turn the day's events into reports.</p><p class="long">Ready-made routines turn the day's events into the outputs operations teams already produce: flow reports, redesign options, structure reviews.</p></li>
+        <li><h3>Decide</h3><p class="short">Ospeli suggests; a named person decides.</p><p class="long">Ospeli suggests; a named person decides. Every suggestion is logged with its inputs and the human action taken.</p></li>
       </ol>
     </div>
   </section>
@@ -325,7 +408,8 @@ footer .logo { height: 52px; }
         <h2 id="pb-h">The work your operations team does every week, built in.</h2>
         <p>Each playbook has a fixed input, a fixed analysis and a ready-to-use output. No starting from a blank chat.</p>
       </div>
-      <div class="playbooks">
+      <p class="swipe-hint" aria-hidden="true">Swipe to see more</p>
+      <div class="playbooks swipe" tabindex="0" aria-label="playbooks, scroll sideways">
         <div class="pb"><h3>Daily flow report</h3><div class="io"><span><b>Reads:</b> bed and admission events</span><span><b>Produces:</b> beds released, allocated and taken up, delays by reason, the overnight gap</span></div></div>
         <div class="pb"><h3>Bottleneck finder</h3><div class="io"><span><b>Reads:</b> the event log for a ward or pathway</span><span><b>Produces:</b> where time is lost, ranked, with each metric's definition beside its number</span></div></div>
         <div class="pb"><h3>Department redesign</h3><div class="io"><span><b>Reads:</b> room list, layout, activity and staffing</span><span><b>Produces:</b> layout and process options with trade-offs and a data sheet</span></div></div>
@@ -343,10 +427,12 @@ footer .logo { height: 52px; }
         <h2 id="why-h">A chat assistant starts every conversation empty.</h2>
         <p>Most of the effort in using general AI for hospital operations goes into explaining the hospital. Ospeli already knows it.</p>
       </div>
+      <details class="acc compare-wrap" open><summary class="acc-sum">See the side-by-side</summary>
       <div class="compare">
         <div class="col generic"><h3>General AI chat</h3><ul><li>Knows only what someone pastes in</li><li>Needs the wards, roles and definitions explained each time</li><li>Gives a different answer to the same question on different days</li><li>Sends whatever you paste to an outside service</li></ul></div>
         <div class="col ours"><h3>Ospeli</h3><ul><li><b>Holds today's data,</b> captured on the ward as work happens</li><li><b>Knows your hospital:</b> wards, beds, roles and metric definitions</li><li><b>Runs the same playbook the same way,</b> so results compare week to week</li><li><b>Runs on your own server;</b> no patient data leaves the hospital</li></ul></div>
       </div>
+      </details>
     </div>
   </section>
 
@@ -357,12 +443,12 @@ footer .logo { height: 52px; }
         <h2 id="built-h">Designed for unreliable networks, shared tablets and tight budgets.</h2>
       </div>
       <div class="facts">
-        <div class="fact"><h3>Offline-first</h3><p>A ward keeps working through a network outage and syncs cleanly afterwards.</p></div>
-        <div class="fact"><h3>Runs on your premises</h3><p>One small local server per hospital. Cloud hosting is optional, in-country where the law requires.</p></div>
-        <div class="fact"><h3>Beside your EHR</h3><p>Sits alongside the existing record system and never replaces it. Exchanges data using HL7 FHIR R4 and HL7 v2.</p></div>
-        <div class="fact"><h3>Export anything</h3><p>Any date range exports to CSV and FHIR without a vendor. Your data stays yours.</p></div>
-        <div class="fact"><h3>Commodity hardware</h3><p>Mid-range Android tablets, a mini PC and a UPS. No specialist kit to import.</p></div>
-        <div class="fact"><h3>Open core</h3><p>The core is open source, so a ministry IT team can install and inspect it.</p></div>
+        <details class="fact acc" open><summary><h3>Offline-first</h3></summary><p>A ward keeps working through a network outage and syncs cleanly afterwards.</p></details>
+        <details class="fact acc" open><summary><h3>Runs on your premises</h3></summary><p>One small local server per hospital. Cloud hosting is optional, in-country where the law requires.</p></details>
+        <details class="fact acc" open><summary><h3>Beside your EHR</h3></summary><p>Sits alongside the existing record system and never replaces it. Exchanges data using HL7 FHIR R4 and HL7 v2.</p></details>
+        <details class="fact acc" open><summary><h3>Export anything</h3></summary><p>Any date range exports to CSV and FHIR without a vendor. Your data stays yours.</p></details>
+        <details class="fact acc" open><summary><h3>Commodity hardware</h3></summary><p>Mid-range Android tablets, a mini PC and a UPS. No specialist kit to import.</p></details>
+        <details class="fact acc" open><summary><h3>Open core</h3></summary><p>The core is open source, so a ministry IT team can install and inspect it.</p></details>
       </div>
     </div>
   </section>
@@ -375,12 +461,12 @@ footer .logo { height: 52px; }
         <p>Ospeli is built to the rules a public hospital board and its data protection officer will ask about first.</p>
       </div>
       <div class="rules">
-        <div class="rule"><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><div><h3>People decide, Ospeli suggests</h3><p>No allocation, report or clinical draft is issued without a named person's action.</p></div></div>
-        <div class="rule"><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><div><h3>Patient data stays in the hospital</h3><p>Nothing identifiable leaves the site unless the hospital approves that specific flow in writing.</p></div></div>
-        <div class="rule"><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><div><h3>Measures flows, never people</h3><p>Ospeli measures beds, queues and handoffs by role. It never times or ranks a named individual.</p></div></div>
-        <div class="rule"><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><div><h3>Full audit trail</h3><p>Every read and write of patient data is logged in a tamper-evident record.</p></div></div>
-        <div class="rule"><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><div><h3>Synthetic data until you approve</h3><p>Demonstrations and testing use a fictional hospital. Real data is used only after formal written approval.</p></div></div>
-        <div class="rule"><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><div><h3>An off switch for every AI feature</h3><p>Each assistive feature can be turned off per hospital and per ward.</p></div></div>
+        <details class="rule acc" open><summary><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><h3>People decide, Ospeli suggests</h3></summary><p>No allocation, report or clinical draft is issued without a named person's action.</p></details>
+        <details class="rule acc" open><summary><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><h3>Patient data stays in the hospital</h3></summary><p>Nothing identifiable leaves the site unless the hospital approves that specific flow in writing.</p></details>
+        <details class="rule acc" open><summary><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><h3>Measures flows, never people</h3></summary><p>Ospeli measures beds, queues and handoffs by role. It never times or ranks a named individual.</p></details>
+        <details class="rule acc" open><summary><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><h3>Full audit trail</h3></summary><p>Every read and write of patient data is logged in a tamper-evident record.</p></details>
+        <details class="rule acc" open><summary><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><h3>Synthetic data until you approve</h3></summary><p>Demonstrations and testing use a fictional hospital. Real data is used only after formal written approval.</p></details>
+        <details class="rule acc" open><summary><span class="mark" aria-hidden="true"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5l3 3 6-7"/></svg></span><h3>An off switch for every AI feature</h3></summary><p>Each assistive feature can be turned off per hospital and per ward.</p></details>
       </div>
     </div>
   </section>
@@ -403,6 +489,7 @@ footer .logo { height: 52px; }
         <h3>Talk to us about a pilot</h3>
         <p>Tell us your hospital, the wards you have in mind and who leads operations and nursing.</p>
         <span class="addr" id="addr">hello@ospeli.com</span>
+        <a class="btn btn-cta mail" href="mailto:hello@ospeli.com?subject=Ospeli%20pilot">Email us</a>
         <button type="button" class="btn btn-ghost copy" id="copy-btn">Copy address</button>
         <small>Ospeli is in early development. Pilots are arranged through each hospital's own procurement route.</small>
       </div>
@@ -431,6 +518,27 @@ document.getElementById('copy-btn').addEventListener('click', function () {
     var s = window.getSelection(); s.removeAllRanges(); s.addRange(r); done('Selected, press Ctrl+C');
   }
 });
+
+/* Phones: collapse accordions; add position dots to swipe rows. */
+(function () {
+  var mq = window.matchMedia('(max-width: 640px)');
+  var accs = document.querySelectorAll('details.acc');
+  function sync() { accs.forEach(function (d) { d.open = !mq.matches; }); }
+  sync();
+  if (mq.addEventListener) mq.addEventListener('change', sync); else mq.addListener(sync);
+  document.querySelectorAll('.swipe').forEach(function (row) {
+    var n = row.children.length, dots = document.createElement('div');
+    dots.className = 'dots'; dots.setAttribute('aria-hidden', 'true');
+    for (var i = 0; i < n; i++) dots.appendChild(document.createElement('span'));
+    row.after(dots);
+    function mark() {
+      var w = row.children[0].getBoundingClientRect().width + 12;
+      var at = row.scrollLeft + row.clientWidth >= row.scrollWidth - 4 ? n - 1 : Math.round(row.scrollLeft / w);
+      Array.prototype.forEach.call(dots.children, function (d, j) { d.className = j === at ? 'on' : ''; });
+    }
+    row.addEventListener('scroll', mark, { passive: true }); mark();
+  });
+})();
 </script>
 </body>
 </html>
