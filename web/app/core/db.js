@@ -1,13 +1,22 @@
 // Storage adapters for the Ospeli core.
 // Every adapter has the same small async API over named stores of JSON records:
 //   get(store, key), getAll(store), put(store, record), putMany(store, records),
+//   add(store, record), addMany(store, records), last(store),
 //   clear(store), count(store), close().
+// add/addMany refuse a key that already exists (error name 'ConstraintError'); addMany
+// is all or nothing. The logs use them so two tabs can never overwrite each other's entries.
 // Records are keyed by `id` (entities) or `seq` (event and audit logs).
 // IndexedDB is used in the browser; MemoryAdapter is the fallback (tests, private
 // windows where IndexedDB is blocked). Modules never touch adapters directly.
 
 export const STORES = ['entities', 'events', 'audit', 'meta'];
 const KEYS = { entities: 'id', events: 'seq', audit: 'seq', meta: 'id' };
+
+function constraintError(store, key) {
+  const e = new Error(`${store}: key ${key} already exists`);
+  e.name = 'ConstraintError';
+  return e;
+}
 
 const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
 
@@ -29,6 +38,21 @@ export class MemoryAdapter {
   }
   async put(store, record) { this._s(store).set(record[KEYS[store]], clone(record)); }
   async putMany(store, records) { for (const r of records) await this.put(store, r); }
+  async add(store, record) { return this.addMany(store, [record]); }
+  async addMany(store, records) {
+    const s = this._s(store); const k = KEYS[store];
+    const keys = new Set();
+    for (const r of records) {
+      if (s.has(r[k]) || keys.has(r[k])) throw constraintError(store, r[k]);
+      keys.add(r[k]);
+    }
+    for (const r of records) s.set(r[k], clone(r));
+  }
+  async last(store) {
+    const k = KEYS[store]; let best;
+    for (const v of this._s(store).values()) if (best === undefined || v[k] > best[k]) best = v;
+    return best === undefined ? null : clone(best);
+  }
   async clear(store) { this._s(store).clear(); }
   async count(store) { return this._s(store).size; }
   async close() {}
@@ -69,6 +93,24 @@ export class IDBAdapter {
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(tx.error || new Error('transaction aborted'));
     });
+  }
+  add(store, record) { return this.addMany(store, [record]); }
+  addMany(store, records) {
+    return new Promise((resolve, reject) => {
+      const tx = this.db.transaction(store, 'readwrite');
+      const os = tx.objectStore(store);
+      let failed = null;
+      for (const r of records) {
+        // A duplicate key (ConstraintError) aborts the whole batch: nothing is written.
+        os.add(r).onerror = (e) => { failed = failed || e.target.error; e.preventDefault(); e.stopPropagation(); tx.abort(); };
+      }
+      tx.oncomplete = () => resolve();
+      tx.onabort = () => reject(failed || tx.error || new Error('transaction aborted'));
+    });
+  }
+  async last(store) {
+    const r = await req(this._tx(store, 'readonly').openCursor(null, 'prev'));
+    return r ? r.value : null;
   }
   async clear(store) { await req(this._tx(store, 'readwrite').clear()); }
   async count(store) { return req(this._tx(store, 'readonly').count()); }

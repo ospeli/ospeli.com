@@ -129,3 +129,23 @@ test('export, refuse a tampered file, then import a good one', async () => {
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+test('two tabs on one device keep one intact audit trail (issue #2)', async () => {
+  const { context, page: a } = await openPage(env);
+  const b = await context.newPage();
+  await b.goto(env.appUrl);
+  await b.waitForSelector('html[data-ready="true"]');
+  const before = await a.evaluate(async () => (await window.ospeli.core.auditLog()).length);
+  await a.selectOption('#role-select', 'bed-manager');
+  await a.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Bed manager');
+  await b.selectOption('#role-select', 'coo');
+  await b.waitForFunction(() => document.querySelector('main h1')?.textContent === 'COO');
+  await a.selectOption('#role-select', 'estates-tech');
+  await a.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Estates tech');
+  await a.goto(`${env.appUrl}#/data`);
+  await a.waitForFunction(() => /Intact/.test(document.querySelector('[data-test="audit-status"]')?.textContent || ''));
+  const audit = await a.evaluate(() => window.ospeli.core.auditLog());
+  assert.equal(audit.length, before + 3);
+  assert.deepEqual(audit.slice(-3).map((e) => e.detail.to), ['bed-manager', 'coo', 'estates-tech']);
+  await context.close();
+});

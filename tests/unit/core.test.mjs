@@ -173,3 +173,32 @@ test('reset empties the device', async () => {
   const e = await core.appendEvent({ type: 'bed.vacated', subject: 'x', actorRole: 'coo' });
   assert.equal(e.seq, 1);
 });
+
+test('two tabs on one device never overwrite each other (issue #2)', async () => {
+  const shared = new MemoryAdapter();
+  const clock = fixedClock();
+  const a = await Core.open({ adapter: shared, clock });
+  const b = await Core.open({ adapter: shared, clock });
+  // Each "tab" has a stale tail after the other writes.
+  await a.record('bed-manager', 'role.changed');
+  await b.record('coo', 'role.changed');
+  await a.record('estates-tech', 'role.changed');
+  await b.appendEvent({ type: 'bed.vacated', subject: 'bed-1', actorRole: 'ward-nurse' });
+  await a.appendEvent({ type: 'bed.cleaned', subject: 'bed-1', actorRole: 'ward-nurse' });
+  await b.appendEvents([{ type: 'bed.allocated', subject: 'bed-1', actorRole: 'bed-manager' }, { type: 'patient.admitted', subject: 'e-1', actorRole: 'ward-nurse' }], 'bed-manager');
+  await Promise.all([a.record('coo', 'x.one'), b.record('coo', 'x.two'), a.record('coo', 'x.three')]);
+  const audit = await shared.getAll('audit');
+  assert.deepEqual(await verifyChain(audit), { ok: true });
+  assert.equal(audit.length, 7); // 3 roles, 1 bulk-events entry, 3 concurrent
+  const events = await shared.getAll('events');
+  assert.deepEqual(events.map((e) => e.seq), [1, 2, 3, 4]);
+  assert.deepEqual(events.map((e) => e.type), ['bed.vacated', 'bed.cleaned', 'bed.allocated', 'patient.admitted']);
+});
+
+test('adapters refuse duplicate log keys, all or nothing', async () => {
+  const m = new MemoryAdapter();
+  await m.addMany('events', [{ seq: 1 }, { seq: 2 }]);
+  await assert.rejects(m.addMany('events', [{ seq: 3 }, { seq: 2 }]), { name: 'ConstraintError' });
+  assert.equal(await m.count('events'), 2);
+  assert.equal((await m.last('events')).seq, 2);
+});

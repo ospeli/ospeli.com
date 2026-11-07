@@ -29,10 +29,25 @@ export class Core {
   }
 
   async _loadTails() {
-    const ev = await this.db.getAll('events');
-    const au = await this.db.getAll('audit');
-    this.lastEvent = ev.length ? ev[ev.length - 1] : null;
-    this.lastAudit = au.length ? au[au.length - 1] : null;
+    this.lastEvent = await this.db.last('events');
+    this.lastAudit = await this.db.last('audit');
+  }
+
+  // Append to a log without ever overwriting an entry. Another tab on the same device may
+  // have written since we last looked: the storage refuses the duplicate key, we re-read
+  // the tail and build the record(s) again on top of it (issue #2).
+  async _appendLog(store, tailKey, build) {
+    for (let attempt = 0; ; attempt++) {
+      const recs = await build(this[tailKey]);
+      try {
+        await this.db.addMany(store, recs);
+        if (recs.length) this[tailKey] = recs[recs.length - 1];
+        return recs;
+      } catch (err) {
+        if (err?.name !== 'ConstraintError' || attempt >= 20) throw err;
+        this[tailKey] = await this.db.last(store);
+      }
+    }
   }
 
   now() { return this.clock().toISOString(); }
@@ -48,9 +63,8 @@ export class Core {
   _emit(kind, detail) { for (const fn of this.listeners) { try { fn({ kind, detail }); } catch { /* a view error must not break the core */ } } }
 
   async _audit(actorRole, action, target, detail, at = this.now()) {
-    const entry = await makeEntry(this.lastAudit, { at, actorRole, action, target, detail });
-    await this.db.put('audit', entry);
-    this.lastAudit = entry;
+    const [entry] = await this._appendLog('audit', 'lastAudit',
+      async (tail) => [await makeEntry(tail, { at, actorRole, action, target, detail })]);
     return entry;
   }
 
@@ -135,9 +149,8 @@ export class Core {
 
   appendEvent(ev) {
     return this._serial(async () => {
-      const rec = this._eventRecord(ev, this.lastEvent ? this.lastEvent.seq : 0);
-      await this.db.put('events', rec);
-      this.lastEvent = rec;
+      const [rec] = await this._appendLog('events', 'lastEvent',
+        async (tail) => [this._eventRecord(ev, tail ? tail.seq : 0)]);
       this._emit('event', rec);
       return rec;
     });
@@ -146,10 +159,10 @@ export class Core {
   appendEvents(list, actorRole, note = 'bulk events') {
     return this._serial(async () => {
       checkActor(actorRole);
-      let seq = this.lastEvent ? this.lastEvent.seq : 0;
-      const recs = list.map((ev) => this._eventRecord(ev, seq++));
-      await this.db.putMany('events', recs);
-      if (recs.length) this.lastEvent = recs[recs.length - 1];
+      const recs = await this._appendLog('events', 'lastEvent', async (tail) => {
+        let seq = tail ? tail.seq : 0;
+        return list.map((ev) => this._eventRecord(ev, seq++));
+      });
       await this._audit(actorRole, 'events.loaded', null, { count: recs.length, note });
       this._emit('events', { count: recs.length });
       return recs.length;
