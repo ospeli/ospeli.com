@@ -56,10 +56,16 @@ function buildRoles(ctx) {
   });
 }
 
-function setMenu(open) {
+function setMenu(open, { focusButton = false } = {}) {
   $('#nav').classList.toggle('open', open);
   $('#menu-btn').setAttribute('aria-expanded', String(open));
+  if (!open && focusButton) $('#menu-btn').focus();
 }
+
+// Escape closes the phone menu and returns focus to the Menu button (issue #8).
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $('#nav').classList.contains('open')) setMenu(false, { focusButton: true });
+});
 
 async function route(ctx) {
   const { id, rest } = parseRoute(location.hash);

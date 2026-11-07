@@ -149,3 +149,15 @@ test('two tabs on one device keep one intact audit trail (issue #2)', async () =
   assert.deepEqual(audit.slice(-3).map((e) => e.detail.to), ['bed-manager', 'coo', 'estates-tech']);
   await context.close();
 });
+
+test('Escape closes the phone menu and returns focus to the Menu button (issue #8)', async () => {
+  const { context, page } = await openPage(env, { width: 390 });
+  await page.focus('#menu-btn');
+  await page.keyboard.press('Enter');
+  assert.equal(await page.locator('#nav').isVisible(), true);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.locator('#nav').isVisible(), false);
+  assert.equal(await page.getAttribute('#menu-btn', 'aria-expanded'), 'false');
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'menu-btn');
+  await context.close();
+});
