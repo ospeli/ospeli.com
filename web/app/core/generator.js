@@ -203,7 +203,14 @@ export function generateHospital({ seed = DEFAULT_SEED, end, days = 30 } = {}) {
         let dischargeAt = atLocalHour(Math.max(admittedAt + los, notBefore + r.next() * 2 * DAY), r.weighted(DISCHARGE_HOURS), r);
         if (dischargeAt < notBefore) dischargeAt += DAY;
         if (dischargeAt <= admittedAt + 4 * HOUR) dischargeAt = admittedAt + 4 * HOUR + r.int(0, 120) * MIN;
-        if (dischargeAt > endMs) return endMs + 1; // still in the bed at the end of the window
+        if (dischargeAt > endMs) {
+          // Still in the bed at the end of the window. Some are already flagged to go home soon.
+          if (dischargeAt < endMs + 30 * HOUR && r.chance(0.6)) {
+            const flagAt = dischargeAt - r.lognormal(18, 0.4) * HOUR;
+            if (flagAt > admittedAt) push(flagAt, 'patient.expected-discharge', encId, 'ward-nurse', { bedId, expectedAt: iso(dischargeAt) });
+          }
+          return endMs + 1;
+        }
         if (r.chance(0.6)) push(dischargeAt - r.lognormal(18, 0.4) * HOUR, 'patient.expected-discharge', encId, 'ward-nurse', { bedId, expectedAt: iso(dischargeAt) });
         push(dischargeAt, 'patient.discharged', encId, 'ward-nurse', { bedId, wardId: w.id });
         push(dischargeAt + r.int(1, 15) * MIN, 'bed.vacated', bedId, 'ward-nurse', { encounter: encId });
@@ -248,6 +255,16 @@ export function generateHospital({ seed = DEFAULT_SEED, end, days = 30 } = {}) {
       const done = assigned + r.lognormal(fixH, 0.8) * HOUR;
       push(done, 'workorder.completed', woId, 'estates-tech', { asset: asset.id, outcome: r.chance(0.9) ? 'fixed' : 'escalated' });
     }
+  }
+
+  // A few A&E patients decided for admission in the last hours, still waiting for a bed.
+  const waitingNow = r.int(3, 6);
+  for (let k = 0; k < waitingNow; k++) {
+    const encId = `enc-${pad(++enc, 6)}`;
+    const w = r.weighted(WARDS.map((x) => [x, x.emergencyShare]));
+    const decision = endMs - Math.min(6, r.lognormal(1.5, 0.7)) * HOUR;
+    aeJourney(encId, decision, true);
+    push(Math.min(endMs, decision + r.lognormal(20, 0.5) * MIN), 'bed.requested', encId, 'ae-nic', { wardId: w.id });
   }
 
   raw.sort((a, b) => a.t - b.t || (a.type < b.type ? -1 : a.type > b.type ? 1 : 0) || (a.subject < b.subject ? -1 : 1));
