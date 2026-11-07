@@ -4,12 +4,13 @@ import { openStorage } from './core/db.js';
 import { ROLES, roleById } from './core/model.js';
 import { MODULES, moduleById, parseRoute } from './modules/registry.js';
 import { renderSoon } from './modules/soon.js';
-import { loadSyntheticHospital, currentHour } from './core/generator.js';
+import { loadSyntheticHospital, currentHour, setupUnfinished } from './core/generator.js';
 
 const $ = (sel) => document.querySelector(sel);
 const main = $('#main');
 let cleanup = null;
 let toastTimer = null;
+let routeToken = 0;
 
 export function toast(msg) {
   const t = $('#toast');
@@ -69,19 +70,30 @@ async function route(ctx) {
   setMenu(false);
   if (typeof cleanup === 'function') { try { cleanup(); } catch { /* ignore */ } }
   cleanup = null;
-  main.replaceChildren();
+  // Render off-screen, then swap in only if no newer navigation started meanwhile, so two
+  // quick route changes can never stack two pages in <main>.
+  const token = ++routeToken;
+  const page = document.createElement('div');
+  page.className = 'page';
   document.title = `${mod.name} · Ospeli`;
+  let pageCleanup = null;
   try {
     if (mod.load) {
       const view = await mod.load();
-      cleanup = await view.render(main, { ...ctx, rest, toast });
+      pageCleanup = await view.render(page, { ...ctx, rest, toast });
     } else {
-      renderSoon(main, mod);
+      renderSoon(page, mod);
     }
   } catch (err) {
     console.error(err);
-    main.innerHTML = '<div class="card notice"><h2>Something went wrong</h2><p>This page could not load. Your data is safe. Try again, or go back to <a href="#/home">Today</a>.</p></div>';
+    page.innerHTML = '<div class="card notice"><h2>Something went wrong</h2><p>This page could not load. Your data is safe. Try again, or go back to <a href="#/home">Today</a>.</p></div>';
   }
+  if (token !== routeToken) {
+    if (typeof pageCleanup === 'function') { try { pageCleanup(); } catch { /* ignore */ } }
+    return;
+  }
+  cleanup = pageCleanup;
+  main.replaceChildren(...page.childNodes);
   if (ctx.routed) main.focus({ preventScroll: true });
   ctx.routed = true;
   window.scrollTo(0, 0);
@@ -91,9 +103,13 @@ async function boot() {
   const adapter = await openStorage('ospeli');
   const core = await Core.open({ adapter });
   // First run on this device: load the synthetic Example General Hospital.
-  if (!(await core.getMeta('firstRunDone')) && (await core.listEntities('site')).length === 0) {
+  // If an earlier setup was interrupted, start it again so the hospital is never half loaded.
+  const unfinished = await setupUnfinished(core);
+  if (unfinished || (!(await core.getMeta('firstRunDone')) && (await core.listEntities('site')).length === 0)) {
     main.innerHTML = '<p class="loading">Setting up Example General Hospital (synthetic data)…</p>';
+    if (unfinished) await core.reset();
     await loadSyntheticHospital(core, { end: currentHour() });
+    if (unfinished) await core.record('system', 'setup.restarted', null, { reason: 'previous setup did not finish' });
   }
   await core.setMeta('firstRunDone', true);
   const saved = await core.getMeta('role');

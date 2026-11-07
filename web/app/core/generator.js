@@ -258,11 +258,25 @@ export function generateHospital({ seed = DEFAULT_SEED, end, days = 30 } = {}) {
 // Load the synthetic hospital into a (normally empty) core.
 export async function loadSyntheticHospital(core, { seed = DEFAULT_SEED, end, days = 30 } = {}) {
   const { entities, events, meta } = generateHospital({ seed, end, days });
+  // Mark setup as unfinished until every event is stored, so a reload mid-way is detected
+  // and setup starts again on the next boot (issue #1).
+  await core.setMeta('setup', 'started');
   await core.putEntities(entities, 'system', `${HOSPITAL_NAME}, seed ${seed}`);
   await core.appendEvents(events, 'system', `${days} days of synthetic events, seed ${seed}`);
   await core.setMeta('synthetic', true);
   await core.setMeta('generator', meta);
+  await core.setMeta('setup', 'done');
   return { entities: entities.length, events: events.length, meta };
+}
+
+// True when a synthetic setup on this device was interrupted (reload, tab closed, app killed)
+// and must be run again. Also catches devices left with beds but no events by older builds.
+export async function setupUnfinished(core) {
+  const setup = await core.getMeta('setup');
+  if (setup === 'started') return true;
+  if (setup === 'done') return false;
+  const sites = await core.listEntities('site');
+  return sites.length > 0 && !(await core.getMeta('generator')) && (await core.eventCount()) === 0;
 }
 
 // The default "end" for a new device: the start of the current hour, so the data looks current.

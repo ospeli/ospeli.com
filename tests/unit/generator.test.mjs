@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateHospital, loadSyntheticHospital, rng, HOSPITAL_NAME, currentHour } from '../../web/app/core/generator.js';
+import { generateHospital, loadSyntheticHospital, rng, HOSPITAL_NAME, currentHour, setupUnfinished } from '../../web/app/core/generator.js';
 import { validateEntity, validateEvent } from '../../web/app/core/model.js';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
@@ -127,4 +127,18 @@ test('loads into the core with an intact audit trail', async () => {
 
 test('currentHour floors to the hour', () => {
   assert.equal(currentHour(Date.parse('2026-11-06T04:37:12.345Z')), '2026-11-06T04:00:00.000Z');
+});
+
+test('an interrupted setup is detected, a finished one is not (issue #1)', async () => {
+  const core = await Core.open({ adapter: new MemoryAdapter() });
+  assert.equal(await setupUnfinished(core), false, 'an empty device is not unfinished');
+  await loadSyntheticHospital(core, { end: END });
+  assert.equal(await core.getMeta('setup'), 'done');
+  assert.equal(await setupUnfinished(core), false);
+  await core.setMeta('setup', 'started');
+  assert.equal(await setupUnfinished(core), true);
+  // Devices left half loaded by older builds: beds, no events, no generator record.
+  const old = await Core.open({ adapter: new MemoryAdapter() });
+  await old.putEntities(g.entities, 'system');
+  assert.equal(await setupUnfinished(old), true);
 });

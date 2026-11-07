@@ -52,3 +52,31 @@ test('"Load a fresh copy" replaces the data and is audited', async () => {
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+test('reloading during first-run setup never leaves a hospital without events (issue #1)', async () => {
+  const context = await env.browser.newContext({ viewport: { width: 390, height: 800 } });
+  const page = await context.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  // A real reload while setup is running...
+  await page.goto(env.appUrl);
+  await page.waitForTimeout(500);
+  await page.reload();
+  await page.waitForSelector('html[data-ready="true"]', { timeout: 20000 });
+  assert.ok(await page.evaluate(() => window.ospeli.core.eventCount()) > 5000, 'events missing after a reload during setup');
+  // ...and a forced half-finished state (beds stored, events not yet), as a slow phone would leave it.
+  await page.evaluate(async () => {
+    const { core } = window.ospeli;
+    await core.db.clear('events');
+    await core.setMeta('setup', 'started');
+  });
+  await page.reload();
+  await page.waitForSelector('html[data-ready="true"]', { timeout: 20000 });
+  assert.ok(await page.evaluate(() => window.ospeli.core.eventCount()) > 5000, 'setup did not restart');
+  assert.equal((await page.locator('.stat b').allTextContents())[1], '120');
+  assert.deepEqual(await page.evaluate(() => window.ospeli.core.verifyAudit()), { ok: true });
+  const actions = await page.evaluate(async () => (await window.ospeli.core.auditLog()).map((a) => a.action));
+  assert.ok(actions.includes('setup.restarted'));
+  assert.deepEqual(errors, []);
+  await context.close();
+});
