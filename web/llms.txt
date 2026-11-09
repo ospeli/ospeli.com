@@ -1,0 +1,23 @@
+# Ospeli
+
+> Ospeli is an open-core, offline-first healthcare operations platform. It records what happens in a hospital or clinic (beds, engineering faults and work orders, emergency department flow, process maps) as one event log, and helps staff fix the flow. The bed board is one module, not the product. People decide, Ospeli suggests: there are no clinical decision features, and every AI feature has an off switch. This public build runs on synthetic data only (a fictional "Example General Hospital").
+
+## Try it
+- [Live demo app](https://ospeli.com/app/): installable web app; works offline after the first load; synthetic data only.
+- [Front page](https://ospeli.com/): what Ospeli is, its modules, how a pilot runs, and its governance rules.
+
+## For agents
+- [Agent guide](https://ospeli.com/agents.md): how an AI agent may use Ospeli, and what it may not do.
+- [Command API (readable)](https://ospeli.com/app/api/README.md): every action in the app as a named command, with roles and whether a person must approve.
+- [Command API (JSON)](https://ospeli.com/app/api/commands.json): input and output JSON schemas and an example for every command.
+
+## Rules
+- Synthetic data only in this build. Never send real patient, staff or hospital data to the demo.
+- People decide, Ospeli suggests. Agents may read and propose; a person accepts or declines.
+- Agent access is off by default, per hospital and per ward, and only people can switch it on.
+- Every agent action is audited with actor type "agent", the agent's name and the role it acts for.
+- Patient data stays on site: Ospeli runs on the hospital's own devices or server, never through a cloud relay.
+- Measure flows, never people.
+
+## Optional
+- [Sitemap](https://ospeli.com/sitemap.xml)

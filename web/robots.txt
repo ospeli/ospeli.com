@@ -1,0 +1,6 @@
+# Ospeli public site. AI crawlers and agents are welcome on public pages.
+# Agents: start at /llms.txt and /agents.md. The demo app uses synthetic data only.
+User-agent: *
+Allow: /
+
+Sitemap: https://ospeli.com/sitemap.xml

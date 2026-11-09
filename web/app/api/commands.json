@@ -1,0 +1,2411 @@
+{
+  "name": "Ospeli command layer",
+  "version": 1,
+  "description": "Every action in the Ospeli app is one of these commands. People and agents run the same commands. Synthetic data only in this build.",
+  "rules": [
+    "People decide, Ospeli suggests: an agent may read, and its write commands become proposals that wait for a person.",
+    "Agent access is off by default, for the hospital and for each ward (agents.set-access, people only).",
+    "Every agent read, proposal and refusal is in the audit trail with actor type \"agent\", the agent name and the role it acts for.",
+    "Nothing leaves the site: commands run on this device or the hospital's own server, never through a cloud relay."
+  ],
+  "howToCall": {
+    "browser": "window.ospeli.commands(), window.ospeli.describe(name), await window.ospeli.run(name, input, { agent: \"your-agent-name\", role: \"bed-manager\" })",
+    "errors": "A refused call throws an error with .code: invalid-input, unknown-command, forbidden, not-found, conflict or agents-off."
+  },
+  "commands": [
+    {
+      "name": "beds.board",
+      "summary": "Live bed state for every ward (or one ward), the waiting-for-a-bed list and any conflicting events, derived from the event log.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "wardId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "wards",
+          "beds",
+          "waiting",
+          "conflicts"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "wards": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "counts"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "counts": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "beds": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "wardId",
+                "state"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "wardId": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "occupied",
+                    "expected-discharge",
+                    "vacated",
+                    "cleaning",
+                    "available",
+                    "allocated",
+                    "out-of-service"
+                  ]
+                },
+                "since": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "encounter": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "expectedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "sideRoom": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "waiting": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "encounter",
+                "decisionAt"
+              ],
+              "properties": {
+                "encounter": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "wardId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "decisionAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "requestedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "allocatedBed": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "conflicts": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "description": "Events that were not applied because the bed held someone else."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "wardId": "ward-a1"
+        }
+      }
+    },
+    {
+      "name": "bed.get",
+      "summary": "One bed: its state and the commands the caller's role may run on it next.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bedId"
+        ],
+        "properties": {
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "bed",
+          "next"
+        ],
+        "properties": {
+          "bed": {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "wardId",
+              "state"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "name": {
+                "type": "string"
+              },
+              "wardId": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "occupied",
+                  "expected-discharge",
+                  "vacated",
+                  "cleaning",
+                  "available",
+                  "allocated",
+                  "out-of-service"
+                ]
+              },
+              "since": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "encounter": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "expectedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "sideRoom": {
+                "type": "boolean"
+              }
+            }
+          },
+          "next": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "bedId": "ward-a1-bed-01"
+        }
+      }
+    },
+    {
+      "name": "bed.flag-expected-discharge",
+      "summary": "Flag that the patient in this bed is expected to go home today.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bedId"
+        ],
+        "properties": {
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "expectedAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the patient is expected to leave. Defaults to now."
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ],
+            "description": "The state the caller last saw. If the bed has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "bedId": "ward-a1-bed-01",
+          "expectedAt": "2026-11-08T15:00:00.000Z"
+        }
+      }
+    },
+    {
+      "name": "bed.cancel-expected-discharge",
+      "summary": "Cancel an expected discharge; the patient stays.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bedId"
+        ],
+        "properties": {
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ],
+            "description": "The state the caller last saw. If the bed has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "bedId": "ward-a1-bed-01"
+        }
+      }
+    },
+    {
+      "name": "bed.mark-vacated",
+      "summary": "The patient has left: discharge them from the bed and mark it to clean.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bedId"
+        ],
+        "properties": {
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ],
+            "description": "The state the caller last saw. If the bed has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "bedId": "ward-a1-bed-01"
+        }
+      }
+    },
+    {
+      "name": "bed.start-clean",
+      "summary": "Cleaning of a vacated bed has started.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bedId"
+        ],
+        "properties": {
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ],
+            "description": "The state the caller last saw. If the bed has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "bedId": "ward-a1-bed-01"
+        }
+      }
+    },
+    {
+      "name": "bed.finish-clean",
+      "summary": "Cleaning is finished: the bed is ready for the next patient.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bedId"
+        ],
+        "properties": {
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ],
+            "description": "The state the caller last saw. If the bed has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "bedId": "ward-a1-bed-01"
+        }
+      }
+    },
+    {
+      "name": "bed.allocate",
+      "summary": "Hold an available bed for a patient waiting for a bed.",
+      "kind": "write",
+      "roles": [
+        "bed-manager",
+        "ae-nic",
+        "ward-nurse"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bedId",
+          "encounter"
+        ],
+        "properties": {
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "encounter": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "description": "The waiting patient's synthetic encounter id (from beds.board waiting)."
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ],
+            "description": "The state the caller last saw. If the bed has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "bedId": "ward-a1-bed-01",
+          "encounter": "enc-000123"
+        }
+      }
+    },
+    {
+      "name": "bed.cancel-allocation",
+      "summary": "Release a held bed; the patient goes back on the waiting list.",
+      "kind": "write",
+      "roles": [
+        "bed-manager",
+        "ae-nic",
+        "ward-nurse"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bedId"
+        ],
+        "properties": {
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ],
+            "description": "The state the caller last saw. If the bed has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "bedId": "ward-a1-bed-01"
+        }
+      }
+    },
+    {
+      "name": "bed.admit",
+      "summary": "The patient the bed was held for has arrived in it.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bedId"
+        ],
+        "properties": {
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ],
+            "description": "The state the caller last saw. If the bed has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "bedId": "ward-a1-bed-01"
+        }
+      }
+    },
+    {
+      "name": "bed.take-out-of-service",
+      "summary": "Take an empty bed out of service, with a reason.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bedId",
+          "reason"
+        ],
+        "properties": {
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "Equipment fault",
+              "Plumbing or leak",
+              "Electrical",
+              "Bed frame or mattress",
+              "Infection control clean",
+              "Other"
+            ]
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ],
+            "description": "The state the caller last saw. If the bed has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "bedId": "ward-a1-bed-01",
+          "reason": "Electrical"
+        }
+      }
+    },
+    {
+      "name": "bed.return-to-service",
+      "summary": "Put an out-of-service bed back into use.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "bedId"
+        ],
+        "properties": {
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ],
+            "description": "The state the caller last saw. If the bed has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "bedId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "occupied",
+              "expected-discharge",
+              "vacated",
+              "cleaning",
+              "available",
+              "allocated",
+              "out-of-service"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "bedId": "ward-a1-bed-01"
+        }
+      }
+    },
+    {
+      "name": "kpi.list",
+      "summary": "Every KPI definition: numerator, denominator, exclusions, source standard, owner and target.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "kpis"
+        ],
+        "properties": {
+          "kpis": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name"
+              ]
+            }
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
+      "name": "kpi.value",
+      "summary": "Calculate one KPI from the event log, with its definition beside the number.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "enum": [
+              "occupancy",
+              "alos",
+              "discharges-before-noon",
+              "decision-to-bed",
+              "bed-turnaround",
+              "open-work-orders",
+              "overdue-work-orders"
+            ]
+          },
+          "days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 90
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "id",
+          "value",
+          "definition",
+          "since",
+          "until",
+          "synthetic"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "value": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "numerator": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "denominator": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "definition": {
+            "type": "object"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "id": "occupancy"
+        }
+      }
+    },
+    {
+      "name": "agents.access",
+      "summary": "Whether agents may work on this hospital, and on which wards. Off by default.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "allowed",
+          "wards"
+        ],
+        "properties": {
+          "allowed": {
+            "type": "boolean"
+          },
+          "wards": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
+      "name": "agents.set-access",
+      "summary": "Switch agent access on or off for the hospital and for each ward. People only.",
+      "kind": "write",
+      "roles": [
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "allowed"
+        ],
+        "properties": {
+          "allowed": {
+            "type": "boolean"
+          },
+          "wards": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "allowed",
+          "wards"
+        ],
+        "properties": {
+          "allowed": {
+            "type": "boolean"
+          },
+          "wards": {
+            "type": "object"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "allowed": true,
+          "wards": {
+            "ward-a1": true
+          }
+        }
+      }
+    },
+    {
+      "name": "proposals.list",
+      "summary": "Agent proposals and what happened to them. People see every proposal; an agent sees only its own.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "accepted",
+              "declined",
+              "expired"
+            ]
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "proposals"
+        ],
+        "properties": {
+          "proposals": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "command",
+                "input",
+                "agent",
+                "role",
+                "at",
+                "status"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "command": {
+                  "type": "string"
+                },
+                "input": {
+                  "type": "object"
+                },
+                "agent": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "at": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "accepting",
+                    "accepted",
+                    "declined",
+                    "expired"
+                  ]
+                },
+                "wardId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "seenState": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "decidedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "decidedByRole": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "events": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer"
+                  }
+                },
+                "canDecide": {
+                  "type": "boolean",
+                  "description": "Whether the caller's role may accept or decline it."
+                }
+              }
+            }
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "status": "pending"
+        }
+      }
+    },
+    {
+      "name": "proposal.accept",
+      "summary": "Accept an agent's proposal: its command runs now, as you, against the bed as the agent saw it. People only.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "proposal"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted",
+              "expired"
+            ]
+          },
+          "proposal": {
+            "type": "object",
+            "required": [
+              "id",
+              "command",
+              "input",
+              "agent",
+              "role",
+              "at",
+              "status"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "command": {
+                "type": "string"
+              },
+              "input": {
+                "type": "object"
+              },
+              "agent": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "accepting",
+                  "accepted",
+                  "declined",
+                  "expired"
+                ]
+              },
+              "wardId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "seenState": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "decidedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "decidedByRole": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "events": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "canDecide": {
+                "type": "boolean",
+                "description": "Whether the caller's role may accept or decline it."
+              }
+            }
+          },
+          "result": {
+            "type": "object"
+          },
+          "message": {
+            "type": "string",
+            "description": "Why an expired proposal could not run."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "id": "prop-0001"
+        }
+      }
+    },
+    {
+      "name": "proposal.decline",
+      "summary": "Decline an agent's proposal, with a reason. Nothing changes. People only.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "reason"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "Not needed",
+              "Wrong bed or patient",
+              "Already done",
+              "Needs a conversation first",
+              "Other"
+            ]
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "proposal"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "declined"
+            ]
+          },
+          "proposal": {
+            "type": "object",
+            "required": [
+              "id",
+              "command",
+              "input",
+              "agent",
+              "role",
+              "at",
+              "status"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "command": {
+                "type": "string"
+              },
+              "input": {
+                "type": "object"
+              },
+              "agent": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pending",
+                  "accepting",
+                  "accepted",
+                  "declined",
+                  "expired"
+                ]
+              },
+              "wardId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "seenState": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "decidedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "decidedByRole": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "events": {
+                "type": "array",
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "canDecide": {
+                "type": "boolean",
+                "description": "Whether the caller's role may accept or decline it."
+              }
+            }
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "id": "prop-0001",
+          "reason": "Not needed"
+        }
+      }
+    },
+    {
+      "name": "assets.list",
+      "summary": "Assets that can have a fault, with where they are and the faults that can be reported for each.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "locationId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "locations",
+          "assets"
+        ],
+        "properties": {
+          "locations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "type"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "assets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "kind",
+                "locationId",
+                "faults"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "locationId": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "faults": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "locationId": "ward-a1"
+        }
+      }
+    },
+    {
+      "name": "workorders.list",
+      "summary": "The work-order queue: open (or completed) work orders with priority, team, SLA due time, overdue flag and repeat-fault count, most urgent first.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "completed",
+              "all"
+            ],
+            "description": "open (default) means reported or assigned."
+          },
+          "locationId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "assetId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "workOrders",
+          "counts"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "workOrders": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "assetId",
+                "title",
+                "priority",
+                "state",
+                "reportedAt",
+                "dueAt",
+                "overdue",
+                "repeat"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^wo-[0-9]{5}$"
+                },
+                "assetId": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "assetName": {
+                  "type": "string"
+                },
+                "locationId": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "locationName": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "team": {
+                  "type": "string",
+                  "enum": [
+                    "estates",
+                    "biomed",
+                    "contractor"
+                  ]
+                },
+                "priority": {
+                  "type": "string",
+                  "enum": [
+                    "urgent",
+                    "high",
+                    "routine"
+                  ]
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "open",
+                    "assigned",
+                    "completed"
+                  ]
+                },
+                "reportedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "reportedByRole": {
+                  "type": "string"
+                },
+                "assignedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "completedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "outcome": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "dueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Reported time plus the response target for its priority (urgent 4 h, high 24 h, routine 72 h; examples, set locally)."
+                },
+                "overdue": {
+                  "type": "boolean"
+                },
+                "metSla": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "repeat": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Earlier faults on the same asset in the 30 days before this one. 1 or more is a repeat fault."
+                }
+              }
+            }
+          },
+          "counts": {
+            "type": "object",
+            "required": [
+              "open",
+              "overdue",
+              "repeat"
+            ],
+            "properties": {
+              "open": {
+                "type": "integer"
+              },
+              "overdue": {
+                "type": "integer"
+              },
+              "repeat": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "state": "open"
+        }
+      }
+    },
+    {
+      "name": "fault.report",
+      "summary": "Report a fault on an asset. Opens a work order with a priority and an SLA due time, and says if it is a repeat fault.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "ae-nic",
+        "estates-tech",
+        "ops-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "assetId",
+          "fault",
+          "priority"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$"
+          },
+          "fault": {
+            "type": "string",
+            "enum": [
+              "IV pump alarm",
+              "IV pump will not power on",
+              "Suction unit not pulling",
+              "Oxygen flowmeter check",
+              "Oxygen flowmeter leaking",
+              "Call bell not working",
+              "AC filter blocked",
+              "AC not cooling",
+              "Blocked sink",
+              "Tap leaking",
+              "Door closer broken",
+              "Door will not latch",
+              "Light fitting out",
+              "Tripped breaker",
+              "Bed brake faulty",
+              "Generator test fault",
+              "Chiller high temperature",
+              "Lift out of service",
+              "Boiler pressure low",
+              "X-ray detector error",
+              "Analyser calibration error",
+              "Other fault (describe to the team in person)"
+            ],
+            "description": "Pick from the asset's faults (assets.list). No free text, so no personal details."
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "urgent",
+              "high",
+              "routine"
+            ]
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "workOrderId": {
+            "type": "string",
+            "pattern": "^wo-[0-9]{5}$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "assigned",
+              "completed"
+            ]
+          },
+          "repeat": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "assetId": "asset-a1-sink-1",
+          "fault": "Blocked sink",
+          "priority": "routine"
+        }
+      }
+    },
+    {
+      "name": "workorder.assign",
+      "summary": "Assign (or re-assign) an open work order to a team. Teams, not named people.",
+      "kind": "write",
+      "roles": [
+        "estates-tech",
+        "ops-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "workOrderId",
+          "team"
+        ],
+        "properties": {
+          "workOrderId": {
+            "type": "string",
+            "pattern": "^wo-[0-9]{5}$"
+          },
+          "team": {
+            "type": "string",
+            "enum": [
+              "estates",
+              "biomed",
+              "contractor"
+            ]
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "open",
+              "assigned",
+              "completed"
+            ],
+            "description": "The state the caller last saw. If the work order has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "workOrderId": {
+            "type": "string",
+            "pattern": "^wo-[0-9]{5}$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "assigned",
+              "completed"
+            ]
+          },
+          "repeat": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "workOrderId": "wo-00001",
+          "team": "estates"
+        }
+      }
+    },
+    {
+      "name": "workorder.complete",
+      "summary": "Close a work order with its outcome: fixed, escalated or no fault found.",
+      "kind": "write",
+      "roles": [
+        "estates-tech"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "workOrderId",
+          "outcome"
+        ],
+        "properties": {
+          "workOrderId": {
+            "type": "string",
+            "pattern": "^wo-[0-9]{5}$"
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "fixed",
+              "escalated",
+              "no-fault-found"
+            ]
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "open",
+              "assigned",
+              "completed"
+            ],
+            "description": "The state the caller last saw. If the work order has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "workOrderId": {
+            "type": "string",
+            "pattern": "^wo-[0-9]{5}$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "assigned",
+              "completed"
+            ]
+          },
+          "repeat": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "workOrderId": "wo-00001",
+          "outcome": "fixed"
+        }
+      }
+    }
+  ]
+}

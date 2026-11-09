@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ospeli app · Example General Hospital</title>
+<meta name="description" content="Ospeli healthcare operations app. Offline-first. Fictional hospital, synthetic data only.">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../brand/icons/ospeli_app_180.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preload" href="fonts/nunito-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/nunito-latin-800-normal.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <a class="brand" href="#/home" aria-label="Ospeli, go to Today">
+    <img src="../brand/ospeli_horizontal_color.svg" alt="Ospeli" width="118" height="38">
+  </a>
+  <div class="hospital">
+    <span class="hospital-name">Example General Hospital</span>
+    <span class="badge" id="synthetic-badge" data-test="synthetic-badge">Checking data…</span>
+  </div>
+  <label class="role">
+    <span class="role-label">Role</span>
+    <select id="role-select" aria-label="Your role"></select>
+  </label>
+  <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="nav">Menu</button>
+</header>
+<div class="layout">
+  <nav id="nav" class="nav" aria-label="Modules">
+    <ul id="nav-list"></ul>
+    <p class="nav-foot"><span id="storage-status">Starting…</span></p>
+  </nav>
+  <main id="main" tabindex="-1">
+    <noscript><p class="card">The Ospeli app needs JavaScript. The product site is at <a href="../index.html">ospeli.com</a>.</p></noscript>
+    <p class="loading">Loading…</p>
+  </main>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script type="module" src="app.js"></script>
+</body>
+</html>
