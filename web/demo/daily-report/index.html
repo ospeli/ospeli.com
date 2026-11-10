@@ -1,0 +1,912 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily flow report demo · Ospeli</title>
+<meta name="description" content="A daily flow report and morning operations overview: beds, emergency department, equipment, stores, support tasks, staffing and actions on one page, with run charts, a bottleneck finder and a huddle list. Fictional example data; runs in your browser.">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; line-height: 1.3; }
+h3 { font-size: 1rem; margin: 0 0 6px; line-height: 1.3; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: 14px 0 18px; }
+.bar .lbl { font-size: 0.8rem; font-weight: 800; color: var(--soft); text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 3px; }
+select, input, button, textarea { font: inherit; color: var(--ink); }
+input[type=text], input[type=number], select { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button.icon { min-width: 44px; min-height: 44px; padding: 0; border-color: var(--line); font-size: 1rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.seg { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; }
+.seg button { border: 0; border-radius: 0; min-height: 44px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 640px) {
+  .bar > div { width: 100%; }
+  .seg { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); width: 100%; border-radius: 14px; }
+  .seg button { padding: 6px 6px; line-height: 1.2; font-size: 0.95rem; }
+}
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 32px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+.col { display: grid; gap: 18px; min-width: 0; }
+.sub { color: var(--soft); font-size: 0.88rem; margin: -4px 0 12px; }
+/* KPI tiles */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border-radius: 12px; padding: 10px 12px; border: 0; text-align: left; font-weight: 600; min-height: 0; display: block; width: 100%; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; }
+.stat span { color: var(--soft); font-size: 0.82rem; display: block; line-height: 1.3; }
+.stat small { display: block; color: var(--soft); font-size: 0.75rem; margin-top: 2px; }
+/* tappable numbers */
+.n { all: unset; cursor: pointer; font-weight: 800; border-bottom: 2px dotted var(--sea); line-height: 1.15; }
+.n:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; border-radius: 4px; }
+/* decisions (COO) */
+.dec { border: 1px solid var(--line); border-left: 6px solid var(--coral); border-radius: 12px; padding: 14px; margin-bottom: 12px; background: #FFFDF9; }
+.dec.r2 { border-left-color: var(--mango); } .dec.r3 { border-left-color: var(--sea); }
+.dec .rank { font-size: 0.75rem; font-weight: 800; color: var(--soft); text-transform: uppercase; letter-spacing: 0.08em; }
+.dec h3 { font-size: 1.08rem; margin: 2px 0 6px; }
+.dec p { margin: 0 0 8px; }
+.dec .why { color: var(--soft); font-size: 0.9rem; }
+.dec.done { opacity: 0.6; }
+.acts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+a.go { font-weight: 800; color: var(--navy); text-decoration: none; border-bottom: 2px solid var(--coral); display: inline-flex; align-items: center; min-height: 44px; }
+.pill { display: inline-block; font-size: 0.72rem; font-weight: 800; border-radius: 999px; padding: 2px 9px; background: var(--wash); white-space: nowrap; }
+.pill.bad { background: var(--hot); } .pill.mid { background: var(--warn); }
+/* area tiles */
+.areas { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr)); gap: 12px; }
+.area { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; display: flex; flex-direction: column; }
+.area h3 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.area h3 a { font-size: 0.8rem; color: var(--soft); font-weight: 700; }
+.kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: baseline; font-size: 0.92rem; margin: 0; }
+.kv dt { color: var(--soft); }
+.kv dd { margin: 0; text-align: right; font-size: 1.05rem; }
+.kv .vs { display: block; font-size: 0.74rem; color: var(--soft); font-weight: 600; }
+.mini { list-style: none; padding: 0; margin: 8px 0 0; font-size: 0.86rem; color: var(--soft); }
+.mini li { padding: 2px 0; }
+/* ED step bars */
+.steps { display: grid; gap: 6px; margin-top: 2px; }
+.sbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; font-size: 0.86rem; }
+.sbar .track { grid-column: 1 / -1; height: 8px; background: var(--sand); border-radius: 4px; overflow: hidden; }
+.sbar .track i { display: block; height: 100%; background: var(--sea); border-radius: 0 4px 4px 0; }
+.sbar.top .track i { background: var(--coral); }
+/* run charts */
+.charts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 14px; }
+.chart { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px 6px; position: relative; min-width: 0; }
+.chart h3 { font-size: 0.92rem; margin: 0; }
+.chart .sig { font-size: 0.78rem; font-weight: 800; color: var(--coral); min-height: 1.2em; }
+.chart .sig.ok { color: var(--soft); font-weight: 600; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart details { font-size: 0.82rem; }
+.chart details summary { cursor: pointer; color: var(--soft); font-weight: 700; min-height: 36px; display: flex; align-items: center; }
+.chart table { border-collapse: collapse; width: 100%; font-size: 0.8rem; }
+.chart td, .chart th { padding: 2px 4px; border-bottom: 1px solid var(--line); text-align: left; }
+.tip { position: absolute; pointer-events: none; background: var(--navy); color: #fff; font-size: 0.78rem; font-weight: 700; padding: 4px 8px; border-radius: 8px; white-space: nowrap; transform: translate(-50%, -110%); opacity: 0; transition: opacity 0.1s; z-index: 2; }
+.tip.on { opacity: 1; }
+.chartkey { display: flex; gap: 14px; flex-wrap: wrap; font-size: 0.82rem; color: var(--soft); margin: -4px 0 12px; }
+.chartkey i { display: inline-block; width: 16px; height: 0; border-top: 2px solid var(--sea); vertical-align: 4px; margin-right: 5px; }
+.chartkey i.med { border-top: 2px dashed #8DA0B3; }
+.chartkey i.dot { width: 10px; height: 10px; border: 0; border-radius: 50%; background: var(--coral); vertical-align: -1px; }
+/* bottleneck */
+ol.bn { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+ol.bn li { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; }
+ol.bn .rk { width: 28px; height: 28px; border-radius: 50%; background: var(--navy); color: #fff; font-weight: 800; display: grid; place-items: center; font-size: 0.85rem; }
+ol.bn .nm b { display: block; font-size: 0.95rem; line-height: 1.3; }
+ol.bn .nm span { font-size: 0.8rem; color: var(--soft); }
+ol.bn .hrs { text-align: right; font-size: 1.05rem; }
+ol.bn .track { grid-column: 2 / -1; height: 10px; background: var(--sand); border-radius: 5px; overflow: hidden; }
+ol.bn .track i { display: block; height: 100%; background: var(--sea); border-radius: 0 5px 5px 0; }
+ol.bn li.first .track i { background: var(--coral); }
+ol.bn .acts { grid-column: 2 / -1; }
+/* tables */
+table.t { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+table.t th, table.t td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.t th { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--soft); }
+table.t td.r, table.t th.r { text-align: right; }
+.scrollx { overflow-x: auto; }
+/* lists: actions, gaps, huddle */
+ul.rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+ul.rows li { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; }
+ul.rows li .what b { display: block; line-height: 1.3; }
+ul.rows li .what span { font-size: 0.84rem; color: var(--soft); }
+ul.rows li.done { background: #FBF8F2; }
+ul.rows li.done .what b { text-decoration: line-through; text-decoration-color: #9AAAB9; }
+ul.rows.big li { grid-template-columns: minmax(0, 1fr); }
+ul.rows.big li button { width: 100%; min-height: 48px; font-size: 1rem; }
+.huddle li { grid-template-columns: minmax(0, 1fr) !important; }
+.huddle input[type=text] { width: 100%; }
+.huddle .src { font-size: 0.75rem; font-weight: 800; color: var(--soft); text-transform: uppercase; letter-spacing: 0.06em; }
+.addrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; margin-top: 10px; }
+.ready { background: var(--wash); border-radius: 12px; padding: 14px; margin-top: 14px; }
+.ready.is { background: #DCEFE7; }
+.ready button { width: 100%; min-height: 52px; font-size: 1.05rem; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; font-size: 0.88rem; max-height: 280px; overflow: auto; }
+ol.log li { display: grid; grid-template-columns: 50px minmax(0, 1fr); gap: 8px; padding: 5px 0; border-bottom: 1px dashed var(--line); }
+ol.log time { font-weight: 800; color: var(--soft); }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.82rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.95rem; margin: 0 0 4px; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg .why { color: var(--soft); font-size: 0.82rem; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.data { background: var(--warn); }
+/* definition panel */
+.def { position: fixed; z-index: 10; left: 50%; bottom: 16px; transform: translateX(-50%); width: min(460px, calc(100vw - 24px)); background: #fff; border: 1px solid var(--line); border-top: 5px solid var(--sea); border-radius: 14px; padding: 14px 16px; box-shadow: 0 12px 40px rgba(11, 47, 78, 0.22); }
+.def[hidden] { display: none; }
+.def h2 { font-size: 1.05rem; margin: 0 40px 6px 0; }
+.def p { margin: 0 0 6px; font-size: 0.92rem; }
+.def .meta { color: var(--soft); font-size: 0.82rem; }
+.def .x { position: absolute; top: 8px; right: 8px; }
+/* report */
+.report { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 26px; max-width: 860px; margin: 0 auto 32px; }
+.report h2 { font-size: 1.05rem; margin: 22px 0 8px; padding-top: 12px; border-top: 2px solid var(--sand); }
+.report .rh { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: start; }
+.report .rh h2 { border: 0; margin: 0; padding: 0; font-size: 1.4rem; }
+.report ol, .report ul { margin: 0; padding-left: 20px; }
+.report li { margin-bottom: 4px; }
+.report .note { font-size: 0.82rem; color: var(--soft); }
+#summary-text { width: 100%; min-height: 160px; border: 1px solid #CFC5B2; border-radius: 10px; padding: 10px; font-size: 0.85rem; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.empty { color: var(--soft); padding: 8px 0; margin: 0; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 999px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; max-width: calc(100vw - 32px); text-align: center; z-index: 11; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.9rem; padding-bottom: 40px; }
+.foot a { color: var(--navy); font-weight: 700; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+[hidden] { display: none !important; }
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  .card { padding: 14px; }
+  .report { padding: 16px; }
+  .kv, ol.bn .nm span, ul.rows li .what span, .mini, .sub, .how, .sugg .why, .chart .sig, table.t, ol.log { font-size: 15px; }
+  .stat span, .stat small, .area h3 a, .kv .vs { font-size: 15px; }
+}
+@media print {
+  @page { margin: 14mm; }
+  body { background: #fff; font-size: 11pt; }
+  header nav, .bar, .noprint, #screen, .def, .toast, .foot, .lead, main > h1, main > .badge { display: none !important; }
+  #report-wrap { display: block !important; }
+  .report { border: 0; padding: 0; max-width: none; }
+  .report h2 { break-after: avoid; }
+  .report section { break-inside: avoid; }
+  a { color: inherit; text-decoration: none; }
+}
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Daily flow report</h1>
+  <p class="lead">One page for the morning: beds, emergency department, equipment, stores, support tasks, staffing and overdue actions at Example General Hospital. Every number shows its definition when you tap it. The guide suggests what to raise at the huddle; people decide.</p>
+
+  <div class="bar">
+    <div><span class="lbl" id="role-l">I am the</span>
+      <div class="seg" role="group" aria-labelledby="role-l">
+        <button type="button" data-role="coo" aria-pressed="false">Chief operating officer</button>
+        <button type="button" data-role="ops" aria-pressed="false">Operations manager</button>
+        <button type="button" data-role="flow" aria-pressed="false">Flow coordinator</button>
+      </div>
+    </div>
+    <div><span class="lbl" id="day-l">Day</span>
+      <div class="seg" role="group" aria-labelledby="day-l">
+        <button type="button" data-day="yesterday" aria-pressed="false">Yesterday</button>
+        <button type="button" data-day="today" aria-pressed="false">Today so far</button>
+      </div>
+    </div>
+    <div><span class="lbl" id="view-l">Show</span>
+      <div class="seg" role="group" aria-labelledby="view-l">
+        <button type="button" data-view="screen" aria-pressed="false">My screen</button>
+        <button type="button" data-view="report" aria-pressed="false">Shareable report</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen" class="layout">
+    <div class="col" id="main"></div>
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads this report and suggests what to discuss at the morning huddle, each with its reason. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. It only proposes: a person edits the huddle list and decides.</p>
+      <div id="sugg"></div>
+    </aside>
+  </div>
+  <div id="report-wrap" hidden></div>
+
+  <p class="foot">All names, units, numbers and dates here are invented for this demo and do not describe any real place. Coming next: Playbooks (January 2027) run this report on your own event data, with a run history so results reproduce; Performance and external reporting (February 2027) builds monthly packs from the same definitions. <a href="../../areas/playbooks/">About this area</a> · <a href="../../areas/performance-reporting/">Performance reporting</a> · <a href="../">All demos</a>.</p>
+</main>
+<div class="def" id="def" role="dialog" aria-labelledby="def-h" hidden tabindex="-1">
+  <button type="button" class="icon x" id="def-x" aria-label="Close definition">✕</button>
+  <h2 id="def-h"></h2>
+  <p id="def-d"></p>
+  <p class="meta" id="def-m"></p>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var STORE = 'ospeli.dailyreport.v1';
+var DAYS = 14;          // full days in the run charts, ending yesterday
+var YDAY = DAYS - 1;    // index of yesterday; DAYS is today
+var SNAP = '07:30', SO_FAR = '09:40', SO_FAR_FRAC = (9 * 60 + 40) / 1440, MEETING = 8 * 60 + 30;
+
+// ---------- Fixed example content (fictional) ----------
+var UNITS = [
+  { id: 'm1', name: 'Medical ward 1', plan: [6, 5, 4] }, { id: 'm2', name: 'Medical ward 2', plan: [6, 5, 4] },
+  { id: 'm3', name: 'Medical ward 3', plan: [5, 5, 3] }, { id: 's1', name: 'Surgical ward 1', plan: [5, 4, 3] },
+  { id: 's2', name: 'Surgical ward 2', plan: [5, 4, 3] }, { id: 'op', name: 'Older people\'s ward', plan: [6, 5, 4] },
+  { id: 'ss', name: 'Short-stay unit', plan: [4, 4, 3] }, { id: 'ed', name: 'Emergency department', plan: [9, 9, 7] }
+];
+var SHIFTS = ['early', 'late', 'night'];
+var TRACERS = ['Sterile gloves (medium)', 'Examination gloves (medium)', 'IV giving sets', '10 ml syringes', 'Alcohol hand rub 500 ml', 'Dressing packs', 'Urinary catheters', 'Blood sample tubes', 'Oxygen masks (adult)', 'Surgical masks', 'Sharps bins 5 litre', 'Bed linen sets', 'Incontinence pads', 'Patient wristbands', 'Specimen bags', 'Detergent wipes'];
+var ACTIONS = [
+  { id: 'a1', text: 'Agree weekend discharge cover with the medical wards', owner: 'Operations manager', due: -5 },
+  { id: 'a2', text: 'Fix missing “left department” times in emergency department records', owner: 'Data owner, emergency department', due: -3 },
+  { id: 'a3', text: 'Review porter task routing at the 10:00–12:00 peak', owner: 'Support services manager', due: -2 },
+  { id: 'a4', text: 'Confirm reorder levels for the tracer items list', owner: 'Stores manager', due: -1 },
+  { id: 'a5', text: 'Agree a cleaning response time for beds freed by discharge', owner: 'Housekeeping supervisor', due: 0 },
+  { id: 'a6', text: 'Clear overdue planned maintenance on ward monitors', owner: 'Equipment manager', due: 0 },
+  { id: 'a7', text: 'Share bottleneck finder results with ward managers', owner: 'Operations manager', due: 3 },
+  { id: 'a8', text: 'Test a fixed daily slot for take-home medicines', owner: 'Pharmacy manager', due: 6 }
+];
+var STEPS = [
+  { id: 'ed-triage', name: 'Emergency department: arrival to triage', who: 'everyone who arrived' },
+  { id: 'ed-seen', name: 'Emergency department: triage to first seen', who: 'everyone who arrived' },
+  { id: 'ed-decision', name: 'Emergency department: seen to decision', who: 'people who needed tests' },
+  { id: 'ed-bed', name: 'Emergency department: decision to admit to leaving for a ward', who: 'people admitted' },
+  { id: 'ward-porter', name: 'Ward bed ready to porter arriving', who: 'people admitted' },
+  { id: 'dis-letter', name: 'Discharge: waiting for the discharge letter', who: 'people discharged' },
+  { id: 'dis-meds', name: 'Discharge: waiting for take-home medicines', who: 'people discharged with medicines' },
+  { id: 'dis-transport', name: 'Discharge: waiting for transport home', who: 'people who needed transport' }
+];
+var SOURCES = [
+  { id: 'beds', name: 'Bed status events', field: 'a “bed ready” time' },
+  { id: 'ed', name: 'Emergency department records', field: 'a “left department” time' },
+  { id: 'wo', name: 'Equipment work orders', field: 'a completion time' },
+  { id: 'stores', name: 'Tracer stock counts', field: 'a morning count' },
+  { id: 'support', name: 'Support task records', field: 'a start time' },
+  { id: 'staff', name: 'Shift cover records', field: 'staff-on-duty numbers' }
+];
+var LINKS = {
+  beds: { href: '../bed-board/', label: 'Bed board demo' }, ed: { href: '../ed-flow/', label: 'Emergency department preview' },
+  equipment: { href: '../../areas/medical-equipment/', label: 'Medical equipment' }, stores: { href: '../../areas/supply-chain-stores/', label: 'Supply chain and stores' },
+  support: { href: '../../areas/support-services/', label: 'Support services' }, staffing: { href: '../../areas/staffing-and-rostering/', label: 'Staffing and rosters' },
+  actions: { href: '../../areas/incidents-risk-actions/', label: 'Incidents, risk and actions' }
+};
+
+// Every number has a definition (shown on tap). Source is "local definition" unless a named standard defines it.
+var DEFS = {
+  free: ['Beds free at ' + SNAP, 'Beds that are empty, cleaned and marked ready for a patient at the ' + SNAP + ' snapshot, from bed status events.', 'Patient flow coordinator'],
+  waiting: ['Waiting for a bed at ' + SNAP, 'People with a decision to admit who had not yet left the emergency department for a ward bed at the ' + SNAP + ' snapshot.', 'Patient flow coordinator'],
+  noon: ['Discharges before noon', 'Discharges with a “left ward” time before 12:00 ÷ all discharges that day. Today so far shows discharges done against discharges planned on the bed board.', 'Patient flow coordinator'],
+  disch: ['Discharges', 'People who left a ward bed to go home or onward that day (“left ward” events).', 'Patient flow coordinator'],
+  attend: ['Emergency department arrivals', 'People booked in at the emergency department that day.', 'Emergency department manager'],
+  'ed-triage': ['Arrival to triage (median)', 'The middle value of minutes from booking in to triage starting, for everyone who arrived that day.', 'Emergency department manager'],
+  'ed-seen': ['Triage to first seen (median)', 'The middle value of minutes from triage ending to first being seen by a doctor or practitioner.', 'Emergency department manager'],
+  'ed-decision': ['Seen to decision (median)', 'The middle value of minutes from first seen to the decision to admit or send home, for people who needed tests.', 'Emergency department manager'],
+  'ed-bed': ['Decision to admit to leaving (median)', 'The middle value of minutes from the decision to admit to leaving the emergency department for a ward, for people admitted.', 'Patient flow coordinator'],
+  woOpen: ['Open work orders', 'Equipment repair and planned maintenance work orders not closed at the ' + SNAP + ' snapshot.', 'Equipment manager'],
+  woOver: ['Overdue work orders', 'Open work orders past their due date at the ' + SNAP + ' snapshot.', 'Equipment manager'],
+  woOld: ['Oldest overdue work order', 'Days past its due date for the oldest open work order.', 'Equipment manager'],
+  outs: ['Tracer stock-outs', 'Items on the fixed tracer list (' + TRACERS.length + ' items counted every morning) with no stock in central stores at the morning count.', 'Stores manager'],
+  supWait: ['Support tasks waiting', 'Porter and cleaning tasks requested but not started at the ' + SNAP + ' snapshot (today so far: at ' + SO_FAR + ').', 'Support services manager'],
+  supOld: ['Oldest waiting task', 'Minutes since the oldest task that is still waiting was requested.', 'Support services manager'],
+  sup30: ['Tasks that waited over 30 minutes', 'Tasks that waited more than 30 minutes from request to start, that day.', 'Support services manager'],
+  below: ['Shifts below planned cover', 'Shifts where the number of staff on duty was lower than planned on the roster, counted per unit. Numbers only, never names.', 'Staffing manager'],
+  gap: ['Staff short', 'Planned staff minus staff on duty, added up over the shifts below planned cover.', 'Staffing manager'],
+  overdue: ['Actions overdue', 'Open actions from playbooks and meetings that are past their due date.', 'Operations manager'],
+  hours: ['Patient-hours waited', 'For one step: the waiting time before the step started, added up over everyone who went through it that day. A measure of flow, not of any person.', 'Operations manager'],
+  median14: ['14-day median', 'The middle value of the 14 full days up to and including yesterday. Half the days were above it and half below.', 'Performance analyst'],
+  k_ontime: ['Daily report on time', 'Days the report was ready before the morning meeting (08:30 here) ÷ working days, over the last 14 days.', 'Patient flow coordinator'],
+  k_complete: ['Data completeness', 'Records with all required times ÷ records expected, for the chosen day, across the six sources this report reads.', 'Data owners'],
+  k_actions: ['Actions closed by due date', 'Actions closed on or before their due date ÷ actions that fell due, over the last 14 days.', 'Operations manager'],
+  k_defined: ['Numbers fully defined', 'Numbers on this report with a definition, owner and source ÷ numbers on this report.', 'Performance analyst']
+};
+
+// ---------- Deterministic example data from a seed ----------
+function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+function makeDay(seed, d) {
+  var r = mulberry32(seed * 7919 + d * 104729 + 17), n = function () { return r() + r() - 1; };
+  var x = Math.max(0, d - 6), part = d === DAYS, f = part ? SO_FAR_FRAC : 1;
+  var day = { index: d, partial: part };
+  day.free = clamp(Math.round(13 - 0.9 * x + 5 * n()), 1, 30);
+  day.waiting = clamp(Math.round(4 + 0.9 * x + 3 * n()), 0, 30);
+  day.disch = clamp(Math.round(36 + 8 * n()), 20, 60);
+  day.noon = clamp(Math.round(day.disch * (0.24 - 0.012 * x + 0.1 * n())), 0, day.disch);
+  day.admitted = Math.round((32 + 6 * n()) * f);
+  day.attend = Math.round((180 + 25 * n()) * f);
+  day.ed = { 'ed-triage': Math.round(16 + 7 * n()), 'ed-seen': Math.round(40 + 14 * n()), 'ed-decision': Math.round(95 + 25 * n()), 'ed-bed': Math.round(170 + 15 * x + 45 * n()) };
+  day.woOpen = Math.round(48 + 9 * n());
+  day.woOver = clamp(Math.round(10 + 0.35 * x + 4 * n()), 2, day.woOpen);
+  day.woOld = Math.round(11 + 6 * n());
+  day.outs = []; TRACERS.forEach(function (t, i) { if (r() < 0.09 + (i === 2 ? 0.25 : 0)) day.outs.push(t); });
+  day.supWait = clamp(Math.round(9 + 6 * n()), 1, 40);
+  day.supOld = clamp(Math.round(46 + 30 * n()), 12, 180);
+  day.sup30 = Math.round((22 + 10 * n()) * f);
+  var rs = mulberry32(seed * 31 + d * 977 + 5);
+  day.staff = UNITS.map(function (u) {
+    return { unit: u.name, shifts: SHIFTS.map(function (s, k) {
+      var p = u.plan[k], short = rs() < 0.11 + 0.012 * x ? (rs() < 0.3 ? 2 : 1) : 0;
+      var counted = !part || k === 2 || (k === 0); // today so far: night and early shifts have started
+      return { shift: s, planned: p, onDuty: counted ? p - short : null };
+    }) };
+  });
+  var bh = {};
+  bh['ed-triage'] = day.attend * day.ed['ed-triage'] / 60;
+  bh['ed-seen'] = day.attend * day.ed['ed-seen'] / 60;
+  bh['ed-decision'] = day.attend * 0.45 * day.ed['ed-decision'] / 60;
+  bh['ed-bed'] = day.admitted * day.ed['ed-bed'] / 60;
+  bh['ward-porter'] = day.admitted * (34 + 12 * n()) / 60;
+  bh['dis-letter'] = day.disch * f * 0.8 * (75 + 20 * n()) / 60;
+  bh['dis-meds'] = day.disch * f * 0.6 * (110 + 30 * n()) / 60;
+  bh['dis-transport'] = Math.round(6 + 3 * n()) * f * (140 + 40 * n()) / 60;
+  day.bn = bh;
+  day.cleanHours = Math.round(day.disch * f * (0.9 + 0.3 * n()));
+  day.actionsOverdueHist = clamp(Math.round(3 + 0.2 * x + 2 * n()), 0, 9);
+  day.readyOnTime = r() < 0.72;
+  var exp = { beds: Math.round((day.disch + day.admitted) * 3 * f) || 1, ed: day.attend * 4 || 1, wo: Math.round(60 * (part ? 0.5 : 1)), stores: TRACERS.length, support: Math.round(620 * f), staff: part ? 16 : 24 };
+  var miss = { beds: Math.round(clamp(2 + 2 * n(), 0, 6) * f), ed: Math.round(clamp(22 + 10 * n(), 4, 40) * f), wo: Math.round(clamp(3 + 2 * n(), 0, 6)), stores: Math.round(clamp(1 + n(), 0, 2)), support: Math.round(clamp(11 + 5 * n(), 2, 20) * f), staff: Math.round(clamp(1 + n(), 0, 2)) };
+  day.data = SOURCES.map(function (s) { return { id: s.id, expected: exp[s.id], missing: Math.min(miss[s.id], exp[s.id]) }; });
+  return day;
+}
+var data = null;
+function build(seed) { var days = []; for (var d = 0; d <= DAYS; d++) days.push(makeDay(seed, d)); return days; }
+
+// ---------- State ----------
+var defaults = function () { return { seed: 4217, role: matchMedia('(max-width: 640px)').matches ? 'flow' : 'ops', day: 'yesterday', view: 'screen', guide: true, huddle: [], fixed: {}, ready: null, closed: {}, raised: [], decided: {}, dismissed: {}, log: [], clock: 7 * 60 + 40 }; };
+var state = load() || defaults();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() { try { var s = JSON.parse(localStorage.getItem(STORE)); return s && s.seed ? Object.assign(defaults(), s) : null; } catch (e) { return null; } }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+data = build(state.seed);
+
+// ---------- Helpers ----------
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(String(c)) : c); }); return e; }
+function svgEl(tag, attrs) { var e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
+function median(a) { var s = a.slice().sort(function (x, y) { return x - y; }), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+function fmtMin(m) { m = Math.round(m); if (m < 60) return m + ' min'; var h = Math.floor(m / 60), r = m % 60; return h + ' h' + (r ? ' ' + (r < 10 ? '0' : '') + r : ''); }
+function hhmm(m) { m = Math.round(m) % 1440; var h = Math.floor(m / 60), r = m % 60; return (h < 10 ? '0' : '') + h + ':' + (r < 10 ? '0' : '') + r; }
+function pct(a, b) { return b ? Math.round(1000 * a / b) / 10 : 0; }
+function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+function dateOf(offset) { var d = new Date(); d.setDate(d.getDate() + offset); return d; }
+function dayLabel(offset) { return dateOf(offset).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2400); }
+function log(text) { state.clock += 2; state.log.unshift({ t: hhmm(state.clock), text: text }); state.log = state.log.slice(0, 60); }
+function link(key) { var l = LINKS[key]; return el('a', { class: 'go', href: l.href }, [l.label + ' →']); }
+
+// tappable number with its definition
+var lastFocus = null;
+function num(key, text, extra) {
+  return el('button', { type: 'button', class: 'n', 'aria-label': text + ', ' + DEFS[key][0] + '. Show definition', onclick: function (e) { showDef(key, extra); lastFocus = e.currentTarget; } }, [text]);
+}
+function showDef(key, extra) {
+  var d = DEFS[key], box = document.getElementById('def');
+  document.getElementById('def-h').textContent = d[0];
+  document.getElementById('def-d').textContent = d[1] + (extra ? ' ' + extra : '');
+  document.getElementById('def-m').textContent = 'Source: local definition · Owner: ' + d[2] + ' · Data: ' + (state.day === 'today' ? 'today to ' + SO_FAR : 'yesterday, full day') + ', example data seed ' + state.seed;
+  box.hidden = false; box.focus();
+}
+function hideDef() { document.getElementById('def').hidden = true; if (lastFocus && document.contains(lastFocus)) lastFocus.focus(); }
+document.getElementById('def-x').addEventListener('click', hideDef);
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !document.getElementById('def').hidden) hideDef(); });
+
+// ---------- Analysis (pure, from the data and state) ----------
+function cur() { return data[state.day === 'today' ? DAYS : YDAY]; }
+function hist() { return data.slice(0, DAYS); }
+function dayKey() { return state.seed + ':' + state.day; }
+function staffSummary(day) {
+  var rows = [], total = 0, short = 0;
+  day.staff.forEach(function (u) {
+    var below = u.shifts.filter(function (s) { return s.onDuty != null && s.onDuty < s.planned; });
+    if (below.length) rows.push({ unit: u.unit, shifts: below.length, short: below.reduce(function (a, s) { return a + s.planned - s.onDuty; }, 0), which: below.map(function (s) { return s.shift + ' ' + s.onDuty + ' of ' + s.planned; }).join(', ') });
+  });
+  rows.forEach(function (r) { total += r.shifts; short += r.short; });
+  rows.sort(function (a, b) { return b.short - a.short || b.shifts - a.shifts; });
+  return { rows: rows, shifts: total, short: short };
+}
+function completeness(day) {
+  var fx = state.fixed[state.seed + ':' + (day.partial ? 'today' : 'yesterday')] || {};
+  var rows = day.data.map(function (s) { var m = fx[s.id] ? 0 : s.missing; return { id: s.id, expected: s.expected, missing: m, pct: pct(s.expected - m, s.expected) }; });
+  var e = 0, m = 0; rows.forEach(function (r) { e += r.expected; m += r.missing; });
+  return { rows: rows, pct: pct(e - m, e), missing: m };
+}
+function actionsNow() {
+  var off = state.day === 'today' ? 0 : -1; // yesterday's view counts overdue as of yesterday
+  var list = ACTIONS.concat(state.raised).map(function (a) { var c = state.closed[a.id]; return Object.assign({}, a, { closed: !!c, closedLate: c ? c.late : false, overdue: !c && a.due < off }); });
+  return list;
+}
+function bottlenecks(day) {
+  var rows = STEPS.map(function (s) { return { id: s.id, name: s.name, who: s.who, hours: Math.round(day.bn[s.id]) }; });
+  rows.sort(function (a, b) { return b.hours - a.hours; });
+  var total = rows.reduce(function (a, r) { return a + r.hours; }, 0);
+  rows.forEach(function (r) {
+    r.share = total ? Math.round(100 * r.hours / total) : 0;
+    r.med = Math.round(median(hist().map(function (d) { return d.bn[r.id]; })));
+  });
+  // days running at the top, counting back from yesterday (full days only)
+  var topId = rows[0].id, streak = 0;
+  for (var d = YDAY; d >= 0; d--) { var best = STEPS.slice().sort(function (a, b) { return data[d].bn[b.id] - data[d].bn[a.id]; })[0].id; if (best === topId) streak++; else break; }
+  if (day.partial) { var yb = STEPS.slice().sort(function (a, b) { return data[YDAY].bn[b.id] - data[YDAY].bn[a.id]; })[0].id; if (yb !== topId) streak = 0; }
+  rows[0].streak = streak;
+  return { rows: rows, total: total };
+}
+var SERIES = [
+  { key: 'waiting', title: 'Waiting for a bed at ' + SNAP, unit: '', worse: 'up', get: function (d) { return d.waiting; } },
+  { key: 'free', title: 'Beds free at ' + SNAP, unit: '', worse: 'down', get: function (d) { return d.free; } },
+  { key: 'noon', title: 'Discharges before noon (%)', unit: '%', worse: 'down', get: function (d) { return Math.round(100 * d.noon / d.disch); } },
+  { key: 'ed-bed', title: 'Decision to admit to leaving (median min)', unit: ' min', worse: 'up', get: function (d) { return d.ed['ed-bed']; } },
+  { key: 'woOver', title: 'Overdue work orders', unit: '', worse: 'up', get: function (d) { return d.woOver; } },
+  { key: 'below', title: 'Shifts below planned cover', unit: '', worse: 'up', get: function (d) { return staffSummary(d).shifts; } }
+];
+function runSignal(vals, worse) {
+  var m = median(vals), run = 0;
+  for (var i = vals.length - 1; i >= 0; i--) { var v = vals[i]; if (v === m) continue; var bad = worse === 'up' ? v > m : v < m; if (bad) run++; else break; }
+  return { median: m, run: run, shift: run >= 6 };
+}
+function med14(fn) { return median(hist().map(fn)); }
+
+// What needs a decision today (COO): plain ranking by how far each area is from its usual, worse side only.
+function decisions() {
+  var day = cur(), out = [], st = staffSummary(day), acts = actionsNow().filter(function (a) { return a.overdue; });
+  function score(v, m, worse) { var spread = Math.max(1, Math.abs(m) * 0.2); return (worse === 'up' ? v - m : m - v) / spread; }
+  var mw = med14(function (d) { return d.waiting; }), mf = med14(function (d) { return d.free; });
+  out.push({ id: 'beds', area: 'beds', score: score(day.waiting, mw, 'up') + score(day.free, mf, 'down') * 0.5,
+    title: 'Agree how to free beds early today', text: 'Decide whether to open escalation beds or ask wards for an early-discharge push, and who leads it.',
+    why: plural(day.waiting, 'person', 'people') + ' waiting for a bed at ' + SNAP + ' (14-day median ' + mw + '); ' + plural(day.free, 'bed') + ' free (median ' + mf + ').' });
+  var mb = med14(function (d) { return d.ed['ed-bed']; });
+  out.push({ id: 'ed', area: 'ed', score: score(day.ed['ed-bed'], mb, 'up') * 0.8,
+    title: 'Agree a plan for people waiting in the emergency department for a ward', text: 'Decide who chases the longest waits for a bed and when the next bed meeting is.',
+    why: 'Median decision-to-leave ' + fmtMin(day.ed['ed-bed']) + ' (14-day median ' + fmtMin(mb) + ').' });
+  var ms = med14(function (d) { return staffSummary(d).shifts; });
+  out.push({ id: 'staffing', area: 'staffing', score: score(st.shifts, ms, 'up') + (st.short >= 4 ? 1 : 0),
+    title: 'Approve cover for ' + plural(st.shifts, 'shift') + ' below planned', text: 'Decide whether to approve extra shifts or move staff between units.',
+    why: st.short + ' staff short in total' + (st.rows[0] ? '; most in ' + st.rows[0].unit + ' (' + st.rows[0].which + ')' : '') + '. 14-day median ' + ms + ' shifts.' });
+  if (day.outs.length) out.push({ id: 'stores', area: 'stores', score: 1.5 + day.outs.length,
+    title: 'Approve an urgent order for ' + (day.outs.length === 1 ? day.outs[0] : plural(day.outs.length, 'tracer item')), text: 'Decide whether to use the urgent purchasing route or borrow stock, and who confirms a delivery date.',
+    why: 'Out of stock in central stores at the morning count: ' + day.outs.join(', ') + '.' });
+  var mo = med14(function (d) { return d.woOver; });
+  out.push({ id: 'equipment', area: 'equipment', score: score(day.woOver, mo, 'up'),
+    title: 'Agree priorities for ' + plural(day.woOver, 'overdue work order'), text: 'Decide which overdue jobs go first and whether outside service is needed.',
+    why: 'Oldest is ' + plural(day.woOld, 'day') + ' past due. 14-day median ' + mo + ' overdue.' });
+  var mso = med14(function (d) { return d.supOld; });
+  out.push({ id: 'support', area: 'support', score: score(day.supOld, mso, 'up') * 0.7,
+    title: 'Check support task cover this morning', text: 'Decide whether porters or cleaners should move to where tasks are waiting longest.',
+    why: 'Oldest waiting task ' + fmtMin(day.supOld) + ' (14-day median ' + fmtMin(mso) + ').' });
+  out.push({ id: 'actions', area: 'actions', score: acts.length >= 3 ? acts.length - 2 : -1,
+    title: 'Re-date or reassign ' + plural(acts.length, 'overdue action'), text: 'Decide for each: close, give a new date, or give it to a different role.',
+    why: acts.length ? 'Oldest: “' + acts.sort(function (a, b) { return a.due - b.due; })[0].text + '”.' : 'None overdue.' });
+  out.forEach(function (o) { o.status = (state.decided[dayKey()] || {})[o.id] || null; });
+  return out.filter(function (o) { return o.score > 0; }).sort(function (a, b) { return b.score - a.score; }).slice(0, 3);
+}
+
+function kpis() {
+  var c = completeness(cur());
+  var hist13 = hist().slice(1).filter(function (d) { return d.readyOnTime; }).length;
+  var todayOn = state.ready && state.ready.seed === state.seed && state.ready.onTime ? 1 : 0;
+  var acts = actionsNow(), due = acts.filter(function (a) { return a.due <= 0 && a.due >= -13; });
+  var onTime = due.filter(function (a) { return a.closed && !a.closedLate; }).length;
+  var histDue = 9, histOn = 6; // example history before the listed actions
+  var defined = Object.keys(DEFS).length;
+  return {
+    reportOnTime: { value: hist13 + todayOn, of: DAYS, text: (hist13 + todayOn) + ' of ' + DAYS + ' days', note: state.ready && state.ready.seed === state.seed ? 'today: ready at ' + state.ready.at : 'today: not ready yet' },
+    dataCompleteness: { value: c.pct, text: c.pct.toFixed(1) + '%', note: plural(c.missing, 'record') + ' missing a required time' },
+    actionsClosedOnTime: { value: pct(histOn + onTime, histDue + due.length), text: Math.round(pct(histOn + onTime, histDue + due.length)) + '%', note: (histOn + onTime) + ' of ' + (histDue + due.length) + ' due' },
+    numbersDefined: { value: 100, text: defined + ' of ' + defined, note: 'each shows its definition' }
+  };
+}
+
+// The guide: plain rules over this report. Each proposes a huddle item; a person edits and decides.
+function suggest() {
+  var out = [], day = cur(), bn = bottlenecks(day), c = completeness(day), st = staffSummary(day);
+  var top = bn.rows[0];
+  if (top.streak >= 3) out.push({ id: 'bn-' + top.id, kind: 'time', title: '“' + top.name + '” has lost the most time for ' + plural(top.streak, 'day') + ' running',
+    text: 'Worth a closer look with the teams involved: map the step to see what it waits for.', why: 'Ranked first in the bottleneck finder (patient-hours waited) on each of the last ' + plural(top.streak, 'full day') + '. Yesterday: ' + Math.round(data[YDAY].bn[top.id]) + ' hours.',
+    huddle: 'Agree who leads a process map of “' + top.name.replace('Emergency department: ', '') + '”', extra: { href: '../process-map/', label: 'Open process mapping' } });
+  var low = c.rows.filter(function (r) { return r.missing >= 3; }).sort(function (a, b) { return a.pct - b.pct; })[0], src = low && SOURCES.filter(function (s) { return s.id === low.id; })[0];
+  if (low && low.pct < 99) out.push({ id: 'data-' + low.id, kind: 'data', title: 'Fix capture before relying on ' + src.name.toLowerCase(),
+    text: plural(low.missing, 'record') + (low.missing === 1 ? ' is' : ' are') + ' missing ' + src.field + '. Figures from this source may be off until they are filled in at the source.', why: src.name + ': ' + low.pct.toFixed(1) + '% complete for this day, the lowest of the sources with gaps.',
+    huddle: 'Ask the data owner to fill ' + plural(low.missing, 'missing record') + ' in ' + src.name.toLowerCase(), extra: { role: 'flow', label: 'Show the data checks' } });
+  var sigs = SERIES.map(function (s) { var r = runSignal(hist().map(s.get), s.worse); r.s = s; return r; }).filter(function (r) { return r.shift; }).sort(function (a, b) { return b.run - a.run; });
+  if (sigs[0]) out.push({ id: 'shift-' + sigs[0].s.key, kind: 'time', title: sigs[0].s.title + ': worse than its median for ' + plural(sigs[0].run, 'day') + ' in a row',
+    text: 'This looks like a real change, not day-to-day noise. Ask what changed around the day it started.', why: 'Run chart rule used here: 6 or more points in a row on one side of the median is a signal. 14-day median ' + sigs[0].median + sigs[0].s.unit + '.',
+    huddle: 'Discuss what changed: ' + sigs[0].s.title.toLowerCase() + ' has been worse than usual for ' + plural(sigs[0].run, 'day') });
+  if (st.shifts >= 3 || day.outs.length) {
+    if (st.shifts >= 3) out.push({ id: 'staff', kind: 'ask', title: plural(st.shifts, 'shift') + ' below planned cover in ' + plural(st.rows.length, 'unit'),
+      text: 'Check cover for the rest of the day before the huddle ends, unit by unit.', why: st.rows.map(function (r) { return r.unit + ': ' + r.which; }).slice(0, 3).join('; ') + '.',
+      huddle: 'Check cover: ' + st.rows.map(function (r) { return r.unit + ' (' + r.short + ' short)'; }).slice(0, 3).join(', ') });
+    else out.push({ id: 'stores', kind: 'ask', title: plural(day.outs.length, 'tracer item') + ' out of stock', text: 'Ask stores for a delivery date and whether wards hold stock that can be shared.', why: 'Morning count: ' + day.outs.join(', ') + '.', huddle: 'Stores to confirm delivery dates for ' + day.outs.join(', ') });
+  }
+  return out.filter(function (s) { return !state.dismissed[dayKey() + ':' + s.id]; }).slice(0, 4);
+}
+
+// ---------- Render ----------
+function render() {
+  document.querySelectorAll('[data-role]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.role === state.role)); });
+  document.querySelectorAll('[data-day]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.day === state.day)); });
+  document.querySelectorAll('[data-view]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.view === state.view)); });
+  var isReport = state.view === 'report';
+  document.getElementById('screen').hidden = isReport;
+  document.getElementById('report-wrap').hidden = !isReport;
+  var main = document.getElementById('main'); main.textContent = '';
+  main.appendChild(kpiCard());
+  if (state.role === 'coo') renderCoo(main); else if (state.role === 'ops') renderOps(main); else renderFlow(main);
+  main.appendChild(logCard());
+  renderGuide();
+  renderReport();
+  save();
+}
+function heading() {
+  return state.day === 'today' ? 'Today so far · ' + dayLabel(0) + ', midnight to ' + SO_FAR : 'Yesterday · ' + dayLabel(-1) + ', full day';
+}
+function kpiCard() {
+  var k = kpis(), card = el('section', { class: 'card', 'aria-labelledby': 'k-h' });
+  card.appendChild(el('h2', { id: 'k-h', text: 'Daily flow report' }));
+  card.appendChild(el('p', { class: 'sub', text: heading() + ' · Example General Hospital · tap any number for its definition' }));
+  var st = el('div', { class: 'stats', id: 'stats' });
+  [['k_ontime', k.reportOnTime], ['k_complete', k.dataCompleteness], ['k_actions', k.actionsClosedOnTime], ['k_defined', k.numbersDefined]].forEach(function (p) {
+    st.appendChild(el('button', { type: 'button', class: 'stat', 'data-kpi': p[0], 'aria-label': DEFS[p[0]][0] + ': ' + p[1].text + ', ' + p[1].note + '. Show definition', onclick: function (e) { lastFocus = e.currentTarget; showDef(p[0]); } },
+      [el('b', { text: p[1].text }), el('span', { text: DEFS[p[0]][0] }), el('small', { text: p[1].note })]));
+  });
+  card.appendChild(st);
+  return card;
+}
+function vs(v, m, unit) { return el('span', { class: 'vs' }, ['median ', num('median14', String(m) + (unit || ''))]); }
+
+function renderCoo(main) {
+  var day = cur(), list = decisions();
+  var card = el('section', { class: 'card', 'aria-labelledby': 'd-h' });
+  var open = list.filter(function (d) { return !d.status; }).length;
+  card.appendChild(el('h2', { id: 'd-h', text: 'Needs a decision today' }));
+  card.appendChild(el('p', { class: 'sub', id: 'd-sub', text: list.length ? (open ? plural(open, 'decision') + ' open' : 'All decided') + ' · ranked by how far each area is from its usual (14-day median), worse side only' : 'Nothing is far from usual today.' }));
+  list.forEach(function (d, i) {
+    var acts = [];
+    if (!d.status) {
+      acts.push(el('button', { type: 'button', class: 'small primary', onclick: function () { decide(d, 'decided'); }, text: 'Mark decided' }));
+      acts.push(el('button', { type: 'button', class: 'small', onclick: function () { decide(d, 'later'); }, text: 'Not today' }));
+    } else acts.push(el('span', { class: 'pill', text: d.status === 'decided' ? 'Decided' : 'Not today' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(d, null); }, text: 'Undo' }));
+    acts.push(link(d.area));
+    card.appendChild(el('article', { class: 'dec r' + (i + 1) + (d.status ? ' done' : ''), 'data-decision': d.id }, [
+      el('span', { class: 'rank', text: (i + 1) + ' of ' + list.length }), el('h3', { text: d.title }), el('p', { text: d.text }),
+      el('p', { class: 'why', text: 'Reason: ' + d.why }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  main.appendChild(card);
+  var g = el('section', { class: 'card', 'aria-labelledby': 'h-h' }, [el('h2', { id: 'h-h', text: 'Headline numbers' })]);
+  g.appendChild(areaGrid(day, true));
+  main.appendChild(g);
+}
+function areaGrid(day, compact) {
+  var grid = el('div', { class: 'areas' }), st = staffSummary(day), acts = actionsNow().filter(function (a) { return a.overdue; });
+  function area(key, title, rows, extra) {
+    var dl = el('dl', { class: 'kv' });
+    rows.forEach(function (r) { dl.appendChild(el('dt', { text: r[0] })); dl.appendChild(el('dd', {}, [r[1], r[2] || null])); });
+    return el('div', { class: 'area', 'data-area': key }, [el('h3', {}, [title, el('a', { href: LINKS[key].href, text: 'Open' , 'aria-label': 'Open ' + LINKS[key].label })]), dl, extra || null]);
+  }
+  var m = function (fn) { return med14(fn); };
+  grid.appendChild(area('beds', 'Beds', [
+    ['Free at ' + SNAP, num('free', String(day.free)), compact ? null : vs(day.free, m(function (d) { return d.free; }))],
+    ['Waiting for a bed', num('waiting', String(day.waiting)), compact ? null : vs(day.waiting, m(function (d) { return d.waiting; }))],
+    day.partial ? ['Discharges done / planned', num('noon', Math.min(day.noon, Math.round(day.disch * 0.12)) + ' / ' + day.disch)] : ['Discharges before noon', num('noon', day.noon + ' of ' + day.disch + ' (' + Math.round(100 * day.noon / day.disch) + '%)')]
+  ]));
+  var edMax = Math.max.apply(null, STEPS.slice(0, 4).map(function (s) { return day.ed[s.id]; }));
+  var edBars = el('div', { class: 'steps', 'aria-label': 'Median wait at each emergency department step' });
+  STEPS.slice(0, 4).forEach(function (s) {
+    var v = day.ed[s.id];
+    edBars.appendChild(el('div', { class: 'sbar' + (v === edMax ? ' top' : '') }, [el('span', { text: DEFS[s.id][0].replace(' (median)', '') }), num(s.id, fmtMin(v)), el('span', { class: 'track', 'aria-hidden': 'true' }, [el('i', { style: 'width:' + Math.round(100 * v / edMax) + '%' })])]));
+  });
+  grid.appendChild(area('ed', 'Emergency department', [['Arrivals' + (day.partial ? ' so far' : ''), num('attend', String(day.attend))]], compact ? null : edBars));
+  grid.appendChild(area('equipment', 'Equipment', [
+    ['Open work orders', num('woOpen', String(day.woOpen))],
+    ['Overdue', num('woOver', String(day.woOver)), compact ? null : vs(day.woOver, m(function (d) { return d.woOver; }))],
+    ['Oldest overdue', num('woOld', plural(day.woOld, 'day'))]
+  ]));
+  grid.appendChild(area('stores', 'Stores', [['Tracer stock-outs', num('outs', day.outs.length + ' of ' + TRACERS.length)]], day.outs.length ? el('ul', { class: 'mini' }, day.outs.map(function (t) { return el('li', { text: 'Out: ' + t }); })) : el('p', { class: 'mini', text: 'All tracer items in stock.' })));
+  grid.appendChild(area('support', 'Support tasks', [
+    ['Waiting at ' + (day.partial ? SO_FAR : SNAP), num('supWait', String(day.supWait))],
+    ['Oldest waiting', num('supOld', fmtMin(day.supOld)), compact ? null : vs(day.supOld, m(function (d) { return d.supOld; }), ' min')],
+    ['Waited over 30 min', num('sup30', String(day.sup30))]
+  ]));
+  var staffExtra = compact ? null : (st.rows.length ? el('ul', { class: 'mini' }, st.rows.map(function (r) { return el('li', { text: r.unit + ': ' + r.which }); })) : el('p', { class: 'mini', text: 'Every counted shift at planned cover.' }));
+  grid.appendChild(area('staffing', 'Staffing', [
+    ['Shifts below planned cover', num('below', String(st.shifts)), compact ? null : vs(st.shifts, m(function (d) { return staffSummary(d).shifts; }))],
+    ['Staff short (total)', num('gap', String(st.short))]
+  ], staffExtra));
+  grid.appendChild(area('actions', 'Actions', [['Overdue', num('overdue', String(acts.length))]]));
+  return grid;
+}
+
+function renderOps(main) {
+  var day = cur();
+  var a = el('section', { class: 'card', 'aria-labelledby': 'ar-h' }, [el('h2', { id: 'ar-h', text: 'By area' }), el('p', { class: 'sub', text: 'Each area against its usual. Numbers with a dotted line show their definition.' }), areaGrid(day, false)]);
+  main.appendChild(a);
+  main.appendChild(chartsCard());
+  main.appendChild(bottleneckCard(day, true));
+  main.appendChild(actionsCard());
+  main.appendChild(huddleCard());
+}
+function chartsCard() {
+  var card = el('section', { class: 'card', 'aria-labelledby': 'rc-h' }, [el('h2', { id: 'rc-h', text: 'Run charts · last 14 full days' }),
+    el('div', { class: 'chartkey' }, [el('span', {}, [el('i'), 'Daily value']), el('span', {}, [el('i', { class: 'med' }), '14-day median']), el('span', {}, [el('i', { class: 'dot' }), 'Part of a shift (6+ days worse than the median)'])])]);
+  var grid = el('div', { class: 'charts' });
+  SERIES.forEach(function (s) { grid.appendChild(runChart(s)); });
+  card.appendChild(grid);
+  card.appendChild(el('p', { class: 'sub', style: 'margin:10px 0 0', text: state.day === 'today' ? 'Today is not charted until the day is complete.' : 'Hover or tap a chart for each day\'s value; open “Show as table” for the numbers.' }));
+  return card;
+}
+function runChart(s) {
+  var vals = hist().map(s.get), sig = runSignal(vals, s.worse), W = 320, H = 120, P = { l: 30, r: 8, t: 10, b: 20 };
+  var lo = Math.min.apply(null, vals), hi = Math.max.apply(null, vals); if (hi === lo) hi = lo + 1;
+  var pad = (hi - lo) * 0.15; lo = Math.max(0, Math.floor(lo - pad)); hi = Math.ceil(hi + pad);
+  var X = function (i) { return P.l + i * (W - P.l - P.r) / (vals.length - 1); }, Y = function (v) { return P.t + (H - P.t - P.b) * (1 - (v - lo) / (hi - lo)); };
+  var box = el('div', { class: 'chart', 'data-series': s.key });
+  box.appendChild(el('h3', { text: s.title }));
+  box.appendChild(el('div', { class: 'sig' + (sig.shift ? '' : ' ok'), text: sig.shift ? 'Signal: ' + sig.run + ' days in a row worse than the median' : 'No shift signal' }));
+  var svg = svgEl('svg', { viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': s.title + '. Last 14 days from ' + vals[0] + ' to ' + vals[vals.length - 1] + s.unit + '; median ' + sig.median + s.unit + '. ' + (sig.shift ? 'Shift signal: ' + sig.run + ' days worse than the median.' : 'No shift signal.') });
+  [lo, hi].forEach(function (v) { svg.appendChild(svgEl('line', { x1: P.l, x2: W - P.r, y1: Y(v), y2: Y(v), stroke: '#EEE8DC', 'stroke-width': 1 })); var t = svgEl('text', { x: P.l - 5, y: Y(v) + 4, 'text-anchor': 'end', 'font-size': 10, fill: '#44607A' }); t.textContent = v; svg.appendChild(t); });
+  svg.appendChild(svgEl('line', { x1: P.l, x2: W - P.r, y1: Y(sig.median), y2: Y(sig.median), stroke: '#8DA0B3', 'stroke-width': 1.5, 'stroke-dasharray': '4 3' }));
+  var mt = svgEl('text', { x: W - P.r, y: Y(sig.median) - 4, 'text-anchor': 'end', 'font-size': 10, fill: '#44607A', 'font-weight': 700 }); mt.textContent = 'median ' + sig.median; svg.appendChild(mt);
+  svg.appendChild(svgEl('polyline', { points: vals.map(function (v, i) { return X(i) + ',' + Y(v); }).join(' '), fill: 'none', stroke: '#0A9396', 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }));
+  vals.forEach(function (v, i) {
+    var inRun = sig.shift && i >= vals.length - sig.run && v !== sig.median;
+    svg.appendChild(svgEl('circle', { cx: X(i), cy: Y(v), r: inRun ? 4.5 : 3, fill: inRun ? '#E0583E' : '#0A9396', stroke: '#fff', 'stroke-width': 1.5 }));
+  });
+  [0, vals.length - 1].forEach(function (i) { var t = svgEl('text', { x: X(i), y: H - 4, 'text-anchor': i ? 'end' : 'start', 'font-size': 10, fill: '#44607A' }); t.textContent = dayLabel(i - DAYS); svg.appendChild(t); });
+  var cross = svgEl('line', { y1: P.t, y2: H - P.b, stroke: '#0B2F4E', 'stroke-width': 1, opacity: 0 }); svg.appendChild(cross);
+  var tip = el('div', { class: 'tip', 'aria-hidden': 'true' });
+  function move(ev) {
+    var rect = svg.getBoundingClientRect(), px = (ev.touches ? ev.touches[0].clientX : ev.clientX) - rect.left, sx = px * W / rect.width;
+    var i = clamp(Math.round((sx - P.l) / ((W - P.l - P.r) / (vals.length - 1))), 0, vals.length - 1);
+    cross.setAttribute('x1', X(i)); cross.setAttribute('x2', X(i)); cross.setAttribute('opacity', 0.35);
+    tip.textContent = dayLabel(i - DAYS) + ': ' + vals[i] + s.unit; tip.style.left = (svg.offsetLeft + X(i) * rect.width / W) + 'px'; tip.style.top = (svg.offsetTop + Y(vals[i]) * rect.height / H) + 'px'; tip.classList.add('on');
+  }
+  function leave() { tip.classList.remove('on'); cross.setAttribute('opacity', 0); }
+  svg.addEventListener('mousemove', move); svg.addEventListener('touchstart', move, { passive: true }); svg.addEventListener('mouseleave', leave); svg.addEventListener('touchend', function () { setTimeout(leave, 1200); });
+  box.appendChild(svg); box.appendChild(tip);
+  var tb = el('tbody'); vals.forEach(function (v, i) { tb.appendChild(el('tr', {}, [el('td', { text: dayLabel(i - DAYS) }), el('td', { text: v + s.unit })])); });
+  box.appendChild(el('details', {}, [el('summary', { text: 'Show as table' }), el('table', {}, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Day' }), el('th', { text: 'Value' })])]), tb])]));
+  return box;
+}
+function bottleneckCard(day, withActions) {
+  var bn = bottlenecks(day), card = el('section', { class: 'card', 'aria-labelledby': 'bn-h' });
+  card.appendChild(el('h2', { id: 'bn-h', text: 'Bottleneck finder · where time was lost' }));
+  card.appendChild(el('p', { class: 'sub' }, ['Steps ranked by ', num('hours', 'patient-hours waited'), ' ' + (day.partial ? 'today so far' : 'yesterday') + ': ' + bn.total + ' hours in total. Also: ' + day.cleanHours + ' bed-hours empty waiting for cleaning (not ranked: a bed, not a patient, waits).']));
+  var ol = el('ol', { class: 'bn', id: 'bn' }), max = bn.rows[0].hours || 1;
+  bn.rows.forEach(function (r, i) {
+    var already = state.raised.some(function (a) { return a.step === r.id && a.seed === state.seed; });
+    var trend = day.partial ? '' : (r.hours > r.med * 1.15 ? ' · above its 14-day median of ' + r.med + ' h' : r.hours < r.med * 0.85 ? ' · below its 14-day median of ' + r.med + ' h' : ' · near its 14-day median');
+    ol.appendChild(el('li', { class: i ? '' : 'first', 'data-step': r.id }, [
+      el('span', { class: 'rk', text: String(i + 1) }),
+      el('div', { class: 'nm' }, [el('b', { text: r.name }), el('span', { text: r.share + '% of time lost · ' + r.who + trend + (r.streak >= 2 ? ' · top for ' + r.streak + ' days running' : '') })]),
+      el('div', { class: 'hrs' }, [num('hours', r.hours + ' h')]),
+      el('span', { class: 'track', 'aria-hidden': 'true' }, [el('i', { style: 'width:' + Math.round(100 * r.hours / max) + '%' })]),
+      withActions && i < 3 ? el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'small', disabled: already ? 'disabled' : false, onclick: function () { raise(r); }, text: already ? 'Action raised' : 'Raise an action' })]) : null
+    ]));
+  });
+  card.appendChild(ol);
+  return card;
+}
+function actionsCard() {
+  var list = actionsNow(), card = el('section', { class: 'card', 'aria-labelledby': 'ac-h' });
+  var over = list.filter(function (a) { return a.overdue; }).length;
+  card.appendChild(el('h2', { id: 'ac-h', text: 'Action list' }));
+  card.appendChild(el('p', { class: 'sub', text: plural(over, 'action') + ' overdue · owners are roles, not named people' }));
+  var ul = el('ul', { class: 'rows', id: 'actions' });
+  list.slice().sort(function (a, b) { return (a.closed - b.closed) || (a.due - b.due); }).forEach(function (a) {
+    var due = a.due === 0 ? 'due today' : a.due < 0 ? 'due ' + plural(-a.due, 'day') + ' ago' : 'due in ' + plural(a.due, 'day');
+    ul.appendChild(el('li', { class: a.closed ? 'done' : '', 'data-action': a.id }, [
+      el('div', { class: 'what' }, [el('b', { text: a.text }), el('span', {}, [a.owner + ' · ' + due + ' ', a.overdue ? el('span', { class: 'pill bad', text: 'Overdue' }) : a.closed ? el('span', { class: 'pill', text: a.closedLate ? 'Closed late' : 'Closed on time' }) : null])]),
+      a.closed ? el('button', { type: 'button', class: 'small', onclick: function () { delete state.closed[a.id]; log('Action reopened: ' + a.text); render(); }, text: 'Reopen' })
+        : el('button', { type: 'button', class: 'small primary', onclick: function () { closeAction(a); }, text: 'Close' })
+    ]));
+  });
+  card.appendChild(ul);
+  return card;
+}
+function huddleCard() {
+  var card = el('section', { class: 'card', 'aria-labelledby': 'hu-h' });
+  card.appendChild(el('h2', { id: 'hu-h', text: 'Morning huddle list' }));
+  card.appendChild(el('p', { class: 'sub', text: 'Proposals from the guide land here. Edit the wording, reorder, remove, or add your own. Nothing is decided until the huddle decides it.' }));
+  var ul = el('ul', { class: 'rows huddle', id: 'huddle' });
+  if (!state.huddle.length) ul.appendChild(el('li', {}, [el('p', { class: 'empty', text: 'Empty. Use “Propose for huddle” in the guide, or add an item below.' })]));
+  state.huddle.forEach(function (h, i) {
+    var inp = el('input', { type: 'text', value: h.text, maxlength: '160', 'aria-label': 'Huddle item ' + (i + 1) + ' wording', onchange: function (e) { h.text = e.target.value.trim() || h.text; log('Huddle item edited: ' + h.text); render(); } });
+    ul.appendChild(el('li', { class: h.done ? 'done' : '', 'data-huddle': h.id }, [
+      el('span', { class: 'src', text: (i + 1) + ' · ' + (h.from === 'guide' ? 'Proposed by the guide, edited by you' : 'Added by you') }), inp,
+      el('div', { class: 'acts' }, [
+        el('button', { type: 'button', class: 'small', 'aria-pressed': String(!!h.done), onclick: function () { h.done = !h.done; log('Huddle item ' + (h.done ? 'discussed' : 'reopened') + ': ' + h.text); render(); }, text: h.done ? 'Discussed ✓' : 'Mark discussed' }),
+        el('button', { type: 'button', class: 'icon', 'aria-label': 'Move item ' + (i + 1) + ' up', disabled: i === 0 ? 'disabled' : false, onclick: function () { swap(i, -1); }, text: '↑' }),
+        el('button', { type: 'button', class: 'icon', 'aria-label': 'Move item ' + (i + 1) + ' down', disabled: i === state.huddle.length - 1 ? 'disabled' : false, onclick: function () { swap(i, 1); }, text: '↓' }),
+        el('button', { type: 'button', class: 'icon', 'aria-label': 'Remove item ' + (i + 1), onclick: function () { state.huddle.splice(i, 1); log('Huddle item removed: ' + h.text); render(); toast('Removed from the huddle list.'); }, text: '✕' })
+      ])
+    ]));
+  });
+  card.appendChild(ul);
+  var add = el('input', { type: 'text', id: 'hu-new', maxlength: '160', placeholder: 'e.g. Confirm who covers the bed meeting at 14:00' });
+  var form = el('form', { class: 'addrow', onsubmit: function (e) { e.preventDefault(); var v = add.value.trim(); if (!v) return; state.huddle.push({ id: 'h' + Date.now().toString(36), text: v, from: 'person', done: false }); log('Huddle item added: ' + v); render(); toast('Added to the huddle list.'); } },
+    [el('label', { for: 'hu-new', class: 'sr', text: 'Add your own huddle item' }), add, el('button', { type: 'submit', class: 'primary', text: 'Add' })]);
+  card.appendChild(form);
+  return card;
+}
+function renderFlow(main) {
+  var day = cur(), c = completeness(day), card = el('section', { class: 'card', 'aria-labelledby': 'fc-h' });
+  var fx = state.fixed[dayKey()] || {};
+  card.appendChild(el('h2', { id: 'fc-h', text: 'Get the report ready for the 08:30 meeting' }));
+  card.appendChild(el('p', { class: 'sub', text: 'Check each source. Where records are missing a time, fill them in at the source, then mark them done here. Data completeness: ' + c.pct.toFixed(1) + '%.' }));
+  var ul = el('ul', { class: 'rows big', id: 'checks' });
+  c.rows.forEach(function (r) {
+    var s = SOURCES.filter(function (x) { return x.id === r.id; })[0];
+    ul.appendChild(el('li', { class: r.missing ? '' : 'done', 'data-source': r.id }, [
+      el('div', { class: 'what' }, [el('b', { text: s.name }), el('span', { text: r.missing ? plural(r.missing, 'record') + ' missing ' + s.field + ' · ' + r.pct.toFixed(1) + '% complete' : (fx[r.id] ? 'Gaps filled · 100% complete' : 'Complete · 100%') })]),
+      r.missing ? el('button', { type: 'button', class: 'primary', onclick: function () { fix(s, r.missing); }, text: 'Gaps filled in at the source' }) : (fx[r.id] ? el('button', { type: 'button', onclick: function () { delete fx[r.id]; log('Data check reopened: ' + s.name); render(); }, text: 'Undo' }) : null)
+    ]));
+  });
+  card.appendChild(ul);
+  var ready = state.ready && state.ready.seed === state.seed;
+  var rb = el('div', { class: 'ready' + (ready ? ' is' : ''), id: 'ready' });
+  if (state.day === 'today') rb.appendChild(el('p', { style: 'margin:0', text: 'Today\'s report runs tomorrow morning. Switch to Yesterday to prepare this morning\'s report.' }));
+  else if (ready) rb.appendChild(el('div', {}, [el('p', { style: 'margin:0 0 8px' }, [el('b', { text: 'Report ready at ' + state.ready.at + '. ' }), state.ready.onTime ? 'Before the 08:30 meeting.' : 'After the 08:30 meeting started.']), el('button', { type: 'button', onclick: function () { state.ready = null; log('Report marked not ready'); render(); }, text: 'Undo: not ready' })]));
+  else rb.appendChild(el('div', {}, [el('p', { style: 'margin:0 0 8px', text: c.missing ? plural(c.missing, 'record') + ' still missing. You can still mark it ready; the report will show the gaps.' : 'All sources complete.' }), el('button', { type: 'button', class: 'primary', id: 'mark-ready', onclick: markReady, text: 'Mark report ready for the meeting' })]));
+  card.appendChild(rb);
+  main.appendChild(card);
+  var g = el('section', { class: 'card', 'aria-labelledby': 'fh-h' }, [el('h2', { id: 'fh-h', text: 'Headline numbers' })]);
+  g.appendChild(areaGrid(day, true));
+  main.appendChild(g);
+  main.appendChild(huddleCard());
+}
+function logCard() {
+  var ol = el('ol', { class: 'log', id: 'log' });
+  if (!state.log.length) ol.appendChild(el('li', {}, [el('time', { text: '07:31' }), 'Daily flow report run: data to ' + SNAP + ', example data seed ' + state.seed + '.']));
+  state.log.forEach(function (e) { ol.appendChild(el('li', {}, [el('time', { text: e.t }), e.text])); });
+  return el('section', { class: 'card noprint', 'aria-labelledby': 'lg-h' }, [el('h2', { id: 'lg-h', text: 'What happened' }), ol]);
+}
+function renderGuide() {
+  var box = document.getElementById('sugg'); box.textContent = '';
+  document.getElementById('guide-on').checked = state.guide;
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. The report, charts, bottleneck finder and huddle list all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'how', text: 'Nothing to suggest for this day.' }));
+  list.forEach(function (sg) {
+    var on = state.huddle.some(function (h) { return h.sid === dayKey() + ':' + sg.id; });
+    var acts = [el('button', { type: 'button', class: 'small primary', disabled: on ? 'disabled' : false, onclick: function () { propose(sg); }, text: on ? 'On the huddle list' : 'Propose for huddle' })];
+    if (sg.extra && sg.extra.href) acts.push(el('a', { class: 'go', href: sg.extra.href, text: sg.extra.label }));
+    if (sg.extra && sg.extra.role) acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.role = sg.extra.role; state.view = 'screen'; render(); }, text: sg.extra.label }));
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[dayKey() + ':' + sg.id] = true; render(); toast('Hidden for this day.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-sugg': sg.id }, [
+      el('span', { class: 'tag ' + sg.kind, text: sg.kind === 'time' ? 'Where time goes' : sg.kind === 'data' ? 'Data first' : 'Ask the team' }),
+      el('h3', { text: sg.title }), el('p', { text: sg.text }), el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+}
+
+// ---------- Shareable report ----------
+function summaryText() {
+  var day = cur(), st = staffSummary(day), k = kpis(), bn = bottlenecks(day), acts = actionsNow().filter(function (a) { return a.overdue; });
+  var L = ['Daily flow report · Example General Hospital (fictional example data)', heading(), ''];
+  L.push('Needs a decision today:');
+  decisions().forEach(function (d, i) { L.push((i + 1) + '. ' + d.title + (d.status ? ' [' + (d.status === 'decided' ? 'decided' : 'not today') + ']' : '') + ' — ' + d.why); });
+  L.push('', 'Beds: ' + day.free + ' free at ' + SNAP + '; ' + day.waiting + ' waiting for a bed; ' + (day.partial ? 'discharges planned today ' + day.disch : 'discharges before noon ' + day.noon + ' of ' + day.disch) + '.');
+  L.push('Emergency department: ' + day.attend + ' arrivals; median waits: triage ' + fmtMin(day.ed['ed-triage']) + ', first seen ' + fmtMin(day.ed['ed-seen']) + ', decision ' + fmtMin(day.ed['ed-decision']) + ', decision to admit to leaving ' + fmtMin(day.ed['ed-bed']) + '.');
+  L.push('Equipment: ' + day.woOpen + ' open work orders, ' + day.woOver + ' overdue (oldest ' + plural(day.woOld, 'day') + ').');
+  L.push('Stores: ' + day.outs.length + ' of ' + TRACERS.length + ' tracer items out' + (day.outs.length ? ' (' + day.outs.join(', ') + ')' : '') + '.');
+  L.push('Support tasks: ' + day.supWait + ' waiting; oldest ' + fmtMin(day.supOld) + '; ' + day.sup30 + ' waited over 30 min.');
+  L.push('Staffing: ' + plural(st.shifts, 'shift') + ' below planned cover, ' + st.short + ' staff short' + (st.rows.length ? ' (' + st.rows.map(function (r) { return r.unit + ' ' + r.short; }).join(', ') + ')' : '') + '.');
+  L.push('Actions: ' + acts.length + ' overdue.');
+  L.push('', 'Most time lost: ' + bn.rows.slice(0, 3).map(function (r) { return r.name + ' ' + r.hours + ' h'; }).join('; ') + '.');
+  if (state.huddle.length) { L.push('', 'Huddle list:'); state.huddle.forEach(function (h, i) { L.push((i + 1) + '. ' + h.text + (h.done ? ' [discussed]' : '')); }); }
+  L.push('', 'Data completeness ' + k.dataCompleteness.text + '. Definitions: local definitions, shown beside each number in the report.');
+  return L.join('\n');
+}
+function renderReport() {
+  var w = document.getElementById('report-wrap'); w.textContent = '';
+  var day = cur(), st = staffSummary(day), bn = bottlenecks(day), c = completeness(day), k = kpis();
+  var r = el('article', { class: 'report', id: 'report', 'aria-labelledby': 'r-h' });
+  r.appendChild(el('div', { class: 'rh' }, [
+    el('div', {}, [el('span', { class: 'badge', text: 'Fictional example data' }), el('h2', { id: 'r-h', text: 'Daily flow report' }), el('p', { class: 'note', style: 'margin:2px 0 0', text: 'Example General Hospital · ' + heading() + ' · data seed ' + state.seed })]),
+    el('div', { class: 'acts noprint' }, [el('button', { type: 'button', class: 'primary', id: 'copy', onclick: copySummary, text: 'Copy summary' }), el('button', { type: 'button', onclick: function () { window.print(); }, text: 'Print' })])
+  ]));
+  function sec(title, kids) { r.appendChild(el('section', {}, [el('h2', { text: title })].concat(kids))); }
+  sec('Needs a decision today', [el('ol', {}, decisions().map(function (d) { return el('li', {}, [el('b', { text: d.title + '. ' }), d.why + (d.status ? ' (' + (d.status === 'decided' ? 'decided' : 'not today') + ')' : '')]); }))]);
+  var rows = [
+    ['Beds', 'Free at ' + SNAP, day.free, 'free'], ['Beds', 'Waiting for a bed at ' + SNAP, day.waiting, 'waiting'],
+    ['Beds', day.partial ? 'Discharges planned today' : 'Discharges before noon', day.partial ? day.disch : day.noon + ' of ' + day.disch, 'noon'],
+    ['Emergency department', 'Arrivals', day.attend, 'attend']
+  ].concat(STEPS.slice(0, 4).map(function (s) { return ['Emergency department', DEFS[s.id][0], fmtMin(day.ed[s.id]), s.id]; })).concat([
+    ['Equipment', 'Open work orders', day.woOpen, 'woOpen'], ['Equipment', 'Overdue work orders', day.woOver, 'woOver'],
+    ['Stores', 'Tracer stock-outs', day.outs.length + ' of ' + TRACERS.length + (day.outs.length ? ': ' + day.outs.join(', ') : ''), 'outs'],
+    ['Support tasks', 'Waiting', day.supWait, 'supWait'], ['Support tasks', 'Oldest waiting', fmtMin(day.supOld), 'supOld'], ['Support tasks', 'Waited over 30 min', day.sup30, 'sup30'],
+    ['Staffing', 'Shifts below planned cover', st.shifts + (st.rows.length ? ' (' + st.rows.map(function (x) { return x.unit + ': ' + x.which; }).join('; ') + ')' : ''), 'below'],
+    ['Actions', 'Overdue', actionsNow().filter(function (a) { return a.overdue; }).length, 'overdue']
+  ]);
+  var tb = el('tbody'); rows.forEach(function (x) { tb.appendChild(el('tr', {}, [el('td', { text: x[0] }), el('td', { text: x[1] }), el('td', { class: 'r' }, [el('b', { text: String(x[2]) })]), el('td', { class: 'note', text: DEFS[x[3]][1] })])); });
+  sec('The day in numbers', [el('div', { class: 'scrollx' }, [el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Area' }), el('th', { text: 'Measure' }), el('th', { class: 'r', text: 'Value' }), el('th', { text: 'Definition (local)' })])]), tb])])]);
+  var bt = el('tbody'); bn.rows.forEach(function (x, i) { bt.appendChild(el('tr', {}, [el('td', { text: String(i + 1) }), el('td', { text: x.name }), el('td', { class: 'r', text: x.hours + ' h' }), el('td', { class: 'r', text: x.share + '%' })])); });
+  sec('Where time was lost', [el('p', { class: 'note', text: DEFS.hours[1] }), el('div', { class: 'scrollx' }, [el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, [el('th', { text: '#' }), el('th', { text: 'Step' }), el('th', { class: 'r', text: 'Hours' }), el('th', { class: 'r', text: 'Share' })])]), bt])])]);
+  sec('Morning huddle list', [state.huddle.length ? el('ol', {}, state.huddle.map(function (h) { return el('li', { text: h.text + (h.done ? ' (discussed)' : '') }); })) : el('p', { class: 'note', text: 'No items yet.' })]);
+  sec('Data behind this report', [el('p', { class: 'note', text: 'Data completeness ' + k.dataCompleteness.text + '. ' + c.rows.map(function (x) { var s = SOURCES.filter(function (y) { return y.id === x.id; })[0]; return s.name + ' ' + x.pct.toFixed(1) + '%'; }).join(' · ') + '. Report ready: ' + (state.ready && state.ready.seed === state.seed ? state.ready.at : 'not yet') + '. All definitions are local definitions.' })]);
+  sec('Summary to paste', [el('label', { for: 'summary-text', class: 'sr', text: 'Summary text' }), el('textarea', { id: 'summary-text', readonly: 'readonly', class: 'noprint', text: summaryText() })]);
+  w.appendChild(r);
+}
+function copySummary() {
+  var text = summaryText(), done = function () { log('Summary copied to share'); render(); toast('Summary copied. Paste it into an email or message.'); };
+  function fallback() { var t = document.getElementById('summary-text'); if (t) { t.select(); try { document.execCommand('copy'); } catch (e) { /* select-and-copy is the last resort */ } } done(); }
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done, fallback); else fallback();
+}
+
+// ---------- Actions ----------
+function decide(d, status) {
+  var m = state.decided[dayKey()] = state.decided[dayKey()] || {};
+  if (status) { m[d.id] = status; log('Chief operating officer: ' + (status === 'decided' ? 'decided' : 'not today') + ' · ' + d.title); toast(status === 'decided' ? 'Marked decided.' : 'Moved to not today.'); }
+  else { delete m[d.id]; log('Decision reopened: ' + d.title); }
+  render();
+}
+function fix(s, n) {
+  var k = dayKey(); state.fixed[k] = state.fixed[k] || {}; state.fixed[k][s.id] = true;
+  log('Flow coordinator: ' + plural(n, 'missing record') + ' filled in · ' + s.name); render(); toast(s.name + ': complete.');
+}
+function markReady() {
+  log('Flow coordinator: report marked ready');
+  state.ready = { seed: state.seed, at: hhmm(state.clock), onTime: state.clock < MEETING };
+  render(); toast('Report ready. The huddle list goes with it.');
+}
+function closeAction(a) {
+  state.closed[a.id] = { late: a.due < 0, at: hhmm(state.clock + 2) };
+  log('Action closed' + (a.due < 0 ? ' (late)' : '') + ': ' + a.text); render(); toast('Action closed.');
+}
+function raise(r) {
+  var a = { id: 'r' + Date.now().toString(36), text: 'Look into “' + r.name + '”: ' + r.hours + ' patient-hours lost', owner: 'Operations manager', due: 7, step: r.id, seed: state.seed };
+  state.raised.push(a); log('Operations manager raised an action: ' + a.text); render(); toast('Action raised, due in 7 days.');
+}
+function propose(sg) {
+  state.huddle.push({ id: 'h' + Date.now().toString(36) + state.huddle.length, sid: dayKey() + ':' + sg.id, text: sg.huddle, from: 'guide', done: false });
+  log('Guide proposed a huddle item: ' + sg.huddle); render(); toast('Proposed. Edit the wording on the huddle list.');
+}
+function swap(i, d) { var j = i + d, l = state.huddle; if (j < 0 || j >= l.length) return; var t = l[i]; l[i] = l[j]; l[j] = t; render(); }
+
+document.querySelectorAll('[data-role]').forEach(function (b) { b.addEventListener('click', function () { state.role = b.dataset.role; state.view = 'screen'; render(); }); });
+document.querySelectorAll('[data-day]').forEach(function (b) { b.addEventListener('click', function () { state.day = b.dataset.day; render(); }); });
+document.querySelectorAll('[data-view]').forEach(function (b) { b.addEventListener('click', function () { state.view = b.dataset.view; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; log('Guide switched ' + (state.guide ? 'on' : 'off')); render(); });
+
+// Read-only view for software agents (no writes): window.ospeliDailyReportDemo
+window.ospeliDailyReportDemo = Object.freeze({
+  describe: function () { return 'Read-only daily flow report demo for a fictional hospital. get() returns the chosen day\'s figures; kpis() the report KPIs with definitions; suggestions() the guide\'s huddle proposals; decisions() the top 3 needing a decision; bottlenecks() where time was lost. Example data generated in the browser from seed ' + state.seed + '; nothing is sent anywhere.'; },
+  get: function () { var d = cur(); return clone({ day: state.day, label: heading(), seed: state.seed, role: state.role, beds: { freeAt0730: d.free, waitingAt0730: d.waiting, discharges: d.disch, dischargesBeforeNoon: d.partial ? null : d.noon }, emergencyDepartment: { arrivals: d.attend, medianMinutes: d.ed }, equipment: { open: d.woOpen, overdue: d.woOver, oldestOverdueDays: d.woOld }, stores: { tracerStockOuts: d.outs }, support: { waiting: d.supWait, oldestWaitingMin: d.supOld, waitedOver30: d.sup30 }, staffing: staffSummary(d), actions: actionsNow(), huddle: state.huddle, log: state.log }); },
+  kpis: function () { var k = kpis(); return clone({ reportOnTime: Object.assign(k.reportOnTime, { definition: DEFS.k_ontime[1] }), dataCompleteness: Object.assign(k.dataCompleteness, { definition: DEFS.k_complete[1] }), actionsClosedOnTime: Object.assign(k.actionsClosedOnTime, { definition: DEFS.k_actions[1] }), numbersDefined: Object.assign(k.numbersDefined, { definition: DEFS.k_defined[1] }), source: 'local definition' }); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text, why: s.why, proposes: s.huddle }; }) : []; },
+  decisions: function () { return clone(decisions().map(function (d) { return { id: d.id, title: d.title, reason: d.why, status: d.status, link: LINKS[d.area].href }; })); },
+  bottlenecks: function () { return clone(bottlenecks(cur())); },
+  definitions: function () { var o = {}; Object.keys(DEFS).forEach(function (k) { o[k] = { name: DEFS[k][0], definition: DEFS[k][1], owner: DEFS[k][2], source: 'local definition' }; }); return o; }
+});
+render();
+})();
+</script>
+</body>
+</html>

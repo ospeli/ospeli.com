@@ -8,6 +8,8 @@
 - [Emergency department flow preview](https://ospeli.com/demo/ed-flow/): anonymous patient timeline, pressure levels set by the site, action cards; read-only agent view at `window.ospeliEdFlowDemo`; fictional data.
 - [Cleaning and portering preview](https://ospeli.com/demo/support-tasks/): porter and cleaner task lists, ward requests, helpdesk by team; read-only agent view at `window.ospeliSupportTasksDemo`; fictional data.
 - [Incidents and actions preview](https://ospeli.com/demo/actions/): staff reports, learning review, one action tracker, risk register; read-only agent view at `window.ospeliActionsDemo`; fictional data.
+- [Stores and stock preview](https://ospeli.com/demo/stores-stock/): ward stock reports, storekeeper pick list, supply view; read-only agent view at `window.ospeliStoresDemo`; fictional data.
+- [Daily operations report preview](https://ospeli.com/demo/daily-report/): decisions for today, run charts, bottleneck finder, huddle list; read-only agent view at `window.ospeliDailyReportDemo`; fictional data.
 - [All 30 areas](https://ospeli.com/areas/): what each area of hospital operations will do, who uses it, what it records, its measures and its AI assistant commands; spec in https://ospeli.com/areas/areas.json.
 - [Front page](https://ospeli.com/): what Ospeli is, its modules, how a pilot runs, and its governance rules.
 

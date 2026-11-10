@@ -1,0 +1,781 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stores and stock demo · Ospeli</title>
+<meta name="description" content="Report low stock on a phone, issue and receive in the store, and see stock-outs, days of stock and orders waiting in purchasing. Fictional example data; runs in your browser.">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; line-height: 1.3; }
+h3 { font-size: 1rem; margin: 0 0 6px; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 14px; }
+select, input, button { font: inherit; color: var(--ink); }
+select, input[type=text], input[type=search], input[type=number] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; line-height: 1.2; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 40px; padding: 4px 14px; font-size: 0.9rem; }
+button:disabled { cursor: default; opacity: 0.55; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+a { color: var(--ink); }
+/* role switch */
+.top { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin: 6px 0 6px; }
+.roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--navy); border-radius: 14px; overflow: hidden; width: 100%; max-width: 560px; background: #fff; }
+.roles button { border: 0; border-radius: 0; min-height: 52px; padding: 6px 6px; font-size: 15px; }
+.roles button + button { border-left: 1px solid var(--navy); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+.roles button small { display: block; font-weight: 600; font-size: 0.78rem; opacity: 0.85; }
+.clock { display: flex; gap: 10px; align-items: center; color: var(--soft); font-size: 0.9rem; font-weight: 700; flex-wrap: wrap; }
+.rolehint { color: var(--soft); margin: 4px 0 14px; font-size: 15px; }
+/* KPI tiles */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 8px; }
+@media (max-width: 760px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { display: block; width: 100%; text-align: left; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-weight: 600; min-height: 0; line-height: 1.3; position: relative; }
+.stat b { display: block; font-size: 1.45rem; line-height: 1.15; font-weight: 800; }
+.stat .l { display: block; font-size: 0.9rem; color: var(--ink); font-weight: 700; }
+.stat .s { display: block; font-size: 0.82rem; color: var(--soft); }
+.stat .i { position: absolute; top: 8px; right: 10px; width: 20px; height: 20px; border-radius: 50%; border: 1px solid #CFC5B2; color: var(--soft); font-size: 0.75rem; display: grid; place-items: center; font-weight: 800; }
+.stat.bad b { color: var(--coral); }
+.stat.good b { color: var(--sea); }
+.stat[aria-expanded=true] { border-color: var(--navy); box-shadow: 0 0 0 2px var(--navy) inset; }
+.stat.flash { animation: flash 0.9s ease-out; }
+@keyframes flash { 0% { background: var(--warn); } 100% { background: #fff; } }
+.def { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--sea); border-radius: 12px; padding: 10px 14px; margin: 0 0 12px; font-size: 15px; }
+.def b { display: block; }
+/* layout */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; grid-template-areas: "view guide" "log guide"; gap: 18px; align-items: start; padding: 8px 0 24px; }
+.layout.noguide { grid-template-columns: minmax(0, 1fr) 260px; }
+#view { grid-area: view; min-width: 0; display: grid; gap: 18px; }
+#logcard { grid-area: log; }
+.guide { grid-area: guide; position: sticky; top: 12px; }
+@media (max-width: 980px) { .layout, .layout.noguide { grid-template-columns: minmax(0, 1fr); grid-template-areas: "view" "guide" "log"; } .guide { position: static; } }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 520px) { .card { padding: 14px 12px; } }
+.cardhead { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.cardhead h2 { margin: 0; }
+.sub { color: var(--soft); font-size: 15px; margin: -4px 0 12px; }
+.controls { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 8px; margin-bottom: 12px; }
+.controls label { display: flex; flex-direction: column; gap: 3px; font-size: 0.85rem; font-weight: 800; color: var(--soft); min-width: 0; }
+.controls .scan { align-self: end; }
+@media (max-width: 620px) { .controls { grid-template-columns: minmax(0, 1fr) auto; } .controls .area { grid-column: 1 / -1; } }
+.summary { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.chip { display: inline-block; font-size: 15px; line-height: 1.4; font-weight: 800; padding: 1px 9px; border-radius: 999px; background: var(--wash); white-space: nowrap; }
+.chip.out { background: var(--hot); color: #9B2C17; }
+.chip.low { background: var(--warn); color: #6E4600; }
+.chip.ok { background: var(--wash); color: #075F61; }
+.chip.tracer { background: #fff; border: 1px solid var(--navy); font-size: 0.8rem; padding: 0 7px; vertical-align: 2px; }
+.chip.wait { background: #EEF2F6; }
+/* ward items */
+.item { border: 1px solid var(--line); border-left: 6px solid var(--foam); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #fff; }
+.item.low { border-left-color: var(--mango); }
+.item.out { border-left-color: var(--coral); background: #FFFAF7; }
+.ih { display: flex; gap: 8px; justify-content: space-between; align-items: flex-start; }
+.ih .nm { font-weight: 800; font-size: 1.02rem; line-height: 1.3; }
+.imeta { color: var(--soft); font-size: 15px; margin: 2px 0 6px; }
+.meter { height: 8px; border-radius: 4px; background: var(--sand); overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--sea); border-radius: 4px; }
+.item.low .meter i { background: var(--mango); }
+.ireq { background: var(--wash); border-radius: 10px; padding: 7px 10px; margin-top: 10px; font-size: 15px; }
+.iacts { display: grid; grid-template-columns: 1.3fr 1fr 0.8fr; gap: 8px; margin-top: 10px; }
+.iacts button { min-height: 48px; padding: 6px 8px; font-size: 15px; border-radius: 12px; }
+.iacts .bad { border-color: var(--coral); color: #9B2C17; }
+@media (max-width: 520px) { .iacts { grid-template-columns: 1fr 1fr; } .iacts .req { grid-column: 1 / -1; } }
+.countbox { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: end; margin-top: 10px; background: var(--sand); border-radius: 10px; padding: 10px; }
+.countbox label { display: flex; flex-direction: column; gap: 3px; font-size: 15px; font-weight: 700; min-width: 0; }
+.countbox input { width: 100%; font-size: 1.1rem; }
+@media (max-width: 420px) { .countbox { grid-template-columns: minmax(0, 1fr) auto; } .countbox label { grid-column: 1 / -1; } }
+/* rows */
+.rows { margin: 0; padding: 0; list-style: none; }
+.rows > li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; align-items: center; padding: 11px 0; border-top: 1px solid var(--line); }
+.rows > li:first-child { border-top: 0; }
+.rows .what b { display: block; line-height: 1.3; }
+.rows .what span { display: block; color: var(--soft); font-size: 15px; }
+.rows .act { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.rows li.urgent .what b::before { content: "Urgent · "; color: #9B2C17; }
+@media (max-width: 520px) { .rows > li { grid-template-columns: minmax(0, 1fr); } .rows .act { justify-content: stretch; } .rows .act > * { flex: 1; } }
+.rows select { min-height: 40px; padding: 4px 8px; font-size: 0.92rem; }
+.empty { color: var(--soft); text-align: center; padding: 18px 8px; font-size: 15px; }
+.shelves { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; }
+.shelves button { border: 0; border-radius: 0; min-width: 48px; }
+.shelves button + button { border-left: 1px solid var(--navy); }
+.shelves button[aria-pressed=true] { background: var(--navy); color: #fff; }
+.cc { display: grid; grid-template-columns: minmax(0, 1fr) 110px; gap: 8px 12px; align-items: center; margin: 12px 0; }
+.cc label { font-weight: 700; font-size: 15px; }
+.cc label span { display: block; color: var(--soft); font-weight: 600; }
+.cc input { width: 100%; }
+/* order tracker */
+.steps { list-style: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 2px; padding: 0; margin: 8px 0 2px; }
+.steps li { position: relative; text-align: center; font-size: 0.78rem; color: var(--soft); padding-top: 18px; line-height: 1.2; font-weight: 700; }
+.steps li::before { content: ""; position: absolute; top: 2px; left: 50%; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: #fff; border: 2px solid #CFC5B2; z-index: 1; }
+.steps li::after { content: ""; position: absolute; top: 8px; left: -50%; width: 100%; height: 2px; background: #CFC5B2; }
+.steps li:first-child::after { display: none; }
+.steps li.done::before { background: var(--sea); border-color: var(--sea); }
+.steps li.done::after, .steps li.now::after { background: var(--sea); }
+.steps li.now { color: var(--ink); }
+.steps li.now::before { background: var(--mango); border-color: var(--mango); }
+.steps li.now.slow::before { background: var(--coral); border-color: var(--coral); }
+.order { border-top: 1px solid var(--line); padding: 12px 0; }
+.order:first-of-type { border-top: 0; }
+.order .oh { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px; align-items: center; }
+.order .act { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+.toggle { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; min-height: 44px; cursor: pointer; }
+.toggle input { width: 20px; height: 20px; }
+/* guide */
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.86rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 15px; }
+.sugg .why { color: var(--soft); font-size: 0.88rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.sugg .confirm { background: var(--warn); border-radius: 10px; padding: 10px; margin: 0 0 8px; font-size: 15px; }
+.sugg.done { opacity: 0.7; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin: 0 6px 6px 0; background: var(--wash); }
+.tag.risk { background: var(--hot); } .tag.ask { background: var(--warn); } .tag.who { background: #EEF2F6; }
+/* log */
+.log { list-style: none; margin: 0; padding: 0; }
+.log li { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 8px; padding: 7px 0; border-top: 1px dashed var(--line); font-size: 15px; }
+.log li:first-child { border-top: 0; }
+.log time { font-weight: 800; }
+.log .who { color: var(--soft); font-weight: 700; }
+.log li.new { animation: flash 1.4s ease-out; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 999px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.9rem; padding-bottom: 40px; max-width: 60em; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Stores and stock</h1>
+  <p class="lead">See what each area has on the shelf, what is running out and where each order has got to. Ward staff report and request on a phone. The storekeeper issues, receives and counts. The supply manager sees the gaps. The guide suggests reorders and level changes with its reasons; a person decides.</p>
+
+  <div class="top">
+    <div class="roles" role="group" aria-label="Whose view">
+      <button type="button" data-role="ward" aria-pressed="true">Ward staff<small>phone</small></button>
+      <button type="button" data-role="store" aria-pressed="false">Storekeeper<small>phone or tablet</small></button>
+      <button type="button" data-role="manager" aria-pressed="false">Supply manager<small>laptop</small></button>
+    </div>
+    <div class="clock"><span id="clock">Example General Hospital</span><button type="button" class="small" id="reset">Reset example</button></div>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+
+  <div class="stats" id="kpis" role="group" aria-label="Key measures. Tap a tile for its definition."></div>
+  <div class="def" id="kdef" role="region" aria-live="polite" hidden></div>
+
+  <div class="layout" id="layout">
+    <div id="view"></div>
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how" id="guide-how">The guide reads the stock, requests and orders and suggests what to look at, with its reasons. In this preview it uses clear rules that run in your browser; nothing is sent anywhere. It only proposes: orders, level changes and transfers happen when a person confirms them, and purchases are approved by people in the purchasing process.</p>
+      <div id="sugg"></div>
+    </aside>
+    <section class="card" id="logcard" aria-labelledby="log-h">
+      <div class="cardhead"><h2 id="log-h">Today's log</h2><span class="chip wait" id="logcount"></span></div>
+      <ol class="log" id="log"></ol>
+      <button type="button" class="small" id="logmore" hidden>Show all</button>
+    </section>
+  </div>
+  <p class="foot">Items, quantities, usage and orders are invented for this demo. Tracer items are a short local list of items that must never run out; the settings used here (4 hours for “on time”, 1.5 days of use for a top-up level, 7 days for delivery) are example settings an organisation would choose for itself. <b>Coming in Dec 2026:</b> stores and stock in the Ospeli app, with phone counts by area, ward-to-store requests, the order tracker through purchasing, and the stock-out log with causes. Not for medicines dispensing or choosing suppliers, and it does not approve purchases; people do. <a href="../../areas/supply-chain-stores/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+// ---------- Fictional reference data ----------
+var ITEMS = {
+  GLM: { name: 'Examination gloves, medium', unit: 'box of 100', tracer: true, shelf: 'A' },
+  GLL: { name: 'Examination gloves, large', unit: 'box of 100', tracer: false, shelf: 'A' },
+  APR: { name: 'Disposable aprons', unit: 'roll of 200', tracer: false, shelf: 'A' },
+  IVS: { name: 'IV giving set', unit: 'each', tracer: true, shelf: 'B' },
+  SYR: { name: 'Syringe, 10 ml', unit: 'box of 100', tracer: false, shelf: 'B' },
+  SUC: { name: 'Suction catheter', unit: 'each', tracer: true, shelf: 'B' },
+  OXM: { name: 'Oxygen mask, adult', unit: 'each', tracer: true, shelf: 'C' },
+  NCN: { name: 'Nasal cannula, adult', unit: 'each', tracer: false, shelf: 'C' },
+  DRS: { name: 'Dressing pack, sterile', unit: 'pack', tracer: false, shelf: 'C' },
+  LIN: { name: 'Bed linen pack', unit: 'pack', tracer: true, shelf: 'D' },
+  SHB: { name: 'Sharps bin, 5 litre', unit: 'each', tracer: true, shelf: 'D' },
+  HRB: { name: 'Hand rub, 500 ml', unit: 'bottle', tracer: true, shelf: 'D' }
+};
+var IDS = Object.keys(ITEMS);
+var AREAS = { W4: 'Ward 4 · medical', W7: 'Ward 7 · surgical', ED: 'Emergency department', DSU: 'Day surgery unit' };
+var SHORT = { W4: 'Ward 4', W7: 'Ward 7', ED: 'Emergency dept', DSU: 'Day surgery', STORE: 'Main store' };
+// Example settings (an organisation sets its own).
+var RULES = { onTimeMin: 240, levelCoverDays: 1.5, leadDays: 7, bufferDays: 3, targetDays: 21, repeatOuts: 3, overLevel: 1.5, slowApprovalX: 2, runs: [540, 780, 960] };
+var CAUSES = ['Not known yet', 'Store out', 'Not requested in time', 'Delivery late', 'Waiting for approval', 'Used more than usual', 'Held in another area'];
+var STEPS = ['Requested', 'Approved', 'Ordered', 'Delivered', 'Received'];
+var WAITING = ['Waiting for purchasing approval', 'Approved, waiting to be ordered', 'Ordered, waiting for delivery', 'Delivered, waiting to be checked in', 'Received'];
+var USUAL = [2, 1, 7, 1];
+// [item, on hand, top-up level, average use per day]
+var WARD = {
+  W4: [['GLM', 3, 8, 5], ['GLL', 6, 6, 2], ['APR', 3, 3, 2], ['IVS', 10, 10, 6], ['SYR', 4, 4, 2], ['SUC', 4, 10, 6], ['OXM', 0, 12, 7], ['NCN', 10, 10, 3], ['DRS', 10, 10, 3], ['LIN', 12, 20, 16], ['SHB', 4, 4, 1], ['HRB', 7, 8, 3]],
+  W7: [['GLM', 22, 8, 5], ['GLL', 6, 6, 2], ['APR', 3, 3, 1], ['IVS', 30, 15, 10], ['SYR', 4, 4, 2], ['SUC', 8, 8, 3], ['OXM', 10, 10, 4], ['DRS', 14, 20, 9], ['LIN', 18, 20, 12], ['SHB', 4, 4, 1], ['HRB', 7, 8, 3]],
+  ED: [['GLM', 9, 14, 9], ['GLL', 8, 8, 4], ['APR', 4, 4, 2], ['IVS', 2, 20, 12], ['SYR', 6, 6, 4], ['SUC', 1, 24, 15], ['OXM', 14, 20, 10], ['NCN', 15, 15, 6], ['DRS', 12, 12, 6], ['LIN', 13, 15, 8], ['SHB', 6, 6, 2], ['HRB', 10, 10, 4]],
+  DSU: [['GLM', 6, 6, 3], ['APR', 2, 2, 1], ['IVS', 8, 8, 4], ['SYR', 3, 3, 1], ['SUC', 5, 6, 2], ['OXM', 6, 6, 2], ['DRS', 7, 8, 3], ['LIN', 6, 8, 3], ['SHB', 1, 4, 1], ['HRB', 5, 6, 2]]
+};
+var MAIN = { GLM: 150, GLL: 200, APR: 90, IVS: 40, SYR: 150, SUC: 70, OXM: 0, NCN: 120, DRS: 300, LIN: 260, SHB: 60, HRB: 150 };
+var PATTERN = [1, -1, 0, 2, -2, 1, -1, 0, 1, -1, 2, -2, 0, 0]; // sums to zero, so the 14-day average equals the use above
+var STORE = 'ospeli.stores.v1';
+var START_MIN = 11 * 60 + 20; // the demo day starts at 11:20
+
+function seed() {
+  var s = { v: 1, t0: Date.now(), clock0: START_MIN, role: 'ward', area: 'W4', guide: true, dismissed: {}, shelf: 'B', allBelow: false,
+    ward: {}, store: {}, requests: [], orders: [], outs: [], log: [], cycles: [9, 12, 8, 14, 11, 10, 16, 9], seq: 1, poSeq: 1047, levelAsks: {}, review: {} };
+  Object.keys(WARD).forEach(function (a) {
+    s.ward[a] = {};
+    WARD[a].forEach(function (r) { var k = Math.floor(r[3] * 0.15); s.ward[a][r[0]] = { on: r[1], top: r[2], hist: PATTERN.map(function (p) { return r[3] + p * k; }) }; });
+  });
+  s.ward.W4.LIN.hist = [12, 13, 13, 14, 14, 15, 15, 17, 17, 18, 18, 19, 19, 20]; // rising use, average 16
+  IDS.forEach(function (id) { s.store[id] = { on: MAIN[id] }; });
+  function req(area, item, qty, raised, issued, issuedQty, urgent) {
+    var r = { id: 'R' + (100 + s.seq++), area: area, item: item, qty: qty, raised: raised, urgent: !!urgent, issued: issued == null ? null : issued, issuedQty: issuedQty || 0 };
+    r.status = issued == null ? 'open' : (issuedQty >= qty ? 'issued' : 'part'); r.full = issued == null ? null : issuedQty >= qty; s.requests.push(r);
+  }
+  // Closed earlier today (8 of 10 lines issued in full within 4 hours)
+  req('ED', 'OXM', 8, 400, 550, 8); req('W4', 'NCN', 3, 430, 545, 3); req('ED', 'GLM', 6, 450, 550, 6); req('W7', 'GLL', 4, 470, 545, 4);
+  req('W4', 'IVS', 4, 480, 545, 4); req('DSU', 'DRS', 3, 495, 555, 3); req('W7', 'HRB', 2, 500, 545, 2); req('ED', 'LIN', 6, 520, 560, 6);
+  req('W7', 'SUC', 4, 270, 545, 4); req('ED', 'IVS', 10, 180, 550, 4);
+  // Still open
+  req('W4', 'OXM', 12, 525, null, 0, true); req('ED', 'IVS', 18, 590, null); req('W4', 'SUC', 6, 605, null); req('ED', 'SUC', 23, 630, null); req('DSU', 'SHB', 3, 660, null);
+  s.orders = [
+    { id: 'PO-1041', item: 'IVS', qty: 600, status: 0, atStep: 6, ago: 6, due: null },
+    { id: 'PO-1038', item: 'OXM', qty: 300, status: 2, atStep: 9, ago: 13, due: 'today' },
+    { id: 'PO-1044', item: 'LIN', qty: 300, status: 0, atStep: 1, ago: 1, due: null },
+    { id: 'PO-1035', item: 'GLM', qty: 120, status: 2, atStep: 4, ago: 7, due: 'in 3 days' },
+    { id: 'PO-1046', item: 'DRS', qty: 200, status: 1, atStep: 1, ago: 3, due: null }
+  ];
+  var o = function (loc, item, sd, st, ed, en, cause) { s.outs.push({ id: 'S' + (s.seq++), loc: loc, item: item, startDay: sd, start: st, endDay: ed, end: en, cause: cause }); };
+  o('ED', 'SUC', -12, 600, -11, 420, 'Not requested in time'); o('DSU', 'SHB', -9, 600, -9, 780, 'Delivery late'); o('ED', 'SUC', -8, 900, -8, 1260, 'Store out');
+  o('W4', 'IVS', -6, 200, -6, 560, 'Not known yet'); o('W7', 'LIN', -5, 1140, -5, 1320, 'Not requested in time'); o('ED', 'SUC', -3, 1320, -2, 540, 'Used more than usual');
+  o('STORE', 'OXM', -1, 960, null, null, 'Delivery late'); o('W4', 'OXM', 0, 520, null, null, 'Store out');
+  var L = function (t, who, text) { s.log.push({ t: t, who: who, text: text }); };
+  L(520, 'Ward staff', 'Ward 4: oxygen masks reported out of stock.');
+  L(525, 'Ward staff', 'Ward 4: urgent top-up requested, oxygen masks × 12.');
+  L(545, 'Storekeeper', 'Morning store run: 10 request lines to 4 areas. Oxygen masks not issued (store out).');
+  L(590, 'Ward staff', 'Emergency dept: top-up requested, IV giving sets × 18.');
+  L(605, 'Ward staff', 'Ward 4: top-up requested, suction catheters × 6.');
+  L(630, 'Ward staff', 'Emergency dept: top-up requested, suction catheters × 23.');
+  L(660, 'Ward staff', 'Day surgery: top-up requested, sharps bins × 3.');
+  return s;
+}
+
+// ---------- State ----------
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() { try { var s = JSON.parse(localStorage.getItem(STORE)); return s && s.v === 1 && s.ward && Date.now() - s.t0 < 8 * 3600e3 ? s : null; } catch (e) { return null; } }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+function now() { return Math.min(23 * 60 + 59, state.clock0 + Math.floor((Date.now() - state.t0) / 60000)); }
+
+// ---------- Calculations (pure reads of state) ----------
+function avg(a) { return a.reduce(function (n, x) { return n + x; }, 0) / (a.length || 1); }
+function use(area, id) { var w = state.ward[area][id]; return w ? avg(w.hist) : 0; }
+function storeUse(id) { return Object.keys(state.ward).reduce(function (n, a) { return n + use(a, id); }, 0); }
+function onOrder(id) { return state.orders.filter(function (o) { return o.item === id && o.status < 4; }).reduce(function (n, o) { return n + o.qty; }, 0); }
+function openOrder(id) { return state.orders.filter(function (o) { return o.item === id && o.status < 4; }).sort(function (a, b) { return b.status - a.status; })[0] || null; }
+function openReq(area, id) { return state.requests.filter(function (r) { return r.area === area && r.item === id && r.status === 'open'; })[0] || null; }
+function openOut(loc, id) { return state.outs.filter(function (o) { return o.loc === loc && o.item === id && o.end == null; })[0] || null; }
+function median(a) { var s = a.slice().sort(function (x, y) { return x - y; }), m = s.length >> 1; return s.length ? (s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2) : 0; }
+function round1(x) { return Math.round(x * 10) / 10; }
+
+function kpis() {
+  var outs = [], locs = 0;
+  IDS.forEach(function (id) {
+    if (!ITEMS[id].tracer) return;
+    Object.keys(state.ward).forEach(function (a) { var w = state.ward[a][id]; if (w) { locs++; if (w.on <= 0) outs.push({ where: SHORT[a], item: ITEMS[id].name }); } });
+    locs++; if (state.store[id].on <= 0) outs.push({ where: SHORT.STORE, item: ITEMS[id].name });
+  });
+  var outDays = 0;
+  state.outs.forEach(function (o) { if (!ITEMS[o.item].tracer) return; var e = o.end == null ? 0 : o.endDay; outDays += Math.max(0, e - Math.max(o.startDay, -13) + 1); });
+  var closed = state.requests.filter(function (r) { return r.status === 'issued' || r.status === 'part'; });
+  var ok = closed.filter(function (r) { return r.full && r.issued - r.raised <= RULES.onTimeMin; }).length;
+  var due = state.requests.filter(function (r) { return r.status === 'open' && now() - r.raised > RULES.onTimeMin; }).length;
+  var lines = closed.length + due;
+  var fewest = null;
+  IDS.forEach(function (id) { if (!ITEMS[id].tracer) return; var d = state.store[id].on / storeUse(id); if (!fewest || d < fewest.days) fewest = { item: ITEMS[id].name, days: round1(d) }; });
+  return {
+    tracerStockOuts: outs.length, tracerStockOutList: outs,
+    stockOutRate14dPct: round1(100 * outDays / (locs * 14)),
+    filledOnTime: { pct: lines ? Math.round(100 * ok / lines) : null, inFullOnTime: ok, lines: lines },
+    fewestDaysOfStock: fewest,
+    orderCycleMedianDays: median(state.cycles),
+    openRequests: state.requests.filter(function (r) { return r.status === 'open'; }).length
+  };
+}
+
+// ---------- The guide: plain rules, each with its reason ----------
+function names(ids) { return ids.map(function (id) { return ITEMS[id].name.toLowerCase(); }).join(', '); }
+function suggest(role) {
+  var out = [], a = state.area;
+  function levelCands() {
+    var c = [];
+    Object.keys(state.ward).forEach(function (ar) { IDS.forEach(function (id) { var w = state.ward[ar][id]; if (!w) return; var u = use(ar, id), need = Math.ceil(u * RULES.levelCoverDays); if (need > w.top) c.push({ area: ar, item: id, from: w.top, to: need, use: u, last7: w.hist.slice(-7) }); }); });
+    return c;
+  }
+  function repeatCands() {
+    var g = {};
+    state.outs.forEach(function (o) { if (o.startDay >= -13) { var k = o.loc + ':' + o.item; g[k] = (g[k] || 0) + 1; } });
+    return Object.keys(g).filter(function (k) { return g[k] >= RULES.repeatOuts; }).map(function (k) { var p = k.split(':'); return { loc: p[0], item: p[1], n: g[k], key: k }; });
+  }
+  function reorderCands() {
+    return IDS.map(function (id) {
+      var u = storeUse(id), on = state.store[id].on, oo = onOrder(id), cover = (on + oo) / u;
+      return { item: id, use: u, on: on, oo: oo, cover: cover, qty: Math.ceil((u * RULES.targetDays - on - oo) / 50) * 50 };
+    }).filter(function (c) { return c.cover < RULES.leadDays + RULES.bufferDays && c.qty > 0; }).sort(function (x, y) { return x.cover - y.cover; });
+  }
+  function transferCand() {
+    var best = null;
+    IDS.forEach(function (id) {
+      var from = null, to = null;
+      Object.keys(state.ward).forEach(function (ar) { var w = state.ward[ar][id]; if (!w) return; if (w.on > w.top * RULES.overLevel && (!from || w.on - w.top > state.ward[from][id].on - state.ward[from][id].top)) from = ar; if (w.on < w.top && (!to || w.top - w.on > state.ward[to][id].top - state.ward[to][id].on)) to = ar; });
+      if (from && to) { var q = Math.min(state.ward[from][id].on - state.ward[from][id].top, state.ward[to][id].top - state.ward[to][id].on); if (q > 0 && (!best || (ITEMS[id].tracer && !ITEMS[best.item].tracer) || q > best.qty)) best = { item: id, from: from, to: to, qty: q }; }
+    });
+    return best;
+  }
+  if (role === 'ward') {
+    var need = IDS.filter(function (id) { var w = state.ward[a][id]; return w && w.on < w.top && !openReq(a, id); });
+    if (need.length >= 2) out.push({ id: 'reqall-' + a, tag: 'Stock', who: 'You decide', title: need.length + ' items here are below their top-up level and not requested yet',
+      text: 'Request them in one go: ' + names(need) + '. Each request tops the item back up to its level.',
+      why: 'Count is below the top-up level and there is no open request for these items.',
+      label: 'Request all ' + need.length, confirm: 'Raise ' + need.length + ' top-up requests for ' + SHORT[a] + '?',
+      run: function () { need.forEach(function (id) { request(a, id, false, true); }); log('Ward staff', SHORT[a] + ': ' + need.length + ' top-up requests raised in one go.'); return need.length + ' requests sent to the store.'; } });
+    levelCands().filter(function (c) { return c.area === a; }).slice(0, 1).forEach(function (c) {
+      var k = c.area + ':' + c.item, asked = state.levelAsks[k];
+      out.push({ id: 'lvl-' + k, tag: 'Top-up level', who: 'Supply manager decides', title: ITEMS[c.item].name + ' runs out between top-ups here',
+        text: 'Use here is about ' + round1(c.use) + ' a day, but the level is ' + c.from + '. Ask the supply manager to look at a level of about ' + c.to + '.',
+        why: 'Last 7 days of use: ' + c.last7.join(', ') + '. Rule: a level should cover ' + RULES.levelCoverDays + ' days of use (example setting).',
+        label: asked ? 'Sent to the supply manager' : 'Send to the supply manager', done: !!asked,
+        run: function () { state.levelAsks[k] = true; log('Ward staff', SHORT[c.area] + ': asked the supply manager to review the ' + ITEMS[c.item].name.toLowerCase() + ' level.'); return 'Sent. The supply manager sees it in their guide.'; } });
+    });
+    repeatCands().filter(function (c) { return c.loc === a; }).forEach(function (c) {
+      out.push({ id: 'rep-' + c.key, tag: 'Repeat gap', risk: true, who: 'For the stock-out review', title: ITEMS[c.item].name + ' has run out here ' + c.n + ' times in 14 days', text: 'When you report it out, the store sees it first. The supply manager reviews repeat gaps and their causes.', why: c.n + ' stock-out records for this item in this area in the last 14 days (rule: ' + RULES.repeatOuts + ' or more).' });
+    });
+  }
+  if (role === 'store') {
+    state.orders.forEach(function (o) {
+      if (o.status !== 2 || state.store[o.item].on > 0) return;
+      var waiting = state.requests.filter(function (r) { return r.item === o.item && r.status === 'open'; });
+      if (!waiting.length) return;
+      out.push({ id: 'recv-' + o.id, tag: 'Delivery', risk: true, who: 'You decide', title: 'Receive ' + o.id + ' first: ' + ITEMS[o.item].name.toLowerCase() + 's are out',
+        text: 'The store has none, ' + waiting.map(function (r) { return SHORT[r.area]; }).join(' and ') + ' ' + (waiting.length > 1 ? 'are' : 'is') + ' waiting, and ' + o.qty + ' are due ' + o.due + '. Check them in as soon as they arrive, then issue.',
+        why: 'Store stock is zero, a delivery for this item is due, and there ' + (waiting.length > 1 ? 'are ' + waiting.length + ' open requests' : 'is an open request') + '.',
+        label: 'Show me', show: 'deliveries' });
+    });
+  }
+  if (role === 'manager') {
+    repeatCands().forEach(function (c) {
+      var flagged = state.review[c.key];
+      out.push({ id: 'rep-' + c.key, tag: 'Repeat gap', risk: true, who: 'Supply manager decides', title: ITEMS[c.item].name + ': out ' + c.n + ' times in 14 days at ' + SHORT[c.loc],
+        text: 'Causes recorded: ' + state.outs.filter(function (o) { return o.loc + ':' + o.item === c.key; }).map(function (o) { return o.cause.toLowerCase(); }).join('; ') + '. Worth a stock-out review: trace each gap to the step where it started.',
+        why: c.n + ' stock-out records for the same item and area in 14 days (rule: ' + RULES.repeatOuts + ' or more).',
+        label: flagged ? 'In the review list' : 'Add to stock-out review', done: !!flagged,
+        run: function () { state.review[c.key] = true; log('Supply manager', ITEMS[c.item].name + ' at ' + SHORT[c.loc] + ' added to the stock-out review.'); return 'Added to the stock-out review list.'; } });
+    });
+  }
+  if (role === 'manager' || role === 'store') {
+    reorderCands().slice(0, 1).forEach(function (c) {
+      out.push({ id: 'ord-' + c.item, tag: 'Reorder', who: role === 'manager' ? 'You decide; purchasing approves' : 'Supply manager decides', title: 'Propose an order: ' + c.qty + ' × ' + ITEMS[c.item].name.toLowerCase(),
+        text: 'Main store has ' + c.on + (c.oo ? ' plus ' + c.oo + ' on order' : ' and none on order') + ': about ' + round1(c.cover) + ' days at current use. ' + c.qty + ' would bring it to about ' + RULES.targetDays + ' days.',
+        why: 'Uses about ' + round1(c.use) + ' a day (14-day average, all areas). Rule: propose when cover is under ' + (RULES.leadDays + RULES.bufferDays) + ' days (' + RULES.leadDays + ' days delivery plus ' + RULES.bufferDays + ' spare; example settings).',
+        label: role === 'manager' ? 'Propose this order' : 'Send to the supply manager', confirm: role === 'manager' ? 'Send an order request for ' + c.qty + ' × ' + ITEMS[c.item].name.toLowerCase() + ' to purchasing approval? It is not placed until it is approved.' : null,
+        run: function () {
+          if (role !== 'manager') { log('Storekeeper', 'Flagged low cover of ' + ITEMS[c.item].name.toLowerCase() + ' to the supply manager.'); state.dismissed['ord-' + c.item + ':store'] = true; return 'Flagged to the supply manager.'; }
+          var o = { id: 'PO-' + (state.poSeq++), item: c.item, qty: c.qty, status: 0, atStep: 0, ago: 0, due: null, fromGuide: true };
+          state.orders.unshift(o); log('Supply manager', 'Order request ' + o.id + ' raised: ' + c.qty + ' × ' + ITEMS[c.item].name.toLowerCase() + ' (proposed by the guide, confirmed by the supply manager). Now waiting for purchasing approval.');
+          return o.id + ' sent for purchasing approval.';
+        } });
+    });
+  }
+  if (role === 'manager') {
+    state.orders.forEach(function (o) {
+      if (o.status > 1 || o.atStep < USUAL[o.status] * RULES.slowApprovalX) return;
+      var d = round1(state.store[o.item].on / storeUse(o.item));
+      out.push({ id: 'rem-' + o.id, tag: 'Order stuck', risk: true, who: 'You decide', title: o.id + ' has waited ' + o.atStep + ' days: ' + WAITING[o.status].toLowerCase(),
+        text: ITEMS[o.item].name + ' × ' + o.qty + '. The main store has about ' + d + ' days left. A reminder to the approving role may move it on.',
+        why: 'Usual time at this step is about ' + USUAL[o.status] + ' days (example setting); this is more than ' + RULES.slowApprovalX + ' times that.',
+        label: o.reminded ? 'Reminder sent ' + o.reminded : 'Send a reminder', done: !!o.reminded, confirm: 'Send a reminder about ' + o.id + ' to the approving role?',
+        run: function () { o.reminded = fmtT(now()); log('Supply manager', 'Reminder sent to the approving role about ' + o.id + ' (' + ITEMS[o.item].name.toLowerCase() + ').'); return 'Reminder sent.'; } });
+    });
+    levelCands().slice(0, 1).forEach(function (c) {
+      var k = c.area + ':' + c.item;
+      out.push({ id: 'lvl-' + k, tag: 'Top-up level', who: 'You decide', title: 'Raise the ' + ITEMS[c.item].name.toLowerCase() + ' level on ' + SHORT[c.area] + ' from ' + c.from + ' to ' + c.to,
+        text: 'Use has run ahead of the level, so the ward runs short before the next top-up.' + (state.levelAsks[k] ? ' Ward staff on ' + SHORT[c.area] + ' flagged this too.' : ''),
+        why: 'Last 7 days of use: ' + c.last7.join(', ') + ' (14-day average ' + round1(c.use) + '). Rule: a level should cover ' + RULES.levelCoverDays + ' days of use (example setting).',
+        label: 'Propose new level', confirm: 'Change the top-up level for ' + ITEMS[c.item].name.toLowerCase() + ' on ' + SHORT[c.area] + ' to ' + c.to + '?',
+        run: function () { state.ward[c.area][c.item].top = c.to; log('Supply manager', SHORT[c.area] + ': top-up level for ' + ITEMS[c.item].name.toLowerCase() + ' changed from ' + c.from + ' to ' + c.to + ' (proposed by the guide).'); return 'Level changed to ' + c.to + '.'; } });
+    });
+  }
+  if (role === 'store' || role === 'manager') {
+    var t = transferCand();
+    if (t) out.push({ id: 'tr-' + t.item + t.from + t.to, tag: 'Transfer', who: role === 'manager' ? 'You decide' : 'Supply manager or you decide', title: 'Move ' + t.qty + ' ' + ITEMS[t.item].name.toLowerCase() + 's from ' + SHORT[t.from] + ' to ' + SHORT[t.to],
+      text: SHORT[t.from] + ' holds ' + state.ward[t.from][t.item].on + ' against a level of ' + state.ward[t.from][t.item].top + '. ' + SHORT[t.to] + ' has ' + state.ward[t.to][t.item].on + ' of ' + state.ward[t.to][t.item].top + '.',
+      why: 'One area is more than ' + Math.round(RULES.overLevel * 100) + '% of its level while another is below its level, for the same item.',
+      label: 'Propose transfer', confirm: 'Move ' + t.qty + ' from ' + SHORT[t.from] + ' to ' + SHORT[t.to] + '? Both areas should agree before stock moves.',
+      run: function () { transfer(t.item, t.from, t.to, t.qty); return 'Transfer recorded.'; } });
+  }
+  return out.filter(function (x) { return !state.dismissed[x.id + ':' + role]; }).slice(0, 4);
+}
+
+// ---------- Actions (change state, write the log) ----------
+function log(who, text) { state.log.push({ t: now(), who: who, text: text, fresh: true }); }
+function request(area, id, urgent, quiet) {
+  var w = state.ward[area][id], ex = openReq(area, id);
+  if (ex) { if (urgent && !ex.urgent) { ex.urgent = true; ex.qty = Math.max(ex.qty, w.top - w.on); } return ex; }
+  var qty = Math.max(1, w.top - w.on);
+  var r = { id: 'R' + (100 + state.seq++), area: area, item: id, qty: qty, raised: now(), urgent: !!urgent, issued: null, issuedQty: 0, status: 'open', full: null };
+  state.requests.push(r);
+  if (!quiet) log('Ward staff', SHORT[area] + ': ' + (urgent ? 'urgent ' : '') + 'top-up requested, ' + ITEMS[id].name.toLowerCase() + ' × ' + qty + '.');
+  return r;
+}
+function startOut(loc, id, cause) { if (!openOut(loc, id)) state.outs.push({ id: 'S' + (state.seq++), loc: loc, item: id, startDay: 0, start: now(), endDay: null, end: null, cause: cause || 'Not known yet' }); }
+function endOut(loc, id) { var o = openOut(loc, id); if (o) { o.endDay = 0; o.end = now(); } }
+function reportOut(area, id) {
+  state.ward[area][id].on = 0;
+  startOut(area, id, state.store[id].on <= 0 ? 'Store out' : 'Not known yet');
+  log('Ward staff', SHORT[area] + ': ' + ITEMS[id].name.toLowerCase() + ' reported out of stock.');
+  request(area, id, true);
+}
+function setCount(area, id, n) {
+  var w = state.ward[area][id], was = w.on; w.on = n;
+  if (n <= 0) startOut(area, id, state.store[id].on <= 0 ? 'Store out' : 'Not known yet'); else endOut(area, id);
+  log('Ward staff', SHORT[area] + ': counted ' + ITEMS[id].name.toLowerCase() + ', ' + n + (was !== n ? ' (record said ' + was + ')' : '') + '.');
+}
+function issue(rid) {
+  var r = state.requests.filter(function (x) { return x.id === rid; })[0]; if (!r || r.status !== 'open') return;
+  var st = state.store[r.item], q = Math.min(r.qty, st.on); if (q <= 0) return;
+  st.on -= q; state.ward[r.area][r.item].on += q;
+  r.issued = now(); r.issuedQty = q; r.full = q >= r.qty; r.status = r.full ? 'issued' : 'part';
+  endOut(r.area, r.item);
+  if (!r.full) state.requests.push({ id: 'R' + (100 + state.seq++), area: r.area, item: r.item, qty: r.qty - q, raised: r.raised, urgent: r.urgent, issued: null, issuedQty: 0, status: 'open', full: null, balance: true });
+  if (st.on <= 0) startOut('STORE', r.item, 'Not known yet');
+  log('Storekeeper', 'Issued ' + q + ' × ' + ITEMS[r.item].name.toLowerCase() + ' to ' + SHORT[r.area] + (r.full ? '.' : ' (' + q + ' of ' + r.qty + '; the balance stays open).'));
+  return r;
+}
+function receive(oid) {
+  var o = state.orders.filter(function (x) { return x.id === oid; })[0]; if (!o || o.status !== 2) return;
+  o.status = 4; o.atStep = 0; state.store[o.item].on += o.qty; state.cycles.push(Math.max(1, o.ago)); endOut('STORE', o.item);
+  log('Storekeeper', o.id + ' received and checked in: ' + o.qty + ' × ' + ITEMS[o.item].name.toLowerCase() + '.');
+}
+function advance(oid) {
+  var o = state.orders.filter(function (x) { return x.id === oid; })[0]; if (!o || o.status > 1) return;
+  o.status++; o.atStep = 0; if (o.status === 2) o.due = 'in ' + RULES.leadDays + ' days';
+  log('Supply manager', o.id + ': ' + (o.status === 1 ? 'approval recorded (given by the approving role).' : 'order placed with the supplier.'));
+}
+function transfer(id, from, to, q) {
+  state.ward[from][id].on -= q; state.ward[to][id].on += q; endOut(to, id);
+  var r = openReq(to, id); if (r) { r.qty = Math.max(0, r.qty - q); if (!r.qty) r.status = 'cancelled'; }
+  log(state.role === 'manager' ? 'Supply manager' : 'Storekeeper', 'Transfer: ' + q + ' × ' + ITEMS[id].name.toLowerCase() + ' from ' + SHORT[from] + ' to ' + SHORT[to] + ' (proposed by the guide, confirmed by a person).');
+}
+
+// ---------- Helpers ----------
+function fmtT(m) { m = Math.max(0, Math.round(m)); var h = Math.floor(m / 60) % 24, n = m % 60; return (h < 10 ? '0' : '') + h + ':' + (n < 10 ? '0' : '') + n; }
+function dur(m) { m = Math.max(0, Math.round(m)); if (m < 60) return m + ' min'; var h = Math.floor(m / 60), r = m % 60; return h + ' h' + (r ? ' ' + r + ' min' : ''); }
+function daysTxt(d) { if (!isFinite(d)) return 'no recent use'; if (d <= 0) return 'none left'; if (d < 1) return 'under a day left'; var r = round1(d); return 'about ' + r + (r === 1 ? ' day' : ' days') + ' left'; }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+function nextRun() { var n = now(); return RULES.runs.filter(function (r) { return r > n; })[0]; }
+function eta(r) {
+  var st = state.store[r.item].on, o = openOrder(r.item);
+  if (st >= r.qty) { if (r.urgent) return 'Urgent: it is at the top of the store pick list.'; var n = nextRun(); return n ? 'Expected on the ' + fmtT(n) + ' store run.' : 'Expected on the first store run tomorrow.'; }
+  if (st > 0) return 'Store has ' + st + ' of ' + r.qty + '; the rest follows when stock arrives.';
+  if (!o) return 'Store is out and nothing is on order yet. The supply manager can see this.';
+  if (o.status >= 2) return 'Store is out. A delivery is due ' + o.due + '; it comes up after that.';
+  return 'Store is out. The order is ' + WAITING[o.status].toLowerCase() + ' (' + o.atStep + ' days).';
+}
+function reqStatus(r) {
+  if (r.status === 'open') return 'Waiting ' + dur(now() - r.raised) + '. ' + eta(r);
+  if (r.status === 'cancelled') return 'Covered by a transfer.';
+  return (r.full ? 'Issued in full' : 'Part issued (' + r.issuedQty + ')') + ' at ' + fmtT(r.issued) + (r.issued - r.raised <= RULES.onTimeMin ? ', on time.' : ', after ' + dur(r.issued - r.raised) + '.');
+}
+function when(o) { if (o.startDay === 0) return fmtT(o.start); if (o.startDay === -1) return 'yesterday ' + fmtT(o.start); return (-o.startDay) + ' days ago'; }
+
+// ---------- Render ----------
+var showAllBelow = false, openKpi = null, openCount = null, pending = null, filter = '', showAllLog = false, lastK = null;
+var HINT = {
+  ward: 'Ward staff on a phone: find an item, request a top-up, report it out of stock, count the shelf, and see when it will arrive.',
+  store: 'Storekeeper on a phone or tablet: work the pick list, receive deliveries, and count one shelf at a time.',
+  manager: 'Supply manager: stock-outs today, items below their level with days of stock left, and orders stuck in purchasing.'
+};
+function render() {
+  document.querySelectorAll('.roles button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-role') === state.role)); });
+  document.getElementById('rolehint').textContent = HINT[state.role];
+  document.getElementById('clock').textContent = 'Example General Hospital · demo time ' + fmtT(now());
+  renderKpis();
+  var v = document.getElementById('view'); v.textContent = '';
+  if (state.role === 'ward') viewWard(v); else if (state.role === 'store') viewStore(v); else viewManager(v);
+  renderGuide(); renderLog(); save();
+}
+function renderKpis() {
+  var k = kpis(), box = document.getElementById('kpis'); box.textContent = '';
+  var tiles = [
+    { id: 'outs', v: String(k.tracerStockOuts), l: 'tracer stock-outs now', s: '14-day rate ' + k.stockOutRate14dPct + '%', cls: k.tracerStockOuts ? 'bad' : 'good',
+      def: ['Stock-out rate on tracer items', 'Tracer item-days out of stock ÷ tracer item-days, per area (local definition). Tracer items are a short list that must never run out (here: ' + IDS.filter(function (i) { return ITEMS[i].tracer; }).map(function (i) { return ITEMS[i].name.toLowerCase(); }).join(', ') + '). The big number counts tracer items at zero right now, in any area or the main store: ' + (k.tracerStockOutList.map(function (o) { return o.item.toLowerCase() + ' (' + o.where + ')'; }).join(', ') || 'none') + '.'] },
+    { id: 'ontime', v: k.filledOnTime.pct == null ? '–' : k.filledOnTime.pct + '%', l: 'requests filled on time', s: k.filledOnTime.inFullOnTime + ' of ' + k.filledOnTime.lines + ' lines today', cls: '',
+      def: ['Requests filled on time', 'Request lines issued in full within 4 hours ÷ request lines issued or overdue today (local definition; 4 hours is an example setting). It builds on fill rate: request lines issued in full ÷ request lines raised.'] },
+    { id: 'days', v: k.fewestDaysOfStock.days + ' days', l: 'fewest days of stock', s: k.fewestDaysOfStock.item + ', main store', cls: k.fewestDaysOfStock.days < 3 ? 'bad' : '',
+      def: ['Days of stock', 'Main-store stock on hand ÷ average daily use over the last 14 days, worked out for each tracer item (local definition). The tile shows the tracer item closest to running out. Stock on order is not counted until it is received.'] },
+    { id: 'cycle', v: k.orderCycleMedianDays + ' days', l: 'order cycle time', s: 'median, request to received', cls: '',
+      def: ['Order cycle time', 'Request raised → goods received, median of recent orders (local definition). The order tracker shows which step the time goes in.'] }
+  ];
+  tiles.forEach(function (t) {
+    var changed = lastK && lastK[t.id] !== t.v;
+    box.appendChild(el('button', { type: 'button', class: 'stat ' + t.cls + (changed ? ' flash' : ''), 'data-kpi': t.id, 'aria-expanded': String(openKpi === t.id), 'aria-controls': 'kdef', title: t.def[1], 'aria-label': t.v + ' ' + t.l + ', ' + t.s + '. Show definition.',
+      onclick: function () { openKpi = openKpi === t.id ? null : t.id; renderKpis(); } }, [el('span', { class: 'i', 'aria-hidden': 'true', text: 'i' }), el('b', { text: t.v }), el('span', { class: 'l', text: t.l }), el('span', { class: 's', text: t.s })]));
+  });
+  lastK = {}; tiles.forEach(function (t) { lastK[t.id] = t.v; });
+  var d = document.getElementById('kdef'), sel = tiles.filter(function (t) { return t.id === openKpi; })[0];
+  d.hidden = !sel; d.textContent = '';
+  if (sel) { d.appendChild(el('b', { text: sel.def[0] })); d.appendChild(document.createTextNode(sel.def[1])); }
+}
+
+function viewWard(root) {
+  var a = state.area, stock = state.ward[a];
+  var card = el('section', { class: 'card', 'aria-labelledby': 'w-h' });
+  var outN = 0, lowN = 0, wayN = 0;
+  Object.keys(stock).forEach(function (id) { var w = stock[id]; if (w.on <= 0) outN++; else if (w.on < w.top) lowN++; if (openReq(a, id)) wayN++; });
+  card.appendChild(el('div', { class: 'cardhead' }, [el('h2', { id: 'w-h', text: 'Stock on ' + SHORT[a] })]));
+  var sel = el('select', { id: 'area', onchange: function (e) { state.area = e.target.value; openCount = null; pending = null; render(); } });
+  Object.keys(AREAS).forEach(function (id) { sel.appendChild(el('option', { value: id, text: AREAS[id] })); }); sel.value = a;
+  var find = el('input', { type: 'search', id: 'find', placeholder: 'e.g. gloves', autocomplete: 'off', value: filter, oninput: function (e) { filter = e.target.value; applyFilter(); } });
+  card.appendChild(el('div', { class: 'controls' }, [
+    el('label', { class: 'area', for: 'area' }, ['My area', sel]),
+    el('label', { for: 'find' }, ['Find an item', find]),
+    el('button', { type: 'button', class: 'scan', onclick: scan, 'aria-label': 'Scan a shelf label (simulated)' , text: 'Scan' })
+  ]));
+  card.appendChild(el('div', { class: 'summary', 'aria-label': 'Summary' }, [
+    el('span', { class: 'chip out', text: outN + ' out' }), el('span', { class: 'chip low', text: lowN + ' below level' }), el('span', { class: 'chip ok', text: wayN + ' on the way' })]));
+  var list = el('div', { id: 'items' });
+  Object.keys(stock).sort(function (x, y) {
+    var rank = function (id) { var w = stock[id]; return (w.on <= 0 ? 0 : w.on < w.top ? 2 : 4) + (ITEMS[id].tracer ? 0 : 1); };
+    return rank(x) - rank(y) || ITEMS[x].name.localeCompare(ITEMS[y].name);
+  }).forEach(function (id) { list.appendChild(itemRow(a, id)); });
+  card.appendChild(list);
+  card.appendChild(el('p', { class: 'empty', id: 'nomatch', hidden: 'hidden', text: 'No item matches. Try another word.' }));
+  root.appendChild(card);
+  applyFilter();
+  // requests from this area
+  var rq = state.requests.filter(function (r) { return r.area === a; }).sort(function (x, y) { return (x.status === 'open' ? 0 : 1) - (y.status === 'open' ? 0 : 1) || y.raised - x.raised; });
+  var rc = el('section', { class: 'card', 'aria-labelledby': 'wr-h' }, [el('h2', { id: 'wr-h', text: 'Requests from ' + SHORT[a] + ' today' })]);
+  var ul = el('ul', { class: 'rows' });
+  rq.forEach(function (r) { ul.appendChild(el('li', { class: r.urgent && r.status === 'open' ? 'urgent' : '' }, [el('div', { class: 'what' }, [el('b', { text: ITEMS[r.item].name + ' × ' + r.qty }), el('span', { text: 'Asked ' + fmtT(r.raised) + '. ' + reqStatus(r) })]), el('span', { class: 'chip ' + (r.status === 'open' ? 'wait' : 'ok'), text: r.status === 'open' ? 'Open' : r.status === 'cancelled' ? 'Covered' : 'Issued' })])); });
+  if (!rq.length) ul.appendChild(el('li', { class: 'empty', text: 'No requests yet today.' }));
+  rc.appendChild(ul); root.appendChild(rc);
+}
+function itemRow(a, id) {
+  var w = state.ward[a][id], it = ITEMS[id], st = w.on <= 0 ? 'out' : w.on < w.top ? 'low' : 'ok', r = openReq(a, id), u = use(a, id);
+  var row = el('div', { class: 'item ' + st, 'data-item': id, 'data-name': it.name.toLowerCase() });
+  row.appendChild(el('div', { class: 'ih' }, [el('div', { class: 'nm' }, [it.name + ' ', it.tracer ? el('span', { class: 'chip tracer', text: 'Tracer' }) : null]), el('span', { class: 'chip ' + st, text: st === 'out' ? 'Out' : st === 'low' ? 'Low' : 'OK' })]));
+  row.appendChild(el('div', { class: 'imeta', text: w.on + ' of ' + w.top + ' (' + it.unit + ') · ' + daysTxt(w.on / u) }));
+  row.appendChild(el('div', { class: 'meter', role: 'img', 'aria-label': w.on + ' on the shelf, top-up level ' + w.top }, [el('i', { style: 'width:' + Math.min(100, 100 * w.on / w.top) + '%' })]));
+  if (r) row.appendChild(el('div', { class: 'ireq' }, [el('b', { text: (r.urgent ? 'Urgent request ' : 'Requested ') + fmtT(r.raised) + ' · ' + r.qty + ' to come. ' }), eta(r)]));
+  row.appendChild(el('div', { class: 'iacts' }, [
+    el('button', { type: 'button', class: 'req' + (r || st === 'ok' ? '' : ' primary'), disabled: r ? 'disabled' : false, 'aria-label': (r ? 'Already requested: ' : 'Request top-up: ') + it.name, text: r ? 'Requested' : 'Request top-up',
+      onclick: function () { if (w.on >= w.top) { toast('Already at its level of ' + w.top + '. Use Count if the number is wrong.'); return; } var q = request(a, id); render(); toast('Requested ' + q.qty + '. ' + eta(q)); } }),
+    el('button', { type: 'button', class: 'outb bad', disabled: w.on <= 0 ? 'disabled' : false, 'aria-label': 'Report out of stock: ' + it.name, text: w.on <= 0 ? 'Reported out' : 'Report out',
+      onclick: function () { reportOut(a, id); render(); toast('Reported out. The store sees an urgent request.'); } }),
+    el('button', { type: 'button', class: 'cnt', 'aria-expanded': String(openCount === id), 'aria-label': 'Count: ' + it.name, text: 'Count', onclick: function () { openCount = openCount === id ? null : id; render(); var i = document.getElementById('cnt-' + id); if (i) i.focus(); } })
+  ]));
+  if (openCount === id) {
+    var inp = el('input', { type: 'number', id: 'cnt-' + id, min: '0', max: '9999', inputmode: 'numeric', value: String(w.on) });
+    row.appendChild(el('form', { class: 'countbox', onsubmit: function (e) { e.preventDefault(); var n = Math.max(0, Math.min(9999, Math.round(+inp.value || 0))); setCount(a, id, n); openCount = null; render(); toast('Count saved: ' + n + '.'); } }, [
+      el('label', { for: 'cnt-' + id }, ['How many on the shelf now?', inp]), el('button', { type: 'submit', class: 'primary', text: 'Save' }), el('button', { type: 'button', text: 'Cancel', onclick: function () { openCount = null; render(); } })]));
+  }
+  return row;
+}
+function applyFilter() {
+  var q = filter.trim().toLowerCase(), shown = 0;
+  document.querySelectorAll('#items .item').forEach(function (r) { var ok = !q || r.getAttribute('data-name').indexOf(q) >= 0; r.hidden = !ok; if (ok) shown++; });
+  var nm = document.getElementById('nomatch'); if (nm) nm.hidden = shown > 0;
+}
+function scan() {
+  var ids = Object.keys(state.ward[state.area]), id = ids[Math.floor(Math.random() * ids.length)];
+  filter = ITEMS[id].name.split(',')[0]; openCount = id; render();
+  toast('Scanned: ' + ITEMS[id].name + ' (simulated). Enter the count.');
+  var i = document.getElementById('cnt-' + id); if (i) i.focus();
+}
+
+function viewStore(root) {
+  // pick list
+  var open = state.requests.filter(function (r) { return r.status === 'open'; }).sort(function (x, y) {
+    var rk = function (r) { return (r.urgent ? 0 : 2) + (ITEMS[r.item].tracer ? 0 : 1); }; return rk(x) - rk(y) || x.raised - y.raised; });
+  var pc = el('section', { class: 'card', 'aria-labelledby': 'p-h' }, [el('div', { class: 'cardhead' }, [el('h2', { id: 'p-h', text: 'Pick list' }), el('span', { class: 'chip wait', text: open.length + ' open' })]),
+    el('p', { class: 'sub', text: 'Urgent and tracer items first, then oldest. Issue sends the stock to the area and closes the request.' })]);
+  var ul = el('ul', { class: 'rows', id: 'picklist' });
+  open.forEach(function (r) {
+    var st = state.store[r.item].on, q = Math.min(st, r.qty), late = now() - r.raised > RULES.onTimeMin;
+    ul.appendChild(el('li', { class: r.urgent ? 'urgent' : '', 'data-req': r.id }, [
+      el('div', { class: 'what' }, [el('b', { text: SHORT[r.area] + ' · ' + ITEMS[r.item].name + ' × ' + r.qty }), el('span', { text: 'Waiting ' + dur(now() - r.raised) + (late ? ' (past 4 hours)' : '') + ' · store has ' + st + (r.balance ? ' · balance of an earlier issue' : '') })]),
+      el('div', { class: 'act' }, [q > 0 ? el('button', { type: 'button', class: 'primary issue', text: q >= r.qty ? 'Issue ' + r.qty : 'Issue ' + q + ' of ' + r.qty, onclick: function () { issue(r.id); render(); toast('Issued to ' + SHORT[r.area] + '.'); } })
+        : el('button', { type: 'button', disabled: 'disabled', text: 'Store out' })])
+    ]));
+  });
+  if (!open.length) ul.appendChild(el('li', { class: 'empty', text: 'Pick list is clear.' }));
+  pc.appendChild(ul); root.appendChild(pc);
+  // deliveries
+  var dv = state.orders.filter(function (o) { return o.status === 2; });
+  var dc = el('section', { class: 'card', id: 'deliveries', 'aria-labelledby': 'd-h' }, [el('h2', { id: 'd-h', text: 'Deliveries due' })]);
+  var dl = el('ul', { class: 'rows' });
+  dv.forEach(function (o) { dl.appendChild(el('li', { 'data-order': o.id }, [el('div', { class: 'what' }, [el('b', { text: o.id + ' · ' + ITEMS[o.item].name + ' × ' + o.qty }), el('span', { text: 'Due ' + o.due + ' · store has ' + state.store[o.item].on })]), el('div', { class: 'act' }, [el('button', { type: 'button', class: (o.due === 'today' ? 'primary ' : '') + 'receive', text: 'Receive delivery', onclick: function () { receive(o.id); render(); toast(o.qty + ' added to the main store.'); } })])])); });
+  if (!dv.length) dl.appendChild(el('li', { class: 'empty', text: 'No deliveries due.' }));
+  dc.appendChild(dl); root.appendChild(dc);
+  // cycle count
+  var cc = el('section', { class: 'card', 'aria-labelledby': 'c-h' });
+  cc.appendChild(el('div', { class: 'cardhead' }, [el('h2', { id: 'c-h', text: 'Count a shelf' }), el('div', { class: 'shelves', role: 'group', 'aria-label': 'Shelf' }, ['A', 'B', 'C', 'D'].map(function (s) { return el('button', { type: 'button', 'aria-pressed': String(state.shelf === s), text: s, 'aria-label': 'Shelf ' + s, onclick: function () { state.shelf = s; render(); } }); }))]));
+  cc.appendChild(el('p', { class: 'sub', text: 'Count what is on the shelf and type it in. Leave a box empty to skip an item. Differences go in the log.' }));
+  var form = el('form', { id: 'ccform', onsubmit: function (e) {
+    e.preventDefault(); var diffs = [], n = 0;
+    IDS.filter(function (id) { return ITEMS[id].shelf === state.shelf; }).forEach(function (id) { var v = document.getElementById('cc-' + id).value; if (v === '') return; n++; var c = Math.max(0, Math.round(+v)), was = state.store[id].on; if (c !== was) diffs.push(ITEMS[id].name.toLowerCase() + ' ' + (c > was ? '+' : '') + (c - was)); state.store[id].on = c; if (c <= 0) startOut('STORE', id, 'Not known yet'); else endOut('STORE', id); });
+    if (!n) { toast('Type at least one count.'); return; }
+    log('Storekeeper', 'Shelf ' + state.shelf + ' counted: ' + n + ' item' + (n > 1 ? 's' : '') + (diffs.length ? ', ' + diffs.length + ' differ (' + diffs.join(', ') + ').' : ', all match the record.'));
+    render(); toast(diffs.length ? 'Count saved. ' + diffs.length + ' difference' + (diffs.length > 1 ? 's' : '') + ' logged.' : 'Count saved. All match.');
+  } });
+  var grid = el('div', { class: 'cc' });
+  IDS.filter(function (id) { return ITEMS[id].shelf === state.shelf; }).forEach(function (id) {
+    grid.appendChild(el('label', { for: 'cc-' + id }, [ITEMS[id].name, el('span', { text: 'Record says ' + state.store[id].on + ' (' + ITEMS[id].unit + ')' })]));
+    grid.appendChild(el('input', { type: 'number', id: 'cc-' + id, min: '0', max: '99999', inputmode: 'numeric', placeholder: String(state.store[id].on) }));
+  });
+  form.appendChild(grid); form.appendChild(el('button', { type: 'submit', class: 'primary', text: 'Save count' }));
+  cc.appendChild(form); root.appendChild(cc);
+}
+
+function viewManager(root) {
+  // stock-outs today
+  var today = state.outs.filter(function (o) { return o.end == null || o.endDay === 0 || o.startDay === 0; }).sort(function (x, y) { return (x.end == null ? 0 : 1) - (y.end == null ? 0 : 1); });
+  var sc = el('section', { class: 'card', 'aria-labelledby': 'so-h' }, [el('div', { class: 'cardhead' }, [el('h2', { id: 'so-h', text: 'Stock-outs today' }), el('span', { class: 'chip out', text: today.filter(function (o) { return o.end == null; }).length + ' open' })]),
+    el('p', { class: 'sub', text: 'Record a cause for each one. Causes show which step to fix, not who to blame.' })]);
+  var ul = el('ul', { class: 'rows', id: 'outs' });
+  today.forEach(function (o) {
+    var reps = state.outs.filter(function (x) { return x.loc === o.loc && x.item === o.item && x.startDay >= -13; }).length;
+    var s = el('select', { id: 'cause-' + o.id, 'aria-label': 'Cause for ' + ITEMS[o.item].name + ' at ' + SHORT[o.loc], onchange: function (e) { o.cause = e.target.value; log('Supply manager', 'Cause recorded for ' + ITEMS[o.item].name.toLowerCase() + ' at ' + SHORT[o.loc] + ': ' + o.cause.toLowerCase() + '.'); render(); } });
+    CAUSES.forEach(function (c) { s.appendChild(el('option', { value: c, text: c })); }); s.value = o.cause;
+    ul.appendChild(el('li', {}, [el('div', { class: 'what' }, [el('b', { text: ITEMS[o.item].name + ' · ' + SHORT[o.loc] }), el('span', { text: (o.end == null ? 'Out since ' + when(o) + ' (' + dur(o.startDay === 0 ? now() - o.start : now() + 1440 * -o.startDay - o.start) + ')' : 'Was out ' + when(o) + ' to ' + fmtT(o.end)) + (reps >= RULES.repeatOuts ? ' · ' + reps + ' times in 14 days' : '') })]), el('div', { class: 'act' }, [s])]));
+  });
+  if (!today.length) ul.appendChild(el('li', { class: 'empty', text: 'No stock-outs today.' }));
+  sc.appendChild(ul); root.appendChild(sc);
+  // below level
+  var rows = [];
+  IDS.forEach(function (id) {
+    if (!state.allBelow && !ITEMS[id].tracer) return;
+    var su = storeUse(id), sd = state.store[id].on / su;
+    if (sd < RULES.leadDays + RULES.bufferDays) rows.push({ id: id, where: 'STORE', on: state.store[id].on, top: null, days: sd });
+    Object.keys(state.ward).forEach(function (a) { var w = state.ward[a][id]; if (w && w.on < w.top) rows.push({ id: id, where: a, on: w.on, top: w.top, days: w.on / use(a, id) }); });
+  });
+  rows.sort(function (x, y) { return x.days - y.days; });
+  var total = rows.length;
+  var tog = el('input', { type: 'checkbox', id: 'allbelow', onchange: function (e) { state.allBelow = e.target.checked; render(); } }); tog.checked = state.allBelow;
+  var bc = el('section', { class: 'card', 'aria-labelledby': 'bl-h' }, [el('div', { class: 'cardhead' }, [el('h2', { id: 'bl-h', text: 'Below level · days of stock left' }), el('span', { class: 'chip low', text: total + ' below level' }), el('label', { class: 'toggle', for: 'allbelow' }, [tog, 'All items, not just tracers'])])]);
+  var bl = el('ul', { class: 'rows', id: 'below' });
+  if (!showAllBelow) rows = rows.slice(0, 8);
+  rows.forEach(function (r) {
+    var rq = r.where === 'STORE' ? null : openReq(r.where, r.id), oo = r.where === 'STORE' ? openOrder(r.id) : null;
+    bl.appendChild(el('li', {}, [el('div', { class: 'what' }, [el('b', { text: ITEMS[r.id].name + ' · ' + SHORT[r.where] }), el('span', { text: (r.top == null ? r.on + ' in store' : r.on + ' of ' + r.top) + ' · ' + daysTxt(r.days) + (r.where === 'STORE' ? (oo ? ' · ' + oo.id + ' ' + WAITING[oo.status].toLowerCase() : ' · nothing on order') : (rq ? ' · requested ' + fmtT(rq.raised) : ' · not requested')) })]),
+      el('span', { class: 'chip ' + (r.on <= 0 ? 'out' : r.days < 1 ? 'low' : 'wait'), text: r.on <= 0 ? 'Out' : round1(r.days) + ' d' })]));
+  });
+  if (!rows.length) bl.appendChild(el('li', { class: 'empty', text: 'Nothing below level.' }));
+  bc.appendChild(bl);
+  if (total > 8) bc.appendChild(el('button', { type: 'button', class: 'small', id: 'belowmore', text: showAllBelow ? 'Show the 8 with fewest days' : 'Show all ' + total, onclick: function () { showAllBelow = !showAllBelow; render(); } }));
+  root.appendChild(bc);
+  // orders
+  var oc = el('section', { class: 'card', id: 'orders', 'aria-labelledby': 'or-h' }, [el('div', { class: 'cardhead' }, [el('h2', { id: 'or-h', text: 'Orders through purchasing' }), el('span', { class: 'chip wait', text: state.orders.filter(function (o) { return o.status === 0; }).length + ' waiting for approval' })]),
+    el('p', { class: 'sub', text: 'Each order from request to receipt, with days at the current step. Approval is given by the approving role in the purchasing process; this screen only records it.' })]);
+  state.orders.slice().sort(function (x, y) { return (x.status === 4 ? 1 : 0) - (y.status === 4 ? 1 : 0) || x.status - y.status || y.atStep - x.atStep; }).forEach(function (o) {
+    var slow = o.status < 4 && o.atStep >= USUAL[o.status] * RULES.slowApprovalX;
+    var acts = [];
+    if (o.status === 0) acts.push(el('button', { type: 'button', class: 'small', text: 'Record approval', onclick: function () { advance(o.id); render(); toast('Approval recorded.'); } }));
+    if (o.status === 1) acts.push(el('button', { type: 'button', class: 'small', text: 'Record order placed', onclick: function () { advance(o.id); render(); toast('Order placed. Delivery due in ' + RULES.leadDays + ' days.'); } }));
+    oc.appendChild(el('div', { class: 'order', 'data-order': o.id }, [
+      el('div', { class: 'oh' }, [el('b', { text: o.id + ' · ' + ITEMS[o.item].name + ' × ' + o.qty }), slow ? el('span', { class: 'chip out', text: 'Longer than usual' }) : o.reminded ? el('span', { class: 'chip wait', text: 'Reminder sent ' + o.reminded }) : null]),
+      el('ol', { class: 'steps', 'aria-label': 'Order steps' }, STEPS.map(function (s, i) { return el('li', { class: i <= o.status ? 'done' : i === o.status + 1 ? 'now' + (slow ? ' slow' : '') : '' }, [s]); })),
+      el('div', { class: 'imeta', text: WAITING[o.status] + (o.status < 4 ? ' · ' + o.atStep + (o.atStep === 1 ? ' day' : ' days') + ' at this step (usual about ' + USUAL[o.status] + ')' : '') + (o.status === 2 ? ' · due ' + o.due : '') + (o.fromGuide ? ' · proposed by the guide' : '') }),
+      acts.length ? el('div', { class: 'act' }, acts) : null
+    ]));
+  });
+  root.appendChild(oc);
+}
+
+function renderGuide() {
+  var layout = document.getElementById('layout');
+  document.getElementById('guide-on').checked = state.guide;
+  layout.classList.toggle('noguide', !state.guide);
+  document.getElementById('guide-how').hidden = !state.guide;
+  var box = document.getElementById('sugg'); box.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Counting, requests, issuing, receiving, the order tracker and the measures all work without it.' })); return; }
+  var list = suggest(state.role);
+  if (!list.length) box.appendChild(el('p', { class: 'how', text: 'Nothing to suggest for this view right now.' }));
+  list.forEach(function (sg) {
+    var acts = [];
+    if (pending === sg.id) {
+      box.appendChild(el('div', { class: 'sugg' }, [el('span', { class: 'tag ask', text: 'Please confirm' }), el('h3', { text: sg.title }), el('p', { class: 'confirm', text: sg.confirm }), el('div', { class: 'acts' }, [
+        el('button', { type: 'button', class: 'small primary confirm-yes', text: 'Confirm', onclick: function () { pending = null; var m = sg.run(); render(); toast(m || 'Done.'); } }),
+        el('button', { type: 'button', class: 'small', text: 'Cancel', onclick: function () { pending = null; render(); } })])]));
+      return;
+    }
+    if (sg.label) acts.push(el('button', { type: 'button', class: 'small primary sg-act', disabled: sg.done ? 'disabled' : false, text: sg.label, onclick: function () {
+      if (sg.show) { var t = document.getElementById(sg.show); if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'start' }); var b = t.querySelector('button'); if (b) b.focus({ preventScroll: true }); } return; }
+      if (sg.confirm) { pending = sg.id; render(); var y = document.querySelector('.confirm-yes'); if (y) y.focus(); return; }
+      var m = sg.run(); render(); toast(m || 'Done.'); } }));
+    acts.push(el('button', { type: 'button', class: 'small', text: 'Not useful', onclick: function () { state.dismissed[sg.id + ':' + state.role] = true; render(); toast('Hidden. Reset the example to see it again.'); } }));
+    box.appendChild(el('div', { class: 'sugg' + (sg.done ? ' done' : ''), 'data-sugg': sg.id }, [
+      el('span', { class: 'tag' + (sg.risk ? ' risk' : ''), text: sg.tag }), el('span', { class: 'tag who', text: sg.who }),
+      el('h3', { text: sg.title }), el('p', { text: sg.text }), el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  var items = state.log.slice().reverse(), shown = showAllLog ? items : items.slice(0, 8);
+  shown.forEach(function (e) { ol.appendChild(el('li', { class: e.fresh ? 'new' : '' }, [el('time', { text: fmtT(e.t) }), el('span', {}, [el('span', { class: 'who', text: e.who + ' · ' }), e.text])])); e.fresh = false; });
+  document.getElementById('logcount').textContent = state.log.length + ' entries';
+  var more = document.getElementById('logmore'); more.hidden = items.length <= 8; more.textContent = showAllLog ? 'Show fewer' : 'Show all ' + items.length;
+}
+
+// ---------- Wiring ----------
+document.querySelectorAll('.roles button').forEach(function (b) { b.addEventListener('click', function () { state.role = b.getAttribute('data-role'); pending = null; openCount = null; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; pending = null; render(); });
+document.getElementById('logmore').addEventListener('click', function () { showAllLog = !showAllLog; renderLog(); });
+document.getElementById('reset').addEventListener('click', function () { var r = state.role, g = state.guide; state = seed(); state.role = r; state.guide = g; pending = null; openCount = null; filter = ''; lastK = null; render(); toast('Example reset.'); });
+setInterval(function () { document.getElementById('clock').textContent = 'Example General Hospital · demo time ' + fmtT(now()); }, 30000);
+
+// Read-only view for software agents (no writes): window.ospeliStoresDemo
+function snapshot() {
+  var ward = {}, store = {};
+  Object.keys(state.ward).forEach(function (a) { ward[a] = {}; Object.keys(state.ward[a]).forEach(function (id) { var w = state.ward[a][id]; ward[a][id] = { onHand: w.on, topUpLevel: w.top, usePerDay: round1(use(a, id)) }; }); });
+  IDS.forEach(function (id) { var u = storeUse(id); store[id] = { onHand: state.store[id].on, usePerDay: round1(u), daysOfStock: round1(state.store[id].on / u), onOrder: onOrder(id) }; });
+  return clone({ hospital: 'Example General Hospital (fictional)', demoTime: fmtT(now()), role: state.role, area: state.area, items: ITEMS, areas: AREAS, wardStock: ward, mainStore: store,
+    requests: state.requests.map(function (r) { return { id: r.id, area: r.area, item: r.item, qty: r.qty, raised: fmtT(r.raised), status: r.status, urgent: r.urgent, issued: r.issued == null ? null : fmtT(r.issued), issuedQty: r.issuedQty }; }),
+    orders: state.orders.map(function (o) { return { id: o.id, item: o.item, qty: o.qty, step: WAITING[o.status], daysAtStep: o.atStep, due: o.due }; }),
+    stockOuts: state.outs.map(function (o) { return { where: o.loc, item: o.item, daysAgo: -o.startDay, open: o.end == null, cause: o.cause }; }), settings: RULES });
+}
+window.ospeliStoresDemo = Object.freeze({
+  describe: function () { return 'Read-only stores and stock demo for a fictional hospital (Ospeli area B4, supply chain and stores). get() returns stock by area, the main store, requests, orders and stock-outs; kpis() the measures shown; suggestions() the guide\'s suggestions for every role (rule-based, in the browser; each is a proposal a person confirms). Nothing here writes data.'; },
+  get: snapshot,
+  kpis: function () { return clone(kpis()); },
+  suggestions: function () { var seen = {}, out = []; ['ward', 'store', 'manager'].forEach(function (r) { suggest(r).forEach(function (s) { if (seen[s.id]) return; seen[s.id] = 1; out.push({ id: s.id, role: r, tag: s.tag, decidedBy: s.who, title: s.title, text: s.text, why: s.why, needsConfirmation: !!s.confirm }); }); }); return out; }
+});
+render();
+})();
+</script>
+</body>
+</html>

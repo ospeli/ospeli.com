@@ -11,6 +11,8 @@
   <url><loc>https://ospeli.com/demo/ed-flow/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://ospeli.com/demo/support-tasks/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://ospeli.com/demo/actions/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/stores-stock/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/daily-report/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://ospeli.com/areas/</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://ospeli.com/areas/outpatients-and-clinics/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://ospeli.com/areas/emergency-department-flow/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>

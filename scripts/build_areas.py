@@ -27,6 +27,9 @@ LIVE = {
     "B1": ("Open the app (engineering)", "../../app/#/engineering"),
     "B3": ("Open the cleaning and portering preview", "../../demo/support-tasks/"),
     "C2": ("Open the incidents and actions preview", "../../demo/actions/"),
+    "B4": ("Open the stores and stock preview", "../../demo/stores-stock/"),
+    "X2": ("Open the daily operations report preview", "../../demo/daily-report/"),
+    "D4": ("Open the daily operations report preview", "../../demo/daily-report/"),
     "A2": ("Open the emergency department preview", "../../demo/ed-flow/"),
 }
 
