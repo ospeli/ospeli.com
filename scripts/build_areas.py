@@ -126,7 +126,7 @@ def page(title, desc, depth, body):
 <meta name="theme-color" content="#0B2F4E">
 <link rel="icon" href="{up}favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="{up}favicon.ico">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="{up}fonts/nunito.css">
 <style>{CSS}</style>
 </head>
 <body>
