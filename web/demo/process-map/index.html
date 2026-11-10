@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Process mapping demo · Ospeli</title>
+<meta name="description" content="Map a hospital process step by step, see where the time goes, and test changes with a built-in guide. Fictional example data; runs in your browser.">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 14px 0 18px; }
+select, input, button { font: inherit; color: var(--ink); }
+#pick { max-width: 100%; }
+select, input[type=text], input[type=number] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button.icon { min-width: 40px; min-height: 40px; padding: 0; border-color: var(--line); font-size: 1rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.seg { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; min-height: 40px; }
+.seg button[aria-pressed=true] { background: var(--navy); color: #fff; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 48px; }
+.layout.noguide { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border-radius: 12px; padding: 10px 12px; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; }
+.stat span { color: var(--soft); font-size: 0.82rem; }
+.stat .was { display: block; color: var(--soft); font-size: 0.78rem; }
+.stat .was.better { color: var(--sea); font-weight: 800; }
+.flowbar { display: flex; height: 18px; border-radius: 9px; overflow: hidden; background: var(--sand); margin: 4px 0 6px; }
+.flowbar i { display: block; height: 100%; }
+.flowbar .w { background: repeating-linear-gradient(135deg, #F3C6B9 0 6px, #F8DDD4 6px 12px); }
+.flowbar .k { background: var(--sea); }
+.legend { display: flex; gap: 14px; font-size: 0.82rem; color: var(--soft); margin-bottom: 14px; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
+/* swimlane map */
+.lanes { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--line); border-radius: 12px; }
+.lanegrid { display: grid; min-width: max-content; }
+.lanename { position: sticky; left: 0; z-index: 1; background: #FBF8F2; border-right: 1px solid var(--line); padding: 10px; font-weight: 800; font-size: 0.85rem; display: flex; align-items: center; }
+.cell { border-top: 1px dashed var(--line); padding: 8px 6px; min-height: 84px; display: flex; align-items: center; }
+.lanegrid > .r0 { border-top: 0; }
+.step { width: 168px; background: #fff; border: 1px solid var(--line); border-left: 5px solid var(--sea); border-radius: 10px; padding: 7px 9px; font-size: 0.85rem; line-height: 1.3; cursor: pointer; text-align: left; font-weight: 600; min-height: 0; }
+.step .n { color: var(--soft); font-weight: 800; font-size: 0.75rem; display: block; }
+.step .t { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; font-size: 0.74rem; font-weight: 800; }
+.step .t .wt { color: var(--coral); }
+.step .t .wk { color: var(--sea); }
+.step.hot { box-shadow: 0 0 0 3px var(--coral) inset; }
+.step.par::after { content: "runs alongside the step before"; display: block; color: var(--soft); font-size: 0.7rem; margin-top: 3px; font-weight: 700; }
+.step.sel { outline: 3px solid var(--navy); }
+/* list view */
+ol.list { list-style: none; margin: 0; padding: 0; counter-reset: s; }
+ol.list li { position: relative; padding: 0 0 4px 0; }
+.wait { margin: 2px 0 2px 18px; padding: 4px 10px; border-left: 3px dotted #E7A08D; color: var(--coral); font-size: 0.82rem; font-weight: 800; }
+.wait.hot { background: #FCE9E3; border-radius: 0 8px 8px 0; }
+.row { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; align-items: center; background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.row .num { width: 30px; height: 30px; border-radius: 50%; background: var(--navy); color: #fff; font-weight: 800; display: grid; place-items: center; font-size: 0.85rem; }
+.row .what b { display: block; font-size: 0.95rem; line-height: 1.3; }
+.row .what span { color: var(--soft); font-size: 0.8rem; }
+.row .ctl { display: flex; gap: 4px; }
+.role-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; vertical-align: 0; }
+/* editor */
+details.edit { margin-top: 14px; }
+details.edit summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.form { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; align-items: end; margin-top: 8px; }
+.form label { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; font-weight: 700; color: var(--soft); }
+.form .w2 { grid-column: span 2; } .form .w3 { grid-column: span 3; } .form .w6 { grid-column: span 6; }
+.form .check { flex-direction: row; align-items: center; gap: 8px; font-weight: 600; color: var(--ink); min-height: 44px; }
+.form .check input { width: 20px; height: 20px; }
+@media (max-width: 640px) { .form { grid-template-columns: repeat(2, minmax(0, 1fr)); } .form .w2, .form .w3, .form .w6 { grid-column: span 2; } }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.85rem; cursor: pointer; }
+.switch input { width: 20px; height: 20px; }
+.how { font-size: 0.8rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.95rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.88rem; color: var(--ink); }
+.sugg .why { color: var(--soft); font-size: 0.8rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.sugg.done { opacity: 0.6; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: #FCE9E3; } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 12px; font-size: 0.88rem; }
+.empty { text-align: center; color: var(--soft); padding: 30px 10px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 999px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; max-width: calc(100vw - 32px); text-align: center; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.85rem; padding-bottom: 40px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Process mapping</h1>
+  <p class="lead">Map how work really flows, step by step and role by role. See where the time goes, then test a change before you try it on a ward. The guide points out where to look and why; you decide what to change.</p>
+
+  <div class="bar">
+    <label for="pick" class="sr">Choose a process</label>
+    <select id="pick" aria-label="Choose a process"></select>
+    <div class="seg" role="group" aria-label="Which version">
+      <button type="button" id="v-now" aria-pressed="true">Today</button>
+      <button type="button" id="v-next" aria-pressed="false">Proposed</button>
+    </div>
+    <div class="seg" role="group" aria-label="View">
+      <button type="button" id="view-map" aria-pressed="true">Map</button>
+      <button type="button" id="view-list" aria-pressed="false">List</button>
+    </div>
+  </div>
+
+  <div class="layout" id="layout">
+    <section class="card" aria-labelledby="map-h">
+      <h2 id="map-h">Map</h2>
+      <div class="stats" id="stats"></div>
+      <div class="flowbar" id="flowbar" role="img"></div>
+      <div class="legend"><span><i style="background:var(--sea)"></i>Hands-on work</span><span><i style="background:#F3C6B9"></i>Waiting</span><span id="handoffs-l"></span></div>
+      <div id="canvas"></div>
+      <details class="edit" id="edit">
+        <summary>Add or change a step</summary>
+        <form class="form" id="form" autocomplete="off">
+          <input type="hidden" id="f-id">
+          <label class="w3">What happens<input type="text" id="f-name" required maxlength="80" placeholder="e.g. Pharmacy checks take-home medicines"></label>
+          <label class="w3">Who does it<input type="text" id="f-role" required maxlength="30" list="roles" placeholder="e.g. Pharmacy"></label>
+          <datalist id="roles"></datalist>
+          <label class="w2">Waits before it starts (min)<input type="number" id="f-wait" min="0" max="10000" step="5" value="0" inputmode="numeric"></label>
+          <label class="w2">Hands-on time (min)<input type="number" id="f-work" min="0" max="10000" step="1" value="5" inputmode="numeric"></label>
+          <label class="w2">Position<select id="f-pos"></select></label>
+          <label class="check w3"><input type="checkbox" id="f-msg"> This step only passes on information (a call, a message, a form)</label>
+          <label class="check w3"><input type="checkbox" id="f-par"> Can run at the same time as the step before</label>
+          <div class="w6" style="display:flex;gap:8px;flex-wrap:wrap"><button type="submit" class="primary" id="f-save">Add step</button><button type="button" id="f-del" hidden>Remove step</button><button type="button" id="f-new" hidden>New step instead</button></div>
+        </form>
+      </details>
+    </section>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads the map and suggests where to look, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. Trying a suggestion only changes the <b>Proposed</b> version. A person decides what happens on the ward.</p>
+      <div id="sugg"></div>
+      <div class="decide" id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Example processes and times are invented for this demo. Coming next: walk a process on a phone and tap each step as it happens, so the times are measured, not estimated; then link the map to live data from the other modules. <a href="../">See all demos</a>.</p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+// ---------- Example processes (fictional) ----------
+var EXAMPLES = {
+  discharge: {
+    title: 'Discharge home from a medical ward',
+    start: 'Senior doctor decides the patient can go home',
+    steps: [
+      ['Senior doctor confirms the patient can go home', 'Doctor', 0, 5],
+      ['Junior doctor writes the discharge letter and take-home prescription', 'Doctor', 95, 25],
+      ['Pharmacy checks and dispenses take-home medicines', 'Pharmacy', 130, 20],
+      ['Medicines collected from pharmacy and brought to the ward', 'Porter', 35, 10],
+      ['Nurse explains medicines and gives advice', 'Nurse', 40, 15],
+      ['Patient waits to be collected, then leaves', 'Patient and family', 70, 5],
+      ['Ward tells the patient flow team the bed is empty', 'Nurse', 35, 2, 'msg'],
+      ['Request for the bed to be cleaned', 'Patient flow team', 20, 2, 'msg'],
+      ['Bed and bay cleaned', 'Housekeeping', 45, 20],
+      ['Bed marked ready for the next patient', 'Patient flow team', 25, 1, 'msg']
+    ]
+  },
+  fault: {
+    title: 'Report and fix broken equipment',
+    start: 'A nurse finds a suction unit not working',
+    steps: [
+      ['Nurse finds the fault and looks for the helpdesk number', 'Nurse', 0, 5],
+      ['Fault phoned through to the helpdesk', 'Nurse', 20, 5, 'msg'],
+      ['Helpdesk logs a job and passes it on', 'Helpdesk', 30, 5, 'msg'],
+      ['Supervisor assigns a technician', 'Facilities supervisor', 120, 5],
+      ['Technician visits and finds a part is needed', 'Technician', 180, 30],
+      ['Part requested from stores', 'Technician', 30, 10, 'msg'],
+      ['Stores issues the part', 'Stores', 240, 10],
+      ['Technician fits the part and tests the unit', 'Technician', 120, 40],
+      ['Ward told the unit is back in service', 'Helpdesk', 45, 2, 'msg']
+    ]
+  },
+  ed: {
+    title: 'Emergency department: arrival to ward bed',
+    start: 'Patient arrives at the emergency department',
+    steps: [
+      ['Patient arrives and is booked in', 'Reception', 0, 5],
+      ['Triage by a nurse', 'Nurse', 25, 10],
+      ['Seen by a doctor', 'Doctor', 85, 20],
+      ['Blood tests and imaging', 'Diagnostics', 20, 15, '', 'par'],
+      ['Results reviewed; decision to admit', 'Doctor', 110, 10],
+      ['Ward specialist accepts the patient', 'Specialist team', 60, 10, 'msg'],
+      ['Bed requested from the patient flow team', 'Nurse', 15, 3, 'msg'],
+      ['Bed found and allocated', 'Patient flow team', 150, 5],
+      ['Porter takes the patient to the ward', 'Porter', 40, 15]
+    ]
+  }
+};
+var ROLE_COLOURS = ['#0A9396', '#EE9B00', '#E0583E', '#0B2F4E', '#94D2BD', '#7A5C9E', '#3E7CB1', '#A0522D', '#5B8C5A', '#C2185B'];
+var STORE = 'ospeli.processmap.v1';
+
+// ---------- State ----------
+var state = load() || { pick: 'discharge', procs: {}, version: 'now', view: window.matchMedia('(max-width: 640px)').matches ? 'list' : 'map', guide: true, dismissed: {} };
+function fromExample(key) {
+  var ex = EXAMPLES[key];
+  var steps = ex.steps.map(function (s, i) { return { id: key + '-' + (i + 1), name: s[0], role: s[1], wait: s[2], work: s[3], msg: s[4] === 'msg', par: s[5] === 'par' }; });
+  return { title: ex.title, start: ex.start, now: steps, next: clone(steps), tried: [] };
+}
+function proc() {
+  if (state.pick === 'blank') { if (!state.procs.blank) state.procs.blank = { title: 'My process', now: [], next: [], tried: [] }; return state.procs.blank; }
+  if (!EXAMPLES[state.pick]) state.pick = 'discharge';
+  if (!state.procs[state.pick]) state.procs[state.pick] = fromExample(state.pick);
+  return state.procs[state.pick];
+}
+function steps() { return proc()[state.version]; }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() { try { var s = JSON.parse(localStorage.getItem(STORE)); return s && s.procs ? s : null; } catch (e) { return null; } }
+
+// ---------- Analysis (pure) ----------
+function analyse(list) {
+  var t = 0, prevStart = 0, prevEnd = 0, work = 0, wait = 0, handoffs = 0, msgs = 0;
+  var timed = list.map(function (s, i) {
+    var base = (s.par && i > 0) ? prevStart : prevEnd;
+    var start = base + (+s.wait || 0), end = start + (+s.work || 0);
+    if (i > 0 && s.role !== list[i - 1].role) handoffs++;
+    if (s.msg) msgs++;
+    work += +s.work || 0; wait += +s.wait || 0;
+    prevStart = start; prevEnd = Math.max(end, s.par ? prevEnd : end);
+    t = Math.max(t, end);
+    return { s: s, i: i, start: start, end: end };
+  });
+  var waits = timed.slice().sort(function (a, b) { return (b.s.wait || 0) - (a.s.wait || 0); });
+  return { elapsed: t, work: work, wait: wait, handoffs: handoffs, msgs: msgs, timed: timed, worst: waits[0] && waits[0].s.wait > 0 ? waits[0] : null, waits: waits };
+}
+
+// The guide: plain, explainable rules. Each suggestion says why, and what trying it changes.
+function suggest(list) {
+  var a = analyse(list), out = [];
+  if (!list.length) {
+    out.push({ id: 'start', kind: 'ask', title: 'Start with what triggers the process', text: 'Add the first step: the moment the process starts (a decision, an arrival, a fault found). Then add each step in order, with who does it.', why: 'A map starts from a clear trigger and ends at a clear finish.' });
+    return out;
+  }
+  var share = function (m) { return a.elapsed ? Math.round(100 * m / a.elapsed) : 0; };
+  a.waits.slice(0, 2).forEach(function (w, k) {
+    if (!w.s.wait || share(w.s.wait) < 12) return;
+    var prev = list[w.i - 1];
+    out.push({ id: 'wait-' + w.s.id, kind: 'time', step: w.s.id,
+      title: (k === 0 ? 'Biggest wait: ' : 'Next biggest wait: ') + fmt(w.s.wait) + ' before “' + w.s.name + '”',
+      text: 'This wait is ' + share(w.s.wait) + '% of the whole process. Ask the team what it is waiting for. Could it be prepared earlier' + (prev ? ', before “' + prev.name + '” finishes' : '') + ', or done in a fixed slot so others can plan around it?',
+      why: 'Calculated from the times on this map.',
+      tryLabel: 'Try halving this wait', apply: function (l) { l.forEach(function (s) { if (s.id === w.s.id) s.wait = Math.round(s.wait / 2); }); } });
+  });
+  var msgSteps = list.filter(function (s) { return s.msg && s.wait >= 15; });
+  if (msgSteps.length) {
+    var mw = msgSteps.reduce(function (n, s) { return n + s.wait; }, 0);
+    out.push({ id: 'msgs', kind: 'time', title: msgSteps.length + ' step' + (msgSteps.length > 1 ? 's' : '') + ' only pass on information, after ' + fmt(mw) + ' of waiting',
+      text: 'Calls, messages and forms that tell the next person to start. If whoever finishes a step updates its status once, everyone who needs it can see it at once, without a call.',
+      why: 'Steps marked “only passes on information” on this map.',
+      tryLabel: 'Try a one-tap status update', apply: function (l) { l.forEach(function (s) { if (s.msg) { s.wait = Math.min(s.wait, 5); s.work = Math.min(s.work, 1); } }); } });
+  }
+  if (a.handoffs >= 4) {
+    out.push({ id: 'handoffs', kind: 'ask', title: a.handoffs + ' handoffs between roles',
+      text: 'Each handoff is a place where work can sit in someone else\'s queue. Look at neighbouring steps done by different people: could one person do both, or could the next person be told before the step ends?',
+      why: 'Counted where the role changes from one step to the next.' });
+  }
+  for (var i = 1; i < list.length; i++) {
+    var s = list[i], p = list[i - 1];
+    if (!s.par && !p.par && s.role !== p.role && s.wait >= 30 && !s.msg && !p.msg) {
+      out.push({ id: 'par-' + s.id, kind: 'ask', step: s.id, title: 'Does “' + s.name + '” need the step before to finish?',
+        text: 'If it does not, it could run at the same time as “' + p.name + '”. Check with both teams before changing anything.',
+        why: 'Different roles, and a wait of ' + fmt(s.wait) + ' between them.',
+        tryLabel: 'Try running them together', apply: function (id) { return function (l) { l.forEach(function (x) { if (x.id === id) { x.par = true; x.wait = 0; } }); }; }(s.id) });
+      break;
+    }
+  }
+  var blank = list.filter(function (s) { return !(+s.work) && !(+s.wait); });
+  if (blank.length) out.push({ id: 'blank', kind: 'ask', title: blank.length + ' step' + (blank.length > 1 ? 's have' : ' has') + ' no times yet', text: 'Time ' + (blank.length > 1 ? 'them' : 'it') + ' on your next walk of the process, so the map shows where time really goes.', why: 'Steps with no waiting or hands-on time recorded.' });
+  out.push({ id: 'questions', kind: 'ask', title: 'Questions to ask on your next walk', text: 'Who decides each step is done? What tells the next person to start? Where does the patient or item sit while it waits? Which step would you remove first, and what would stop you?', why: 'Standard process-walk questions; they apply to any process.' });
+  return out.filter(function (x) { return !state.dismissed[state.pick + ':' + x.id]; });
+}
+
+// ---------- Helpers ----------
+function fmt(m) { m = Math.round(+m || 0); if (m < 60) return m + ' min'; var h = Math.floor(m / 60), r = m % 60; return h + ' h' + (r ? ' ' + (r < 10 ? '0' : '') + r : ''); }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+function rolesOf(list) { var r = []; list.forEach(function (s) { if (r.indexOf(s.role) < 0) r.push(s.role); }); return r; }
+function colourOf(role) { var all = rolesOf(proc().now.concat(proc().next)); return ROLE_COLOURS[Math.max(0, all.indexOf(role)) % ROLE_COLOURS.length]; }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2200); }
+var selected = null;
+
+// ---------- Render ----------
+function render() {
+  var list = steps(), a = analyse(list), base = analyse(proc().now), isNext = state.version === 'next';
+  document.getElementById('v-now').setAttribute('aria-pressed', String(!isNext));
+  document.getElementById('v-next').setAttribute('aria-pressed', String(isNext));
+  document.getElementById('view-map').setAttribute('aria-pressed', String(state.view === 'map'));
+  document.getElementById('view-list').setAttribute('aria-pressed', String(state.view === 'list'));
+  document.getElementById('map-h').textContent = proc().title + (isNext ? ' · proposed' : ' · today');
+  // stats
+  var st = document.getElementById('stats'); st.textContent = '';
+  function stat(v, label, was, lowerIsBetter) {
+    var kids = [el('b', { text: v }), el('span', { text: label })];
+    if (isNext && was != null && was !== v) kids.push(el('span', { class: 'was' + (lowerIsBetter ? ' better' : ''), text: 'today: ' + was }));
+    st.appendChild(el('div', { class: 'stat' }, kids));
+  }
+  stat(fmt(a.elapsed), 'start to finish', fmt(base.elapsed), a.elapsed < base.elapsed);
+  stat(fmt(a.work), 'hands-on work', fmt(base.work), false);
+  stat(a.elapsed ? Math.round(100 * a.work / a.elapsed) + '%' : '–', 'of the time is work', base.elapsed ? Math.round(100 * base.work / base.elapsed) + '%' : null, a.elapsed < base.elapsed);
+  stat(String(a.handoffs), 'handoffs between roles', String(base.handoffs), a.handoffs < base.handoffs);
+  // flow bar: each step's wait then work, proportional to the sequential sum
+  var fb = document.getElementById('flowbar'); fb.textContent = '';
+  var total = a.work + a.wait || 1;
+  list.forEach(function (s) {
+    if (s.wait) fb.appendChild(el('i', { class: 'w', style: 'width:' + (100 * s.wait / total) + '%', title: 'Waiting before: ' + s.name + ' (' + fmt(s.wait) + ')' }));
+    if (s.work) fb.appendChild(el('i', { class: 'k', style: 'width:' + (100 * s.work / total) + '%', title: s.name + ' (' + fmt(s.work) + ')' }));
+  });
+  fb.setAttribute('aria-label', 'Of ' + fmt(a.work + a.wait) + ' of step time, ' + fmt(a.wait) + ' is waiting and ' + fmt(a.work) + ' is hands-on work.');
+  document.getElementById('handoffs-l').textContent = a.worst ? 'Red outline: the biggest wait' : '';
+  var cv = document.getElementById('canvas'); cv.textContent = '';
+  if (!list.length) { cv.appendChild(el('div', { class: 'empty', text: 'No steps yet. Open “Add or change a step” below, or ask the guide where to start.' })); }
+  else if (state.view === 'map') cv.appendChild(drawMap(list, a)); else cv.appendChild(drawList(list, a));
+  // form helpers
+  var dl = document.getElementById('roles'); dl.textContent = '';
+  rolesOf(proc().now.concat(proc().next)).forEach(function (r) { dl.appendChild(el('option', { value: r })); });
+  fillPos();
+  renderGuide(list);
+  save();
+}
+function drawMap(list, a) {
+  var roles = rolesOf(list), wrap = el('div', { class: 'lanes', tabindex: '0', 'aria-label': 'Swimlane map, scroll sideways for later steps' });
+  var grid = el('div', { class: 'lanegrid', style: 'grid-template-columns: 130px repeat(' + list.length + ', 184px)' });
+  roles.forEach(function (r, ri) {
+    grid.appendChild(el('div', { class: 'lanename' + (ri ? '' : ' r0'), style: 'grid-row:' + (ri + 1) + ';grid-column:1;' + (ri ? 'border-top:1px dashed var(--line)' : '') }, [el('span', { class: 'role-dot', style: 'background:' + colourOf(r) }), r]));
+    list.forEach(function (s, i) {
+      var cell = el('div', { class: 'cell' + (ri ? '' : ' r0'), style: 'grid-row:' + (ri + 1) + ';grid-column:' + (i + 2) });
+      if (s.role === r) cell.appendChild(stepCard(s, i, a));
+      grid.appendChild(cell);
+    });
+  });
+  wrap.appendChild(grid); return wrap;
+}
+function stepCard(s, i, a) {
+  var hot = a.worst && a.worst.s.id === s.id;
+  return el('button', { type: 'button', class: 'step' + (hot ? ' hot' : '') + (s.par ? ' par' : '') + (selected === s.id ? ' sel' : ''), style: 'border-left-color:' + colourOf(s.role), 'aria-label': 'Step ' + (i + 1) + ': ' + s.name + ', ' + s.role + ', waits ' + fmt(s.wait) + ', work ' + fmt(s.work) + '. Edit.', onclick: function () { editStep(s.id); } },
+    [el('span', { class: 'n', text: 'Step ' + (i + 1) }), s.name, el('span', { class: 't' }, [s.wait ? el('span', { class: 'wt', text: 'waits ' + fmt(s.wait) }) : null, el('span', { class: 'wk', text: 'work ' + fmt(s.work) })])]);
+}
+function drawList(list, a) {
+  var ol = el('ol', { class: 'list' });
+  list.forEach(function (s, i) {
+    var hot = a.worst && a.worst.s.id === s.id;
+    var li = el('li');
+    if (s.wait) li.appendChild(el('div', { class: 'wait' + (hot ? ' hot' : ''), text: (s.par ? 'Starts alongside the step before, after ' : 'Waits ') + fmt(s.wait) + (hot ? ' · the biggest wait' : '') }));
+    else if (s.par) li.appendChild(el('div', { class: 'wait', text: 'Starts alongside the step before' }));
+    li.appendChild(el('div', { class: 'row' }, [
+      el('span', { class: 'num', text: String(i + 1) }),
+      el('div', { class: 'what' }, [el('b', { text: s.name }), el('span', {}, [el('span', { class: 'role-dot', style: 'background:' + colourOf(s.role) }), s.role + ' · work ' + fmt(s.work) + (s.msg ? ' · passes on information' : '')])]),
+      el('div', { class: 'ctl' }, [
+        el('button', { type: 'button', class: 'icon', 'aria-label': 'Move step ' + (i + 1) + ' up', disabled: i === 0 ? 'disabled' : false, onclick: function () { move(i, -1); }, text: '↑' }),
+        el('button', { type: 'button', class: 'icon', 'aria-label': 'Move step ' + (i + 1) + ' down', disabled: i === list.length - 1 ? 'disabled' : false, onclick: function () { move(i, 1); }, text: '↓' }),
+        el('button', { type: 'button', class: 'icon', 'aria-label': 'Edit step ' + (i + 1), onclick: function () { editStep(s.id); }, text: '✎' })
+      ])
+    ]));
+    ol.appendChild(li);
+  });
+  return ol;
+}
+function renderGuide(list) {
+  var layout = document.getElementById('layout'), g = document.getElementById('guide');
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'); box.textContent = '';
+  var dec = document.getElementById('decide'); dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. The map, times and editing all work without it.' })); return; }
+  suggest(list).forEach(function (sg) {
+    var tried = proc().tried.indexOf(sg.id) >= 0;
+    var acts = [];
+    if (sg.apply) acts.push(el('button', { type: 'button', class: 'small primary', disabled: tried ? 'disabled' : false, onclick: function () { tryIt(sg); }, text: tried ? 'Tried in Proposed' : sg.tryLabel }));
+    if (sg.step) acts.push(el('button', { type: 'button', class: 'small', onclick: function () { selected = sg.step; if (state.view !== 'map') state.view = 'map'; render(); var b = document.querySelector('.step.sel'); if (b) b.scrollIntoView({ block: 'nearest', inline: 'center' }); }, text: 'Show me' }));
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[state.pick + ':' + sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg' + (tried ? ' done' : '') }, [
+      el('span', { class: 'tag ' + sg.kind, text: sg.kind === 'time' ? 'Where time goes' : 'Ask the team' }),
+      el('h3', { text: sg.title }), el('p', { text: sg.text }), el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  var a0 = analyse(proc().now), a1 = analyse(proc().next);
+  if (proc().tried.length) {
+    dec.appendChild(el('p', { style: 'margin:0 0 8px' }, [el('b', { text: 'Proposed version: ' }), fmt(a1.elapsed) + ' start to finish, against ' + fmt(a0.elapsed) + ' today. This is a what-if from the map, not a prediction; test it on a ward and measure.']));
+    dec.appendChild(el('div', { class: 'acts', style: 'display:flex;gap:8px;flex-wrap:wrap' }, [
+      el('button', { type: 'button', class: 'small', onclick: function () { state.version = 'next'; render(); }, text: 'View proposed' }),
+      el('button', { type: 'button', class: 'small', onclick: function () { proc().next = clone(proc().now); proc().tried = []; render(); toast('Proposed version reset to today.'); }, text: 'Undo all' })
+    ]));
+  } else dec.appendChild(el('p', { style: 'margin:0', text: 'Try a suggestion to build a proposed version and compare it with today. Nothing changes until a person decides.' }));
+}
+
+// ---------- Actions ----------
+function tryIt(sg) { sg.apply(proc().next); proc().tried.push(sg.id); state.version = 'next'; render(); toast('Added to the proposed version. Compare it with today.'); }
+function move(i, d) { var l = steps(), j = i + d; if (j < 0 || j >= l.length) return; var t = l[i]; l[i] = l[j]; l[j] = t; render(); }
+function fillPos() {
+  var sel = document.getElementById('f-pos'), id = document.getElementById('f-id').value, l = steps(); sel.textContent = '';
+  var n = id ? l.length : l.length + 1;
+  for (var i = 1; i <= n; i++) sel.appendChild(el('option', { value: String(i - 1), text: i === n && !id ? 'At the end (step ' + i + ')' : 'Step ' + i }));
+  var at = id ? l.findIndex(function (s) { return s.id === id; }) : n - 1; sel.value = String(at);
+}
+function editStep(id) {
+  var s = steps().filter(function (x) { return x.id === id; })[0]; if (!s) return;
+  selected = id;
+  document.getElementById('f-id').value = id; document.getElementById('f-name').value = s.name; document.getElementById('f-role').value = s.role;
+  document.getElementById('f-wait').value = s.wait; document.getElementById('f-work').value = s.work; document.getElementById('f-msg').checked = !!s.msg; document.getElementById('f-par').checked = !!s.par;
+  document.getElementById('f-save').textContent = 'Save step'; document.getElementById('f-del').hidden = false; document.getElementById('f-new').hidden = false;
+  var d = document.getElementById('edit'); d.open = true; render(); document.getElementById('f-name').focus(); d.scrollIntoView({ block: 'nearest' });
+}
+function resetForm() { document.getElementById('form').reset(); document.getElementById('f-id').value = ''; document.getElementById('f-wait').value = 0; document.getElementById('f-work').value = 5; document.getElementById('f-save').textContent = 'Add step'; document.getElementById('f-del').hidden = true; document.getElementById('f-new').hidden = true; selected = null; fillPos(); }
+document.getElementById('form').addEventListener('submit', function (e) {
+  e.preventDefault();
+  var l = steps(), id = document.getElementById('f-id').value;
+  var data = { name: document.getElementById('f-name').value.trim(), role: document.getElementById('f-role').value.trim(), wait: Math.max(0, Math.min(10000, +document.getElementById('f-wait').value || 0)), work: Math.max(0, Math.min(10000, +document.getElementById('f-work').value || 0)), msg: document.getElementById('f-msg').checked, par: document.getElementById('f-par').checked };
+  if (!data.name || !data.role) return;
+  var pos = +document.getElementById('f-pos').value;
+  if (id) { var i = l.findIndex(function (s) { return s.id === id; }); var s = l.splice(i, 1)[0]; Object.assign(s, data); l.splice(Math.min(pos, l.length), 0, s); toast('Step saved.'); }
+  else { l.splice(Math.min(pos, l.length), 0, Object.assign({ id: 'u' + Date.now().toString(36) }, data)); toast('Step added.'); }
+  resetForm(); render();
+});
+document.getElementById('f-del').addEventListener('click', function () { var id = document.getElementById('f-id').value, l = steps(), i = l.findIndex(function (s) { return s.id === id; }); if (i >= 0) l.splice(i, 1); resetForm(); render(); toast('Step removed.'); });
+document.getElementById('f-new').addEventListener('click', function () { resetForm(); document.getElementById('f-name').focus(); });
+document.getElementById('v-now').addEventListener('click', function () { state.version = 'now'; resetForm(); render(); });
+document.getElementById('v-next').addEventListener('click', function () { state.version = 'next'; resetForm(); render(); });
+document.getElementById('view-map').addEventListener('click', function () { state.view = 'map'; render(); });
+document.getElementById('view-list').addEventListener('click', function () { state.view = 'list'; render(); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+var pick = document.getElementById('pick');
+Object.keys(EXAMPLES).forEach(function (k) { pick.appendChild(el('option', { value: k, text: 'Example: ' + EXAMPLES[k].title })); });
+pick.appendChild(el('option', { value: 'blank', text: 'Start a blank map' }));
+pick.appendChild(el('option', { value: 'reset', text: 'Reset this example' }));
+pick.value = state.pick;
+pick.addEventListener('change', function () {
+  if (pick.value === 'reset') { if (state.pick !== 'blank') state.procs[state.pick] = fromExample(state.pick); else state.procs.blank = { title: 'My process', now: [], next: [], tried: [] }; Object.keys(state.dismissed).forEach(function (k) { if (k.indexOf(state.pick + ':') === 0) delete state.dismissed[k]; }); pick.value = state.pick; toast('Reset.'); }
+  else { state.pick = pick.value; if (pick.value === 'blank' && !state.procs.blank) state.procs.blank = { title: 'My process', now: [], next: [], tried: [] }; }
+  state.version = 'now'; resetForm(); render();
+});
+
+// Read-only view for software agents (no writes): window.ospeliProcessMap
+window.ospeliProcessMap = Object.freeze({
+  describe: function () { return 'Read-only process map demo. get() returns the current map; analyse() its times; suggestions() the guide\'s suggestions. Fictional data; runs in the browser.'; },
+  get: function () { return clone({ process: state.pick, version: state.version, title: proc().title, steps: steps() }); },
+  analyse: function () { var a = analyse(steps()); return { elapsedMin: a.elapsed, workMin: a.work, waitMin: a.wait, handoffs: a.handoffs, biggestWait: a.worst ? { step: a.worst.s.name, minutes: a.worst.s.wait } : null }; },
+  suggestions: function () { return suggest(steps()).map(function (s) { return { id: s.id, title: s.title, text: s.text, why: s.why }; }); }
+});
+render();
+})();
+</script>
+</body>
+</html>

@@ -49,7 +49,7 @@ for (const width of [360, 390]) {
       screens: document.documentElement.scrollHeight / innerHeight,
       mail: (() => { const a = document.querySelector('.contact .mail'); const r = a.getBoundingClientRect(); return { href: a.getAttribute('href'), h: r.height }; })(),
       addrShown: document.getElementById('addr').getBoundingClientRect().height > 0,
-      steps: [...document.querySelectorAll('.timeline li')].map((li) => li.innerText.replace(/\s+/g, ' ').trim()),
+      steps: [...document.querySelectorAll('#pilot .timeline li')].map((li) => li.innerText.replace(/\s+/g, ' ').trim()),
       summaries: [...document.querySelectorAll('details.acc > summary')].filter((x) => x.getBoundingClientRect().height > 0).map((x) => Math.round(x.getBoundingClientRect().height)),
     }));
     assert.ok(m.screens < 7, `page is ${m.screens.toFixed(2)} screens`);

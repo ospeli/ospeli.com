@@ -4,6 +4,7 @@
 
 ## Try it
 - [Live demo app](https://ospeli.com/app/): installable web app; works offline after the first load; synthetic data only.
+- [Process mapping demo](https://ospeli.com/demo/process-map/): map a process step by step and test changes with a rule-based guide; read-only agent view at `window.ospeliProcessMap` (describe, get, analyse, suggestions); fictional data.
 - [Front page](https://ospeli.com/): what Ospeli is, its modules, how a pilot runs, and its governance rules.
 
 ## For agents

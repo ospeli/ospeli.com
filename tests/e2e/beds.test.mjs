@@ -6,6 +6,10 @@ let env;
 before(async () => { env = await startApp(); });
 after(async () => { await env.close(); });
 
+// The synthetic hospital is generated from the current hour, so free beds vary through the day.
+// Pin the clock to an hour with free beds that match the first waiting patient (issue #35).
+const CLOCK = '2026-11-09T00:40:00Z';
+
 const stat = (page, t) => page.locator(`[data-test="${t}"] b`).textContent().then(Number);
 const bedState = (page, id) => page.evaluate(async (bedId) => {
   const { deriveBoard } = await import('./core/beds.js');
@@ -15,7 +19,7 @@ const bedState = (page, id) => page.evaluate(async (bedId) => {
 
 for (const width of [360, 390, 1024, 1280]) {
   test(`bed board renders every ward at ${width}px with no sideways scroll`, async () => {
-    const { context, page, errors } = await openPage(env, { width, path: '#/beds' });
+    const { context, page, errors } = await openPage(env, { clock: CLOCK, width, path: '#/beds' });
     await page.waitForSelector('[data-test="bed-grid"] .bed');
     assert.equal(await page.locator('main h1').textContent(), 'Bed board');
     assert.equal(await page.locator('.ward-tab').count(), 6);
@@ -29,7 +33,7 @@ for (const width of [360, 390, 1024, 1280]) {
 }
 
 test('bed manager allocates a waiting patient, the nurse admits, discharges and cleans: all from the event log', async () => {
-  const { context, page, errors } = await openPage(env, { width: 390, path: '#/beds' });
+  const { context, page, errors } = await openPage(env, { clock: CLOCK, width: 390, path: '#/beds' });
   await page.selectOption('#role-select', 'bed-manager');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
   await page.reload(); // start from a settled render as the bed manager
@@ -93,7 +97,7 @@ test('bed manager allocates a waiting patient, the nurse admits, discharges and 
 });
 
 test('filters, deep link to a ward, and KPI definitions on the board', async () => {
-  const { context, page, errors } = await openPage(env, { path: '#/beds/ward-c1' });
+  const { context, page, errors } = await openPage(env, { clock: CLOCK, path: '#/beds/ward-c1' });
   await page.waitForSelector('[data-test="bed-grid"] .bed');
   assert.match(await page.locator('#ward-h').textContent(), /Ward C1/);
   assert.equal(await page.getAttribute('.ward-tab[data-ward="ward-c1"]', 'aria-pressed'), 'true');
@@ -112,7 +116,7 @@ test('filters, deep link to a ward, and KPI definitions on the board', async () 
 });
 
 test('bed board is keyboard operable', async () => {
-  const { context, page } = await openPage(env, { width: 1280, path: '#/beds/ward-a1' });
+  const { context, page } = await openPage(env, { clock: CLOCK, width: 1280, path: '#/beds/ward-a1' });
   await page.waitForSelector('.bed');
   await page.focus('.bed');
   await page.keyboard.press('Enter');
@@ -126,7 +130,7 @@ test('bed board is keyboard operable', async () => {
 });
 
 test('after a bed action, keyboard focus stays on that bed (issue #11)', async () => {
-  const { context, page, errors } = await openPage(env, { width: 1280, path: '#/beds/ward-a1' });
+  const { context, page, errors } = await openPage(env, { clock: CLOCK, width: 1280, path: '#/beds/ward-a1' });
   await page.waitForSelector('.bed');
   const id = await page.locator('.bed').first().getAttribute('data-bed');
   const before = await page.evaluate(() => window.ospeli.core.eventCount());
