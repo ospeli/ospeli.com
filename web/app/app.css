@@ -179,7 +179,9 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .report-form h2 { margin-top: 0; }
 .report-form .field { display: grid; gap: 4px; margin-bottom: 8px; }
 .report-form .field label, .report-form .label { font-weight: 700; }
-.report-form select { min-height: 44px; }
+.report-form select { min-height: 44px; width: 100%; min-width: 0; max-width: 100%; text-overflow: ellipsis; }
+/* #23: grid items default to min-width: auto, so a long option name pushed the form past a 360 px screen. */
+.report-form, .report-form .field, .report-form .prio-opt { min-width: 0; }
 .prio { display: grid; gap: 6px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); }
 .prio-opt { display: flex; gap: 8px; align-items: flex-start; border: 1.5px solid var(--line-strong); border-radius: 10px; padding: 10px; min-height: 44px; cursor: pointer; background: var(--surface); }
 .prio-opt:has(input:checked) { border-color: var(--navy); background: #EEF2F5; }
