@@ -63,11 +63,14 @@ for (const width of [360, 390]) {
   });
 }
 
-test('desktop front page keeps its three actions and the coral pilot button', async () => {
+// Founder decision 9 Nov: while Ospeli is in preview, the demo is the main (coral) action; the pilot is second.
+test('desktop front page keeps its three actions, with the demo as the coral main action', async () => {
   const { context, page, errors } = await open(1280);
   const acts = await firstScreen(page);
-  assert.deepEqual(acts.map((a) => a.text), ['Start a pilot', 'Start a pilot conversation', 'Try the live demo']);
-  assert.equal(await page.evaluate(() => getComputedStyle(document.querySelector('.hero .btn-cta')).backgroundColor), 'rgb(224, 88, 62)');
+  assert.deepEqual(acts.map((a) => a.text).sort(), ['Start a pilot', 'Start a pilot conversation', 'Try the live demo'].sort());
+  const bg = (sel) => page.evaluate((s) => getComputedStyle(document.querySelector(s)).backgroundColor, sel);
+  assert.equal(await bg('.hero a[href="demo/"]'), 'rgb(224, 88, 62)');
+  assert.equal(await bg('.hero .btn-cta'), 'rgba(0, 0, 0, 0)');
   assert.deepEqual(errors, []);
   await context.close();
 });

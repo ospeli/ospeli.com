@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Support tasks demo · Ospeli</title>
+<meta name="description" content="Bed cleans, patient moves, specimens, linen and meals as tracked jobs: a phone task list for porters and cleaners, a supervisor board, and three-tap ward requests. Fictional example data; runs in your browser.">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 18px 0 8px; font-weight: 800; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button { font: inherit; color: var(--ink); }
+select, input[type=number] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 520px) { .roles { display: grid; grid-template-columns: 1fr 1fr; border-radius: 14px; width: 100%; } .roles button { padding: 8px 6px; } .roles button:nth-child(3) { border-left: 0; } .roles button:nth-child(n+3) { border-top: 1px solid var(--line); } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+.layout.noguide { grid-template-columns: minmax(0, 1fr) 360px; }
+@media (max-width: 980px) { .layout, .layout.noguide { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.88rem; font-weight: 700; display: block; }
+.stat .n { color: var(--soft); font-size: 0.78rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.8rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stathint { color: var(--soft); font-size: 0.78rem; margin: 6px 0 0; }
+/* front-line phone list */
+.teambar { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.teambar label { font-weight: 800; display: flex; flex-direction: column; gap: 4px; font-size: 0.95rem; }
+.teambar select { font-weight: 700; }
+.summary { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 0.95rem; font-weight: 700; background: var(--sand); }
+.pill.free { background: var(--wash); }
+.pill.hot { background: var(--hot); color: #B23A22; }
+.jobs { display: grid; gap: 10px; }
+.job { border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 12px; padding: 12px; background: #fff; font-size: 1rem; }
+.job.t-specimen { border-left-color: var(--mango); } .job.t-linen, .job.t-meal { border-left-color: var(--foam); } .job.t-bedclean, .job.t-areaclean { border-left-color: var(--navy); }
+.job.late { box-shadow: 0 0 0 2px var(--coral) inset; }
+.job.mine { background: #F7FBFA; }
+.job .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.job .kind { font-weight: 800; font-size: 0.95rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip { display: inline-block; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; background: var(--sand); }
+.chip.urgent { background: var(--coral); color: #fff; }
+.chip.next { background: var(--navy); color: #fff; }
+.chip.auto { background: var(--wash); }
+.chip.st-accepted { background: var(--warn); } .chip.st-started { background: var(--wash); } .chip.st-done { background: var(--sea); color: #fff; }
+.clock { text-align: right; font-weight: 800; font-size: 1.15rem; line-height: 1.1; white-space: nowrap; }
+.clock small { display: block; font-size: 0.75rem; font-weight: 700; color: var(--soft); }
+.job.late .clock { color: #B23A22; }
+.job .where { font-size: 1.12rem; font-weight: 800; margin: 6px 0 2px; line-height: 1.3; }
+.job .meta { color: var(--soft); font-size: 0.95rem; margin: 0; }
+.job .note { font-size: 0.95rem; margin: 6px 0 0; background: var(--warn); border-radius: 8px; padding: 4px 8px; }
+.job .note.lateline { background: var(--hot); color: #8E2C18; }
+.job .acts { display: flex; gap: 8px; margin-top: 10px; }
+.job .acts .go { flex: 1; min-height: 52px; font-size: 1.05rem; }
+.job .acts .go.accept { background: var(--sea); border-color: var(--sea); color: #fff; }
+.job .acts .go.start { background: var(--navy); color: #fff; }
+.job .acts .go.done { background: var(--mango); border-color: var(--mango); color: var(--navy); }
+.job .acts .back { min-height: 52px; }
+.others { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.others li { display: flex; justify-content: space-between; gap: 8px; font-size: 0.95rem; border-bottom: 1px dashed var(--line); padding: 4px 0; }
+.empty { text-align: center; color: var(--soft); padding: 18px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; }
+/* supervisor */
+.teams { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 420px) { .teams { grid-template-columns: minmax(0, 1fr); } }
+.team { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.team.press { border-color: var(--coral); background: #FFF8F5; }
+.team h4 { margin: 0 0 4px; font-size: 0.95rem; }
+.team .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; text-align: center; margin: 6px 0; }
+.team .nums b { display: block; font-size: 1.2rem; line-height: 1.1; }
+.team .nums span { font-size: 0.72rem; color: var(--soft); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+.team .nums .free b { color: var(--sea); }
+.team p { margin: 0; font-size: 0.82rem; color: var(--soft); }
+.moveform { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-top: 12px; font-size: 0.85rem; }
+.moveform label { display: flex; flex-direction: column; gap: 3px; font-weight: 700; color: var(--soft); min-width: 0; max-width: 100%; }
+.filters { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.filters button { min-height: 38px; font-size: 0.88rem; border-color: #CFC5B2; }
+.filters button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.area { margin-bottom: 12px; }
+.area h4 { margin: 0 0 6px; font-size: 0.95rem; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.area h4 span { color: var(--soft); font-weight: 700; font-size: 0.82rem; }
+.brow { display: grid; grid-template-columns: minmax(0, 1fr) 92px 200px; gap: 10px; align-items: center; border: 1px solid var(--line); border-left: 5px solid var(--sea); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; font-size: 0.9rem; }
+.brow.t-specimen { border-left-color: var(--mango); } .brow.t-linen, .brow.t-meal { border-left-color: var(--foam); } .brow.t-bedclean, .brow.t-areaclean { border-left-color: var(--navy); }
+.brow.late { background: #FFF8F5; }
+.brow b { display: block; }
+.brow .sub { color: var(--soft); font-size: 0.82rem; }
+.brow .w { font-weight: 800; text-align: right; white-space: nowrap; }
+.brow.late .w { color: #B23A22; }
+.brow select { width: 100%; min-height: 40px; font-size: 0.85rem; padding: 4px 8px; }
+@media (max-width: 640px) { .brow { grid-template-columns: minmax(0, 1fr) auto; } .brow .assign { grid-column: 1 / -1; } }
+table.bytype { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+table.bytype th, table.bytype td { text-align: left; padding: 6px 6px; border-bottom: 1px solid var(--line); }
+table.bytype th { color: var(--soft); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+table.bytype td.r, table.bytype th.r { text-align: right; }
+.tablewrap { overflow-x: auto; }
+details.set { margin-top: 14px; }
+details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.targets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+@media (max-width: 640px) { .targets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.targets label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 700; color: var(--soft); }
+.targets input { width: 100%; }
+.fine { font-size: 0.82rem; color: var(--soft); margin: 8px 0 0; }
+/* ward requester */
+.steps { display: grid; gap: 14px; }
+.stepq { font-weight: 800; font-size: 1rem; margin: 0 0 8px; display: flex; gap: 8px; align-items: center; }
+.stepq i { font-style: normal; width: 26px; height: 26px; border-radius: 50%; background: var(--navy); color: #fff; display: grid; place-items: center; font-size: 0.85rem; flex: none; }
+.choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.choices.beds { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+.choice { border-radius: 12px; border: 1px solid #CFC5B2; min-height: 52px; text-align: left; padding: 8px 12px; font-size: 0.98rem; }
+.choices.beds .choice { text-align: center; padding: 8px 4px; }
+.choice small { display: block; font-weight: 600; color: var(--soft); font-size: 0.82rem; }
+.choice[aria-pressed=true] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.choice[aria-pressed=true] small { color: #D6E2EC; }
+.sendrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.sendrow .send { flex: 1 1 200px; min-height: 54px; font-size: 1.05rem; }
+.urg { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; min-height: 44px; cursor: pointer; }
+.urg input { width: 22px; height: 22px; }
+.track { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-top: 8px; }
+.track span { font-size: 0.78rem; color: var(--soft); border-top: 4px solid var(--line); padding-top: 4px; font-weight: 700; line-height: 1.25; }
+.track span.on { border-top-color: var(--sea); color: var(--ink); }
+.track span em { display: block; font-style: normal; font-weight: 600; color: var(--soft); }
+.rq { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.rq .top { display: flex; justify-content: space-between; gap: 8px; font-weight: 800; }
+.rq .stat-line { font-size: 0.95rem; color: var(--soft); margin: 2px 0 0; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.82rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg ul { margin: 0 0 8px; padding-left: 18px; font-size: 0.88rem; }
+.sugg .why { color: var(--soft); font-size: 0.82rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Support tasks: cleaning, portering, linen and meals</h1>
+  <p class="lead">Bed cleans, patient moves, specimens, linen and meal deliveries become tracked jobs. Porters and cleaners take them on a phone. The supervisor sees every open job and which teams are free. Wards see when help is coming. The guide flags waits past your targets; a person decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-porter" data-role="porter" aria-pressed="false">Porter</button>
+    <button type="button" id="r-cleaner" data-role="cleaner" aria-pressed="false">Cleaner</button>
+    <button type="button" id="r-supervisor" data-role="supervisor" aria-pressed="false">Supervisor</button>
+    <button type="button" id="r-ward" data-role="ward" aria-pressed="false">Ward</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <b>Demo tools:</b>
+    <button type="button" class="small" id="t-clock">Move clock on 10 min</button>
+    <button type="button" class="small" id="t-discharge">A patient goes home</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <h2 id="view-h">Tasks</h2>
+        <div class="stats" id="kpis"></div>
+        <p class="stathint">This shift so far. Tap a tile for its definition.</p>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads the open jobs, team numbers and your targets, and suggests where to look, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal. The supervisor decides.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its wards, teams, jobs and times. It measures jobs and waits, never individual cleaners or porters, and it does not set isolation or infection decisions or patient diets. Coming next (Dec 2026): cleaning audits on a phone by room and risk category, linen stock against top-up levels, meal deliveries and returns, and the live link from discharges on the bed board. <a href="../../areas/support-services/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var M = 60000;
+var STORE = 'ospeli.supporttasks.v1';
+
+// ---------- Fixed reference data (fictional) ----------
+var TYPES = {
+  move:      { label: 'Patient move',   kind: 'porter',  verb: ['Accept', 'Collected', 'Delivered'] },
+  specimen:  { label: 'Specimen to lab', kind: 'porter', verb: ['Accept', 'Collected', 'Delivered'] },
+  linen:     { label: 'Linen top-up',   kind: 'porter',  verb: ['Accept', 'Collected', 'Delivered'] },
+  meal:      { label: 'Meal trolley',   kind: 'porter',  verb: ['Accept', 'Collected', 'Delivered'] },
+  bedclean:  { label: 'Bed clean',      kind: 'cleaner', verb: ['Accept', 'Start clean', 'Done, bed ready'] },
+  areaclean: { label: 'Area clean',     kind: 'cleaner', verb: ['Accept', 'Start clean', 'Done'] }
+};
+var AREAS = {
+  W1: { name: 'Ward 1', block: 'main' }, W2: { name: 'Ward 2', block: 'main' }, W3: { name: 'Ward 3', block: 'main' }, W4: { name: 'Ward 4', block: 'main' },
+  ED: { name: 'Emergency department', block: 'main', bed: 'Cubicle' },
+  W5: { name: 'Ward 5', block: 'east' }, W6: { name: 'Ward 6', block: 'east' }, W7: { name: 'Ward 7', block: 'east' },
+  TH: { name: 'Theatres', block: 'east' }, IM: { name: 'Imaging', block: 'east' }
+};
+var WARDS = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'ED'];
+var KIND_WORD = { porter: 'porter', cleaner: 'cleaner' };
+// Example settings for this demo only, not a standard: each organisation sets its own.
+var DEFAULT_TARGETS = { move: 15, specimen: 10, linen: 30, meal: 20, bedclean: 20, areaclean: 20 };
+
+// ---------- State ----------
+function seed() {
+  var T = Date.now();
+  var s = { v: 1, created: T, offset: 0, role: window.matchMedia('(max-width: 640px)').matches ? 'porter' : 'supervisor',
+    team: { porter: 'p-east', cleaner: 'c-east' }, ward: 'W4', guide: true, filter: 'all', kpiOpen: null,
+    targets: Object.assign({}, DEFAULT_TARGETS), pending: [], dismissed: {}, log: [], seq: 100, req: { type: null, where: null, urgent: false, bed: '7' },
+    teams: {
+      'p-main': { name: 'Porters · Main block', kind: 'porter', block: 'main', staff: 4 },
+      'p-east': { name: 'Porters · East block', kind: 'porter', block: 'east', staff: 3 },
+      'c-main': { name: 'Cleaning · Main block', kind: 'cleaner', block: 'main', staff: 3 },
+      'c-east': { name: 'Cleaning · East block', kind: 'cleaner', block: 'east', staff: 3 }
+    },
+    // Patients waiting for a bed in each ward, as the bed board would show it (fictional).
+    demand: { W1: 0, W2: 1, W3: 2, W4: 0, W5: 0, W6: 0, W7: 1 },
+    jobs: [] };
+  // Finished earlier this shift: [type, area, minutes ago requested, minutes to start, minutes of work, detail]
+  [['bedclean', 'W3', 236, 18, 25, 'Bed 2'], ['move', 'W5', 221, 9, 20, 'Bed 3 → Imaging · wheelchair'], ['specimen', 'W2', 210, 6, 12, 'To the lab'],
+   ['linen', 'W1', 201, 22, 10, 'To the ward store'], ['bedclean', 'W6', 190, 26, 24, 'Bed 7'], ['move', 'ED', 181, 12, 18, 'Cubicle 2 → Ward 3 bed 5 · in bed'],
+   ['specimen', 'W7', 170, 8, 14, 'To the lab'], ['meal', 'W4', 160, 10, 15, 'From the kitchen'], ['bedclean', 'W1', 151, 15, 22, 'Bed 9'],
+   ['move', 'W4', 140, 14, 25, 'Bed 1 → Discharge lounge · wheelchair'], ['specimen', 'W5', 126, 11, 13, 'To the lab'], ['areaclean', 'ED', 115, 9, 20, 'Cubicle 6 · spill'],
+   ['bedclean', 'W7', 101, 21, 26, 'Bed 4'], ['move', 'W6', 90, 17, 22, 'Bed 8 → Theatres · in bed'], ['linen', 'W6', 80, 25, 12, 'To the ward store'],
+   ['specimen', 'W3', 61, 7, 11, 'To the lab'], ['bedclean', 'W2', 55, 13, 21, 'Bed 6'], ['move', 'W2', 47, 11, 19, 'Bed 2 → Imaging · wheelchair']
+  ].forEach(function (r) {
+    var j = mk(s, r[0], r[1], r[5], T - r[2] * M, r[0] === 'bedclean' ? 'bed board' : 'ward');
+    j.start = j.req + r[3] * M; j.acc = j.start - Math.min(4, r[3] - 1) * M; j.done = j.start + r[4] * M;
+  });
+  // Open now: [type, area, detail, team, min ago requested, min ago accepted, min ago started, urgent, bed]
+  [['move', 'W6', 'Bed 4 → Imaging · wheelchair', 'p-east', 24, null, null, false],
+   ['specimen', 'W7', 'To the lab', 'p-east', 13, null, null, true],
+   ['move', 'TH', 'Recovery → Ward 5 bed 2 · in bed', 'p-east', 9, null, null, false],
+   ['linen', 'W5', 'To the ward store', 'p-east', 18, 6, null, false],
+   ['meal', 'W7', 'From the kitchen', 'p-east', 27, 20, 14, false],
+   ['move', 'IM', 'To Ward 6 bed 9 · wheelchair', 'p-east', 16, 9, 4, false],
+   ['specimen', 'W2', 'To the lab', 'p-main', 3, null, null, false],
+   ['move', 'W1', 'Bed 3 → Discharge lounge · wheelchair', 'p-main', 15, 8, 5, false],
+   ['bedclean', 'W3', 'Bed 8', 'c-main', 26, null, null, false],
+   ['bedclean', 'W1', 'Bed 11', 'c-main', 14, null, null, false],
+   ['bedclean', 'W4', 'Bed 5', 'c-main', 31, 12, 8, false],
+   ['areaclean', 'ED', 'Cubicle 4 · spill', 'c-main', 6, null, null, false],
+   ['bedclean', 'W6', 'Bed 1', 'c-east', 22, null, null, false],
+   ['bedclean', 'W7', 'Bed 10', 'c-east', 12, null, null, false],
+   ['bedclean', 'W5', 'Bed 6', 'c-east', 35, 15, 10, false]
+  ].forEach(function (r) {
+    var j = mk(s, r[0], r[1], r[2], T - r[4] * M, r[0] === 'bedclean' ? 'bed board' : 'ward');
+    j.team = r[3]; j.urgent = r[7];
+    if (r[5] != null) j.acc = T - r[5] * M;
+    if (r[6] != null) j.start = T - r[6] * M;
+  });
+  // Build the log from the events so far (newest first).
+  var ev = [];
+  s.jobs.forEach(function (j) { ['req', 'acc', 'start', 'done'].forEach(function (k) { if (j[k]) ev.push({ t: j[k], text: eventText(s, j, k) }); }); });
+  ev.sort(function (a, b) { return b.t - a.t; });
+  s.log = ev.slice(0, 40);
+  return s;
+}
+function mk(s, type, area, detail, req, source) {
+  var j = { id: 'J' + (++s.seq), type: type, area: area, detail: detail, team: teamFor(TYPES[type].kind, AREAS[area].block), urgent: false, source: source, req: req, acc: null, start: null, done: null, mine: false, rank: 0 };
+  s.jobs.push(j); return j;
+}
+function teamFor(kind, block) { return (kind === 'porter' ? 'p-' : 'c-') + block; }
+
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE));
+    // An example shift goes stale: start a fresh one after 8 hours.
+    if (!s || s.v !== 1 || !s.jobs || Date.now() - s.created > 8 * 60 * M) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function now() { return Date.now() + (state.offset || 0); }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+// ---------- Derived data (pure) ----------
+function status(j) { return j.done ? 'done' : j.start ? 'started' : j.acc ? 'accepted' : 'waiting'; }
+var STATUS_WORD = { waiting: 'Waiting', accepted: 'Accepted', started: 'Started', done: 'Done' };
+function openJobs() { return state.jobs.filter(function (j) { return !j.done; }); }
+function waitMin(j) { return Math.max(0, Math.floor(((j.start || now()) - j.req) / M)); }
+function isLate(j) { return !j.start && !j.done && waitMin(j) > (+state.targets[j.type] || 0); }
+function title(j) { return AREAS[j.area].name + ' · ' + j.detail; }
+function teamStats(id) {
+  var t = state.teams[id], open = openJobs().filter(function (j) { return j.team === id; });
+  var busy = open.filter(function (j) { return j.acc || j.start; }).length;
+  var waiting = open.filter(function (j) { return !j.acc && !j.start; });
+  var oldest = waiting.reduce(function (m, j) { return Math.max(m, waitMin(j)); }, 0);
+  return { id: id, name: t.name, kind: t.kind, staff: t.staff, busy: busy, free: Math.max(0, t.staff - busy), waiting: waiting.length, oldest: oldest, late: waiting.filter(isLate).length };
+}
+function queue(teamId) {
+  return openJobs().filter(function (j) { return j.team === teamId && !j.acc && !j.start; }).sort(function (a, b) {
+    return (b.urgent - a.urgent) || ((a.rank || 999) - (b.rank || 999)) || (a.req - b.req);
+  });
+}
+function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function kpis(filterType) {
+  var js = state.jobs.filter(function (j) { return !filterType || j.type === filterType; });
+  var started = js.filter(function (j) { return j.start; }), done = js.filter(function (j) { return j.done; });
+  var beds = done.filter(function (j) { return j.type === 'bedclean'; });
+  var r = function (x) { return x == null ? null : Math.round(x); };
+  return {
+    requestToStartMin: r(median(started.map(function (j) { return (j.start - j.req) / M; }))), startedCount: started.length,
+    requestToDoneMin: r(median(done.map(function (j) { return (j.done - j.req) / M; }))), doneCount: done.length,
+    bedTurnaroundMin: r(median(beds.map(function (j) { return (j.done - j.req) / M; }))), bedCleansDone: beds.length,
+    pastTarget: openJobs().filter(isLate).length, open: openJobs().length
+  };
+}
+
+// ---------- The guide: plain, checkable rules ----------
+function suggest() {
+  var out = [];
+  // 1. Jobs waiting longer than the start target the organisation set.
+  var late = openJobs().filter(isLate).sort(function (a, b) { return a.req - b.req; });
+  if (late.length) out.push({ id: 'late', kind: 'time',
+    title: late.length + (late.length > 1 ? ' jobs have' : ' job has') + ' waited past the start target',
+    list: late.slice(0, 4).map(function (j) { return TYPES[j.type].label + ', ' + AREAS[j.area].name + ': ' + fmt(waitMin(j)) + ' (target ' + state.targets[j.type] + ' min)'; }),
+    why: 'Not started yet and waiting longer than the targets in Settings. The targets are your own settings, not a standard.',
+    acts: [{ label: 'Show on the task board', fn: function () { state.role = 'supervisor'; state.filter = 'late'; render(); document.getElementById('view-h').scrollIntoView({ block: 'start' }); } }] });
+  // 2. One team is stretched while another team of the same kind has people free.
+  ['porter', 'cleaner'].forEach(function (kind) {
+    var ts = Object.keys(state.teams).filter(function (id) { return state.teams[id].kind === kind; }).map(teamStats);
+    var busy = ts.filter(function (t) { return t.waiting > t.free && (t.late > 0 || t.free === 0); }).sort(function (a, b) { return b.oldest - a.oldest; })[0];
+    if (!busy) return;
+    var quiet = ts.filter(function (t) { return t.id !== busy.id && t.free >= 1 && t.waiting < t.free; }).sort(function (a, b) { return (b.free - b.waiting) - (a.free - a.waiting); })[0];
+    if (!quiet) return;
+    var oldest = queue(busy.id).slice().sort(function (a, b) { return a.req - b.req; })[0];
+    var id = 'move-' + quiet.id + '-' + busy.id;
+    out.push({ id: id, kind: 'move',
+      title: 'Lend a ' + KIND_WORD[kind] + ' from ' + quiet.name + ' to ' + busy.name,
+      text: busy.name + ' has ' + busy.waiting + ' waiting and ' + busy.free + ' free; the oldest has waited ' + fmt(busy.oldest) + '. ' + quiet.name + ' has ' + quiet.free + ' free and ' + quiet.waiting + ' waiting.',
+      why: 'Counted from open jobs and the people on shift in each team, right now.',
+      acts: [
+        { label: 'Propose: move 1 ' + KIND_WORD[kind], primary: true, fn: function () { propose({ id: id, kind: 'staff', from: quiet.id, to: busy.id, text: 'Move 1 ' + KIND_WORD[kind] + ' from ' + quiet.name + ' to ' + busy.name + ' for now.' }); } },
+        oldest ? { label: 'Propose: give the oldest job to ' + quiet.name.split(' · ')[1], fn: function () { propose({ id: id + '-job', kind: 'reassign', job: oldest.id, to: quiet.id, text: 'Give “' + TYPES[oldest.type].label + ', ' + title(oldest) + '” to ' + quiet.name + '.' }); } } : null
+      ] });
+  });
+  // 3. Bed cleans: where patients wait for a bed (from the bed board), clean those beds first.
+  Object.keys(state.teams).filter(function (id) { return state.teams[id].kind === 'cleaner'; }).forEach(function (tid) {
+    var cleans = queue(tid).filter(function (j) { return j.type === 'bedclean' && !j.urgent; });
+    if (cleans.length < 2) return;
+    var byDemand = cleans.slice().sort(function (a, b) { return ((state.demand[b.area] || 0) - (state.demand[a.area] || 0)) || (a.req - b.req); });
+    if (byDemand[0].id === cleans[0].id || !(state.demand[byDemand[0].area] > 0)) return;
+    var first = byDemand[0], was = cleans[0], id = 'order-' + tid + '-' + byDemand.map(function (j) { return j.id; }).join('');
+    out.push({ id: id, kind: 'ask',
+      title: state.teams[tid].name + ': clean ' + AREAS[first.area].name + ' ' + first.detail.toLowerCase() + ' first?',
+      text: 'The bed board shows ' + state.demand[first.area] + ' waiting for a bed on ' + AREAS[first.area].name + ' and ' + (state.demand[was.area] || 0) + ' on ' + AREAS[was.area].name + '. ' + AREAS[was.area].name + ' ' + was.detail.toLowerCase() + ' has waited longer (' + fmt(waitMin(was)) + ').',
+      why: 'Bed-board demand by ward: how many patients are waiting for a bed there. It does not use anything about any patient\'s condition.',
+      acts: [{ label: 'Propose this order', primary: true, fn: function () { propose({ id: id, kind: 'order', team: tid, ids: byDemand.map(function (j) { return j.id; }), text: 'Reorder ' + state.teams[tid].name + ': ' + byDemand.map(function (j) { return AREAS[j.area].name + ' ' + j.detail.toLowerCase(); }).join(', then ') + '.' }); } }] });
+  });
+  return out.filter(function (x) { return !state.dismissed[x.id]; });
+}
+function propose(p) {
+  if (state.pending.some(function (x) { return x.id === p.id; })) return;
+  p.at = now(); state.pending.push(p);
+  addLog('Guide proposed: ' + p.text + ' Waiting for the supervisor.');
+  render(); toast('Proposed. The supervisor decides.');
+}
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x.id !== p.id; });
+  if (!yes) { state.dismissed[p.id] = true; addLog('Supervisor declined: ' + p.text); render(); toast('Declined. Nothing changed.'); return; }
+  if (p.kind === 'staff') {
+    if (teamStats(p.from).free < 1) { addLog('Could not move: no one is free in ' + state.teams[p.from].name + ' now.'); render(); toast('No one is free in that team now.'); return; }
+    state.teams[p.from].staff--; state.teams[p.to].staff++;
+  } else if (p.kind === 'reassign') {
+    var j = byId(p.job); if (!j || j.acc || j.start || j.done) { render(); toast('That job has already been taken.'); return; }
+    j.team = p.to;
+  } else if (p.kind === 'order') {
+    p.ids.forEach(function (id, i) { var x = byId(id); if (x) x.rank = i + 1; });
+  }
+  addLog('Supervisor confirmed: ' + p.text);
+  render(); toast('Done. The team queues have updated.');
+}
+function byId(id) { return state.jobs.filter(function (j) { return j.id === id; })[0]; }
+
+// ---------- Helpers ----------
+function fmt(m) { m = Math.round(+m || 0); if (m < 60) return m + ' min'; var h = Math.floor(m / 60), r = m % 60; return h + ' h ' + (r < 10 ? '0' : '') + r; }
+function hhmm(t) { var d = new Date(t); return (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes(); }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+function eventText(s, j, k) {
+  var L = TYPES[j.type].label, team = s.teams[j.team].name, where = AREAS[j.area].name + ' · ' + j.detail;
+  if (k === 'req') return L + ' requested: ' + where + (j.source === 'bed board' ? ' (automatic: patient went home on the bed board)' : ' (by ' + AREAS[j.area].name + ')');
+  if (k === 'acc') return team + ' accepted: ' + L + ', ' + where;
+  if (k === 'start') return team + ' started: ' + L + ', ' + where;
+  return j.type === 'bedclean' ? 'Bed clean done: ' + where + '. The bed shows ready on the bed board.' : team + ' finished: ' + L + ', ' + where;
+}
+var lastLogT = 0;
+function addLog(text) { lastLogT = now(); state.log.unshift({ t: lastLogT, text: text }); state.log = state.log.slice(0, 40); }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+
+// ---------- Actions ----------
+function advance(j) {
+  var st = status(j), k = st === 'waiting' ? 'acc' : st === 'accepted' ? 'start' : st === 'started' ? 'done' : null;
+  if (!k) return;
+  j[k] = now(); if (k === 'acc') j.mine = true;
+  addLog(eventText(state, j, k));
+  if (k === 'done' && j.type === 'bedclean' && state.demand[j.area] > 0) { state.demand[j.area]--; addLog('Bed board: ' + AREAS[j.area].name + ' ' + j.detail.toLowerCase() + ' is ready; the patient flow team can place a waiting patient.'); }
+  render();
+  toast(k === 'acc' ? 'Accepted. The ward can see someone is coming.' : k === 'start' ? 'Started. Clock stopped at ' + fmt(waitMin(j)) + ' from request.' : j.type === 'bedclean' ? 'Done. The bed shows ready on the bed board.' : 'Done. Thank you.');
+}
+function handBack(j) { j.acc = null; j.mine = false; addLog(state.teams[j.team].name + ' handed back to the queue: ' + TYPES[j.type].label + ', ' + title(j)); render(); toast('Handed back to the team queue.'); }
+function newRequest(type, area, detail, urgent, source) {
+  var j = mk(state, type, area, detail, now(), source); j.urgent = !!urgent;
+  addLog(eventText(state, j, 'req') + (urgent ? ' · marked urgent' : ''));
+  return j;
+}
+
+// ---------- Render ----------
+var HINTS = {
+  porter: 'A porter\'s phone. Take the next job from your team\'s queue, then tap Collected and Delivered. One thumb, big buttons.',
+  cleaner: 'A cleaner\'s phone. Bed cleans arrive by themselves when a patient goes home on the bed board. Tap Start and Done; the bed shows ready.',
+  supervisor: 'The supervisor or helpdesk view. Every open job by area, oldest waiting first, and who is free in each team. Assign jobs to a team, not a named person.',
+  ward: 'A ward\'s view. Ask for a porter or a bed clean in three taps, then see when it is accepted, started and done.'
+};
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  ['porter', 'cleaner', 'supervisor', 'ward'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('view-h').textContent = { porter: 'My team\'s tasks', cleaner: 'My team\'s tasks', supervisor: 'Task board', ward: 'Ask for help' }[state.role];
+  renderKpis();
+  var v = document.getElementById('view'); v.textContent = '';
+  if (state.role === 'porter' || state.role === 'cleaner') v.appendChild(frontLine(state.role));
+  else if (state.role === 'supervisor') v.appendChild(board());
+  else v.appendChild(wardView());
+  renderGuide();
+  renderLog();
+  save();
+  if (aid) { var e = document.getElementById(aid); if (e) e.focus({ preventScroll: true }); }
+  sig = signature();
+}
+function renderKpis() {
+  var k = kpis(), box = document.getElementById('kpis'); box.textContent = '';
+  var tiles = [
+    ['start', k.requestToStartMin == null ? '–' : fmt(k.requestToStartMin), 'Request to start', 'median of ' + k.startedCount + ' jobs', 'Minutes from a job being requested to someone starting it (median, all job types, this shift). Local definition.'],
+    ['done', k.requestToDoneMin == null ? '–' : fmt(k.requestToDoneMin), 'Request to done', 'median of ' + k.doneCount + ' jobs', 'Minutes from requested to done (median, this shift). For porters this is “porter request to completion”. Local definition; see by job type on the task board.'],
+    ['bed', k.bedTurnaroundMin == null ? '–' : fmt(k.bedTurnaroundMin), 'Bed turnaround', 'median of ' + k.bedCleansDone + ' bed cleans', 'Bed vacated → bed clean and ready (median, this shift). The clean is requested automatically when the bed board shows the patient has gone. Local definition.'],
+    ['late', String(k.pastTarget), 'Past start target', k.open + ' open jobs', 'Open jobs not yet started that have waited longer than the start target set for that job type. The targets are your organisation\'s settings, not a standard.']
+  ];
+  tiles.forEach(function (t) {
+    var open = state.kpiOpen === t[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat' + (t[0] === 'late' && k.pastTarget ? ' alert' : ''), 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def', text: t[4] })]));
+  });
+}
+function clockEl(j) { return el('div', { class: 'clock', 'data-since': j.id }, [fmt(waitMin(j)), el('small', { text: j.start ? 'to start' : 'since asked' })]); }
+function jobCard(j, opts) {
+  var T = TYPES[j.type], st = status(j), late = isLate(j);
+  var chips = [el('span', { text: T.label })];
+  if (j.urgent) chips.push(el('span', { class: 'chip urgent', text: 'Urgent' }));
+  if (opts.next) chips.push(el('span', { class: 'chip next', text: 'Next up' }));
+  if (j.source === 'bed board') chips.push(el('span', { class: 'chip auto', text: 'From bed board' }));
+  if (st !== 'waiting') chips.push(el('span', { class: 'chip st-' + st, text: STATUS_WORD[st] }));
+  var notes = [];
+  if (late) notes.push(el('p', { class: 'note lateline', text: 'Past the ' + state.targets[j.type] + ' min start target' }));
+  if (j.type === 'bedclean' && state.demand[j.area] > 0) notes.push(el('p', { class: 'note', text: 'Bed board: ' + state.demand[j.area] + ' waiting for a bed on ' + AREAS[j.area].name }));
+  if (j.rank) notes.push(el('p', { class: 'note', text: 'Order set by the supervisor' }));
+  var acts = null;
+  if (opts.act) {
+    var idx = st === 'waiting' ? 0 : st === 'accepted' ? 1 : 2, cls = ['accept', 'start', 'done'][idx];
+    var lbl = T.verb[idx], aria = lbl + ': ' + T.label + ', ' + title(j);
+    acts = el('div', { class: 'acts' }, [
+      el('button', { type: 'button', id: 'a-' + j.id, class: 'go ' + cls, 'aria-label': aria, onclick: function () { advance(j); }, text: lbl }),
+      st === 'accepted' ? el('button', { type: 'button', id: 'b-' + j.id, class: 'back', 'aria-label': 'Hand back: ' + T.label + ', ' + title(j), onclick: function () { handBack(j); }, text: 'Hand back' }) : null
+    ]);
+  }
+  return el('article', { class: 'job t-' + j.type + (late ? ' late' : '') + (j.mine ? ' mine' : ''), 'aria-label': T.label + ', ' + title(j) },
+    [el('div', { class: 'top' }, [el('div', { class: 'kind' }, chips), clockEl(j)]),
+     el('p', { class: 'where', text: title(j) }),
+     el('p', { class: 'meta', text: 'Asked ' + hhmm(j.req) + (j.acc ? ' · accepted ' + hhmm(j.acc) : '') + (j.start ? ' · started ' + hhmm(j.start) : '') })]
+    .concat(notes).concat([acts]));
+}
+function frontLine(kind) {
+  var frag = document.createDocumentFragment();
+  var teamId = state.team[kind], ts = teamStats(teamId);
+  var sel = el('select', { id: 'team-pick', onchange: function (e) { state.team[kind] = e.target.value; render(); } });
+  Object.keys(state.teams).filter(function (id) { return state.teams[id].kind === kind; }).forEach(function (id) { sel.appendChild(el('option', { value: id, text: state.teams[id].name })); });
+  sel.value = teamId;
+  frag.appendChild(el('div', { class: 'teambar' }, [el('label', { for: 'team-pick' }, ['Your team', sel])]));
+  frag.appendChild(el('div', { class: 'summary' }, [
+    el('span', { class: 'pill', text: ts.staff + ' on shift' }), el('span', { class: 'pill free', text: ts.free + ' free' }),
+    el('span', { class: 'pill' + (ts.late ? ' hot' : ''), text: ts.waiting + ' waiting' + (ts.waiting ? ' · oldest ' + fmt(ts.oldest) : '') })
+  ]));
+  var mine = openJobs().filter(function (j) { return j.team === teamId && j.mine; }).sort(function (a, b) { return a.req - b.req; });
+  frag.appendChild(el('h3', { class: 'sec', text: 'Your jobs (this phone)' }));
+  if (mine.length) { var m = el('div', { class: 'jobs' }); mine.forEach(function (j) { m.appendChild(jobCard(j, { act: true })); }); frag.appendChild(m); }
+  else frag.appendChild(el('p', { class: 'empty', text: 'Nothing in hand. Accept the next job below.' }));
+  var q = queue(teamId);
+  frag.appendChild(el('h3', { class: 'sec', text: 'Incoming · ' + q.length }));
+  if (q.length) { var l = el('div', { class: 'jobs', id: 'incoming' }); q.forEach(function (j, i) { l.appendChild(jobCard(j, { act: true, next: i === 0 })); }); frag.appendChild(l); }
+  else frag.appendChild(el('p', { class: 'empty', text: 'The queue is clear. New jobs appear here as soon as they are asked for.' }));
+  var others = openJobs().filter(function (j) { return j.team === teamId && !j.mine && (j.acc || j.start); });
+  if (others.length) {
+    frag.appendChild(el('h3', { class: 'sec', text: 'Being done by your team · ' + others.length }));
+    var ul = el('ul', { class: 'others' });
+    others.forEach(function (j) { ul.appendChild(el('li', {}, [el('span', { text: TYPES[j.type].label + ', ' + title(j) }), el('b', { text: STATUS_WORD[status(j)] })])); });
+    frag.appendChild(ul);
+  }
+  return frag;
+}
+function board() {
+  var frag = document.createDocumentFragment();
+  frag.appendChild(el('h3', { class: 'sec', text: 'Teams now' }));
+  var grid = el('div', { class: 'teams' });
+  Object.keys(state.teams).forEach(function (id) {
+    var t = teamStats(id);
+    grid.appendChild(el('div', { class: 'team' + (t.waiting > t.free && t.waiting ? ' press' : '') }, [
+      el('h4', { text: t.name }),
+      el('div', { class: 'nums' }, [el('div', {}, [el('b', { text: String(t.staff) }), el('span', { text: 'on shift' })]), el('div', { class: 'free' }, [el('b', { text: String(t.free) }), el('span', { text: 'free' })]), el('div', {}, [el('b', { text: String(t.waiting) }), el('span', { text: 'waiting' })])]),
+      el('p', { text: t.waiting ? 'Oldest waiting ' + fmt(t.oldest) + (t.late ? ' · ' + t.late + ' past target' : '') : 'No jobs waiting' })
+    ]));
+  });
+  frag.appendChild(grid);
+  // Move one person between teams of the same kind.
+  var from = el('select', { id: 'mv-from' }), to = el('select', { id: 'mv-to' });
+  Object.keys(state.teams).forEach(function (id) { from.appendChild(el('option', { value: id, text: state.teams[id].name })); to.appendChild(el('option', { value: id, text: state.teams[id].name })); });
+  from.value = 'p-main'; to.value = 'p-east';
+  frag.appendChild(el('div', { class: 'moveform' }, [
+    el('label', { for: 'mv-from' }, ['Move one person from', from]), el('label', { for: 'mv-to' }, ['to', to]),
+    el('button', { type: 'button', id: 'mv-go', class: 'small', onclick: function () {
+      var a = from.value, b = to.value;
+      if (a === b) return toast('Pick two different teams.');
+      if (state.teams[a].kind !== state.teams[b].kind) return toast('Move between teams of the same kind.');
+      if (teamStats(a).free < 1) return toast('No one is free in ' + state.teams[a].name + '.');
+      state.teams[a].staff--; state.teams[b].staff++; addLog('Supervisor moved 1 ' + KIND_WORD[state.teams[a].kind] + ' from ' + state.teams[a].name + ' to ' + state.teams[b].name + '.'); render(); toast('Moved. Team numbers updated.');
+    }, text: 'Move' })
+  ]));
+  // Open jobs by area.
+  frag.appendChild(el('h3', { class: 'sec', text: 'Open jobs by area, oldest waiting first' }));
+  var f = el('div', { class: 'filters', role: 'group', 'aria-label': 'Show' });
+  [['all', 'All open'], ['late', 'Past target'], ['new', 'Not accepted']].forEach(function (x) {
+    f.appendChild(el('button', { type: 'button', id: 'f-' + x[0], 'aria-pressed': String(state.filter === x[0]), onclick: function () { state.filter = x[0]; render(); }, text: x[1] }));
+  });
+  frag.appendChild(f);
+  var list = openJobs().filter(function (j) { return state.filter === 'late' ? isLate(j) : state.filter === 'new' ? !j.acc && !j.start : true; });
+  var groups = {};
+  list.forEach(function (j) { (groups[j.area] = groups[j.area] || []).push(j); });
+  var areas = Object.keys(groups).sort(function (a, b) { return Math.max.apply(null, groups[b].map(waitMin)) - Math.max.apply(null, groups[a].map(waitMin)); });
+  if (!areas.length) frag.appendChild(el('p', { class: 'empty', text: state.filter === 'late' ? 'No jobs past target right now.' : 'No open jobs.' }));
+  var wrap = el('div', { id: 'board' });
+  areas.forEach(function (a) {
+    var js = groups[a].sort(function (x, y) { return x.req - y.req; });
+    var box = el('div', { class: 'area' }, [el('h4', {}, [AREAS[a].name, el('span', { text: js.length + ' open' + (state.demand[a] ? ' · bed board: ' + state.demand[a] + ' waiting for a bed' : '') })])]);
+    js.forEach(function (j) {
+      var st = status(j), sel = el('select', { id: 'as-' + j.id, 'aria-label': 'Team for ' + TYPES[j.type].label + ', ' + title(j), disabled: st !== 'waiting' ? 'disabled' : false, onchange: function (e) { j.team = e.target.value; addLog('Supervisor assigned to ' + state.teams[j.team].name + ': ' + TYPES[j.type].label + ', ' + title(j)); render(); toast('Assigned to ' + state.teams[j.team].name + '.'); } });
+      Object.keys(state.teams).filter(function (id) { return state.teams[id].kind === TYPES[j.type].kind; }).forEach(function (id) { sel.appendChild(el('option', { value: id, text: state.teams[id].name })); });
+      sel.value = j.team;
+      box.appendChild(el('div', { class: 'brow t-' + j.type + (isLate(j) ? ' late' : '') }, [
+        el('div', {}, [el('b', {}, [TYPES[j.type].label + ' ', j.urgent ? el('span', { class: 'chip urgent', text: 'Urgent' }) : null]), el('span', { class: 'sub', text: j.detail + ' · ' + STATUS_WORD[st] + (isLate(j) ? ' · past target' : '') })]),
+        el('div', { class: 'w', 'data-since': j.id, title: j.start ? 'Minutes from request to start' : 'Minutes since requested' }, [fmt(waitMin(j))]),
+        el('div', { class: 'assign' }, [sel])
+      ]));
+    });
+    wrap.appendChild(box);
+  });
+  frag.appendChild(wrap);
+  // KPIs by job type.
+  frag.appendChild(el('h3', { class: 'sec', text: 'By job type, this shift' }));
+  var tb = el('tbody');
+  Object.keys(TYPES).forEach(function (t) {
+    var k = kpis(t);
+    tb.appendChild(el('tr', {}, [el('td', { text: TYPES[t].label }), el('td', { class: 'r', text: String(k.doneCount) }), el('td', { class: 'r', text: k.requestToStartMin == null ? '–' : fmt(k.requestToStartMin) }), el('td', { class: 'r', text: k.requestToDoneMin == null ? '–' : fmt(k.requestToDoneMin) }), el('td', { class: 'r', text: state.targets[t] + ' min' })]));
+  });
+  frag.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 'bytype' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Job type' }), el('th', { class: 'r', text: 'Done' }), el('th', { class: 'r', text: 'To start' }), el('th', { class: 'r', text: 'To done' }), el('th', { class: 'r', text: 'Target' })])]), tb])]));
+  frag.appendChild(el('p', { class: 'fine', text: 'Medians. Measures jobs and waits, never individual staff.' }));
+  // Targets.
+  var d = el('details', { class: 'set', id: 'targets' }, [el('summary', { text: 'Start targets (your settings)' })]);
+  var tg = el('div', { class: 'targets' });
+  Object.keys(TYPES).forEach(function (t) {
+    tg.appendChild(el('label', { for: 'tg-' + t }, [TYPES[t].label + ' (min)', el('input', { type: 'number', id: 'tg-' + t, min: '1', max: '600', step: '1', inputmode: 'numeric', value: String(state.targets[t]), onchange: function (e) { var n = Math.max(1, Math.min(600, Math.round(+e.target.value) || DEFAULT_TARGETS[t])); state.targets[t] = n; addLog('Supervisor set the ' + TYPES[t].label.toLowerCase() + ' start target to ' + n + ' min.'); render(); document.getElementById('targets').open = true; } })]));
+  });
+  d.appendChild(tg);
+  d.appendChild(el('p', { class: 'fine', text: 'Example settings for this demo, not a standard. Your organisation sets its own; Ospeli flags waits against them.' }));
+  if (targetsOpen) d.open = true;
+  d.addEventListener('toggle', function () { targetsOpen = d.open; });
+  frag.appendChild(d);
+  return frag;
+}
+var targetsOpen = false;
+var REQ_TYPES = [
+  ['move', 'Porter', 'patient move'], ['specimen', 'Porter', 'specimen to lab'], ['bedclean', 'Bed clean', 'after a patient leaves'],
+  ['areaclean', 'Area clean', 'spill or room'], ['linen', 'Linen', 'top-up delivery'], ['meal', 'Meal trolley', 'from the kitchen']
+];
+var DEST = ['Imaging', 'Theatres', 'Discharge lounge', 'Another ward'];
+function bedWord(area) { return AREAS[area].bed || 'Bed'; }
+function wardView() {
+  var frag = document.createDocumentFragment(), r = state.req, w = state.ward;
+  var sel = el('select', { id: 'ward-pick', onchange: function (e) { state.ward = e.target.value; render(); } });
+  WARDS.forEach(function (id) { sel.appendChild(el('option', { value: id, text: AREAS[id].name })); });
+  sel.value = w;
+  frag.appendChild(el('div', { class: 'teambar' }, [el('label', { for: 'ward-pick' }, ['Your ward', sel])]));
+  var steps = el('div', { class: 'steps', style: 'margin-top:14px' });
+  // 1. What
+  var c1 = el('div', { class: 'choices', role: 'group', 'aria-label': 'What do you need?' });
+  REQ_TYPES.forEach(function (t) { c1.appendChild(el('button', { type: 'button', class: 'choice', id: 'q-' + t[0], 'aria-pressed': String(r.type === t[0]), onclick: function () { r.type = t[0]; r.where = defaultWhere(t[0]); render(); } }, [t[1], el('small', { text: t[2] })])); });
+  steps.appendChild(el('div', {}, [el('p', { class: 'stepq' }, [el('i', { text: '1' }), 'What do you need?']), c1]));
+  // 2. Where / which
+  if (r.type) {
+    var c2, q2;
+    if (r.type === 'bedclean' || r.type === 'areaclean') {
+      q2 = r.type === 'bedclean' ? 'Which ' + bedWord(w).toLowerCase() + '?' : 'Where?';
+      c2 = el('div', { class: 'choices' + (r.type === 'bedclean' ? ' beds' : ''), role: 'group', 'aria-label': q2 });
+      var opts = r.type === 'bedclean' ? range(12).map(function (n) { return bedWord(w) + ' ' + n; }) : ['Bay', 'Side room', 'Corridor', 'Bathroom'];
+      opts.forEach(function (o, i) { c2.appendChild(el('button', { type: 'button', class: 'choice', id: 'w-' + i, 'aria-pressed': String(r.where === o), onclick: function () { r.where = o; render(); }, text: r.type === 'bedclean' ? o.split(' ')[1] : o, 'aria-label': o })); });
+    } else if (r.type === 'move') {
+      q2 = 'To where?';
+      c2 = el('div', {}, [el('div', { class: 'choices', role: 'group', 'aria-label': q2 }, DEST.map(function (o, i) { return el('button', { type: 'button', class: 'choice', id: 'w-' + i, 'aria-pressed': String(r.where === o), onclick: function () { r.where = o; render(); }, text: o }); }))]);
+      var bs = el('select', { id: 'from-bed', onchange: function (e) { r.bed = e.target.value; save(); } });
+      range(12).forEach(function (n) { bs.appendChild(el('option', { value: String(n), text: bedWord(w) + ' ' + n })); });
+      bs.value = r.bed;
+      c2.appendChild(el('label', { for: 'from-bed', style: 'display:flex;gap:8px;align-items:center;margin-top:8px;font-weight:700;font-size:0.95rem' }, ['From', bs]));
+    } else {
+      q2 = 'Where to?';
+      c2 = el('div', { class: 'choices', role: 'group', 'aria-label': q2 }, [el('button', { type: 'button', class: 'choice', id: 'w-0', 'aria-pressed': 'true', text: r.where })]);
+    }
+    steps.appendChild(el('div', {}, [el('p', { class: 'stepq' }, [el('i', { text: '2' }), q2]), c2]));
+    // 3. Send
+    var kind = TYPES[r.type].kind, tid = teamFor(kind, AREAS[w].block), ts = teamStats(tid), k = kpis(r.type);
+    var urg = el('input', { type: 'checkbox', id: 'q-urgent', onchange: function (e) { r.urgent = e.target.checked; save(); } }); urg.checked = !!r.urgent;
+    steps.appendChild(el('div', {}, [
+      el('p', { class: 'stepq' }, [el('i', { text: '3' }), 'Send']),
+      el('div', { class: 'sendrow' }, [
+        el('button', { type: 'button', class: 'primary send', id: 'q-send', disabled: r.where ? false : 'disabled', onclick: sendRequest, text: r.where ? 'Send to ' + state.teams[tid].name.split(' · ')[0].toLowerCase() : 'Choose where first' }),
+        el('label', { class: 'urg', for: 'q-urgent' }, [urg, 'Urgent'])
+      ]),
+      el('p', { class: 'fine', text: state.teams[tid].name + ': ' + ts.free + ' free, ' + ts.waiting + ' waiting. ' + (k.requestToStartMin != null ? 'Today, ' + TYPES[r.type].label.toLowerCase() + ' jobs started a median of ' + fmt(k.requestToStartMin) + ' after asking.' : '') + ' Urgent follows your local rules; Ospeli does not set clinical priority.' })
+    ]));
+  }
+  frag.appendChild(steps);
+  // Bed board link
+  if (state.demand[w] != null) frag.appendChild(el('p', { class: 'fine', style: 'margin-top:14px' }, ['Bed cleans after a discharge are asked for automatically from the bed board. Try ', el('b', { text: 'A patient goes home' }), ' in the demo tools above.']));
+  // My ward's requests
+  var mine = state.jobs.filter(function (j) { return j.area === w && (!j.done || now() - j.done < 90 * M); }).sort(function (a, b) { return b.req - a.req; }).slice(0, 8);
+  frag.appendChild(el('h3', { class: 'sec', text: AREAS[w].name + ': your requests' }));
+  if (!mine.length) frag.appendChild(el('p', { class: 'empty', text: 'No requests in the last 90 minutes.' }));
+  var list = el('div', { class: 'jobs', id: 'ward-requests' });
+  mine.forEach(function (j) {
+    var st = status(j), ts = teamStats(j.team);
+    var line = st === 'waiting' ? 'Waiting ' + fmt(waitMin(j)) + ' · ' + ts.name + ' has ' + ts.free + ' free, ' + ts.waiting + ' waiting' : st === 'accepted' ? ts.name + ' is on the way' : st === 'started' ? 'In progress' : 'Done at ' + hhmm(j.done);
+    list.appendChild(el('div', { class: 'rq' }, [
+      el('div', { class: 'top' }, [el('span', { text: TYPES[j.type].label + ' · ' + j.detail }), el('span', { class: 'chip st-' + st, text: STATUS_WORD[st] })]),
+      el('p', { class: 'stat-line', text: line }),
+      el('div', { class: 'track', 'aria-label': 'Progress' }, [['req', 'Asked'], ['acc', 'Accepted'], ['start', 'Started'], ['done', 'Done']].map(function (x) { return el('span', { class: j[x[0]] ? 'on' : '' }, [x[1], el('em', { text: j[x[0]] ? hhmm(j[x[0]]) : '–' })]); }))
+    ]));
+  });
+  frag.appendChild(list);
+  return frag;
+}
+function defaultWhere(type) { return type === 'specimen' ? 'Lab' : type === 'linen' ? 'Ward linen store' : type === 'meal' ? 'Ward kitchen' : null; }
+function range(n) { var a = []; for (var i = 1; i <= n; i++) a.push(i); return a; }
+function sendRequest() {
+  var r = state.req, w = state.ward; if (!r.type || !r.where) return;
+  var detail = r.type === 'move' ? bedWord(w) + ' ' + r.bed + ' → ' + r.where : r.type === 'specimen' ? 'To the lab' : r.type === 'linen' ? 'To the ward store' : r.type === 'meal' ? 'From the kitchen' : r.where;
+  var j = newRequest(r.type, w, detail, r.urgent, 'ward');
+  state.req = { type: null, where: null, urgent: false, bed: r.bed };
+  render();
+  toast('Sent to ' + state.teams[j.team].name + '. You will see it accepted here.');
+  var first = document.querySelector('#ward-requests .rq'); if (first) first.scrollIntoView({ block: 'nearest' });
+}
+function renderGuide() {
+  var layout = document.getElementById('layout');
+  document.getElementById('guide-on').checked = state.guide;
+  layout.classList.toggle('noguide', !state.guide);
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Task lists, the board, requests and the measures all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag: every waiting job is within its target and teams are balanced.' }));
+  list.forEach(function (sg) {
+    var pend = state.pending.some(function (p) { return p.id === sg.id || p.id === sg.id + '-job'; });
+    var acts = sg.acts.filter(Boolean).map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend && a.primary ? 'disabled' : false, onclick: a.fn, text: pend && a.primary ? 'Proposed' : a.label }); });
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
+      el('span', { class: 'tag ' + (sg.kind === 'time' ? 'time' : sg.kind === 'ask' ? 'ask' : ''), text: sg.kind === 'time' ? 'Waiting too long' : sg.kind === 'move' ? 'Balance the teams' : 'Order of work' }),
+      el('h3', { text: sg.title }), sg.text ? el('p', { text: sg.text }) : null,
+      sg.list ? el('ul', {}, sg.list.map(function (x) { return el('li', { text: x }); })) : null,
+      el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  if (state.pending.length) {
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for the supervisor to decide' })]);
+    state.pending.forEach(function (p) {
+      d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }),
+        state.role === 'supervisor'
+          ? el('div', { class: 'acts', style: 'display:flex;gap:8px;flex-wrap:wrap' }, [el('button', { type: 'button', class: 'small primary', onclick: function () { decide(p, true); }, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])
+          : el('p', { class: 'why', style: 'margin:0;color:var(--soft);font-size:0.85rem', text: 'Switch to the Supervisor view to confirm or decline.' })]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Proposals wait here for the supervisor.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 25).forEach(function (e) { ol.appendChild(el('li', { class: e.t === lastLogT && now() - e.t < 5000 ? 'new' : '' }, [el('time', { text: hhmm(e.t) }), el('span', { text: e.text })])); });
+}
+
+// Live clocks: update the minute counters in place; redraw fully only when what the guide sees changes.
+var sig = '';
+function signature() { return openJobs().filter(isLate).map(function (j) { return j.id; }).join(',') + '|' + suggest().map(function (s) { return s.id; }).join(','); }
+function tick() {
+  if (signature() !== sig) { render(); return; }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-since]'), function (n) { var j = byId(n.getAttribute('data-since')); if (j && n.firstChild) n.firstChild.textContent = fmt(waitMin(j)); });
+}
+setInterval(tick, 15000);
+
+// ---------- Wiring ----------
+['porter', 'cleaner', 'supervisor', 'ward'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-clock').addEventListener('click', function () { state.offset = (state.offset || 0) + 10 * M; addLog('Demo: clock moved on 10 minutes.'); render(); toast('Clock moved on 10 minutes. Waits have grown.'); });
+document.getElementById('t-discharge').addEventListener('click', function () {
+  var wards = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7'], area = wards[(state.seq * 7) % wards.length];
+  var taken = state.jobs.filter(function (j) { return j.area === area && j.type === 'bedclean' && !j.done; }).map(function (j) { return j.detail; });
+  var bed = 1; while (taken.indexOf('Bed ' + bed) >= 0 && bed < 12) bed++;
+  var j = newRequest('bedclean', area, 'Bed ' + bed, false, 'bed board');
+  render(); toast('Bed board: ' + AREAS[area].name + ' bed ' + bed + ' vacated. A clean went to ' + state.teams[j.team].name + '.');
+});
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; render(); toast('Example reset to the start of the demo.'); });
+
+// Read-only view for software agents (no writes): window.ospeliSupportTasksDemo
+window.ospeliSupportTasksDemo = Object.freeze({
+  describe: function () { return 'Read-only support tasks demo (cleaning, portering, linen, meals) for a fictional hospital. get() returns teams and open jobs; kpis() the shift measures; suggestions() the guide\'s current suggestions. Runs in the browser; nothing is sent anywhere.'; },
+  get: function () {
+    return clone({ role: state.role, now: new Date(now()).toISOString(), targetsMin: state.targets,
+      teams: Object.keys(state.teams).map(teamStats),
+      openJobs: openJobs().map(function (j) { return { id: j.id, type: j.type, label: TYPES[j.type].label, area: AREAS[j.area].name, detail: j.detail, team: state.teams[j.team].name, urgent: j.urgent, source: j.source, status: status(j), waitMin: waitMin(j), pastTarget: isLate(j) }; }),
+      bedBoardWaiting: state.demand, pendingDecisions: state.pending.map(function (p) { return p.text; }) });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text || (s.list || []).join('; '), why: s.why }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Emergency department flow demo · Ospeli</title>
+<meta name="description" content="Record each step from arrival to leaving the emergency department, see who is waiting for a bed, and run pressure levels with action cards. Fictional example data; runs in your browser.">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3 { font-size: 1rem; margin: 0 0 6px; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button { font: inherit; color: var(--ink); }
+select, input[type=number] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button.primary { background: var(--navy); color: #fff; }
+button.sea { background: var(--sea); border-color: var(--sea); color: #fff; }
+button.small { min-height: 40px; padding: 4px 14px; font-size: 0.9rem; }
+button:disabled { opacity: 0.5; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+/* top controls */
+.roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--navy); border-radius: 14px; overflow: hidden; margin: 16px 0 10px; max-width: 720px; background: #fff; }
+.roles button { border: 0; border-radius: 0; min-height: 52px; padding: 6px 8px; line-height: 1.2; font-size: 0.95rem; }
+.roles button + button { border-left: 1px solid var(--navy); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+.roles small { display: block; font-weight: 600; font-size: 0.78rem; opacity: 0.8; }
+@media (max-width: 480px) { .roles small { display: none; } }
+.clock { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin: 0 0 16px; }
+.clock .t { font-weight: 800; background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; min-height: 44px; display: inline-flex; align-items: center; gap: 6px; }
+.clock .t span { color: var(--soft); font-weight: 700; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 32px; }
+.layout.noguide { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 480px) { .card { padding: 14px; } }
+.card + .card { margin-top: 18px; }
+.sub { color: var(--soft); font-size: 0.95rem; margin: -4px 0 12px; }
+/* KPI tiles */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 16px; }
+@media (max-width: 760px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; min-height: 0; display: block; width: 100%; }
+.stat b { display: block; font-size: 1.45rem; line-height: 1.2; font-weight: 800; }
+.stat .l { color: var(--soft); font-size: 0.92rem; line-height: 1.3; display: block; }
+.stat .d { display: none; margin-top: 6px; font-size: 0.85rem; color: var(--ink); border-top: 1px dashed #CFC5B2; padding-top: 6px; }
+.stat[aria-expanded=true] .d { display: block; }
+.stat .i { float: right; color: var(--soft); font-weight: 800; font-size: 0.8rem; }
+.stat.alert { background: var(--hot); }
+/* nurse view */
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 14px; }
+.chips button { min-height: 44px; border-color: #CFC5B2; font-size: 0.95rem; padding: 6px 14px; }
+.chips button[aria-pressed=true] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.pts { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 330px), 1fr)); }
+.pt { border: 1px solid var(--line); border-radius: 14px; padding: 14px; background: #FFFDF9; font-size: 1rem; }
+.pt.over { border-color: var(--coral); box-shadow: 0 0 0 1px var(--coral) inset; }
+.pt-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.pt-top b { font-size: 1.1rem; }
+.pt-top span { color: var(--soft); font-size: 0.95rem; }
+.track { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; margin: 10px 0 8px; }
+.track i { height: 8px; border-radius: 4px; background: var(--line); display: block; }
+.track i.done { background: var(--sea); }
+.track i.next { background: var(--mango); }
+.track i.skip { background: repeating-linear-gradient(135deg, var(--line) 0 4px, #fff 4px 8px); }
+.times { margin: 0 0 6px; font-size: 0.95rem; color: var(--soft); }
+.times b { color: var(--ink); font-weight: 700; }
+.waiting { margin: 0 0 10px; font-weight: 800; font-size: 1rem; }
+.waiting.over { color: #B23A22; }
+.flags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.flag { font-size: 0.94rem; font-weight: 800; border-radius: 999px; padding: 3px 10px; background: var(--wash); }
+.flag.coral { background: var(--hot); color: #9C2F1A; }
+.flag.mango { background: var(--warn); }
+.acts { display: grid; gap: 8px; }
+.acts.two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.acts button { width: 100%; min-height: 48px; font-size: 1rem; }
+.acts label { font-size: 0.95rem; font-weight: 700; display: grid; gap: 4px; }
+.acts select { width: 100%; font-size: 1rem; }
+.note { color: var(--soft); font-size: 0.94rem; margin: 12px 0 0; }
+/* coordinator */
+.setting { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--sand); border-radius: 12px; padding: 10px 12px; margin-bottom: 14px; font-size: 0.95rem; }
+.setting label { font-weight: 700; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.setting input { width: 92px; }
+.bw { display: grid; gap: 10px; }
+.bwrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 14px; align-items: center; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: #FFFDF9; }
+.bwrow.over { border-color: var(--coral); background: #FFF7F4; }
+.bwrow .who b { font-size: 1.05rem; }
+.bwrow .who p { margin: 2px 0 0; color: var(--soft); font-size: 0.95rem; }
+.bwrow .big { font-size: 1.3rem; font-weight: 800; text-align: right; line-height: 1.1; }
+.bwrow .big span { display: block; font-size: 0.8rem; color: var(--soft); font-weight: 700; }
+.bwrow .ctl { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; }
+.wards { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+/* manager */
+.mgr { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 760px) { .mgr { grid-template-columns: minmax(0, 1fr); } }
+.mgr .card + .card { margin-top: 0; }
+.level { display: flex; gap: 14px; align-items: center; margin-bottom: 10px; }
+.lv { width: 64px; height: 64px; border-radius: 16px; display: grid; place-items: center; font-size: 1.8rem; font-weight: 800; color: #fff; flex: none; }
+.lv1 { background: var(--sea); } .lv2 { background: var(--mango); } .lv3 { background: var(--coral); } .lv4 { background: #9C2F1A; }
+.level b { display: block; font-size: 1.15rem; }
+.level span { color: var(--soft); font-size: 0.92rem; }
+.ladder { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin: 6px 0 12px; }
+.ladder i { height: 8px; border-radius: 4px; background: var(--line); }
+.ladder i.on1 { background: var(--sea); } .ladder i.on2 { background: var(--mango); } .ladder i.on3 { background: var(--coral); } .ladder i.on4 { background: #9C2F1A; }
+.thr { width: 100%; border-collapse: collapse; font-size: 0.92rem; margin-top: 6px; }
+.thr th, .thr td { padding: 4px 6px; text-align: left; border-bottom: 1px solid var(--line); }
+.thr input { width: 74px; min-height: 40px; padding: 4px 8px; }
+details.site summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.checklist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.checklist label { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; cursor: pointer; min-height: 44px; font-size: 0.95rem; }
+.checklist input { width: 22px; height: 22px; flex: none; margin-top: 1px; }
+.checklist .tm { margin-left: auto; color: var(--sea); font-weight: 800; font-size: 0.85rem; white-space: nowrap; }
+.steps { display: grid; gap: 10px; }
+.sbar .top { display: flex; justify-content: space-between; gap: 8px; font-size: 0.95rem; }
+.sbar .top b { white-space: nowrap; }
+.sbar .bar { height: 12px; border-radius: 6px; background: var(--sand); overflow: hidden; margin-top: 3px; }
+.sbar .bar i { display: block; height: 100%; background: var(--sea); border-radius: 6px; }
+.sbar.slow .bar i { background: var(--coral); }
+.sbar.slow .top span::after { content: " · slowest step"; color: #B23A22; font-weight: 800; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.95rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.88rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.92rem; }
+.sugg .why { color: var(--soft); font-size: 0.86rem; }
+.sugg .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.sugg .confirm { background: var(--warn); border-radius: 10px; padding: 10px; margin-top: 8px; font-size: 0.9rem; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+/* log */
+.loghead { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.loghead h2 { margin: 0; }
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 320px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 7px 0; border-bottom: 1px dashed var(--line); font-size: 0.95rem; }
+ol.log time { font-weight: 800; color: var(--sea); }
+ol.log span small { color: var(--soft); font-size: 0.85rem; }
+.empty { text-align: center; color: var(--soft); padding: 24px 10px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 999px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.92rem; padding-bottom: 40px; }
+.foot a { color: var(--ink); font-weight: 700; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Emergency department flow</h1>
+  <p class="lead">Every step from arrival to leaving the department gets a time, so the team can see who is waiting, for what, and where the day slows down. Pick a role to see its view. Ospeli records times and suggests operational actions; people decide, and clinical decisions stay with the care team.</p>
+
+  <div class="roles" role="group" aria-label="Choose a role">
+    <button type="button" data-role="nurse" aria-pressed="true">Nurse in charge<small>phone or tablet</small></button>
+    <button type="button" data-role="flow" aria-pressed="false">Patient flow coordinator<small>beds</small></button>
+    <button type="button" data-role="ops" aria-pressed="false">Operations manager<small>pressure and flow</small></button>
+  </div>
+  <div class="clock">
+    <span class="t" id="clock" aria-live="polite"></span>
+    <button type="button" class="small" id="tick">Move clock on 15 min</button>
+    <button type="button" class="small" id="reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div id="main">
+      <div class="stats" id="stats"></div>
+      <section class="card" id="view" aria-live="off"></section>
+      <section class="card" aria-labelledby="log-h">
+        <div class="loghead"><h2 id="log-h">What happened</h2><button type="button" class="small" id="undo">Undo last</button></div>
+        <ol class="log" id="log"></ol>
+      </section>
+    </div>
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads the board and suggests operational actions, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. Buttons only propose a change: a person confirms it. It never suggests triage, clinical priorities or diagnoses.</p>
+      <div id="sugg"></div>
+    </aside>
+  </div>
+  <p class="foot">Patients, times, wards and thresholds are invented for this demo. Pressure thresholds and action cards are set by each site; the ones here are examples. Coming next (January 2027): emergency department flow in the app, on the same event log as the bed board, with ambulance arrival and handover times and pressure-level history. <a href="../../areas/emergency-department-flow/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+// ---------- Fixed vocabulary ----------
+var STEPS = [
+  { k: 'arrive', name: 'Arrived', verb: 'Arrival' },
+  { k: 'triage', name: 'Triage', verb: 'Triage' },
+  { k: 'seen', name: 'Seen', verb: 'Seen' },
+  { k: 'decision', name: 'Decision', verb: 'Decision' },
+  { k: 'bedreq', name: 'Bed requested', verb: 'Bed requested' },
+  { k: 'left', name: 'Left', verb: 'Left department' }
+];
+var WAITING_FOR = { triage: 'Waiting for triage', seen: 'Waiting to be seen', decision: 'Waiting for a decision', bedreq: 'Waiting for a bed request', left: 'Waiting to leave' };
+var WARDS = ['Medical ward A', 'Medical ward B', 'Surgical ward', 'Older people’s ward', 'Short-stay unit'];
+var ROLE_NAME = { nurse: 'Nurse in charge', flow: 'Patient flow coordinator', ops: 'Operations manager' };
+var LEVEL_NAME = ['', 'Normal', 'Busy', 'Under pressure', 'Severe pressure'];
+// Example action cards. Each site writes its own.
+var CARDS = {
+  1: ['Board reviewed at shift handover', 'Expected arrivals checked with the patient flow team'],
+  2: ['Patient flow team told the department is busy', 'Expected discharges checked with each ward', 'Staffing for the rest of the shift reviewed', 'Every decision to admit has a bed request'],
+  3: ['Site bed meeting called', 'Senior manager on call informed', 'Wards asked to confirm patients ready to leave', 'Extra-capacity options in the site plan reviewed'],
+  4: ['Senior leadership informed', 'Site full-capacity plan opened', 'Regular huddles started, as the site plan sets', 'Actions and times recorded for the review afterwards']
+};
+var STORE = 'ospeli.edflow.v1';
+var START = 14 * 60 + 20; // demo clock starts at 14:20
+
+// ---------- Synthetic data (seeded, so every visitor sees the same example) ----------
+function rng(seed) { var a = seed; return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function makeExample() {
+  var r = rng(20261109), t = 20, code = 371, pts = [], log = [];
+  while (t < START - 5) {
+    var a = Math.round(t), tr = a + 3 + r() * 30, se = tr + 15 + r() * 100, de = se + 25 + r() * 120, admit = r() < 0.32, br = null, le, ward = null;
+    if (admit) { br = de + 5 + r() * 40; le = br + 40 + r() * 280; ward = WARDS[Math.floor(r() * WARDS.length)]; } else le = de + 5 + r() * 35;
+    var p = { id: 'p' + code, code: ('000' + code).slice(-4), ev: {}, outcome: null, ward: null, escalated: null, bedReady: null };
+    var plan = [['arrive', a], ['triage', tr], ['seen', se], ['decision', de], ['bedreq', br], ['left', le]];
+    plan.forEach(function (s) { if (s[1] != null && s[1] <= START) p.ev[s[0]] = Math.round(s[1]); });
+    if (p.ev.decision != null) p.outcome = admit ? 'admit' : 'home';
+    if (p.ev.bedreq != null) p.ward = ward;
+    pts.push(p);
+    code += 1 + Math.floor(r() * 3); t += 8 + r() * 26;
+  }
+  log.push({ t: 13 * 60 + 5, text: 'Level 2 action card opened', who: 'Operations manager' });
+  return { now: START, role: 'nurse', filter: 'all', guide: true, limit: 60, spaces: 12,
+    thr: { occ: [0, 0, 70, 85, 100], bed: [0, 0, 3, 5, 8] }, openLevel: 2, openedAt: 13 * 60 + 5, checks: {},
+    pts: pts, log: log, history: [], dismissed: {}, pending: null };
+}
+
+// ---------- State ----------
+var state = load() || makeExample();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() { try { var s = JSON.parse(localStorage.getItem(STORE)); return s && s.pts && s.thr ? s : null; } catch (e) { return null; } }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+function snapshot() { var s = clone(state); delete s.history; state.history.push(JSON.stringify(s)); if (state.history.length > 30) state.history.shift(); }
+
+// ---------- Derived data (pure) ----------
+function inDept() { return state.pts.filter(function (p) { return p.ev.arrive != null && p.ev.left == null; }); }
+function nextStep(p) {
+  for (var i = 1; i < STEPS.length; i++) {
+    var k = STEPS[i].k;
+    if (k === 'bedreq' && p.outcome === 'home') continue;
+    if (p.ev[k] == null) return k;
+  }
+  return null;
+}
+function lastTime(p) { var t = p.ev.arrive; STEPS.forEach(function (s) { if (p.ev[s.k] != null) t = Math.max(t, p.ev[s.k]); }); return t; }
+function waitingBed() { return inDept().filter(function (p) { return p.outcome === 'admit'; }).sort(function (a, b) { return a.ev.decision - b.ev.decision; }); }
+function overLimit(p) { return p.ev.bedreq != null && state.now - p.ev.bedreq > state.limit; }
+function median(xs) { if (!xs.length) return null; var s = xs.slice().sort(function (a, b) { return a - b; }), m = Math.floor(s.length / 2); return s.length % 2 ? s[m] : Math.round((s[m - 1] + s[m]) / 2); }
+function gaps(from, to, onlyAdmit) {
+  return state.pts.filter(function (p) { return p.ev[from] != null && p.ev[to] != null && (!onlyAdmit || p.outcome === 'admit'); }).map(function (p) { return p.ev[to] - p.ev[from]; });
+}
+var PAIRS = [['arrive', 'triage', 'Arrival to triage'], ['triage', 'seen', 'Triage to seen'], ['seen', 'decision', 'Seen to decision'], ['decision', 'bedreq', 'Decision to admit to bed requested', true], ['bedreq', 'left', 'Bed requested to left department', true]];
+function stepMedians() { return PAIRS.map(function (q) { var g = gaps(q[0], q[1], q[3]); return { from: q[0], to: q[1], name: q[2], median: median(g), n: g.length }; }); }
+function slowest() { var s = stepMedians().filter(function (x) { return x.median != null; }); s.sort(function (a, b) { return b.median - a.median; }); return s[0] || null; }
+function pressure() {
+  var n = inDept().length, occ = Math.round(100 * n / Math.max(1, state.spaces)), bw = waitingBed().length, lvl = 1, reasons = [];
+  for (var L = 2; L <= 4; L++) {
+    var byOcc = occ >= state.thr.occ[L], byBed = bw >= state.thr.bed[L];
+    if (byOcc || byBed) { lvl = L; reasons = []; if (byOcc) reasons.push('occupancy ' + occ + '% (level ' + L + ' from ' + state.thr.occ[L] + '%)'); if (byBed) reasons.push(bw + ' waiting for a bed (level ' + L + ' from ' + state.thr.bed[L] + ')'); }
+  }
+  return { level: lvl, occupancy: occ, inDept: n, waitingBed: bw, reasons: reasons };
+}
+function kpis() {
+  var ad = median(gaps('arrive', 'decision')), dl = median(gaps('decision', 'left', true)), bw = waitingBed();
+  return {
+    inDepartment: { value: inDept().length, name: 'In the department now', definition: 'Patients with an arrival time and no time for leaving the department.', source: 'local definition' },
+    waitingForBed: { value: bw.length, overLimit: bw.filter(overLimit).length, name: 'Waiting for a bed', definition: 'Decision to admit recorded, not yet left the department. Over limit: bed requested longer ago than the site’s limit.', source: 'local definition' },
+    medianArrivalToDecisionMin: { value: ad, name: 'Median arrival to decision, today', definition: 'Arrival time to decision time, middle value across today’s patients with both times.', source: 'local definition' },
+    medianDecisionToLeftMin: { value: dl, name: 'Median decision to admit to left, today', definition: 'Decision to admit to leaving the department, middle value across admitted patients who left today.', source: 'local definition' }
+  };
+}
+
+// The guide: plain, explainable rules. Buttons only propose; a person confirms.
+var NO_REQ_MIN = 20; // demo rule: decision to admit with no bed request after this many minutes
+function suggest() {
+  var out = [], pr = pressure(), bw = waitingBed();
+  var over = bw.filter(function (p) { return overLimit(p) && !p.escalated; }).sort(function (a, b) { return a.ev.bedreq - b.ev.bedreq; });
+  if (over.length) {
+    out.push({ id: 'escalate', kind: 'time', title: over.length + ' bed request' + (over.length > 1 ? 's' : '') + ' waiting longer than the site limit',
+      text: over.slice(0, 4).map(function (p) { return 'Patient ' + p.code + ' (' + fmt(state.now - p.ev.bedreq) + ', ' + p.ward + ')'; }).join('; ') + (over.length > 4 ? '; and ' + (over.length - 4) + ' more' : '') + '. Proposal: escalate them to the site bed meeting.',
+      why: 'Bed requested more than ' + fmt(state.limit) + ' ago (this site’s limit) and not yet escalated.',
+      label: 'Propose escalation', confirm: 'Escalate ' + over.length + ' bed request' + (over.length > 1 ? 's' : '') + ' now?', by: 'flow',
+      apply: function () { over.forEach(function (p) { p.escalated = state.now; addLog('Patient ' + p.code + ' bed request escalated (' + p.ward + ')', 'Patient flow coordinator, confirmed from the guide'); }); } });
+  }
+  if (pr.level !== state.openLevel) {
+    var up = pr.level > state.openLevel;
+    out.push({ id: 'level-' + pr.level + '-' + state.openLevel, kind: up ? 'time' : 'ask',
+      title: up ? 'Thresholds point to level ' + pr.level + '; the level ' + state.openLevel + ' card is open' : 'Conditions now fit level ' + pr.level + '; level ' + state.openLevel + ' is open',
+      text: up ? 'Proposal: open the level ' + pr.level + ' action card (' + LEVEL_NAME[pr.level].toLowerCase() + ') so its checklist starts.' : 'Proposal: step down to level ' + pr.level + '. Check with the nurse in charge before you do.',
+      why: pr.reasons.length ? 'Now: ' + pr.reasons.join('; ') + '. Thresholds are set by this site.' : 'Now: occupancy ' + pr.occupancy + '% and ' + pr.waitingBed + ' waiting for a bed, below the level 2 thresholds this site set.',
+      label: up ? 'Propose level ' + pr.level : 'Propose step down', confirm: 'Open the level ' + pr.level + ' action card now?', by: 'ops',
+      apply: function () { setLevel(pr.level, 'Operations manager, confirmed from the guide'); } });
+  }
+  var noReq = bw.filter(function (p) { return p.ev.bedreq == null && state.now - p.ev.decision >= NO_REQ_MIN; });
+  if (noReq.length) {
+    out.push({ id: 'noreq', kind: 'ask', title: noReq.length + ' decision' + (noReq.length > 1 ? 's' : '') + ' to admit with no bed request yet',
+      text: noReq.map(function (p) { return 'Patient ' + p.code + ' (decision ' + clock(p.ev.decision) + ')'; }).join('; ') + '. A bed request starts the bed search; the nurse in charge can record it in one tap.',
+      why: 'Decision to admit recorded ' + NO_REQ_MIN + ' min or more ago (a demo setting), with no bed request time.',
+      label: 'Show in the nurse view', show: function () { state.role = 'nurse'; state.filter = 'bed'; } });
+  }
+  var sl = slowest();
+  if (sl) {
+    out.push({ id: 'slowest', kind: 'ask', title: 'Slowest step today: ' + sl.name.toLowerCase() + ' (median ' + fmt(sl.median) + ')',
+      text: 'Ask the team what this step waits on, and take it to the next huddle. Look at the step before it too.',
+      why: 'Middle value of ' + sl.n + ' recorded times today, compared across the five steps.',
+      label: 'Show flow', show: function () { state.role = 'ops'; } });
+  }
+  return out.filter(function (x) { return !state.dismissed[x.id]; }).slice(0, 4);
+}
+
+// ---------- Helpers ----------
+function fmt(m) { if (m == null) return '–'; m = Math.max(0, Math.round(m)); if (m < 60) return m + ' min'; var h = Math.floor(m / 60), r = m % 60; return h + ' h' + (r ? ' ' + (r < 10 ? '0' : '') + r : ''); }
+function clock(m) { m = Math.round(m); var h = Math.floor(m / 60) % 24, r = m % 60; return (h < 10 ? '0' : '') + h + ':' + (r < 10 ? '0' : '') + r; }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2400); }
+function addLog(text, who) { state.log.push({ t: state.now, text: text, who: who }); }
+function byId(id) { return state.pts.filter(function (p) { return p.id === id; })[0]; }
+function setLevel(L, who) { state.openLevel = L; state.openedAt = state.now; addLog('Level ' + L + ' action card opened (' + LEVEL_NAME[L].toLowerCase() + ')', who); }
+var openDefs = {};
+
+// ---------- Actions ----------
+function record(id, k, extra) {
+  var p = byId(id); if (!p || p.ev[k] != null) return;
+  snapshot();
+  p.ev[k] = state.now;
+  var label = STEPS.filter(function (s) { return s.k === k; })[0].verb;
+  if (k === 'decision') { p.outcome = extra; label = extra === 'admit' ? 'Decision to admit' : 'Decision: not admitted'; }
+  if (k === 'bedreq') { p.ward = extra; label = 'Bed requested on ' + extra; }
+  addLog('Patient ' + p.code + ': ' + label.charAt(0).toLowerCase() + label.slice(1) + ' recorded', ROLE_NAME[state.role]);
+  render(); toast('Patient ' + p.code + ': ' + label + ' at ' + clock(state.now));
+}
+function act(fn, msg) { snapshot(); fn(); render(); if (msg) toast(msg); }
+
+// ---------- Render ----------
+function render() {
+  var role = state.role;
+  document.querySelectorAll('.roles button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-role') === role)); });
+  var c = document.getElementById('clock'); c.textContent = ''; c.appendChild(el('span', { text: 'Demo clock' })); c.appendChild(document.createTextNode(clock(state.now)));
+  document.getElementById('undo').disabled = !state.history.length;
+  renderStats();
+  var v = document.getElementById('view'); v.textContent = '';
+  if (role === 'nurse') renderNurse(v); else if (role === 'flow') renderFlow(v); else renderOps(v);
+  renderLog(); renderGuide(); save();
+}
+function renderStats() {
+  var k = kpis(), st = document.getElementById('stats'); st.textContent = '';
+  [['inDepartment', String(k.inDepartment.value), false],
+   ['waitingForBed', k.waitingForBed.value + (k.waitingForBed.overLimit ? ' · ' + k.waitingForBed.overLimit + ' over' : ''), k.waitingForBed.overLimit > 0],
+   ['medianArrivalToDecisionMin', fmt(k.medianArrivalToDecisionMin.value), false],
+   ['medianDecisionToLeftMin', fmt(k.medianDecisionToLeftMin.value), false]].forEach(function (x) {
+    var d = k[x[0]], open = !!openDefs[x[0]];
+    st.appendChild(el('button', { type: 'button', class: 'stat' + (x[2] ? ' alert' : ''), 'data-kpi': x[0], 'aria-expanded': String(open), title: d.definition + ' Source: ' + d.source + '.', onclick: function () { openDefs[x[0]] = !open; renderStats(); } },
+      [el('span', { class: 'i', 'aria-hidden': 'true', text: open ? '−' : 'i' }), el('b', { text: x[1] }), el('span', { class: 'l', text: d.name }), el('span', { class: 'd', text: d.definition + ' Source: ' + d.source + '.' })]));
+  });
+}
+function filtered() {
+  var list = inDept().slice().sort(function (a, b) { return a.ev.arrive - b.ev.arrive; });
+  var f = state.filter;
+  if (f === 'all') return list;
+  return list.filter(function (p) { var n = nextStep(p); return f === 'bed' ? p.outcome === 'admit' : f === 'early' ? (n === 'triage' || n === 'seen') : n === f; });
+}
+function renderNurse(v) {
+  v.appendChild(el('h2', { text: 'Patients in the department' }));
+  v.appendChild(el('p', { class: 'sub', text: 'Oldest arrival first. Tap the button on a card to record the time of the next step.' }));
+  var all = inDept(), cnt = function (fn) { return all.filter(fn).length; };
+  var chips = el('div', { class: 'chips', role: 'group', 'aria-label': 'Show patients' });
+  [['all', 'All', all.length], ['early', 'Not yet seen', cnt(function (p) { var n = nextStep(p); return n === 'triage' || n === 'seen'; })], ['decision', 'Waiting for a decision', cnt(function (p) { return nextStep(p) === 'decision'; })], ['bed', 'Waiting for a bed', cnt(function (p) { return p.outcome === 'admit'; })]].forEach(function (c) {
+    chips.appendChild(el('button', { type: 'button', 'aria-pressed': String(state.filter === c[0]), onclick: function () { state.filter = c[0]; render(); }, text: c[1] + ' (' + c[2] + ')' }));
+  });
+  v.appendChild(chips);
+  var list = filtered(), grid = el('div', { class: 'pts' });
+  if (!list.length) v.appendChild(el('p', { class: 'empty', text: 'No patients in this group right now.' }));
+  list.forEach(function (p) { grid.appendChild(patientCard(p)); });
+  v.appendChild(grid);
+  v.appendChild(el('p', { class: 'note', text: 'Times use the demo clock. Recording a time is not a clinical decision: the care team makes those. Patients appear only as codes.' }));
+}
+function patientCard(p) {
+  var n = nextStep(p), since = state.now - lastTime(p), over = overLimit(p);
+  var track = el('div', { class: 'track', 'aria-hidden': 'true' });
+  STEPS.forEach(function (s) { track.appendChild(el('i', { class: p.ev[s.k] != null ? 'done' : (s.k === 'bedreq' && p.outcome === 'home') ? 'skip' : s.k === n ? 'next' : '' })); });
+  var times = el('p', { class: 'times' });
+  STEPS.forEach(function (s, i) { if (p.ev[s.k] == null) return; if (times.childNodes.length) times.appendChild(document.createTextNode(' · ')); times.appendChild(document.createTextNode((s.k === 'bedreq' ? 'Bed req.' : s.name) + ' ')); times.appendChild(el('b', { text: clock(p.ev[s.k]) })); });
+  var flags = el('div', { class: 'flags' });
+  if (p.outcome === 'admit') flags.appendChild(el('span', { class: 'flag', text: p.ward ? 'Bed requested: ' + p.ward : 'Decision to admit' }));
+  if (p.outcome === 'home') flags.appendChild(el('span', { class: 'flag', text: 'Not admitted' }));
+  if (over) flags.appendChild(el('span', { class: 'flag coral', text: 'Over the site’s bed wait limit' }));
+  if (p.escalated) flags.appendChild(el('span', { class: 'flag mango', text: 'Escalated ' + clock(p.escalated) }));
+  if (p.bedReady) flags.appendChild(el('span', { class: 'flag', text: 'Bed ready ' + clock(p.bedReady) }));
+  var acts = el('div', { class: 'acts' }), now = clock(state.now), label = 'Patient ' + p.code + ': ';
+  if (n === 'decision') {
+    acts.className = 'acts two';
+    acts.appendChild(el('button', { type: 'button', class: 'primary', 'aria-label': label + 'record decision to admit at ' + now, onclick: function () { record(p.id, 'decision', 'admit'); }, text: 'Admit' }));
+    acts.appendChild(el('button', { type: 'button', 'aria-label': label + 'record decision, not admitted, at ' + now, onclick: function () { record(p.id, 'decision', 'home'); }, text: 'Not admitted' }));
+  } else if (n === 'bedreq') {
+    var sid = 'ward-' + p.id, sel = el('select', { id: sid });
+    sel.appendChild(el('option', { value: '', text: 'Choose a ward' }));
+    WARDS.forEach(function (w) { sel.appendChild(el('option', { value: w, text: w })); });
+    acts.appendChild(el('label', { for: sid }, ['Ward to request', sel]));
+    acts.appendChild(el('button', { type: 'button', class: 'primary', 'aria-label': label + 'record bed requested at ' + now, onclick: function () { if (!sel.value) { sel.focus(); toast('Choose a ward first.'); return; } record(p.id, 'bedreq', sel.value); }, text: 'Bed requested · ' + now }));
+  } else if (n) {
+    var st = STEPS.filter(function (s) { return s.k === n; })[0];
+    acts.appendChild(el('button', { type: 'button', class: 'primary', 'aria-label': label + 'record ' + st.verb.toLowerCase() + ' at ' + now, onclick: function () { record(p.id, n); }, text: 'Record ' + st.verb.toLowerCase() + ' · ' + now }));
+  }
+  return el('article', { class: 'pt' + (over ? ' over' : ''), 'aria-label': 'Patient ' + p.code }, [
+    el('div', { class: 'pt-top' }, [el('b', { text: 'Patient ' + p.code }), el('span', { text: 'here ' + fmt(state.now - p.ev.arrive) })]),
+    track, times,
+    el('p', { class: 'waiting' + (over ? ' over' : ''), text: n ? (n === 'left' && p.outcome === 'admit' ? (p.bedReady ? 'Bed ready, waiting to go' : 'Waiting for a bed') : WAITING_FOR[n]) + ' · ' + fmt(since) : '' }),
+    flags.childNodes.length ? flags : null, acts
+  ]);
+}
+function renderFlow(v) {
+  var bw = waitingBed();
+  v.appendChild(el('h2', { text: 'Waiting for a bed' }));
+  v.appendChild(el('p', { class: 'sub', text: 'Patients with a decision to admit who are still in the department, longest wait first.' }));
+  var inp = el('input', { type: 'number', id: 'limit', min: '10', max: '720', step: '5', value: String(state.limit), inputmode: 'numeric' });
+  inp.addEventListener('change', function () { var x = Math.max(10, Math.min(720, Math.round(+inp.value || 60))); act(function () { state.limit = x; addLog('Bed request wait limit set to ' + x + ' min', 'Patient flow coordinator'); }, 'Limit saved.'); });
+  v.appendChild(el('div', { class: 'setting' }, [el('label', { for: 'limit' }, ['Site limit for a bed request (minutes)', inp]), el('span', { text: 'Each site sets its own limit.' })]));
+  var byWard = {};
+  bw.forEach(function (p) { if (p.ward) byWard[p.ward] = (byWard[p.ward] || 0) + 1; });
+  var wards = el('div', { class: 'wards', 'aria-label': 'Bed requests by ward' });
+  Object.keys(byWard).sort().forEach(function (w) { wards.appendChild(el('span', { class: 'flag', text: w + ': ' + byWard[w] })); });
+  if (wards.childNodes.length) v.appendChild(wards);
+  if (!bw.length) { v.appendChild(el('p', { class: 'empty', text: 'Nobody is waiting for a bed.' })); return; }
+  var list = el('div', { class: 'bw' });
+  bw.forEach(function (p) {
+    var over = overLimit(p), meta = p.ward ? 'Requested ' + p.ward + ' at ' + clock(p.ev.bedreq) + ' (' + fmt(state.now - p.ev.bedreq) + ' ago)' : 'No bed request yet';
+    var flags = [];
+    if (over) flags.push(el('span', { class: 'flag coral', text: 'Over limit' }));
+    if (p.escalated) flags.push(el('span', { class: 'flag mango', text: 'Escalated ' + clock(p.escalated) }));
+    if (p.bedReady) flags.push(el('span', { class: 'flag', text: 'Bed ready ' + clock(p.bedReady) }));
+    list.appendChild(el('div', { class: 'bwrow' + (over ? ' over' : '') }, [
+      el('div', { class: 'who' }, [el('b', { text: 'Patient ' + p.code }), el('p', { text: 'Decision to admit ' + clock(p.ev.decision) + ' · ' + meta }), flags.length ? el('div', { class: 'flags', style: 'margin:6px 0 0' }, flags) : null]),
+      el('div', { class: 'big', text: fmt(state.now - p.ev.decision) }, [el('span', { text: 'since decision' })]),
+      el('div', { class: 'ctl' }, [
+        el('button', { type: 'button', class: 'small', disabled: (p.escalated || !p.ward) ? 'disabled' : false, 'aria-label': 'Escalate Patient ' + p.code, onclick: function () { act(function () { p.escalated = state.now; addLog('Patient ' + p.code + ' bed request escalated (' + p.ward + ')', 'Patient flow coordinator'); }, 'Escalated.'); }, text: p.escalated ? 'Escalated' : 'Escalate' }),
+        el('button', { type: 'button', class: 'small sea', disabled: (p.bedReady || !p.ward) ? 'disabled' : false, 'aria-label': 'Bed ready for Patient ' + p.code, onclick: function () { act(function () { p.bedReady = state.now; addLog('Patient ' + p.code + ': bed ready on ' + p.ward + '; department told', 'Patient flow coordinator'); }, 'Bed ready. The department can see it.'); }, text: 'Bed ready' })
+      ])
+    ]));
+  });
+  v.appendChild(list);
+}
+function renderOps(v) {
+  var pr = pressure(), L = state.openLevel;
+  v.appendChild(el('h2', { text: 'Department pressure and flow' }));
+  v.appendChild(el('p', { class: 'sub', text: 'Pressure thresholds are set by each site. The ones below are examples you can change.' }));
+  var grid = el('div', { class: 'mgr' });
+  // pressure card
+  var pc = el('div', { class: 'card', style: 'background:#FFFDF9' });
+  pc.appendChild(el('div', { class: 'level' }, [el('div', { class: 'lv lv' + L, text: String(L) }), el('div', {}, [el('b', { text: 'Level ' + L + ' · ' + LEVEL_NAME[L] }), el('span', { text: 'Open since ' + clock(state.openedAt) + '. Thresholds now point to level ' + pr.level + '.' })])]));
+  var ladder = el('div', { class: 'ladder', 'aria-hidden': 'true' });
+  for (var i = 1; i <= 4; i++) ladder.appendChild(el('i', { class: i <= L ? 'on' + L : '' }));
+  pc.appendChild(ladder);
+  pc.appendChild(el('p', { style: 'margin:0 0 10px;font-size:0.95rem' }, ['Occupancy ', el('b', { text: pr.occupancy + '%' }), ' (' + pr.inDept + ' of ' + state.spaces + ' spaces) · ', el('b', { text: String(pr.waitingBed) }), ' waiting for a bed']));
+  var lvSel = el('select', { id: 'set-level' });
+  for (var j = 1; j <= 4; j++) lvSel.appendChild(el('option', { value: String(j), text: 'Level ' + j + ' · ' + LEVEL_NAME[j], selected: j === L ? 'selected' : false }));
+  pc.appendChild(el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px' }, [
+    el('label', { for: 'set-level', style: 'display:grid;gap:4px;font-weight:700;font-size:0.9rem' }, ['Open action card', lvSel]),
+    el('button', { type: 'button', class: 'small primary', id: 'set-level-go', onclick: function () { var x = +lvSel.value; if (x === state.openLevel) { toast('Level ' + x + ' is already open.'); return; } act(function () { setLevel(x, 'Operations manager'); }, 'Level ' + x + ' action card opened.'); }, text: 'Open' })
+  ]));
+  pc.appendChild(el('h3', { text: 'Level ' + L + ' action card' }));
+  var ul = el('ul', { class: 'checklist' });
+  CARDS[L].forEach(function (item, idx) {
+    var key = L + ':' + idx, done = state.checks[key], id = 'chk-' + L + '-' + idx;
+    var cb = el('input', { type: 'checkbox', id: id, checked: done != null ? 'checked' : false });
+    cb.addEventListener('change', function () { act(function () { if (cb.checked) { state.checks[key] = state.now; addLog('Level ' + L + ' card: ' + item.toLowerCase(), 'Operations manager'); } else delete state.checks[key]; }); });
+    ul.appendChild(el('li', {}, [el('label', { for: id }, [cb, el('span', { text: item }), done != null ? el('span', { class: 'tm', text: clock(done) }) : null])]));
+  });
+  pc.appendChild(ul);
+  pc.appendChild(el('p', { class: 'note', text: 'Example action card. Each site writes its own cards for each level.' }));
+  // thresholds
+  var det = el('details', { class: 'site' }, [el('summary', { text: 'Site thresholds' })]);
+  var sp = el('input', { type: 'number', id: 'spaces', min: '1', max: '400', value: String(state.spaces), inputmode: 'numeric' });
+  sp.addEventListener('change', function () { act(function () { state.spaces = Math.max(1, Math.min(400, Math.round(+sp.value || 12))); }, 'Saved.'); });
+  det.appendChild(el('label', { for: 'spaces', style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-weight:700;font-size:0.92rem;margin:4px 0 8px' }, ['Spaces in the department', sp]));
+  var tb = el('table', { class: 'thr' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Level' }), el('th', { text: 'Occupancy from (%)' }), el('th', { text: 'or waiting for a bed from' })])])]);
+  var body = el('tbody');
+  [2, 3, 4].forEach(function (lv) {
+    var o = el('input', { type: 'number', min: '1', max: '300', value: String(state.thr.occ[lv]), 'aria-label': 'Level ' + lv + ' occupancy threshold, percent', inputmode: 'numeric' });
+    var b = el('input', { type: 'number', min: '1', max: '200', value: String(state.thr.bed[lv]), 'aria-label': 'Level ' + lv + ' waiting-for-a-bed threshold', inputmode: 'numeric' });
+    o.addEventListener('change', function () { act(function () { state.thr.occ[lv] = Math.max(1, Math.round(+o.value || 1)); }, 'Saved.'); });
+    b.addEventListener('change', function () { act(function () { state.thr.bed[lv] = Math.max(1, Math.round(+b.value || 1)); }, 'Saved.'); });
+    body.appendChild(el('tr', {}, [el('td', { text: lv + ' ' + LEVEL_NAME[lv] }), el('td', {}, [o]), el('td', {}, [b])]));
+  });
+  tb.appendChild(body); det.appendChild(tb);
+  det.appendChild(el('p', { class: 'note', text: 'A level applies when either number is reached. These are example values, not a standard; each site sets its own.' }));
+  pc.appendChild(det);
+  grid.appendChild(pc);
+  // flow card
+  var fc = el('div', { class: 'card' });
+  var k = kpis();
+  fc.appendChild(el('h3', { text: 'Today’s flow' }));
+  fc.appendChild(el('p', { style: 'margin:0 0 12px;font-size:0.95rem' }, ['Median arrival to decision ', el('b', { text: fmt(k.medianArrivalToDecisionMin.value) }), '; decision to admit to left ', el('b', { text: fmt(k.medianDecisionToLeftMin.value) }), '. Arrivals today: ', el('b', { text: String(state.pts.length) }), '.']));
+  var ms = stepMedians(), sl = slowest(), max = Math.max.apply(null, ms.map(function (m) { return m.median || 0; }).concat([1]));
+  var steps = el('div', { class: 'steps', id: 'step-medians' });
+  ms.forEach(function (m) {
+    var slow = sl && sl.name === m.name;
+    steps.appendChild(el('div', { class: 'sbar' + (slow ? ' slow' : ''), 'data-slowest': slow ? 'true' : null }, [
+      el('div', { class: 'top' }, [el('span', { text: m.name }), el('b', { text: fmt(m.median) })]),
+      el('div', { class: 'bar', role: 'img', 'aria-label': m.name + ': median ' + fmt(m.median) + ' from ' + m.n + ' patients' + (slow ? ', the slowest step' : '') }, [el('i', { style: 'width:' + (100 * (m.median || 0) / max) + '%' })])
+    ]));
+  });
+  fc.appendChild(steps);
+  fc.appendChild(el('p', { class: 'note', text: 'Middle value of the times recorded today for each step. Measures the flow, not people. Local definitions.' }));
+  grid.appendChild(fc);
+  v.appendChild(grid);
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  var items = state.log.slice().reverse();
+  if (!items.length) ol.appendChild(el('li', {}, [el('time', { text: '' }), el('span', { text: 'Nothing recorded yet. Record a step to see it here.' })]));
+  items.slice(0, 40).forEach(function (x) { ol.appendChild(el('li', {}, [el('time', { text: clock(x.t) }), el('span', {}, [x.text + ' ', el('small', { text: '· ' + x.who })])])); });
+}
+var openConfirm = null;
+function renderGuide() {
+  var layout = document.getElementById('layout');
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'); box.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Recording times, the bed list, pressure levels and action cards all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'how', text: 'Nothing to suggest right now.' }));
+  list.forEach(function (sg) {
+    var row = el('div', { class: 'row' });
+    if (sg.apply) row.appendChild(el('button', { type: 'button', class: 'small primary', 'aria-expanded': String(openConfirm === sg.id), onclick: function () { openConfirm = openConfirm === sg.id ? null : sg.id; renderGuide(); }, text: sg.label }));
+    if (sg.show) row.appendChild(el('button', { type: 'button', class: 'small primary', onclick: function () { sg.show(); render(); document.getElementById('view').scrollIntoView({ block: 'start', behavior: 'smooth' }); }, text: sg.label }));
+    row.appendChild(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; openConfirm = null; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not now' }));
+    var card = el('div', { class: 'sugg', 'data-id': sg.id }, [
+      el('span', { class: 'tag ' + sg.kind, text: sg.kind === 'time' ? 'Needs a decision' : 'Worth a look' }),
+      el('h3', { text: sg.title }), el('p', { text: sg.text }), el('p', { class: 'why', text: 'Why: ' + sg.why }), row
+    ]);
+    if (sg.apply && openConfirm === sg.id) {
+      card.appendChild(el('div', { class: 'confirm' }, [
+        el('p', { style: 'margin:0 0 8px' }, [el('b', { text: sg.confirm + ' ' }), 'This is for the ' + ROLE_NAME[sg.by].toLowerCase() + ' to decide.']),
+        el('div', { class: 'row' }, [
+          el('button', { type: 'button', class: 'small sea', 'data-confirm': sg.id, onclick: function () { openConfirm = null; act(sg.apply, 'Done. Logged with the time.'); }, text: 'Confirm' }),
+          el('button', { type: 'button', class: 'small', onclick: function () { openConfirm = null; renderGuide(); }, text: 'Cancel' })
+        ])
+      ]));
+    }
+    box.appendChild(card);
+  });
+}
+
+// ---------- Wiring ----------
+document.querySelectorAll('.roles button').forEach(function (b) { b.addEventListener('click', function () { state.role = b.getAttribute('data-role'); render(); }); });
+document.getElementById('tick').addEventListener('click', function () { act(function () { state.now = Math.min(state.now + 15, 23 * 60 + 59); }, 'Clock moved on to ' + clock(Math.min(state.now + 15, 23 * 60 + 59)) + '.'); });
+document.getElementById('reset').addEventListener('click', function () { var role = state.role; state = makeExample(); state.role = role; openConfirm = null; render(); toast('Example reset.'); });
+document.getElementById('undo').addEventListener('click', function () { var h = state.history.pop(); if (!h) return; var prev = JSON.parse(h); prev.history = state.history; state = prev; openConfirm = null; render(); toast('Undone.'); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; openConfirm = null; render(); });
+
+// Read-only view for software agents (no writes): window.ospeliEdFlowDemo
+window.ospeliEdFlowDemo = Object.freeze({
+  describe: function () { return 'Read-only emergency department flow demo. get() returns the board (patients as anonymous codes with step times in minutes after midnight), kpis() the headline measures, suggestions() the guide\'s operational suggestions. No clinical data. Fictional example; runs in the browser.'; },
+  get: function () { var pr = pressure(); return clone({ clock: clock(state.now), role: state.role, bedRequestLimitMin: state.limit, spaces: state.spaces, thresholds: state.thr, openLevel: state.openLevel, thresholdLevel: pr.level, occupancyPct: pr.occupancy,
+    patients: state.pts.map(function (p) { return { code: 'Patient ' + p.code, times: p.ev, nextStep: p.ev.left != null ? null : nextStep(p), outcome: p.outcome, wardRequested: p.ward, escalated: p.escalated, bedReady: p.bedReady }; }), log: state.log }); },
+  kpis: function () { var k = kpis(), out = {}; Object.keys(k).forEach(function (x) { out[x] = clone(k[x]); }); out.slowestStep = slowest(); return out; },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text, why: s.why, proposes: !!s.apply, decidedBy: s.by ? ROLE_NAME[s.by] : null }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>

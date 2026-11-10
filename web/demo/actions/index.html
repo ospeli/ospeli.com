@@ -1,0 +1,826 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Incidents, risk and actions demo · Ospeli</title>
+<meta name="description" content="Report an incident or near miss from a phone in under a minute, review and group reports into themes, and track every action and risk in one place. Fictional example data; runs in your browser.">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+@media (max-width: 420px) { header nav .opt { display: none; } }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; line-height: 1.3; }
+h3 { font-size: 1rem; margin: 0 0 4px; line-height: 1.3; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; margin: 16px 0 18px; }
+.bar .who { font-weight: 800; }
+select, input, button, textarea { font: inherit; color: var(--ink); }
+select, input[type=text], textarea { border: 1px solid #CFC5B2; border-radius: 10px; padding: 9px 11px; background: #fff; min-height: 46px; width: 100%; max-width: 100%; }
+textarea { min-height: 96px; resize: vertical; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 40px; padding: 4px 14px; font-size: 0.9375rem; }
+button.link { border: 0; background: none; padding: 0 2px; min-height: 0; text-decoration: underline; font-weight: 700; color: var(--sea); }
+button[disabled] { opacity: 0.5; cursor: default; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.seg { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; }
+.seg button { border: 0; border-radius: 0; min-height: 44px; }
+.seg button + button { border-left: 1px solid var(--navy); }
+.seg button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 640px) {
+  .bar .who { width: 100%; margin-bottom: -4px; }
+  .seg.roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; border-radius: 14px; }
+  .seg.roles button { padding: 6px 4px; line-height: 1.15; min-height: 52px; }
+  .seg.tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; border-radius: 14px; }
+  .seg.tabs button { padding: 6px 4px; line-height: 1.15; font-size: 0.9375rem; }
+}
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 32px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 16px 14px; } }
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.card-head h2 { margin: 0; }
+.sub { color: var(--soft); font-size: 0.9375rem; margin: -4px 0 12px; }
+/* KPI tiles */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 400; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.45rem; line-height: 1.2; font-weight: 800; }
+.stat .lab { display: block; color: var(--ink); font-size: 0.9375rem; font-weight: 700; line-height: 1.3; }
+.stat .of { display: block; color: var(--soft); font-size: 0.9375rem; line-height: 1.3; }
+.stat .def { display: block; color: var(--soft); font-size: 0.9375rem; line-height: 1.35; margin-top: 6px; border-top: 1px dashed #D9CFBC; padding-top: 6px; }
+.stat.bad b { color: #B23E26; }
+.stat[aria-expanded=true] { box-shadow: inset 0 0 0 2px var(--sea); }
+.hint { color: var(--soft); font-size: 0.9375rem; margin: 8px 0 0; }
+/* staff form */
+fieldset { border: 0; margin: 0 0 16px; padding: 0; min-width: 0; }
+legend, .flabel { font-weight: 800; margin-bottom: 8px; padding: 0; display: block; }
+.flabel small, legend small { font-weight: 600; color: var(--soft); }
+.chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+.chips.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.chip { position: relative; display: block; }
+.chip input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.chip span { display: flex; align-items: center; min-height: 50px; padding: 8px 12px; border: 1px solid #CFC5B2; border-radius: 12px; background: #fff; font-weight: 700; line-height: 1.25; cursor: pointer; }
+.chip input:checked + span { border-color: var(--navy); background: var(--wash); box-shadow: inset 0 0 0 2px var(--navy); }
+.chip input:focus-visible + span { outline: 3px solid var(--sea); outline-offset: 2px; }
+.field { margin: 0 0 16px; }
+.field label { display: block; font-weight: 800; margin-bottom: 6px; }
+.count { color: var(--soft); font-size: 0.9375rem; text-align: right; margin-top: 2px; }
+.check { display: flex; gap: 12px; align-items: flex-start; padding: 12px; border: 1px solid #CFC5B2; border-radius: 12px; cursor: pointer; background: #fff; font-weight: 700; }
+.check input { width: 24px; height: 24px; margin: 1px 0 0; flex: none; accent-color: var(--navy); }
+.check small { display: block; font-weight: 600; color: var(--soft); font-size: 0.9375rem; }
+.alert { background: var(--hot); border-radius: 10px; padding: 10px 12px; margin: 8px 0 0; font-weight: 700; }
+.send { width: 100%; min-height: 54px; font-size: 1.05rem; }
+.thanks { background: var(--wash); border-radius: 12px; padding: 16px; }
+.thanks h2 { margin-bottom: 6px; }
+/* lists */
+.item { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.item:last-child { margin-bottom: 0; }
+.item .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.item .what { margin: 4px 0 8px; }
+.item.flash { box-shadow: 0 0 0 3px var(--sea); }
+.meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 0.9375rem; color: var(--soft); }
+.pill { display: inline-block; border-radius: 999px; padding: 1px 10px; background: var(--sand); font-weight: 700; font-size: 0.875rem; color: var(--ink); line-height: 1.6; }
+.pill.late { background: var(--hot); color: #9C3520; }
+.pill.stale { background: var(--warn); color: #6E4600; }
+.pill.ok { background: var(--wash); color: #06615F; }
+.pill.src { background: #EEF2F6; }
+.id { font-weight: 800; color: var(--soft); font-size: 0.9375rem; }
+.acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.panel { margin-top: 10px; padding: 12px; background: #fff; border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 12px; }
+.panel label { font-weight: 800; font-size: 0.9375rem; display: block; margin-bottom: 4px; }
+.panel .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 520px) { .panel .grid2 { grid-template-columns: minmax(0, 1fr); } }
+.panel .err { color: #9C3520; font-weight: 700; font-size: 0.9375rem; }
+.group-h { font-weight: 800; margin: 14px 0 8px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.group-h:first-child { margin-top: 0; }
+.group-h span { color: var(--soft); font-weight: 700; font-size: 0.9375rem; }
+details.add { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 6px; }
+details.add summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.empty { text-align: center; color: var(--soft); padding: 20px 10px; }
+/* risk register */
+.risk-wrap { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: start; }
+@media (max-width: 760px) { .risk-wrap { grid-template-columns: minmax(0, 1fr); } }
+.matrix { display: grid; grid-template-columns: 22px repeat(5, 38px); grid-auto-rows: 38px; gap: 3px; font-size: 0.875rem; font-weight: 800; }
+.matrix .ax { display: grid; place-items: center; color: var(--soft); }
+.matrix .c { border-radius: 6px; display: grid; place-items: center; color: var(--navy); }
+.mcap { font-size: 0.875rem; color: var(--soft); margin-top: 6px; max-width: 220px; }
+.score { display: inline-grid; place-items: center; min-width: 40px; height: 32px; border-radius: 8px; font-weight: 800; padding: 0 6px; }
+.s-low { background: #D7EFE6; } .s-med { background: #FBE3B3; } .s-high { background: #F6C3B4; } .s-vhigh { background: var(--coral); color: #fff; }
+.rk .top h3 { flex: 1 1 200px; }
+.rk .ctrl { font-size: 0.9375rem; margin: 4px 0 8px; }
+.rk .scorers { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; margin-top: 10px; }
+.rk .scorers label { font-size: 0.9375rem; font-weight: 700; display: flex; flex-direction: column; gap: 2px; }
+.rk .scorers select { width: auto; min-width: 150px; }
+@media (max-width: 520px) { .rk .scorers { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); } .rk .scorers select { min-width: 0; width: 100%; } .rk .scorers button { grid-column: span 2; } }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; accent-color: var(--navy); }
+.how { font-size: 0.9375rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 1rem; margin: 0 0 4px; }
+.sugg p { margin: 0 0 8px; font-size: 0.9375rem; }
+.sugg .why { color: var(--soft); }
+.sugg .acts { margin-top: 4px; }
+.tag { display: inline-block; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 999px; padding: 2px 9px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.proposal { background: var(--wash); border-radius: 10px; padding: 10px 12px; margin: 6px 0 4px; font-size: 0.9375rem; white-space: pre-line; }
+.proposal b { display: block; margin-bottom: 4px; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; }
+ol.log li { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 10px; padding: 7px 0; border-top: 1px dashed var(--line); font-size: 0.9375rem; }
+ol.log li:first-child { border-top: 0; }
+ol.log time { color: var(--soft); font-weight: 700; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 999px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; max-width: calc(100vw - 32px); text-align: center; z-index: 10; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.9375rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+[hidden] { display: none !important; }
+.err:empty { display: none; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a class="opt" href="../../areas/incidents-risk-actions/">About this area</a><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Incidents, risk and actions</h1>
+  <p class="lead">Anyone can report an incident or near miss from a phone in under a minute. A quality and safety lead reviews it, groups it with similar reports and sets actions. Leadership sees every action, from any source, in one tracker. Built for learning, never for blame.</p>
+
+  <div class="bar">
+    <span class="who" id="who-l">Example General Hospital · I am:</span>
+    <div class="seg roles" role="group" aria-labelledby="who-l">
+      <button type="button" id="role-staff" aria-pressed="false">Any staff member</button>
+      <button type="button" id="role-lead" aria-pressed="false">Quality and safety lead</button>
+      <button type="button" id="role-exec" aria-pressed="false">Leadership</button>
+    </div>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col" id="main"></div>
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads the reports, actions and risks and suggests what to look at, with its reasons. In this preview it uses clear rules running in your browser; nothing is sent anywhere. It only proposes: a person confirms every change.</p>
+      <div id="sugg"></div>
+    </aside>
+  </div>
+  <p class="foot">Example General Hospital is fictional, and every report, action and risk here is invented for this demo. Owners are roles, never named people, and no one is scored. Coming in Feb 2027: incidents, risk and actions as a module of the Ospeli app, with phone reporting that works offline, learning reviews, and safety themes over time. <a href="../../areas/incidents-risk-actions/">About this area</a> · <a href="../">All demos</a> · <button type="button" class="link" id="reset">Reset the example</button></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var DAY = 864e5, HOUR = 36e5, STALE_DAYS = 14, WAIT_DAYS = 3;
+var STORE = 'ospeli.actions.v1';
+var CATS = [
+  ['equip', 'Equipment fault or missing'], ['supply', 'Supplies ran out'], ['env', 'Building, leak or temperature'],
+  ['slip', 'Slip, trip or fall'], ['secur', 'Security or aggression'], ['it', 'IT or phones down'],
+  ['hand', 'Message or handover missed'], ['waste', 'Waste or sharps disposal'], ['other', 'Something else']
+];
+var PLACES = ['Ward 3 (medical)', 'Ward 5 (surgical)', 'Ward 7 (older people)', 'Emergency department', 'Outpatients', 'Theatres', 'Main stores', 'Kitchen', 'Main entrance', 'Car park', 'Somewhere else'];
+var WHEN = [['now', 'Just now', 0], ['today', 'Earlier today', 4 * HOUR], ['yday', 'Yesterday', DAY], ['before', 'Before that', 3 * DAY]];
+var RESPONSES = ['Fix locally', 'Discuss at safety huddle', 'Learning review', 'No further action needed'];
+var OWNERS = ['Facilities manager', 'Supplies manager', 'Housekeeping supervisor', 'Security lead', 'IT service lead', 'Ward manager, Ward 3', 'Ward manager, Ward 5', 'Ward manager, Ward 7', 'Emergency department manager', 'Theatres manager', 'Quality and safety lead'];
+var SOURCES = ['Incident', 'Meeting', 'Audit', 'Project'];
+var ROLE_NAMES = { staff: 'Any staff member', lead: 'Quality and safety lead', exec: 'Leadership' };
+function catName(id) { for (var i = 0; i < CATS.length; i++) if (CATS[i][0] === id) return CATS[i][1]; return id; }
+
+// ---------- Example data (fictional), generated relative to today ----------
+function seed() {
+  var now = Date.now(), ms = monthStart(now);
+  function inMonth(daysAgo) { return Math.max(now - daysAgo * DAY, ms + HOUR * 2); }
+  // [days ago, category, place, what happened, near miss, anonymous, days to first review (null = new), response, theme]
+  var R = [
+    [40, 'slip', 'Car park', 'Pothole near the staff entrance; someone nearly turned an ankle in the dark.', 1, 0, 9, 'Fix locally'],
+    [30, 'it', 'Outpatients', 'Clinic phones were down for a whole morning; messages were taken on paper.', 0, 0, 4, 'Fix locally'],
+    [25, 'supply', 'Main stores', 'Wrong size oxygen tubing delivered to two wards.', 0, 1, 7, 'Discuss at safety huddle'],
+    [20, 'slip', 'Main entrance', 'Entrance mat curled up and caught a wheelchair wheel.', 1, 0, 4, 'Discuss at safety huddle', 'T-1'],
+    [18, 'equip', 'Theatres', 'Ceiling light in theatre 2 flickered during a list.', 0, 0, 3, 'Fix locally'],
+    [15, 'secur', 'Emergency department', 'Door to the staff rest area was propped open overnight.', 1, 1, 2, 'Fix locally', 'T-2'],
+    [13, 'equip', 'Ward 5 (surgical)', 'Blood pressure machine missing from its charging point at handover.', 1, 0, 2, 'Fix locally'],
+    [12, 'slip', 'Main entrance', 'A visitor slipped on the wet entrance floor; first aid was given.', 0, 0, 1, 'Learning review', 'T-1'],
+    [11, 'hand', 'Ward 7 (older people)', 'Porter request for a transfer went to the wrong team and was not picked up.', 0, 0, 2, 'Discuss at safety huddle'],
+    [9, 'equip', 'Ward 7 (older people)', 'Second hoist out of service with no label saying why or since when.', 1, 0, 2, 'Fix locally', 'T-3'],
+    [8, 'waste', 'Theatres', 'Sharps bin overfilled and not collected at the end of the list.', 1, 1, 6, 'Fix locally'],
+    [7, 'hand', 'Ward 5 (surgical)', 'Message that transport was booked was not passed on, so the transport left empty.', 0, 0, 5, 'Learning review'],
+    [6, 'supply', 'Ward 3 (medical)', 'Hand gel dispensers empty in two bays for most of the shift.', 1, 1, null],
+    [5, 'env', 'Outpatients', 'Water leaking from a ceiling tile above the waiting area; buckets put out.', 0, 0, 1, 'Fix locally'],
+    [4, 'slip', 'Main entrance', 'Wet floor at the entrance during heavy rain and no warning sign out.', 1, 1, null],
+    [3, 'it', 'Emergency department', 'Bed status screen froze for about 40 minutes; staff used the whiteboard.', 0, 0, 1, 'Fix locally'],
+    [2.5, 'env', 'Kitchen', 'Cold room temperature alarm sounding out of hours; no one knew who to call.', 1, 0, null],
+    [2, 'supply', 'Ward 3 (medical)', 'Top-up delivery did not arrive; no dressing packs until midday.', 0, 0, null],
+    [1.5, 'secur', 'Emergency department', 'Visitor shouting at reception staff for ten minutes before security arrived.', 0, 0, null],
+    [1, 'equip', 'Ward 7 (older people)', 'Hoist battery flat at the start of the shift; the charger was missing from the bay.', 1, 0, null],
+    [0.15, 'supply', 'Ward 3 (medical)', 'Ran out of small gloves on the night shift; borrowed a box from Ward 5.', 0, 1, null]
+  ];
+  var reports = R.map(function (r, i) {
+    var at = now - r[0] * DAY;
+    return { id: 'R-' + (401 + i), at: at, eventAt: at - (1 + (i % 4)) * HOUR, cat: r[1], where: r[2], what: r[3], done: '', near: !!r[4], anon: !!r[5],
+      status: r[6] == null ? 'new' : 'reviewed', reviewedAt: r[6] == null ? null : Math.min(now - HOUR, at + r[6] * DAY), response: r[7] || null, theme: r[8] || null, risk: null, actions: [] };
+  });
+  var themes = [
+    { id: 'T-1', name: 'Wet floors at the main entrance', createdAt: now - 11 * DAY },
+    { id: 'T-2', name: 'Staff area doors left open', createdAt: now - 13 * DAY },
+    { id: 'T-3', name: 'Hoists and chargers on Ward 7', createdAt: now - 7 * DAY }
+  ];
+  function due(off) { return endOfDay(now + off * DAY); }
+  // [title, source, from, owner, due offset (days), last update (days ago), closed (days ago, null = open), created (days ago)]
+  var A = [
+    ['Put out wet-floor signs and extra mats at the main entrance when severe weather is forecast', 'Incident', 'Theme: Wet floors at the main entrance', 'Housekeeping supervisor', -6, 20, null, 22],
+    ['Quarterly fire door checks completed and recorded', 'Audit', 'Fire safety audit', 'Facilities manager', -9, 22, null, 60],
+    ['Label all out-of-service equipment with the reason and date', 'Audit', 'Equipment audit', 'Facilities manager', -3, 9, null, 30],
+    ['Review how long security takes to reach the emergency department front desk', 'Meeting', 'Leadership meeting', 'Security lead', -1, 15, null, 28],
+    ['Agree a daily top-up schedule for gloves and dressings on Ward 3', 'Meeting', 'Operations meeting', 'Supplies manager', 5, 16, null, 18],
+    ['Fit a closer and keypad lock on the staff rest area door', 'Incident', 'Theme: Staff area doors left open', 'Security lead', 12, 3, null, 12],
+    ['Add a paper fallback card for when the bed status screen freezes', 'Incident', 'R-416', 'IT service lead', 9, 4, null, 3],
+    ['Publish an out-of-hours call-out list for cold room alarms', 'Audit', 'Kitchen environment audit', 'Facilities manager', 20, 2, null, 10],
+    ['New signs for the discharge lounge', 'Project', 'Discharge lounge project', 'Facilities manager', 30, 1, null, 14],
+    ['Check every hoist charger on Ward 7 and keep a spare in the bay', 'Incident', 'Theme: Hoists and chargers on Ward 7', 'Ward manager, Ward 7', 1, 3, 3, 8],
+    ['Sharps bins collected at the end of every theatre list', 'Incident', 'R-411', 'Theatres manager', 2, 5, 5, 7],
+    ['Repair the ceiling leak above the outpatients waiting area', 'Incident', 'R-414', 'Facilities manager', -4, 2, 2, 5],
+    ['Add "transport booked" to the ward handover sheet', 'Incident', 'R-412', 'Ward manager, Ward 5', 10, 6, 6, 6],
+    ['Repair the pothole by the staff entrance', 'Incident', 'R-401', 'Facilities manager', -28, 32, 32, 38]
+  ];
+  var actions = A.map(function (a, i) {
+    var closedAt = a[6] == null ? null : (a[6] < 10 ? inMonth(a[6]) : now - a[6] * DAY);
+    var created = now - a[7] * DAY, upd = closedAt || now - a[5] * DAY;
+    var d = closedAt && a[4] >= 0 ? Math.max(due(a[4]), endOfDay(closedAt)) : due(a[4]);
+    return { id: 'A-' + (101 + i), title: a[0], source: a[1], from: a[2], owner: a[3], createdAt: created, due: d, status: closedAt ? 'closed' : 'open', updatedAt: upd, closedAt: closedAt,
+      evidence: closedAt ? 'Checked and photographed by the owner; noted at the safety huddle.' : '', updates: [{ at: created, text: 'Action created' }], remindedAt: null };
+  });
+  // link report actions
+  reports.forEach(function (r) { actions.forEach(function (a) { if (a.from === r.id) r.actions.push(a.id); }); });
+  // [title, likelihood, impact, owner, review due offset, controls, categories, linked report indexes]
+  var K = [
+    ['Slips and falls at entrances in severe weather', 4, 3, 'Facilities manager', -2, 'Wet-floor signs; entrance mats; hourly floor checks in severe weather.', ['slip'], [3, 7]],
+    ['Aggression towards staff at the emergency department front desk', 3, 4, 'Security lead', 20, 'Security on site at night; panic button at reception.', ['secur'], [5]],
+    ['Everyday ward supplies running out', 3, 3, 'Supplies manager', 10, 'Weekly stock count; emergency stock in main stores.', ['supply'], [2]],
+    ['Moving and handling equipment not available when needed', 3, 3, 'Facilities manager', 5, 'Equipment register; repair contract.', ['equip'], [9]],
+    ['Messages lost between teams at handover', 3, 3, 'Quality and safety lead', 25, 'Handover sheet; porter request line.', ['hand'], [8, 11]],
+    ['Bed status screens or phones going down', 2, 4, 'IT service lead', 35, 'Whiteboard backup; out-of-hours IT on call.', ['it'], [1, 15]],
+    ['Cold room failure out of hours', 2, 3, 'Facilities manager', 40, 'Temperature alarm; daily log.', ['env'], []]
+  ];
+  var risks = K.map(function (k, i) {
+    var id = 'K-' + (i + 1);
+    k[7].forEach(function (ri) { reports[ri].risk = id; });
+    return { id: id, title: k[0], L: k[1], I: k[2], owner: k[3], reviewDue: endOfDay(now + k[4] * DAY), reviewedAt: now - (90 - k[4]) * DAY, controls: k[5], cats: k[6] };
+  });
+  var log = [
+    [now - 2 * DAY, 'Facilities manager closed A-112 with evidence (late by 2 days)'],
+    [now - 1 * DAY - 3 * HOUR, 'Report R-420 made · Equipment fault or missing · Ward 7 (older people)'],
+    [now - 20 * HOUR, 'Quality and safety lead reviewed R-416: Fix locally; action A-107 created'],
+    [now - 3.6 * HOUR, 'Report R-421 made (anonymous) · Supplies ran out · Ward 3 (medical)']
+  ].map(function (l) { return { at: l[0], text: l[1] }; }).reverse();
+  return { v: 1, seededAt: now, role: null, guide: true, tab: 'open', dismissed: {}, reports: reports, themes: themes, actions: actions, risks: risks, log: log, mine: [], n: { R: 422, A: 115, T: 4 } };
+}
+
+// ---------- State ----------
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() { try { var s = JSON.parse(localStorage.getItem(STORE)); return s && s.v === 1 && s.reports && Date.now() - s.seededAt < 7 * DAY ? s : null; } catch (e) { return null; } }
+var state = load() || seed();
+if (!state.role) state.role = window.matchMedia('(max-width: 640px)').matches ? 'staff' : 'lead';
+// UI-only (not saved)
+var ui = { form: { cat: null, where: '', when: 'now', near: null, what: '', done: '', anon: false }, sent: null, open: null, proposing: null, kpi: null, flash: null, err: '' };
+
+// ---------- Helpers ----------
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+function monthStart(t) { var d = new Date(t); return new Date(d.getFullYear(), d.getMonth(), 1).getTime(); }
+function startOfDay(t) { var d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); }
+function endOfDay(t) { return startOfDay(t) + DAY - 60000; }
+function dayDiff(a, b) { return Math.round((startOfDay(b) - startOfDay(a)) / DAY); }
+function dateLabel(t) { return new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }); }
+function timeLabel(t) { var n = Date.now(), d = dayDiff(t, n), hm = new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }); return d === 0 ? 'Today ' + hm : d === 1 ? 'Yest. ' + hm : dateLabel(t) + ' ' + hm; }
+function ago(t) { var h = (Date.now() - t) / HOUR; if (h < 1) return 'just now'; if (h < 24) return Math.round(h) + ' h ago'; var d = Math.floor(h / 24); return d === 1 ? 'yesterday' : d + ' days ago'; }
+function plural(n, w, ws) { return n + ' ' + (n === 1 ? w : (ws || w + 's')); }
+function byId(list, id) { for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i]; return null; }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null && c !== false) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+function select(id, options, value, label) { var s = el('select', { id: id, 'aria-label': label || null }); options.forEach(function (o) { var v = Array.isArray(o) ? o[0] : o, t = Array.isArray(o) ? o[1] : o; s.appendChild(el('option', { value: v, text: t })); }); if (value != null) s.value = value; return s; }
+function addLog(text) { state.log.unshift({ at: Date.now(), text: text }); if (state.log.length > 60) state.log.length = 60; }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+function themeName(id) { var t = byId(state.themes, id); return t ? t.name : ''; }
+function riskScore(r) { return r.L * r.I; }
+function band(s) { return s >= 15 ? 's-vhigh' : s >= 10 ? 's-high' : s >= 5 ? 's-med' : 's-low'; }
+function bandName(s) { return s >= 15 ? 'very high' : s >= 10 ? 'high' : s >= 5 ? 'medium' : 'low'; }
+function isOverdue(a) { return a.status === 'open' && Date.now() > a.due; }
+function isStale(a) { return a.status === 'open' && Date.now() - a.updatedAt > STALE_DAYS * DAY && !(a.remindedAt && Date.now() - a.remindedAt < 7 * DAY); }
+function looksIdentifying(t) { return /\b(Mr|Mrs|Ms|Miss|Mx|Dr|Sister)\.?\s+[A-Z][a-z]+/.test(t) || /\bpatient\s+[A-Z][a-z]+/.test(t) || /\b\d{6,}\b/.test(t); }
+
+// ---------- KPIs (pure) ----------
+function kpis() {
+  var now = Date.now(), ms = monthStart(now);
+  var month = state.reports.filter(function (r) { return r.at >= ms; });
+  var rev = state.reports.filter(function (r) { return r.reviewedAt && now - r.reviewedAt <= 30 * DAY; }).map(function (r) { return (r.reviewedAt - r.at) / DAY; }).sort(function (a, b) { return a - b; });
+  var med = rev.length ? (rev.length % 2 ? rev[(rev.length - 1) / 2] : (rev[rev.length / 2 - 1] + rev[rev.length / 2]) / 2) : null;
+  var open = state.actions.filter(function (a) { return a.status === 'open'; });
+  var over = open.filter(isOverdue);
+  var closed = state.actions.filter(function (a) { return a.status === 'closed' && a.closedAt >= ms; });
+  var onTime = closed.filter(function (a) { return a.closedAt <= a.due; });
+  return { reportsThisMonth: month.length, nearMissesThisMonth: month.filter(function (r) { return r.near; }).length, waitingForReview: state.reports.filter(function (r) { return r.status === 'new'; }).length,
+    medianDaysToFirstReview: med == null ? null : Math.round(med * 10) / 10, reviewedLast30Days: rev.length,
+    actionsOverdue: over.length, openActions: open.length,
+    closedThisMonth: closed.length, closedOnTime: onTime.length, closedOnTimePct: closed.length ? Math.round(100 * onTime.length / closed.length) : null };
+}
+var KPI_DEFS = {
+  reports: 'Incidents and near misses reported since the 1st of this month. Read it with the themes: more reports can mean people are more willing to report, not only that more went wrong. Local definition.',
+  review: 'Median days from a report being made to its first review being recorded, for reports reviewed in the last 30 days. Local definition.',
+  overdue: 'Open actions past their due date, out of all open actions, from every source. Local definition.',
+  ontime: 'Actions closed this month on or before their due date, out of all actions closed this month. Local definition.'
+};
+
+// ---------- The guide: plain rules. Each says why; changes are proposed, a person confirms. ----------
+function suggest(role) {
+  var now = Date.now(), out = [], k = kpis();
+  if (role === 'staff') {
+    var f = ui.form;
+    if (f.cat && f.where) {
+      var same = state.reports.filter(function (r) { return r.cat === f.cat && r.where === f.where && now - r.at <= 30 * DAY; });
+      if (same.length) out.push({ id: 's-same', kind: 'ask', title: 'You are not the only one', text: plural(same.length, 'other report') + ' about “' + catName(f.cat).toLowerCase() + '” in ' + f.where + ' in the last 30 days. Your report helps a lead see the pattern and fix the cause.', why: 'Counted from the reports at this example hospital.' });
+    }
+    var mine = state.mine.map(function (id) { return byId(state.reports, id); }).filter(Boolean);
+    if (mine.length) {
+      var done = mine.filter(function (r) { return r.status === 'reviewed'; }).length;
+      out.push({ id: 's-mine', kind: 'time', title: done + ' of your ' + plural(mine.length, 'report') + ' reviewed', text: 'See what happened to each one: the review, the theme it joined and any action, with its owner role and due date.', why: 'Reports sent from this browser in the demo.', btn: 'Show my reports', show: 'mine' });
+    }
+    out.push({ id: 's-near', kind: 'ask', title: 'Near misses are worth reporting', text: 'What nearly went wrong shows where to fix things before anyone is hurt. Say what happened and where, not who.', why: 'Learning-focused reporting looks at systems and conditions, not at individuals.' });
+    return out.filter(notDismissed);
+  }
+  // waiting for first review (lead)
+  var waiting = state.reports.filter(function (r) { return r.status === 'new' && now - r.at > WAIT_DAYS * DAY; }).sort(function (a, b) { return a.at - b.at; });
+  if (waiting.length) out.push({ id: 'g-wait', roles: ['lead'], kind: 'time', title: plural(waiting.length, 'report') + ' waiting more than ' + WAIT_DAYS + ' days for a first review', text: 'Oldest first: ' + waiting[0].id + ' (' + catName(waiting[0].cat).toLowerCase() + ', ' + waiting[0].where + '), reported ' + ago(waiting[0].at) + '. A quick first review tells the reporter it was read.', why: 'Reports with no review recorded, older than ' + WAIT_DAYS + ' days.', btn: 'Show it', show: 'rep:' + waiting[0].id });
+  // similar reports -> theme
+  var groups = {};
+  state.reports.forEach(function (r) { if (!r.theme && now - r.at <= 30 * DAY) { var key = r.cat + '|' + r.where; (groups[key] = groups[key] || []).push(r); } });
+  Object.keys(groups).forEach(function (key) {
+    var g = groups[key]; if (g.length < 3) return;
+    var name = catName(g[0].cat) + ' · ' + g[0].where, ids = g.map(function (r) { return r.id; });
+    out.push({ id: 'g-theme-' + key, roles: ['lead', 'exec'], kind: 'ask', title: plural(g.length, 'similar report') + ': ' + catName(g[0].cat).toLowerCase() + ' in ' + g[0].where, text: 'Group them into one theme, so they are reviewed together and fixed at the cause, not one by one.', why: g.length + ' reports in the same category and place in the last 30 days, not yet in a theme.', btn: 'Propose a theme',
+      proposal: { title: 'Create the theme “' + name + '”', body: 'Link ' + ids.join(', ') + ' to it. You can rename or unlink later.', confirm: 'Create theme',
+        apply: function () { var t = { id: 'T-' + (state.n.T++), name: name, createdAt: Date.now() }; state.themes.push(t); g.forEach(function (r) { r.theme = t.id; }); addLog('Quality and safety lead created theme “' + name + '” and linked ' + ids.join(', ') + ' (suggested by the guide)'); return 'Theme created and ' + plural(g.length, 'report') + ' linked.'; } } });
+  });
+  // report matches a risk
+  for (var i = 0; i < state.risks.length; i++) {
+    var rk = state.risks[i];
+    var m = state.reports.filter(function (r) { return !r.risk && rk.cats.indexOf(r.cat) >= 0 && now - r.at <= 30 * DAY; });
+    if (!m.length) continue;
+    var mids = m.map(function (r) { return r.id; });
+    out.push({ id: 'g-risk-' + rk.id, roles: ['lead', 'exec'], kind: 'ask', title: plural(m.length, 'report') + (m.length === 1 ? ' matches' : ' match') + ' the risk “' + rk.title + '”', text: 'Link them to the risk, then re-check its score (now ' + rk.L + ' × ' + rk.I + ' = ' + riskScore(rk) + ', ' + bandName(riskScore(rk)) + ') against what the reports show.', why: 'Same category as the risk, and not yet linked to any risk.', btn: 'Propose links',
+      proposal: { title: 'Link ' + mids.join(', '), body: 'to “' + rk.title + '”. The score is not changed; the risk owner re-checks it in the register.', confirm: 'Link reports',
+        apply: (function (rk, m, mids) { return function () { m.forEach(function (r) { r.risk = rk.id; }); addLog('Linked ' + mids.join(', ') + ' to risk ' + rk.id + ' (suggested by the guide)'); return 'Linked. Re-check the score in the risk register.'; }; })(rk, m, mids) }, then: 'risk:' + rk.id });
+    break;
+  }
+  // actions with no update for STALE_DAYS
+  var stale = state.actions.filter(isStale).sort(function (a, b) { return a.updatedAt - b.updatedAt; });
+  if (stale.length) {
+    var byOwner = {}; stale.forEach(function (a) { (byOwner[a.owner] = byOwner[a.owner] || []).push(a); });
+    var draft = Object.keys(byOwner).map(function (o) { return 'To: ' + o + '\n' + byOwner[o].map(function (a) { return '• “' + a.title + '” (due ' + dateLabel(a.due) + '), no update for ' + Math.floor((now - a.updatedAt) / DAY) + ' days'; }).join('\n'); }).join('\n\n') + '\n\nCould you add a short update, close it with evidence, or ask to move the due date with a reason? Thank you.';
+    out.push({ id: 'g-stale', roles: ['exec', 'lead'], kind: 'time', title: plural(stale.length, 'action') + ' with no update for ' + STALE_DAYS + ' days or more', text: 'A short, friendly reminder to each owner role often gets an update or an honest new date.', why: 'Open actions whose last update is more than ' + STALE_DAYS + ' days old (a set period you can change).', btn: 'Draft reminders',
+      proposal: { title: 'Draft reminders', body: draft, confirm: 'Send reminders',
+        apply: function () { stale.forEach(function (a) { a.remindedAt = Date.now(); }); addLog('Reminders sent to ' + Object.keys(byOwner).join(', ') + ' (demo: nothing left your browser)'); return 'Reminders sent (in this demo, nothing leaves your browser).'; } } });
+  }
+  // risks past review date
+  var lateRisk = state.risks.filter(function (r) { return now > r.reviewDue; });
+  if (lateRisk.length) out.push({ id: 'g-review', roles: ['exec'], kind: 'time', title: '“' + lateRisk[0].title + '” is past its review date', text: 'Review date was ' + dateLabel(lateRisk[0].reviewDue) + '. Check the controls still work and the score still fits, then mark it reviewed.', why: plural(lateRisk.length, 'risk') + ' in the register past the review date.', btn: 'Show in register', show: 'risk:' + lateRisk[0].id });
+  // meeting summary
+  if (k.openActions) {
+    var src = SOURCES.map(function (s) { var o = state.actions.filter(function (a) { return a.status === 'open' && a.source === s; }); return s + ' ' + o.length + ' (' + o.filter(isOverdue).length + ' overdue)'; }).join(', ');
+    var high = state.risks.filter(function (r) { return riskScore(r) >= 10; }).length;
+    out.push({ id: 'g-summary', roles: ['exec'], kind: 'ask', title: 'Draft a summary for the next leadership meeting', text: 'Open actions by source, what closed this month, and the highest risks, in plain words.', why: 'Built from the tracker and register as they are now.', btn: 'Draft summary',
+      proposal: { title: 'Summary of open actions', body: 'Open actions: ' + k.openActions + ', of which ' + k.actionsOverdue + ' overdue.\nBy source: ' + src + '.\nClosed this month: ' + k.closedThisMonth + ', ' + k.closedOnTime + ' on time.\nRisks scored 10 or more: ' + high + '.\nReports this month: ' + k.reportsThisMonth + ' (' + k.nearMissesThisMonth + ' near misses).', confirm: 'Add to meeting pack',
+        apply: function () { addLog('Leadership added the open-actions summary to the meeting pack'); return 'Added to the meeting pack.'; } } });
+  }
+  return out.filter(function (s) { return s.roles.indexOf(role) >= 0; }).filter(notDismissed).slice(0, 4);
+}
+function notDismissed(s) { return !state.dismissed[s.id]; }
+
+// ---------- Render ----------
+function render() {
+  ['staff', 'lead', 'exec'].forEach(function (r) { document.getElementById('role-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  var main = document.getElementById('main'); main.textContent = '';
+  if (state.role === 'staff') { main.appendChild(staffForm()); main.appendChild(myReports()); main.appendChild(kpiCard('At Example General Hospital')); }
+  else if (state.role === 'lead') { main.appendChild(kpiCard()); main.appendChild(triage()); main.appendChild(themesCard()); }
+  else { main.appendChild(kpiCard()); main.appendChild(tracker()); main.appendChild(register()); }
+  main.appendChild(logCard());
+  renderGuide();
+  save();
+  if (ui.flash) { var f = document.getElementById(ui.flash); ui.flash = null; if (f) { f.classList.add('flash'); f.scrollIntoView({ block: 'center', behavior: 'smooth' }); setTimeout(function () { f.classList.remove('flash'); }, 2400); } }
+}
+
+function kpiCard(title) {
+  var k = kpis(), card = el('section', { class: 'card', 'aria-labelledby': 'kpi-h' });
+  card.appendChild(el('div', { class: 'card-head' }, [el('h2', { id: 'kpi-h', text: title || 'This month at a glance' })]));
+  var st = el('div', { class: 'stats', id: 'stats' });
+  function tile(key, value, label, of, bad) {
+    var open = ui.kpi === key;
+    st.appendChild(el('button', { type: 'button', class: 'stat' + (bad ? ' bad' : ''), id: 'kpi-' + key, title: KPI_DEFS[key], 'aria-expanded': String(open), onclick: function () { ui.kpi = open ? null : key; render(); var b = document.getElementById('kpi-' + key); if (b) b.focus(); } },
+      [el('b', { text: value }), el('span', { class: 'lab', text: label }), el('span', { class: 'of', text: of }), open ? el('span', { class: 'def', text: KPI_DEFS[key] }) : null]));
+  }
+  tile('reports', String(k.reportsThisMonth), 'Reports this month', k.nearMissesThisMonth + ' near misses');
+  tile('review', k.medianDaysToFirstReview == null ? '–' : k.medianDaysToFirstReview + ' d', 'Report to first review', 'median · ' + k.waitingForReview + ' waiting');
+  tile('overdue', String(k.actionsOverdue), 'Actions overdue', 'of ' + k.openActions + ' open', k.actionsOverdue > 0);
+  tile('ontime', k.closedOnTimePct == null ? '–' : k.closedOnTimePct + '%', 'Actions closed on time', k.closedOnTime + ' of ' + k.closedThisMonth + ' closed this month');
+  card.appendChild(st);
+  card.appendChild(el('p', { class: 'hint', text: 'Tap a tile to see how it is counted.' }));
+  return card;
+}
+
+// --- Any staff member: the phone form ---
+function staffForm() {
+  var f = ui.form, card = el('section', { class: 'card', 'aria-labelledby': 'rep-h' });
+  if (ui.sent) {
+    var r = byId(state.reports, ui.sent);
+    card.appendChild(el('div', { class: 'thanks', role: 'status' }, [
+      el('h2', { id: 'rep-h', text: 'Thank you. Report ' + ui.sent + ' sent.' }),
+      el('p', { style: 'margin:0 0 6px', text: r && r.anon ? 'Sent anonymously: your name is not stored with it.' : 'Your name stays with the report so a lead can ask you a question if needed.' }),
+      el('p', { style: 'margin:0 0 12px', text: 'A quality and safety lead reviews every report. You can follow what happens to it under “Your reports”.' }),
+      el('button', { type: 'button', class: 'primary', id: 'again', onclick: function () { ui.sent = null; render(); var c = document.querySelector('input[name=cat]'); if (c) c.focus(); }, text: 'Report something else' })
+    ]));
+    return card;
+  }
+  card.appendChild(el('h2', { id: 'rep-h', text: 'Report an incident or near miss' }));
+  card.appendChild(el('p', { class: 'sub', text: 'Takes under a minute. Say what happened and where, not who. No patient names.' }));
+  var form = el('form', { id: 'rep-form', autocomplete: 'off', novalidate: 'novalidate' });
+  function chips(name, legend, opts, value, cls, onpick) {
+    var fs = el('fieldset', {}, [el('legend', {}, legend)]);
+    var g = el('div', { class: 'chips' + (cls ? ' ' + cls : '') });
+    opts.forEach(function (o) {
+      var inp = el('input', { type: 'radio', name: name, value: o[0], id: name + '-' + o[0] });
+      if (value === o[0]) inp.checked = true;
+      inp.addEventListener('change', function () { onpick(o[0]); });
+      g.appendChild(el('label', { class: 'chip', for: name + '-' + o[0] }, [inp, el('span', { text: o[1] })]));
+    });
+    fs.appendChild(g); return fs;
+  }
+  form.appendChild(chips('cat', ['What kind of problem?'], CATS, f.cat, '', function (v) { f.cat = v; renderGuide(); }));
+  var wh = el('div', { class: 'field' }, [el('label', { for: 'f-where', text: 'Where?' })]);
+  var ws = select('f-where', [['', 'Choose a place']].concat(PLACES), f.where);
+  ws.addEventListener('change', function () { f.where = ws.value; renderGuide(); });
+  wh.appendChild(ws); form.appendChild(wh);
+  form.appendChild(chips('when', ['When?'], WHEN, f.when, 'two', function (v) { f.when = v; }));
+  form.appendChild(chips('near', ['Did it happen?'], [['no', 'It happened'], ['yes', 'It nearly happened (near miss)']], f.near, 'two', function (v) { f.near = v; }));
+  var wt = el('div', { class: 'field' }, [el('label', { for: 'f-what', text: 'What happened? (a sentence or two)' })]);
+  var ta = el('textarea', { id: 'f-what', maxlength: '300', rows: '3', 'aria-describedby': 'f-what-c f-what-w', placeholder: 'e.g. Hoist battery flat at the start of the shift; the charger was missing.' });
+  ta.value = f.what;
+  var cnt = el('div', { class: 'count', id: 'f-what-c', text: f.what.length + ' / 300' });
+  var warn = el('div', { id: 'f-what-w', 'aria-live': 'polite' });
+  function checkWhat() { cnt.textContent = ta.value.length + ' / 300'; warn.textContent = ''; if (looksIdentifying(ta.value)) warn.appendChild(el('p', { class: 'alert', text: 'This may include a name or a record number. Please describe roles instead (“a visitor”, “the porter”) and leave numbers out.' })); }
+  ta.addEventListener('input', function () { f.what = ta.value; checkWhat(); });
+  wt.appendChild(ta); wt.appendChild(cnt); wt.appendChild(warn); form.appendChild(wt); checkWhat();
+  var dn = el('div', { class: 'field' }, [el('label', { for: 'f-done' }, ['What was done straight away? ', el('small', { style: 'font-weight:600;color:var(--soft)', text: '(optional)' })])]);
+  var di = el('input', { type: 'text', id: 'f-done', maxlength: '120', placeholder: 'e.g. Borrowed a charger from Ward 5' }); di.value = f.done;
+  di.addEventListener('input', function () { f.done = di.value; });
+  dn.appendChild(di); form.appendChild(dn);
+  var an = el('input', { type: 'checkbox', id: 'f-anon' }); an.checked = f.anon;
+  an.addEventListener('change', function () { f.anon = an.checked; });
+  form.appendChild(el('div', { class: 'field' }, [el('label', { class: 'check', for: 'f-anon' }, [an, el('span', {}, ['Report anonymously', el('small', { text: 'Your name is not stored with the report.' })])])]));
+  if (ui.err) form.appendChild(el('p', { class: 'alert', role: 'alert', text: ui.err }));
+  form.appendChild(el('button', { type: 'submit', class: 'primary send', id: 'f-send', text: 'Send report' }));
+  form.addEventListener('submit', function (e) { e.preventDefault(); submitReport(); });
+  card.appendChild(form);
+  return card;
+}
+function submitReport() {
+  var f = ui.form, what = f.what.trim();
+  var miss = [];
+  if (!f.cat) miss.push('what kind of problem'); if (!f.where) miss.push('where'); if (what.length < 8) miss.push('what happened');
+  if (miss.length) { ui.err = 'Please add ' + miss.join(', ') + '.'; render(); return; }
+  if (looksIdentifying(what)) { ui.err = 'Please remove names or record numbers before sending.'; render(); return; }
+  var now = Date.now(), w = WHEN.filter(function (x) { return x[0] === f.when; })[0] || WHEN[0];
+  var r = { id: 'R-' + (state.n.R++), at: now, eventAt: now - w[2], cat: f.cat, where: f.where, what: what, done: f.done.trim(), near: f.near === 'yes', anon: f.anon, status: 'new', reviewedAt: null, response: null, theme: null, risk: null, actions: [] };
+  state.reports.push(r); state.mine.unshift(r.id);
+  addLog('Report ' + r.id + ' made' + (r.anon ? ' (anonymous)' : '') + ' · ' + catName(r.cat) + ' · ' + r.where + (r.near ? ' · near miss' : ''));
+  ui.sent = r.id; ui.err = ''; ui.form = { cat: null, where: '', when: 'now', near: null, what: '', done: '', anon: false };
+  render(); toast('Report ' + r.id + ' sent. Thank you.');
+  window.scrollTo({ top: document.getElementById('main').offsetTop - 10, behavior: 'smooth' });
+}
+function reportStatus(r) {
+  var kids = [];
+  if (r.status === 'new') kids.push(el('span', { class: 'pill stale', text: 'Waiting for review' }));
+  else kids.push(el('span', { class: 'pill ok', text: 'Reviewed ' + ago(r.reviewedAt) + ': ' + r.response }));
+  if (r.theme) kids.push(el('span', { class: 'pill', text: 'Theme: ' + themeName(r.theme) }));
+  return kids;
+}
+function myReports() {
+  var card = el('section', { class: 'card', id: 'mine', 'aria-labelledby': 'mine-h' }, [el('h2', { id: 'mine-h', text: 'Your reports' })]);
+  var mine = state.mine.map(function (id) { return byId(state.reports, id); }).filter(Boolean);
+  if (!mine.length) { card.appendChild(el('p', { class: 'sub', style: 'margin:0', text: 'Reports you send from this phone appear here, with what happened next: the review, the theme and any action.' })); return card; }
+  mine.forEach(function (r) {
+    var acts = r.actions.map(function (id) { return byId(state.actions, id); }).filter(Boolean);
+    card.appendChild(el('div', { class: 'item', id: 'mine-' + r.id }, [
+      el('div', { class: 'top' }, [el('h3', { text: catName(r.cat) + ' · ' + r.where }), el('span', { class: 'id', text: r.id + ' · ' + ago(r.at) })]),
+      el('p', { class: 'what', text: r.what }),
+      el('div', { class: 'meta' }, reportStatus(r)),
+      acts.length ? el('div', { class: 'meta', style: 'margin-top:6px' }, acts.map(function (a) { return el('span', {}, ['Action: ' + a.title + ' · ' + a.owner + ' · ' + (a.status === 'closed' ? 'done' : 'due ' + dateLabel(a.due))]); })) : null
+    ]));
+  });
+  return card;
+}
+
+// --- Quality and safety lead ---
+function triage() {
+  var list = state.reports.filter(function (r) { return r.status === 'new'; }).sort(function (a, b) { return a.at - b.at; });
+  var card = el('section', { class: 'card', 'aria-labelledby': 'tri-h' }, [
+    el('div', { class: 'card-head' }, [el('h2', { id: 'tri-h', text: 'New reports to review (' + list.length + ')' })]),
+    el('p', { class: 'sub', text: 'Oldest first. Choose a learning response, link to a theme or risk, and add an action if something needs fixing.' })
+  ]);
+  if (!list.length) card.appendChild(el('p', { class: 'empty', text: 'All reports have a first review. Nice work.' }));
+  list.forEach(function (r) {
+    var age = (Date.now() - r.at) / DAY, isOpen = ui.open && ui.open.id === r.id;
+    var it = el('div', { class: 'item report', id: 'rep-' + r.id }, [
+      el('div', { class: 'top' }, [el('h3', { text: catName(r.cat) + ' · ' + r.where }), el('span', { class: 'id', text: r.id })]),
+      el('p', { class: 'what', text: r.what + (r.done ? ' Done straight away: ' + r.done : '') }),
+      el('div', { class: 'meta' }, [
+        el('span', { class: 'pill' + (age > WAIT_DAYS ? ' late' : ''), text: 'Reported ' + ago(r.at) }),
+        r.near ? el('span', { class: 'pill', text: 'Near miss' }) : el('span', { class: 'pill', text: 'Happened' }),
+        el('span', { class: 'pill', text: r.anon ? 'Anonymous' : 'Named reporter' }),
+        r.theme ? el('span', { class: 'pill ok', text: 'Theme: ' + themeName(r.theme) }) : null,
+        r.risk ? el('span', { class: 'pill src', text: 'Risk ' + r.risk }) : null
+      ]),
+      isOpen ? null : el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'small primary', 'data-review': r.id, onclick: function () { ui.open = { id: r.id, kind: 'review' }; ui.err = ''; render(); var s = document.getElementById('rv-resp'); if (s) s.focus(); }, text: 'Review' })])
+    ]);
+    if (isOpen) it.appendChild(reviewPanel(r));
+    card.appendChild(it);
+  });
+  var done = state.reports.filter(function (r) { return r.status === 'reviewed'; }).sort(function (a, b) { return b.reviewedAt - a.reviewedAt; }).slice(0, 4);
+  if (done.length) {
+    card.appendChild(el('div', { class: 'group-h', style: 'margin-top:18px' }, ['Recently reviewed']));
+    done.forEach(function (r) { card.appendChild(el('div', { class: 'item' }, [el('div', { class: 'top' }, [el('h3', { text: catName(r.cat) + ' · ' + r.where }), el('span', { class: 'id', text: r.id })]), el('div', { class: 'meta', style: 'margin-top:4px' }, reportStatus(r).concat([el('span', { text: 'first review ' + (function (d) { return d === 1 ? '1 day' : d + ' days'; })(Math.max(0, Math.round((r.reviewedAt - r.at) / DAY * 10) / 10)) + ' after report' })]))])); });
+  }
+  return card;
+}
+function reviewPanel(r) {
+  var resp = select('rv-resp', RESPONSES, RESPONSES[0]);
+  var theme = select('rv-theme', [['', 'No theme']].concat(state.themes.map(function (t) { return [t.id, t.name]; })).concat([['new', 'New theme…']]), r.theme || '');
+  var tname = el('input', { type: 'text', id: 'rv-tname', maxlength: '60', placeholder: 'e.g. ' + catName(r.cat) + ' · ' + r.where });
+  var tbox = el('div', { hidden: 'hidden' }, [el('label', { for: 'rv-tname', text: 'New theme name' }), tname]);
+  theme.addEventListener('change', function () { tbox.hidden = theme.value !== 'new'; if (!tbox.hidden) tname.focus(); });
+  var match = state.risks.filter(function (k) { return k.cats.indexOf(r.cat) >= 0; })[0];
+  var risk = select('rv-risk', [['', 'No risk']].concat(state.risks.map(function (k) { return [k.id, k.id + ' · ' + k.title + (match && match.id === k.id ? ' (same category)' : '')]; })), r.risk || '');
+  var addA = el('input', { type: 'checkbox', id: 'rv-act' });
+  var atitle = el('input', { type: 'text', id: 'rv-atitle', maxlength: '120', placeholder: 'What needs to change, in a few words' });
+  var aowner = select('rv-aowner', OWNERS, OWNERS[0]);
+  var adue = select('rv-adue', [['7', 'In 7 days'], ['14', 'In 14 days'], ['30', 'In 30 days'], ['60', 'In 60 days']], '14');
+  var abox = el('div', { hidden: 'hidden', style: 'display:grid;gap:10px' }, [
+    el('div', {}, [el('label', { for: 'rv-atitle', text: 'Action' }), atitle]),
+    el('div', { class: 'grid2' }, [el('div', {}, [el('label', { for: 'rv-aowner', text: 'Owner (a role, not a person)' }), aowner]), el('div', {}, [el('label', { for: 'rv-adue', text: 'Due' }), adue])])
+  ]);
+  addA.addEventListener('change', function () { abox.hidden = !addA.checked; if (addA.checked) atitle.focus(); });
+  var err = el('p', { class: 'err', 'aria-live': 'polite' });
+  return el('div', { class: 'panel', role: 'group', 'aria-label': 'Review ' + r.id }, [
+    el('div', { class: 'grid2' }, [el('div', {}, [el('label', { for: 'rv-resp', text: 'Learning response' }), resp]), el('div', {}, [el('label', { for: 'rv-theme', text: 'Theme' }), theme])]),
+    tbox,
+    el('div', {}, [el('label', { for: 'rv-risk', text: 'Link to a risk' }), risk]),
+    el('label', { class: 'check', for: 'rv-act' }, [addA, el('span', {}, ['Add an action', el('small', { text: 'Something needs fixing, with an owner role and a due date.' })])]),
+    abox, err,
+    el('div', { class: 'acts', style: 'margin:0' }, [
+      el('button', { type: 'button', class: 'small primary', id: 'rv-save', onclick: function () {
+        if (theme.value === 'new' && !tname.value.trim()) { err.textContent = 'Give the new theme a name.'; tname.focus(); return; }
+        if (addA.checked && atitle.value.trim().length < 4) { err.textContent = 'Describe the action in a few words.'; atitle.focus(); return; }
+        var now = Date.now(), notes = [];
+        if (theme.value === 'new') { var t = { id: 'T-' + (state.n.T++), name: tname.value.trim(), createdAt: now }; state.themes.push(t); r.theme = t.id; notes.push('new theme “' + t.name + '”'); }
+        else { r.theme = theme.value || null; if (r.theme) notes.push('theme “' + themeName(r.theme) + '”'); }
+        r.risk = risk.value || null; if (r.risk) notes.push('risk ' + r.risk);
+        if (addA.checked) { var a = newAction(atitle.value.trim(), 'Incident', r.id, aowner.value, +adue.value); r.actions.push(a.id); notes.push('action ' + a.id + ' for ' + a.owner); }
+        r.status = 'reviewed'; r.reviewedAt = now; r.response = resp.value;
+        addLog('Quality and safety lead reviewed ' + r.id + ': ' + r.response + (notes.length ? '; ' + notes.join('; ') : ''));
+        ui.open = null; render(); toast(r.id + ' reviewed. The reporter can see the outcome.');
+      }, text: 'Save review' }),
+      el('button', { type: 'button', class: 'small', onclick: function () { ui.open = null; render(); }, text: 'Cancel' })
+    ])
+  ]);
+}
+function newAction(title, source, from, owner, dueDays) {
+  var now = Date.now(), a = { id: 'A-' + (state.n.A++), title: title, source: source, from: from, owner: owner, createdAt: now, due: endOfDay(now + dueDays * DAY), status: 'open', updatedAt: now, closedAt: null, evidence: '', updates: [{ at: now, text: 'Action created' }], remindedAt: null };
+  state.actions.push(a); return a;
+}
+function themesCard() {
+  var card = el('section', { class: 'card', 'aria-labelledby': 'th-h' }, [el('h2', { id: 'th-h', text: 'Safety themes' }), el('p', { class: 'sub', text: 'Similar reports grouped together, so the cause is fixed once.' })]);
+  state.themes.slice().reverse().forEach(function (t) {
+    var reps = state.reports.filter(function (r) { return r.theme === t.id; });
+    var ids = reps.map(function (r) { return r.id; });
+    var acts = state.actions.filter(function (a) { return a.from === 'Theme: ' + t.name || ids.indexOf(a.from) >= 0; });
+    card.appendChild(el('div', { class: 'item', id: 'theme-' + t.id }, [
+      el('div', { class: 'top' }, [el('h3', { text: t.name }), el('span', { class: 'id', text: plural(reps.length, 'report') })]),
+      el('div', { class: 'meta', style: 'margin-top:4px' }, [ids.length ? el('span', { text: ids.join(', ') }) : null, el('span', { class: 'pill' + (acts.length ? ' ok' : ' stale'), text: acts.length ? plural(acts.length, 'action') + ', ' + acts.filter(function (a) { return a.status === 'closed'; }).length + ' closed' : 'No action yet' })])
+    ]));
+  });
+  return card;
+}
+
+// --- Leadership ---
+function dueText(a) {
+  var n = Date.now();
+  if (a.status === 'closed') { var late = dayDiff(a.due, a.closedAt); return el('span', { class: 'pill ' + (a.closedAt <= a.due ? 'ok' : 'late'), text: a.closedAt <= a.due ? 'Closed on time, ' + dateLabel(a.closedAt) : 'Closed ' + plural(late, 'day') + ' late' }); }
+  var d = dayDiff(n, a.due);
+  if (n > a.due) return el('span', { class: 'pill late', text: plural(Math.max(1, -d), 'day') + ' overdue' });
+  return el('span', { class: 'pill', text: d === 0 ? 'Due today' : 'Due in ' + plural(d, 'day') + ' (' + dateLabel(a.due) + ')' });
+}
+function actionItem(a) {
+  var isOpen = ui.open && ui.open.id === a.id, n = Date.now();
+  var it = el('div', { class: 'item action', id: 'act-' + a.id, 'data-id': a.id }, [
+    el('div', { class: 'top' }, [el('h3', { text: a.title }), el('span', { class: 'id', text: a.id })]),
+    el('div', { class: 'meta', style: 'margin-top:6px' }, [
+      dueText(a), el('span', { class: 'pill src', text: a.from.indexOf('Theme: ') === 0 ? 'Incident theme: ' + a.from.slice(7) : a.source + ': ' + a.from }), el('span', { class: 'pill', text: a.owner }),
+      a.status === 'open' ? (isStale(a) ? el('span', { class: 'pill stale', text: 'No update for ' + Math.floor((n - a.updatedAt) / DAY) + ' days' }) : el('span', { text: 'Updated ' + ago(a.updatedAt) })) : null
+    ]),
+    a.status === 'closed' && a.evidence ? el('p', { class: 'what', style: 'margin:6px 0 0;font-size:0.9375rem', text: 'Evidence: ' + a.evidence }) : null,
+    a.status === 'open' && a.updates.length > 1 ? el('p', { class: 'what', style: 'margin:6px 0 0;font-size:0.9375rem;color:var(--soft)', text: 'Latest: ' + a.updates[a.updates.length - 1].text }) : null
+  ]);
+  if (a.status === 'open') {
+    if (!isOpen) it.appendChild(el('div', { class: 'acts' }, [
+      el('button', { type: 'button', class: 'small', onclick: function () { openPanel(a.id, 'update'); }, text: 'Add update' }),
+      el('button', { type: 'button', class: 'small primary', 'data-close': a.id, onclick: function () { openPanel(a.id, 'close'); }, text: 'Close with evidence' }),
+      el('button', { type: 'button', class: 'small', onclick: function () { openPanel(a.id, 'due'); }, text: 'Move due date' })
+    ]));
+    else it.appendChild(actionPanel(a, ui.open.kind));
+  }
+  return it;
+}
+function openPanel(id, kind) { ui.open = { id: id, kind: kind }; render(); var f = document.getElementById('ap-text'); if (f) f.focus(); }
+function actionPanel(a, kind) {
+  var label = kind === 'close' ? 'Evidence that it is fixed' : kind === 'due' ? 'Reason for the new date' : 'Update';
+  var ph = kind === 'close' ? 'e.g. New mats fitted and checked on site' : kind === 'due' ? 'e.g. Part on order, arrives next week' : 'e.g. Quote received, waiting for approval';
+  var txt = el('input', { type: 'text', id: 'ap-text', maxlength: '140', placeholder: ph });
+  var nd = kind === 'due' ? select('ap-due', [['7', '7 days later'], ['14', '14 days later'], ['30', '30 days later']], '14') : null;
+  var err = el('p', { class: 'err', 'aria-live': 'polite' });
+  return el('div', { class: 'panel', role: 'group', 'aria-label': label + ' for ' + a.id }, [
+    el('div', {}, [el('label', { for: 'ap-text', text: label }), txt]),
+    nd ? el('div', {}, [el('label', { for: 'ap-due', text: 'New due date (from ' + dateLabel(a.due) + ')' }), nd]) : null,
+    err,
+    el('div', { class: 'acts', style: 'margin:0' }, [
+      el('button', { type: 'button', class: 'small primary', id: 'ap-save', onclick: function () {
+        var v = txt.value.trim(), now = Date.now();
+        if (v.length < 4) { err.textContent = kind === 'close' ? 'Add a few words of evidence before closing.' : kind === 'due' ? 'A reason is needed, so slippage stays visible.' : 'Write a short update.'; txt.focus(); return; }
+        if (kind === 'close') { a.status = 'closed'; a.closedAt = now; a.evidence = v; a.updatedAt = now; a.updates.push({ at: now, text: 'Closed: ' + v }); addLog(a.owner + ' closed ' + a.id + ' with evidence' + (now > a.due ? ' (late)' : ' (on time)')); toast(a.id + ' closed. It moves to “Closed this month”.'); }
+        else if (kind === 'due') { var from = a.due; a.due = endOfDay(Math.max(a.due, now) + (+nd.value) * DAY); a.updatedAt = now; a.updates.push({ at: now, text: 'Due date moved from ' + dateLabel(from) + ' to ' + dateLabel(a.due) + ': ' + v }); addLog(a.id + ' due date moved from ' + dateLabel(from) + ' to ' + dateLabel(a.due) + ' · reason: ' + v); toast('Due date moved. The reason is kept.'); }
+        else { a.updatedAt = now; a.updates.push({ at: now, text: v }); addLog(a.owner + ' updated ' + a.id + ': ' + v); toast('Update saved.'); }
+        ui.open = null; render();
+      }, text: kind === 'close' ? 'Close action' : kind === 'due' ? 'Move date' : 'Save update' }),
+      el('button', { type: 'button', class: 'small', onclick: function () { ui.open = null; render(); }, text: 'Cancel' })
+    ])
+  ]);
+}
+function tracker() {
+  var k = kpis(), ms = monthStart(Date.now());
+  var card = el('section', { class: 'card', 'aria-labelledby': 'tr-h' });
+  card.appendChild(el('div', { class: 'card-head' }, [el('h2', { id: 'tr-h', text: 'Action tracker' })]));
+  card.appendChild(el('p', { class: 'sub', text: 'Every action from meetings, audits, incidents and projects, in one list. Each has one owner role and a due date.' }));
+  var tabs = el('div', { class: 'seg tabs', role: 'group', 'aria-label': 'Show actions', style: 'margin-bottom:14px' });
+  [['open', 'Overdue first (' + k.openActions + ')'], ['owner', 'By owner role'], ['closed', 'Closed this month (' + k.closedThisMonth + ')']].forEach(function (t) {
+    tabs.appendChild(el('button', { type: 'button', id: 'tab-' + t[0], 'aria-pressed': String(state.tab === t[0]), onclick: function () { state.tab = t[0]; ui.open = null; render(); }, text: t[1] }));
+  });
+  card.appendChild(tabs);
+  var open = state.actions.filter(function (a) { return a.status === 'open'; }).sort(function (a, b) { return a.due - b.due; });
+  var box = el('div', { id: 'actions' });
+  if (state.tab === 'open') { if (!open.length) box.appendChild(el('p', { class: 'empty', text: 'No open actions.' })); open.forEach(function (a) { box.appendChild(actionItem(a)); }); }
+  else if (state.tab === 'owner') {
+    box.appendChild(el('p', { class: 'sub', text: 'Shows where work is waiting, by role. It does not score people.' }));
+    var g = {}; open.forEach(function (a) { (g[a.owner] = g[a.owner] || []).push(a); });
+    Object.keys(g).sort(function (x, y) { return g[y].filter(isOverdue).length - g[x].filter(isOverdue).length || g[y].length - g[x].length || (x < y ? -1 : 1); }).forEach(function (o) {
+      box.appendChild(el('div', { class: 'group-h' }, [o, el('span', { text: plural(g[o].length, 'open action') + ', ' + g[o].filter(isOverdue).length + ' overdue' })]));
+      g[o].forEach(function (a) { box.appendChild(actionItem(a)); });
+    });
+  } else {
+    var closed = state.actions.filter(function (a) { return a.status === 'closed' && a.closedAt >= ms; }).sort(function (a, b) { return b.closedAt - a.closedAt; });
+    if (!closed.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing closed yet this month.' }));
+    closed.forEach(function (a) { box.appendChild(actionItem(a)); });
+  }
+  card.appendChild(box);
+  card.appendChild(addActionForm());
+  return card;
+}
+function addActionForm() {
+  var d = el('details', { class: 'add', id: 'add-action' });
+  d.appendChild(el('summary', { text: 'Add an action from a meeting, audit or project' }));
+  var t = el('input', { type: 'text', id: 'na-title', maxlength: '120', placeholder: 'What needs to change' });
+  var s = select('na-src', SOURCES, 'Meeting'), from = el('input', { type: 'text', id: 'na-from', maxlength: '60', placeholder: 'e.g. Operations meeting' });
+  var o = select('na-owner', OWNERS, OWNERS[0]), du = select('na-due', [['7', 'In 7 days'], ['14', 'In 14 days'], ['30', 'In 30 days'], ['60', 'In 60 days']], '30');
+  var err = el('p', { class: 'err', 'aria-live': 'polite' });
+  d.appendChild(el('div', { class: 'panel' }, [
+    el('div', {}, [el('label', { for: 'na-title', text: 'Action' }), t]),
+    el('div', { class: 'grid2' }, [el('div', {}, [el('label', { for: 'na-src', text: 'Source' }), s]), el('div', {}, [el('label', { for: 'na-from', text: 'Which one' }), from])]),
+    el('div', { class: 'grid2' }, [el('div', {}, [el('label', { for: 'na-owner', text: 'Owner (a role, not a person)' }), o]), el('div', {}, [el('label', { for: 'na-due', text: 'Due' }), du])]),
+    err,
+    el('div', {}, [el('button', { type: 'button', class: 'small primary', id: 'na-save', onclick: function () {
+      if (t.value.trim().length < 4) { err.textContent = 'Describe the action in a few words.'; t.focus(); return; }
+      var a = newAction(t.value.trim(), s.value, from.value.trim() || s.value, o.value, +du.value);
+      addLog('Leadership added ' + a.id + ' (' + a.source + ') for ' + a.owner + ', due ' + dateLabel(a.due));
+      state.tab = 'open'; ui.flash = 'act-' + a.id; render(); toast(a.id + ' added to the tracker.');
+    }, text: 'Add action' })])
+  ]));
+  return d;
+}
+function register() {
+  var card = el('section', { class: 'card', 'aria-labelledby': 'rr-h' });
+  card.appendChild(el('h2', { id: 'rr-h', text: 'Risk register' }));
+  card.appendChild(el('p', { class: 'sub', text: 'Score = likelihood × impact, each 1 to 5 (local scoring). Highest first.' }));
+  var wrap = el('div', { class: 'risk-wrap' });
+  // matrix
+  var mx = el('div', { class: 'matrix', role: 'img', 'aria-label': 'Risk matrix: ' + state.risks.map(function (r) { return r.title + ' ' + r.L + ' by ' + r.I; }).join('; ') });
+  for (var L = 5; L >= 1; L--) {
+    mx.appendChild(el('div', { class: 'ax', text: String(L) }));
+    for (var I = 1; I <= 5; I++) {
+      var n = state.risks.filter(function (r) { return r.L === L && r.I === I; }).length;
+      mx.appendChild(el('div', { class: 'c ' + band(L * I), text: n ? String(n) : '' }));
+    }
+  }
+  mx.appendChild(el('div', {}));
+  for (var j = 1; j <= 5; j++) mx.appendChild(el('div', { class: 'ax', text: String(j) }));
+  wrap.appendChild(el('div', {}, [mx, el('p', { class: 'mcap', text: 'Up: likelihood. Across: impact. Numbers show how many risks sit in each cell.' })]));
+  var list = el('div', {});
+  state.risks.slice().sort(function (a, b) { return riskScore(b) - riskScore(a); }).forEach(function (r) {
+    var s = riskScore(r), now = Date.now(), late = now > r.reviewDue, scoring = ui.open && ui.open.id === r.id && ui.open.kind === 'score';
+    var linked = state.reports.filter(function (x) { return x.risk === r.id; }).length;
+    var Ls = select('l-' + r.id, [1, 2, 3, 4, 5].map(function (v) { return [String(v), v + ' · ' + ['rare', 'unlikely', 'possible', 'likely', 'almost certain'][v - 1]]; }), String(r.L));
+    var Is = select('i-' + r.id, [1, 2, 3, 4, 5].map(function (v) { return [String(v), v + ' · ' + ['minimal', 'minor', 'moderate', 'major', 'severe'][v - 1]]; }), String(r.I));
+    function rescore() { var o = riskScore(r); r.L = +Ls.value; r.I = +Is.value; if (o !== riskScore(r)) { addLog('Risk ' + r.id + ' re-scored from ' + o + ' to ' + riskScore(r) + ' by its owner role (' + r.owner + ')'); toast('Re-scored: ' + o + ' → ' + riskScore(r) + '.'); } render(); var f = document.getElementById(this.id); if (f) f.focus(); }
+    Ls.addEventListener('change', rescore); Is.addEventListener('change', rescore);
+    list.appendChild(el('div', { class: 'item rk', id: 'risk-' + r.id }, [
+      el('div', { class: 'top', style: 'align-items:center;flex-wrap:nowrap' }, [el('span', { class: 'score ' + band(s), title: bandName(s), text: String(s) }), el('h3', { text: r.title, style: 'margin:0' })]),
+      el('p', { class: 'ctrl', text: 'Controls: ' + r.controls }),
+      el('div', { class: 'meta' }, [el('span', { class: 'pill', text: r.owner }), el('span', { class: 'pill' + (late ? ' late' : ''), text: late ? 'Review overdue since ' + dateLabel(r.reviewDue) : 'Review by ' + dateLabel(r.reviewDue) }), el('span', { text: plural(linked, 'linked report') })]),
+      scoring ? el('div', { class: 'scorers' }, [el('label', { for: 'l-' + r.id }, ['Likelihood', Ls]), el('label', { for: 'i-' + r.id }, ['Impact', Is]),
+        el('button', { type: 'button', class: 'small', onclick: function () { ui.open = null; render(); }, text: 'Done' })]) : null,
+      scoring ? null : el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'small', 'data-rescore': r.id, onclick: function () { ui.open = { id: r.id, kind: 'score' }; render(); var f = document.getElementById('l-' + r.id); if (f) f.focus(); }, text: 'Re-score' }),
+        el('button', { type: 'button', class: 'small', 'data-reviewed': r.id, onclick: function () { r.reviewedAt = Date.now(); r.reviewDue = endOfDay(Date.now() + 90 * DAY); addLog('Risk ' + r.id + ' reviewed; next review ' + dateLabel(r.reviewDue)); render(); toast('Marked reviewed. Next review in 90 days.'); }, text: 'Mark reviewed' })])
+    ]));
+  });
+  wrap.appendChild(list);
+  card.appendChild(wrap);
+  return card;
+}
+
+function logCard() {
+  var card = el('section', { class: 'card', 'aria-labelledby': 'log-h' }, [el('h2', { id: 'log-h', text: 'What happened' })]);
+  var ol = el('ol', { class: 'log', id: 'log' });
+  state.log.slice(0, state.role === 'staff' ? 5 : 8).forEach(function (l) { ol.appendChild(el('li', {}, [el('time', { datetime: new Date(l.at).toISOString(), text: timeLabel(l.at) }), el('span', { text: l.text })])); });
+  card.appendChild(ol);
+  return card;
+}
+
+function renderGuide() {
+  var box = document.getElementById('sugg'); box.textContent = '';
+  document.getElementById('guide-on').checked = state.guide;
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Reporting, review, the tracker and the register all work without it.' })); return; }
+  var list = suggest(state.role);
+  if (!list.length) box.appendChild(el('p', { class: 'how', text: 'Nothing to suggest right now.' }));
+  list.forEach(function (sg) {
+    var acts = [], proposing = ui.proposing === sg.id;
+    var card = el('div', { class: 'sugg', 'data-id': sg.id }, [el('span', { class: 'tag ' + sg.kind, text: sg.kind === 'time' ? 'Waiting' : 'Worth a look' }), el('h3', { text: sg.title }), el('p', { text: sg.text }), el('p', { class: 'why', text: 'Why: ' + sg.why })]);
+    if (proposing && sg.proposal) {
+      card.appendChild(el('div', { class: 'proposal' }, [el('b', { text: 'Proposed: ' + sg.proposal.title }), sg.proposal.body]));
+      acts.push(el('button', { type: 'button', class: 'small primary', onclick: function () { var msg = sg.proposal.apply(); ui.proposing = null; if (sg.then) ui.flash = sg.then.replace('risk:', 'risk-'); if (sg.then && state.role !== 'exec') ui.flash = null; render(); toast(msg); }, text: sg.proposal.confirm }));
+      acts.push(el('button', { type: 'button', class: 'small', onclick: function () { ui.proposing = null; renderGuide(); }, text: 'Cancel' }));
+    } else {
+      if (sg.proposal) acts.push(el('button', { type: 'button', class: 'small primary', onclick: function () { ui.proposing = sg.id; renderGuide(); }, text: sg.btn }));
+      else if (sg.show) acts.push(el('button', { type: 'button', class: 'small primary', onclick: function () { show(sg.show); }, text: sg.btn }));
+      acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; ui.proposing = null; renderGuide(); save(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    }
+    card.appendChild(el('div', { class: 'acts' }, acts));
+    box.appendChild(card);
+  });
+}
+function show(target) {
+  var p = target.split(':');
+  ui.flash = p[0] === 'rep' ? 'rep-' + p[1] : p[0] === 'risk' ? 'risk-' + p[1] : 'mine';
+  render();
+}
+
+// ---------- Wiring ----------
+['staff', 'lead', 'exec'].forEach(function (r) { document.getElementById('role-' + r).addEventListener('click', function () { state.role = r; ui.open = null; ui.proposing = null; ui.err = ''; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; ui.proposing = null; renderGuide(); save(); });
+document.getElementById('reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; ui.sent = null; ui.open = null; ui.proposing = null; render(); toast('Example reset.'); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+
+// Read-only view for software agents (no writes): window.ospeliActionsDemo
+window.ospeliActionsDemo = Object.freeze({
+  describe: function () { return 'Read-only demo of Ospeli incidents, risk and actions at a fictional hospital. get() returns reports, themes, actions and risks; kpis() the four tiles; suggestions() what the guide suggests for the current role. Owners are roles, never named people. Fictional data; runs in the browser; nothing is sent anywhere.'; },
+  get: function () { return clone({ role: state.role, roleName: ROLE_NAMES[state.role], reports: state.reports, themes: state.themes, actions: state.actions, risks: state.risks.map(function (r) { return Object.assign({ score: riskScore(r) }, r); }), log: state.log.slice(0, 20) }); },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide ? suggest(state.role).map(function (s) { return { id: s.id, title: s.title, text: s.text, why: s.why, proposes: s.proposal ? s.proposal.title : null }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>

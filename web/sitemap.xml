@@ -8,4 +8,38 @@
   <url><loc>https://ospeli.com/agents.md</loc><changefreq>weekly</changefreq><priority>0.5</priority></url>
   <url><loc>https://ospeli.com/app/api/README.md</loc><changefreq>daily</changefreq><priority>0.5</priority></url>
   <url><loc>https://ospeli.com/app/api/commands.json</loc><changefreq>daily</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/demo/ed-flow/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/support-tasks/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/actions/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/areas/</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://ospeli.com/areas/outpatients-and-clinics/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/emergency-department-flow/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/beds-and-patient-flow/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/theatres-and-procedures/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/diagnostics-imaging-lab/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/pharmacy-operations/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/maternity-and-children-flow/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/critical-care-capacity/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/mental-health-and-community-beds/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/medical-equipment/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/facilities-utilities/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/support-services/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/supply-chain-stores/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/patient-transport/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/staffing-and-rostering/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/incidents-risk-actions/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/infection-prevention-operations/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/governance-and-accreditation/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/health-records/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/planning-and-capital-projects/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/finance-budgets/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/revenue-cycle/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/it-digital-cyber/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/performance-reporting/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/emergency-preparedness/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/community-care/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/public-health-operations/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/patient-experience/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/process-mapping/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://ospeli.com/areas/playbooks/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
 </urlset>

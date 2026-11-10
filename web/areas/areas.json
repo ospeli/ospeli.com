@@ -1,0 +1,3920 @@
+[
+ {
+  "id": "A1",
+  "slug": "outpatients-and-clinics",
+  "name": "Outpatients and clinics",
+  "group": "Patient flow and clinical services",
+  "month": "Jan 2027",
+  "oneLine": "Keeps referrals, bookings, waiting lists and clinic days visible and moving.",
+  "today": "Referrals sit in inboxes and paper books. There is no single waiting list. Everyone is booked for the start of clinic, slots go unfilled, and nobody chases who did not attend.",
+  "withOspeli": "Every referral lands on one list with its wait shown. Clinic templates set slots, reminders go out, and check-in times are logged, so waits, empty slots and did-not-attend show clearly.",
+  "people": [
+   {
+    "role": "Clinic receptionist",
+    "does": "Checks patients in by code on a tablet, marks arrived, seen or did not attend."
+   },
+   {
+    "role": "Booking clerk",
+    "does": "Works the referral list, books slots from templates, sends reminders, rebooks cancellations."
+   },
+   {
+    "role": "Clinic nurse",
+    "does": "Calls the next patient from the clinic queue on a phone, marks start and finish."
+   },
+   {
+    "role": "Outpatient manager",
+    "does": "Reviews waiting lists, slot use and clinic start times; adjusts templates."
+   },
+   {
+    "role": "Operations manager",
+    "does": "Sees waits by service and clinics cancelled or running short."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Clinic queue (phone)",
+    "shows": "Today's patients by anonymous code: booked time, arrived, waiting time, called, finished."
+   },
+   {
+    "name": "Referral and waiting list",
+    "shows": "All open referrals by service and wait, unbooked first, with oldest waits highlighted."
+   },
+   {
+    "name": "Clinic templates",
+    "shows": "Slot patterns per clinic and day, new and follow-up slots, held and released slots."
+   },
+   {
+    "name": "Clinic day summary",
+    "shows": "Slots used, empty, cancelled and did not attend, start time and overrun per clinic."
+   }
+  ],
+  "captures": [
+   "Referral received and accepted: starts the waiting-time clock.",
+   "Appointment booked, rebooked or cancelled, with who cancelled: shows churn.",
+   "Reminder sent and reply: links reminders to attendance.",
+   "Patient arrived and checked in: starts the in-clinic wait.",
+   "Called in and consultation finished: measures in-clinic wait and clinic overrun.",
+   "Did not attend recorded: drives the did-not-attend rate and rebooking.",
+   "Clinic cancelled or reduced at short notice, with reason: shows lost capacity."
+  ],
+  "kpis": [
+   {
+    "name": "Did-not-attend rate",
+    "definition": "appointments marked did not attend / appointments booked",
+    "source": "local definition"
+   },
+   {
+    "name": "Slot utilisation",
+    "definition": "slots used / slots available in the template",
+    "source": "local definition"
+   },
+   {
+    "name": "Referral to first appointment",
+    "definition": "referral accepted → first appointment attended, median by service",
+    "source": "local definition"
+   },
+   {
+    "name": "Waiting time in clinic",
+    "definition": "patient checked in → called in, median per clinic",
+    "source": "local definition"
+   },
+   {
+    "name": "Clinic start punctuality",
+    "definition": "clinics starting within the set window of scheduled time / clinics held",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When a clinic's did-not-attend rate rises above its usual range, suggests extra reminders or a booking review for that clinic, citing recent weeks.",
+   "When slots stay empty within two days of clinic, suggests offering them to the longest waiting referrals for that service.",
+   "When patients are all booked for the clinic start, suggests a staggered template, showing the current arrival-to-called waits."
+  ],
+  "playbooks": [
+   "Waiting list validation: check each open referral, output list cleaned and contacted.",
+   "Clinic template review: compare demand and slots, output a revised template."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_clinics_list_waiting",
+    "does": "List open referrals by service and wait, unbooked first, with filters and limit.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_clinics_find_slots",
+    "does": "Find free slots for a service and date range, with clinic and time.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_clinics_book_appointment",
+    "does": "Propose booking a referral into a slot; booking clerk confirms.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_clinics_record_attendance",
+    "does": "Record arrived, called, finished or did not attend for an appointment code.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_clinics_get_day_summary",
+    "does": "Return a clinic day's slots used, empty, cancelled and waits.",
+    "approval": "none"
+   }
+  ],
+  "standards": [
+   "JCI Access to Care and Continuity of Care (ACC)",
+   "HL7 FHIR Appointment, Slot and Schedule resources"
+  ],
+  "connects": [
+   "A5",
+   "A6",
+   "C1",
+   "C5",
+   "D2",
+   "E2",
+   "E4"
+  ],
+  "notFor": "Does not decide clinical urgency of referrals or who needs follow-up. Never times or ranks individual clinicians."
+ },
+ {
+  "id": "A2",
+  "slug": "emergency-department-flow",
+  "name": "Emergency department flow",
+  "group": "Patient flow and clinical services",
+  "month": "Jan 2027",
+  "oneLine": "Shows every wait in the emergency department, from arrival to departure.",
+  "today": "Times are written on paper or not at all. Ambulances wait at the door, cubicles fill with patients waiting for ward beds, and nobody can say where the hours went.",
+  "withOspeli": "Each stage is a timestamped tap: arrival, triage, seen, decision, bed requested, departed. A live board shows waits and blocks, and admission requests reach the bed board at once.",
+  "people": [
+   {
+    "role": "Emergency department charge nurse",
+    "does": "Sees the live board, logs arrivals and stage changes, raises escalation in two taps."
+   },
+   {
+    "role": "Triage nurse",
+    "does": "Records triage time and the category staff assigned, on a phone."
+   },
+   {
+    "role": "Patient flow coordinator",
+    "does": "Sees decisions to admit waiting for beds and matches them on the bed board."
+   },
+   {
+    "role": "Ambulance crew lead",
+    "does": "Sees handover status and time waiting at the door."
+   },
+   {
+    "role": "Operations manager",
+    "does": "Watches crowding, long waits and escalation level; leads the full-capacity response."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Department board",
+    "shows": "Patients by anonymous code and area: stage, time since arrival, waiting for what."
+   },
+   {
+    "name": "Log a stage (phone)",
+    "shows": "Pick a patient code, tap the next stage; time is stamped automatically."
+   },
+   {
+    "name": "Waiting for a bed",
+    "shows": "Decisions to admit by specialty, time waiting, bed requested and bed offered."
+   },
+   {
+    "name": "Ambulance handover",
+    "shows": "Ambulances arrived, handed over and still waiting, with time at the door."
+   },
+   {
+    "name": "Escalation status",
+    "shows": "Current crowding level, triggers met, actions taken and who decided."
+   }
+  ],
+  "captures": [
+   "Arrival and arrival mode: starts every time measure.",
+   "Ambulance arrived and handover completed: measures time at the door.",
+   "Triage time and staff-assigned category: measures time to triage.",
+   "First seen by a clinician: measures time to be seen.",
+   "Decision to admit and bed requested: starts the wait for a bed.",
+   "Departure and destination, or left before being seen: ends the stay.",
+   "Escalation level changed, with triggers and decision maker: records the response."
+  ],
+  "kpis": [
+   {
+    "name": "4-hour standard",
+    "definition": "attendances departing within 4 hours of arrival / all attendances",
+    "source": "NHS UEC 4-hour standard"
+   },
+   {
+    "name": "Time to triage",
+    "definition": "arrival → triage recorded, median",
+    "source": "local definition"
+   },
+   {
+    "name": "Decision to admit to departure",
+    "definition": "decision to admit → left the department, median and over 12 hours",
+    "source": "local definition"
+   },
+   {
+    "name": "Ambulance handover time",
+    "definition": "ambulance arrived → handover completed, median and over the local limit",
+    "source": "local definition"
+   },
+   {
+    "name": "Left before being seen",
+    "definition": "attendances leaving before first seen / all attendances",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When decisions to admit wait longer than the set limit, suggests a bed meeting review, listing waits by specialty from the bed board.",
+   "When crowding triggers are met, suggests the matching escalation level and actions for the charge nurse to confirm.",
+   "When ambulances wait beyond the local handover limit, alerts the operations manager with current cubicle and corridor use."
+  ],
+  "playbooks": [
+   "Department flow walk: time each stage, output the biggest wait.",
+   "Full-capacity drill: run the escalation steps, output actions and timings."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_ed_get_board",
+    "does": "Return the live department board by area, stage and wait, using patient codes.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_ed_log_stage",
+    "does": "Record a stage change for a patient code with event time.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_ed_list_awaiting_beds",
+    "does": "List decisions to admit waiting for beds, with time and specialty.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_ed_propose_escalation",
+    "does": "Propose an escalation level with triggers met; the charge nurse decides.",
+    "approval": "person decides"
+   }
+  ],
+  "standards": [
+   "NHS UEC 4-hour standard",
+   "JCI Access to Care and Continuity of Care (ACC)",
+   "HL7 FHIR Encounter resource"
+  ],
+  "connects": [
+   "A3",
+   "A5",
+   "A8",
+   "B3",
+   "B5",
+   "C1",
+   "D4",
+   "E1"
+  ],
+  "notFor": "Does not triage, assign categories, or decide who is seen first. Measures waits by stage, never individual staff."
+ },
+ {
+  "id": "A3",
+  "slug": "beds-and-patient-flow",
+  "name": "Beds, admissions and discharge",
+  "group": "Patient flow and clinical services",
+  "month": "Nov 2026",
+  "oneLine": "One live picture of every bed, admission and discharge across the organisation.",
+  "today": "Bed state lives on whiteboards and phone calls. Discharges are decided late, then wait for medicines, transport or family. Beds sit empty but dirty while patients wait downstairs.",
+  "withOspeli": "A live bed board shows each bed as occupied, ready, dirty or blocked. Expected discharge dates and delay reasons are logged, and a discharge triggers cleaning, so delays show and beds turn faster.",
+  "people": [
+   {
+    "role": "Charge nurse",
+    "does": "Updates bed state on a phone, sets expected discharge dates, records delay reasons."
+   },
+   {
+    "role": "Patient flow coordinator",
+    "does": "Matches bed requests to ready beds and proposes moves for the ward to accept."
+   },
+   {
+    "role": "Ward clerk",
+    "does": "Records admissions, transfers and discharges with event times."
+   },
+   {
+    "role": "Discharge coordinator",
+    "does": "Tracks patients ready to leave and what each is waiting for."
+   },
+   {
+    "role": "Operations manager",
+    "does": "Runs the bed meeting from the board; sees occupancy, delays and long stays."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Bed board",
+    "shows": "Every bed by ward: occupied, ready, dirty or blocked, with patient code and time in state."
+   },
+   {
+    "name": "My ward (phone)",
+    "shows": "Ward beds, expected discharge dates, delay reasons and pending admissions, updated in taps."
+   },
+   {
+    "name": "Bed requests",
+    "shows": "Requests from the emergency department, theatres and transfers, waiting time and bed offered."
+   },
+   {
+    "name": "Discharge tracker",
+    "shows": "Patients ready to leave, what they wait for: medicines, transport, placement, family."
+   },
+   {
+    "name": "Bed meeting view",
+    "shows": "Occupancy, expected discharges today, delays over 48 hours and long stays by ward."
+   }
+  ],
+  "captures": [
+   "Bed requested and bed allocated: measures the wait for a bed.",
+   "Admission, transfer and discharge times: drive occupancy and length of stay.",
+   "Expected discharge date set or changed: shows planning and slippage.",
+   "Ready to leave and actual departure: measures discharge delay.",
+   "Delay reason by category: shows what holds discharges.",
+   "Bed vacated, cleaned and ready: drives bed turnaround.",
+   "Bed blocked or closed, with reason: shows lost capacity."
+  ],
+  "kpis": [
+   {
+    "name": "Bed occupancy",
+    "definition": "occupied bed-days / available bed-days",
+    "source": "local definition"
+   },
+   {
+    "name": "Average length of stay",
+    "definition": "inpatient bed-days / discharges in period",
+    "source": "local definition"
+   },
+   {
+    "name": "Discharges before noon",
+    "definition": "discharges before 12:00 / all discharges",
+    "source": "local definition"
+   },
+   {
+    "name": "Discharge delay",
+    "definition": "ready to leave → departed, total delayed days and over 48 hours",
+    "source": "local definition"
+   },
+   {
+    "name": "Long-stay patients",
+    "definition": "inpatients with stays of 7 or more and 21 or more days / inpatients",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When a patient's expected discharge date passes with no delay reason, prompts the ward to record one.",
+   "When several patients ready to leave wait for the same thing, such as transport, flags the shared cause to the discharge coordinator.",
+   "When bed requests wait and beds sit dirty, suggests which cleans to request first, citing bed requests."
+  ],
+  "playbooks": [
+   "Daily bed meeting: review board and delays, output actions with owners.",
+   "Long-stay review: list 21-day-plus stays by delay reason, output actions."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_beds_find_free",
+    "does": "Find ready beds by ward and bed type, with time ready.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_beds_propose_allocation",
+    "does": "Propose a bed for a bed request with reasons; the ward accepts.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_beds_update_state",
+    "does": "Set a bed's state or a patient code's expected discharge date.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_beds_list_delays",
+    "does": "List patients ready to leave and their delay reasons, by ward.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_beds_get_summary",
+    "does": "Return occupancy, expected discharges and long stays for the bed meeting.",
+    "approval": "none"
+   }
+  ],
+  "standards": [
+   "SAFER patient flow bundle",
+   "Red2Green bed days",
+   "JCI Access to Care and Continuity of Care (ACC)",
+   "HL7 FHIR Encounter and Location resources"
+  ],
+  "connects": [
+   "A2",
+   "A4",
+   "A6",
+   "A8",
+   "A9",
+   "B3",
+   "B5",
+   "C3",
+   "D4",
+   "X1"
+  ],
+  "notFor": "Does not decide fitness for discharge or who gets a bed on clinical grounds. Never scores wards or staff."
+ },
+ {
+  "id": "A4",
+  "slug": "theatres-and-procedures",
+  "name": "Theatres and procedure lists",
+  "group": "Patient flow and clinical services",
+  "month": "Jan 2027",
+  "oneLine": "Makes every theatre and procedure session start on time and run full.",
+  "today": "Lists are set late and change on the day. Sessions start late waiting for a bed, a missing tray or staff. Cancellations happen after patients are prepared, and turnaround time is a guess.",
+  "withOspeli": "Lists, sessions and each case's key times are logged in taps. Readiness checks show missing beds, kit or staff the day before, and cancellations carry reasons, so lost session time is visible.",
+  "people": [
+   {
+    "role": "Theatre coordinator",
+    "does": "Builds and changes lists, checks readiness, records cancellations and reasons."
+   },
+   {
+    "role": "Theatre nurse",
+    "does": "Taps patient in, procedure start, finish and out on a phone."
+   },
+   {
+    "role": "Sterile services lead",
+    "does": "Sees trays needed per list and flags kit not ready."
+   },
+   {
+    "role": "Theatre manager",
+    "does": "Reviews session use, late starts, cancellations and turnaround by theatre."
+   },
+   {
+    "role": "Operations manager",
+    "does": "Sees sessions unused, cancellations for lack of beds, and lists at risk."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Today's lists",
+    "shows": "Each theatre's sessions and cases by patient code, current stage, running late or early."
+   },
+   {
+    "name": "Case times (phone)",
+    "shows": "Tap into room, anaesthesia start, procedure start, finish, out of room; stamped automatically."
+   },
+   {
+    "name": "Readiness check",
+    "shows": "Tomorrow's cases: bed, kit, staff and checklist status, gaps highlighted."
+   },
+   {
+    "name": "Session review",
+    "shows": "Planned versus used time, late start, early finish, turnaround and cancellations per session."
+   }
+  ],
+  "captures": [
+   "Session planned, released or unused: shows capacity offered and lost.",
+   "Patient in room, procedure start and finish, out: measures session use.",
+   "Late start with reason: shows what delays the first case.",
+   "Cancellation on the day, with reason category: shows avoidable losses.",
+   "Out of room to next patient in: measures turnaround.",
+   "Tray or kit not ready: links sterile services to delays.",
+   "Surgical safety checklist completed, yes or no: tracks completion."
+  ],
+  "kpis": [
+   {
+    "name": "Session utilisation",
+    "definition": "time patients in theatre within planned session / planned session time",
+    "source": "local definition"
+   },
+   {
+    "name": "Late starts",
+    "definition": "sessions where first case starts after the set window / sessions held",
+    "source": "local definition"
+   },
+   {
+    "name": "Cancellations on the day",
+    "definition": "cases cancelled on the day / cases listed",
+    "source": "local definition"
+   },
+   {
+    "name": "Turnaround time",
+    "definition": "patient out of room → next patient in room, median",
+    "source": "local definition"
+   },
+   {
+    "name": "Checklist completion",
+    "definition": "cases with the surgical safety checklist recorded complete / cases",
+    "source": "WHO Surgical Safety Checklist"
+   }
+  ],
+  "guide": [
+   "When tomorrow's case has no bed booked or kit ready, flags it to the theatre coordinator with the gap.",
+   "When sessions are released late repeatedly for a service, suggests a review of session allocation, citing release dates.",
+   "When cancellations for one reason rise, suggests a short review of that cause, with the cases listed by code."
+  ],
+  "playbooks": [
+   "Session review: compare planned and used time, output lost time by cause.",
+   "Cancellation review: group last month's cancellations, output top avoidable causes."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_theatres_get_lists",
+    "does": "Return today's or a date's lists by theatre, with case stages and delays.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_theatres_log_case_time",
+    "does": "Record a case milestone time for a patient code.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_theatres_check_readiness",
+    "does": "List next-day cases missing a bed, kit, staff or checklist.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_theatres_propose_list_change",
+    "does": "Propose moving or swapping a case; the theatre coordinator decides.",
+    "approval": "person decides"
+   }
+  ],
+  "standards": [
+   "WHO Surgical Safety Checklist",
+   "JCI Anesthesia and Surgical Care (ASC)",
+   "HL7 FHIR Procedure resource"
+  ],
+  "connects": [
+   "A3",
+   "A5",
+   "A6",
+   "A8",
+   "B1",
+   "B3",
+   "B4",
+   "C1",
+   "C3",
+   "D1"
+  ],
+  "notFor": "Does not decide which patient is operated on first or clinical fitness. Never times or ranks individual surgeons."
+ },
+ {
+  "id": "A5",
+  "slug": "diagnostics-imaging-lab",
+  "name": "Diagnostics: imaging and laboratory",
+  "group": "Patient flow and clinical services",
+  "month": "Jan 2027",
+  "oneLine": "Tracks every request, sample and scan from order to reported result.",
+  "today": "Samples get lost between ward and lab. Nobody can say when a scan will happen. An analyser or scanner goes down and wards find out by phoning. Results wait to be seen.",
+  "withOspeli": "Requests, specimens and scans carry timestamps at each handoff. Wards see status without phoning, downtime is posted on the board, and turnaround is measured per test and step.",
+  "people": [
+   {
+    "role": "Ward clerk",
+    "does": "Sees request status by patient code: collected, received, done, reported."
+   },
+   {
+    "role": "Laboratory scientist",
+    "does": "Scans specimens in, records rejections and reasons, sees the analyser queue."
+   },
+   {
+    "role": "Radiographer",
+    "does": "Sees the scan list, marks scanned and sent for report on a phone."
+   },
+   {
+    "role": "Diagnostics manager",
+    "does": "Reviews turnaround, backlogs, rejections and equipment downtime."
+   },
+   {
+    "role": "Operations manager",
+    "does": "Sees diagnostic waits holding discharges, theatres or the emergency department."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Request tracker (phone)",
+    "shows": "Requests by patient code and stage: ordered, collected, received, done, reported."
+   },
+   {
+    "name": "Specimen log",
+    "shows": "Specimens received by time and source, rejected with reason, missing after collection."
+   },
+   {
+    "name": "Imaging list",
+    "shows": "Requests waiting by modality and age, booked slots, scanned and waiting for report."
+   },
+   {
+    "name": "Equipment status",
+    "shows": "Analysers and scanners up or down, since when, linked work order and expected return."
+   }
+  ],
+  "captures": [
+   "Request made, with source and urgency set by requester: starts turnaround.",
+   "Specimen collected and received in lab: shows transport time and losses.",
+   "Specimen rejected, with reason: drives rejection rate and fixes.",
+   "Result validated or scan reported: ends turnaround.",
+   "Scan booked and performed: measures request to scan.",
+   "Analyser or scanner down and back: shows downtime and its impact.",
+   "Critical result phoned, time recorded: tracks notification time."
+  ],
+  "kpis": [
+   {
+    "name": "Laboratory turnaround time",
+    "definition": "specimen received → result validated, median and percentile, by test",
+    "source": "local definition"
+   },
+   {
+    "name": "Request to report (imaging)",
+    "definition": "request made → report issued, median by modality",
+    "source": "local definition"
+   },
+   {
+    "name": "Specimen rejection rate",
+    "definition": "specimens rejected / specimens received",
+    "source": "local definition"
+   },
+   {
+    "name": "Equipment downtime",
+    "definition": "hours down / scheduled hours, per analyser or scanner",
+    "source": "local definition"
+   },
+   {
+    "name": "Reporting backlog",
+    "definition": "scans performed and not yet reported, by age band",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When a specimen is collected but not received within the set time, prompts the ward and lab to check it.",
+   "When an analyser or scanner goes down, posts the status to affected wards and suggests the agreed backup route.",
+   "When rejections for one reason rise from one area, suggests a short review with that area, citing the reasons."
+  ],
+  "playbooks": [
+   "Turnaround walk: time a sample's journey, output the longest step.",
+   "Downtime drill: rehearse backup routes, output gaps and actions."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_diagnostics_get_request_status",
+    "does": "Return status and timestamps for requests by patient code or area.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_diagnostics_log_specimen",
+    "does": "Record a specimen collected, received or rejected, with reason.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_diagnostics_list_backlog",
+    "does": "List waiting scans or tests by modality, age and area.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_diagnostics_set_equipment_status",
+    "does": "Propose marking equipment down or up, linked to a work order.",
+    "approval": "person decides"
+   }
+  ],
+  "standards": [
+   "ISO 15189:2022",
+   "WHO Laboratory Quality Management System (LQMS) Handbook",
+   "HL7 FHIR ServiceRequest, Specimen and DiagnosticReport resources"
+  ],
+  "connects": [
+   "A1",
+   "A2",
+   "A3",
+   "A4",
+   "B1",
+   "B4",
+   "B5"
+  ],
+  "notFor": "Does not interpret results, decide tests or prioritise patients clinically. Never times individual scientists or radiographers."
+ },
+ {
+  "id": "A6",
+  "slug": "pharmacy-operations",
+  "name": "Pharmacy operations",
+  "group": "Patient flow and clinical services",
+  "month": "Jan 2027",
+  "oneLine": "Keeps medicines in stock and dispensing moving, so nobody waits needlessly.",
+  "today": "Stock is counted by hand and runs out without warning. Discharge medicines are requested late and patients wait hours to go home. Expired stock is found too late.",
+  "withOspeli": "Stock levels, top-up points and expiry dates are tracked by location. Dispensing requests are timestamped, so discharge medicine waits show live, and stock-outs are warned before they happen.",
+  "people": [
+   {
+    "role": "Pharmacy technician",
+    "does": "Scans stock in and out, works the dispensing queue, marks ready."
+   },
+   {
+    "role": "Charge nurse",
+    "does": "Requests discharge medicines early and sees when they will be ready."
+   },
+   {
+    "role": "Pharmacist",
+    "does": "Sees the dispensing queue by request time, checks and releases items."
+   },
+   {
+    "role": "Pharmacy manager",
+    "does": "Reviews stock-outs, expiries, top-up levels and dispensing turnaround."
+   },
+   {
+    "role": "Discharge coordinator",
+    "does": "Sees which planned discharges wait for medicines."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Dispensing queue",
+    "shows": "Requests by ward and request time: received, in progress, checked, ready, collected."
+   },
+   {
+    "name": "Discharge medicines (phone)",
+    "shows": "For a ward: requests made, expected ready time, ready for collection."
+   },
+   {
+    "name": "Stock levels",
+    "shows": "Items by location against top-up level, stock-outs, days of stock left."
+   },
+   {
+    "name": "Expiry watch",
+    "shows": "Items expiring within the set window, by location, with quantity."
+   }
+  ],
+  "captures": [
+   "Dispensing request received: starts turnaround.",
+   "Item checked and ready, then collected: ends turnaround, shows collection wait.",
+   "Stock below top-up level: triggers reorder before a stock-out.",
+   "Stock-out start and end, by item: drives availability and duration.",
+   "Stock expired or wasted: shows avoidable loss.",
+   "Stock received from supplier or stores: links to supply delays."
+  ],
+  "kpis": [
+   {
+    "name": "Discharge medicines turnaround",
+    "definition": "request received → ready for collection, median",
+    "source": "local definition"
+   },
+   {
+    "name": "Tracer medicine availability",
+    "definition": "tracer items in stock on the day / tracer items listed",
+    "source": "WHO harmonized PSM indicators"
+   },
+   {
+    "name": "Stock-out duration",
+    "definition": "days out of stock per item, in period",
+    "source": "WHO harmonized PSM indicators"
+   },
+   {
+    "name": "Expiry value",
+    "definition": "value of stock expired / value of stock held, in period",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When stock will reach zero before the next delivery at current use, suggests a reorder quantity for the pharmacy manager.",
+   "When discharge medicine requests arrive late in the day, suggests earlier requests for that ward, citing request times.",
+   "When items near expiry, suggests moving them to areas that use them faster."
+  ],
+  "playbooks": [
+   "Stock count: count by location, output variances and top-up updates.",
+   "Discharge medicines review: map request to collection, output main delay."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_pharmacy_list_queue",
+    "does": "List dispensing requests by ward, type and wait.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_pharmacy_get_stock",
+    "does": "Return stock levels, top-up levels and days left by item or location.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_pharmacy_propose_reorder",
+    "does": "Draft a reorder from use and stock; the pharmacy manager approves.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_pharmacy_mark_ready",
+    "does": "Mark a dispensing request ready for collection.",
+    "approval": "none"
+   }
+  ],
+  "standards": [
+   "WHO Model List of Essential Medicines",
+   "WHO harmonized PSM indicators",
+   "JCI Medication Management and Use (MMU)"
+  ],
+  "connects": [
+   "A3",
+   "A1",
+   "A2",
+   "B4",
+   "B5",
+   "D1"
+  ],
+  "notFor": "Does not choose medicines, doses or substitutions, or check prescriptions clinically. Never ranks individual pharmacy staff."
+ },
+ {
+  "id": "A7",
+  "slug": "maternity-and-children-flow",
+  "name": "Maternity and children's flow",
+  "group": "Patient flow and clinical services",
+  "month": "Jan 2027",
+  "oneLine": "Shows maternity beds, cots and children's beds live, with transfers tracked.",
+  "today": "Nobody knows how many cots are free until someone phones round. Units close to admissions with little notice. Transfers out are arranged by phone and nobody records why.",
+  "withOspeli": "Live boards show labour rooms, maternity beds, cots and children's beds. Closures and transfers are logged with reasons and times, and mother and baby codes stay linked across moves.",
+  "people": [
+   {
+    "role": "Midwife in charge",
+    "does": "Updates rooms, beds and cots on a phone; records closures and reasons."
+   },
+   {
+    "role": "Neonatal unit nurse in charge",
+    "does": "Updates cot state and staffing, logs transfers in and out."
+   },
+   {
+    "role": "Children's ward charge nurse",
+    "does": "Updates children's beds and expected discharges."
+   },
+   {
+    "role": "Patient flow coordinator",
+    "does": "Sees capacity across units and arranges transfer requests."
+   },
+   {
+    "role": "Operations manager",
+    "does": "Sees closures, transfers out for lack of capacity, and trends."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Maternity and children's board",
+    "shows": "Labour rooms, maternity beds, cots and children's beds: occupied, ready, closed."
+   },
+   {
+    "name": "My unit (phone)",
+    "shows": "Unit rooms, beds or cots, staffed status and pending admissions, updated in taps."
+   },
+   {
+    "name": "Transfers",
+    "shows": "Transfer requests in and out, reason category, requested, accepted, departed."
+   },
+   {
+    "name": "Closures log",
+    "shows": "Each closure to admissions, start and end time, reason and who decided."
+   }
+  ],
+  "captures": [
+   "Room, bed or cot occupied, ready or closed: drives capacity.",
+   "Unit closed or reopened to admissions, with reason: shows lost capacity.",
+   "Transfer requested, accepted and completed, with reason category: shows delays.",
+   "Transfer out for lack of cot or bed: shows capacity gaps.",
+   "Mother and baby codes linked: keeps moves together without names.",
+   "Admission and discharge with event times: drives occupancy and stay."
+  ],
+  "kpis": [
+   {
+    "name": "Cot occupancy",
+    "definition": "occupied cot-days / available cot-days",
+    "source": "local definition"
+   },
+   {
+    "name": "Unit closure hours",
+    "definition": "hours closed to admissions / hours in period, per unit",
+    "source": "local definition"
+   },
+   {
+    "name": "Transfers out for capacity",
+    "definition": "transfers out for lack of cot or bed / all transfers out",
+    "source": "local definition"
+   },
+   {
+    "name": "Transfer request to departure",
+    "definition": "transfer requested → patient departed, median",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When cots or beds will run short at expected admissions, alerts the flow coordinator early, citing the board.",
+   "When a unit closes repeatedly for the same reason, suggests a review of that cause with the manager.",
+   "When a transfer request waits beyond the set time, prompts escalation to the named role."
+  ],
+  "playbooks": [
+   "Capacity review: closures and transfers out by cause, output actions.",
+   "Transfer walk: map a transfer from request to arrival, output delays."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_maternity_get_capacity",
+    "does": "Return labour rooms, beds and cots by state and unit.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_maternity_log_closure",
+    "does": "Record a unit closure or reopening with reason and decision maker.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_maternity_list_transfers",
+    "does": "List transfer requests by stage, reason and wait.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_maternity_propose_transfer_route",
+    "does": "Propose a receiving unit with free capacity; a named person decides.",
+    "approval": "person decides"
+   }
+  ],
+  "standards": [
+   "WHO Standards for Improving Quality of Maternal and Newborn Care in Health Facilities",
+   "JCI Access to Care and Continuity of Care (ACC)"
+  ],
+  "connects": [
+   "A2",
+   "A3",
+   "A4",
+   "A8",
+   "B5",
+   "C1",
+   "E1"
+  ],
+  "notFor": "Does not assess labour, decide transfers on clinical grounds or prioritise women or babies. Never scores midwives or nurses."
+ },
+ {
+  "id": "A8",
+  "slug": "critical-care-capacity",
+  "name": "Critical care capacity",
+  "group": "Patient flow and clinical services",
+  "month": "Jan 2027",
+  "oneLine": "Shows critical care beds, delayed step-downs and transfers out, live.",
+  "today": "Critical care is full while patients ready to step down wait for ward beds. Surgery is cancelled for lack of a bed. Transfers out happen at night and are not counted.",
+  "withOspeli": "A live board shows critical care beds, staffed status and patients ready to step down. Delays waiting for ward beds are timed and transfers out for capacity are logged with reasons.",
+  "people": [
+   {
+    "role": "Critical care nurse in charge",
+    "does": "Updates beds and staffed status, marks patients ready to step down."
+   },
+   {
+    "role": "Patient flow coordinator",
+    "does": "Sees step-down requests and finds ward beds on the bed board."
+   },
+   {
+    "role": "Theatre coordinator",
+    "does": "Sees critical care beds booked for planned surgery and their risk."
+   },
+   {
+    "role": "Critical care manager",
+    "does": "Reviews occupancy, step-down delays and transfers out for capacity."
+   },
+   {
+    "role": "Operations manager",
+    "does": "Sees critical care capacity in the daily bed meeting and escalations."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Critical care board",
+    "shows": "Beds by state: occupied, ready, closed; staffed or not; ready to step down."
+   },
+   {
+    "name": "Step-down tracker",
+    "shows": "Patients ready to step down, hours waiting, ward bed requested and offered."
+   },
+   {
+    "name": "Planned admissions",
+    "shows": "Beds booked for planned surgery today and tomorrow, confirmed or at risk."
+   },
+   {
+    "name": "Update unit (phone)",
+    "shows": "Bed and staffing state, ready-to-step-down flag, admissions expected, in taps."
+   }
+  ],
+  "captures": [
+   "Bed occupied, ready, closed or unstaffed: drives true capacity.",
+   "Ready to step down and left the unit: measures step-down delay.",
+   "Ward bed requested for step-down: links to the bed board.",
+   "Planned surgery bed booked, used or cancelled: shows impact on theatres.",
+   "Transfer out for lack of capacity, with time: shows capacity gaps.",
+   "Discharge to ward out of hours: shows when step-downs happen."
+  ],
+  "kpis": [
+   {
+    "name": "Critical care occupancy",
+    "definition": "occupied bed-days / staffed bed-days",
+    "source": "local definition"
+   },
+   {
+    "name": "Step-down delay",
+    "definition": "ready to step down → left the unit, median and over 4 hours",
+    "source": "local definition"
+   },
+   {
+    "name": "Out-of-hours discharges",
+    "definition": "discharges to wards in the out-of-hours window / all discharges to wards",
+    "source": "local definition"
+   },
+   {
+    "name": "Transfers out for capacity",
+    "definition": "transfers out for lack of bed or staff / admissions requested",
+    "source": "local definition"
+   },
+   {
+    "name": "Planned surgery cancelled for lack of critical care bed",
+    "definition": "cancellations for that reason / planned cases needing a bed",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When patients wait to step down beyond the set limit, raises their ward bed requests at the bed meeting.",
+   "When planned surgery needs a bed and none is expected free, alerts the theatre coordinator a day ahead.",
+   "When out-of-hours discharges rise, suggests reviewing the morning step-down routine, citing times."
+  ],
+  "playbooks": [
+   "Step-down review: map ready to left unit, output main delays.",
+   "Capacity huddle: beds, staffing and demand, output actions with owners."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_criticalcare_get_capacity",
+    "does": "Return beds by state and staffing, with ready-to-step-down count.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_criticalcare_list_stepdowns",
+    "does": "List patient codes ready to step down, hours waiting and ward bed status.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_criticalcare_mark_ready",
+    "does": "Record a patient code ready to step down, as decided by the team.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_criticalcare_propose_ward_bed",
+    "does": "Propose a ward bed for a step-down; the ward accepts.",
+    "approval": "person decides"
+   }
+  ],
+  "standards": [
+   "JCI Access to Care and Continuity of Care (ACC)",
+   "HL7 FHIR Encounter and Location resources"
+  ],
+  "connects": [
+   "A2",
+   "A3",
+   "A4",
+   "A7",
+   "B5",
+   "C1",
+   "D4"
+  ],
+  "notFor": "Does not decide admission to, or readiness to leave, critical care. Never scores clinicians or units."
+ },
+ {
+  "id": "A9",
+  "slug": "mental-health-and-community-beds",
+  "name": "Mental health and long-stay beds",
+  "group": "Patient flow and clinical services",
+  "month": "Jan 2027",
+  "oneLine": "Tracks mental health and long-stay beds, delayed transfers and placements.",
+  "today": "Patients stay weeks after they are ready because a placement, home support or funding is not arranged. Beds are found far away by phone. Nobody counts the days lost.",
+  "withOspeli": "A board shows mental health, rehabilitation and long-stay beds. Ready-to-leave dates, delay reasons and placement requests are logged, so lost bed-days and their causes are visible.",
+  "people": [
+   {
+    "role": "Ward manager",
+    "does": "Updates bed state, records ready-to-leave dates and delay reasons on a phone."
+   },
+   {
+    "role": "Discharge coordinator",
+    "does": "Tracks placement and home support requests, chases each step."
+   },
+   {
+    "role": "Social worker",
+    "does": "Records placement and support progress against each patient code."
+   },
+   {
+    "role": "Patient flow coordinator",
+    "does": "Sees free beds and placements far away, and arranges returns."
+   },
+   {
+    "role": "Operations manager",
+    "does": "Reviews lost bed-days, delay causes and far-away placements."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Bed board",
+    "shows": "Beds by unit and type: occupied, ready, closed; days since ready to leave."
+   },
+   {
+    "name": "Delayed transfers",
+    "shows": "Patients ready to leave, days waiting and the reason category, by ward."
+   },
+   {
+    "name": "Placements",
+    "shows": "Placement requests by stage: requested, assessed, funded, accepted, moved."
+   },
+   {
+    "name": "Update ward (phone)",
+    "shows": "Bed states, ready dates and delay reasons, updated in taps."
+   }
+  ],
+  "captures": [
+   "Ready to leave date recorded by the team: starts delay clock.",
+   "Delay reason category: shows what holds transfers.",
+   "Placement requested, assessed, funded, accepted: shows where requests wait.",
+   "Patient placed outside the usual area, start and end: shows far placements.",
+   "Admission and discharge with event times: drives occupancy and stay.",
+   "Bed closed with reason: shows lost capacity."
+  ],
+  "kpis": [
+   {
+    "name": "Delayed transfer days",
+    "definition": "days from ready to leave → departure, summed per period",
+    "source": "local definition"
+   },
+   {
+    "name": "Patients delayed",
+    "definition": "patients past ready to leave date / inpatients",
+    "source": "local definition"
+   },
+   {
+    "name": "Placement request to move",
+    "definition": "placement requested → moved, median",
+    "source": "local definition"
+   },
+   {
+    "name": "Out-of-area placement days",
+    "definition": "bed-days spent outside the usual area, per period",
+    "source": "local definition"
+   },
+   {
+    "name": "Bed occupancy",
+    "definition": "occupied bed-days / available bed-days",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When a ready-to-leave patient has no placement request after the set days, prompts the discharge coordinator.",
+   "When one delay reason grows across wards, suggests raising it with partner services, citing the counts.",
+   "When a local bed frees up, flags patients placed far away for the flow coordinator to consider a return."
+  ],
+  "playbooks": [
+   "Delayed transfers review: list delays by reason, output actions with owners.",
+   "Placement walk: map a request to move, output slowest step."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_longstay_list_delays",
+    "does": "List patient codes past ready to leave, days waiting and reason.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_longstay_update_placement",
+    "does": "Record a placement request stage for a patient code.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_longstay_get_capacity",
+    "does": "Return beds by unit, type and state, with far-away placements.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_longstay_propose_return",
+    "does": "Propose returning a far-placed patient to a free local bed.",
+    "approval": "person decides"
+   }
+  ],
+  "standards": [
+   "JCI Access to Care and Continuity of Care (ACC)",
+   "HL7 FHIR EpisodeOfCare resource"
+  ],
+  "connects": [
+   "A2",
+   "A3",
+   "B5",
+   "C5",
+   "E2"
+  ],
+  "notFor": "Does not decide detention, risk, treatment or readiness to leave. Never scores staff or wards."
+ },
+ {
+  "id": "B1",
+  "slug": "medical-equipment",
+  "name": "Medical equipment and maintenance",
+  "group": "Infrastructure and support",
+  "month": "Dec 2026",
+  "oneLine": "Keeps every device known, maintained and fixed fast, with a clear history.",
+  "today": "Nobody knows how many pumps work. Faults are phoned in and lost. Planned maintenance slips, donated kit has no manual, and repairs stall waiting for parts or approval.",
+  "withOspeli": "Staff scan a device's QR label to report a fault in three taps. Work orders carry timers, repeat faults surface, and step guides help with simple fixes before escalation.",
+  "people": [
+   {
+    "role": "Charge nurse",
+    "does": "Scans a device QR label, picks the fault and urgency, sees repair status."
+   },
+   {
+    "role": "Biomedical technician",
+    "does": "Works the team queue on a phone, follows step guides, closes jobs with outcomes."
+   },
+   {
+    "role": "Biomedical engineering lead",
+    "does": "Plans maintenance, assigns work to teams, reviews repeat faults and replacement needs."
+   },
+   {
+    "role": "Operations manager",
+    "does": "Sees equipment availability, overdue work and items blocking beds or theatre lists."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Report a fault (phone)",
+    "shows": "Opened from a QR label: asset, location, fault list for that device, urgency. No free text."
+   },
+   {
+    "name": "Work-order queue",
+    "shows": "Overdue first, then urgency and due time, with SLA timers and assigned team."
+   },
+   {
+    "name": "Asset record",
+    "shows": "Device details, location, maintenance history, faults, parts used, manual and step guides."
+   },
+   {
+    "name": "Planned maintenance calendar",
+    "shows": "Planned maintenance and calibration due by week, done or missed, kept separate from faults."
+   },
+   {
+    "name": "Repeat faults",
+    "shows": "Assets with more than one fault in the set window, with fault types and outcomes."
+   }
+  ],
+  "captures": [
+   "Fault reported and asset marked down: starts the repair clock.",
+   "Work order assigned to a team: shows where work waits.",
+   "Asset back in service: ends downtime, feeds uptime.",
+   "Planned maintenance done or missed: drives completion on schedule.",
+   "Waiting for parts or approval: separates repair time from supply delay.",
+   "Asset received, tested and accepted: starts its record and history.",
+   "Asset decommissioned with reason: informs replacement planning."
+  ],
+  "kpis": [
+   {
+    "name": "Planned maintenance completion on schedule",
+    "definition": "planned maintenance jobs done by due date / jobs due in period",
+    "source": "local definition"
+   },
+   {
+    "name": "Mean time to repair",
+    "definition": "asset marked down → asset back in service, averaged per closed fault",
+    "source": "local definition"
+   },
+   {
+    "name": "Equipment availability",
+    "definition": "hours in service / scheduled hours, per asset class",
+    "source": "local definition"
+   },
+   {
+    "name": "Overdue work orders",
+    "definition": "open work orders past their SLA due time / all open work orders",
+    "source": "local definition"
+   },
+   {
+    "name": "Repeat faults",
+    "definition": "assets with a new fault within the set window of a closed fault / assets with faults",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When a device class has a repeat fault, suggests checking the step guide, user training or replacement, citing the fault history.",
+   "When a fault matches a step guide, offers the guide to the technician, with its stop-and-escalate points.",
+   "When planned maintenance due this week exceeds the team's recent completed volume, suggests which jobs to reschedule first, by risk class."
+  ],
+  "playbooks": [
+   "Equipment census: walk each area, label assets, output a baseline inventory.",
+   "Replacement review: rank ageing and repeat-fault assets for the investment request."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_equipment_report_fault",
+    "does": "Raise a fault on an asset from its ID, fault code and urgency.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_equipment_list_workorders",
+    "does": "List open work orders by area, team, status or overdue, with timers.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_equipment_assign_workorder",
+    "does": "Propose assigning a work order to a team.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_equipment_get_asset_history",
+    "does": "Return an asset's faults, maintenance, downtime and step guides.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_equipment_plan_maintenance",
+    "does": "Draft next month's planned maintenance schedule from due dates and team capacity.",
+    "approval": "person decides"
+   }
+  ],
+  "standards": [
+   "WHO Medical Device Technical Series",
+   "ISO 55001",
+   "JCI Facility Management and Safety (FMS)",
+   "IEC 62353"
+  ],
+  "connects": [
+   "B2",
+   "B4",
+   "A3",
+   "A4",
+   "A5",
+   "C2",
+   "E1"
+  ],
+  "notFor": "Does not judge whether a device is clinically safe to use on a patient. Does not score technicians."
+ },
+ {
+  "id": "B2",
+  "slug": "facilities-utilities",
+  "name": "Facilities and utilities",
+  "group": "Infrastructure and support",
+  "month": "Dec 2026",
+  "oneLine": "Keeps buildings, power, water, medical gases and waste running, checked and logged.",
+  "today": "Leaks and broken lights are reported by word of mouth. Generator tests and gas checks live on paper. An outage arrives with no warning and no record of the last fix.",
+  "withOspeli": "Any room or plant item has a QR label for fault reports. One work-order queue covers building and plant jobs. Utility checks and outages are logged, so trends and gaps show early.",
+  "people": [
+   {
+    "role": "Ward clerk",
+    "does": "Scans a room QR label to report a leak, light or door fault."
+   },
+   {
+    "role": "Facilities technician",
+    "does": "Works the queue on a phone, logs plant checks, follows step guides for simple fixes."
+   },
+   {
+    "role": "Facilities manager",
+    "does": "Sets planned work, tracks statutory checks, reviews outages and repeat building faults."
+   },
+   {
+    "role": "Operations manager",
+    "does": "Sees rooms out of use, utility outages and overdue safety checks."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Report a fault (phone)",
+    "shows": "Opened from a room or plant QR label: location, fault list, urgency. Three taps."
+   },
+   {
+    "name": "Work-order queue",
+    "shows": "Building and plant jobs, overdue first, with SLA timers, team and room status."
+   },
+   {
+    "name": "Utilities log",
+    "shows": "Generator tests, fuel level, water storage, medical gas checks and outages with times."
+   },
+   {
+    "name": "Compliance calendar",
+    "shows": "Fire, water safety, lifts, pressure systems and gas inspections: due, done, overdue."
+   },
+   {
+    "name": "Waste log",
+    "shows": "Healthcare waste collections by stream and area, with missed collections flagged."
+   }
+  ],
+  "captures": [
+   "Building fault reported by room: starts the response clock.",
+   "Room taken out of use and returned: shows lost capacity.",
+   "Generator test run and result: proves backup power works.",
+   "Utility outage start and end: power, water, gas or air.",
+   "Medical gas check and alarm: early warning of supply problems.",
+   "Statutory inspection done with certificate: evidence for inspections.",
+   "Waste collection by stream: shows segregation and missed pickups."
+  ],
+  "kpis": [
+   {
+    "name": "Reactive work-order completion time by priority",
+    "definition": "fault reported → work order closed, median per priority",
+    "source": "local definition"
+   },
+   {
+    "name": "Planned maintenance compliance",
+    "definition": "planned facilities jobs done by due date / jobs due",
+    "source": "local definition"
+   },
+   {
+    "name": "Generator test compliance",
+    "definition": "scheduled generator tests completed / tests scheduled",
+    "source": "local definition"
+   },
+   {
+    "name": "Utility outage hours",
+    "definition": "sum of outage start → outage end, per utility per month",
+    "source": "local definition"
+   },
+   {
+    "name": "Rooms out of use",
+    "definition": "room-hours out of use for facilities reasons / total room-hours",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When fuel or stored water falls below the site's set level, suggests a refill order and notes when the next delivery is booked.",
+   "When the same room logs repeat leaks or power faults, suggests a planned survey instead of more reactive fixes.",
+   "Before a severe-weather warning period, suggests the site's preparation checklist and lists overdue generator, roof and drainage jobs."
+  ],
+  "playbooks": [
+   "Utilities resilience check: walk plant, test backups, output a gap list.",
+   "Statutory compliance sweep: list every inspection, output what is overdue."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_facilities_report_fault",
+    "does": "Raise a building or plant fault for a room or plant item.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_facilities_list_workorders",
+    "does": "List open facilities work orders by building, priority or overdue.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_facilities_log_utility_check",
+    "does": "Record a generator test, gas check or outage with times.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_facilities_list_compliance_due",
+    "does": "List statutory inspections due or overdue in a date range.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_facilities_close_room",
+    "does": "Propose taking a room out of use, with reason and expected return.",
+    "approval": "person decides"
+   }
+  ],
+  "standards": [
+   "ISO 41001",
+   "JCI Facility Management and Safety (FMS)",
+   "PAHO Smart Hospitals Toolkit",
+   "ISO 7396-1"
+  ],
+  "connects": [
+   "B1",
+   "B3",
+   "B4",
+   "A3",
+   "A4",
+   "C2",
+   "C3",
+   "E1"
+  ],
+  "notFor": "Not a building management or SCADA control system; it never switches plant. Does not score staff."
+ },
+ {
+  "id": "B3",
+  "slug": "support-services",
+  "name": "Cleaning, portering and support services",
+  "group": "Infrastructure and support",
+  "month": "Dec 2026",
+  "oneLine": "Gets beds cleaned, patients moved, linen and meals delivered on time.",
+  "today": "A bed is empty but dirty, and nobody told cleaning. Porter requests go by phone and vanish. Linen runs out on the night shift. Audits sit in folders.",
+  "withOspeli": "A discharge on the bed board creates a clean task automatically. Porter, linen and meal requests become tracked tasks for the team. Cleaning audits are done on a phone and scored.",
+  "people": [
+   {
+    "role": "Charge nurse",
+    "does": "Requests a porter or clean in two taps and sees when it will happen."
+   },
+   {
+    "role": "Cleaner",
+    "does": "Gets clean tasks on a phone, marks started and done, bed shows ready."
+   },
+   {
+    "role": "Porter",
+    "does": "Takes the next task from the team queue, marks collected and delivered."
+   },
+   {
+    "role": "Support services supervisor",
+    "does": "Balances tasks across teams, runs cleaning audits, watches linen and meal gaps."
+   },
+   {
+    "role": "Patient flow coordinator",
+    "does": "Sees beds waiting for a clean and transfers waiting for a porter."
+   }
+  ],
+  "screens": [
+   {
+    "name": "My team's tasks (phone)",
+    "shows": "Clean, porter and delivery tasks in order, with location, request time and status."
+   },
+   {
+    "name": "Task board",
+    "shows": "All open support tasks by team and area, oldest first, with waits."
+   },
+   {
+    "name": "Cleaning audit (phone)",
+    "shows": "Room checklist by risk category, element pass or fail, score and actions."
+   },
+   {
+    "name": "Linen and meals",
+    "shows": "Linen stock against top-up level by area; meal orders, deliveries and returns."
+   }
+  ],
+  "captures": [
+   "Bed vacated to clean requested: links discharge to cleaning.",
+   "Clean started and finished, bed ready: drives bed turnaround.",
+   "Porter requested, collected, delivered: shows transfer delays.",
+   "Cleaning audit result by room and risk category: shows standards met.",
+   "Linen count below top-up level: warns before running out.",
+   "Meals ordered, delivered and returned uneaten: measures waste.",
+   "Security incident logged: links to incident review."
+  ],
+  "kpis": [
+   {
+    "name": "Bed turnaround time",
+    "definition": "bed vacated → bed clean and ready",
+    "source": "local definition"
+   },
+   {
+    "name": "Porter request to completion",
+    "definition": "porter requested → task delivered, median by task type",
+    "source": "local definition"
+   },
+   {
+    "name": "Cleanliness audit score",
+    "definition": "elements passed / elements audited, by functional risk category",
+    "source": "NHS National Standards of Healthcare Cleanliness 2021"
+   },
+   {
+    "name": "Linen stock-outs",
+    "definition": "area-shifts with linen below zero stock / area-shifts",
+    "source": "local definition"
+   },
+   {
+    "name": "Meal waste",
+    "definition": "meals returned uneaten / meals delivered",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When several beds wait for a clean and patients wait for beds, suggests which cleans to do first, by bed-board demand.",
+   "When porter requests queue beyond the usual level, suggests moving staff from a quieter team, citing current waits.",
+   "When an area's cleaning audit fails twice, suggests a re-audit date and actions for the supervisor."
+  ],
+  "playbooks": [
+   "Bed turnaround review: map vacate to ready, output the main delay.",
+   "Cleaning audit round: audit rooms by risk category, output scores and actions."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_support_request_task",
+    "does": "Request a clean, porter move, linen or meal delivery for a location.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_support_list_tasks",
+    "does": "List open support tasks by team, area or wait, oldest first.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_support_reorder_queue",
+    "does": "Propose a new task order for a team queue, with reasons.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_support_record_audit",
+    "does": "Record a cleaning audit result for a room and risk category.",
+    "approval": "none"
+   }
+  ],
+  "standards": [
+   "NHS National Standards of Healthcare Cleanliness 2021",
+   "JCI Prevention and Control of Infections (PCI)"
+  ],
+  "connects": [
+   "A3",
+   "A2",
+   "A4",
+   "B2",
+   "B4",
+   "B5",
+   "C3"
+  ],
+  "notFor": "Does not set isolation or infection decisions or patient diets. Measures tasks and waits, never individual cleaners or porters."
+ },
+ {
+  "id": "B4",
+  "slug": "supply-chain-stores",
+  "name": "Supply chain and stores",
+  "group": "Infrastructure and support",
+  "month": "Dec 2026",
+  "oneLine": "Shows what stock each area has, what is running out, and what's ordered.",
+  "today": "Wards find out gloves are gone when the box is empty. Some areas hoard, others run short. Requests go on paper, and nobody can see where an order is in the purchasing process.",
+  "withOspeli": "Each area has top-up levels and quick counts on a phone. Low stock raises a request; orders show each step from request to delivery. Stock-outs are logged with their cause.",
+  "people": [
+   {
+    "role": "Charge nurse",
+    "does": "Counts ward stock on a phone, requests top-up, sees when it arrives."
+   },
+   {
+    "role": "Storekeeper",
+    "does": "Issues requests, receives deliveries, scans or counts items in and out."
+   },
+   {
+    "role": "Supply chain manager",
+    "does": "Sets top-up levels, tracks orders through purchasing, reviews stock-outs and slow stock."
+   },
+   {
+    "role": "Operations manager",
+    "does": "Sees stock-outs that stopped care and orders stuck awaiting approval."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Ward stock count (phone)",
+    "shows": "Items for this area, current count against top-up level, one-tap request."
+   },
+   {
+    "name": "Requests and issues",
+    "shows": "Open requests by area, status, items short, and time waiting."
+   },
+   {
+    "name": "Order tracker",
+    "shows": "Each order from request to approval, order, delivery and receipt, with days at each step."
+   },
+   {
+    "name": "Stock-out log",
+    "shows": "Items out of stock by area, duration, cause and impact on care."
+   }
+  ],
+  "captures": [
+   "Stock count by area: shows real ward stock, not just stores.",
+   "Request raised and issued: measures fill rate and wait.",
+   "Order approved, placed, delivered, received: shows where orders stall.",
+   "Stock-out start and end with cause: finds repeat gaps.",
+   "Donation received with item details: brings donations into stock.",
+   "Expiry and write-off: shows waste and over-ordering."
+  ],
+  "kpis": [
+   {
+    "name": "Stock-out rate on tracer items",
+    "definition": "tracer item-days out of stock / tracer item-days, per area",
+    "source": "local definition"
+   },
+   {
+    "name": "Order cycle time",
+    "definition": "request raised → goods received, median",
+    "source": "local definition"
+   },
+   {
+    "name": "Fill rate",
+    "definition": "request lines issued in full / request lines raised",
+    "source": "local definition"
+   },
+   {
+    "name": "Inventory turns",
+    "definition": "value issued in period / average value in stock",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When an item's use runs ahead of its top-up level, suggests a new level, showing recent usage.",
+   "When an order has waited at one approval step longer than usual, suggests a reminder to the approving role.",
+   "When one area holds far more than its level while another is short, suggests a transfer between areas."
+  ],
+  "playbooks": [
+   "Top-up level reset: review usage by area, output new levels.",
+   "Stock-out review: trace each stock-out's cause, output fixes per step."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_stores_check_stock",
+    "does": "Return stock on hand against top-up level for an area or item.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_stores_request_topup",
+    "does": "Raise a top-up request for an area from its latest count.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_stores_track_order",
+    "does": "Return an order's status, current step and days waiting.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_stores_propose_transfer",
+    "does": "Propose moving stock between areas, with quantities and reason.",
+    "approval": "person decides"
+   }
+  ],
+  "standards": [
+   "GS1 healthcare standards",
+   "ISO 9001",
+   "JCI Governance, Leadership, and Direction (GLD)"
+  ],
+  "connects": [
+   "A6",
+   "A4",
+   "A5",
+   "B1",
+   "B2",
+   "B3",
+   "D1"
+  ],
+  "notFor": "Not for medicines dispensing (see A8) or choosing suppliers. Does not approve purchases; people do."
+ },
+ {
+  "id": "B5",
+  "slug": "patient-transport",
+  "name": "Patient transport and transfers",
+  "group": "Infrastructure and support",
+  "month": "Dec 2026",
+  "oneLine": "Books, tracks and closes every patient journey between sites, and the vehicles.",
+  "today": "Transfers are booked by phone and chased all day. Nobody knows which vehicle is free or off the road. Patients wait for an escort, and discharges slip to tomorrow.",
+  "withOspeli": "Transfer requests go into one queue with the vehicle, crew and escort they need. Vehicle status is live. Each journey's steps are timed, and vehicle faults raise work orders.",
+  "people": [
+   {
+    "role": "Charge nurse",
+    "does": "Books a transfer with escort needs, sees pickup time and status."
+   },
+   {
+    "role": "Transport coordinator",
+    "does": "Matches requests to vehicles and crews, updates times, flags delays."
+   },
+   {
+    "role": "Driver",
+    "does": "Sees today's jobs on a phone, marks arrived, departed and handed over."
+   },
+   {
+    "role": "Fleet supervisor",
+    "does": "Logs vehicle checks and faults, plans servicing, watches fleet availability."
+   },
+   {
+    "role": "Patient flow coordinator",
+    "does": "Sees discharges and transfers waiting for transport."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Transfer request (phone)",
+    "shows": "From, to, time needed, mobility, escort and equipment needed. No clinical notes."
+   },
+   {
+    "name": "Dispatch board",
+    "shows": "Requests waiting, vehicles free, on a job or off the road, crews on shift."
+   },
+   {
+    "name": "My jobs (phone)",
+    "shows": "Driver's jobs in order with pickup, destination and one-tap status steps."
+   },
+   {
+    "name": "Fleet status",
+    "shows": "Each vehicle's daily check, faults, service due and availability."
+   }
+  ],
+  "captures": [
+   "Transfer requested with time needed: starts the wait.",
+   "Vehicle and crew assigned: shows dispatch delay.",
+   "Arrived, departed, arrived at destination: times each journey step.",
+   "Handover at destination: ends the journey, frees the vehicle.",
+   "Vehicle daily check and defects: catches faults before use.",
+   "Vehicle off the road and back: drives fleet availability.",
+   "Transfer delayed or cancelled with reason: finds escort and vehicle gaps."
+  ],
+  "kpis": [
+   {
+    "name": "Transfer wait",
+    "definition": "transfer requested → patient departed, median by request type",
+    "source": "local definition"
+   },
+   {
+    "name": "On-time pickup",
+    "definition": "pickups by booked time / pickups booked",
+    "source": "local definition"
+   },
+   {
+    "name": "Handover time at destination",
+    "definition": "vehicle arrived at destination → handover complete",
+    "source": "local definition"
+   },
+   {
+    "name": "Fleet availability",
+    "definition": "vehicle-hours available / scheduled vehicle-hours",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When discharges are booked for transport later than the bed is needed, suggests earlier slots or grouping journeys, citing bed-board demand.",
+   "When a vehicle's daily check shows a defect, suggests taking it off the road and raises a draft work order.",
+   "When delays often cite no escort, suggests reviewing escort cover at the busiest times, showing the pattern."
+  ],
+  "playbooks": [
+   "Transfer delay review: time each journey step, output the main bottleneck.",
+   "Fleet check: inspect every vehicle, output availability and repair list."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_transport_request_transfer",
+    "does": "Book a transfer with from, to, time needed and escort needs.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_transport_list_waiting",
+    "does": "List transfers waiting, with time needed and delay reason.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_transport_assign_vehicle",
+    "does": "Propose a vehicle and crew for a waiting transfer.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_transport_get_fleet_status",
+    "does": "Return each vehicle's availability, faults and service due.",
+    "approval": "none"
+   }
+  ],
+  "standards": [
+   "JCI Access to Care and Continuity of Care (ACC)",
+   "WHO Emergency Care System Framework",
+   "ISO 39001"
+  ],
+  "connects": [
+   "A2",
+   "A3",
+   "A1",
+   "B1",
+   "B3",
+   "E1"
+  ],
+  "notFor": "Not emergency call triage or clinical escort decisions; clinicians set urgency and escort level. Does not score drivers."
+ },
+ {
+  "id": "C1",
+  "slug": "staffing-and-rostering",
+  "name": "Staffing, rosters and credentials",
+  "group": "People, quality and governance",
+  "month": "Feb 2027",
+  "oneLine": "Matches staff on each shift to the workload, and keeps credentials in date.",
+  "today": "Rosters live on paper or spreadsheets. Gaps surface at shift start, staff are moved by phone, and an expired licence or missing training is found only at inspection.",
+  "withOspeli": "Each shift shows staff rostered against staff needed for today's workload. Gaps show early, cover requests are tracked to filled, and expiring credentials are flagged weeks ahead.",
+  "people": [
+   {
+    "role": "Charge nurse",
+    "does": "Confirms who is on shift by phone and flags a gap with one tap."
+   },
+   {
+    "role": "Staffing coordinator",
+    "does": "Sees all unit gaps, sends cover requests, records who filled them."
+   },
+   {
+    "role": "Department manager",
+    "does": "Builds and publishes the roster; approves leave and swaps against minimum cover."
+   },
+   {
+    "role": "HR officer",
+    "does": "Keeps licences, training and onboarding steps in date, with reminders."
+   },
+   {
+    "role": "Operations lead",
+    "does": "Reviews staffing against demand by unit and week, never by named person."
+   }
+  ],
+  "screens": [
+   {
+    "name": "My shift (phone)",
+    "shows": "Today's team, open gaps, cover requests and handover time for my unit."
+   },
+   {
+    "name": "Staffing board",
+    "shows": "Every unit this shift and next: staff rostered, staff needed, gap, cover in progress."
+   },
+   {
+    "name": "Roster planner",
+    "shows": "Weeks ahead by unit and skill mix, with leave, minimum cover and conflicts."
+   },
+   {
+    "name": "Credentials tracker",
+    "shows": "Licences, registrations and mandatory training by role, due and expired."
+   },
+   {
+    "name": "Workload and staffing trends",
+    "shows": "Required versus available staff hours over time, by unit, on an SPC chart."
+   }
+  ],
+  "captures": [
+   "Shift gap raised: start of the time-to-fill measure.",
+   "Cover filled, by bank, overtime, agency or redeployment: shows cost and reliance.",
+   "Unit workload count per shift: the demand side of staffing.",
+   "Unplanned absence logged at shift start: drives same-day cover.",
+   "Credential or training expiry date: prevents working out of date.",
+   "Onboarding step completed: shows time from offer to first shift."
+  ],
+  "kpis": [
+   {
+    "name": "Roster fill rate",
+    "definition": "Shifts filled to planned level / shifts planned",
+    "source": "local definition"
+   },
+   {
+    "name": "WISN ratio",
+    "definition": "Staff in post / staff required by workload, per staff category",
+    "source": "WHO WISN"
+   },
+   {
+    "name": "Time to fill a shift gap",
+    "definition": "Gap raised → cover confirmed",
+    "source": "local definition"
+   },
+   {
+    "name": "Vacancy rate",
+    "definition": "Vacant funded posts / total funded posts",
+    "source": "local definition"
+   },
+   {
+    "name": "Credentials in date",
+    "definition": "Required credentials current / required credentials, by role",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When tomorrow's night shift is below minimum cover by 16:00, suggests opening a cover request now.",
+   "When a unit's workload count rises two shifts running, suggests checking next week's roster for that unit.",
+   "When a licence is close to expiry, drafts a reminder for the HR officer to send.",
+   "When agency cover rises above its SPC limits, suggests reviewing vacancies and roster patterns."
+  ],
+  "playbooks": [
+   "Daily staffing huddle: next 24 hours of gaps, cover actions, owners.",
+   "WISN workload review: staff required per category, with the gap.",
+   "New starter onboarding checklist: ready-to-work date and outstanding steps."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_staffing_list_gaps",
+    "does": "Lists uncovered shifts by unit, skill and start time.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_staffing_request_cover",
+    "does": "Drafts a cover request for a gap; a coordinator sends it.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_staffing_get_demand",
+    "does": "Returns staff needed versus rostered per unit and shift, with workload basis.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_credentials_list_expiring",
+    "does": "Lists credentials and training expiring in a date range, by role and unit.",
+    "approval": "none"
+   }
+  ],
+  "standards": [
+   "WHO WISN (Workload Indicators of Staffing Need)",
+   "JCI Hospital Standards (staff qualifications and education)"
+  ],
+  "connects": [
+   "A2",
+   "A3",
+   "A4",
+   "C3",
+   "D1",
+   "D4"
+  ],
+  "notFor": "No individual performance scoring or ranking. No pay or payroll. Does not set clinical acuity or care decisions."
+ },
+ {
+  "id": "C2",
+  "slug": "incidents-risk-actions",
+  "name": "Incidents, risk and actions",
+  "group": "People, quality and governance",
+  "month": "Feb 2027",
+  "oneLine": "One place to report incidents, track risks and close every action.",
+  "today": "Incidents go on paper forms or email and vanish. Risks sit in a spreadsheet nobody updates. Actions from meetings, audits and incidents scatter across minutes, and the same problem recurs.",
+  "withOspeli": "Reporting is a short phone form, anonymous if wished. Each incident is triaged, learned from and linked to risks. Every action, from any source, has one owner, a due date and a visible status.",
+  "people": [
+   {
+    "role": "Any staff member",
+    "does": "Reports an incident or near miss from a phone, named or anonymous."
+   },
+   {
+    "role": "Charge nurse",
+    "does": "Gives first response, adds facts, sees actions due for the unit."
+   },
+   {
+    "role": "Patient safety lead",
+    "does": "Triages reports, chooses the learning response, links risks and actions."
+   },
+   {
+    "role": "Action owner",
+    "does": "Updates progress, attaches evidence, asks for an extension with a reason."
+   },
+   {
+    "role": "Quality director",
+    "does": "Reviews themes, risk register and overdue actions before leadership meetings."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Report an incident (phone)",
+    "shows": "Short form: what, where, when, immediate action; works offline; anonymous option."
+   },
+   {
+    "name": "Triage queue",
+    "shows": "New reports by severity, age and area, awaiting a learning-response decision."
+   },
+   {
+    "name": "Risk register",
+    "shows": "Risks with score, controls, owner, review date and linked incidents and actions."
+   },
+   {
+    "name": "Action tracker",
+    "shows": "All actions from meetings, audits, incidents and projects: owner, due date, status, evidence."
+   },
+   {
+    "name": "Safety themes",
+    "shows": "Incident counts by type and area per 1,000 bed-days, on SPC charts."
+   }
+  ],
+  "captures": [
+   "Incident reported: event time and report time, both kept.",
+   "Triage decision and learning response chosen: shows reports are acted on.",
+   "Risk scored and reviewed: keeps the register current.",
+   "Action created, with source, owner and due date: one list.",
+   "Action closed with evidence: proves the fix happened.",
+   "Due date changed, with reason: makes slippage visible."
+  ],
+  "kpis": [
+   {
+    "name": "Incident reporting rate",
+    "definition": "Incidents reported / occupied bed-days × 1,000",
+    "source": "local definition"
+   },
+   {
+    "name": "Time to triage",
+    "definition": "Incident reported → triage decision recorded",
+    "source": "local definition"
+   },
+   {
+    "name": "Overdue actions",
+    "definition": "Open actions past due date / all open actions",
+    "source": "local definition"
+   },
+   {
+    "name": "Risks reviewed on time",
+    "definition": "Risks reviewed by review date / risks due for review",
+    "source": "local definition"
+   },
+   {
+    "name": "Incidents with harm",
+    "definition": "Incidents graded with harm / all incidents reported",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When three similar incidents occur in one area within a month, suggests linking them to a shared review.",
+   "When an action is due within seven days with no update, drafts a reminder to its owner.",
+   "When an incident matches an existing risk, suggests linking them and re-checking the risk score.",
+   "Drafts a plain summary of open actions by source before a scheduled leadership meeting."
+  ],
+  "playbooks": [
+   "Safety huddle: yesterday's incidents, open risks and actions due today.",
+   "Learning review: timeline, contributing factors and agreed actions with owners.",
+   "Monthly overdue-actions report for leadership, by source and owner role."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_incidents_report",
+    "does": "Drafts an incident report from a description; the reporter submits it.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_actions_list_overdue",
+    "does": "Lists overdue actions by source, area and owner role, with days late.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_actions_create",
+    "does": "Proposes an action with owner, due date and source link.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_risks_get_register",
+    "does": "Returns risks above a score, with controls, owner and review dates.",
+    "approval": "none"
+   }
+  ],
+  "standards": [
+   "NHS Patient Safety Incident Response Framework (PSIRF)",
+   "WHO Global Patient Safety Action Plan 2021–2030",
+   "IHI Model for Improvement",
+   "AHRQ Surveys on Patient Safety Culture (SOPS)"
+  ],
+  "connects": [
+   "C3",
+   "C4",
+   "C1",
+   "B1",
+   "B2",
+   "E4",
+   "D4"
+  ],
+  "notFor": "No blame scoring of staff. Does not judge clinical care or decide what treatment should have been."
+ },
+ {
+  "id": "C3",
+  "slug": "infection-prevention-operations",
+  "name": "Infection prevention operations",
+  "group": "People, quality and governance",
+  "month": "Feb 2027",
+  "oneLine": "Runs hand hygiene audits, isolation rooms and outbreak logistics on one board.",
+  "today": "Audits are tallied by hand and reported months late. Nobody knows which isolation rooms are free. In an outbreak, closed bays, cleaning and staff lists are tracked on whiteboards and phone calls.",
+  "withOspeli": "Audits are entered on a phone and roll up the same day. Isolation rooms show live status. An outbreak gets one board for closed areas, deep cleans, supplies and actions.",
+  "people": [
+   {
+    "role": "IPC nurse",
+    "does": "Runs audits by phone, manages the outbreak board, sets area restrictions."
+   },
+   {
+    "role": "Charge nurse",
+    "does": "Requests an isolation room and sees area restrictions for the unit."
+   },
+   {
+    "role": "Patient flow coordinator",
+    "does": "Sees isolation rooms free and closed bays when placing patients."
+   },
+   {
+    "role": "Cleaning supervisor",
+    "does": "Receives enhanced and terminal clean requests, marks them done."
+   },
+   {
+    "role": "IPC committee chair",
+    "does": "Reviews audit trends, outbreak timelines and open actions."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Audit (phone)",
+    "shows": "Hand hygiene or environment audit form, offline, with instant feedback score for the area."
+   },
+   {
+    "name": "Isolation room board",
+    "shows": "Each isolation room: free, occupied, cleaning, out of service, with time in state."
+   },
+   {
+    "name": "Outbreak board",
+    "shows": "Closed areas, restrictions, cleans due, supplies, actions and daily status."
+   },
+   {
+    "name": "Audit results",
+    "shows": "Compliance by area and month on SPC charts, with linked actions."
+   }
+  ],
+  "captures": [
+   "Hand hygiene opportunity observed and outcome: feeds compliance rate.",
+   "Isolation room requested and assigned: measures wait for isolation.",
+   "Area closed and reopened: outbreak duration and bed-days lost.",
+   "Enhanced or terminal clean requested and completed: links to cleaning.",
+   "Environment audit item failed: creates a work order or action.",
+   "Device-days counted per unit: denominator for device infection rates."
+  ],
+  "kpis": [
+   {
+    "name": "Hand hygiene compliance",
+    "definition": "Hand hygiene actions performed / opportunities observed",
+    "source": "WHO 5 Moments observation method"
+   },
+   {
+    "name": "Time to isolation room",
+    "definition": "Isolation room requested → patient in isolation room",
+    "source": "local definition"
+   },
+   {
+    "name": "Isolation room availability",
+    "definition": "Isolation rooms free and clean / isolation rooms in service, per day",
+    "source": "local definition"
+   },
+   {
+    "name": "CLABSI rate",
+    "definition": "Central line infections / central line-days × 1,000",
+    "source": "CDC NHSN"
+   },
+   {
+    "name": "Bed-days lost to closures",
+    "definition": "Sum of beds closed × days closed, per outbreak",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When all isolation rooms are full and two requests wait, suggests the flow coordinator review room use.",
+   "When an area's audit score falls below its SPC limit, suggests a repeat audit and feedback session.",
+   "When an area is reopened, drafts a checklist of cleans, restocking and notices to clear."
+  ],
+  "playbooks": [
+   "Outbreak response: area closure, clean schedule, supplies, daily status note.",
+   "Monthly audit round: schedule by area, results pack and actions."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_ipc_list_isolation_rooms",
+    "does": "Returns isolation rooms by status and time in status, per site.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_ipc_record_audit",
+    "does": "Records a completed audit from structured observations.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_ipc_close_area",
+    "does": "Proposes closing or reopening an area; the IPC nurse confirms.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_ipc_get_compliance",
+    "does": "Returns audit compliance by area and period, with KPI definition.",
+    "approval": "none"
+   }
+  ],
+  "standards": [
+   "WHO Core Components for IPC Programmes",
+   "WHO My 5 Moments for Hand Hygiene",
+   "CDC NHSN surveillance definitions",
+   "JCI Hospital Standards (prevention and control of infections)"
+  ],
+  "connects": [
+   "A3",
+   "A4",
+   "B3",
+   "B4",
+   "C1",
+   "C2"
+  ],
+  "notFor": "Does not diagnose infection, decide who needs isolation, or advise on treatment. Clinicians decide."
+ },
+ {
+  "id": "C4",
+  "slug": "governance-and-accreditation",
+  "name": "Governance, policies and accreditation",
+  "group": "People, quality and governance",
+  "month": "Feb 2027",
+  "oneLine": "Keeps policies in date, audits on cycle, and accreditation evidence always ready.",
+  "today": "Policies sit in binders and shared drives, many past review. Audits stop after one round. Committee actions live in minutes, and accreditation prep is a scramble before each visit.",
+  "withOspeli": "Each policy has an owner, version and review date; staff acknowledge changes by phone. Audits run on a schedule. Standards link to evidence, so readiness is visible all year.",
+  "people": [
+   {
+    "role": "Ward clerk",
+    "does": "Finds the current version of any policy from a phone in seconds."
+   },
+   {
+    "role": "Staff member",
+    "does": "Reads and acknowledges new or changed policies relevant to their role."
+   },
+   {
+    "role": "Policy owner",
+    "does": "Drafts revisions, sends for approval, renews before the review date."
+   },
+   {
+    "role": "Quality manager",
+    "does": "Runs the audit calendar, committee packs and accreditation self-assessment."
+   },
+   {
+    "role": "Committee chair",
+    "does": "Approves documents and reviews actions due before each meeting."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Policy finder (phone)",
+    "shows": "Search current approved documents by topic or area; read and acknowledge."
+   },
+   {
+    "name": "Document control",
+    "shows": "Each document's version, owner, approval status, review date and acknowledgement rate."
+   },
+   {
+    "name": "Audit calendar",
+    "shows": "Audits planned, done and overdue, with re-audit dates and results."
+   },
+   {
+    "name": "Accreditation readiness",
+    "shows": "Each standard: linked evidence, self-assessment score, gaps and actions."
+   },
+   {
+    "name": "Committee pack",
+    "shows": "Agenda, papers, decisions and actions due for the next meeting."
+   }
+  ],
+  "captures": [
+   "Document approved, with version and review date: controls what is current.",
+   "Staff acknowledgement of a change: shows the change reached people.",
+   "Audit completed and re-audit due: closes the audit cycle.",
+   "Evidence linked to a standard: ready for inspection any day.",
+   "Committee decision and resulting action: feeds the action tracker."
+  ],
+  "kpis": [
+   {
+    "name": "Policies in date",
+    "definition": "Approved documents within review date / all approved documents",
+    "source": "local definition"
+   },
+   {
+    "name": "Audit cycle completion",
+    "definition": "Audits with re-audit done / audits due for re-audit",
+    "source": "local definition"
+   },
+   {
+    "name": "Open actions past due",
+    "definition": "Governance actions past due date / all open governance actions",
+    "source": "local definition"
+   },
+   {
+    "name": "Self-assessment compliance",
+    "definition": "Standards met / standards assessed, per chapter",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When a policy nears its review date with no draft, suggests notifying its owner.",
+   "When two documents cover the same topic, suggests the quality manager check for conflict.",
+   "When a standard has no evidence linked, lists it as a gap before the next self-assessment."
+  ],
+  "playbooks": [
+   "Policy review cycle: draft, consult, approve, publish, acknowledgement report.",
+   "Accreditation mock survey: tracer checklist, gaps found, actions assigned.",
+   "Committee meeting: agenda, pack, minutes and actions in one routine."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_docs_find_current",
+    "does": "Returns the current approved version of a policy by topic.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_docs_list_due_review",
+    "does": "Lists documents past or near review date, by owner role.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_docs_submit_revision",
+    "does": "Submits a draft revision for approval by the named approver.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_accreditation_get_gaps",
+    "does": "Lists standards with missing evidence or unmet self-assessment, with actions.",
+    "approval": "none"
+   }
+  ],
+  "standards": [
+   "JCI Hospital Standards (governance and quality improvement)",
+   "ISO 9001",
+   "IHI Model for Improvement"
+  ],
+  "connects": [
+   "C2",
+   "C3",
+   "C5",
+   "D4"
+  ],
+  "notFor": "Does not write or approve clinical guidelines' content. People approve every document."
+ },
+ {
+  "id": "C5",
+  "slug": "health-records",
+  "name": "Health records and information",
+  "group": "People, quality and governance",
+  "month": "Feb 2027",
+  "oneLine": "Tracks where records are, how fast they arrive, and who accessed them.",
+  "today": "Paper charts go missing before clinic. Duplicate patient numbers split one history. Coding runs weeks behind, and requests for records wait in an inbox with no clock.",
+  "withOspeli": "Record requests and movements are tracked like work orders. Duplicates are flagged for merge review. Coding backlogs and release requests show their age. Every access is in the audit trail.",
+  "people": [
+   {
+    "role": "Records clerk",
+    "does": "Scans a chart out and in by phone; works the pull list."
+   },
+   {
+    "role": "Clinic coordinator",
+    "does": "Sees which records are ready for tomorrow's clinics."
+   },
+   {
+    "role": "Clinical coder",
+    "does": "Works the coding queue by age and sees what is missing."
+   },
+   {
+    "role": "Information governance lead",
+    "does": "Handles release requests, access reviews and breach reports."
+   },
+   {
+    "role": "Records manager",
+    "does": "Monitors retrieval times, duplicates, backlog and retention schedules."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Record scan (phone)",
+    "shows": "Scan or search a record; mark sent, received, or missing, with location."
+   },
+   {
+    "name": "Clinic pull list",
+    "shows": "Records needed per clinic session, with status and missing items."
+   },
+   {
+    "name": "Coding queue",
+    "shows": "Discharges awaiting coding by age, with completeness flags."
+   },
+   {
+    "name": "Release of information",
+    "shows": "Requests by type, received date, due date and status."
+   },
+   {
+    "name": "Duplicate review",
+    "shows": "Possible duplicate patient records for a person to confirm or reject."
+   }
+  ],
+  "captures": [
+   "Record requested and delivered: gives retrieval time.",
+   "Record movement with location: finds charts fast.",
+   "Discharge coded, with date: measures coding timeliness.",
+   "Release request received and answered: tracks response deadlines.",
+   "Duplicate merged or rejected, by role: keeps one history per patient.",
+   "Possible data breach reported: starts the response clock."
+  ],
+  "kpis": [
+   {
+    "name": "Record available at clinic start",
+    "definition": "Records present at session start / records requested for session",
+    "source": "local definition"
+   },
+   {
+    "name": "Record retrieval time",
+    "definition": "Record requested → record delivered",
+    "source": "local definition"
+   },
+   {
+    "name": "Coding timeliness",
+    "definition": "Discharge → episode coded",
+    "source": "local definition"
+   },
+   {
+    "name": "Duplicate record rate",
+    "definition": "Confirmed duplicate records / new registrations",
+    "source": "local definition"
+   },
+   {
+    "name": "Release request response time",
+    "definition": "Request received → information released or refused",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When tomorrow's clinic pull list has records not located by 15:00, suggests an early search.",
+   "When a new registration closely matches an existing one, suggests a duplicate check before saving.",
+   "When a release request nears its due date, flags it to the information governance lead."
+  ],
+  "playbooks": [
+   "Clinic preparation: pull list, located records, missing list by morning.",
+   "Retention review: records due for archive or destruction, for approval."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_records_get_pull_list",
+    "does": "Returns records needed per clinic session with location and status.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_records_log_movement",
+    "does": "Records a chart moving between locations, with time and role.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_records_list_coding_backlog",
+    "does": "Lists uncoded discharges by age and specialty.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_records_propose_merge",
+    "does": "Proposes merging two patient records; a records officer confirms.",
+    "approval": "person decides"
+   }
+  ],
+  "standards": [
+   "WHO ICD-10 and ICD-11",
+   "HL7 FHIR",
+   "ISO/IEC 27001",
+   "JCI Hospital Standards (management of information)"
+  ],
+  "connects": [
+   "A1",
+   "A3",
+   "C4",
+   "D2",
+   "D3"
+  ],
+  "notFor": "Not an electronic health record. No clinical content review. Does not code automatically without a coder."
+ },
+ {
+  "id": "C6",
+  "slug": "planning-and-capital-projects",
+  "name": "Planning, business cases, capital projects",
+  "group": "People, quality and governance",
+  "month": "Feb 2027",
+  "oneLine": "Builds business cases from real data and tracks capital projects to benefits.",
+  "today": "Business cases are written from scratch with guessed figures. Approved projects drift without a clear owner. Department redesigns open with no check that the promised benefits came.",
+  "withOspeli": "Cases draw on the site's own time stamps, process maps and costs. Each project tracks milestones, budget, risks and actions. After go-live, the same KPIs show whether benefits came.",
+  "people": [
+   {
+    "role": "Department manager",
+    "does": "Starts a case from a problem, attaching process maps and current KPIs."
+   },
+   {
+    "role": "Project manager",
+    "does": "Updates milestones, risks and spend from a phone after site walks."
+   },
+   {
+    "role": "Facilities lead",
+    "does": "Adds space, utility and works estimates and the redesign layout."
+   },
+   {
+    "role": "Finance lead",
+    "does": "Checks costs and funding sources before investment approval."
+   },
+   {
+    "role": "Operations lead",
+    "does": "Compares cases, decides what goes forward, and reviews benefits after go-live."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Project update (phone)",
+    "shows": "Milestone status, new risk, photo and note for one project."
+   },
+   {
+    "name": "Business case builder",
+    "shows": "Problem, options, costs, risks and expected KPI changes, with baseline data attached."
+   },
+   {
+    "name": "Capital programme",
+    "shows": "All projects: stage, budget versus spend, milestones, red flags."
+   },
+   {
+    "name": "Redesign workspace",
+    "shows": "Current and future process maps, layout options, capacity estimates."
+   },
+   {
+    "name": "Benefits tracker",
+    "shows": "Baseline versus actual for each promised KPI, before and after go-live."
+   }
+  ],
+  "captures": [
+   "Baseline KPI snapshot at case start: makes benefits measurable.",
+   "Investment decision, with date and decider: one record of approval.",
+   "Milestone planned and achieved dates: shows schedule slippage.",
+   "Spend committed and paid against budget: shows cost variance.",
+   "Go-live date: anchors before-and-after comparison.",
+   "Benefit measured at review points: proves or disproves the case."
+  ],
+  "kpis": [
+   {
+    "name": "Capital programme delivery",
+    "definition": "Milestones achieved by planned date / milestones due",
+    "source": "local definition"
+   },
+   {
+    "name": "Budget variance",
+    "definition": "(Actual spend − approved budget) / approved budget, per project",
+    "source": "local definition"
+   },
+   {
+    "name": "Benefits realised",
+    "definition": "Promised KPI changes achieved at review / promised KPI changes",
+    "source": "local definition"
+   },
+   {
+    "name": "Time to decision",
+    "definition": "Business case submitted → investment decision recorded",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When a case quotes a baseline without data, suggests attaching the matching KPI from the library.",
+   "When a milestone slips twice, suggests a risk review with the project manager.",
+   "At six months after go-live, drafts a benefits review comparing baseline and actual KPIs.",
+   "Drafts a business case outline from a completed process map and its measured waits."
+  ],
+  "playbooks": [
+   "Business case: problem, options, costs, risks, benefits, ready for approval.",
+   "Department redesign: current map, future map, layout, capacity check.",
+   "Post-project review: benefits achieved, lessons, follow-up actions."
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_projects_list_at_risk",
+    "does": "Lists projects with slipped milestones or overspend, with reasons.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_cases_draft",
+    "does": "Drafts a business case from a problem, process map and KPIs.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_projects_update_milestone",
+    "does": "Records a milestone's status and date for a project.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_benefits_get_review",
+    "does": "Returns baseline versus current values for a project's promised KPIs.",
+    "approval": "none"
+   }
+  ],
+  "standards": [
+   "WHO health system building blocks (leadership and governance)",
+   "ISO 21502 (project management)"
+  ],
+  "connects": [
+   "D1",
+   "D4",
+   "B2",
+   "A3",
+   "C2"
+  ],
+  "notFor": "Does not make investment decisions or rank services by clinical value. Leadership decides."
+ },
+ {
+  "id": "D1",
+  "slug": "finance-budgets",
+  "name": "Finance, costing and budgets",
+  "group": "Finance and digital",
+  "month": "Feb 2027",
+  "oneLine": "Shows each department its budget, spend and cost per case, with reasons.",
+  "today": "Budget reports arrive weeks after month end, in spreadsheets few managers read. Overspends surface too late, and nobody can link cost to the beds, theatre lists or staffing behind it.",
+  "withOspeli": "Spend sits beside activity from the event log, so cost per bed-day or case uses the same counts as operations. Designed to flag variances early, with the likely driver and an owner.",
+  "people": [
+   {
+    "role": "Department manager",
+    "does": "Checks budget versus actual on phone, explains variances, approves spend requests."
+   },
+   {
+    "role": "Charge nurse",
+    "does": "Sees temporary staffing spend for the ward this week before booking more."
+   },
+   {
+    "role": "Finance business partner",
+    "does": "Loads ledger extracts, maps cost centres, agrees variance notes with managers."
+   },
+   {
+    "role": "Operations manager",
+    "does": "Reviews cost per case alongside flow, and approves recovery actions."
+   },
+   {
+    "role": "Finance lead",
+    "does": "Sets budgets, signs off monthly position, owns the costing method."
+   }
+  ],
+  "screens": [
+   {
+    "name": "My budget (phone)",
+    "shows": "Month and year-to-date budget, actual, variance, top three drivers, notes awaiting my reply."
+   },
+   {
+    "name": "Variance board",
+    "shows": "Departments over or under budget beyond tolerance, with owner, reason and action status."
+   },
+   {
+    "name": "Cost and activity",
+    "shows": "Cost per bed-day, per case or per visit, beside activity counts from the event log."
+   },
+   {
+    "name": "Spend requests",
+    "shows": "Requests waiting approval, amount, budget line, remaining budget and approver."
+   },
+   {
+    "name": "Budget setup",
+    "shows": "Cost centres mapped to sites, departments and wards; budget lines; tolerance levels."
+   }
+  ],
+  "captures": [
+   "Budget line per cost centre and period, so variance has a baseline",
+   "Ledger actuals imported by period, keeping the source file reference",
+   "Variance note with reason and owner, so explanations are not lost",
+   "Spend request and approval decision, giving an audit trail",
+   "Temporary staffing bookings and cost, a common overspend driver",
+   "Activity counts linked from the event log, for unit costs"
+  ],
+  "kpis": [
+   {
+    "name": "Budget variance",
+    "definition": "(actual spend − budget) ÷ budget, per cost centre and period",
+    "source": "local definition"
+   },
+   {
+    "name": "Cost per inpatient bed-day",
+    "definition": "inpatient costs for the period ÷ occupied bed-days from the event log",
+    "source": "local definition"
+   },
+   {
+    "name": "Temporary staffing spend share",
+    "definition": "agency and bank staff cost ÷ total staff cost",
+    "source": "local definition"
+   },
+   {
+    "name": "Creditor days",
+    "definition": "trade payables ÷ (purchases for the period ÷ days in period)",
+    "source": "local definition"
+   },
+   {
+    "name": "Variances explained on time",
+    "definition": "variances beyond tolerance with an agreed note by the due date ÷ all variances beyond tolerance",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When a cost centre passes its variance tolerance two months running, suggests a review with the department manager and lists the largest spend lines.",
+   "When temporary staffing cost rises while occupancy is flat, suggests checking rostering gaps with the workforce lead.",
+   "Before month-end sign-off, lists variances still missing an explanation and who owns each one."
+  ],
+  "playbooks": [
+   "Month-end close: import actuals, chase variance notes, publish the department pack",
+   "Budget setting: roll forward, adjust for planned activity, collect manager sign-off",
+   "Recovery plan: list drivers, agree actions, track savings against budget"
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_finance_get_position",
+    "does": "Returns budget, actual and variance for a cost centre and period.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_finance_list_variances",
+    "does": "Lists variances beyond tolerance, with owner, reason and note status.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_finance_draft_variance_note",
+    "does": "Drafts a variance explanation from spend and activity data for the owner.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_finance_request_spend",
+    "does": "Raises a spend request against a budget line, routed to the approver.",
+    "approval": "person decides"
+   }
+  ],
+  "standards": [
+   "HL7 FHIR"
+  ],
+  "connects": [
+   "A3",
+   "A4",
+   "A1",
+   "B4",
+   "C1",
+   "C6",
+   "D2",
+   "D4"
+  ],
+  "notFor": "Not an accounting ledger or payroll system. Never links cost to individual staff or patients' care decisions."
+ },
+ {
+  "id": "D2",
+  "slug": "revenue-cycle",
+  "name": "Revenue cycle (optional)",
+  "group": "Finance and digital",
+  "month": "Feb 2027",
+  "oneLine": "For sites that bill insurers, payers or patients: track every claim to payment.",
+  "today": "Where care is billed, missing authorisations, uncaptured charges and rejected claims are found weeks later. Staff chase paper, cash arrives late, and nobody sees where claims get stuck.",
+  "withOspeli": "An optional module, switched off by default. Each claim follows one timeline from registration to payment. Designed to surface missing steps before submission and route denials to the right queue.",
+  "people": [
+   {
+    "role": "Registration clerk",
+    "does": "Records coverage details and eligibility checks at arrival, on phone or desk."
+   },
+   {
+    "role": "Billing officer",
+    "does": "Works the claims queue, fixes rejections, submits and resubmits claims."
+   },
+   {
+    "role": "Clinical coder",
+    "does": "Sees records waiting for coding and flags missing documentation to the team."
+   },
+   {
+    "role": "Revenue cycle manager",
+    "does": "Watches claim stages and denial reasons, assigns work, sets local targets."
+   },
+   {
+    "role": "Finance lead",
+    "does": "Reviews days in accounts receivable and cash forecast in the monthly pack."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Arrival coverage check (phone)",
+    "shows": "Coverage details, eligibility result, authorisation needed or held, and what is still missing."
+   },
+   {
+    "name": "Claims pipeline",
+    "shows": "Claims by stage: charges open, coding, ready, submitted, paid, denied, with age."
+   },
+   {
+    "name": "Denials queue",
+    "shows": "Denied claims grouped by reason and payer, with deadline to appeal and assignee."
+   },
+   {
+    "name": "Accounts receivable ageing",
+    "shows": "Amounts owed by payer group and age band, with trend over months."
+   }
+  ],
+  "captures": [
+   "Coverage and eligibility check result at registration, preventing later rejections",
+   "Authorisation requested and received, with times, before planned care",
+   "Charge captured against an encounter, so services are not missed",
+   "Coding completed time, a frequent cause of billing delay",
+   "Claim submitted, accepted, denied or paid, with reason codes",
+   "Payment or patient balance received, closing the claim timeline"
+  ],
+  "kpis": [
+   {
+    "name": "Net days in accounts receivable",
+    "definition": "net accounts receivable ÷ average daily net patient service revenue",
+    "source": "HFMA MAP Keys"
+   },
+   {
+    "name": "Clean claim rate",
+    "definition": "claims passing billing edits with no manual intervention ÷ claims processed through edits",
+    "source": "HFMA MAP Keys"
+   },
+   {
+    "name": "Remittance denial rate",
+    "definition": "claims denied by payers ÷ claims remitted",
+    "source": "HFMA MAP Keys"
+   },
+   {
+    "name": "Discharge to claim submitted",
+    "definition": "discharge or visit end event → claim submitted event",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When planned care is booked and no authorisation is recorded three days before, suggests the registration team request it.",
+   "When one denial reason grows week on week, groups the claims and suggests a fix at the step that causes it.",
+   "When denied claims near the appeal deadline, lists them for the billing officer with the reason and missing item."
+  ],
+  "playbooks": [
+   "Denial review: group by reason, find the root step, assign fixes",
+   "Month-end receivables: age balances, flag stalled claims, update cash forecast"
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_revenue_list_claims",
+    "does": "Lists claims by stage, payer group or age, with what each is waiting for.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_revenue_check_ready",
+    "does": "Checks an encounter for missing coverage, authorisation, charges or coding before submission.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_revenue_draft_appeal",
+    "does": "Drafts a denial appeal from the claim record and denial reason.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_revenue_get_ageing",
+    "does": "Returns accounts receivable by payer group and age band.",
+    "approval": "none"
+   }
+  ],
+  "standards": [
+   "HFMA MAP Keys",
+   "HL7 FHIR (Coverage, Claim, ClaimResponse)"
+  ],
+  "connects": [
+   "A1",
+   "A2",
+   "A3",
+   "C5",
+   "D1",
+   "D4"
+  ],
+  "notFor": "Never ranks, delays or changes care by coverage or ability to pay. Does not assign clinical codes."
+ },
+ {
+  "id": "D3",
+  "slug": "it-digital-cyber",
+  "name": "IT, digital and cyber",
+  "group": "Finance and digital",
+  "month": "Feb 2027",
+  "oneLine": "Keeps systems, devices and access working, and plans for when they fail.",
+  "today": "IT faults are reported by phone and forgotten. Nobody knows which systems are down, who still has access after leaving, or whether backups restore. Downtime means hunting for paper forms.",
+  "withOspeli": "IT faults use the same work-order engine as facilities. A status board shows systems up or down; access, patches and backup tests are tracked. Downtime mode switches staff to printable fallbacks.",
+  "people": [
+   {
+    "role": "Charge nurse",
+    "does": "Reports a broken device or system by QR scan; sees system status."
+   },
+   {
+    "role": "IT service desk analyst",
+    "does": "Works the ticket queue, updates status, uses fix guides, closes with cause."
+   },
+   {
+    "role": "IT lead (in-house or supplier)",
+    "does": "Tracks uptime, patching, backups and supplier tickets; declares and ends downtime."
+   },
+   {
+    "role": "Information security lead",
+    "does": "Runs access reviews, logs security incidents, checks leaver access is removed."
+   },
+   {
+    "role": "Operations manager",
+    "does": "Sees which services are affected by downtime and approves the continuity plan."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Report IT fault (phone)",
+    "shows": "Scan a device QR or pick a system, describe the problem, add a photo."
+   },
+   {
+    "name": "System status board",
+    "shows": "Each clinical and business system up, degraded or down, since when, and departments affected."
+   },
+   {
+    "name": "Service desk queue",
+    "shows": "Open IT tickets by priority, age, time left on target and assignee role."
+   },
+   {
+    "name": "Downtime mode",
+    "shows": "Active downtime, paper forms to print, catch-up entry list once systems return."
+   },
+   {
+    "name": "Access and patch review",
+    "shows": "Accounts of leavers still active, overdue access reviews, devices missing patches."
+   }
+  ],
+  "captures": [
+   "System down and up events, giving true availability",
+   "IT ticket raised, assigned and resolved, with cause",
+   "Backup restore test date and result, proving recovery works",
+   "Account created and removed, linked to start and leave dates",
+   "Patch applied per device or system, showing exposure",
+   "Downtime start, end and catch-up completed, for continuity review",
+   "Security incident reported and closed, with actions"
+  ],
+  "kpis": [
+   {
+    "name": "System availability",
+    "definition": "minutes up in scheduled service hours ÷ scheduled service minutes, per system",
+    "source": "local definition"
+   },
+   {
+    "name": "IT ticket time to resolve",
+    "definition": "ticket raised event → ticket resolved event, by priority",
+    "source": "local definition"
+   },
+   {
+    "name": "Backup restore test success",
+    "definition": "restore tests passed ÷ restore tests scheduled in period",
+    "source": "local definition"
+   },
+   {
+    "name": "Leaver access removed on time",
+    "definition": "leaver accounts disabled by the local deadline ÷ leavers in period",
+    "source": "local definition"
+   },
+   {
+    "name": "Patch compliance",
+    "definition": "devices with critical patches applied within local target ÷ devices in scope",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When three wards report the same system fault within an hour, suggests the IT lead consider declaring downtime and opening the continuity plan.",
+   "When a backup restore test is overdue or failed, suggests scheduling a retest and adds it to the action tracker.",
+   "When a leaver still has active accounts after the leave date, lists them for the security lead to disable."
+  ],
+  "playbooks": [
+   "Downtime drill: declare, switch to paper, restore, catch-up entry, review",
+   "Quarterly access review: managers confirm each account, removals logged",
+   "Cyber incident first hour: contain, notify leadership, record actions"
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_it_report_fault",
+    "does": "Raises an IT ticket for a system or device, with location and description.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_it_get_status",
+    "does": "Returns current status of systems, open downtime and departments affected.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_it_declare_downtime",
+    "does": "Proposes declaring downtime for a system and starts the paper fallback plan.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_it_list_access_risks",
+    "does": "Lists leaver accounts still active, overdue reviews and unpatched devices.",
+    "approval": "none"
+   }
+  ],
+  "standards": [
+   "NIST Cybersecurity Framework 2.0",
+   "ISO/IEC 27001",
+   "HIMSS INFRAM",
+   "HL7 FHIR"
+  ],
+  "connects": [
+   "B1",
+   "B2",
+   "C2",
+   "C5",
+   "E1",
+   "D4"
+  ],
+  "notFor": "Not an antivirus or network monitoring tool. Never monitors or scores individual staff computer use."
+ },
+ {
+  "id": "D4",
+  "slug": "performance-reporting",
+  "name": "Performance and external reporting",
+  "group": "Finance and digital",
+  "month": "Feb 2027",
+  "oneLine": "Builds monthly performance packs and external reports from one set of definitions.",
+  "today": "Each department counts differently, numbers are hand-tallied from registers, and external reports are rebuilt from scratch every month. Deadlines slip and nobody can trace a figure to its source.",
+  "withOspeli": "Every KPI has one definition, owner and source, computed from the event log. Packs and external reports to regulators, funders, payers or owners are designed to assemble themselves, ready for named sign-off.",
+  "people": [
+   {
+    "role": "Department manager",
+    "does": "Checks own department's numbers on phone, adds commentary, confirms data before deadline."
+   },
+   {
+    "role": "Performance analyst",
+    "does": "Maintains KPI definitions, fixes data gaps, prepares the pack and returns."
+   },
+   {
+    "role": "Data owner",
+    "does": "Gets alerts about missing or late data from their area and fixes it."
+   },
+   {
+    "role": "Operations manager",
+    "does": "Reviews SPC charts, agrees actions on off-track measures, owns the action list."
+   },
+   {
+    "role": "Chief operating officer",
+    "does": "Signs off the monthly pack and external reports before release."
+   }
+  ],
+  "screens": [
+   {
+    "name": "My department numbers (phone)",
+    "shows": "This month's KPIs with SPC signal, data gaps, and commentary awaiting me."
+   },
+   {
+    "name": "Performance pack",
+    "shows": "KPIs by area with SPC charts, definition beside each number, commentary and actions."
+   },
+   {
+    "name": "Reporting calendar",
+    "shows": "External reports due, recipient, owner, data status, sign-off status and deadline."
+   },
+   {
+    "name": "Data completeness",
+    "shows": "Required fields missing or late by department and source, with trend."
+   },
+   {
+    "name": "KPI definition card",
+    "shows": "Numerator, denominator, exclusions, source standard, owner, target and change history."
+   }
+  ],
+  "captures": [
+   "KPI definition version, so past figures stay comparable",
+   "Data source and extract time behind each figure, for traceability",
+   "Commentary and action per off-track KPI, with owner",
+   "Report submitted time against due date, for timeliness",
+   "Sign-off by named role, before any report leaves",
+   "Corrections to submitted figures, with reason, for audit"
+  ],
+  "kpis": [
+   {
+    "name": "Report timeliness",
+    "definition": "external reports submitted by due date ÷ external reports due",
+    "source": "local definition"
+   },
+   {
+    "name": "Data completeness",
+    "definition": "required fields recorded ÷ required fields expected, per source and period",
+    "source": "local definition"
+   },
+   {
+    "name": "Period close to pack published",
+    "definition": "reporting period end → pack signed off event",
+    "source": "local definition"
+   },
+   {
+    "name": "KPIs fully defined",
+    "definition": "KPIs with numerator, denominator, owner and source ÷ KPIs in use",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When an SPC chart shows a special-cause signal, suggests adding commentary and asks the KPI owner whether an action is needed.",
+   "Five days before an external report is due, lists missing data and which data owners to chase.",
+   "When two departments report the same measure differently, suggests aligning to the library definition."
+  ],
+  "playbooks": [
+   "Monthly pack: refresh data, flag signals, collect commentary, sign off",
+   "External report: check completeness, reconcile, named sign-off, submit, file copy",
+   "New KPI: define, test on past data, agree owner, publish"
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_reports_get_kpi",
+    "does": "Returns a KPI value, trend, SPC signal and its full definition.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_reports_check_completeness",
+    "does": "Lists missing or late data for a report or period, by data owner.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_reports_draft_pack",
+    "does": "Assembles a draft performance pack with charts and commentary prompts.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_reports_submit_external",
+    "does": "Prepares an external report for named sign-off and submission.",
+    "approval": "person decides"
+   }
+  ],
+  "standards": [
+   "HL7 FHIR (Measure, MeasureReport)",
+   "WHO SARA"
+  ],
+  "connects": [
+   "A2",
+   "A3",
+   "A4",
+   "B1",
+   "C1",
+   "C2",
+   "C6",
+   "D1",
+   "D2",
+   "D3"
+  ],
+  "notFor": "Reports flows and services, never individual staff performance. No clinical quality judgements on individual patients."
+ },
+ {
+  "id": "E1",
+  "slug": "emergency-preparedness",
+  "name": "Emergency preparedness and continuity",
+  "group": "System, community and resilience",
+  "month": "Mar 2027",
+  "oneLine": "Keeps plans, drills and backup systems ready before an emergency or outage.",
+  "today": "Plans sit in a binder nobody has opened since the last inspection. Generator tests, water reserves and call-down lists go unchecked, so gaps surface during the severe weather or outage itself.",
+  "withOspeli": "Plans, checklists and drills live beside the asset registry and stock. Readiness is visible on one board, drill actions are tracked to closure, and downtime fallbacks print from the same data.",
+  "people": [
+   {
+    "role": "Emergency planning lead",
+    "does": "Runs the safety index self-assessment, schedules drills and tracks every action to closure."
+   },
+   {
+    "role": "Facilities technician",
+    "does": "Logs generator, water and fuel checks on a phone during rounds."
+   },
+   {
+    "role": "Charge nurse",
+    "does": "Ticks the ward's severe-weather and downtime checklist; prints the fallback bed list."
+   },
+   {
+    "role": "Incident commander (on-call manager)",
+    "does": "Activates the plan, assigns roles and sees live status of beds, staff and supplies."
+   },
+   {
+    "role": "Operations lead",
+    "does": "Reviews readiness gaps and approves continuity spending through the approval process."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Readiness board",
+    "shows": "Plans in date, drills due, critical assets and reserves by status, open actions by owner."
+   },
+   {
+    "name": "Safety index self-assessment",
+    "shows": "WHO Hospital Safety Index modules, item scores, evidence notes and the resulting safety category."
+   },
+   {
+    "name": "Checklist on phone",
+    "shows": "Today's preparedness or downtime checklist for one area, with tap-to-confirm items and photo evidence."
+   },
+   {
+    "name": "Incident command board",
+    "shows": "Activated roles, task cards, surge beds, staff called in, critical stock and a timed log."
+   },
+   {
+    "name": "Drill review",
+    "shows": "Drill timeline, what worked, gaps found, and actions linked to the action tracker."
+   }
+  ],
+  "captures": [
+   "Plan reviewed and approved, with next review date, to keep plans current",
+   "Drill held: type, start, end and gaps, to prove readiness",
+   "Generator, fuel and water checks, to know real backup hours",
+   "Plan activated and stood down, to time the response",
+   "Downtime started and ended per system, to plan continuity",
+   "Checklist item confirmed or failed, with area and time"
+  ],
+  "kpis": [
+   {
+    "name": "Hospital Safety Index category",
+    "definition": "Self-assessed safety index score and A/B/C category, per assessment",
+    "source": "WHO Hospital Safety Index"
+   },
+   {
+    "name": "Drills completed on schedule",
+    "definition": "Drills held by due date / drills planned in period",
+    "source": "local definition"
+   },
+   {
+    "name": "Plans within review date",
+    "definition": "Emergency and continuity plans in date / all plans",
+    "source": "local definition"
+   },
+   {
+    "name": "Drill action closure time",
+    "definition": "Drill review signed off → last action closed",
+    "source": "local definition"
+   },
+   {
+    "name": "Backup supply cover",
+    "definition": "Fuel, water or oxygen on hand / measured daily use, in hours",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When a severe-weather alert is entered, suggests the pre-event checklist for each area and lists critical assets with overdue maintenance.",
+   "When fuel or water cover falls below the site's set threshold, suggests a top-up order for the stores manager to approve.",
+   "After a drill, drafts the review from the timed log and proposes actions; the planning lead edits and approves.",
+   "Flags plans past review date and safety index items scored low with no open action."
+  ],
+  "playbooks": [
+   "Pre-event readiness sweep: checklist status by area, gaps, owners",
+   "Drill review: timeline, gaps and an action list",
+   "Continuity test: system downtime walk-through and printed fallback pack"
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_continuity_readiness_get",
+    "does": "Returns readiness by area: plans, drills, backup cover, open actions.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_continuity_checklist_start",
+    "does": "Opens a pre-event or downtime checklist for chosen areas and assigns owners.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_continuity_plan_activate",
+    "does": "Proposes activating a plan; the incident commander confirms.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_continuity_drill_review_draft",
+    "does": "Drafts a drill review and actions from the drill's timed log.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_continuity_fallback_print",
+    "does": "Builds the printable downtime pack: bed list, contacts, rosters, critical stock.",
+    "approval": "none"
+   }
+  ],
+  "standards": [
+   "WHO Hospital Safety Index",
+   "WHO Hospital Emergency Response Checklist",
+   "ISO 22301",
+   "JCI Facility Management and Safety"
+  ],
+  "connects": [
+   "A2",
+   "A3",
+   "B1",
+   "B2",
+   "B4",
+   "C1",
+   "C2",
+   "D3"
+  ],
+  "notFor": "Does not triage casualties or set clinical priorities in a mass-casualty event; clinicians decide care."
+ },
+ {
+  "id": "E2",
+  "slug": "community-care",
+  "name": "Primary and community care",
+  "group": "System, community and resilience",
+  "month": "Mar 2027",
+  "oneLine": "Runs clinic sessions, home visits, follow-up registers and step-down placements in one place.",
+  "today": "Follow-up lists live in paper registers, home visits are planned on a whiteboard, and hospital wards cannot see community capacity, so patients wait in hospital beds for a place.",
+  "withOspeli": "Clinic sessions, visit rounds and follow-up lists share one log. Wards see community and step-down capacity, and placement waits are timed, designed to shorten delays leaving hospital.",
+  "people": [
+   {
+    "role": "Clinic coordinator",
+    "does": "Builds session lists, tracks missed follow-ups and books recalls."
+   },
+   {
+    "role": "Community nurse",
+    "does": "Sees the day's visit round on a phone, logs each visit offline."
+   },
+   {
+    "role": "Step-down placement coordinator",
+    "does": "Matches hospital referrals to free community places and records each wait."
+   },
+   {
+    "role": "Patient flow coordinator",
+    "does": "Sees community capacity and placement status for patients ready to leave hospital."
+   },
+   {
+    "role": "Community services manager",
+    "does": "Reviews capacity, visit completion and readiness across health centres."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Visit round (phone)",
+    "shows": "Today's visits in route order, address notes, tap arrived and done, works offline."
+   },
+   {
+    "name": "Follow-up register",
+    "shows": "Patients due or overdue for follow-up by programme, with recall status."
+   },
+   {
+    "name": "Community capacity board",
+    "shows": "Step-down, home-care and long-term places: free, held, occupied, and waiting referrals."
+   },
+   {
+    "name": "Session planner",
+    "shows": "Clinic sessions by room and role, booked versus capacity, and cancelled sessions."
+   },
+   {
+    "name": "Readiness check",
+    "shows": "Health centre readiness items: staff, equipment, tracer medicines, basic services."
+   }
+  ],
+  "captures": [
+   "Referral received and accepted, to time access to community care",
+   "Visit planned, arrived and completed, to see round completion",
+   "Follow-up due and attended or missed, to drive recalls",
+   "Community place offered and taken up, to time hospital exits",
+   "Session held or cancelled, with reason, to protect capacity",
+   "Readiness item checked, to target missing staff, kit or stock"
+  ],
+  "kpis": [
+   {
+    "name": "Step-down placement wait",
+    "definition": "Referral from hospital accepted → community place started",
+    "source": "local definition"
+   },
+   {
+    "name": "Missed follow-up rate",
+    "definition": "Follow-ups missed / follow-ups due in period",
+    "source": "local definition"
+   },
+   {
+    "name": "Visits completed as planned",
+    "definition": "Visits completed on planned day / visits planned",
+    "source": "local definition"
+   },
+   {
+    "name": "General service readiness index",
+    "definition": "Mean availability of tracer readiness items across domains, per facility",
+    "source": "WHO SARA"
+   }
+  ],
+  "guide": [
+   "When overdue follow-ups pass a set number for a programme, suggests a recall list and session slots for the coordinator to approve.",
+   "When hospital patients wait for a place and community places are free, flags the match for the placement coordinator.",
+   "When a visit round runs long, suggests a regrouped route for tomorrow by area."
+  ],
+  "playbooks": [
+   "Weekly recall run: overdue list, slots offered, letters or messages",
+   "Placement delay review: waits by reason and service, with actions"
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_community_capacity_get",
+    "does": "Returns free, held and occupied community places by service.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_community_followups_overdue",
+    "does": "Lists overdue follow-ups by programme and health centre, with recall status.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_community_recall_book",
+    "does": "Proposes recall bookings into open session slots.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_community_placement_offer",
+    "does": "Proposes a community place for a hospital referral.",
+    "approval": "person decides"
+   }
+  ],
+  "standards": [
+   "WHO SARA",
+   "HL7 FHIR"
+  ],
+  "connects": [
+   "A1",
+   "A3",
+   "A6",
+   "B5",
+   "E3",
+   "E4"
+  ],
+  "notFor": "Does not judge clinical control, adjust treatment or decide who is clinically eligible for a place."
+ },
+ {
+  "id": "E3",
+  "slug": "public-health-operations",
+  "name": "Public health operations",
+  "group": "System, community and resilience",
+  "month": "Mar 2027",
+  "oneLine": "Plans campaign logistics, vaccine and supply stock, cold chain and outreach staffing.",
+  "today": "Campaign plans live in spreadsheets, vaccine stock is counted by phone, fridge temperatures are written on paper, and outreach sessions are cancelled when staff, transport or stock fail to arrive.",
+  "withOspeli": "Campaigns, sessions, stock and cold chain share one log. Teams see what each site holds, which sessions lack staff or transport, and temperature excursions as they happen.",
+  "people": [
+   {
+    "role": "Programme coordinator",
+    "does": "Plans campaigns and outreach sessions, sets targets, and reviews logistics gaps."
+   },
+   {
+    "role": "Cold chain technician",
+    "does": "Logs fridge readings and alarms on a phone; raises work orders."
+   },
+   {
+    "role": "Outreach team lead",
+    "does": "Confirms session held, doses used and stock returned, on a phone offline."
+   },
+   {
+    "role": "Stores manager",
+    "does": "Issues and redistributes vaccine and supplies between sites."
+   },
+   {
+    "role": "Public health operations manager",
+    "does": "Reviews coverage of sessions, stock and staffing across the programme."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Campaign planner",
+    "shows": "Sessions by site and date, assigned teams, transport and stock needed versus held."
+   },
+   {
+    "name": "Cold chain board",
+    "shows": "Each fridge and cold box: last reading, alarms, excursions and open repairs."
+   },
+   {
+    "name": "Session check-in (phone)",
+    "shows": "Session start, doses opened and used, stock returned, problems; works offline."
+   },
+   {
+    "name": "Stock by site",
+    "shows": "Vaccine and supply stock per site, expiry dates, days of cover and redistribution suggestions."
+   }
+  ],
+  "captures": [
+   "Session planned, held or cancelled with reason, to protect coverage",
+   "Doses issued, used and returned, to measure wastage",
+   "Fridge temperature reading and excursion start and end",
+   "Stock received, transferred or expired, per site",
+   "Team and vehicle assigned to a session, to spot gaps"
+  ],
+  "kpis": [
+   {
+    "name": "Sessions held as planned",
+    "definition": "Outreach or campaign sessions held / sessions planned",
+    "source": "local definition"
+   },
+   {
+    "name": "Cold chain excursion time",
+    "definition": "Excursion start → back in range, per device",
+    "source": "local definition"
+   },
+   {
+    "name": "Vaccine stock-out days",
+    "definition": "Site-days with zero usable stock / site-days in period",
+    "source": "local definition"
+   },
+   {
+    "name": "Dose wastage",
+    "definition": "(Doses issued − doses given) / doses issued",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When a site's stock falls below planned session need, suggests a transfer from a site with surplus for the stores manager.",
+   "When a session has no team or vehicle assigned three days ahead, flags it to the programme coordinator.",
+   "When near-expiry stock sits at a low-use site, suggests moving it to a site with sessions booked."
+  ],
+  "playbooks": [
+   "Campaign readiness check: sessions, teams, transport and stock gaps",
+   "Cold chain monthly review: excursions, repairs and stock affected"
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_publichealth_campaign_gaps",
+    "does": "Lists upcoming sessions missing staff, transport or stock.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_publichealth_stock_get",
+    "does": "Returns stock, expiry and days of cover per site and item.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_publichealth_transfer_propose",
+    "does": "Proposes a stock transfer between sites to cover planned sessions.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_publichealth_coldchain_status",
+    "does": "Returns device readings, alarms and open excursions.",
+    "approval": "none"
+   }
+  ],
+  "standards": [
+   "WHO Effective Vaccine Management",
+   "International Health Regulations (2005)"
+  ],
+  "connects": [
+   "B1",
+   "B4",
+   "B5",
+   "C1",
+   "E2",
+   "D4"
+  ],
+  "notFor": "No case tracking, contact tracing, or clinical or surveillance decisions about individuals; logistics, stock and staffing only."
+ },
+ {
+  "id": "E4",
+  "slug": "patient-experience",
+  "name": "Patient experience and feedback",
+  "group": "System, community and resilience",
+  "month": "Mar 2027",
+  "oneLine": "Logs complaints and feedback, tracks responses, and turns themes into actions.",
+  "today": "Complaints arrive by letter, email, phone and in person, and some are lost. Responses run late, the same themes repeat, and nobody can show what changed.",
+  "withOspeli": "Every complaint and comment gets one record, an owner and response timers. Themes link to the services and processes involved, and actions are tracked until done.",
+  "people": [
+   {
+    "role": "Patient liaison officer",
+    "does": "Logs complaints from any channel, assigns owners and chases responses."
+   },
+   {
+    "role": "Ward manager",
+    "does": "Gets assigned complaints on a phone, records response and agreed actions."
+   },
+   {
+    "role": "Reception staff",
+    "does": "Logs a concern or compliment at the desk in under a minute."
+   },
+   {
+    "role": "Quality lead",
+    "does": "Reviews themes by service and links them to improvement actions."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Complaints queue",
+    "shows": "Open complaints by stage, owner role, days to response due, and overdue items."
+   },
+   {
+    "name": "Quick feedback (phone)",
+    "shows": "Channel, service, theme and short note; logged in seconds at a desk or ward."
+   },
+   {
+    "name": "Themes board",
+    "shows": "Feedback themes by service and month, with SPC trend and linked actions."
+   },
+   {
+    "name": "Response tracker",
+    "shows": "Each complaint's timeline: received, acknowledged, responded, closed, and actions."
+   }
+  ],
+  "captures": [
+   "Complaint received, with channel and service, to start timers",
+   "Acknowledged and responded times, to measure responsiveness",
+   "Theme tagged, to find repeating problems",
+   "Compliment or survey response, to balance the picture",
+   "Action agreed and closed, to show what changed"
+  ],
+  "kpis": [
+   {
+    "name": "Acknowledgement time",
+    "definition": "Complaint received → acknowledged",
+    "source": "local definition"
+   },
+   {
+    "name": "Response time",
+    "definition": "Complaint received → full response sent",
+    "source": "local definition"
+   },
+   {
+    "name": "Responses on time",
+    "definition": "Complaints answered by due date / complaints due",
+    "source": "local definition"
+   },
+   {
+    "name": "Actions closed",
+    "definition": "Complaint-linked actions closed by due date / actions due",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When a complaint nears its response due date with no draft, alerts the owner role and the liaison officer.",
+   "When one theme rises above its usual range on the SPC chart, suggests a review with the service.",
+   "Drafts a plain-language response summary from the record for the owner to edit and send."
+  ],
+  "playbooks": [
+   "Monthly feedback report: volumes, themes, timeliness and actions",
+   "Theme deep-dive: one theme's cases, process map and actions"
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_experience_complaint_log",
+    "does": "Logs a complaint or compliment with channel, service and theme.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_experience_queue_list",
+    "does": "Lists open complaints by stage, owner role and due date.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_experience_response_draft",
+    "does": "Drafts a response for the owner to edit and send.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_experience_themes_get",
+    "does": "Returns themes by service and period with trend.",
+    "approval": "none"
+   }
+  ],
+  "standards": [
+   "ISO 10002",
+   "JCI Patient-Centered Care"
+  ],
+  "connects": [
+   "A1",
+   "C2",
+   "C4",
+   "D4",
+   "E2"
+  ],
+  "notFor": "Does not score or rank named staff from complaints, or judge clinical care; clinical concerns go to clinical review."
+ },
+ {
+  "id": "X1",
+  "slug": "process-mapping",
+  "name": "Process mapping",
+  "group": "Across every area",
+  "month": "Nov 2026",
+  "oneLine": "Maps how work really flows, step by step and role by role.",
+  "today": "Process maps are sticky notes from a workshop, with guessed times. Nobody knows which wait is biggest, and changes are tried on the ward without testing first.",
+  "withOspeli": "Teams map steps by role with waiting and hands-on time, see where time goes, and test a change on a proposed version first. Phone walk mode is coming, so times are measured.",
+  "people": [
+   {
+    "role": "Improvement lead",
+    "does": "Builds the current map with the team and tests a proposed version."
+   },
+   {
+    "role": "Charge nurse",
+    "does": "Walks a process on a phone, tapping each step as it happens (coming)."
+   },
+   {
+    "role": "Operations manager",
+    "does": "Compares today and proposed maps and decides which change to trial."
+   },
+   {
+    "role": "Facilities supervisor",
+    "does": "Maps the fault-to-fix process and spots handoffs that only pass information."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Swimlane map",
+    "shows": "Steps in role lanes, wait and hands-on time on each, biggest waits highlighted."
+   },
+   {
+    "name": "List view (phone)",
+    "shows": "Steps in order with waits between them; add, edit or remove steps."
+   },
+   {
+    "name": "Today versus proposed",
+    "shows": "Total time, hands-on time, waiting share and handoffs, before and after a change."
+   },
+   {
+    "name": "Guide panel",
+    "shows": "Where to look and why, with a try button that changes only the proposed map."
+   },
+   {
+    "name": "Walk mode (phone, coming)",
+    "shows": "Tap each step as it happens; times are recorded, not estimated."
+   }
+  ],
+  "captures": [
+   "Step, role, waiting time and hands-on time, to find lost time",
+   "Steps that only pass on information, to target calls and forms",
+   "Steps that can run alongside the one before",
+   "Today and proposed versions, to compare a change before trying it",
+   "Walk-mode step start and end times (coming), to measure, not guess"
+  ],
+  "kpis": [
+   {
+    "name": "Total elapsed time",
+    "definition": "Process trigger → final step done",
+    "source": "local definition"
+   },
+   {
+    "name": "Waiting share",
+    "definition": "Total waiting time / total elapsed time",
+    "source": "local definition"
+   },
+   {
+    "name": "Handoffs between roles",
+    "definition": "Count of steps where the role changes from the step before",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When one wait is a large share of the whole process, names it and asks what it waits for.",
+   "When steps only pass on information after long waits, suggests a one-tap status update instead.",
+   "When neighbouring steps by different roles have a long wait, asks if they could run together.",
+   "When steps have no times, suggests timing them on the next walk."
+  ],
+  "playbooks": [
+   "Process map: captured steps and times to current and future state"
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_processmap_get",
+    "does": "Returns a map's steps, roles and times, today or proposed.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_processmap_analyse",
+    "does": "Returns elapsed time, waiting share, handoffs and biggest waits.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_processmap_suggest",
+    "does": "Returns the guide's suggestions with their reasons.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_processmap_propose_change",
+    "does": "Applies a suggested change to the proposed version only.",
+    "approval": "person decides"
+   }
+  ],
+  "standards": [
+   "Lean value stream mapping"
+  ],
+  "connects": [
+   "A2",
+   "A3",
+   "B1",
+   "B3",
+   "C2",
+   "E4"
+  ],
+  "notFor": "Times steps by role, never named people; does not change any ward process itself."
+ },
+ {
+  "id": "X2",
+  "slug": "playbooks",
+  "name": "Playbooks",
+  "group": "Across every area",
+  "month": "Jan 2027",
+  "oneLine": "Ready-made routines turn the day's events into the reports operations teams produce.",
+  "today": "Every week someone rebuilds the same flow report, delay summary or business case from scratch, in a different spreadsheet, so results never compare week to week.",
+  "withOspeli": "Each playbook has a fixed input, a fixed analysis and a ready-to-use output, run on the site's own data the same way every time, with each metric's definition beside its number.",
+  "people": [
+   {
+    "role": "Patient flow coordinator",
+    "does": "Runs the daily flow report before the morning meeting."
+   },
+   {
+    "role": "Operations manager",
+    "does": "Runs the bottleneck finder on a ward or pathway, reviews ranked delays."
+   },
+   {
+    "role": "Department head",
+    "does": "Uses department redesign to compare layout and process options."
+   },
+   {
+    "role": "Chief operating officer",
+    "does": "Reviews structure reviews and business case packs before executive sign-off."
+   }
+  ],
+  "screens": [
+   {
+    "name": "Playbook library",
+    "shows": "Each playbook with what it reads, what it produces and when it last ran."
+   },
+   {
+    "name": "Run setup",
+    "shows": "Choose ward, pathway or department and period; check data completeness before running."
+   },
+   {
+    "name": "Daily flow report (phone)",
+    "shows": "Beds released, allocated and taken up, delays by reason, and the overnight gap."
+   },
+   {
+    "name": "Output review",
+    "shows": "Draft output with sources and definitions; edit, approve or send for sign-off."
+   }
+  ],
+  "captures": [
+   "Playbook run: inputs, period and data version, so results reproduce",
+   "Output approved or returned, by role, for governance",
+   "Data gaps found during a run, to fix capture",
+   "Actions raised from an output, with owner role and due date"
+  ],
+  "kpis": [
+   {
+    "name": "Daily report on time",
+    "definition": "Days report ready before morning meeting / working days",
+    "source": "local definition"
+   },
+   {
+    "name": "Data completeness",
+    "definition": "Events with required timestamps / events in period",
+    "source": "local definition"
+   },
+   {
+    "name": "Actions from playbooks closed",
+    "definition": "Playbook actions closed by due date / actions due",
+    "source": "local definition"
+   }
+  ],
+  "guide": [
+   "When the bottleneck finder ranks a delay top for two weeks running, suggests a department redesign or process map.",
+   "When data completeness for a run is low, names the missing events and suggests fixing capture first.",
+   "Drafts the business case pack from any playbook's output for a named person to edit and approve."
+  ],
+  "playbooks": [
+   "Daily flow report: beds, delays by reason, overnight gap",
+   "Bottleneck finder: time lost, ranked, definitions beside numbers",
+   "Department redesign: layout and process options with trade-offs and data sheet",
+   "Structure review: layers, spans, duplication and a proposed structure",
+   "Business case pack: brief, data sheet and figures for sign-off"
+  ],
+  "agentCommands": [
+   {
+    "name": "ospeli_playbooks_list",
+    "does": "Lists playbooks with inputs, outputs and last run.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_playbooks_run",
+    "does": "Runs a playbook for a chosen area and period; returns a draft.",
+    "approval": "none"
+   },
+   {
+    "name": "ospeli_playbooks_output_approve",
+    "does": "Sends a draft output for a named role to approve.",
+    "approval": "person decides"
+   },
+   {
+    "name": "ospeli_playbooks_business_case_draft",
+    "does": "Builds a business case pack from a playbook output.",
+    "approval": "person decides"
+   }
+  ],
+  "standards": [
+   "Statistical process control",
+   "Lean value stream mapping"
+  ],
+  "connects": [
+   "A2",
+   "A3",
+   "B1",
+   "C1",
+   "C6",
+   "D4"
+  ],
+  "notFor": "Does not score individual staff or make clinical decisions; structure reviews look at roles, not named people."
+ }
+]
