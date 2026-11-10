@@ -276,7 +276,7 @@ details.acc > summary::-webkit-details-marker { display: none; }
   header.site .wrap { padding-block: 6px; }
 
   /* Hero: short, one clear action */
-  .hero .wrap { padding-block: 28px 36px; gap: 28px; }
+  .hero .wrap { padding-block: 24px 32px; gap: 24px; }
   .hero-copy { gap: 16px; }
   h1 { font-size: 2rem; }
   .lead-long { display: none; }
@@ -303,7 +303,7 @@ details.acc > summary::-webkit-details-marker { display: none; }
   .dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong); transition: width .2s ease, background .2s ease; }
   .dots span.on { width: 20px; border-radius: 4px; background: var(--navy); }
   .problems .problem, .problems .problem:nth-child(n) { background: var(--bg); border: 1px solid var(--line); border-radius: 14px; padding: 18px; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-  .mod, .pb { padding: 18px; }
+  .mod, .pb { padding: 16px; }
 
   /* Steps: 2 x 2 tiles with one line each */
   .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 14px; }
@@ -326,6 +326,15 @@ details.acc > summary::-webkit-details-marker { display: none; }
   .compare-wrap > .acc-sum { display: block; font-weight: 800; color: var(--ink); padding: 14px 18px; border: 1px solid var(--line-strong); border-radius: 12px; margin-bottom: 12px; }
   .compare-wrap > .acc-sum::after { right: 18px !important; }
   .col { padding: 20px; }
+
+  /* Tap targets and text sizes on phones (issue #15): links at least 44 px tall, captions 15 px */
+  .mod a, .pb a { display: inline-flex; align-items: center; min-height: 44px; }
+  .roles a { min-height: 44px; }
+  header.site a[href="#top"] { display: inline-flex; align-items: center; min-height: 44px; }
+  header.site .wrap { padding-block: 4px; }
+  .op-l { font-size: 15px; line-height: 1.3; }
+  .op-k, .mod .st, .sample { font-size: 0.8rem; }
+  .problem .lbl { font-size: 15px; letter-spacing: 0.06em; }
 
   /* Pilot */
   .pilot .wrap { gap: 28px; }
@@ -355,7 +364,7 @@ details.acc > summary::-webkit-details-marker { display: none; }
   /* Under 7 screens (issue #14, night 4): pilot steps as three compact lines, no Copy button
      (the address is shown and Email us opens it), slightly tighter sections and footer.
      Accordion rows are full 44 px tap targets at no extra height (part of #15). */
-  section { padding-block: 36px; }
+  section { padding-block: 32px; } /* 36 → 32 (#15): pays for 44 px tap targets and 15 px captions */
   .pilot .wrap { gap: 20px; }
   .pilot .head { margin-bottom: 14px !important; }
   .timeline { display: block; border-left: 0; }

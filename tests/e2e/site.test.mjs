@@ -98,3 +98,21 @@ test('an agent can discover Ospeli from the public site (backlog A1, issue #18)'
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+for (const width of [360, 390]) {
+  test(`phone front page: card links and the logo are 44 px tap targets, captions 15 px (issue #15, ${width}px)`, async () => {
+    const { context, page } = await open(width);
+    const m = await page.evaluate(() => ({
+      links: [...document.querySelectorAll('.mod a, .pb a, .roles a, header.site a[href="#top"]')]
+        .map((a) => ({ t: a.textContent.trim() || a.getAttribute('aria-label'), h: a.getBoundingClientRect().height }))
+        .filter((x) => x.h > 0),
+      text: [...document.querySelectorAll('.op-l, .problem .lbl')]
+        .map((e) => ({ t: e.textContent.trim(), fs: parseFloat(getComputedStyle(e).fontSize) })),
+    }));
+    const short = m.links.filter((x) => x.h < 44);
+    assert.ok(m.links.length > 10 && short.length === 0, `short tap targets: ${short.map((x) => `${x.t} ${Math.round(x.h)}px`).join(', ')}`);
+    const small = m.text.filter((x) => x.fs < 15);
+    assert.ok(m.text.length > 0 && small.length === 0, `text under 15px: ${small.map((x) => `${x.t} ${x.fs}px`).join(', ')}`);
+    await context.close();
+  });
+}
