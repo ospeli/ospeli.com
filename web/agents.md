@@ -9,7 +9,7 @@ The public demo at https://ospeli.com/app/ holds **synthetic data only** (the fi
 2. **No clinical decisions.** Ospeli is about operations (beds, queues, faults, handoffs), not diagnosis or treatment. Do not use it to recommend care.
 3. **Access is off by default,** for the hospital and for each ward. Only a person (operations manager or chief operating officer) can switch it on, with `agents.set-access`. Agents cannot.
 4. **You act under your own name, for a role.** Every read, proposal and refusal is in the audit trail with actor type `agent`, your agent name and the role you act for. Name yourself honestly.
-5. **Patient data stays on site.** Ospeli runs on the hospital's own devices or server. Do not copy data out of it to a cloud service.
+5. **Patient data stays on site.** Ospeli is designed to run on the hospital's own devices or server; today the demo runs in the browser and its data stays on that device. Do not copy data out of it to a cloud service. Export today is one JSON file; FHIR and CSV export and sync between devices are planned, not built.
 6. **Measure flows, never people.** Report beds, queues and waits by role and place, never by named person.
 
 ## How to call Ospeli (in the browser)

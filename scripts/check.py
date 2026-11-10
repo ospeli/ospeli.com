@@ -115,6 +115,25 @@ else:
     except ValueError as e:
         errors.append(f"index.html: JSON-LD does not parse ({e})")
 
+# Honest claims (issue #31): features not built yet (FHIR, HL7, CSV export, sync between devices)
+# may only appear on the front page and in the agent files in a sentence that says they are
+# planned, designed for or in development. Agents quote these lines back as facts.
+PLANNED_TERMS = re.compile(r"\b(FHIR|HL7|CSV|sync|syncs|synced|syncing)\b", re.I)
+PLANNED_MARKERS = re.compile(r"planned|designed to|designed so|in development|not built|coming next", re.I)
+def visible_text(html):
+    html = re.sub(r"<(script|style)\b.*?</\1>", " ", html, flags=re.S | re.I)
+    html = re.sub(r"<[^>]+>", " ", html)
+    return re.sub(r"\s+", " ", html)
+for name in ("index.html", "llms.txt", "agents.md"):
+    f = ROOT / name
+    if not f.exists():
+        continue
+    text = f.read_text(encoding="utf-8")
+    text = visible_text(text) if name.endswith(".html") else re.sub(r"\s+", " ", text)
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        if PLANNED_TERMS.search(sentence) and not PLANNED_MARKERS.search(sentence):
+            errors.append(f"{name}: unbuilt feature stated as fact (say planned / designed to / in development): {sentence.strip()[:120]}")
+
 for e in errors:
     print("FAIL", e)
 print(f"Checked {len(pages)} pages, {len(errors)} problems")

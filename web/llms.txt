@@ -34,7 +34,7 @@
 - People decide, Ospeli suggests. Agents may read and propose; a person accepts or declines.
 - Agent access is off by default, per hospital and per ward, and only people can switch it on.
 - Every agent action is audited with actor type "agent", the agent's name and the role it acts for.
-- Patient data stays on site: Ospeli runs on the hospital's own devices or server, never through a cloud relay.
+- Patient data stays on site: Ospeli is designed to run on the hospital's own devices or server, never through a cloud relay. Today the demo runs in your browser and its data stays on that device. FHIR and CSV export, and sync between devices, are planned, not built.
 - Measure flows, never people.
 
 ## Optional
