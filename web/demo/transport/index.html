@@ -1,0 +1,940 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Patient transport demo · Ospeli</title>
+<meta name="description" content="Book, dispatch and track patient transfers between sites, and keep the fleet on the road: a phone booking for wards, a transport desk board, a crew phone and a manager view. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Patient transport demo · Ospeli">
+<meta property="og:description" content="Book, dispatch and track patient transfers between sites, and keep the fleet on the road: a phone booking for wards, a transport desk board, a crew phone and a manager view. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/transport/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 18px 0 8px; font-weight: 800; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button { font: inherit; color: var(--ink); }
+select, input[type=number] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 520px) { .roles { display: grid; grid-template-columns: 1fr 1fr; border-radius: 14px; width: 100%; } .roles button { padding: 8px 6px; } .roles button:nth-child(3) { border-left: 0; } .roles button:nth-child(n+3) { border-top: 1px solid var(--line); } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.9rem; font-weight: 700; display: block; }
+.stat .n { color: var(--soft); font-size: 0.8rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.82rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stathint { color: var(--soft); font-size: 0.8rem; margin: 6px 0 0; }
+.chip { display: inline-block; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; background: var(--sand); white-space: nowrap; }
+.chip.hour { background: var(--coral); color: #fff; }
+.chip.today { background: var(--warn); }
+.chip.next { background: var(--navy); color: #fff; }
+.chip.esc { background: var(--wash); }
+.chip.st-assigned { background: var(--warn); } .chip.st-collected, .chip.st-arrived { background: var(--wash); } .chip.st-done { background: var(--sea); color: #fff; }
+.chip.st-free { background: var(--wash); } .chip.st-busy { background: var(--warn); } .chip.st-off { background: var(--hot); color: #8E2C18; }
+.chip.late { background: var(--hot); color: #8E2C18; }
+/* front-line (phone) views: text at least 15px */
+.fl { font-size: 1rem; }
+.fl .chip { font-size: 0.95rem; text-transform: none; letter-spacing: 0; padding: 1px 10px; }
+.fl .fine, .fl .meta { font-size: 0.95rem; }
+.bar { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: end; justify-content: space-between; }
+.bar label { font-weight: 800; display: flex; flex-direction: column; gap: 4px; font-size: 0.95rem; min-width: 0; max-width: 100%; }
+.bar select { font-weight: 700; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.pill { display: inline-block; border-radius: 999px; padding: 3px 12px; font-size: 0.95rem; font-weight: 700; background: var(--sand); }
+.pill.free { background: var(--wash); } .pill.hot { background: var(--hot); color: #8E2C18; }
+.jobs { display: grid; gap: 10px; }
+.job { border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 12px; padding: 12px; background: #fff; }
+.job.m-stretcher { border-left-color: var(--navy); } .job.m-walking { border-left-color: var(--foam); } .job.m-wheelchair { border-left-color: var(--mango); }
+.job.late { box-shadow: 0 0 0 2px var(--coral) inset; }
+.job .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.job .kind { font-weight: 800; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.clock { text-align: right; font-weight: 800; font-size: 1.15rem; line-height: 1.1; white-space: nowrap; }
+.clock small { display: block; font-size: 0.8rem; font-weight: 700; color: var(--soft); }
+.job.late .clock { color: #B23A22; }
+.job .where { font-size: 1.12rem; font-weight: 800; margin: 8px 0 2px; line-height: 1.3; }
+.job .where span { color: var(--soft); font-weight: 700; }
+.job .meta { color: var(--soft); margin: 0; }
+.job .note { font-size: 0.95rem; margin: 6px 0 0; background: var(--warn); border-radius: 8px; padding: 4px 8px; }
+.job .note.hot { background: var(--hot); color: #8E2C18; }
+.job .acts { display: flex; gap: 8px; margin-top: 10px; }
+.job .acts .go { flex: 1; min-height: 54px; font-size: 1.05rem; }
+.go.s-col { background: var(--sea); border-color: var(--sea); color: #fff; }
+.go.s-arr { background: var(--navy); color: #fff; }
+.go.s-done { background: var(--mango); border-color: var(--mango); color: var(--navy); }
+.empty { text-align: center; color: var(--soft); padding: 18px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; margin: 0; }
+details.more { margin-top: 14px; border: 1px solid var(--line); border-radius: 12px; padding: 0 12px; }
+details.more summary { cursor: pointer; font-weight: 800; min-height: 52px; display: flex; align-items: center; }
+details.more[open] { padding-bottom: 12px; }
+.formrow { display: grid; gap: 10px; }
+.formrow label.f { display: flex; flex-direction: column; gap: 4px; font-weight: 800; font-size: 0.95rem; }
+.formrow select { width: 100%; }
+.check { display: flex; align-items: center; gap: 10px; font-weight: 700; min-height: 44px; cursor: pointer; font-size: 0.95rem; }
+.check input { width: 22px; height: 22px; flex: none; }
+/* ward booking */
+.steps { display: grid; gap: 16px; margin-top: 14px; }
+.stepq { font-weight: 800; font-size: 1rem; margin: 0 0 8px; display: flex; gap: 8px; align-items: center; }
+.stepq i { font-style: normal; width: 26px; height: 26px; border-radius: 50%; background: var(--navy); color: #fff; display: grid; place-items: center; font-size: 0.85rem; flex: none; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 420px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.two label { display: flex; flex-direction: column; gap: 4px; font-weight: 700; font-size: 0.95rem; color: var(--soft); min-width: 0; }
+.two select { width: 100%; font-weight: 700; }
+.choices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.choices.c2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.choice { border-radius: 12px; border: 1px solid #CFC5B2; min-height: 56px; text-align: center; padding: 8px 6px; font-size: 1rem; line-height: 1.2; }
+.choice svg { display: block; margin: 0 auto 4px; }
+.choice[aria-pressed=true] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.choice[aria-pressed=true] svg * { stroke: #fff; }
+.sendrow .send { width: 100%; min-height: 56px; font-size: 1.08rem; }
+.codebox { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--sand); border-radius: 12px; padding: 8px 12px; font-size: 0.95rem; }
+.codebox b { font-size: 1.1rem; letter-spacing: 0.04em; }
+.rq { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.rq .top { display: flex; justify-content: space-between; gap: 8px; font-weight: 800; align-items: flex-start; }
+.rq p { margin: 4px 0 0; font-size: 0.95rem; }
+.rq .soft { color: var(--soft); }
+.prog { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin: 8px 0 4px; }
+.prog span { height: 6px; border-radius: 3px; background: var(--line); }
+.prog span.on { background: var(--sea); }
+/* desk */
+.fleet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 760px) { .fleet { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .fleet { grid-template-columns: minmax(0, 1fr); } }
+.veh { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 0.9rem; min-width: 0; }
+.veh.st-off { background: #FFF8F5; border-color: #F2C3B6; }
+.veh.st-free { border-color: var(--foam); }
+.veh .top { display: flex; justify-content: space-between; gap: 6px; align-items: center; }
+.veh .top b { font-size: 1rem; }
+.veh p { margin: 2px 0 0; color: var(--soft); }
+.veh p.warn { color: #8E2C18; font-weight: 700; }
+.veh .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.drow { display: grid; grid-template-columns: 70px minmax(0, 1fr) 230px; gap: 12px; align-items: center; border: 1px solid var(--line); border-left: 5px solid var(--sea); border-radius: 10px; padding: 10px; margin-bottom: 8px; font-size: 0.92rem; }
+.drow.m-stretcher { border-left-color: var(--navy); } .drow.m-walking { border-left-color: var(--foam); } .drow.m-wheelchair { border-left-color: var(--mango); }
+.drow.late { background: #FFF8F5; }
+.drow .t { font-weight: 800; font-size: 1.1rem; line-height: 1.15; }
+.drow .t small { display: block; font-size: 0.78rem; color: var(--soft); font-weight: 700; }
+.drow.late .t small { color: #B23A22; }
+.drow .main b { display: block; }
+.drow .sub { color: var(--soft); font-size: 0.85rem; display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin-top: 2px; }
+.drow .ctl { display: grid; gap: 6px; }
+.drow .ctl select { width: 100%; min-height: 40px; font-size: 0.85rem; padding: 4px 8px; }
+.drow .ctl .pair { display: flex; gap: 6px; }
+.drow .ctl .pair select { flex: 1; min-width: 0; }
+@media (max-width: 640px) { .drow { grid-template-columns: 58px minmax(0, 1fr); } .drow .ctl { grid-column: 1 / -1; } }
+table.tb { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+table.tb th, table.tb td { text-align: left; padding: 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.tb th { color: var(--soft); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+table.tb .r { text-align: right; }
+.tablewrap { overflow-x: auto; }
+.reasons { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.reasons li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 0.92rem; }
+.reasons .rb { grid-column: 1 / -1; height: 6px; border-radius: 3px; background: var(--mango); }
+details.set { margin-top: 14px; }
+details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.targets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+@media (max-width: 640px) { .targets { grid-template-columns: minmax(0, 1fr); } }
+.targets label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 700; color: var(--soft); }
+.targets input { width: 100%; }
+.fine { font-size: 0.85rem; color: var(--soft); margin: 8px 0 0; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.85rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg ul { margin: 0 0 8px; padding-left: 18px; font-size: 0.88rem; }
+.sugg .why { color: var(--soft); font-size: 0.84rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.fleet { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+.prop .who { color: var(--soft); font-size: 0.85rem; margin: 0; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Patient transport: book, dispatch, track</h1>
+  <p class="lead">Wards book a transfer between sites on a phone and see when it is coming. The transport desk matches requests to vehicles and crews. Crews tap each step. The manager sees on-time pickups and which vehicles are off the road. The guide suggests shared journeys and flags vehicle checks; a person decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-ward" data-role="ward" aria-pressed="false">Ward</button>
+    <button type="button" id="r-desk" data-role="desk" aria-pressed="false">Transport desk</button>
+    <button type="button" id="r-crew" data-role="crew" aria-pressed="false">Crew</button>
+    <button type="button" id="r-manager" data-role="manager" aria-pressed="false">Manager</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <b>Demo tools:</b>
+    <button type="button" class="small" id="t-clock">Move clock on 15 min</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <h2 id="view-h">Transport</h2>
+        <div class="stats" id="kpis"></div>
+        <p class="stathint">This shift so far. Tap a tile for its definition.</p>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads the requests, vehicles and checks, and suggests where to look, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal. The transport desk or the manager decides.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its sites, vehicles, crews, patient codes and times. Patients appear only as anonymous codes, with no clinical notes. The requesting team sets urgency and escort needs; Ospeli does not set clinical priority, triage emergency calls or score drivers. Coming next (Dec 2026): daily vehicle checks on a phone, work orders sent to fleet maintenance, discharges from the bed board waiting for transport, and a journey-step delay review. <a href="../../areas/patient-transport/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var M = 60000;
+var STORE = 'ospeli.transport.v1';
+
+// ---------- Fixed reference data (fictional) ----------
+var LOC = {
+  W1: 'Ward 1', W2: 'Ward 2', W3: 'Ward 3', W4: 'Ward 4', W5: 'Ward 5', ED: 'Emergency department', DL: 'Discharge lounge',
+  ER: 'East site · Rehab unit', EO: 'East site · Outpatients', NS: 'North site · Day unit', CH: 'Community care home', HM: 'Home address'
+};
+var BOOKERS = ['W1', 'W2', 'W3', 'W4', 'W5', 'ED', 'DL', 'ER'];
+var DESTS = ['ER', 'EO', 'NS', 'CH', 'HM', 'W1', 'W2', 'W3', 'W4', 'W5'];
+var VTYPES = {
+  amb: { label: 'Ambulance', cap: { stretcher: 1, wheelchair: 1, seats: 2 } },
+  van: { label: 'Wheelchair van', cap: { stretcher: 0, wheelchair: 2, seats: 3 } },
+  car: { label: 'Car', cap: { stretcher: 0, wheelchair: 0, seats: 3 } }
+};
+var MOB = { walking: 'Walking', wheelchair: 'Wheelchair', stretcher: 'Stretcher' };
+// Fixed list. The requesting team chooses; Ospeli never sets or changes it.
+var URG = { hour: 'Within the hour', today: 'Today', planned: 'Planned' };
+var DELAYS = ['No escort ready', 'Patient not ready', 'Waiting for discharge papers or medicines', 'Vehicle not available', 'Crew on previous job', 'Receiving unit not ready', 'Traffic or road conditions', 'Severe weather'];
+var FAULTS = ['Tyre or wheel', 'Lights or indicators', 'Ramp or tail-lift', 'Stretcher fitting', 'Seat belt or restraint', 'Warning light on dashboard', 'Bodywork damage', 'Other'];
+var STATUS_WORD = { booked: 'Booked', assigned: 'Crew assigned', collected: 'Collected', arrived: 'Arrived', done: 'Vehicle free' };
+var NEXT_STEP = { assigned: ['col', 'Collected patient'], collected: ['arr', 'Arrived at destination'], arrived: ['done', 'Handed over · vehicle free'] };
+// Example settings for this demo only, not a standard: each organisation sets its own.
+var DEFAULT_SET = { window: 30, riskMin: 20, escortDelays: 3 };
+var ICON = {
+  walking: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="13" cy="4" r="2" stroke="#0B2F4E" stroke-width="2"/><path d="M13 7l-2 6 3 3 1 5M11 13l-3 2-1 5M12 9l4 3" stroke="#0B2F4E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  wheelchair: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="9" cy="4" r="2" stroke="#0B2F4E" stroke-width="2"/><path d="M9 7v6h6l2 6M9 10h5" stroke="#0B2F4E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="17" r="4.5" stroke="#0B2F4E" stroke-width="2"/></svg>',
+  stretcher: '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2 12h20M4 12v3M20 12v3" stroke="#0B2F4E" stroke-width="2" stroke-linecap="round"/><circle cx="6" cy="18" r="2" stroke="#0B2F4E" stroke-width="2"/><circle cx="18" cy="18" r="2" stroke="#0B2F4E" stroke-width="2"/><circle cx="5" cy="8.5" r="2" stroke="#0B2F4E" stroke-width="2"/><path d="M9 9.5h11" stroke="#0B2F4E" stroke-width="2" stroke-linecap="round"/></svg>'
+};
+
+// ---------- State ----------
+function seed() {
+  var T = Date.now();
+  var s = { v: 1, created: T, offset: 0, shiftStart: T - 300 * M, seq: 100, wo: 2040,
+    role: window.matchMedia('(max-width: 640px)').matches ? 'ward' : 'desk',
+    ward: 'W3', crewVeh: 'AMB-1', guide: true, kpiOpen: null, set: Object.assign({}, DEFAULT_SET),
+    pending: [], dismissed: {}, reviews: [], log: [], req: null,
+    vehicles: [
+      { id: 'AMB-1', type: 'amb', crew: 'Crew 1', serviceDays: 12, check: 'pass', faults: [], off: [] },
+      { id: 'AMB-2', type: 'amb', crew: 'Crew 2', serviceDays: -3, check: 'pass', faults: [], off: [] },
+      { id: 'VAN-1', type: 'van', crew: 'Crew 3', serviceDays: 41, check: 'pass', faults: [], off: [] },
+      { id: 'VAN-2', type: 'van', crew: 'Crew 4', serviceDays: 22, check: null, faults: [], off: [] },
+      { id: 'VAN-3', type: 'van', crew: 'Crew 6', serviceDays: 30, check: 'defect', faults: [{ text: 'Ramp or tail-lift (daily check)', t: T - 152 * M, open: true }], off: [{ from: T - 150 * M, to: null, reason: 'Ramp fault found at daily check', wo: 'WO-2040' }] },
+      { id: 'CAR-1', type: 'car', crew: 'Crew 5', serviceDays: 64, check: 'pass', faults: [], off: [] }
+    ],
+    jobs: [] };
+  s.req = blankReq(s);
+  // Finished earlier: [from, to, mobility, escort, urgency, min ago booked, min ago needed, vehicle, min booked→assigned, min late at pickup (− early), travel min, handover min, delay reason]
+  [['W2', 'ER', 'wheelchair', 0, 'planned', 290, 250, 'VAN-1', 20, -4, 25, 9, null],
+   ['DL', 'HM', 'walking', 0, 'today', 280, 240, 'CAR-1', 25, -1, 30, 6, null],
+   ['ED', 'NS', 'stretcher', 1, 'hour', 262, 222, 'AMB-1', 8, -2, 20, 14, null],
+   ['W4', 'CH', 'wheelchair', 1, 'today', 250, 200, 'VAN-2', 30, 22, 28, 12, 'No escort ready'],
+   ['W1', 'EO', 'walking', 0, 'planned', 240, 195, 'CAR-1', 35, -3, 22, 5, null],
+   ['W3', 'ER', 'stretcher', 0, 'planned', 230, 180, 'AMB-2', 40, 0, 26, 18, null],
+   ['W5', 'HM', 'wheelchair', 1, 'today', 215, 170, 'VAN-1', 30, 25, 30, 8, 'No escort ready'],
+   ['DL', 'HM', 'walking', 0, 'today', 200, 160, 'CAR-1', 20, 8, 25, 5, 'Patient not ready'],
+   ['ER', 'W2', 'wheelchair', 0, 'planned', 190, 150, 'VAN-2', 30, -2, 24, 11, null],
+   ['ED', 'NS', 'stretcher', 1, 'hour', 170, 140, 'AMB-1', 6, 12, 21, 16, 'Crew on previous job'],
+   ['W2', 'CH', 'wheelchair', 1, 'today', 150, 110, 'VAN-1', 25, 18, 27, 9, 'No escort ready'],
+   ['DL', 'HM', 'walking', 0, 'today', 130, 95, 'CAR-1', 15, -3, 26, 4, null],
+   ['W4', 'EO', 'wheelchair', 0, 'planned', 120, 90, 'VAN-2', 20, -1, 20, 7, null],
+   ['W1', 'ER', 'stretcher', 0, 'planned', 115, 80, 'AMB-2', 30, -1, 25, 15, null]
+  ].forEach(function (r) {
+    var j = mk(s, r[0], r[1], r[2], !!r[3], r[4], T - r[5] * M, T - r[6] * M);
+    j.veh = r[7]; j.asg = j.req + r[8] * M; j.col = j.needed + r[9] * M; j.arr = j.col + r[10] * M; j.done = j.arr + r[11] * M;
+    if (r[12]) j.delays.push({ reason: r[12], t: j.needed + 2 * M, by: 'crew' });
+  });
+  // Open now: [from, to, mobility, escort, urgency, min ago booked, min from now needed, vehicle, min ago assigned, min ago collected, min ago arrived]
+  [['W4', 'NS', 'stretcher', 0, 'today', 100, -24, 'AMB-2', 80, 25, 5],
+   ['W5', 'HM', 'walking', 0, 'today', 60, -7, 'CAR-1', 40, 8, null],
+   ['ED', 'NS', 'stretcher', 1, 'hour', 35, 15, 'AMB-1', 20, null, null],
+   ['DL', 'HM', 'walking', 0, 'today', 25, 12, null],
+   ['W3', 'ER', 'wheelchair', 0, 'planned', 90, 40, null],
+   ['W5', 'ER', 'wheelchair', 1, 'planned', 70, 55, null],
+   ['W1', 'CH', 'stretcher', 0, 'today', 50, 90, null],
+   ['ER', 'W4', 'wheelchair', 0, 'planned', 45, 120, 'VAN-2', 10, null, null],
+   ['W2', 'EO', 'walking', 1, 'planned', 30, 150, null]
+  ].forEach(function (r) {
+    var j = mk(s, r[0], r[1], r[2], !!r[3], r[4], T - r[5] * M, T + r[6] * M);
+    if (r[7]) { j.veh = r[7]; j.asg = T - r[8] * M; }
+    if (r[9] != null) j.col = T - r[9] * M;
+    if (r[10] != null) j.arr = T - r[10] * M;
+  });
+  // Build the log from the events so far (newest first).
+  var ev = [];
+  s.jobs.forEach(function (j) {
+    ['req', 'asg', 'col', 'arr', 'done'].forEach(function (k) { if (j[k]) ev.push({ t: j[k], text: eventText(s, j, k) }); });
+    j.delays.forEach(function (d) { ev.push({ t: d.t, text: 'Delay recorded for ' + j.code + ': ' + d.reason }); });
+  });
+  ev.push({ t: T - 152 * M, text: 'Daily check VAN-3: defect, ramp or tail-lift. Fleet supervisor took it off the road; draft work order WO-2040 raised.' });
+  ev.sort(function (a, b) { return b.t - a.t; });
+  s.log = ev.slice(0, 50);
+  return s;
+}
+var CODE_CH = 'ACDEFHJKMNPRTVWXY3479';
+function code(n) { var c = ''; n = n * 7919 + 1237; for (var i = 0; i < 4; i++) { c += CODE_CH[n % CODE_CH.length]; n = Math.floor(n / CODE_CH.length) + i * 13; } return 'PT-' + c; }
+function mk(s, from, to, mob, esc, urg, req, needed) {
+  var n = ++s.seq;
+  var j = { id: 'T' + n, code: code(n), from: from, to: to, mob: mob, esc: esc, urg: urg, req: req, needed: needed, veh: null, asg: null, col: null, arr: null, done: null, delays: [], group: null };
+  s.jobs.push(j); return j;
+}
+function blankReq(s) { return { from: s.ward, to: null, when: 60, mob: null, esc: null, urg: null, code: code(s.seq + 1) }; }
+
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE));
+    // An example shift goes stale: start a fresh one after 8 hours.
+    if (!s || s.v !== 1 || !s.jobs || !s.vehicles || Date.now() - s.created > 8 * 60 * M) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function now() { return Date.now() + (state.offset || 0); }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+// ---------- Derived data (pure) ----------
+function status(j) { return j.done ? 'done' : j.arr ? 'arrived' : j.col ? 'collected' : j.asg ? 'assigned' : 'booked'; }
+function openJobs() { return state.jobs.filter(function (j) { return !j.done; }); }
+function byNeeded(a, b) { return a.needed - b.needed; }
+function veh(id) { return state.vehicles.filter(function (v) { return v.id === id; })[0]; }
+function job(id) { return state.jobs.filter(function (j) { return j.id === id; })[0]; }
+function isOff(v) { return v.off.some(function (o) { return !o.to; }); }
+function offNow(v) { return v.off.filter(function (o) { return !o.to; })[0]; }
+function vJobs(v) {
+  var rank = { arrived: 0, collected: 1, assigned: 2 };
+  return openJobs().filter(function (j) { return j.veh === v.id; }).sort(function (a, b) { return (rank[status(a)] - rank[status(b)]) || byNeeded(a, b); });
+}
+function vState(v) { return isOff(v) ? 'off' : vJobs(v).length ? 'busy' : 'free'; }
+var VSTATE_WORD = { off: 'Off the road', busy: 'On a job', free: 'Free' };
+function need(jobs) {
+  var n = { stretcher: 0, wheelchair: 0, seats: 0 };
+  jobs.forEach(function (j) { if (j.mob === 'walking') n.seats++; else n[j.mob]++; if (j.esc) n.seats++; });
+  return n;
+}
+function fits(v, jobs) { var c = VTYPES[v.type].cap, n = need(jobs); return n.stretcher <= c.stretcher && n.wheelchair <= c.wheelchair && n.seats <= c.seats; }
+function usable(v) { return !isOff(v) && !!v.crew; }
+function late(j) { return !j.col && !j.done && now() > j.needed; }
+function dueMin(j) { return Math.round((j.needed - now()) / M); }
+function dueText(j) {
+  if (j.col) return { big: hhmm(j.needed), small: j.col <= j.needed ? 'collected on time' : 'collected ' + fmt((j.col - j.needed) / M) + ' late' };
+  var d = dueMin(j);
+  return { big: hhmm(j.needed), small: d >= 0 ? 'in ' + fmt(d) : fmt(-d) + ' late' };
+}
+function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function fleetAvail() {
+  var t = now(), start = state.shiftStart, sched = 0, avail = 0;
+  state.vehicles.forEach(function (v) {
+    var span = t - start, off = v.off.reduce(function (s, o) { return s + Math.max(0, Math.min(o.to || t, t) - Math.max(o.from, start)); }, 0);
+    sched += span; avail += span - off;
+  });
+  return sched ? avail / sched : null;
+}
+function kpis(mob) {
+  var js = state.jobs.filter(function (j) { return !mob || j.mob === mob; });
+  var col = js.filter(function (j) { return j.col; }), done = js.filter(function (j) { return j.done; });
+  var onTime = col.filter(function (j) { return j.col <= j.needed; }).length;
+  var r = function (x) { return x == null ? null : Math.round(x); };
+  var fa = fleetAvail();
+  return {
+    transferWaitMin: r(median(col.map(function (j) { return (j.col - j.req) / M; }))), collectedCount: col.length,
+    onTimePickupPct: col.length ? Math.round(100 * onTime / col.length) : null, onTimeCount: onTime,
+    handoverMin: r(median(done.map(function (j) { return (j.done - j.arr) / M; }))), handedOverCount: done.length,
+    fleetAvailabilityPct: fa == null ? null : Math.round(100 * fa), vehiclesOffRoad: state.vehicles.filter(isOff).length,
+    open: openJobs().length, waitingForVehicle: openJobs().filter(function (j) { return !j.veh; }).length, lateNow: openJobs().filter(late).length
+  };
+}
+function delayCounts() {
+  var c = {};
+  state.jobs.forEach(function (j) { j.delays.forEach(function (d) { c[d.reason] = (c[d.reason] || 0) + 1; }); });
+  return c;
+}
+function bestVehicle(jobs, avoid) {
+  var ok = state.vehicles.filter(function (v) { return usable(v) && fits(v, jobs) && v.id !== avoid; });
+  var load = function (v) { return vJobs(v).length; };
+  // Prefer free vehicles, then the smallest vehicle that fits (keep ambulances for stretchers).
+  var size = { car: 0, van: 1, amb: 2 };
+  ok.sort(function (a, b) { return (load(a) - load(b)) || (size[a.type] - size[b.type]); });
+  return ok[0] || null;
+}
+
+// ---------- The guide: plain, checkable rules ----------
+function suggest() {
+  var out = [], set = state.set, booked = openJobs().filter(function (j) { return !j.veh; }).sort(byNeeded);
+  // 1. Needed soon (or already late) and no vehicle yet.
+  var risk = booked.filter(function (j) { return dueMin(j) <= set.riskMin; });
+  if (risk.length) {
+    var j0 = risk[0], v0 = bestVehicle([j0]), id0 = 'risk-' + j0.id;
+    out.push({ id: id0, kind: 'time', who: 'desk',
+      title: j0.code + ' is needed ' + (dueMin(j0) >= 0 ? 'in ' + fmt(dueMin(j0)) : fmt(-dueMin(j0)) + ' ago') + ' and has no vehicle',
+      text: LOC[j0.from] + ' → ' + LOC[j0.to] + ', ' + MOB[j0.mob].toLowerCase() + '. ' + (v0 ? v0.id + ' (' + VTYPES[v0.type].label.toLowerCase() + ', ' + VSTATE_WORD[vState(v0)].toLowerCase() + ') fits.' : 'No vehicle on the road fits right now.') + (risk.length > 1 ? ' ' + (risk.length - 1) + ' more booking' + (risk.length > 2 ? 's are' : ' is') + ' close to time.' : ''),
+      why: 'Time needed is within ' + set.riskMin + ' min (example setting, not a standard) and no vehicle is assigned. Order is by the time the ward needs, not by anything clinical.',
+      acts: [v0 ? { label: 'Propose: assign ' + v0.id, primary: true, fn: function () { propose({ id: id0, kind: 'assign', who: 'desk', job: j0.id, veh: v0.id, text: 'Assign ' + v0.id + ' (' + v0.crew + ') to ' + j0.code + ', needed ' + hhmm(j0.needed) + '.' }); } } : null,
+        { label: 'Show on the desk board', fn: function () { state.role = 'desk'; render(); document.getElementById('view-h').scrollIntoView({ block: 'start' }); } }] });
+  }
+  // 2. Two bookings going to the same place within the time window: share one vehicle.
+  var pairDone = false;
+  for (var a = 0; a < booked.length && !pairDone; a++) for (var b = a + 1; b < booked.length && !pairDone; b++) {
+    var x = booked[a], y = booked[b];
+    if (x.to !== y.to || Math.abs(x.needed - y.needed) > set.window * M) continue;
+    var v = bestVehicle([x, y]); if (!v) continue;
+    pairDone = true;
+    (function (x, y, v) {
+      var id = 'combine-' + x.id + '-' + y.id;
+      out.push({ id: id, kind: 'share', who: 'desk',
+        title: 'Share one vehicle: ' + x.code + ' and ' + y.code + ' both go to ' + LOC[x.to],
+        text: 'Needed ' + hhmm(x.needed) + ' (' + LOC[x.from] + ') and ' + hhmm(y.needed) + ' (' + LOC[y.from] + '), ' + Math.round(Math.abs(x.needed - y.needed) / M) + ' min apart. ' + v.id + ' (' + VTYPES[v.type].label.toLowerCase() + ') has room for both' + (x.esc || y.esc ? ', including the escort' : '') + '. Collect at ' + hhmm(x.needed) + ' to meet both times.',
+        why: 'Same destination, times needed within ' + set.window + ' min (example setting, not a standard), and the vehicle\'s seats, wheelchair and stretcher spaces cover both.',
+        acts: [{ label: 'Propose: both on ' + v.id, primary: true, fn: function () { propose({ id: id, kind: 'combine', who: 'desk', jobs: [x.id, y.id], veh: v.id, text: 'Put ' + x.code + ' and ' + y.code + ' on one journey with ' + v.id + ' (' + v.crew + ') to ' + LOC[x.to] + '.' }); } }] });
+    })(x, y, v);
+  }
+  // 3. A reported fault on a vehicle that is still on the road.
+  state.vehicles.filter(function (v) { return !isOff(v) && v.faults.some(function (f) { return f.open; }); }).forEach(function (v) {
+    var f = v.faults.filter(function (f) { return f.open; }).slice(-1)[0], id = 'fault-' + v.id + '-' + f.t;
+    out.push({ id: id, kind: 'fleet', who: 'manager',
+      title: v.id + ': fault reported, still on the road',
+      text: f.text + ', reported ' + hhmm(f.t) + '. ' + vJobs(v).length + ' job' + (vJobs(v).length === 1 ? '' : 's') + ' on this vehicle.',
+      why: 'A defect was logged and the vehicle has not been checked off. Jobs not yet collected would go back to the desk.',
+      acts: [{ label: 'Propose: off the road + draft work order', primary: true, fn: function () { propose({ id: id, kind: 'offroad', who: 'manager', veh: v.id, reason: 'Fault: ' + f.text, text: 'Take ' + v.id + ' off the road and raise a draft work order for: ' + f.text + '.' }); } }] });
+  });
+  // 4. Service overdue on a vehicle still in use.
+  state.vehicles.filter(function (v) { return !isOff(v) && v.serviceDays < 0; }).forEach(function (v) {
+    var id = 'service-' + v.id, n = vJobs(v).length;
+    out.push({ id: id, kind: 'fleet', who: 'manager',
+      title: v.id + ': service ' + (-v.serviceDays) + ' day' + (v.serviceDays === -1 ? '' : 's') + ' overdue',
+      text: 'Still in use' + (n ? ' with ' + n + ' job' + (n > 1 ? 's' : '') + ' open' : '') + '. ' + (bestVehicle([{ mob: 'stretcher', esc: true }], v.id) ? 'Another ambulance is on the road to cover stretcher journeys.' : 'No other vehicle can take stretchers right now.'),
+      why: 'The service date in the fleet record has passed. Booking it in is the manager\'s decision.',
+      acts: [{ label: 'Propose: book service after this job', primary: true, fn: function () { propose({ id: id, kind: 'offroad', who: 'manager', veh: v.id, reason: 'Booked in for service', service: true, text: 'Take ' + v.id + ' off the road for its service once its current journey is handed over, and raise a draft work order.' }); } }] });
+  });
+  // 5. Delays that cite no escort.
+  var esc = []; state.jobs.forEach(function (j) { j.delays.forEach(function (d) { if (d.reason === 'No escort ready') esc.push(d.t); }); });
+  if (esc.length >= set.escortDelays) {
+    var id5 = 'escort-' + esc.length;
+    var hrs = {}; esc.forEach(function (t) { var h = new Date(t).getHours(); hrs[h] = (hrs[h] || 0) + 1; });
+    out.push({ id: id5, kind: 'pattern', who: 'manager',
+      title: esc.length + ' delays this shift cite “No escort ready”',
+      list: Object.keys(hrs).sort(function (a, b) { return a - b; }).map(function (h) { return pad(h) + ':00–' + pad(+h + 1) + ':00: ' + hrs[h] + ' delay' + (hrs[h] > 1 ? 's' : ''); }),
+      why: 'Count of delay reasons recorded by crews and the desk, by hour. At least ' + set.escortDelays + ' (example setting) suggests looking at escort cover at those times. It does not judge any escort decision.',
+      acts: [{ label: 'Propose: add to the weekly review', primary: true, fn: function () { propose({ id: id5, kind: 'review', who: 'manager', text: 'Add “no escort ready” delays (' + esc.length + ' this shift) to the weekly transport review, to look at escort cover at the busiest times.' }); } }] });
+  }
+  return out.filter(function (x) { return !state.dismissed[x.id]; }).slice(0, 4);
+}
+var WHO = { desk: 'Transport desk', manager: 'Manager' };
+function propose(p) {
+  if (state.pending.some(function (x) { return x.id === p.id; })) return;
+  p.at = now(); state.pending.push(p);
+  addLog('Guide proposed: ' + p.text + ' Waiting for the ' + WHO[p.who].toLowerCase() + '.');
+  render(); toast('Proposed. The ' + WHO[p.who].toLowerCase() + ' decides.');
+}
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x.id !== p.id; });
+  if (!yes) { state.dismissed[p.id] = true; addLog(WHO[p.who] + ' declined: ' + p.text); render(); toast('Declined. Nothing changed.'); return; }
+  var v = p.veh ? veh(p.veh) : null;
+  if (p.kind === 'assign') {
+    var j = job(p.job);
+    if (!j || j.veh || !usable(v)) { render(); toast('Things changed: that booking or vehicle is no longer available.'); return; }
+    assign(j, v, 'desk (guide proposal)');
+  } else if (p.kind === 'combine') {
+    var js = p.jobs.map(job);
+    if (js.some(function (j) { return !j || j.veh; }) || !usable(v)) { render(); toast('Things changed: one booking already has a vehicle.'); return; }
+    js.forEach(function (j) { j.group = p.id; assign(j, v, 'desk (shared journey)'); });
+  } else if (p.kind === 'offroad') {
+    if (isOff(v)) { render(); toast(v.id + ' is already off the road.'); return; }
+    takeOff(v, p.reason, 'Manager');
+  } else if (p.kind === 'review') {
+    state.reviews.push({ t: now(), text: p.text });
+  }
+  addLog(WHO[p.who] + ' confirmed: ' + p.text);
+  render(); toast('Confirmed. The board has updated.');
+}
+
+// ---------- Helpers ----------
+function pad(n) { n = +n % 24; return (n < 10 ? '0' : '') + n; }
+function fmt(m) { m = Math.round(+m || 0); if (m < 60) return m + ' min'; var h = Math.floor(m / 60), r = m % 60; return h + ' h ' + (r < 10 ? '0' : '') + r; }
+function hhmm(t) { var d = new Date(t); return pad(d.getHours()) + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes(); }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'html') e.innerHTML = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+function route(j) { return LOC[j.from] + ' → ' + LOC[j.to]; }
+function needs(j) { return MOB[j.mob] + (j.esc ? ' · escort' : ''); }
+function eventText(s, j, k) {
+  var v = j.veh ? s.vehicles.filter(function (x) { return x.id === j.veh; })[0] : null;
+  if (k === 'req') return 'Booked by ' + LOC[j.from] + ': ' + j.code + ', ' + route(j) + ', ' + needs(j).toLowerCase() + ', needed ' + hhmm(j.needed) + ' (' + URG[j.urg].toLowerCase() + ')';
+  if (k === 'asg') return 'Transport desk assigned ' + j.veh + ' (' + (v && v.crew) + ') to ' + j.code;
+  if (k === 'col') return j.veh + ' collected ' + j.code + ' at ' + LOC[j.from] + (j.col > j.needed ? ', ' + fmt((j.col - j.needed) / M) + ' after time needed' : ', on time');
+  if (k === 'arr') return j.veh + ' arrived at ' + LOC[j.to] + ' with ' + j.code;
+  return j.veh + ' handed over ' + j.code + ' at ' + LOC[j.to] + '; vehicle free';
+}
+var lastLogT = 0;
+function addLog(text) { lastLogT = now(); state.log.unshift({ t: lastLogT, text: text }); state.log = state.log.slice(0, 50); }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+
+// ---------- Actions ----------
+function assign(j, v, by) { j.veh = v.id; j.asg = now(); addLog(eventText(state, j, 'asg') + (by ? ' · ' + by : '')); }
+function unassign(j, why) { addLog(j.code + ' back to the desk queue (' + why + ').'); j.veh = null; j.asg = null; j.group = null; }
+function step(j) {
+  var st = status(j), k = NEXT_STEP[st] && NEXT_STEP[st][0];
+  if (!k) return;
+  j[k] = now();
+  addLog(eventText(state, j, k));
+  var v = veh(j.veh);
+  render();
+  toast(k === 'col' ? (j.col <= j.needed ? 'Collected on time. The ward sees it.' : 'Collected. The ward sees it.') : k === 'arr' ? 'Arrived. Handover clock started.' : 'Handed over. ' + j.veh + ' shows ' + (vJobs(v).length ? 'its next job.' : 'free on the desk board.'));
+}
+function addDelay(j, reason, by) {
+  j.delays.push({ reason: reason, t: now(), by: by });
+  addLog('Delay recorded for ' + j.code + ' by the ' + by + ': ' + reason);
+  render(); toast('Delay recorded. The ward and the desk can see it.');
+}
+function takeOff(v, reason, by) {
+  var w = 'WO-' + (++state.wo);
+  v.off.push({ from: now(), to: null, reason: reason, wo: w });
+  vJobs(v).filter(function (j) { return !j.col; }).forEach(function (j) { unassign(j, v.id + ' off the road'); });
+  if (v.faults) v.faults.forEach(function (f) { f.open = false; });
+  addLog(by + ' took ' + v.id + ' off the road: ' + reason + '. Draft work order ' + w + ' raised for fleet maintenance.' + (vJobs(v).length ? ' The journey in progress is finished first.' : ''));
+}
+function backOnRoad(v) {
+  var o = offNow(v); if (!o) return;
+  o.to = now();
+  if (/service/i.test(o.reason)) v.serviceDays = 182;
+  v.check = 'pass';
+  addLog('Manager put ' + v.id + ' back on the road' + (/service/i.test(o.reason) ? ' after its service' : '') + '. Work order ' + o.wo + ' closed.');
+  render(); toast(v.id + ' is back on the road.');
+}
+function reportFault(v, text, unsafe) {
+  v.faults.push({ text: text, t: now(), open: true });
+  addLog(v.crew + ' reported a fault on ' + v.id + ': ' + text + (unsafe ? ' · unsafe to use' : ' · can keep running'));
+  if (unsafe) takeOff(v, 'Unsafe to use: ' + text, v.crew);
+  render(); toast(unsafe ? v.id + ' is off the road. Jobs not yet collected went back to the desk.' : 'Fault logged. The manager decides whether it comes off the road.');
+}
+function logCheck(v, ok) {
+  v.check = ok ? 'pass' : 'defect';
+  if (!ok) v.faults.push({ text: 'Defect found at daily check', t: now(), open: true });
+  addLog('Daily check ' + v.id + ': ' + (ok ? 'pass' : 'defect found'));
+  render(); toast(ok ? 'Check logged.' : 'Defect logged. See the guide.');
+}
+
+// ---------- Render ----------
+var HINTS = {
+  ward: 'A ward\'s phone. Book a transfer in five taps: where to, when, mobility, escort, urgency. Then watch it move from booked to handed over.',
+  desk: 'The transport desk. Requests in order of the time needed, vehicles and crews free, on a job or off the road. Assign a vehicle; record delays with a reason.',
+  crew: 'A crew\'s phone. Your jobs in order. Tap Collected, Arrived and Handed over. Report a delay or a vehicle fault in two taps.',
+  manager: 'The transport manager. On-time pickups, journeys per vehicle, vehicles off the road and service dates. Measures journeys and vehicles, never individual drivers.'
+};
+var TITLES = { ward: 'Book a transfer', desk: 'Dispatch board', crew: 'My jobs', manager: 'Transport and fleet' };
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  ['ward', 'desk', 'crew', 'manager'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('view-h').textContent = TITLES[state.role];
+  renderKpis();
+  var v = document.getElementById('view'); v.textContent = '';
+  v.className = state.role === 'ward' || state.role === 'crew' ? 'fl' : '';
+  v.appendChild({ ward: wardView, desk: deskView, crew: crewView, manager: managerView }[state.role]());
+  renderGuide();
+  renderLog();
+  save();
+  if (aid) { var e = document.getElementById(aid); if (e) e.focus({ preventScroll: true }); }
+  sig = signature();
+}
+function renderKpis() {
+  var k = kpis(), box = document.getElementById('kpis'); box.textContent = '';
+  var tiles = [
+    ['wait', k.transferWaitMin == null ? '–' : fmt(k.transferWaitMin), 'Transfer wait', 'median of ' + k.collectedCount + ' journeys', 'Transfer booked → patient collected (departed), median, this shift. The manager view shows it by mobility type. Local definition.'],
+    ['ontime', k.onTimePickupPct == null ? '–' : k.onTimePickupPct + '%', 'On-time pickup', k.onTimeCount + ' of ' + k.collectedCount + ' collected', 'Pickups collected by the time needed / pickups collected, this shift. Local definition.'],
+    ['handover', k.handoverMin == null ? '–' : fmt(k.handoverMin), 'Handover time', 'median of ' + k.handedOverCount, 'Vehicle arrived at destination → handover complete and vehicle free, median, this shift. Local definition.'],
+    ['fleet', k.fleetAvailabilityPct == null ? '–' : k.fleetAvailabilityPct + '%', 'Fleet availability', k.vehiclesOffRoad + ' of ' + state.vehicles.length + ' off the road now', 'Vehicle-hours on the road / scheduled vehicle-hours, since the shift started. Local definition.']
+  ];
+  tiles.forEach(function (t) {
+    var open = state.kpiOpen === t[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat' + (t[0] === 'fleet' && k.vehiclesOffRoad > 1 ? ' alert' : ''), 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def', text: t[4] })]));
+  });
+}
+function urgChip(j) { return el('span', { class: 'chip ' + j.urg, text: URG[j.urg] }); }
+function vehLine(v) { return VTYPES[v.type].label + ' · ' + (v.crew || 'no crew'); }
+
+// Ward / requester
+function wardView() {
+  var frag = document.createDocumentFragment(), r = state.req, w = state.ward;
+  var sel = el('select', { id: 'ward-pick', onchange: function (e) { state.ward = e.target.value; state.req.from = e.target.value; render(); } });
+  BOOKERS.forEach(function (id) { sel.appendChild(el('option', { value: id, text: LOC[id] })); });
+  sel.value = w;
+  frag.appendChild(el('div', { class: 'bar' }, [el('label', { for: 'ward-pick' }, ['Your area', sel])]));
+  var steps = el('div', { class: 'steps' });
+  steps.appendChild(el('div', { class: 'codebox' }, [el('span', {}, ['Patient code ', el('b', { text: r.code })]), el('span', { class: 'soft', text: 'Anonymous. No names or clinical notes.' })]));
+  // 1. From, to, time needed
+  var from = el('select', { id: 'q-from', onchange: function (e) { r.from = e.target.value; save(); } });
+  BOOKERS.forEach(function (id) { from.appendChild(el('option', { value: id, text: LOC[id] })); }); from.value = r.from;
+  var to = el('select', { id: 'q-to', onchange: function (e) { r.to = e.target.value || null; render(); } });
+  to.appendChild(el('option', { value: '', text: 'Choose…' }));
+  DESTS.forEach(function (id) { if (id !== r.from) to.appendChild(el('option', { value: id, text: LOC[id] })); }); to.value = r.to || '';
+  var when = el('select', { id: 'q-when', onchange: function (e) { r.when = +e.target.value; save(); } });
+  [30, 45, 60, 90, 120, 180, 240].forEach(function (m) { when.appendChild(el('option', { value: String(m), text: hhmm(roundUp(now() + m * M)) + ' (in ' + fmt(m) + ')' })); }); when.value = String(r.when);
+  steps.appendChild(el('div', {}, [el('p', { class: 'stepq' }, [el('i', { text: '1' }), 'Where and when?']),
+    el('div', { class: 'two' }, [el('label', { for: 'q-from' }, ['From', from]), el('label', { for: 'q-to' }, ['To', to])]),
+    el('div', { class: 'two', style: 'margin-top:10px' }, [el('label', { for: 'q-when' }, ['Time needed', when])])]));
+  // 2. Mobility
+  var c2 = el('div', { class: 'choices', role: 'group', 'aria-label': 'Mobility' });
+  Object.keys(MOB).forEach(function (m) { var b = el('button', { type: 'button', class: 'choice', id: 'q-' + m, 'aria-pressed': String(r.mob === m), onclick: function () { r.mob = m; render(); } }); b.innerHTML = ICON[m]; b.appendChild(document.createTextNode(MOB[m])); c2.appendChild(b); });
+  steps.appendChild(el('div', {}, [el('p', { class: 'stepq' }, [el('i', { text: '2' }), 'Mobility']), c2]));
+  // 3. Escort
+  var c3 = el('div', { class: 'choices c2', role: 'group', 'aria-label': 'Escort needed' });
+  [[true, 'Escort needed'], [false, 'No escort']].forEach(function (x) { c3.appendChild(el('button', { type: 'button', class: 'choice', id: 'q-esc-' + (x[0] ? 'yes' : 'no'), 'aria-pressed': String(r.esc === x[0]), onclick: function () { r.esc = x[0]; render(); }, text: x[1] })); });
+  steps.appendChild(el('div', {}, [el('p', { class: 'stepq' }, [el('i', { text: '3' }), 'Escort']), c3]));
+  // 4. Urgency (fixed list, chosen by the ward)
+  var c4 = el('div', { class: 'choices', role: 'group', 'aria-label': 'Urgency' });
+  Object.keys(URG).forEach(function (u) { c4.appendChild(el('button', { type: 'button', class: 'choice', id: 'q-urg-' + u, 'aria-pressed': String(r.urg === u), onclick: function () { r.urg = u; render(); }, text: URG[u] })); });
+  steps.appendChild(el('div', {}, [el('p', { class: 'stepq' }, [el('i', { text: '4' }), 'Urgency']), c4,
+    el('p', { class: 'fine', text: 'Your team sets urgency and escort under local rules. Ospeli does not set clinical priority.' })]));
+  // 5. Send
+  var missing = !r.to ? 'Choose where to' : !r.mob ? 'Choose mobility' : r.esc == null ? 'Choose escort' : !r.urg ? 'Choose urgency' : null;
+  steps.appendChild(el('div', { class: 'sendrow' }, [el('p', { class: 'stepq' }, [el('i', { text: '5' }), 'Send to the transport desk']),
+    el('button', { type: 'button', class: 'primary send', id: 'q-send', disabled: missing ? 'disabled' : false, onclick: sendRequest, text: missing || 'Book transfer' })]));
+  frag.appendChild(steps);
+  // Track
+  var mine = state.jobs.filter(function (j) { return j.from === w && (!j.done || now() - j.done < 120 * M); }).sort(function (a, b) { return b.req - a.req; }).slice(0, 6);
+  frag.appendChild(el('h3', { class: 'sec', text: LOC[w] + ': your transfers' }));
+  if (!mine.length) frag.appendChild(el('p', { class: 'empty', text: 'No transfers from here in the last 2 hours.' }));
+  var list = el('div', { class: 'jobs', id: 'ward-requests' });
+  mine.forEach(function (j) {
+    var st = status(j), v = j.veh ? veh(j.veh) : null, n = ['booked', 'assigned', 'collected', 'arrived', 'done'].indexOf(st) + 1;
+    var line = st === 'booked' ? 'Waiting for a vehicle. Needed ' + hhmm(j.needed) + (late(j) ? ' · ' + fmt(-dueMin(j)) + ' late' : ' · in ' + fmt(dueMin(j))) :
+      st === 'assigned' ? v.id + ' (' + v.crew + ') is coming. Needed ' + hhmm(j.needed) + (late(j) ? ' · ' + fmt(-dueMin(j)) + ' late' : '') :
+      st === 'collected' ? 'Collected ' + hhmm(j.col) + ', on the way to ' + LOC[j.to] :
+      st === 'arrived' ? 'Arrived at ' + LOC[j.to] + ' ' + hhmm(j.arr) + ', handing over' : 'Handed over at ' + hhmm(j.done);
+    var d = j.delays.slice(-1)[0];
+    var times = [['req', 'Booked'], ['asg', 'Assigned'], ['col', 'Collected'], ['arr', 'Arrived'], ['done', 'Handed over']].filter(function (x) { return j[x[0]]; }).map(function (x) { return x[1] + ' ' + hhmm(j[x[0]]); }).join(' · ');
+    var prog = el('div', { class: 'prog', 'aria-hidden': 'true' }); for (var i = 1; i <= 5; i++) prog.appendChild(el('span', { class: i <= n ? 'on' : '' }));
+    list.appendChild(el('div', { class: 'rq' }, [
+      el('div', { class: 'top' }, [el('span', { text: j.code + ' → ' + LOC[j.to] }), el('span', { class: 'chip st-' + st, text: STATUS_WORD[st] })]),
+      prog, el('p', { text: line }),
+      d && !j.col ? el('p', { class: 'soft', text: 'Delay: ' + d.reason + ' (' + hhmm(d.t) + ')' }) : null,
+      el('p', { class: 'soft', text: times })
+    ]));
+  });
+  frag.appendChild(list);
+  return frag;
+}
+function roundUp(t) { var f = 5 * M; return Math.ceil(t / f) * f; }
+function sendRequest() {
+  var r = state.req; if (!r.to || !r.mob || r.esc == null || !r.urg) return;
+  var j = mk(state, r.from, r.to, r.mob, r.esc, r.urg, now(), roundUp(now() + r.when * M));
+  addLog(eventText(state, j, 'req'));
+  var keepWhen = r.when;
+  state.req = blankReq(state); state.req.when = keepWhen;
+  render();
+  toast('Booked ' + j.code + '. The transport desk sees it now.');
+  var first = document.querySelector('#ward-requests .rq'); if (first) first.scrollIntoView({ block: 'nearest' });
+}
+
+// Transport desk
+function vehCard(v, manager) {
+  var st = vState(v), o = offNow(v), js = vJobs(v), done = state.jobs.filter(function (j) { return j.done && j.veh === v.id; }).length;
+  var c = VTYPES[v.type].cap, kids = [
+    el('div', { class: 'top' }, [el('b', { text: v.id }), el('span', { class: 'chip st-' + st, text: VSTATE_WORD[st] })]),
+    el('p', { text: vehLine(v) }),
+    el('p', { text: 'Fits: ' + [c.stretcher ? c.stretcher + ' stretcher' : null, c.wheelchair ? c.wheelchair + ' wheelchair' : null, c.seats + ' seats'].filter(Boolean).join(', ') })
+  ];
+  if (o) kids.push(el('p', { class: 'warn', text: o.reason + ' · since ' + hhmm(o.from) + ' · ' + o.wo }));
+  else if (js.length) kids.push(el('p', { text: js.map(function (j) { return j.code + ' ' + STATUS_WORD[status(j)].toLowerCase(); }).join(', ') }));
+  if (manager) {
+    kids.push(el('p', { text: done + ' journey' + (done === 1 ? '' : 's') + ' handed over this shift' }));
+    kids.push(el('p', { class: v.check === 'pass' ? '' : 'warn', text: 'Daily check: ' + (v.check === 'pass' ? 'pass' : v.check === 'defect' ? 'defect found' : 'not done yet') }));
+    kids.push(el('p', { class: v.serviceDays < 0 ? 'warn' : '', text: 'Service: ' + (v.serviceDays < 0 ? (-v.serviceDays) + ' days overdue' : 'due in ' + v.serviceDays + ' days') }));
+    var f = v.faults.filter(function (f) { return f.open; });
+    if (f.length && !o) kids.push(el('p', { class: 'warn', text: 'Open fault: ' + f.map(function (x) { return x.text; }).join('; ') }));
+    var acts = [];
+    if (o) acts.push(el('button', { type: 'button', class: 'small primary', id: 'back-' + v.id, onclick: function () { backOnRoad(v); }, text: /service/i.test(o.reason) ? 'Service done, back on the road' : 'Repaired, back on the road' }));
+    if (!o && !v.check) { acts.push(el('button', { type: 'button', class: 'small', id: 'chk-ok-' + v.id, onclick: function () { logCheck(v, true); }, text: 'Check: pass' })); acts.push(el('button', { type: 'button', class: 'small', id: 'chk-bad-' + v.id, onclick: function () { logCheck(v, false); }, text: 'Check: defect' })); }
+    if (acts.length) kids.push(el('div', { class: 'acts' }, acts));
+  }
+  return el('div', { class: 'veh st-' + st, id: 'veh-' + v.id }, kids);
+}
+function deskView() {
+  var frag = document.createDocumentFragment(), k = kpis();
+  var free = state.vehicles.filter(function (v) { return vState(v) === 'free'; }).length;
+  frag.appendChild(el('div', { class: 'pills' }, [
+    el('span', { class: 'pill' + (k.waitingForVehicle ? ' hot' : ''), text: k.waitingForVehicle + ' waiting for a vehicle' }),
+    el('span', { class: 'pill free', text: free + ' vehicle' + (free === 1 ? '' : 's') + ' free' }),
+    el('span', { class: 'pill', text: k.vehiclesOffRoad + ' off the road' }),
+    k.lateNow ? el('span', { class: 'pill hot', text: k.lateNow + ' past time needed' }) : null
+  ]));
+  frag.appendChild(el('h3', { class: 'sec', text: 'Vehicles and crews' }));
+  var g = el('div', { class: 'fleet' }); state.vehicles.forEach(function (v) { g.appendChild(vehCard(v, false)); }); frag.appendChild(g);
+  frag.appendChild(el('h3', { class: 'sec', text: 'Requests by time needed' }));
+  var list = el('div', { id: 'desk' }), js = openJobs().sort(byNeeded);
+  if (!js.length) list.appendChild(el('p', { class: 'empty', text: 'No open requests.' }));
+  js.forEach(function (j) {
+    var st = status(j), d = dueText(j), ctl = el('div', { class: 'ctl' });
+    if (st === 'booked') {
+      var sel = el('select', { id: 'as-' + j.id, 'aria-label': 'Vehicle for ' + j.code });
+      sel.appendChild(el('option', { value: '', text: 'Choose a vehicle…' }));
+      state.vehicles.forEach(function (v) {
+        var ok = usable(v) && fits(v, [j]);
+        sel.appendChild(el('option', { value: v.id, disabled: ok ? false : 'disabled', text: v.id + ' · ' + (isOff(v) ? 'off the road' : !fits(v, [j]) ? 'does not fit' : VSTATE_WORD[vState(v)].toLowerCase()) }));
+      });
+      var best = bestVehicle([j]); if (best) sel.value = best.id;
+      ctl.appendChild(el('div', { class: 'pair' }, [sel, el('button', { type: 'button', class: 'small primary', id: 'go-' + j.id, onclick: function () {
+        var v = veh(sel.value); if (!v) return toast('Choose a vehicle first.');
+        assign(j, v, 'desk'); render(); toast(v.id + ' assigned. The crew and the ward can see it.');
+      }, text: 'Assign' })]));
+    } else {
+      var v = veh(j.veh);
+      ctl.appendChild(el('div', { class: 'sub' }, [el('b', { text: j.veh }), ' ' + v.crew + (j.group ? ' · shared journey' : '')]));
+    }
+    if (!j.col) {
+      var ds = el('select', { id: 'dl-' + j.id, 'aria-label': 'Record a delay for ' + j.code, onchange: function (e) { if (e.target.value) addDelay(j, e.target.value, 'desk'); } });
+      ds.appendChild(el('option', { value: '', text: 'Record a delay…' }));
+      DELAYS.forEach(function (x) { ds.appendChild(el('option', { value: x, text: x })); });
+      ctl.appendChild(ds);
+    }
+    var dl = j.delays.slice(-1)[0];
+    list.appendChild(el('div', { class: 'drow m-' + j.mob + (late(j) ? ' late' : '') }, [
+      el('div', { class: 't', 'data-due': j.id }, [d.big, el('small', { text: d.small })]),
+      el('div', { class: 'main' }, [el('b', { text: j.code + ' · ' + route(j) }),
+        el('div', { class: 'sub' }, [el('span', { text: needs(j) }), urgChip(j), el('span', { class: 'chip st-' + st, text: STATUS_WORD[st] }), dl ? el('span', { class: 'chip late', text: dl.reason }) : null])]),
+      ctl
+    ]));
+  });
+  frag.appendChild(list);
+  var done = state.jobs.filter(function (j) { return j.done; }).length;
+  frag.appendChild(el('p', { class: 'fine', text: done + ' journeys handed over this shift. Order is by the time the ward needs. Urgency and escort come from the ward; the desk does not change them.' }));
+  return frag;
+}
+
+// Crew
+function crewView() {
+  var frag = document.createDocumentFragment(), v = veh(state.crewVeh);
+  var sel = el('select', { id: 'veh-pick', onchange: function (e) { state.crewVeh = e.target.value; render(); } });
+  state.vehicles.forEach(function (x) { sel.appendChild(el('option', { value: x.id, text: x.id + ' · ' + (x.crew || 'no crew') })); });
+  sel.value = v.id;
+  frag.appendChild(el('div', { class: 'bar' }, [el('label', { for: 'veh-pick' }, ['Your vehicle', sel])]));
+  var o = offNow(v), js = vJobs(v);
+  frag.appendChild(el('div', { class: 'pills' }, [el('span', { class: 'pill' + (o ? ' hot' : vState(v) === 'free' ? ' free' : ''), text: VSTATE_WORD[vState(v)] }), el('span', { class: 'pill', text: js.length + ' job' + (js.length === 1 ? '' : 's') }), el('span', { class: 'pill', text: VTYPES[v.type].label })]));
+  if (o) {
+    frag.appendChild(el('h3', { class: 'sec', text: 'Off the road' }));
+    frag.appendChild(el('p', { class: 'empty', text: o.reason + ' since ' + hhmm(o.from) + '. Work order ' + o.wo + '. No jobs are sent to this vehicle until the manager puts it back on the road.' }));
+  }
+  frag.appendChild(el('h3', { class: 'sec', text: 'Your jobs, in order' }));
+  if (!js.length && !o) frag.appendChild(el('p', { class: 'empty', text: 'No jobs. The transport desk will send the next one here.' }));
+  var list = el('div', { class: 'jobs', id: 'crew-jobs' });
+  js.forEach(function (j, i) {
+    var st = status(j), nx = NEXT_STEP[st], d = dueText(j);
+    var chips = [el('span', { text: MOB[j.mob] })];
+    if (j.esc) chips.push(el('span', { class: 'chip esc', text: 'Escort' }));
+    if (i === 0) chips.push(el('span', { class: 'chip next', text: 'Next' }));
+    if (j.group) chips.push(el('span', { class: 'chip', text: 'Shared journey' }));
+    var notes = [];
+    if (late(j)) notes.push(el('p', { class: 'note hot', text: 'Past time needed (' + hhmm(j.needed) + ')' }));
+    var dl = j.delays.slice(-1)[0]; if (dl && !j.col) notes.push(el('p', { class: 'note', text: 'Delay: ' + dl.reason }));
+    list.appendChild(el('article', { class: 'job m-' + j.mob + (late(j) ? ' late' : ''), 'aria-label': j.code + ', ' + route(j) }, [
+      el('div', { class: 'top' }, [el('div', { class: 'kind' }, chips), el('div', { class: 'clock', 'data-due': j.id }, [d.big, el('small', { text: d.small })])]),
+      el('p', { class: 'where' }, [st === 'assigned' ? 'Collect from ' : 'To ', st === 'assigned' ? LOC[j.from] : LOC[j.to]]),
+      el('p', { class: 'meta', text: j.code + ' · ' + route(j) + ' · ' + STATUS_WORD[st] }),
+    ].concat(notes).concat([el('div', { class: 'acts' }, [el('button', { type: 'button', id: 'step-' + j.id, class: 'go s-' + nx[0], 'aria-label': nx[1] + ': ' + j.code, onclick: function () { step(j); }, text: nx[1] })])])));
+  });
+  frag.appendChild(list);
+  // Report a delay (for the next job not yet collected)
+  var target = js.filter(function (j) { return !j.col; })[0];
+  if (target) {
+    var ds = el('select', { id: 'crew-delay' }); DELAYS.forEach(function (x) { ds.appendChild(el('option', { value: x, text: x })); });
+    frag.appendChild(el('details', { class: 'more', id: 'd-delay' }, [el('summary', { text: 'Report a delay · ' + target.code }), el('div', { class: 'formrow' }, [
+      el('label', { class: 'f', for: 'crew-delay' }, ['Reason', ds]),
+      el('button', { type: 'button', class: 'primary', id: 'crew-delay-send', onclick: function () { addDelay(target, ds.value, 'crew'); }, text: 'Send delay reason' })])]));
+  }
+  if (!o) {
+    var fs = el('select', { id: 'fault-pick' }); FAULTS.forEach(function (x) { fs.appendChild(el('option', { value: x, text: x })); });
+    var un = el('input', { type: 'checkbox', id: 'fault-unsafe' });
+    frag.appendChild(el('details', { class: 'more', id: 'd-fault' }, [el('summary', { text: 'Report a vehicle fault' }), el('div', { class: 'formrow' }, [
+      el('label', { class: 'f', for: 'fault-pick' }, ['What is wrong?', fs]),
+      el('label', { class: 'check', for: 'fault-unsafe' }, [un, 'Unsafe to use: stop using it now']),
+      el('button', { type: 'button', class: 'primary', id: 'fault-send', onclick: function () { reportFault(v, fs.value, un.checked); }, text: 'Report fault on ' + v.id }),
+      el('p', { class: 'fine', text: 'If it is safe to keep going, the manager decides whether it comes off the road. Follow your local procedure for any journey in progress.' })])]));
+  }
+  return frag;
+}
+
+// Manager
+var setOpen = false;
+function managerView() {
+  var frag = document.createDocumentFragment();
+  frag.appendChild(el('h3', { class: 'sec', text: 'Fleet status' }));
+  var g = el('div', { class: 'fleet', id: 'fleet' }); state.vehicles.forEach(function (v) { g.appendChild(vehCard(v, true)); }); frag.appendChild(g);
+  frag.appendChild(el('h3', { class: 'sec', text: 'On-time collection by mobility, this shift' }));
+  var tb = el('tbody');
+  Object.keys(MOB).forEach(function (m) {
+    var k = kpis(m);
+    tb.appendChild(el('tr', {}, [el('td', { text: MOB[m] }), el('td', { class: 'r', text: String(k.collectedCount) }), el('td', { class: 'r', text: k.onTimePickupPct == null ? '–' : k.onTimePickupPct + '%' }), el('td', { class: 'r', text: k.transferWaitMin == null ? '–' : fmt(k.transferWaitMin) }), el('td', { class: 'r', text: k.handoverMin == null ? '–' : fmt(k.handoverMin) })]));
+  });
+  frag.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 'tb' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Mobility' }), el('th', { class: 'r', text: 'Collected' }), el('th', { class: 'r', text: 'On time' }), el('th', { class: 'r', text: 'Wait' }), el('th', { class: 'r', text: 'Handover' })])]), tb])]));
+  frag.appendChild(el('p', { class: 'fine', text: 'Medians. Wait is booked → collected. Measures journeys and vehicles, never individual drivers.' }));
+  frag.appendChild(el('h3', { class: 'sec', text: 'Delay reasons, this shift' }));
+  var dc = delayCounts(), keys = Object.keys(dc).sort(function (a, b) { return dc[b] - dc[a]; }), mx = keys.length ? dc[keys[0]] : 1;
+  if (!keys.length) frag.appendChild(el('p', { class: 'empty', text: 'No delays recorded.' }));
+  var ul = el('ul', { class: 'reasons' });
+  keys.forEach(function (r) { ul.appendChild(el('li', {}, [el('span', { text: r }), el('b', { text: String(dc[r]) }), el('span', { class: 'rb', style: 'width:' + Math.round(100 * dc[r] / mx) + '%', 'aria-hidden': 'true' })])); });
+  frag.appendChild(ul);
+  if (state.reviews.length) {
+    frag.appendChild(el('h3', { class: 'sec', text: 'For the weekly review' }));
+    state.reviews.forEach(function (r) { frag.appendChild(el('p', { class: 'fine', text: hhmm(r.t) + ' · ' + r.text })); });
+  }
+  var d = el('details', { class: 'set', id: 'settings' }, [el('summary', { text: 'Guide settings (example settings, not a standard)' })]);
+  var tg = el('div', { class: 'targets' });
+  [['window', 'Share a vehicle if times needed are within (min)', 5, 120], ['riskMin', 'Flag unassigned bookings needed within (min)', 5, 120], ['escortDelays', 'Flag “no escort” delays from (count)', 1, 20]].forEach(function (x) {
+    tg.appendChild(el('label', { for: 'set-' + x[0] }, [x[1], el('input', { type: 'number', id: 'set-' + x[0], min: String(x[2]), max: String(x[3]), step: '1', inputmode: 'numeric', value: String(state.set[x[0]]), onchange: function (e) {
+      var n = Math.max(x[2], Math.min(x[3], Math.round(+e.target.value) || DEFAULT_SET[x[0]])); state.set[x[0]] = n; addLog('Manager set “' + x[1].toLowerCase() + '” to ' + n + '.'); render();
+    } })]));
+  });
+  d.appendChild(tg);
+  d.appendChild(el('p', { class: 'fine', text: 'Your organisation sets its own; the guide uses them as plain rules.' }));
+  if (setOpen) d.open = true;
+  d.addEventListener('toggle', function () { setOpen = d.open; });
+  frag.appendChild(d);
+  return frag;
+}
+
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Booking, dispatch, crew steps and the measures all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag: bookings have vehicles in time and the fleet is in order.' }));
+  var TAG = { time: ['time', 'Needed soon'], share: ['', 'Share a journey'], fleet: ['fleet', 'Fleet'], pattern: ['', 'Pattern'] };
+  list.forEach(function (sg) {
+    var pend = state.pending.some(function (p) { return p.id === sg.id; });
+    var acts = sg.acts.filter(Boolean).map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend && a.primary ? 'disabled' : false, onclick: a.fn, text: pend && a.primary ? 'Proposed' : a.label }); });
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
+      el('span', { class: 'tag ' + TAG[sg.kind][0], text: TAG[sg.kind][1] }),
+      el('h3', { text: sg.title }), sg.text ? el('p', { text: sg.text }) : null,
+      sg.list ? el('ul', {}, sg.list.map(function (x) { return el('li', { text: x }); })) : null,
+      el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  if (state.pending.length) {
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for a person to decide' })]);
+    state.pending.forEach(function (p) {
+      d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }),
+        state.role === p.who
+          ? el('div', { class: 'acts', style: 'display:flex;gap:8px;flex-wrap:wrap' }, [el('button', { type: 'button', class: 'small primary', id: 'ok-' + p.id, onclick: function () { decide(p, true); }, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])
+          : el('div', {}, [el('p', { class: 'who', text: 'The ' + WHO[p.who].toLowerCase() + ' decides.' }), el('button', { type: 'button', class: 'small', style: 'margin-top:6px', onclick: function () { state.role = p.who; render(); }, text: 'Switch to ' + WHO[p.who] })])]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Proposals wait here for the transport desk or the manager.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 30).forEach(function (e) { ol.appendChild(el('li', { class: e.t === lastLogT && now() - e.t < 5000 ? 'new' : '' }, [el('time', { text: hhmm(e.t) }), el('span', { text: e.text })])); });
+}
+
+// Live clocks: update in place; redraw fully only when what the guide sees changes.
+var sig = '';
+function signature() { return openJobs().filter(late).map(function (j) { return j.id; }).join(',') + '|' + suggest().map(function (s) { return s.id; }).join(','); }
+function tick() {
+  if (signature() !== sig) { render(); return; }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-due]'), function (n) { var j = job(n.getAttribute('data-due')); var s = n.querySelector('small'); if (j && s) s.textContent = dueText(j).small; });
+}
+setInterval(tick, 20000);
+
+// ---------- Wiring ----------
+['ward', 'desk', 'crew', 'manager'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-clock').addEventListener('click', function () { state.offset = (state.offset || 0) + 15 * M; addLog('Demo: clock moved on 15 minutes.'); render(); toast('Clock moved on 15 minutes.'); });
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; render(); toast('Example reset to the start of the demo.'); });
+
+// Read-only view for software agents (no writes): window.ospeliTransportDemo
+window.ospeliTransportDemo = Object.freeze({
+  describe: function () { return 'Read-only patient transport demo for a fictional hospital: transfer bookings between sites, dispatch to vehicles and crews, journey steps, and fleet status. Patients are anonymous codes; urgency is set by the requesting team. get() returns bookings and vehicles; kpis() the shift measures; suggestions() the guide\'s current suggestions. Runs in the browser; nothing is sent anywhere.'; },
+  get: function () {
+    return clone({ role: state.role, now: new Date(now()).toISOString(), settings: state.set,
+      vehicles: state.vehicles.map(function (v) { var o = offNow(v); return { id: v.id, type: VTYPES[v.type].label, crew: v.crew, status: vState(v), offRoadReason: o ? o.reason : null, workOrder: o ? o.wo : null, dailyCheck: v.check, serviceDueDays: v.serviceDays, openFaults: v.faults.filter(function (f) { return f.open; }).map(function (f) { return f.text; }), openJobs: vJobs(v).map(function (j) { return j.id; }), handedOverThisShift: state.jobs.filter(function (j) { return j.done && j.veh === v.id; }).length }; }),
+      openTransfers: openJobs().sort(byNeeded).map(function (j) { return { id: j.id, patientCode: j.code, from: LOC[j.from], to: LOC[j.to], mobility: j.mob, escort: j.esc, urgency: URG[j.urg], needed: new Date(j.needed).toISOString(), status: status(j), vehicle: j.veh, late: late(j), delays: j.delays.map(function (d) { return d.reason; }) }; }),
+      pendingDecisions: state.pending.map(function (p) { return { by: WHO[p.who], text: p.text }; }) });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text || (s.list || []).join('; '), why: s.why, decidedBy: WHO[s.who] }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>

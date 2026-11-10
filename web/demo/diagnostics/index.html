@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Diagnostics demo · Ospeli</title>
+<meta name="description" content="Track lab samples and scans from request to report: a ward phone view of where each one is stuck, lab reception and imaging booking lists, and turnaround, rejections and downtime for the manager. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Diagnostics demo · Ospeli">
+<meta property="og:description" content="Track lab samples and scans from request to report: a ward phone view of where each one is stuck, lab reception and imaging booking lists, and turnaround, rejections and downtime for the manager. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/diagnostics/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button { font: inherit; color: var(--ink); }
+select, input[type=number] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 560px) { .roles { display: grid; grid-template-columns: 1fr 1fr; border-radius: 14px; width: 100%; } .roles button { padding: 8px 6px; } .roles button:nth-child(3) { border-left: 0; } .roles button:nth-child(n+3) { border-top: 1px solid var(--line); } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.88rem; font-weight: 700; display: block; }
+.stat .n { color: var(--soft); font-size: 0.78rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.8rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stathint { color: var(--soft); font-size: 0.78rem; margin: 6px 0 0; }
+.bar { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; justify-content: space-between; }
+.bar label { font-weight: 800; display: flex; flex-direction: column; gap: 4px; font-size: 0.95rem; }
+.summary { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 0.95rem; font-weight: 700; background: var(--sand); }
+.pill.ok { background: var(--wash); }
+.pill.hot { background: var(--hot); color: #B23A22; }
+.banner { display: flex; gap: 10px; align-items: flex-start; background: var(--warn); border: 1px solid #F1D49A; border-radius: 12px; padding: 10px 12px; margin-top: 12px; font-size: 0.95rem; }
+.banner svg { flex: none; margin-top: 2px; }
+.banner b { display: block; }
+/* item cards */
+.items { display: grid; gap: 10px; }
+.item { border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 12px; padding: 12px; background: #fff; font-size: 1rem; }
+.item.k-scan { border-left-color: var(--navy); }
+.item.stuck { box-shadow: 0 0 0 2px var(--coral) inset; }
+.item.rejected { border-left-color: var(--coral); background: #FFF8F5; }
+.item.done { border-left-color: var(--foam); }
+.item .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.item .kind { font-weight: 800; font-size: 0.95rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip { display: inline-block; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; background: var(--sand); }
+.chip.urgent { background: var(--mango); color: var(--navy); }
+.chip.st-requested { background: var(--sand); } .chip.st-collected, .chip.st-booked { background: var(--warn); } .chip.st-received, .chip.st-scanned { background: var(--wash); } .chip.st-reported { background: var(--sea); color: #fff; } .chip.st-rejected { background: var(--coral); color: #fff; }
+.chip.down { background: var(--coral); color: #fff; } .chip.up { background: var(--wash); }
+.clock { text-align: right; font-weight: 800; font-size: 1.1rem; line-height: 1.1; white-space: nowrap; }
+.clock small { display: block; font-size: 0.75rem; font-weight: 700; color: var(--soft); }
+.item.stuck .clock { color: #B23A22; }
+.item .who { font-size: 1.15rem; font-weight: 800; margin: 6px 0 0; line-height: 1.3; letter-spacing: 0.02em; }
+.item .meta { color: var(--soft); font-size: 0.95rem; margin: 0; }
+.item .note { font-size: 0.95rem; margin: 8px 0 0; background: var(--sand); border-radius: 8px; padding: 5px 9px; }
+.item .note.hot { background: var(--hot); color: #8E2C18; }
+.item .note.warn { background: var(--warn); }
+.item .note.ok { background: var(--wash); }
+.item .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.item .acts .go { flex: 1 1 140px; min-height: 52px; font-size: 1.05rem; }
+.go.sea { background: var(--sea); border-color: var(--sea); color: #fff; }
+.go.navy { background: var(--navy); color: #fff; }
+.go.mango { background: var(--mango); border-color: var(--mango); color: var(--navy); }
+.go.ghost { flex: 0 1 auto !important; }
+.track { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-top: 10px; }
+.track span { font-size: 0.78rem; color: var(--soft); border-top: 4px solid var(--line); padding-top: 4px; font-weight: 700; line-height: 1.25; }
+.track span.on { border-top-color: var(--sea); color: var(--ink); }
+.track span.bad { border-top-color: var(--coral); color: #8E2C18; }
+.track span em { display: block; font-style: normal; font-weight: 600; color: var(--soft); }
+.reasons { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; margin-top: 10px; }
+.reasons button { border-radius: 12px; border-color: #CFC5B2; text-align: left; font-size: 0.95rem; min-height: 48px; }
+.reasons button[aria-pressed=true] { background: var(--coral); border-color: var(--coral); color: #fff; }
+.rejbox { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 10px; }
+.rejbox p { margin: 0; font-weight: 800; font-size: 0.95rem; }
+.compact { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.compact li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 0.95rem; border-bottom: 1px dashed var(--line); padding: 6px 0; }
+.compact li .r { text-align: right; }
+.compact li .r { color: var(--soft); font-weight: 700; }
+.empty { text-align: center; color: var(--soft); padding: 18px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; }
+.equip { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)); gap: 10px; }
+.eq { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.eq.isdown { border-color: var(--coral); background: #FFF8F5; }
+.eq h4 { margin: 0; font-size: 0.98rem; display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.eq p { margin: 0; font-size: 0.85rem; color: var(--soft); }
+.eq button { align-self: flex-start; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.filters button { min-height: 44px; font-size: 0.92rem; border-color: #CFC5B2; }
+.filters button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 760px) { .split { grid-template-columns: minmax(0, 1fr); } }
+/* manager */
+table.t { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+table.t th, table.t td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.t th { color: var(--soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+table.t td.r, table.t th.r { text-align: right; white-space: nowrap; }
+table.t td small { display: block; color: var(--soft); font-size: 0.78rem; }
+table.t tr.over td { background: #FFF8F5; }
+.tablewrap { overflow-x: auto; }
+.steps { display: grid; gap: 8px; margin-top: 4px; }
+.step { display: grid; grid-template-columns: 150px minmax(0, 1fr) 92px; gap: 10px; align-items: center; font-size: 0.9rem; }
+@media (max-width: 520px) { .step { grid-template-columns: 110px minmax(0, 1fr) 76px; font-size: 0.85rem; } }
+.step .trackbar { position: relative; height: 18px; background: var(--sand); border-radius: 6px; overflow: hidden; }
+.step .trackbar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--foam); border-radius: 6px; }
+.step .trackbar i.p90 { background: transparent; border-right: 3px solid var(--navy); border-radius: 0; }
+.step.long .trackbar i:not(.p90) { background: var(--mango); }
+.step .v { text-align: right; font-weight: 800; white-space: nowrap; }
+.step .v small { display: block; color: var(--soft); font-weight: 700; font-size: 0.75rem; }
+.legend { font-size: 0.8rem; color: var(--soft); margin: 6px 0 0; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+.legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; background: var(--foam); margin-right: 4px; vertical-align: middle; }
+.legend i.p { background: transparent; border-right: 3px solid var(--navy); border-radius: 0; width: 8px; }
+.legend i.l { background: var(--mango); }
+.rejgrid { display: grid; gap: 8px; }
+.rj { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; border-bottom: 1px dashed var(--line); padding-bottom: 6px; font-size: 0.9rem; }
+.rj .wards { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px; }
+.rj .wards span { font-size: 0.8rem; font-weight: 700; background: var(--sand); border-radius: 999px; padding: 1px 8px; }
+.rj .wards span.hot { background: var(--hot); color: #8E2C18; }
+details.set { margin-top: 16px; }
+details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.targets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+@media (max-width: 760px) { .targets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.targets label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 700; color: var(--soft); }
+.targets input { width: 100%; }
+.fine { font-size: 0.82rem; color: var(--soft); margin: 8px 0 0; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.82rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg ul { margin: 0 0 8px; padding-left: 18px; font-size: 0.88rem; }
+.sugg .why { color: var(--soft); font-size: 0.82rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+.prop .by { color: var(--soft); font-size: 0.82rem; margin: 0; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Diagnostics: lab samples and scans, request to report</h1>
+  <p class="lead">Every lab sample and scan carries a time at each handoff: requested, collected, received in the lab, reported. Wards see where theirs is without phoning. Lab reception and imaging booking work from live lists. The manager sees turnaround by test and step, rejections and equipment downtime. Ospeli tracks the journey only; it never shows or reads results.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-ward" data-role="ward" aria-pressed="false">Ward</button>
+    <button type="button" id="r-lab" data-role="lab" aria-pressed="false">Lab reception</button>
+    <button type="button" id="r-imaging" data-role="imaging" aria-pressed="false">Imaging booking</button>
+    <button type="button" id="r-manager" data-role="manager" aria-pressed="false">Manager</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <b>Demo tools:</b>
+    <button type="button" class="small" id="t-clock">Move clock on 15 min</button>
+    <button type="button" class="small" id="t-batch">A porter round arrives</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <h2 id="view-h">Diagnostics</h2>
+        <div class="stats" id="kpis"></div>
+        <p class="stathint">Today so far. Tap a tile for its definition.</p>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads the sample and scan times, rejections and equipment status, and suggests where to look, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal. A named role decides.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its wards, patient codes, samples, scans and times. Patients appear only as anonymous codes. Ospeli tracks requests, samples and turnaround; it does not show or interpret results, choose tests or put patients in clinical order, and it never times individual scientists or radiographers. Turnaround times and other limits are example settings, not a standard. CT is computed tomography; MRI is magnetic resonance imaging. Coming next (Jan 2027): critical-result phone-call times, missing-sample alerts from porter jobs, analyser queues, and diagnostic waits that hold discharges, theatres or the emergency department. <a href="../../areas/diagnostics-imaging-lab/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var M = 60000, H = 60 * M, D = 24 * H;
+var STORE = 'ospeli.diagnostics.v1';
+
+// ---------- Fixed reference data (fictional) ----------
+var WARDS = { W1: 'Ward 1', W2: 'Ward 2', W3: 'Ward 3', W4: 'Ward 4', W5: 'Ward 5', W6: 'Ward 6', W7: 'Ward 7', ED: 'Emergency department' };
+var WARD_KEYS = Object.keys(WARDS);
+var OP = 'OP';
+function src(k) { return k === OP ? 'Outpatient clinic' : WARDS[k]; }
+var GROUPS = { FBC: 'Blood count', CHEM: 'Chemistry', CLOT: 'Clotting', URINE: 'Urine' };
+var GROUP_KEYS = Object.keys(GROUPS);
+// The fixed list of rejection reasons (an organisation would set its own).
+var REASONS = [['label', 'Unlabelled or label does not match the form'], ['haem', 'Haemolysed (sample damaged)'], ['clot', 'Clotted'], ['vol', 'Not enough sample'], ['tube', 'Wrong tube or container'], ['leak', 'Leaking or broken container'], ['old', 'Too old when it arrived']];
+var REASON = {}; REASONS.forEach(function (r) { REASON[r[0]] = r[1]; });
+var MODS = { XR: { label: 'X-ray', every: 15 }, CT: { label: 'CT', every: 20 }, MR: { label: 'MRI', every: 30 }, US: { label: 'Ultrasound', every: 20 } };
+var MOD_KEYS = Object.keys(MODS);
+var EQUIP = {
+  XR1: { name: 'X-ray room 1', kind: 'scanner', mod: 'XR' }, XR2: { name: 'X-ray room 2', kind: 'scanner', mod: 'XR' },
+  CT1: { name: 'CT 1', kind: 'scanner', mod: 'CT' }, CT2: { name: 'CT 2', kind: 'scanner', mod: 'CT' },
+  MR1: { name: 'MRI 1', kind: 'scanner', mod: 'MR' },
+  US1: { name: 'Ultrasound 1', kind: 'scanner', mod: 'US' }, US2: { name: 'Ultrasound 2', kind: 'scanner', mod: 'US' },
+  CA: { name: 'Chemistry analyser A', kind: 'analyser', grp: 'CHEM' }, CB: { name: 'Chemistry analyser B', kind: 'analyser', grp: 'CHEM' },
+  HA: { name: 'Blood count analyser', kind: 'analyser', grp: 'FBC' }, CO: { name: 'Clotting analyser', kind: 'analyser', grp: 'CLOT' }, UA: { name: 'Urine analyser', kind: 'analyser', grp: 'URINE' }
+};
+var EQUIP_KEYS = Object.keys(EQUIP);
+// Example settings for this demo only, not a standard: each organisation sets its own.
+var DEFAULT_SET = { transit: 45, repeat: 3, backlogH: 4, tat: { FBC: 60, CHEM: 90, CLOT: 75, URINE: 120 } };
+var DAY_LEN = 14 * H; // the demo's scanning day
+
+// ---------- Seeded example data ----------
+function rng(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function seed() {
+  var T = Date.now(), R = rng(20261110), used = {};
+  var day0 = Math.floor((T - 10 * H) / (15 * M)) * 15 * M;
+  var s = { v: 1, created: T, offset: 0, day0: day0, role: window.matchMedia('(max-width: 640px)').matches ? 'ward' : 'manager',
+    ward: 'W5', mod: 'ALL', guide: true, kpiOpen: null, set: clone(DEFAULT_SET), pending: [], dismissed: {}, reviews: [], log: [],
+    seq: 100, iseq: 500, wo: 2291, rejOpen: null, rejReason: null, specs: [], scans: [], equip: {} };
+  function code() { var A = 'ACDEFHJKLMNPRTUVWXY3479', c; do { c = 'P-' + A[R() * A.length | 0] + A[R() * A.length | 0] + A[R() * A.length | 0]; } while (used[c]); used[c] = 1; return c; }
+  function pick(a) { return a[R() * a.length | 0]; }
+  function grp() { var r = R(); return r < 0.35 ? 'FBC' : r < 0.7 ? 'CHEM' : r < 0.88 ? 'CLOT' : 'URINE'; }
+  function spec(ward, g, req) { var x = { id: 'S' + (++s.seq), code: code(), ward: ward, grp: g, urgent: false, req: req, coll: null, recv: null, val: null, rej: null, checkAt: null, of: null, again: null }; s.specs.push(x); return x; }
+  EQUIP_KEYS.forEach(function (id) { s.equip[id] = { events: [], posted: false }; });
+  // Earlier today: finished samples.
+  var base = { FBC: 35, CHEM: 55, CLOT: 45, URINE: 70 };
+  for (var i = 0; i < 96; i++) {
+    var w = pick(WARD_KEYS), g = grp(), req = day0 + 20 * M + R() * (T - day0 - 200 * M);
+    var x = spec(w, g, req); x.urgent = R() < 0.12;
+    x.coll = req + (5 + R() * 35) * M;
+    x.recv = x.coll + (8 + R() * 28 + (w === 'W2' || w === 'W7' ? R() * 30 : 0)) * M;
+    var v = x.recv + base[g] * (0.6 + R() * 0.9 + (R() < 0.1 ? 0.8 : 0)) * M;
+    x.val = v < T - 5 * M ? v : null;
+  }
+  // Rejections today: [ward, group, reason, minutes ago]
+  [['W5', 'FBC', 'label', 410], ['W5', 'CHEM', 'label', 250], ['W5', 'FBC', 'label', 35], ['ED', 'CHEM', 'haem', 300], ['ED', 'FBC', 'haem', 140],
+   ['W3', 'CLOT', 'clot', 220], ['W1', 'URINE', 'leak', 380], ['W6', 'CHEM', 'vol', 180]].forEach(function (r) {
+    var t = T - r[3] * M, x = spec(r[0], r[1], t - 70 * M); x.coll = t - 45 * M; x.rej = { reason: r[2], t: t };
+    // Older rejections were already followed by a new sample that has since been reported.
+    if (r[3] > 120) { var n = spec(r[0], r[1], t + 10 * M); n.code = x.code; n.of = x.id; x.again = n.id; n.coll = t + 30 * M; n.recv = t + 55 * M; n.val = t + 100 * M; }
+  });
+  // Waiting to be collected on the ward: [ward, group, minutes ago, urgent]
+  [['W5', 'FBC', 20], ['W5', 'CHEM', 8], ['W3', 'CLOT', 15], ['ED', 'CHEM', 5, true], ['W4', 'URINE', 30]].forEach(function (r) { var x = spec(r[0], r[1], T - r[2] * M); x.urgent = !!r[3]; });
+  // Collected, on the way to the lab: [ward, group, minutes since collected]
+  [['W5', 'CHEM', 58], ['W2', 'FBC', 72], ['W1', 'URINE', 12], ['ED', 'FBC', 6], ['W6', 'CLOT', 20], ['W7', 'CHEM', 30], ['W4', 'FBC', 3]].forEach(function (r) {
+    var x = spec(r[0], r[1], T - (r[2] + 15) * M); x.coll = T - r[2] * M;
+  });
+  // In the lab: [ward, group, minutes since received]
+  [['W5', 'FBC', 25], ['W3', 'CHEM', 40], ['ED', 'CLOT', 15], ['W6', 'FBC', 52], ['W2', 'URINE', 70], ['W1', 'CHEM', 10], ['W7', 'CHEM', 104]].forEach(function (r) {
+    var x = spec(r[0], r[1], T - (r[2] + 50) * M); x.coll = T - (r[2] + 30) * M; x.recv = T - r[2] * M;
+  });
+  var x5 = spec('W5', 'CLOT', T - 180 * M); x5.coll = T - 165 * M; x5.recv = T - 140 * M; x5.val = T - 70 * M;
+
+  // Equipment downtime today.
+  s.equip.CT1.events.push({ start: T - 85 * M, end: null, wo: 'WO-2291', back: T + 150 * M });
+  s.equip.XR2.events.push({ start: day0 + 2 * H, end: day0 + 2 * H + 40 * M, wo: 'WO-2284', back: null });
+  s.equip.CA.events.push({ start: day0 + 3 * H + 10 * M, end: day0 + 3 * H + 35 * M, wo: 'WO-2287', back: null });
+
+  // Imaging: today's slots on each scanner.
+  function scan(mod, from, req) { var x = { id: 'I' + (++s.iseq), code: code(), mod: mod, from: from, urgent: false, req: req, slot: null, scan: null, rep: null }; s.scans.push(x); return x; }
+  var ct1Future = 0;
+  EQUIP_KEYS.filter(function (id) { return EQUIP[id].kind === 'scanner'; }).forEach(function (id) {
+    var mod = EQUIP[id].mod, every = MODS[mod].every * M;
+    for (var t = day0; t < day0 + DAY_LEN; t += every) {
+      var inpt = mod === 'MR' ? R() < 0.25 : R() < 0.55, from = inpt ? pick(WARD_KEYS) : OP;
+      var req = inpt ? t - (1 + R() * 5) * H : t - (2 + R() * 30) * D;
+      if (id === 'CT1' && t >= T - 85 * M) {
+        if (t > T + 5 * M && ct1Future < 4 && R() < 0.75) { var b = scan(mod, ct1Future === 0 ? 'W5' : from, ct1Future === 0 ? T - 3 * H : req); b.slot = { sc: id, t: t }; ct1Future++; }
+        continue;
+      }
+      if (id === 'XR2' && t >= day0 + 2 * H && t < day0 + 2 * H + 40 * M) continue;
+      if (t < T - 10 * M) {
+        if (R() < 0.78) {
+          var d = scan(mod, from, req); d.slot = { sc: id, t: t }; d.scan = t + R() * 8 * M;
+          var delay = (20 + R() * R() * 420) * M; d.rep = d.scan + delay < T ? d.scan + delay : null;
+        }
+      } else if (t > T + 5 * M && R() < (id === 'CT2' ? 0.35 : 0.5)) { var f = scan(mod, from, req); f.slot = { sc: id, t: t }; }
+    }
+  });
+  // Ward 5: an X-ray done and waiting for its report, and a CT asked for this morning.
+  var w5x = scan('XR', 'W5', T - 150 * M); w5x.slot = { sc: 'XR1', t: T - 95 * M }; w5x.scan = T - 92 * M;
+  scan('CT', 'W5', T - 50 * M);
+  // The waiting list: [modality, from, minutes or days ago]
+  [['XR', 'W2', 40], ['XR', 'ED', 25], ['XR', 'W6', 110], ['XR', 'W1', 200], ['XR', OP, 3 * 1440],
+   ['CT', 'W3', 90], ['CT', 'ED', 30], ['CT', OP, 2 * 1440], ['CT', OP, 6 * 1440], ['CT', OP, 11 * 1440], ['CT', OP, 19 * 1440],
+   ['MR', OP, 3 * 1440], ['MR', OP, 7 * 1440], ['MR', OP, 9 * 1440], ['MR', OP, 14 * 1440], ['MR', OP, 18 * 1440], ['MR', OP, 23 * 1440], ['MR', OP, 29 * 1440], ['MR', OP, 35 * 1440], ['MR', 'W6', 300],
+   ['US', 'W4', 60], ['US', 'W7', 180], ['US', OP, 1 * 1440], ['US', OP, 4 * 1440], ['US', OP, 8 * 1440], ['US', OP, 15 * 1440]
+  ].forEach(function (r) { var x = scan(r[0], r[1], T - r[2] * M - R() * 30 * M); x.urgent = r[1] === 'ED'; });
+
+  // Build the log from events so far (newest first).
+  var ev = [];
+  s.specs.forEach(function (x) { ['coll', 'recv', 'val'].forEach(function (k) { if (x[k]) ev.push({ t: x[k], text: specText(x, k) }); }); if (x.rej) ev.push({ t: x.rej.t, text: specText(x, 'rej') }); });
+  s.scans.forEach(function (x) { if (x.scan) ev.push({ t: x.scan, text: scanText(x, 'scan') }); if (x.rep) ev.push({ t: x.rep, text: scanText(x, 'rep') }); });
+  EQUIP_KEYS.forEach(function (id) { s.equip[id].events.forEach(function (e) { ev.push({ t: e.start, text: EQUIP[id].name + ' marked down (work order ' + e.wo + ').' }); if (e.end) ev.push({ t: e.end, text: EQUIP[id].name + ' back up.' }); }); });
+  ev = ev.filter(function (e) { return e.t <= T; }).sort(function (a, b) { return b.t - a.t; });
+  s.log = ev.slice(0, 40);
+  return s;
+}
+
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE));
+    // An example day goes stale: start a fresh one after 4 hours.
+    if (!s || s.v !== 1 || !s.specs || Date.now() - s.created > 4 * H) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function now() { return Date.now() + (state.offset || 0); }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+// ---------- Derived data (pure) ----------
+function sst(x) { return x.rej ? 'rejected' : x.val ? 'reported' : x.recv ? 'received' : x.coll ? 'collected' : 'requested'; }
+function ist(x) { return x.rep ? 'reported' : x.scan ? 'scanned' : x.slot ? 'booked' : 'requested'; }
+var WORD = { requested: 'Requested', collected: 'Collected', received: 'In the lab', reported: 'Reported', rejected: 'Rejected', booked: 'Booked', scanned: 'Scanned' };
+function mins(a, b) { return Math.max(0, Math.floor(((b == null ? now() : b) - a) / M)); }
+function transitLate(x) { return sst(x) === 'collected' && mins(x.coll) > state.set.transit; }
+function labLate(x) { return sst(x) === 'received' && mins(x.recv) > (+state.set.tat[x.grp] || 0); }
+function lastEv(id) { var e = state.equip[id].events; return e.length ? e[e.length - 1] : null; }
+function isDown(id) { var e = lastEv(id); return !!(e && !e.end); }
+function slots(sc) { var every = MODS[EQUIP[sc].mod].every * M, out = []; for (var t = state.day0; t < state.day0 + DAY_LEN; t += every) out.push(t); return out; }
+function taken(sc, t) { return state.scans.some(function (x) { return x.slot && x.slot.sc === sc && x.slot.t === t; }); }
+function freeSlots(sc, from) { return slots(sc).filter(function (t) { return t >= from && !taken(sc, t); }); }
+function scannersOf(mod) { return EQUIP_KEYS.filter(function (id) { return EQUIP[id].mod === mod; }); }
+function nextFree(mod) {
+  var best = null;
+  scannersOf(mod).filter(function (id) { return !isDown(id); }).forEach(function (id) { var t = freeSlots(id, now() + 5 * M)[0]; if (t && (!best || t < best.t)) best = { sc: id, t: t }; });
+  return best;
+}
+function futureOn(sc) { return state.scans.filter(function (x) { return x.slot && x.slot.sc === sc && !x.scan && x.slot.t >= now(); }).sort(function (a, b) { return a.slot.t - b.slot.t; }); }
+function waiting(mod) { return state.scans.filter(function (x) { return !x.slot && (!mod || mod === 'ALL' || x.mod === mod); }).sort(function (a, b) { return a.req - b.req; }); }
+function daysWaiting(x) { return Math.floor((now() - x.req) / D); }
+function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function p90(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); return a[Math.ceil(0.9 * a.length) - 1]; }
+function downHours(id) {
+  var n = now(), sum = 0;
+  state.equip[id].events.forEach(function (e) { var a = Math.max(e.start, state.day0), b = Math.min(e.end || n, n); if (b > a) sum += b - a; });
+  return sum / H;
+}
+function scheduledH() { return Math.max(0.1, (now() - state.day0) / H); }
+function ageBand(x) { var h = (now() - x.scan) / H; return h < 2 ? 0 : h < state.set.backlogH ? 1 : 2; }
+function stepStats(list, a, b) { var v = list.filter(function (x) { return x[a] && x[b]; }).map(function (x) { return (x[b] - x[a]) / M; }); return { n: v.length, med: median(v), p90: p90(v) }; }
+function rejCounts() {
+  var c = {};
+  state.specs.forEach(function (x) { if (!x.rej || x.rej.t < state.day0) return; var k = x.ward + '|' + x.rej.reason; (c[k] = c[k] || []).push(x); });
+  return c;
+}
+function kpis() {
+  var sp = state.specs, val = sp.filter(function (x) { return x.val && x.recv; }), lab = val.map(function (x) { return (x.val - x.recv) / M; });
+  var arrived = sp.filter(function (x) { return x.recv || x.rej; }).length, rej = sp.filter(function (x) { return x.rej; }).length;
+  var backlog = state.scans.filter(function (x) { return x.scan && !x.rep; });
+  var reported = state.scans.filter(function (x) { return x.rep && x.rep >= state.day0; });
+  var dh = EQUIP_KEYS.reduce(function (s, id) { return s + downHours(id); }, 0);
+  var r = function (v) { return v == null ? null : Math.round(v); };
+  return {
+    labTatMedianMin: r(median(lab)), labTatP90Min: r(p90(lab)), validatedCount: val.length,
+    arrivedInLab: arrived, rejected: rej, rejectionRatePct: arrived ? Math.round(rej / arrived * 1000) / 10 : 0,
+    received: sp.filter(function (x) { return x.recv; }).length,
+    awaitingCollection: sp.filter(function (x) { return sst(x) === 'requested'; }).length,
+    inTransit: sp.filter(function (x) { return sst(x) === 'collected'; }).length,
+    inTransitPastLimit: sp.filter(transitLate).length,
+    inLab: sp.filter(function (x) { return sst(x) === 'received'; }).length,
+    reportingBacklog: backlog.length, backlogOverLimit: backlog.filter(function (x) { return ageBand(x) === 2; }).length,
+    imagingRequestToReportMedianH: reported.length ? Math.round(median(reported.map(function (x) { return (x.rep - x.req) / H; })) * 10) / 10 : null,
+    scansWaitingForSlot: waiting().length,
+    equipmentDowntimeH: Math.round(dh * 10) / 10, equipmentDownNow: EQUIP_KEYS.filter(isDown).length,
+    downtimePct: Math.round(dh / (scheduledH() * EQUIP_KEYS.length) * 1000) / 10
+  };
+}
+
+// ---------- The guide: plain, checkable rules ----------
+function movePlan(sc) {
+  var book = futureOn(sc), mod = EQUIP[sc].mod, free = [];
+  scannersOf(mod).filter(function (id) { return id !== sc && !isDown(id); }).forEach(function (id) { freeSlots(id, now() + 5 * M).forEach(function (t) { free.push({ sc: id, t: t }); }); });
+  free.sort(function (a, b) { return a.t - b.t; });
+  return { book: book, pairs: book.slice(0, free.length).map(function (x, i) { return { id: x.id, code: x.code, from: x.slot, to: free[i] }; }) };
+}
+function suggest() {
+  var out = [];
+  // 1. Collected but not received within the transport time.
+  var late = state.specs.filter(function (x) { return transitLate(x) && !x.checkAt; }).sort(function (a, b) { return a.coll - b.coll; });
+  if (late.length) {
+    var wl = uniq(late.map(function (x) { return WARDS[x.ward]; }));
+    out.push({ id: 'transit-' + late.map(function (x) { return x.id; }).join(''), kind: 'time', by: 'lab',
+      title: late.length + (late.length > 1 ? ' samples were' : ' sample was') + ' collected but not received in the lab',
+      list: late.slice(0, 4).map(function (x) { return GROUPS[x.grp] + ', ' + WARDS[x.ward] + ', ' + x.code + ': collected ' + fmt(mins(x.coll)) + ' ago'; }),
+      why: 'Collected longer ago than the transport time in Settings (' + state.set.transit + ' min, an example setting, not a standard). It may be waiting for a porter, in a bag on the ward, or lost.',
+      acts: [{ label: 'Propose: ask ' + wl.join(' and ') + ' and lab reception to check', primary: true, p: { kind: 'check', ids: late.map(function (x) { return x.id; }), text: 'Ask ' + wl.join(' and ') + ', the porters and lab reception to look for ' + late.length + ' sample' + (late.length > 1 ? 's' : '') + ' (' + late.map(function (x) { return x.code; }).join(', ') + ').' } }] });
+  }
+  // 2. Repeated rejections for one reason from one area.
+  var rc = rejCounts();
+  Object.keys(rc).forEach(function (k) {
+    var list = rc[k], w = k.split('|')[0], reason = k.split('|')[1];
+    if (list.length < state.set.repeat || state.reviews.some(function (r) { return r.key === k; })) return;
+    out.push({ id: 'rej-' + k, kind: 'ask', by: 'manager',
+      title: WARDS[w] + ': ' + list.length + ' samples rejected today for the same reason',
+      text: 'Reason: ' + REASON[reason].toLowerCase() + '. Rejected at ' + list.map(function (x) { return hhmm(x.rej.t); }).join(', ') + '.',
+      why: list.length + ' or more rejections for one reason from one area today (example setting, not a standard). A short review with the area can look for a shared cause, such as labels, tubes or the round. It looks at the process, never at who took the sample.',
+      acts: [{ label: 'Propose: short review with ' + WARDS[w], primary: true, p: { kind: 'review', key: k, ward: w, reason: reason, text: 'Book a short review with ' + WARDS[w] + ' and lab reception about samples rejected as “' + REASON[reason].toLowerCase() + '” (' + list.length + ' today).' } }] });
+  });
+  // 3. A scanner is down with bookings still on it.
+  EQUIP_KEYS.filter(function (id) { return EQUIP[id].kind === 'scanner' && isDown(id); }).forEach(function (sc) {
+    var plan = movePlan(sc), e = lastEv(sc);
+    if (!plan.book.length) return;
+    var to = uniq(plan.pairs.map(function (p) { return EQUIP[p.to.sc].name; }));
+    out.push({ id: 'move-' + sc + '-' + plan.book.map(function (x) { return x.id; }).join(''), kind: 'time', by: 'imaging',
+      title: EQUIP[sc].name + ' is down: ' + plan.book.length + ' booking' + (plan.book.length > 1 ? 's' : '') + ' today need' + (plan.book.length > 1 ? '' : 's') + ' a new slot',
+      text: plan.pairs.length ? 'Proposed: move ' + (plan.pairs.length === plan.book.length ? 'them' : plan.pairs.length + ' of them') + ' to the earliest free slots on ' + to.join(' and ') + ', keeping their order.' : 'There is no free slot on another ' + MODS[EQUIP[sc].mod].label + ' scanner today. The imaging team decides on extra time or rebooking.',
+      list: plan.pairs.slice(0, 5).map(function (p) { return p.code + ': ' + hhmm(p.from.t) + ' ' + EQUIP[sc].name + ' → ' + hhmm(p.to.t) + ' ' + EQUIP[p.to.sc].name; }),
+      why: EQUIP[sc].name + ' was marked down at ' + hhmm(e.start) + ' (work order ' + e.wo + (e.back ? ', expected back about ' + hhmm(e.back) : '') + '). Order kept is booking time, not clinical priority.',
+      acts: plan.pairs.length ? [{ label: 'Propose: move ' + plan.pairs.length + ' booking' + (plan.pairs.length > 1 ? 's' : ''), primary: true, p: { kind: 'move', sc: sc, text: 'Move ' + plan.pairs.length + ' booking' + (plan.pairs.length > 1 ? 's' : '') + ' from ' + EQUIP[sc].name + ' to the earliest free slots on ' + to.join(' and ') + ', in booking order.' } }] : [] });
+  });
+  // 4. Equipment down and wards not told yet.
+  EQUIP_KEYS.filter(function (id) { return isDown(id) && !state.equip[id].posted; }).forEach(function (id) {
+    var Q = EQUIP[id], e = lastEv(id), backup = backupRoute(id);
+    out.push({ id: 'post-' + id + '-' + e.start, kind: 'post', by: Q.kind === 'scanner' ? 'imaging' : 'lab',
+      title: 'Tell the wards: ' + Q.name + ' is down',
+      text: 'Post on every ward\'s board: down since ' + hhmm(e.start) + (e.back ? ', expected back about ' + hhmm(e.back) : '') + '. ' + backup,
+      why: 'Otherwise wards find out by phoning. The post uses the status, work order and expected return the team recorded.',
+      acts: [{ label: 'Propose: post to wards', primary: true, p: { kind: 'post', eq: id, text: 'Post to all wards: ' + Q.name + ' down since ' + hhmm(e.start) + (e.back ? ', expected back about ' + hhmm(e.back) : '') + '. ' + backup } }] });
+  });
+  return out.filter(function (x) { return !state.dismissed[x.id]; });
+}
+function backupRoute(id) {
+  var Q = EQUIP[id], same = EQUIP_KEYS.filter(function (k) { return k !== id && !isDown(k) && (Q.kind === 'scanner' ? EQUIP[k].mod === Q.mod : EQUIP[k].grp === Q.grp); });
+  if (!same.length) return 'Backup: follow the agreed downtime route in your plan.';
+  return Q.kind === 'scanner' ? 'Backup: bookings move to ' + same.map(function (k) { return EQUIP[k].name; }).join(' and ') + '.' : 'Backup: ' + GROUPS[Q.grp].toLowerCase() + ' samples run on ' + same.map(function (k) { return EQUIP[k].name; }).join(' and ') + '; send samples as usual.';
+}
+var ROLE = { ward: 'Ward', lab: 'Lab reception', imaging: 'Imaging booking', manager: 'Diagnostics manager' };
+var ROLE_VIEW = { ward: 'Ward', lab: 'Lab reception', imaging: 'Imaging booking', manager: 'Manager' };
+function propose(sg, a) {
+  if (state.pending.some(function (x) { return x.id === sg.id; })) return;
+  var p = Object.assign({ id: sg.id, by: sg.by, at: now() }, a.p);
+  state.pending.push(p);
+  addLog('Guide proposed: ' + p.text + ' Waiting for ' + ROLE[p.by].toLowerCase() + '.');
+  render(); toast('Proposed. ' + ROLE[p.by] + ' decides.');
+}
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x.id !== p.id; });
+  if (!yes) { state.dismissed[p.id] = true; addLog(ROLE[p.by] + ' declined: ' + p.text); render(); toast('Declined. Nothing changed.'); return; }
+  if (p.kind === 'check') {
+    p.ids.forEach(function (id) { var x = spec(id); if (x && sst(x) === 'collected') x.checkAt = now(); });
+  } else if (p.kind === 'review') {
+    state.reviews.push({ key: p.key, ward: p.ward, reason: p.reason, at: now() });
+  } else if (p.kind === 'move') {
+    var plan = movePlan(p.sc);
+    if (!plan.pairs.length) { addLog('Could not move: no free slots now.'); render(); toast('No free slots now.'); return; }
+    plan.pairs.forEach(function (q) { var x = scanById(q.id); if (x && !taken(q.to.sc, q.to.t)) x.slot = { sc: q.to.sc, t: q.to.t }; });
+  } else if (p.kind === 'post') {
+    if (isDown(p.eq)) state.equip[p.eq].posted = true;
+  }
+  addLog(ROLE[p.by] + ' confirmed: ' + p.text);
+  render(); toast(p.kind === 'move' ? 'Done. Bookings moved; wards see the new times.' : p.kind === 'post' ? 'Posted. Wards see it on their board.' : p.kind === 'review' ? 'Review added to the manager\'s actions.' : 'Done. The ward and lab can see a check was asked for.');
+}
+function spec(id) { return state.specs.filter(function (x) { return x.id === id; })[0]; }
+function scanById(id) { return state.scans.filter(function (x) { return x.id === id; })[0]; }
+
+// ---------- Helpers ----------
+function uniq(a) { return a.filter(function (x, i) { return a.indexOf(x) === i; }); }
+function fmt(m) { if (m == null) return '–'; m = Math.round(+m || 0); if (m < 60) return m + ' min'; var h = Math.floor(m / 60), r = m % 60; return h + ' h ' + (r < 10 ? '0' : '') + r; }
+function hhmm(t) { var d = new Date(t); return (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes(); }
+function days(n) { return n <= 0 ? 'today' : n === 1 ? '1 day' : n + ' days'; }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k === 'html') e.innerHTML = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+function specText(x, k) {
+  var L = GROUPS[x.grp], w = WARDS[x.ward];
+  if (k === 'req') return w + ' requested ' + L.toLowerCase() + ', ' + x.code + (x.of ? ' (new sample after a rejection)' : '');
+  if (k === 'coll') return w + ' collected ' + L.toLowerCase() + ' sample, ' + x.code;
+  if (k === 'recv') return 'Lab received ' + L.toLowerCase() + ' sample from ' + w + ', ' + x.code;
+  if (k === 'rej') return 'Lab rejected ' + L.toLowerCase() + ' sample from ' + w + ', ' + x.code + ': ' + REASON[x.rej.reason].toLowerCase();
+  return 'Lab validated ' + L.toLowerCase() + ', ' + x.code + ' (result sent to the ward\'s usual system)';
+}
+function scanText(x, k) {
+  var L = MODS[x.mod].label, sc = x.slot ? EQUIP[x.slot.sc].name : L;
+  if (k === 'book') return 'Imaging booked ' + L + ' for ' + x.code + ' (' + src(x.from) + '): ' + hhmm(x.slot.t) + ' on ' + sc;
+  if (k === 'scan') return sc + ': scan done, ' + x.code + ' (' + src(x.from) + '). Waiting for report.';
+  return 'Report issued: ' + L + ', ' + x.code + ' (' + src(x.from) + ')';
+}
+var lastLogT = 0;
+function addLog(text) { lastLogT = now(); state.log.unshift({ t: lastLogT, text: text }); state.log = state.log.slice(0, 40); }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+var ICON_WARN = '<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2 L19 18 H1 Z" fill="#EE9B00"/><rect x="9" y="7" width="2" height="6" rx="1" fill="#0B2F4E"/><circle cx="10" cy="15.2" r="1.2" fill="#0B2F4E"/></svg>';
+
+// ---------- Actions ----------
+function collect(x) { x.coll = now(); addLog(specText(x, 'coll')); render(); toast('Marked collected. The lab can see it is on the way.'); }
+function recollect(x) {
+  var n = { id: 'S' + (++state.seq), code: x.code, ward: x.ward, grp: x.grp, urgent: x.urgent, req: now(), coll: null, recv: null, val: null, rej: null, checkAt: null, of: x.id, again: null };
+  state.specs.push(n); x.again = n.id; addLog(specText(n, 'req')); render(); toast('New sample requested. It is on your list to collect.');
+}
+function receive(x) { x.recv = now(); state.rejOpen = null; addLog(specText(x, 'recv')); render(); toast('Received. Lab turnaround starts now.'); }
+function reject(x, reason) { x.rej = { reason: reason, t: now() }; state.rejOpen = null; state.rejReason = null; addLog(specText(x, 'rej') + '. ' + WARDS[x.ward] + ' asked for a new sample.'); render(); toast('Rejected. ' + WARDS[x.ward] + ' sees the reason and can ask for a new sample.'); }
+function validate(x) { x.val = now(); addLog(specText(x, 'val')); render(); toast('Validated. Ospeli records the time; the result stays in the lab system.'); }
+function book(x) { var s = nextFree(x.mod); if (!s) { toast('No free slot today on a working scanner.'); return; } x.slot = s; addLog(scanText(x, 'book')); render(); toast('Booked ' + hhmm(s.t) + ' on ' + EQUIP[s.sc].name + '.'); }
+function scanned(x) { x.scan = now(); addLog(scanText(x, 'scan')); render(); toast('Scan done. Now waiting for report.'); }
+function reported(x) { x.rep = now(); addLog(scanText(x, 'rep')); render(); toast('Report issued. Request to report: ' + fmt(mins(x.req, x.rep)) + '.'); }
+function toggleEquip(id) {
+  var Q = EQUIP[id], st = state.equip[id], who = Q.kind === 'scanner' ? 'Imaging' : 'Lab';
+  if (isDown(id)) { lastEv(id).end = now(); st.posted = false; addLog(who + ' marked ' + Q.name + ' back up.'); toast(Q.name + ' is back up.'); }
+  else { var e = { start: now(), end: null, wo: 'WO-' + (++state.wo), back: now() + 2 * H }; st.events.push(e); st.posted = false; addLog(who + ' marked ' + Q.name + ' down (work order ' + e.wo + ', expected back about ' + hhmm(e.back) + ').'); toast(Q.name + ' marked down. The guide can propose next steps.'); }
+  render();
+}
+
+// ---------- Render ----------
+var HINTS = {
+  ward: 'A ward clerk\'s or nurse\'s phone. Today\'s samples and scans for your ward, what stage each is at and where it is stuck. No phoning round.',
+  lab: 'Lab reception. Receive samples as they arrive, or reject one with a reason from a fixed list. See what is still on the way and which analysers are up.',
+  imaging: 'Imaging booking. The waiting list by type of scan and days waiting, today\'s slots, scans waiting for a report, and which scanners are up.',
+  manager: 'The diagnostics manager. Turnaround by test and by step, rejections by reason and ward, equipment downtime and the backlog by type of scan.'
+};
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  Object.keys(ROLE).forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('view-h').textContent = { ward: 'My ward\'s samples and scans', lab: 'Lab reception', imaging: 'Imaging list', manager: 'Diagnostics overview' }[state.role];
+  renderKpis();
+  var v = document.getElementById('view'); v.textContent = '';
+  v.appendChild({ ward: wardView, lab: labView, imaging: imagingView, manager: managerView }[state.role]());
+  renderGuide();
+  renderLog();
+  save();
+  if (aid) { var e = document.getElementById(aid); if (e) e.focus({ preventScroll: true }); }
+  sig = signature();
+}
+function renderKpis() {
+  var k = kpis(), box = document.getElementById('kpis'); box.textContent = '';
+  var tiles = [
+    ['tat', fmt(k.labTatMedianMin), 'Lab turnaround', 'median · slowest 10% over ' + fmt(k.labTatP90Min), 'Sample received in the lab → result validated. Median and 90th percentile (the slowest 10% take longer), all tests today; by test on the Manager view. Local definition.', false],
+    ['rej', k.rejectionRatePct.toFixed(1) + '%', 'Rejection rate', k.rejected + ' of ' + k.arrivedInLab + ' samples', 'Samples rejected ÷ samples that reached the lab, today. Local definition.', false],
+    ['backlog', String(k.reportingBacklog), 'Reporting backlog', k.backlogOverLimit + ' waiting over ' + state.set.backlogH + ' h', 'Scans performed and not yet reported, now, by age band. The age limit is an example setting, not a standard. Local definition.', k.backlogOverLimit > 0],
+    ['down', k.equipmentDowntimeH.toFixed(1) + ' h', 'Equipment downtime', k.equipmentDownNow + ' down now · ' + k.downtimePct + '% of hours', 'Hours down ÷ scheduled hours, all analysers and scanners, today. In this example every item is scheduled all day. Local definition.', k.equipmentDownNow > 0]
+  ];
+  tiles.forEach(function (t) {
+    var open = state.kpiOpen === t[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat' + (t[5] ? ' alert' : ''), 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def', text: t[4] })]));
+  });
+}
+function postedBanners(filter) {
+  var frag = document.createDocumentFragment();
+  EQUIP_KEYS.filter(function (id) { return isDown(id) && state.equip[id].posted && (!filter || filter(id)); }).forEach(function (id) {
+    var e = lastEv(id);
+    frag.appendChild(el('div', { class: 'banner', role: 'note' }, [el('span', { html: ICON_WARN }), el('div', {}, [el('b', { text: EQUIP[id].name + ' is down since ' + hhmm(e.start) }), (e.back ? 'Expected back about ' + hhmm(e.back) + '. ' : '') + backupRoute(id)])]));
+  });
+  return frag;
+}
+function track(steps) { return el('div', { class: 'track', 'aria-label': 'Progress' }, steps.map(function (s) { return el('span', { class: s[2] ? (s[3] ? 'bad' : 'on') : '' }, [s[0], el('em', { text: s[1] ? hhmm(s[1]) : '–' })]); })); }
+function specCard(x, opts) {
+  var st = sst(x), stuck = transitLate(x), slow = labLate(x), notes = [], acts = null, clock;
+  var chips = [el('span', { text: GROUPS[x.grp] }), el('span', { class: 'chip st-' + st, text: WORD[st] })];
+  if (x.urgent) chips.push(el('span', { class: 'chip urgent', title: 'Set by the requester', text: 'Urgent' }));
+  if (st === 'requested') { clock = [fmt(mins(x.req)), 'since asked']; notes.push(el('p', { class: 'note warn', text: 'Waiting to be collected on the ward' + (x.of ? ' (new sample after a rejection)' : '') + '.' })); }
+  else if (st === 'collected') { clock = [fmt(mins(x.coll)), 'since collected']; notes.push(el('p', { class: 'note' + (stuck ? ' hot' : ''), text: stuck ? 'Stuck: collected ' + fmt(mins(x.coll)) + ' ago, not received in the lab (limit ' + state.set.transit + ' min).' : 'On the way to the lab.' })); if (x.checkAt) notes.push(el('p', { class: 'note ok', text: 'Check asked for at ' + hhmm(x.checkAt) + ': ward, porters and lab reception are looking.' })); }
+  else if (st === 'received') { clock = [fmt(mins(x.recv)), 'in the lab']; notes.push(el('p', { class: 'note' + (slow ? ' warn' : ''), text: slow ? 'In the lab longer than the ' + state.set.tat[x.grp] + ' min example target.' : 'In the lab. Received ' + hhmm(x.recv) + '.' })); }
+  else if (st === 'rejected') { clock = [hhmm(x.rej.t), 'rejected']; notes.push(el('p', { class: 'note hot', text: 'Rejected: ' + REASON[x.rej.reason].toLowerCase() + '. ' + (x.again ? 'New sample requested.' : 'A new sample is needed.') })); }
+  else { clock = [hhmm(x.val), 'reported']; notes.push(el('p', { class: 'note ok', text: 'Reported. See the result in your usual system.' })); }
+  if (opts && opts.ward) {
+    if (st === 'requested') acts = el('div', { class: 'acts' }, [el('button', { type: 'button', id: 'col-' + x.id, class: 'go sea', 'aria-label': 'Mark collected: ' + GROUPS[x.grp] + ', ' + x.code, onclick: function () { collect(x); }, text: 'Mark collected' })]);
+    if (st === 'rejected' && !x.again) acts = el('div', { class: 'acts' }, [el('button', { type: 'button', id: 'again-' + x.id, class: 'go mango', 'aria-label': 'Ask for a new sample: ' + GROUPS[x.grp] + ', ' + x.code, onclick: function () { recollect(x); }, text: 'Ask for a new sample' })]);
+  }
+  return el('article', { class: 'item' + (stuck ? ' stuck' : '') + (st === 'rejected' ? ' rejected' : '') + (st === 'reported' ? ' done' : ''), 'aria-label': GROUPS[x.grp] + ', ' + x.code + ', ' + WORD[st] },
+    [el('div', { class: 'top' }, [el('div', { class: 'kind' }, chips), el('div', { class: 'clock', 'data-since': x.id }, [clock[0], el('small', { text: clock[1] })])]),
+     el('p', { class: 'who', text: x.code }),
+     el('p', { class: 'meta', text: 'Asked ' + hhmm(x.req) })]
+    .concat(notes).concat([track([['Requested', x.req, true], ['Collected', x.coll, !!x.coll], ['Received', x.recv || (x.rej && x.rej.t), !!(x.recv || x.rej), !!x.rej], ['Reported', x.val, !!x.val]]), acts]));
+}
+function scanCard(x) {
+  var st = ist(x), down = x.slot && !x.scan && isDown(x.slot.sc), notes = [], clock;
+  var chips = [el('span', { text: MODS[x.mod].label + ' scan' }), el('span', { class: 'chip st-' + st, text: WORD[st] })];
+  if (x.urgent) chips.push(el('span', { class: 'chip urgent', title: 'Set by the requester', text: 'Urgent' }));
+  if (st === 'requested') { clock = [fmt(mins(x.req)), 'since asked']; notes.push(el('p', { class: 'note warn', text: 'Waiting for a slot. ' + waiting(x.mod).length + ' on the ' + MODS[x.mod].label + ' list.' })); }
+  else if (st === 'booked') { clock = [hhmm(x.slot.t), EQUIP[x.slot.sc].name]; notes.push(el('p', { class: 'note' + (down ? ' hot' : ''), text: down ? 'Stuck: ' + EQUIP[x.slot.sc].name + ' is down. Imaging will move this booking.' : 'Booked for ' + hhmm(x.slot.t) + ' on ' + EQUIP[x.slot.sc].name + '.' })); }
+  else if (st === 'scanned') { clock = [fmt(mins(x.scan)), 'waiting for report']; notes.push(el('p', { class: 'note' + (ageBand(x) === 2 ? ' warn' : ''), text: 'Scan done at ' + hhmm(x.scan) + '. Waiting for the report.' })); }
+  else { clock = [hhmm(x.rep), 'reported']; notes.push(el('p', { class: 'note ok', text: 'Reported. See the report in your usual system.' })); }
+  return el('article', { class: 'item k-scan' + (down ? ' stuck' : '') + (st === 'reported' ? ' done' : ''), 'aria-label': MODS[x.mod].label + ' scan, ' + x.code + ', ' + WORD[st] },
+    [el('div', { class: 'top' }, [el('div', { class: 'kind' }, chips), el('div', { class: 'clock', 'data-since': x.id }, [clock[0], el('small', { text: clock[1] })])]),
+     el('p', { class: 'who', text: x.code }), el('p', { class: 'meta', text: 'Asked ' + hhmm(x.req) })]
+    .concat(notes).concat([track([['Requested', x.req, true], ['Booked', x.slot && x.slot.t, !!x.slot], ['Scanned', x.scan, !!x.scan], ['Reported', x.rep, !!x.rep]])]));
+}
+function scanRank(x) { return x.slot && !x.scan && isDown(x.slot.sc) ? 0 : x.scan ? 2 : 1; }
+function specRank(x) { var st = sst(x); return st === 'rejected' && !x.again ? 0 : transitLate(x) ? 1 : st === 'requested' ? 2 : st === 'collected' ? 3 : st === 'received' ? 4 : 9; }
+function wardView() {
+  var frag = document.createDocumentFragment(), w = state.ward;
+  var sel = el('select', { id: 'ward-pick', onchange: function (e) { state.ward = e.target.value; render(); } });
+  WARD_KEYS.forEach(function (id) { sel.appendChild(el('option', { value: id, text: WARDS[id] })); });
+  sel.value = w;
+  frag.appendChild(el('div', { class: 'bar' }, [el('label', { for: 'ward-pick' }, ['Your ward', sel])]));
+  frag.appendChild(postedBanners());
+  var sp = state.specs.filter(function (x) { return x.ward === w && x.req >= state.day0 && !(x.rej && x.again); });
+  var open = sp.filter(function (x) { return specRank(x) < 9; }).sort(function (a, b) { return (specRank(a) - specRank(b)) || (a.req - b.req); });
+  var done = sp.filter(function (x) { return specRank(x) === 9; }).sort(function (a, b) { return (b.val || b.rej.t) - (a.val || a.rej.t); });
+  var sc = state.scans.filter(function (x) { return x.from === w && !x.rep; }).sort(function (a, b) { return scanRank(a) - scanRank(b) || a.req - b.req; });
+  var scDone = state.scans.filter(function (x) { return x.from === w && x.rep && x.rep >= state.day0; });
+  var stuck = sp.filter(transitLate).length + sc.filter(function (x) { return x.slot && !x.scan && isDown(x.slot.sc); }).length;
+  var rejected = sp.filter(function (x) { return x.rej && !x.again; }).length;
+  frag.appendChild(el('div', { class: 'summary' }, [
+    el('span', { class: 'pill', text: sp.length + ' samples today' }),
+    el('span', { class: 'pill', text: sp.filter(function (x) { return sst(x) === 'requested'; }).length + ' to collect' }),
+    el('span', { class: 'pill' + (stuck ? ' hot' : ' ok'), text: stuck + ' stuck' }),
+    rejected ? el('span', { class: 'pill hot', text: rejected + ' rejected' }) : null,
+    el('span', { class: 'pill', text: sc.length + ' scans open' })
+  ]));
+  frag.appendChild(el('h3', { class: 'sec', text: 'Samples sent today · ' + open.length + ' open' }));
+  if (open.length) { var l = el('div', { class: 'items', id: 'ward-specs' }); open.forEach(function (x) { l.appendChild(specCard(x, { ward: true })); }); frag.appendChild(l); }
+  else frag.appendChild(el('p', { class: 'empty', text: 'Nothing open. Every sample sent today is reported.' }));
+  frag.appendChild(el('h3', { class: 'sec', text: 'Scans requested · ' + sc.length + ' open' }));
+  if (sc.length) { var l2 = el('div', { class: 'items', id: 'ward-scans' }); sc.forEach(function (x) { l2.appendChild(scanCard(x)); }); frag.appendChild(l2); }
+  else frag.appendChild(el('p', { class: 'empty', text: 'No open scans for this ward.' }));
+  var rows = done.map(function (x) { return [x.val, x.code + ' · ' + GROUPS[x.grp]]; }).concat(scDone.map(function (x) { return [x.rep, x.code + ' · ' + MODS[x.mod].label + ' scan']; })).sort(function (a, b) { return b[0] - a[0]; });
+  if (rows.length) {
+    frag.appendChild(el('h3', { class: 'sec', text: 'Reported today · ' + rows.length }));
+    var ul = el('ul', { class: 'compact', id: 'ward-done' });
+    rows.slice(0, 12).forEach(function (r) { ul.appendChild(el('li', {}, [el('span', { text: r[1] }), el('span', { class: 'r', text: 'Reported ' + hhmm(r[0]) })])); });
+    if (rows.length > 12) ul.appendChild(el('li', {}, [el('span', { class: 'r', text: (rows.length - 12) + ' more earlier today' })]));
+    frag.appendChild(ul);
+    frag.appendChild(el('p', { class: 'fine', text: 'Ospeli shows that a result is ready, never the result. Open it in your usual system.' }));
+  }
+  return frag;
+}
+function equipGrid(kind) {
+  var g = el('div', { class: 'equip' });
+  EQUIP_KEYS.filter(function (id) { return EQUIP[id].kind === kind && (kind !== 'scanner' || state.mod === 'ALL' || EQUIP[id].mod === state.mod); }).forEach(function (id) {
+    var d = isDown(id), e = lastEv(id), Q = EQUIP[id];
+    var line = d ? 'Since ' + hhmm(e.start) + ' · work order ' + e.wo + (e.back ? ' · back about ' + hhmm(e.back) : '') : (kind === 'scanner' ? freeSlots(id, now()).length + ' free slots left today' : 'Running') + (downHours(id) > 0 ? ' · down ' + fmt(downHours(id) * 60) + ' today' : '');
+    if (d && state.equip[id].posted) line += ' · posted to wards';
+    g.appendChild(el('div', { class: 'eq' + (d ? ' isdown' : '') }, [
+      el('h4', {}, [Q.name, el('span', { class: 'chip ' + (d ? 'down' : 'up'), text: d ? 'Down' : 'Up' })]),
+      el('p', { text: line }),
+      el('button', { type: 'button', class: 'small', id: 'eq-' + id, 'aria-label': (d ? 'Mark back up: ' : 'Mark down: ') + Q.name, onclick: function () { toggleEquip(id); }, text: d ? 'Mark back up' : 'Mark down' })
+    ]));
+  });
+  return g;
+}
+function labView() {
+  var frag = document.createDocumentFragment(), k = kpis();
+  var inc = state.specs.filter(function (x) { return sst(x) === 'collected'; }).sort(function (a, b) { return a.coll - b.coll; });
+  var inlab = state.specs.filter(function (x) { return sst(x) === 'received'; }).sort(function (a, b) { return a.recv - b.recv; });
+  frag.appendChild(el('div', { class: 'summary' }, [
+    el('span', { class: 'pill', text: inc.length + ' on the way' }),
+    el('span', { class: 'pill' + (k.inTransitPastLimit ? ' hot' : ' ok'), text: k.inTransitPastLimit + ' past ' + state.set.transit + ' min' }),
+    el('span', { class: 'pill', text: inlab.length + ' in the lab' }),
+    el('span', { class: 'pill', text: k.awaitingCollection + ' not yet collected' })
+  ]));
+  frag.appendChild(postedBanners(function (id) { return EQUIP[id].kind === 'analyser'; }));
+  frag.appendChild(el('h3', { class: 'sec', text: 'Incoming: collected, not yet received · ' + inc.length }));
+  if (!inc.length) frag.appendChild(el('p', { class: 'empty', text: 'Nothing on the way. New samples appear as soon as a ward marks them collected.' }));
+  var l = el('div', { class: 'items', id: 'incoming' });
+  inc.forEach(function (x) {
+    var stuck = transitLate(x), m = mins(x.coll), open = state.rejOpen === x.id;
+    var kids = [el('div', { class: 'top' }, [el('div', { class: 'kind' }, [el('span', { text: GROUPS[x.grp] }), x.urgent ? el('span', { class: 'chip urgent', title: 'Set by the requester', text: 'Urgent' }) : null]), el('div', { class: 'clock', 'data-since': x.id }, [fmt(m), el('small', { text: 'in transit' })])]),
+      el('p', { class: 'who', text: x.code + ' · ' + WARDS[x.ward] }), el('p', { class: 'meta', text: 'Collected ' + hhmm(x.coll) })];
+    if (stuck) kids.push(el('p', { class: 'note hot', text: (m > 120 ? 'Possibly missing: ' : 'Not here yet: ') + 'collected ' + fmt(m) + ' ago (limit ' + state.set.transit + ' min). If it is in your tray, receive it; if not, the guide can propose a check.' }));
+    if (x.checkAt) kids.push(el('p', { class: 'note ok', text: 'Check asked for at ' + hhmm(x.checkAt) + '.' }));
+    kids.push(el('div', { class: 'acts' }, [
+      el('button', { type: 'button', id: 'rcv-' + x.id, class: 'go sea', 'aria-label': 'Receive: ' + GROUPS[x.grp] + ', ' + x.code, onclick: function () { receive(x); }, text: 'Receive' }),
+      el('button', { type: 'button', id: 'rj-' + x.id, class: 'go ghost', 'aria-expanded': String(open), 'aria-label': 'Reject: ' + GROUPS[x.grp] + ', ' + x.code, onclick: function () { state.rejOpen = open ? null : x.id; state.rejReason = null; render(); }, text: open ? 'Cancel' : 'Reject' })
+    ]));
+    if (open) {
+      var rs = el('div', { class: 'reasons', role: 'group', 'aria-label': 'Reason for rejection' });
+      REASONS.forEach(function (r) { rs.appendChild(el('button', { type: 'button', id: 'rr-' + r[0], 'aria-pressed': String(state.rejReason === r[0]), onclick: function () { state.rejReason = r[0]; render(); }, text: r[1] })); });
+      kids.push(el('div', { class: 'rejbox' }, [el('p', { text: 'Reason (fixed list)' }), rs,
+        el('div', { class: 'acts' }, [el('button', { type: 'button', id: 'rj-go', class: 'go navy', disabled: state.rejReason ? false : 'disabled', onclick: function () { reject(x, state.rejReason); }, text: state.rejReason ? 'Confirm rejection' : 'Choose a reason first' })])]));
+    }
+    l.appendChild(el('article', { class: 'item' + (stuck ? ' stuck' : ''), 'aria-label': GROUPS[x.grp] + ', ' + x.code + ', from ' + WARDS[x.ward] }, kids));
+  });
+  frag.appendChild(l);
+  frag.appendChild(el('h3', { class: 'sec', text: 'In the lab · ' + inlab.length }));
+  var ul = el('div', { class: 'items', id: 'inlab' });
+  inlab.forEach(function (x) {
+    var slow = labLate(x);
+    ul.appendChild(el('div', { class: 'item' + (slow ? ' stuck' : ''), style: 'padding:10px 12px' }, [
+      el('div', { class: 'top' }, [el('div', {}, [el('b', { text: x.code + ' · ' + GROUPS[x.grp] }), el('p', { class: 'meta', text: WARDS[x.ward] + ' · received ' + hhmm(x.recv) + (slow ? ' · over the ' + state.set.tat[x.grp] + ' min example target' : '') })]),
+        el('div', { class: 'clock', 'data-since': x.id }, [fmt(mins(x.recv)), el('small', { text: 'in the lab' })])]),
+      el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'small', id: 'val-' + x.id, 'aria-label': 'Mark validated: ' + GROUPS[x.grp] + ', ' + x.code, onclick: function () { validate(x); }, text: 'Mark validated' })])
+    ]));
+  });
+  frag.appendChild(ul);
+  frag.appendChild(el('p', { class: 'fine', text: 'Results are validated and sent in the lab system. Ospeli records only the time, so the ward sees “reported”.' }));
+  frag.appendChild(el('h3', { class: 'sec', text: 'Analysers' }));
+  frag.appendChild(equipGrid('analyser'));
+  return frag;
+}
+function imagingView() {
+  var frag = document.createDocumentFragment(), mod = state.mod;
+  var f = el('div', { class: 'filters', role: 'group', 'aria-label': 'Type of scan' });
+  [['ALL', 'All']].concat(MOD_KEYS.map(function (m) { return [m, MODS[m].label]; })).forEach(function (m) {
+    f.appendChild(el('button', { type: 'button', id: 'm-' + m[0], 'aria-pressed': String(mod === m[0]), onclick: function () { state.mod = m[0]; render(); }, text: m[1] + ' · ' + waiting(m[0]).length }));
+  });
+  frag.appendChild(f);
+  frag.appendChild(el('h3', { class: 'sec', text: 'Scanners' }));
+  frag.appendChild(equipGrid('scanner'));
+  var split = el('div', { class: 'split' }), left = el('div'), right = el('div');
+  // Waiting list
+  var wl = waiting(mod);
+  left.appendChild(el('h3', { class: 'sec', text: 'Waiting for a slot · ' + wl.length }));
+  if (!wl.length) left.appendChild(el('p', { class: 'empty', text: 'No one waiting for a slot.' }));
+  var wlist = el('div', { class: 'items', id: 'waitlist' });
+  wl.slice(0, 8).forEach(function (x) {
+    var nf = nextFree(x.mod), dw = daysWaiting(x);
+    wlist.appendChild(el('div', { class: 'item k-scan', style: 'padding:10px 12px' }, [
+      el('div', { class: 'top' }, [el('div', {}, [el('b', {}, [x.code + ' · ' + MODS[x.mod].label + ' ', x.urgent ? el('span', { class: 'chip urgent', title: 'Set by the requester', text: 'Urgent' }) : null]), el('p', { class: 'meta', text: src(x.from) + ' · asked ' + (dw ? new Date(x.req).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : hhmm(x.req)) })]),
+        el('div', { class: 'clock' }, [dw ? days(dw) : fmt(mins(x.req)), el('small', { text: 'waiting' })])]),
+      el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'small', id: 'bk-' + x.id, disabled: nf ? false : 'disabled', 'aria-label': 'Book next free slot: ' + MODS[x.mod].label + ', ' + x.code, onclick: function () { book(x); }, text: nf ? 'Book ' + hhmm(nf.t) + ' · ' + EQUIP[nf.sc].name : 'No free slot today' })])
+    ]));
+  });
+  left.appendChild(wlist);
+  if (wl.length > 8) left.appendChild(el('p', { class: 'fine', text: (wl.length - 8) + ' more. Pick a type of scan above to see its whole list.' }));
+  left.appendChild(el('p', { class: 'fine', text: 'Listed by time waiting. Urgency is set by the requester; clinical priority stays with your local rules.' }));
+  // Today's slots and report backlog
+  var up = state.scans.filter(function (x) { return x.slot && !x.scan && (mod === 'ALL' || x.mod === mod) && x.slot.t >= now() - 30 * M; }).sort(function (a, b) { return a.slot.t - b.slot.t; });
+  right.appendChild(el('h3', { class: 'sec', text: 'Booked, next up · ' + up.length }));
+  if (!up.length) right.appendChild(el('p', { class: 'empty', text: 'No bookings left today.' }));
+  var ul = el('ul', { class: 'compact', id: 'booked' });
+  up.slice(0, 10).forEach(function (x) {
+    var d = isDown(x.slot.sc);
+    ul.appendChild(el('li', {}, [el('span', {}, [el('b', { text: hhmm(x.slot.t) + ' ' }), EQUIP[x.slot.sc].name + ' · ' + x.code + ' ', d ? el('span', { class: 'chip down', text: 'Scanner down' }) : null]),
+      el('button', { type: 'button', class: 'small', id: 'sn-' + x.id, disabled: d ? 'disabled' : false, 'aria-label': 'Mark scanned: ' + x.code, onclick: function () { scanned(x); }, text: 'Scanned' })]));
+  });
+  right.appendChild(ul);
+  var bl = state.scans.filter(function (x) { return x.scan && !x.rep && (mod === 'ALL' || x.mod === mod); }).sort(function (a, b) { return a.scan - b.scan; });
+  var bands = [0, 0, 0]; bl.forEach(function (x) { bands[ageBand(x)]++; });
+  right.appendChild(el('h3', { class: 'sec', text: 'Waiting for report · ' + bl.length }));
+  right.appendChild(el('div', { class: 'summary', style: 'margin:0 0 8px' }, [el('span', { class: 'pill', text: bands[0] + ' under 2 h' }), el('span', { class: 'pill', text: bands[1] + ' 2–' + state.set.backlogH + ' h' }), el('span', { class: 'pill' + (bands[2] ? ' hot' : ''), text: bands[2] + ' over ' + state.set.backlogH + ' h' })]));
+  var bul = el('ul', { class: 'compact', id: 'backlog' });
+  bl.slice(0, 8).forEach(function (x) {
+    bul.appendChild(el('li', {}, [el('span', {}, [el('b', { text: fmt(mins(x.scan)) + ' ' }), MODS[x.mod].label + ' · ' + x.code + ' · ' + src(x.from)]),
+      el('button', { type: 'button', class: 'small', id: 'rp-' + x.id, 'aria-label': 'Mark reported: ' + x.code, onclick: function () { reported(x); }, text: 'Reported' })]));
+  });
+  right.appendChild(bul);
+  split.appendChild(left); split.appendChild(right);
+  frag.appendChild(split);
+  return frag;
+}
+function managerView() {
+  var frag = document.createDocumentFragment(), k = kpis();
+  // Turnaround by step, all tests
+  var today = state.specs.filter(function (x) { return x.req >= state.day0 && !x.rej; });
+  var steps = [['Request → collected', 'req', 'coll'], ['Collected → received', 'coll', 'recv'], ['Received → validated', 'recv', 'val']].map(function (s) { return { label: s[0], st: stepStats(today, s[1], s[2]) }; });
+  var maxV = Math.max.apply(null, steps.map(function (s) { return s.st.p90 || 0; })) || 1, longest = steps.slice().sort(function (a, b) { return (b.st.med || 0) - (a.st.med || 0); })[0];
+  frag.appendChild(el('h3', { class: 'sec', text: 'Lab turnaround by step, all tests today' }));
+  var sb = el('div', { class: 'steps', id: 'bystep' });
+  steps.forEach(function (s) {
+    sb.appendChild(el('div', { class: 'step' + (s === longest ? ' long' : '') }, [el('span', { text: s.label }),
+      el('div', { class: 'trackbar', 'aria-hidden': 'true' }, [el('i', { style: 'width:' + Math.round((s.st.med || 0) / maxV * 100) + '%' }), el('i', { class: 'p90', style: 'width:' + Math.round((s.st.p90 || 0) / maxV * 100) + '%' })]),
+      el('span', { class: 'v' }, [fmt(s.st.med), el('small', { text: '10% over ' + fmt(s.st.p90) })])]));
+  });
+  frag.appendChild(sb);
+  frag.appendChild(el('p', { class: 'legend' }, [el('span', {}, [el('i'), 'median']), el('span', {}, [el('i', { class: 'p' }), 'slowest 10% start here']), el('span', {}, [el('i', { class: 'l' }), 'longest step: ' + longest.label.toLowerCase()])]));
+  // By test group
+  frag.appendChild(el('h3', { class: 'sec', text: 'By test group, today' }));
+  var tb = el('tbody');
+  GROUP_KEYS.forEach(function (g) {
+    var list = today.filter(function (x) { return x.grp === g; }), tr = stepStats(list, 'coll', 'recv'), lab = stepStats(list, 'recv', 'val'), tgt = state.set.tat[g];
+    tb.appendChild(el('tr', { class: lab.med != null && lab.med > tgt ? 'over' : '' }, [el('td', { text: GROUPS[g] }), el('td', { class: 'r', text: String(lab.n) }),
+      el('td', { class: 'r' }, [fmt(tr.med), el('small', { text: '10% over ' + fmt(tr.p90) })]),
+      el('td', { class: 'r' }, [fmt(lab.med), el('small', { text: '10% over ' + fmt(lab.p90) })]),
+      el('td', { class: 'r' }, [tgt + ' min', el('small', { text: lab.n ? Math.round(list.filter(function (x) { return x.val && x.recv && (x.val - x.recv) / M <= tgt; }).length / lab.n * 100) + '% within' : '–' })])]));
+  });
+  frag.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 't', id: 'bytest' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Test' }), el('th', { class: 'r', text: 'Done' }), el('th', { class: 'r', text: 'Transport' }), el('th', { class: 'r', text: 'In the lab' }), el('th', { class: 'r', text: 'Target*' })])]), tb])]));
+  frag.appendChild(el('p', { class: 'fine', text: 'Medians, with the time the slowest 10% take longer than. *Received → validated; example settings, not a standard. Measures the process, never individual scientists.' }));
+  // Rejections
+  frag.appendChild(el('h3', { class: 'sec', text: 'Rejected samples by reason and ward · ' + k.rejected + ' today' }));
+  var rc = rejCounts(), byReason = {};
+  Object.keys(rc).forEach(function (key) { var p = key.split('|'); (byReason[p[1]] = byReason[p[1]] || []).push({ ward: p[0], n: rc[key].length }); });
+  var rg = el('div', { class: 'rejgrid', id: 'rejections' });
+  REASONS.filter(function (r) { return byReason[r[0]]; }).sort(function (a, b) { return byReason[b[0]].reduce(function (s, x) { return s + x.n; }, 0) - byReason[a[0]].reduce(function (s, x) { return s + x.n; }, 0); }).forEach(function (r) {
+    var ws = byReason[r[0]].sort(function (a, b) { return b.n - a.n; }), tot = ws.reduce(function (s, x) { return s + x.n; }, 0);
+    rg.appendChild(el('div', { class: 'rj' }, [el('span', { text: r[1] }), el('b', { text: String(tot) }),
+      el('div', { class: 'wards' }, ws.map(function (x) { return el('span', { class: x.n >= state.set.repeat ? 'hot' : '', text: WARDS[x.ward] + ' × ' + x.n }); }))]));
+  });
+  if (!rg.childNodes.length) rg.appendChild(el('p', { class: 'empty', text: 'No rejections today.' }));
+  frag.appendChild(rg);
+  if (state.reviews.length) {
+    frag.appendChild(el('h3', { class: 'sec', text: 'Agreed reviews' }));
+    var rv = el('ul', { class: 'compact', id: 'reviews' });
+    state.reviews.forEach(function (r) { rv.appendChild(el('li', {}, [el('span', { text: WARDS[r.ward] + ' and lab reception: ' + REASON[r.reason].toLowerCase() }), el('span', { class: 'r', text: 'Agreed ' + hhmm(r.at) })])); });
+    frag.appendChild(rv);
+  }
+  // Imaging by modality
+  frag.appendChild(el('h3', { class: 'sec', text: 'Imaging by type of scan' }));
+  var ib = el('tbody');
+  MOD_KEYS.forEach(function (m) {
+    var wl = waiting(m), bl = state.scans.filter(function (x) { return x.mod === m && x.scan && !x.rep; }), bands = [0, 0, 0]; bl.forEach(function (x) { bands[ageBand(x)]++; });
+    var rep = state.scans.filter(function (x) { return x.mod === m && x.rep && x.rep >= state.day0; }), med = rep.length ? median(rep.map(function (x) { return (x.rep - x.req) / M; })) : null;
+    var left = state.scans.filter(function (x) { return x.mod === m && x.slot && !x.scan && x.slot.t >= now(); }).length;
+    ib.appendChild(el('tr', { class: bands[2] ? 'over' : '' }, [el('td', { text: MODS[m].label }),
+      el('td', { class: 'r' }, [String(wl.length), el('small', { text: wl.length ? 'median ' + days(Math.round(median(wl.map(daysWaiting)))) : '' })]),
+      el('td', { class: 'r', text: String(left) }),
+      el('td', { class: 'r' }, [String(bl.length), el('small', { text: bands[0] + ' · ' + bands[1] + ' · ' + bands[2] })]),
+      el('td', { class: 'r', text: med == null ? '–' : med > 2880 ? days(Math.round(med / 1440)) : fmt(med) })]));
+  });
+  frag.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 't', id: 'bymod' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Scan' }), el('th', { class: 'r', text: 'Waiting' }), el('th', { class: 'r', text: 'Booked left' }), el('th', { class: 'r', text: 'To report' }), el('th', { class: 'r', text: 'Request → report' })])]), ib])]));
+  frag.appendChild(el('p', { class: 'fine', text: 'To report: under 2 h · 2–' + state.set.backlogH + ' h · over ' + state.set.backlogH + ' h. Request → report is the median for scans reported today; outpatient requests wait days, so the figure mixes both.' }));
+  // Downtime
+  frag.appendChild(el('h3', { class: 'sec', text: 'Equipment downtime today' }));
+  var db = el('tbody'), sh = scheduledH();
+  EQUIP_KEYS.slice().sort(function (a, b) { return downHours(b) - downHours(a); }).forEach(function (id) {
+    var h = downHours(id); if (!h && !isDown(id)) return;
+    var e = lastEv(id);
+    db.appendChild(el('tr', { class: isDown(id) ? 'over' : '' }, [el('td', {}, [EQUIP[id].name, el('small', { text: (isDown(id) ? 'Down since ' + hhmm(e.start) : 'Up') + ' · ' + e.wo })]), el('td', { class: 'r', text: fmt(h * 60) }), el('td', { class: 'r', text: (Math.round(h / sh * 1000) / 10) + '%' })]));
+  });
+  frag.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 't', id: 'downtime' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Equipment' }), el('th', { class: 'r', text: 'Down' }), el('th', { class: 'r', text: 'Of hours' })])]), db])]));
+  frag.appendChild(el('p', { class: 'fine', text: 'Items with no downtime today are not listed. ' + EQUIP_KEYS.length + ' analysers and scanners, each scheduled for the whole example day (' + fmt(sh * 60) + ' so far).' }));
+  // Settings
+  var d = el('details', { class: 'set', id: 'settings' }, [el('summary', { text: 'Settings (example settings, not a standard)' })]);
+  var tg = el('div', { class: 'targets' });
+  function num(id, label, val, min, max, set) { tg.appendChild(el('label', { for: id }, [label, el('input', { type: 'number', id: id, min: String(min), max: String(max), step: '1', inputmode: 'numeric', value: String(val), onchange: function (e) { var n = Math.max(min, Math.min(max, Math.round(+e.target.value) || val)); set(n); addLog('Manager set ' + label.toLowerCase() + ' to ' + n + '.'); render(); document.getElementById('settings').open = true; } })])); }
+  num('st-transit', 'Transport limit (min)', state.set.transit, 5, 240, function (n) { state.set.transit = n; });
+  num('st-repeat', 'Repeat rejections to flag', state.set.repeat, 2, 20, function (n) { state.set.repeat = n; });
+  num('st-backlog', 'Report backlog limit (h)', state.set.backlogH, 1, 72, function (n) { state.set.backlogH = n; });
+  GROUP_KEYS.forEach(function (g) { num('st-tat-' + g, GROUPS[g] + ' target (min)', state.set.tat[g], 5, 1440, function (n) { state.set.tat[g] = n; }); });
+  d.appendChild(tg);
+  d.appendChild(el('p', { class: 'fine', text: 'Example settings for this demo, not a standard. Your organisation sets its own; Ospeli measures against them.' }));
+  if (settingsOpen) d.open = true;
+  d.addEventListener('toggle', function () { settingsOpen = d.open; });
+  frag.appendChild(d);
+  return frag;
+}
+var settingsOpen = false;
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Ward lists, lab reception, imaging booking and the measures all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag: samples are moving within the limits, no repeated rejections, and all equipment is up or covered.' }));
+  var TAG = { time: 'Stuck', ask: 'Repeated rejections', post: 'Tell the wards' };
+  list.forEach(function (sg) {
+    var pend = state.pending.some(function (p) { return p.id === sg.id; });
+    var acts = sg.acts.map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend ? 'disabled' : false, onclick: function () { propose(sg, a); }, text: pend ? 'Proposed' : a.label }); });
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
+      el('span', { class: 'tag ' + (sg.kind === 'post' ? '' : sg.kind), text: sg.id.indexOf('move-') === 0 ? 'Scanner down' : TAG[sg.kind] }),
+      el('h3', { text: sg.title }), sg.text ? el('p', { text: sg.text }) : null,
+      sg.list && sg.list.length ? el('ul', {}, sg.list.map(function (x) { return el('li', { text: x }); })) : null,
+      el('p', { class: 'why', text: 'Why: ' + sg.why }),
+      el('p', { class: 'why', text: 'Decides: ' + ROLE[sg.by] + '.' }),
+      el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  if (state.pending.length) {
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for a person to decide' })]);
+    state.pending.forEach(function (p) {
+      d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }),
+        state.role === p.by
+          ? el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, [el('button', { type: 'button', class: 'small primary', onclick: function () { decide(p, true); }, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])
+          : el('div', {}, [el('p', { class: 'by', text: ROLE[p.by] + ' decides.' }), el('button', { type: 'button', class: 'small', style: 'margin-top:6px', onclick: function () { state.role = p.by; render(); }, text: 'Switch to ' + ROLE_VIEW[p.by] + ' view' })])]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Proposals wait here for the named role.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 25).forEach(function (e) { ol.appendChild(el('li', { class: e.t === lastLogT && now() - e.t < 5000 ? 'new' : '' }, [el('time', { text: hhmm(e.t) }), el('span', { text: e.text })])); });
+}
+
+// Live clocks: redraw when what the guide sees changes; otherwise update counters in place.
+var sig = '';
+function signature() { return state.specs.filter(function (x) { return transitLate(x) || labLate(x); }).map(function (x) { return x.id; }).join(',') + '|' + suggest().map(function (s) { return s.id; }).join(','); }
+function tick() {
+  if (signature() !== sig) { render(); return; }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-since]'), function (n) {
+    var id = n.getAttribute('data-since'), x = spec(id), t = null;
+    if (x) t = sst(x) === 'requested' ? x.req : sst(x) === 'collected' ? x.coll : sst(x) === 'received' ? x.recv : null;
+    else { var y = scanById(id); if (y) t = ist(y) === 'requested' ? y.req : ist(y) === 'scanned' ? y.scan : null; }
+    if (t && n.firstChild && n.firstChild.nodeType === 3) n.firstChild.textContent = fmt(mins(t));
+  });
+}
+setInterval(tick, 15000);
+
+// ---------- Wiring ----------
+Object.keys(ROLE).forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; state.rejOpen = null; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-clock').addEventListener('click', function () { state.offset = (state.offset || 0) + 15 * M; addLog('Demo: clock moved on 15 minutes.'); render(); toast('Clock moved on 15 minutes. Waits have grown.'); });
+document.getElementById('t-batch').addEventListener('click', function () {
+  var n = 0, list = state.specs.filter(function (x) { return sst(x) === 'requested'; }).sort(function (a, b) { return a.req - b.req; }).slice(0, 3);
+  list.forEach(function (x) { x.coll = now(); addLog(specText(x, 'coll') + ' (porter round)'); n++; });
+  render(); toast(n ? n + ' samples collected on the porter round; lab reception sees them on the way.' : 'No samples waiting to be collected.');
+});
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; render(); toast('Example reset to the start of the demo.'); });
+
+// Read-only view for software agents (no writes): window.ospeliDiagnosticsDemo
+window.ospeliDiagnosticsDemo = Object.freeze({
+  describe: function () { return 'Read-only diagnostics demo (lab samples and imaging) for a fictional hospital. Tracks requests, samples, scans and turnaround only; never results. get() returns open samples, the imaging waiting list and equipment status; kpis() today\'s measures; suggestions() the guide\'s current suggestions. Runs in the browser; nothing is sent anywhere.'; },
+  get: function () {
+    return clone({ role: state.role, now: new Date(now()).toISOString(), settings: state.set,
+      openSamples: state.specs.filter(function (x) { return ['requested', 'collected', 'received'].indexOf(sst(x)) >= 0; }).map(function (x) { return { id: x.id, patientCode: x.code, ward: WARDS[x.ward], test: GROUPS[x.grp], status: sst(x), minutesAtStage: mins(sst(x) === 'requested' ? x.req : sst(x) === 'collected' ? x.coll : x.recv), pastTransportLimit: transitLate(x) }; }),
+      rejectedToday: state.specs.filter(function (x) { return x.rej; }).map(function (x) { return { id: x.id, ward: WARDS[x.ward], test: GROUPS[x.grp], reason: REASON[x.rej.reason], at: new Date(x.rej.t).toISOString() }; }),
+      imagingWaiting: MOD_KEYS.map(function (m) { var w = waiting(m); return { modality: MODS[m].label, waiting: w.length, longestDays: w.length ? daysWaiting(w[0]) : 0 }; }),
+      equipment: EQUIP_KEYS.map(function (id) { return { id: id, name: EQUIP[id].name, kind: EQUIP[id].kind, down: isDown(id), downHoursToday: Math.round(downHours(id) * 100) / 100, bookingsLeftToday: EQUIP[id].kind === 'scanner' ? futureOn(id).length : null, postedToWards: state.equip[id].posted }; }),
+      pendingDecisions: state.pending.map(function (p) { return { text: p.text, decides: ROLE[p.by] }; }) });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text || (s.list || []).join('; '), why: s.why, decides: ROLE[s.by] }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>

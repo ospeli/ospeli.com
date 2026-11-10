@@ -1,0 +1,845 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Emergency preparedness and continuity demo · Ospeli</title>
+<meta name="description" content="Keep every area ready for an outage or emergency: checklists on a phone, a printable downtime pack, drills tracked to closure and a live incident board. Keeps working when the network is down. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Emergency preparedness and continuity demo · Ospeli">
+<meta property="og:description" content="Keep every area ready for an outage or emergency: checklists on a phone, a printable downtime pack, drills tracked to closure and a live incident board. Keeps working when the network is down. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/continuity/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; line-height: 1.3; }
+h3 { font-size: 1rem; margin: 0 0 8px; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button { font: inherit; color: var(--ink); }
+select, input[type=text] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.sea { background: var(--sea); border-color: var(--sea); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 520px) { .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 14px; width: 100%; } .roles button { padding: 6px 4px; font-size: 0.95rem; line-height: 1.2; } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 12px; }
+/* network bar */
+.netbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 0 0 18px; }
+.nettoggle { display: inline-flex; align-items: center; gap: 10px; border-color: #CFC5B2; padding: 8px 14px 8px 10px; }
+.nettoggle .knob { width: 40px; height: 24px; border-radius: 999px; background: #D9D1C2; position: relative; flex: none; transition: background 0.15s; }
+.nettoggle .knob::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left 0.15s; }
+.nettoggle[aria-pressed=true] { border-color: var(--coral); }
+.nettoggle[aria-pressed=true] .knob { background: var(--coral); }
+.nettoggle[aria-pressed=true] .knob::after { left: 19px; }
+.syncpill { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 12px; font-weight: 800; font-size: 0.9rem; background: var(--wash); }
+.syncpill .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--sea); flex: none; }
+.syncpill.off { background: var(--hot); color: #8E2C18; }
+.syncpill.off .dot { background: var(--coral); }
+.syncpill.busy .dot { background: var(--mango); animation: pulse 0.8s infinite alternate; }
+@keyframes pulse { to { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .syncpill.busy .dot { animation: none; } }
+.offbanner { display: none; background: var(--navy); color: #fff; border-radius: 12px; padding: 10px 14px; margin: -6px 0 16px; font-size: 0.95rem; }
+.offbanner.on { display: block; }
+.offbanner b { color: #FFD38A; }
+/* layout */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.cardhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 10px; }
+.cardhead h2 { margin: 0; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.88rem; font-weight: 700; display: block; line-height: 1.3; }
+.stat .n { color: var(--soft); font-size: 0.8rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.8rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stat.good b { color: var(--sea); }
+.stathint { color: var(--soft); font-size: 0.8rem; margin: 6px 0 14px; }
+.fine { font-size: 0.85rem; color: var(--soft); margin: 8px 0 0; }
+.empty { text-align: center; color: var(--soft); padding: 18px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; }
+.chip { display: inline-block; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 2px 9px; background: var(--sand); white-space: nowrap; }
+.chip.ok { background: var(--wash); color: #06686A; } .chip.due { background: var(--hot); color: #9C3018; } .chip.soon { background: var(--warn); color: #7A5200; } .chip.navy { background: var(--navy); color: #fff; } .chip.coral { background: var(--coral); color: #fff; }
+/* ward lead checklist */
+.areapick { display: flex; flex-direction: column; gap: 4px; font-weight: 800; font-size: 0.95rem; margin-bottom: 12px; }
+.areapick select { font-weight: 700; font-size: 1rem; }
+.ready { display: flex; align-items: center; gap: 12px; background: var(--sand); border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+.ready .ring { width: 56px; height: 56px; flex: none; }
+.ready b { display: block; font-size: 1.1rem; line-height: 1.25; }
+.ready span { color: var(--soft); font-size: 0.95rem; }
+.checks { display: grid; gap: 10px; }
+.ci { border: 1px solid var(--line); border-left: 6px solid var(--coral); border-radius: 12px; padding: 12px; background: #fff; }
+.ci.ok { border-left-color: var(--sea); }
+.ci.fail { border-left-color: var(--mango); background: #FFFBF3; }
+.ci .top { display: flex; gap: 10px; align-items: flex-start; }
+.ci .mark { width: 28px; height: 28px; flex: none; margin-top: 1px; }
+.ci .txt { min-width: 0; flex: 1; }
+.ci .txt b { display: block; font-size: 1.08rem; line-height: 1.3; }
+.ci .txt span { display: block; color: var(--soft); font-size: 0.95rem; }
+.ci .acts { display: flex; gap: 8px; margin-top: 10px; }
+.ci .acts .go { flex: 1; min-height: 52px; font-size: 1.02rem; }
+.ci .acts .go.confirm { background: var(--sea); border-color: var(--sea); color: #fff; }
+.ci .acts .prob { min-height: 52px; border-color: #CFC5B2; }
+.packbtn { width: 100%; min-height: 56px; font-size: 1.05rem; margin-top: 14px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+/* downtime pack */
+.pack { border: 2px solid var(--navy); border-radius: 12px; padding: 16px; margin-top: 14px; background: #fff; }
+.pack .phead { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; border-bottom: 2px solid var(--navy); padding-bottom: 8px; margin-bottom: 12px; }
+.pack .phead h3 { margin: 0; font-size: 1.1rem; }
+.pack .asat { background: var(--warn); border-radius: 8px; padding: 6px 10px; font-size: 0.92rem; font-weight: 700; margin: 0 0 12px; }
+.pack h4 { margin: 14px 0 6px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.ptable { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+.ptable th, .ptable td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ptable th { color: var(--soft); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.ptable td.r, .ptable th.r { text-align: right; white-space: nowrap; }
+.ptable td.nowrap { white-space: nowrap; }
+.ptable td small { color: var(--soft); font-size: 0.82rem; }
+.ptable td.write { border-bottom: 1px solid #B9AE99; min-width: 70px; }
+.ptable tr.low td { color: #9C3018; font-weight: 700; }
+.pack .pacts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+.tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+/* readiness grid */
+.grid { width: 100%; border-collapse: separate; border-spacing: 0 6px; font-size: 0.92rem; }
+.grid th { color: var(--soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; padding: 0 4px; font-weight: 800; }
+.grid th:first-child { text-align: left; }
+.grid td { padding: 6px 4px; text-align: center; background: #FBF8F2; }
+.grid td:first-child { text-align: left; border-radius: 10px 0 0 10px; padding-left: 10px; font-weight: 800; }
+.grid td:last-child { border-radius: 0 10px 10px 0; }
+.grid td small { display: block; color: var(--soft); font-weight: 600; font-size: 0.75rem; }
+.cell { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; }
+.cell.ok { background: var(--wash); } .cell.due { background: var(--hot); } .cell.fail { background: var(--warn); }
+.cell svg { width: 18px; height: 18px; }
+.gridkey { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.82rem; color: var(--soft); margin-top: 4px; }
+.gridkey span { display: inline-flex; align-items: center; gap: 6px; }
+.gridkey .cell { width: 22px; height: 22px; } .gridkey .cell svg { width: 14px; height: 14px; }
+.setrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 0.88rem; color: var(--soft); font-weight: 700; margin-top: 10px; }
+.setrow select { min-height: 40px; font-size: 0.9rem; padding: 4px 8px; }
+.filt { display: inline-flex; gap: 6px; }
+.filt button { min-height: 36px; font-size: 0.85rem; border-color: #CFC5B2; padding: 4px 12px; }
+.filt button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 760px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rows li { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: flex; gap: 10px; align-items: center; justify-content: space-between; font-size: 0.92rem; }
+.rows li .what { min-width: 0; }
+.rows li .what b { display: block; line-height: 1.3; }
+.rows li .what span { color: var(--soft); font-size: 0.82rem; }
+.rows li.done { opacity: 0.7; }
+.rows li.hl { box-shadow: 0 0 0 2px var(--mango) inset; }
+/* incident */
+.incident { border-color: var(--coral); }
+.incident.live { box-shadow: 0 0 0 3px var(--hot); }
+.startrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.startrow label { display: flex; flex-direction: column; gap: 4px; font-weight: 800; font-size: 0.88rem; }
+.livebar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; background: var(--coral); color: #fff; border-radius: 12px; padding: 10px 14px; margin-bottom: 12px; }
+.livebar b { font-size: 1.05rem; }
+.livebar span { font-weight: 700; }
+.livebar.down { background: var(--soft); }
+.affect { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.affect button { min-height: 38px; font-size: 0.85rem; border-color: #CFC5B2; padding: 4px 12px; }
+.affect button[aria-pressed=true] { background: var(--coral); border-color: var(--coral); color: #fff; }
+ol.card-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.stepbtn { width: 100%; display: flex; gap: 10px; align-items: flex-start; text-align: left; border-radius: 12px; border: 1px solid var(--line); padding: 10px 12px; font-weight: 600; min-height: 52px; background: #fff; }
+.stepbtn .box { width: 24px; height: 24px; border-radius: 6px; border: 2px solid var(--navy); flex: none; display: grid; place-items: center; margin-top: 1px; }
+.stepbtn[aria-pressed=true] { background: #F4FAF8; border-color: var(--foam); }
+.stepbtn[aria-pressed=true] .box { background: var(--sea); border-color: var(--sea); }
+.stepbtn[aria-pressed=true] .t { text-decoration: line-through; color: var(--soft); }
+.stepbtn .t b { display: block; font-weight: 700; line-height: 1.3; }
+.stepbtn .t small { color: var(--soft); font-weight: 700; font-size: 0.8rem; }
+.stepbtn.focus { box-shadow: 0 0 0 3px var(--mango); }
+.stepbtn.next:not([aria-pressed=true]) { border-color: var(--navy); }
+.carenote { background: var(--warn); border-radius: 10px; padding: 8px 12px; font-size: 0.88rem; margin: 0 0 10px; }
+.decform { display: grid; grid-template-columns: 200px minmax(0, 1fr) auto; gap: 8px; align-items: end; margin-top: 10px; }
+.decform label { display: flex; flex-direction: column; gap: 4px; font-weight: 800; font-size: 0.85rem; min-width: 0; }
+@media (max-width: 640px) { .decform { grid-template-columns: minmax(0, 1fr); } }
+.updrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 12px; font-size: 0.92rem; }
+/* exec */
+.big { font-size: 1.6rem; font-weight: 800; line-height: 1.2; margin: 0; }
+.execgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+@media (max-width: 640px) { .execgrid { grid-template-columns: minmax(0, 1fr); } }
+.box2 { background: var(--sand); border-radius: 12px; padding: 12px; }
+.box2 h3 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--soft); margin: 0 0 6px; }
+.box2 p { margin: 0; }
+.nextup { font-size: 1.5rem; font-weight: 800; }
+.nextup.late { color: #B23A22; }
+.progress { height: 10px; border-radius: 6px; background: #E8E0D1; overflow: hidden; margin: 6px 0; }
+.progress i { display: block; height: 100%; background: var(--sea); }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 360px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.95rem; align-items: start; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log .who { color: var(--soft); font-size: 0.82rem; display: block; }
+ol.log .q { font-size: 0.7rem; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.82rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg .why { color: var(--soft); font-size: 0.82rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.gap { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+.prop .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media print {
+  body { background: #fff; }
+  body * { visibility: hidden; }
+  #pack, #pack * { visibility: visible; }
+  #pack { position: absolute; left: 0; top: 0; width: 100%; border: 0; margin: 0; }
+  #pack .pacts { display: none; }
+}
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Emergency preparedness and continuity</h1>
+  <p class="lead">Keep every area ready before a power cut, a system outage or a surge of arrivals. Area leads tick their checklist on a phone and print a downtime pack. The planning lead sees readiness by area and runs drills and incidents. It keeps working when the network does not. The guide points out gaps; a person decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-ward" aria-pressed="false">Ward lead</button>
+    <button type="button" id="r-planning" aria-pressed="false">Planning lead</button>
+    <button type="button" id="r-exec" aria-pressed="false">Exec on call</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="netbar" role="group" aria-label="Network">
+    <button type="button" class="nettoggle" id="net" aria-pressed="false"><span class="knob" aria-hidden="true"></span>Simulate network down</button>
+    <span class="syncpill" id="sync" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="sync-t">Synced</span></span>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+  <div class="offbanner" id="offbanner" role="note"><b>Network down (simulated).</b> Everything on this page still works. Your changes are kept on this device and sent when the connection is back.</div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h" id="viewcard">
+        <h2 id="view-h">My area</h2>
+        <div class="stats" id="kpis"></div>
+        <p class="stathint">Tap a tile for its definition.</p>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened</h2>
+        <ol class="log" id="log"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads checklists, drills, actions and the incident card, and points out gaps, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. Thresholds are example settings, not a standard. A suggestion only becomes a proposal; a person decides.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its areas, contacts, stock and drills. It tracks plans, checklists, drills and actions, never individual staff performance. It does not triage casualties or set clinical priorities in an emergency; clinicians decide care. Coming next (Mar 2027): the WHO Hospital Safety Index self-assessment, generator, fuel and water checks on a phone during rounds, drill reviews drafted from the timed log, and a downtime pack built from live bed, staff and stock data. <a href="../../areas/emergency-preparedness/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var DAY = 864e5, MIN = 6e4;
+var STORE = 'ospeli.continuity.v1';
+
+// ---------- Example data (fictional) ----------
+// Areas: [id, name, days since: plan reviewed, pack printed, contacts checked, last drill, beds]
+var AREAS = [
+  ['w1', 'Ward 1 · Medical', 40, 20, 10, 60, 24],
+  ['w2', 'Ward 2 · Surgical', 400, 30, 100, 2, 22],
+  ['w3', 'Ward 3 · Older people', 200, 120, 95, 230, 20],
+  ['w4', 'Ward 4 · Children', 30, 15, 20, 90, 16],
+  ['ed', 'Emergency department', 100, 40, 5, 45, 18],
+  ['th', 'Theatres', 380, 60, 30, 260, 8],
+  ['cc', 'Critical care', 60, 10, 12, 120, 10],
+  ['op', 'Outpatients', 300, 200, 150, 400, 0]
+];
+var ITEMS = [
+  { k: 'plan', name: 'Plan reviewed', each: 'Area plan reviewed and signed off', limit: 365, every: 'yearly' },
+  { k: 'pack', name: 'Fallback paper pack printed', each: 'Paper downtime pack printed and in the drill box', limit: 90, every: 'every 3 months' },
+  { k: 'contacts', name: 'Contact list current', each: 'Call-down and key contact list checked', limit: 90, every: 'every 3 months' },
+  { k: 'drill', name: 'Drill done', each: 'Area has taken part in a drill', limit: null, every: 'in the drill period' }
+];
+var DRILL_TYPES = ['Tabletop: power loss', 'Walk-through: system downtime', 'Call-down test', 'Tabletop: surge of arrivals'];
+var ROLES = ['Incident commander', 'Emergency planning lead', 'Facilities lead', 'IT lead', 'Operations lead', 'Area lead', 'Executive on call'];
+var CONTACTS = [
+  ['Incident commander (on-call manager)', 'Bleep 2201', 'Ext 4141'],
+  ['Emergency planning lead', 'Ext 4310', 'Ext 4372'],
+  ['Facilities on call', 'Bleep 2240', 'Radio channel 2'],
+  ['IT service desk', 'Ext 4000', 'Ext 4001'],
+  ['Switchboard', 'Ext 0', 'Ext 9'],
+  ['Stores on call', 'Bleep 2275', 'Ext 4455'],
+  ['Pharmacy on call', 'Bleep 2290', 'Ext 4520'],
+  ['Bed manager', 'Bleep 2205', 'Ext 4101']
+];
+// Critical stock as at last sync: [item, on hand, usual level]
+var STOCK = [
+  ['Portable oxygen cylinders', 6, 6], ['Torches', 3, 6], ['Spare torch batteries (packs)', 4, 4],
+  ['Paper downtime forms (pads)', 2, 5], ['Bottled drinking water (cases)', 4, 4],
+  ['Hand-held radios, charged', 2, 2], ['Extension leads for backup sockets', 3, 3], ['Blankets', 18, 20]
+];
+var INCIDENTS = {
+  power: { name: 'Power loss', affects: ['w2', 'w3', 'th'], steps: [
+    ['Confirm backup power has started in the affected areas', 'Facilities lead'],
+    ['Check equipment that needs power is on backup sockets', 'Area leads'],
+    ['Tell affected areas to switch to the printed downtime pack', 'Incident commander'],
+    ['Ask the facilities on-call engineer for an estimated fix time', 'Facilities lead'],
+    ['Check fuel cover for the backup generator', 'Facilities lead'],
+    ['Set the next update time and tell area leads', 'Incident commander'],
+    ['Agree stand-down checks for when mains power is back', 'Incident commander']] },
+  downtime: { name: 'System downtime', affects: ['w1', 'w2', 'w3', 'w4', 'ed'], steps: [
+    ['Confirm which systems are down and when it started', 'IT lead'],
+    ['Tell all areas to start paper downtime procedures', 'Incident commander'],
+    ['Print bed lists and contacts from the last sync', 'Area leads'],
+    ['Start a paper log of admissions, discharges and moves', 'Area leads'],
+    ['Get an estimated recovery time from the IT lead', 'Incident commander'],
+    ['Agree who enters the paper records once systems return', 'Operations lead'],
+    ['Set the next update time', 'Incident commander']] },
+  surge: { name: 'Surge of arrivals', affects: ['ed', 'cc', 'w1', 'th'], note: 'Clinicians decide care and the order of treatment. This card covers the operational steps only.', steps: [
+    ['Open the surge plan and confirm who is incident commander', 'Incident commander'],
+    ['Start the staff call-down list', 'Switchboard'],
+    ['Open the surge beds agreed in the plan', 'Bed manager'],
+    ['Check critical stock in the receiving areas', 'Stores lead'],
+    ['Set up one information point for families and visitors', 'Operations lead'],
+    ['Set the next update time', 'Incident commander']] }
+};
+var SETTINGS = { actionAgeDays: 30, packAgeDays: 90 };
+var HINTS = {
+  ward: 'Ward or department lead, on a phone: tick your area\'s readiness checklist and print the downtime pack.',
+  planning: 'Emergency planning lead: readiness by area, drills and open actions, and the live incident board.',
+  exec: 'Executive on call: one screen with the incident status, what is affected, decisions and the next update.'
+};
+
+function seed() {
+  var t = Date.now(), d = function (n) { return t - n * DAY; };
+  var areas = {};
+  AREAS.forEach(function (a) { areas[a[0]] = { id: a[0], name: a[1], beds: a[6], items: { plan: { at: d(a[2]) }, pack: { at: d(a[3]) }, contacts: { at: d(a[4]) }, drill: { at: d(a[5]) } } }; });
+  return {
+    v: 1, role: window.matchMedia('(max-width: 640px)').matches ? 'ward' : 'planning', myArea: 'w3', guide: true,
+    offline: false, queue: [], lastSync: t - 14 * MIN, syncing: false,
+    drillPeriod: 180, gridFilter: 'all', kpiOpen: null, packOpen: false, focusStep: null, confirmStand: false,
+    areas: areas,
+    drills: [
+      { id: 'd1', area: 'ed', type: 'Call-down test', due: d(30), held: d(45) },
+      { id: 'd2', area: 'w1', type: 'Tabletop: power loss', due: d(50), held: d(60) },
+      { id: 'd3', area: 'cc', type: 'Walk-through: system downtime', due: d(100), held: d(120) },
+      { id: 'd4', area: 'w4', type: 'Tabletop: surge of arrivals', due: d(80), held: d(90) },
+      { id: 'd5', area: 'th', type: 'Walk-through: system downtime', due: d(20), held: null },
+      { id: 'd6', area: 'w2', type: 'Walk-through: power loss', due: d(5), held: d(2) },
+      { id: 'd7', area: 'ed', type: 'Tabletop: surge of arrivals', due: d(-10), held: null }
+    ],
+    actions: [
+      { id: 'a1', from: 'd6', text: 'Label the wall sockets on backup power in bay B', owner: 'Facilities lead', opened: d(2), closed: null },
+      { id: 'a2', from: 'd6', text: 'Replace out-of-date paper forms in the drill box', owner: 'Area lead', opened: d(2), closed: null },
+      { id: 'a3', from: 'd6', text: 'Fix two call-down numbers that did not connect', owner: 'Switchboard', opened: d(2), closed: null },
+      { id: 'a4', from: 'd3', text: 'Replace flat torch batteries in the store cupboard', owner: 'Stores lead', opened: d(120), closed: null },
+      { id: 'a5', from: 'd2', text: 'Add the backup generator room key to the on-call bag', owner: 'Facilities lead', opened: d(60), closed: d(40) }
+    ],
+    proposals: [], incident: null, log: [
+      { at: t - 15 * MIN, who: 'Emergency planning lead', text: 'Readiness board reviewed for the weekly huddle', q: false },
+      { at: d(2), who: 'Emergency planning lead', text: 'Drill held: Ward 2 · Surgical, walk-through: power loss. 3 actions opened', q: false }
+    ], seq: 1
+  };
+}
+var state = load() || seed();
+state.syncing = false;
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() { try { var s = JSON.parse(localStorage.getItem(STORE)); return s && s.v === 1 && s.areas ? s : null; } catch (e) { return null; } }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+// ---------- Rules (pure) ----------
+function limitOf(k) { return k === 'drill' ? state.drillPeriod : ITEMS.filter(function (i) { return i.k === k; })[0].limit; }
+function itemStatus(a, k) {
+  var it = a.items[k], age = (Date.now() - it.at) / DAY;
+  if (it.fail) return 'fail';
+  return age <= limitOf(k) ? 'ok' : 'due';
+}
+function areaReady(a) { return ITEMS.every(function (i) { return itemStatus(a, i.k) === 'ok'; }); }
+function areaList() { return AREAS.map(function (x) { return state.areas[x[0]]; }); }
+function openActions() { return state.actions.filter(function (x) { return !x.closed; }); }
+function median(xs) { if (!xs.length) return null; xs = xs.slice().sort(function (a, b) { return a - b; }); var m = Math.floor(xs.length / 2); return xs.length % 2 ? xs[m] : (xs[m - 1] + xs[m]) / 2; }
+function kpis() {
+  var t = Date.now(), list = areaList();
+  var ready = list.filter(areaReady).length;
+  var plansIn = list.filter(function (a) { return itemStatus(a, 'plan') !== 'due' && (t - a.items.plan.at) / DAY <= 365; }).length;
+  var dueSoFar = state.drills.filter(function (d) { return d.due <= t || d.held; });
+  var onTime = dueSoFar.filter(function (d) { return d.held && d.held <= d.due + DAY; }).length;
+  var closure = [];
+  state.drills.forEach(function (d) {
+    var acts = state.actions.filter(function (x) { return x.from === d.id; });
+    if (acts.length && acts.every(function (x) { return x.closed; })) closure.push((Math.max.apply(null, acts.map(function (x) { return x.closed; })) - Math.min.apply(null, acts.map(function (x) { return x.opened; }))) / DAY);
+  });
+  var med = median(closure);
+  return { areasReady: ready, areas: list.length, plansInDate: plansIn, plans: list.length, drillsOnSchedule: onTime, drillsDue: dueSoFar.length,
+    actionClosureDaysMedian: med == null ? null : Math.round(med * 10) / 10, drillsWithAllActionsClosed: closure.length, openActions: openActions().length,
+    queuedChanges: state.queue.length, offline: state.offline };
+}
+function noDrillAreas() { return areaList().filter(function (a) { return itemStatus(a, 'drill') === 'due'; }); }
+function plannedDrill(areaId) { return state.drills.filter(function (d) { return d.area === areaId && !d.held; })[0]; }
+function nextStepIndex() { var inc = state.incident; if (!inc || inc.stoodDown) return -1; for (var i = 0; i < inc.steps.length; i++) if (!inc.steps[i].done) return i; return -1; }
+
+// The guide: plain, explainable rules. Each says why; anything that changes data is only a proposal.
+function suggest() {
+  var out = [], role = state.role, inc = state.incident, t = Date.now();
+  if (state.offline && state.queue.length) out.push({ id: 'queued', kind: 'ask', title: state.queue.length + ' change' + (state.queue.length > 1 ? 's are' : ' is') + ' waiting on this device',
+    text: 'Keep working as normal. Ospeli sends them, in order, when the connection is back. Print the downtime pack now if the outage may last.', why: 'The network is down (simulated) and changes made since then have not been sent yet.' });
+  if (inc && !inc.stoodDown) {
+    var ni = nextStepIndex();
+    if (ni >= 0 && role !== 'ward') out.push({ id: 'nextstep', kind: 'gap', title: 'Next on the action card: “' + inc.steps[ni].text + '”',
+      text: 'Step ' + (ni + 1) + ' of ' + inc.steps.length + ' for ' + inc.steps[ni].role.toLowerCase() + '. Open it on the card; the person doing it ticks it off.',
+      why: 'First step on the ' + INCIDENTS[inc.type].name.toLowerCase() + ' card that is not ticked yet.', btn: 'Open the next step', fn: function () { state.role = 'planning'; state.focusStep = ni; render(); var b = document.getElementById('step-' + ni); if (b) { b.scrollIntoView({ block: 'center' }); b.focus(); } } });
+    var mins = Math.round((inc.nextUpdate - t) / MIN);
+    if (mins <= 10) out.push({ id: 'update', kind: 'gap', title: mins < 0 ? 'The next update is ' + (-mins) + ' min late' : 'Next update due in ' + mins + ' min',
+      text: 'Log the update as a decision so the executive on call sees it, then set the next update time.', why: 'Next update time set on the incident board; this alert shows 10 minutes before (example setting).',
+      btn: 'Draft the update', fn: function () { state.role = 'planning'; render(); var r = document.getElementById('dec-role'), x = document.getElementById('dec-text'); if (r && x) { r.value = 'Incident commander'; x.value = 'Update given: ' + inc.steps.filter(function (s) { return s.done; }).length + ' of ' + inc.steps.length + ' steps done.'; x.focus(); } toast('Draft filled in. Check it, then press Log decision.'); } });
+  }
+  if (role === 'ward') {
+    var a = state.areas[state.myArea], gaps = ITEMS.filter(function (i) { return itemStatus(a, i.k) !== 'ok'; });
+    var packAge = Math.floor((t - a.items.pack.at) / DAY);
+    if (packAge > SETTINGS.packAgeDays) out.push({ id: 'pack', kind: 'gap', title: 'Your paper pack was printed ' + ago(a.items.pack.at),
+      text: 'Open the pack preview, print it, put it in the drill box, then tick “Fallback paper pack printed”.', why: 'Packs older than ' + SETTINGS.packAgeDays + ' days may list beds, contacts or stock that have changed (example setting).',
+      btn: 'Open the pack preview', fn: function () { state.packOpen = true; render(); var p = document.getElementById('pack'); if (p) p.scrollIntoView({ block: 'start' }); } });
+    if (gaps.length) out.push({ id: 'mygaps', kind: 'ask', title: gaps.length + ' of 4 checklist items need attention', text: gaps.map(function (g) { return g.name; }).join(', ') + '. Tick each one when it is done, or report a problem so it becomes an action.', why: 'Items past their review interval or with a problem reported.' });
+  } else {
+    var nd = noDrillAreas(), unplanned = nd.filter(function (x) { return !plannedDrill(x.id) && !state.proposals.some(function (p) { return p.area === x.id; }); });
+    if (nd.length) out.push({ id: 'nodrill', kind: 'gap', title: nd.length + ' area' + (nd.length > 1 ? 's have' : ' has') + ' had no drill in ' + state.drillPeriod + ' days',
+      text: nd.map(function (x) { var p = plannedDrill(x.id); return x.name + (p ? ' (drill planned ' + fmtDate(p.due) + ')' : ' (none planned)'); }).join('; ') + '.',
+      why: 'Last drill date per area against the drill period you set (example setting, not a standard).',
+      btn: unplanned.length ? 'Propose drill dates' : null, fn: function () {
+        unplanned.forEach(function (x, i) { state.proposals.push({ id: 'p' + (state.seq++), kind: 'drill', area: x.id, type: DRILL_TYPES[i % 2], due: t + (14 + 7 * i) * DAY }); });
+        render(); toast('Proposed. Confirm or discard each one below.'); } });
+    var late = role === 'exec' ? [] : areaList().filter(function (x) { return itemStatus(x, 'plan') === 'due'; });
+    if (late.length) out.push({ id: 'plans', kind: 'gap', title: late.length + ' area plan' + (late.length > 1 ? 's are' : ' is') + ' past review date', text: late.map(function (x) { return x.name; }).join(', ') + '. Ask the area lead to review and sign off.', why: 'Plans reviewed more than 365 days ago (example setting).',
+      btn: state.gridFilter === 'gaps' ? null : 'Show gaps on the grid', fn: function () { state.role = 'planning'; state.gridFilter = 'gaps'; render(); var g = document.getElementById('grid-h'); if (g) g.scrollIntoView({ block: 'start' }); } });
+    var old = openActions().filter(function (x) { return (t - x.opened) / DAY > SETTINGS.actionAgeDays; });
+    if (old.length && role !== 'exec') out.push({ id: 'oldacts', kind: 'ask', title: old.length + ' drill action' + (old.length > 1 ? 's' : '') + ' open more than ' + SETTINGS.actionAgeDays + ' days', text: old.map(function (x) { return '“' + x.text + '” (' + x.owner + ', ' + ago(x.opened) + ')'; }).join('; ') + '.', why: 'Open actions older than ' + SETTINGS.actionAgeDays + ' days (example setting).',
+      btn: 'Show the action', fn: function () { state.role = 'planning'; state.hlAction = old[0].id; render(); var r = document.getElementById('act-' + old[0].id); if (r) r.scrollIntoView({ block: 'center' }); } });
+  }
+  return out.slice(0, 4);
+}
+
+// ---------- Helpers ----------
+function pad(n) { return (n < 10 ? '0' : '') + n; }
+function fmtTime(ts) { var d = new Date(ts); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fmtDate(ts) { var d = new Date(ts); return d.getDate() + ' ' + MON[d.getMonth()]; }
+function ago(ts) { var days = Math.floor((Date.now() - ts) / DAY); if (days <= 0) return 'today'; if (days === 1) return 'yesterday'; if (days < 60) return days + ' days ago'; return Math.round(days / 30) + ' months ago'; }
+function dur(ms) { var m = Math.max(0, Math.round(ms / MIN)); if (m < 60) return m + ' min'; return Math.floor(m / 60) + ' h ' + pad(m % 60); }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+var SVGNS = 'http://www.w3.org/2000/svg';
+function icon(kind, colour) {
+  var s = document.createElementNS(SVGNS, 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('aria-hidden', 'true');
+  var p = document.createElementNS(SVGNS, 'path'); p.setAttribute('fill', 'none'); p.setAttribute('stroke', colour || 'currentColor'); p.setAttribute('stroke-width', '3'); p.setAttribute('stroke-linecap', 'round'); p.setAttribute('stroke-linejoin', 'round');
+  p.setAttribute('d', kind === 'ok' ? 'M5 12.5l4.5 4.5L19 7.5' : kind === 'fail' ? 'M12 6v8M12 18.5v.1' : 'M7 7l10 10M17 7L7 17');
+  s.appendChild(p); return s;
+}
+function mark(st) { var c = { ok: '#0A9396', due: '#E0583E', fail: '#B57600' }[st]; var w = el('span', { class: 'cell ' + st }); w.appendChild(icon(st, c)); return w; }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2400); }
+
+// Every change goes through here: logged with time and role; queued on this device while offline.
+function change(who, text) {
+  var entry = { at: Date.now(), who: who, text: text, q: state.offline };
+  state.log.unshift(entry); if (state.log.length > 60) state.log.length = 60;
+  if (state.offline) state.queue.push({ at: entry.at, who: who, text: text });
+}
+function roleName() { return { ward: 'Area lead · ' + state.areas[state.myArea].name, planning: 'Emergency planning lead', exec: 'Executive on call' }[state.role]; }
+
+// ---------- Render ----------
+function render() {
+  ['ward', 'planning', 'exec'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('view-h').textContent = { ward: 'My area\'s readiness', planning: 'Readiness by area', exec: 'Incident summary' }[state.role];
+  renderNet();
+  renderKpis();
+  var v = document.getElementById('view'); v.textContent = '';
+  if (state.role === 'ward') v.appendChild(wardView());
+  else if (state.role === 'planning') v.appendChild(planningView());
+  else v.appendChild(execView());
+  renderLog();
+  renderGuide();
+  save();
+}
+function renderNet() {
+  var b = document.getElementById('net'), p = document.getElementById('sync'), t = document.getElementById('sync-t');
+  b.setAttribute('aria-pressed', String(state.offline));
+  p.className = 'syncpill' + (state.offline ? ' off' : state.syncing ? ' busy' : '');
+  t.textContent = state.offline ? 'Offline · ' + state.queue.length + ' change' + (state.queue.length === 1 ? '' : 's') + ' waiting on this device'
+    : state.syncing ? 'Sending ' + state.queue.length + ' change' + (state.queue.length === 1 ? '' : 's') + '…' : 'Synced ' + fmtTime(state.lastSync);
+  document.getElementById('offbanner').classList.toggle('on', state.offline);
+}
+function renderKpis() {
+  var k = kpis(), box = document.getElementById('kpis'); box.textContent = '';
+  var tiles;
+  if (state.role === 'ward') {
+    var a = state.areas[state.myArea], okN = ITEMS.filter(function (i) { return itemStatus(a, i.k) === 'ok'; }).length;
+    var myActs = openActions().filter(function (x) { return x.area === a.id || (x.from && (state.drills.filter(function (d) { return d.id === x.from; })[0] || {}).area === a.id); }).length;
+    tiles = [
+      ['mine', okN + ' of 4', 'Checklist items in date', 'this area', 'Checklist items confirmed within their review interval, with no problem open / all 4 items. Source: local definition.', okN === 4 ? 'good' : 'alert'],
+      ['drill', ago(a.items.drill.at), 'Last drill', 'period ' + state.drillPeriod + ' days', 'Date this area last took part in a drill. Drill period is an example setting, not a standard. Source: local definition.', itemStatus(a, 'drill') === 'ok' ? '' : 'alert'],
+      ['ready', k.areasReady + ' of ' + k.areas, 'Areas fully ready', 'whole hospital', 'Areas with all 4 checklist items in date and no problem open / all areas. Source: local definition.', ''],
+      ['acts', String(myActs), 'Open actions', 'for this area', 'Actions from drills or checklist problems for this area that are not yet closed. Source: local definition.', myActs ? 'alert' : 'good']];
+  } else if (state.role === 'planning') {
+    tiles = [
+      ['ready', k.areasReady + ' of ' + k.areas, 'Areas fully ready', 'all 4 items in date', 'Areas with all 4 checklist items in date and no problem open / all areas. Source: local definition.', k.areasReady < k.areas ? 'alert' : 'good'],
+      ['plans', k.plansInDate + ' of ' + k.plans, 'Plans within review date', 'reviewed in last year', 'Emergency and continuity plans in date / all plans. Source: local definition.', k.plansInDate < k.plans ? 'alert' : 'good'],
+      ['drills', k.drillsOnSchedule + ' of ' + k.drillsDue, 'Drills completed on schedule', 'due so far this period', 'Drills held by due date / drills planned in period (counted once due or held). Source: local definition.', ''],
+      ['closure', k.actionClosureDaysMedian == null ? '–' : k.actionClosureDaysMedian + ' days', 'Drill action closure time', k.openActions + ' actions still open', 'Drill review signed off → last action closed; median across drills with every action closed (' + k.drillsWithAllActionsClosed + '). Source: local definition.', '']];
+  } else {
+    var inc = state.incident, live = inc && !inc.stoodDown;
+    var done = inc ? inc.steps.filter(function (s) { return s.done; }).length : 0;
+    tiles = [
+      ['status', live ? 'Active' : inc ? 'Stood down' : 'None', 'Incident status', live ? INCIDENTS[inc.type].name : 'no active incident', 'Whether a plan is activated. Time from activation to stand-down is recorded. Source: local definition.', live ? 'alert' : 'good'],
+      ['steps', inc ? done + ' of ' + inc.steps.length : '–', 'Action card steps done', inc ? INCIDENTS[inc.type].name : '', 'Steps ticked on the incident action card / all steps. Source: local definition.', ''],
+      ['decs', inc ? String(inc.decisions.length) : '–', 'Decisions logged', 'with time and role', 'Decisions entered in the incident log. Source: local definition.', ''],
+      ['ready', k.areasReady + ' of ' + k.areas, 'Areas fully ready', 'readiness today', 'Areas with all 4 checklist items in date and no problem open / all areas. Source: local definition.', '']];
+  }
+  tiles.forEach(function (t) {
+    var open = state.kpiOpen === t[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat' + (t[5] ? ' ' + t[5] : ''), 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def', text: t[4] })]));
+  });
+}
+
+function ring(n, of) {
+  var s = document.createElementNS(SVGNS, 'svg'); s.setAttribute('viewBox', '0 0 56 56'); s.setAttribute('class', 'ring'); s.setAttribute('aria-hidden', 'true');
+  var c = 2 * Math.PI * 23;
+  [['#E8E0D1', c], [n === of ? '#0A9396' : '#EE9B00', c * n / of]].forEach(function (x, i) {
+    var e = document.createElementNS(SVGNS, 'circle'); e.setAttribute('cx', '28'); e.setAttribute('cy', '28'); e.setAttribute('r', '23'); e.setAttribute('fill', 'none'); e.setAttribute('stroke', x[0]); e.setAttribute('stroke-width', '7');
+    if (i) { e.setAttribute('stroke-dasharray', x[1] + ' ' + c); e.setAttribute('transform', 'rotate(-90 28 28)'); e.setAttribute('stroke-linecap', 'round'); }
+    s.appendChild(e);
+  });
+  var tx = document.createElementNS(SVGNS, 'text'); tx.setAttribute('x', '28'); tx.setAttribute('y', '33'); tx.setAttribute('text-anchor', 'middle'); tx.setAttribute('font-size', '15'); tx.setAttribute('font-weight', '800'); tx.setAttribute('fill', '#0B2F4E'); tx.textContent = n + '/' + of; s.appendChild(tx);
+  return s;
+}
+
+function wardView() {
+  var a = state.areas[state.myArea], wrap = el('div');
+  var sel = el('select', { id: 'my-area', onchange: function (e) { state.myArea = e.target.value; state.packOpen = false; render(); } });
+  areaList().forEach(function (x) { sel.appendChild(el('option', { value: x.id, text: x.name })); }); sel.value = a.id;
+  wrap.appendChild(el('label', { class: 'areapick', for: 'my-area' }, ['My area', sel]));
+  var okN = ITEMS.filter(function (i) { return itemStatus(a, i.k) === 'ok'; }).length;
+  wrap.appendChild(el('div', { class: 'ready' }, [ring(okN, 4), el('div', {}, [el('b', { text: okN === 4 ? 'Ready: every item in date' : (4 - okN) + ' item' + (4 - okN > 1 ? 's' : '') + ' to sort out' }), el('span', { text: 'Tick each item when it is done. Report a problem if you cannot.' })])]));
+  var list = el('div', { class: 'checks' });
+  ITEMS.forEach(function (i) {
+    var it = a.items[i.k], st = itemStatus(a, i.k), today = it.by === 'me' && (Date.now() - it.at) < DAY;
+    var line = st === 'fail' ? 'Problem reported ' + fmtTime(it.fail.at) + ' · action opened for the planning lead'
+      : (i.k === 'drill' ? 'Last drill ' : 'Last done ') + ago(it.at) + ' (' + fmtDate(it.at) + ') · ' + (st === 'ok' ? 'in date' : 'overdue') + ', due ' + i.every;
+    var acts = [today
+      ? el('button', { type: 'button', class: 'go', id: 'ci-' + i.k, onclick: function () { undoItem(a, i); }, text: 'Done today · Undo' })
+      : el('button', { type: 'button', class: 'go confirm', id: 'ci-' + i.k, onclick: function () { confirmItem(a, i); }, text: st === 'ok' ? 'Confirm again today' : 'Mark done' })];
+    if (st !== 'fail') acts.push(el('button', { type: 'button', class: 'prob', id: 'cp-' + i.k, 'aria-label': 'Report a problem with ' + i.name, onclick: function () { failItem(a, i); }, text: 'Problem' }));
+    list.appendChild(el('div', { class: 'ci ' + st }, [
+      el('div', { class: 'top' }, [mark(st), el('div', { class: 'txt' }, [el('b', { text: i.name }), el('span', { text: line })])]),
+      el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  wrap.appendChild(list);
+  wrap.appendChild(el('button', { type: 'button', class: 'packbtn primary', id: 'pack-open', 'aria-expanded': String(state.packOpen), onclick: function () { state.packOpen = !state.packOpen; render(); if (state.packOpen) document.getElementById('pack').scrollIntoView({ block: 'start' }); } },
+    [printIcon(), state.packOpen ? 'Hide downtime pack' : 'Print downtime pack']));
+  if (state.packOpen) wrap.appendChild(pack(a));
+  return wrap;
+}
+function printIcon() { var s = document.createElementNS(SVGNS, 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('width', '22'); s.setAttribute('height', '22'); s.setAttribute('aria-hidden', 'true'); var p = document.createElementNS(SVGNS, 'path'); p.setAttribute('d', 'M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2M7 14h10v6H7z'); p.setAttribute('fill', 'none'); p.setAttribute('stroke', 'currentColor'); p.setAttribute('stroke-width', '2'); p.setAttribute('stroke-linejoin', 'round'); s.appendChild(p); return s; }
+var BED_ST = ['Occupied', 'Occupied', 'Occupied', 'Empty, ready', 'Occupied', 'Awaiting clean', 'Occupied', 'Occupied', 'Closed', 'Occupied', 'Empty, ready', 'Occupied'];
+function pack(a) {
+  var p = el('section', { class: 'pack', id: 'pack', 'aria-labelledby': 'pack-h' });
+  p.appendChild(el('div', { class: 'phead' }, [el('h3', { id: 'pack-h', text: 'Downtime pack · ' + a.name }), el('span', { class: 'chip navy', text: 'Example General Hospital' })]));
+  p.appendChild(el('p', { class: 'asat', text: 'As at last sync: ' + fmtDate(state.lastSync) + ', ' + fmtTime(state.lastSync) + (state.offline ? ' (network down now).' : '.') + ' Write any changes since then on this sheet.' }));
+  if (a.beds) {
+    p.appendChild(el('h4', { text: 'Bed list' }));
+    var tb = el('tbody'), bays = ['A', 'B', 'C', 'D', 'E'];
+    for (var i = 0; i < a.beds; i++) tb.appendChild(el('tr', {}, [el('td', { class: 'nowrap', text: 'Bay ' + bays[Math.floor(i / 6)] + ' · ' + (i % 6 + 1) }), el('td', { text: BED_ST[(i * 7 + a.id.charCodeAt(1)) % BED_ST.length] }), el('td', { class: 'write' })]));
+    p.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 'ptable' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Bed' }), el('th', { text: 'Status' }), el('th', { text: 'Changes since' })])]), tb])]));
+    p.appendChild(el('p', { class: 'fine', text: 'Bed status only. No patient details are printed in this preview.' }));
+  }
+  p.appendChild(el('h4', { text: 'Key contacts by role' }));
+  var ct = el('tbody'); CONTACTS.forEach(function (c) { ct.appendChild(el('tr', {}, [el('td', { text: c[0] }), el('td', { class: 'r' }, [c[1], el('br'), el('small', { text: c[2] })])])); });
+  p.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 'ptable' }, [ct])]));
+  p.appendChild(el('h4', { text: 'Critical stock' }));
+  var st = el('tbody'); STOCK.forEach(function (s) { st.appendChild(el('tr', { class: s[1] < s[2] ? 'low' : '' }, [el('td', { text: s[0] }), el('td', { class: 'r', text: s[1] + ' of ' + s[2] })])); });
+  p.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 'ptable' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Item' }), el('th', { class: 'r', text: 'On hand / usual' })])]), st])]));
+  p.appendChild(el('div', { class: 'pacts' }, [
+    el('button', { type: 'button', class: 'primary', id: 'pack-print', onclick: function () { change(roleName(), 'Downtime pack printed for ' + a.name); confirmItem(a, ITEMS[1], true); try { window.print(); } catch (e) { /* printing unavailable */ } }, text: 'Print and mark as printed' }),
+    el('button', { type: 'button', onclick: function () { state.packOpen = false; render(); }, text: 'Close' })
+  ]));
+  return p;
+}
+
+function planningView() {
+  var wrap = el('div', { class: 'col' });
+  // readiness grid
+  var g = el('div');
+  g.appendChild(el('div', { class: 'cardhead' }, [el('h3', { id: 'grid-h', style: 'margin:0', text: 'Checklist by area' }),
+    el('div', { class: 'filt', role: 'group', 'aria-label': 'Show areas' }, [['all', 'All areas'], ['gaps', 'Gaps only']].map(function (f) { return el('button', { type: 'button', id: 'gf-' + f[0], 'aria-pressed': String(state.gridFilter === f[0]), onclick: function () { state.gridFilter = f[0]; render(); }, text: f[1] }); }))]));
+  var head = el('tr', {}, [el('th', { scope: 'col', text: 'Area' })].concat(ITEMS.map(function (i) { return el('th', { scope: 'col', text: { plan: 'Plan', pack: 'Pack', contacts: 'Contacts', drill: 'Drill' }[i.k] }); })));
+  var body = el('tbody');
+  areaList().forEach(function (a) {
+    if (state.gridFilter === 'gaps' && areaReady(a)) return;
+    body.appendChild(el('tr', {}, [el('td', {}, [a.name, el('small', { text: areaReady(a) ? 'Ready' : ITEMS.filter(function (i) { return itemStatus(a, i.k) !== 'ok'; }).length + ' to sort out' })])].concat(ITEMS.map(function (i) {
+      var st = itemStatus(a, i.k), m = mark(st); m.setAttribute('title', i.name + ': ' + (st === 'fail' ? 'problem reported' : st === 'ok' ? 'in date' : 'overdue') + ', ' + ago(a.items[i.k].at));
+      return el('td', {}, [m, el('span', { class: 'sr', text: i.name + ': ' + (st === 'fail' ? 'problem reported' : st === 'ok' ? 'in date' : 'overdue') }), el('small', { text: ago(a.items[i.k].at).replace(' ago', '') })]);
+    }))));
+  });
+  g.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 'grid', id: 'grid' }, [el('thead', {}, [head]), body])]));
+  g.appendChild(el('div', { class: 'gridkey' }, [el('span', {}, [mark('ok'), 'In date']), el('span', {}, [mark('due'), 'Overdue']), el('span', {}, [mark('fail'), 'Problem reported'])]));
+  var per = el('select', { id: 'period', onchange: function (e) { state.drillPeriod = +e.target.value; change('Emergency planning lead', 'Drill period set to ' + e.target.value + ' days'); render(); } });
+  [90, 180, 365].forEach(function (d) { per.appendChild(el('option', { value: String(d), text: d + ' days' })); }); per.value = String(state.drillPeriod);
+  g.appendChild(el('div', { class: 'setrow' }, [el('label', { for: 'period', text: 'Drill period' }), per, el('span', { text: 'Example setting, not a standard.' })]));
+  wrap.appendChild(g);
+
+  // drills and actions
+  var two = el('div', { class: 'two' });
+  var dl = el('ul', { class: 'rows', id: 'drills' }), t = Date.now();
+  state.drills.slice().sort(function (x, y) { return (x.held ? 1 : 0) - (y.held ? 1 : 0) || x.due - y.due; }).forEach(function (d) {
+    var late = !d.held && d.due < t;
+    dl.appendChild(el('li', { class: d.held ? 'done' : '' }, [
+      el('div', { class: 'what' }, [el('b', { text: state.areas[d.area].name }), el('span', { text: d.type + ' · ' + (d.held ? 'held ' + fmtDate(d.held) + (d.held > d.due + DAY ? ' (after due date)' : '') : 'due ' + fmtDate(d.due)) })]),
+      d.held ? el('span', { class: 'chip ok', text: 'Done' }) : el('div', { style: 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end' }, [late ? el('span', { class: 'chip due', text: 'Overdue' }) : el('span', { class: 'chip soon', text: 'Planned' }),
+        el('button', { type: 'button', class: 'small', id: 'hold-' + d.id, onclick: function () { holdDrill(d); }, text: 'Mark held' })])
+    ]));
+  });
+  var nPlanned = state.drills.filter(function (d) { return !d.held; }).length, nDone = state.drills.length - nPlanned;
+  two.appendChild(el('div', {}, [el('h3', { text: 'Drills · ' + nDone + ' done, ' + nPlanned + ' planned' }), dl]));
+  var al = el('ul', { class: 'rows', id: 'actions' }), oa = openActions();
+  if (!oa.length) al.appendChild(el('li', {}, [el('span', { class: 'what', text: 'No open actions. Well done.' })]));
+  oa.forEach(function (x) {
+    var src = x.from ? (function () { var d = state.drills.filter(function (y) { return y.id === x.from; })[0]; return 'Drill: ' + state.areas[d.area].name + ' · ' + fmtDate(d.held || d.due); })() : 'Checklist problem: ' + state.areas[x.area].name;
+    al.appendChild(el('li', { id: 'act-' + x.id, class: state.hlAction === x.id ? 'hl' : '' }, [
+      el('div', { class: 'what' }, [el('b', { text: x.text }), el('span', { text: x.owner + ' · opened ' + ago(x.opened) + ' · ' + src })]),
+      el('button', { type: 'button', class: 'small', id: 'close-' + x.id, onclick: function () { x.closed = Date.now(); state.hlAction = null; change('Emergency planning lead', 'Action closed: ' + x.text); render(); toast('Action closed.'); }, text: 'Close' })
+    ]));
+  });
+  two.appendChild(el('div', {}, [el('h3', { text: 'Open actions · ' + oa.length }), al]));
+  wrap.appendChild(two);
+  wrap.appendChild(incidentPanel());
+  return wrap;
+}
+
+function incidentPanel() {
+  var inc = state.incident, live = inc && !inc.stoodDown, c = el('section', { class: 'card incident' + (live ? ' live' : ''), id: 'incident', 'aria-labelledby': 'inc-h' });
+  c.appendChild(el('h3', { id: 'inc-h', style: 'font-size:1.1rem', text: 'Incident mode' }));
+  if (!live) {
+    if (inc) c.appendChild(el('p', { class: 'fine', style: 'margin:0 0 10px', text: 'Last incident: ' + INCIDENTS[inc.type].name + ', ' + fmtTime(inc.started) + ' to ' + fmtTime(inc.stoodDown) + ' (' + dur(inc.stoodDown - inc.started) + '). ' + inc.decisions.length + ' decisions logged.' }));
+    else c.appendChild(el('p', { style: 'margin:0 0 10px;font-size:0.95rem', text: 'Practise here. Pick an example incident type to open its action card and start the timed log.' }));
+    var sel = el('select', { id: 'inc-type' }); Object.keys(INCIDENTS).forEach(function (k) { sel.appendChild(el('option', { value: k, text: INCIDENTS[k].name })); });
+    c.appendChild(el('div', { class: 'startrow' }, [el('label', { for: 'inc-type' }, ['Example incident type', sel]),
+      el('button', { type: 'button', class: 'primary', id: 'inc-start', onclick: function () { startIncident(sel.value); }, text: 'Start incident' })]));
+    return c;
+  }
+  var tpl = INCIDENTS[inc.type], done = inc.steps.filter(function (s) { return s.done; }).length, ni = nextStepIndex();
+  c.appendChild(el('div', { class: 'livebar' }, [el('b', { text: 'Live: ' + tpl.name }), el('span', { text: 'Started ' + fmtTime(inc.started) + ' · ' + dur(Date.now() - inc.started) }), el('span', { text: 'Next update ' + fmtTime(inc.nextUpdate) })]));
+  c.appendChild(el('p', { style: 'margin:0 0 2px;font-weight:800;font-size:0.9rem', text: 'Affected areas (tap to change)' }));
+  c.appendChild(el('div', { class: 'affect', role: 'group', 'aria-label': 'Affected areas' }, areaList().map(function (a) {
+    var on = inc.affected.indexOf(a.id) >= 0;
+    return el('button', { type: 'button', 'aria-pressed': String(on), onclick: function () { if (on) inc.affected.splice(inc.affected.indexOf(a.id), 1); else inc.affected.push(a.id); change('Emergency planning lead', (on ? 'Removed from' : 'Added to') + ' affected areas: ' + a.name); render(); }, text: a.name });
+  })));
+  if (tpl.note) c.appendChild(el('p', { class: 'carenote', text: tpl.note }));
+  c.appendChild(el('h3', { text: 'Action card · ' + done + ' of ' + inc.steps.length + ' done' }));
+  var ol = el('ol', { class: 'card-steps' });
+  inc.steps.forEach(function (s, i) {
+    var b = el('button', { type: 'button', id: 'step-' + i, class: 'stepbtn' + (i === ni ? ' next' : '') + (state.focusStep === i ? ' focus' : ''), 'aria-pressed': String(!!s.done), onclick: function () { toggleStep(i); } },
+      [el('span', { class: 'box', 'aria-hidden': 'true' }, s.done ? [icon('ok', '#fff')] : []), el('span', { class: 't' }, [el('b', { text: (i + 1) + '. ' + s.text }), el('small', { text: s.role + (s.done ? ' · done ' + fmtTime(s.done) : i === ni ? ' · next' : '') })])]);
+    var svg = b.querySelector('.box svg'); if (svg) { svg.setAttribute('width', '16'); svg.setAttribute('height', '16'); }
+    ol.appendChild(el('li', {}, [b]));
+  });
+  c.appendChild(ol);
+  // decisions
+  var role = el('select', { id: 'dec-role' }); ROLES.forEach(function (r) { role.appendChild(el('option', { value: r, text: r })); });
+  var text = el('input', { type: 'text', id: 'dec-text', maxlength: '140', placeholder: 'e.g. Planned theatre lists paused until power is stable', autocomplete: 'off' });
+  var form = el('form', { class: 'decform', id: 'dec-form', onsubmit: function (e) { e.preventDefault(); var v = text.value.trim(); if (!v) { text.focus(); return; } inc.decisions.unshift({ at: Date.now(), role: role.value, text: v }); change(role.value, 'Decision: ' + v); render(); toast('Decision logged at ' + fmtTime(Date.now()) + '.'); } },
+    [el('label', { for: 'dec-role' }, ['Role', role]), el('label', { for: 'dec-text' }, ['Decision', text]), el('button', { type: 'submit', class: 'primary', id: 'dec-log', text: 'Log decision' })]);
+  c.appendChild(el('h3', { style: 'margin-top:16px', text: 'Decisions · ' + inc.decisions.length }));
+  c.appendChild(form);
+  if (inc.decisions.length) c.appendChild(decisionList(inc));
+  c.appendChild(el('div', { class: 'updrow' }, [el('b', { text: 'Next update:' }), el('span', { text: fmtTime(inc.nextUpdate) })].concat([15, 30, 60].map(function (m) {
+    return el('button', { type: 'button', class: 'small', onclick: function () { inc.nextUpdate = Date.now() + m * MIN; change('Incident commander', 'Next update set for ' + fmtTime(inc.nextUpdate)); render(); }, text: 'In ' + m + ' min' });
+  }))));
+  c.appendChild(el('div', { class: 'updrow' }, state.confirmStand
+    ? [el('span', { text: 'Stand down ' + tpl.name.toLowerCase() + ' now?' }), el('button', { type: 'button', class: 'small primary', id: 'stand-yes', onclick: function () { inc.stoodDown = Date.now(); state.confirmStand = false; state.focusStep = null; change('Incident commander', 'Incident stood down: ' + tpl.name + ' after ' + dur(inc.stoodDown - inc.started)); render(); toast('Stood down. The timed log is kept for the review.'); }, text: 'Yes, stand down' }), el('button', { type: 'button', class: 'small', onclick: function () { state.confirmStand = false; render(); }, text: 'Cancel' })]
+    : [el('button', { type: 'button', class: 'small', id: 'stand', onclick: function () { state.confirmStand = true; render(); }, text: 'Stand down incident' })]));
+  return c;
+}
+function decisionList(inc) {
+  return el('ol', { class: 'log', style: 'margin-top:8px' }, inc.decisions.map(function (d) { return el('li', {}, [el('time', { text: fmtTime(d.at) }), el('span', {}, [d.text, el('span', { class: 'who', text: d.role })]), el('span')]); }));
+}
+
+function execView() {
+  var inc = state.incident, live = inc && !inc.stoodDown, wrap = el('div');
+  if (!inc) {
+    var k = kpis();
+    wrap.appendChild(el('p', { class: 'big', text: 'No active incident' }));
+    wrap.appendChild(el('p', { style: 'margin:6px 0 12px', text: k.areasReady + ' of ' + k.areas + ' areas fully ready. ' + k.openActions + ' drill actions open. Nothing needs you now.' }));
+    wrap.appendChild(el('button', { type: 'button', class: 'primary', id: 'exec-demo', onclick: function () { state.role = 'planning'; render(); document.getElementById('incident').scrollIntoView({ block: 'start' }); toast('Start an example incident as the planning lead, then switch back.'); }, text: 'Try an example incident' }));
+    return wrap;
+  }
+  var tpl = INCIDENTS[inc.type], done = inc.steps.filter(function (s) { return s.done; }).length, t = Date.now();
+  wrap.appendChild(el('div', { class: 'livebar' + (live ? '' : ' down') }, [el('b', { text: (live ? 'Active: ' : 'Stood down: ') + tpl.name }), el('span', { text: 'Started ' + fmtTime(inc.started) + ' · ' + (live ? dur(t - inc.started) + ' so far' : 'lasted ' + dur(inc.stoodDown - inc.started)) })]));
+  var mins = Math.round((inc.nextUpdate - t) / MIN);
+  var g = el('div', { class: 'execgrid' });
+  g.appendChild(el('div', { class: 'box2' }, [el('h3', { text: 'Next update' }), live ? el('p', { class: 'nextup' + (mins < 0 ? ' late' : ''), id: 'exec-next', text: fmtTime(inc.nextUpdate) }) : el('p', { class: 'nextup', text: '–' }),
+    el('p', { class: 'fine', style: 'margin:0', text: live ? (mins < 0 ? (-mins) + ' min late' : 'in ' + mins + ' min') : 'Incident closed' })]));
+  g.appendChild(el('div', { class: 'box2' }, [el('h3', { text: 'Action card' }), el('p', { style: 'font-weight:800', text: done + ' of ' + inc.steps.length + ' steps done' }), el('div', { class: 'progress', 'aria-hidden': 'true' }, [el('i', { style: 'width:' + (100 * done / inc.steps.length) + '%' })]),
+    el('p', { class: 'fine', style: 'margin:0', text: nextStepIndex() >= 0 ? 'Next: ' + inc.steps[nextStepIndex()].text : 'All steps done' })]));
+  var aff = inc.affected.map(function (id) { return state.areas[id]; });
+  var packsOk = aff.filter(function (a) { return itemStatus(a, 'pack') === 'ok'; }).length;
+  g.appendChild(el('div', { class: 'box2', style: 'grid-column:1/-1' }, [el('h3', { text: 'What is affected · ' + aff.length + ' areas' }),
+    el('div', { class: 'affect', style: 'margin:0 0 6px' }, aff.map(function (a) { return el('span', { class: 'chip ' + (itemStatus(a, 'pack') === 'ok' ? 'ok' : 'due'), text: a.name }); })),
+    el('p', { class: 'fine', style: 'margin:0', text: 'Paper downtime pack in date in ' + packsOk + ' of ' + aff.length + ' affected areas (red: pack overdue).' })]));
+  wrap.appendChild(g);
+  wrap.appendChild(el('h3', { style: 'margin-top:16px', text: 'Decisions logged · ' + inc.decisions.length }));
+  if (inc.decisions.length) wrap.appendChild(decisionList(inc)); else wrap.appendChild(el('p', { class: 'empty', text: 'No decisions logged yet.' }));
+  if (live) wrap.appendChild(el('div', { class: 'updrow' }, [el('button', { type: 'button', class: 'primary', id: 'exec-brief', onclick: function () { inc.decisions.unshift({ at: Date.now(), role: 'Executive on call', text: 'Briefed on status; no further support needed now' }); change('Executive on call', 'Briefed on ' + tpl.name.toLowerCase()); render(); toast('Logged: executive on call briefed.'); }, text: 'Mark me as briefed' })]));
+  return wrap;
+}
+
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 14).forEach(function (l) {
+    ol.appendChild(el('li', {}, [el('time', { text: fmtTime(l.at), title: fmtDate(l.at) }), el('span', {}, [l.text, el('span', { class: 'who', text: l.who + (Date.now() - l.at > DAY ? ' · ' + fmtDate(l.at) : '') })]),
+      l.q ? el('span', { class: 'chip due q', text: 'On device' }) : el('span', { class: 'chip ok q', text: 'Sent' })]));
+  });
+}
+
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'); box.textContent = '';
+  var dec = document.getElementById('decide'); dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Checklists, the downtime pack, drills and incident mode all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag right now.' }));
+  list.forEach(function (sg) {
+    var acts = [];
+    if (sg.btn) acts.push(el('button', { type: 'button', class: 'small primary', onclick: sg.fn, text: sg.btn }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [el('span', { class: 'tag ' + sg.kind, text: sg.kind === 'gap' ? 'Gap' : 'Worth a look' }), el('h3', { text: sg.title }), el('p', { text: sg.text }), el('p', { class: 'why', text: 'Why: ' + sg.why }), acts.length ? el('div', { class: 'acts' }, acts) : null]));
+  });
+  if (state.proposals.length) {
+    var d = el('div', { class: 'decide' }, [el('h3', { text: 'Waiting for your decision' })]);
+    state.proposals.forEach(function (p) {
+      d.appendChild(el('div', { class: 'prop' }, [el('p', {}, [el('b', { text: state.areas[p.area].name + ': ' }), p.type + ', on ' + fmtDate(p.due) + '.']),
+        el('div', { class: 'acts' }, [
+          el('button', { type: 'button', class: 'small primary', onclick: function () { state.drills.push({ id: 'd' + (state.seq++), area: p.area, type: p.type, due: p.due, held: null }); state.proposals.splice(state.proposals.indexOf(p), 1); change('Emergency planning lead', 'Drill planned: ' + state.areas[p.area].name + ', ' + p.type.toLowerCase() + ' on ' + fmtDate(p.due)); render(); toast('Drill added to the plan.'); }, text: 'Confirm' }),
+          el('button', { type: 'button', class: 'small', onclick: function () { state.proposals.splice(state.proposals.indexOf(p), 1); render(); }, text: 'Discard' })])]));
+    });
+    dec.appendChild(d);
+  }
+}
+
+// ---------- Actions ----------
+function confirmItem(a, i, quiet) {
+  var it = a.items[i.k];
+  it.prev = { at: it.at, fail: it.fail || null, by: it.by || null }; it.at = Date.now(); it.by = 'me'; it.fail = null;
+  if (!quiet) change(roleName(), i.name + ': confirmed');
+  render(); if (!quiet) toast(i.name + ': done' + (state.offline ? ', saved on this device.' : '.'));
+}
+function undoItem(a, i) {
+  var it = a.items[i.k]; if (!it.prev) return;
+  it.at = it.prev.at; it.fail = it.prev.fail; it.by = it.prev.by; it.prev = null;
+  change(roleName(), i.name + ': undone'); render(); toast('Undone.');
+}
+function failItem(a, i) {
+  var it = a.items[i.k]; it.fail = { at: Date.now() };
+  state.actions.push({ id: 'a' + (state.seq++), from: null, area: a.id, text: a.name + ': ' + i.name.toLowerCase() + ' could not be confirmed', owner: 'Area lead', opened: Date.now(), closed: null });
+  change(roleName(), i.name + ': problem reported; action opened'); render(); toast('Problem reported. An action is open for the planning lead.');
+}
+function holdDrill(d) {
+  var t = Date.now(); d.held = t; state.areas[d.area].items.drill = { at: t, by: 'planning' };
+  change('Emergency planning lead', 'Drill held: ' + state.areas[d.area].name + ', ' + d.type.toLowerCase() + (t > d.due + DAY ? ' (after due date)' : ''));
+  render(); toast('Drill recorded. Add any gaps found as actions in the full product.');
+}
+function startIncident(type) {
+  var tpl = INCIDENTS[type], t = Date.now();
+  state.incident = { type: type, started: t, affected: tpl.affects.slice(), steps: tpl.steps.map(function (s) { return { text: s[0], role: s[1], done: null }; }), decisions: [], nextUpdate: t + 30 * MIN, stoodDown: null };
+  state.focusStep = null; state.confirmStand = false;
+  change('Incident commander', 'Plan activated: ' + tpl.name + '. Action card opened');
+  render(); toast(tpl.name + ': action card open. Next update in 30 min.');
+}
+function toggleStep(i) {
+  var inc = state.incident, s = inc.steps[i];
+  s.done = s.done ? null : Date.now(); if (state.focusStep === i) state.focusStep = null;
+  change(s.role, (s.done ? 'Step done: ' : 'Step reopened: ') + s.text);
+  render(); var b = document.getElementById('step-' + i); if (b) b.focus();
+}
+function setOffline(off) {
+  if (off === state.offline) return;
+  state.offline = off;
+  if (off) { state.log.unshift({ at: Date.now(), who: 'This device', text: 'Network down. Working from the copy on this device', q: true }); render(); toast('Network down. Keep working; changes stay on this device.'); return; }
+  state.syncing = true; render();
+  setTimeout(function () {
+    var n = state.queue.length;
+    state.log.forEach(function (l) { l.q = false; });
+    state.queue = []; state.syncing = false; state.lastSync = Date.now();
+    state.log.unshift({ at: Date.now(), who: 'This device', text: 'Back online. ' + n + ' change' + (n === 1 ? '' : 's') + ' sent', q: false });
+    render(); toast('Back online. ' + n + ' change' + (n === 1 ? '' : 's') + ' sent.');
+  }, 900);
+}
+
+['ward', 'planning', 'exec'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; state.kpiOpen = null; render(); }); });
+document.getElementById('net').addEventListener('click', function () { if (!state.syncing) setOffline(!state.offline); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; render(); toast('Example reset.'); });
+window.addEventListener('offline', function () { setOffline(true); });
+window.addEventListener('online', function () { setOffline(false); });
+setInterval(function () { if (state.incident && !state.incident.stoodDown && !document.activeElement.matches('input, select')) render(); }, 30000);
+
+// Read-only view for software agents (no writes): window.ospeliContinuityDemo
+window.ospeliContinuityDemo = Object.freeze({
+  describe: function () { return 'Read-only emergency preparedness and continuity demo. get() returns readiness by area, drills, open actions, the incident and the offline queue; kpis() the headline measures; suggestions() the guide\'s current suggestions. Fictional data; runs in the browser; nothing is sent anywhere.'; },
+  get: function () {
+    return clone({ role: state.role, offline: state.offline, queue: state.queue, lastSync: new Date(state.lastSync).toISOString(), drillPeriodDays: state.drillPeriod,
+      areas: areaList().map(function (a) { var o = { id: a.id, name: a.name, ready: areaReady(a) }; ITEMS.forEach(function (i) { o[i.k] = { status: itemStatus(a, i.k), last: new Date(a.items[i.k].at).toISOString() }; }); return o; }),
+      drills: state.drills.map(function (d) { return { area: state.areas[d.area].name, type: d.type, due: new Date(d.due).toISOString(), held: d.held ? new Date(d.held).toISOString() : null }; }),
+      openActions: openActions().map(function (x) { return { text: x.text, owner: x.owner, opened: new Date(x.opened).toISOString() }; }),
+      incident: state.incident ? { type: INCIDENTS[state.incident.type].name, active: !state.incident.stoodDown, started: new Date(state.incident.started).toISOString(), affected: state.incident.affected.map(function (id) { return state.areas[id].name; }), stepsDone: state.incident.steps.filter(function (s) { return s.done; }).length, steps: state.incident.steps.length, decisions: state.incident.decisions, nextUpdate: new Date(state.incident.nextUpdate).toISOString() } : null });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text, why: s.why }; }); }
+});
+render();
+})();
+</script>
+</body>
+</html>

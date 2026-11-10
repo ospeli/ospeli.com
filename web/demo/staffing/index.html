@@ -1,0 +1,881 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Staffing and rosters demo · Ospeli</title>
+<meta name="description" content="Staff rostered against staff needed for today's workload, by unit and skill group. Shifts, swaps and open shifts on a phone, a unit roster for managers, and a staffing office view across units. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Staffing and rosters demo · Ospeli">
+<meta property="og:description" content="Staff rostered against staff needed for today's workload, by unit and skill group. Shifts, swaps and open shifts on a phone, a unit roster for managers, and a staffing office view across units. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/staffing/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; --red:#B23A22; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button { font: inherit; color: var(--ink); }
+select, input[type=number] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 520px) { .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 14px; width: 100%; } .roles button { padding: 6px 4px; line-height: 1.2; font-size: 0.95rem; } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; max-width: 52em; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.viewhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 10px; }
+.viewhead h2 { margin: 0; }
+.viewhead label { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.88rem; font-weight: 700; display: block; }
+.stat .n { color: var(--soft); font-size: 0.78rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.8rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: var(--red); }
+.stathint { color: var(--soft); font-size: 0.78rem; margin: 6px 0 0; }
+.empty { text-align: center; color: var(--soft); padding: 16px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; margin: 0; }
+.chip { display: inline-block; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; background: var(--sand); }
+.chip.day { background: var(--warn); } .chip.night { background: var(--navy); color: #fff; }
+.chip.wait { background: var(--warn); } .chip.okc { background: var(--wash); } .chip.hotc { background: var(--coral); color: #fff; }
+.pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 0.95rem; font-weight: 700; background: var(--sand); }
+/* staff phone view */
+.me { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 4px; }
+.items { display: grid; gap: 10px; }
+.item { border: 1px solid var(--line); border-left: 6px solid var(--mango); border-radius: 12px; padding: 12px; background: #fff; font-size: 1rem; }
+.item.n { border-left-color: var(--navy); }
+.item.open { border-left-color: var(--coral); background: #FFFCFA; }
+.item .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.item .when { font-size: 1.12rem; font-weight: 800; line-height: 1.3; margin: 0; }
+.item .meta { color: var(--soft); font-size: 0.95rem; margin: 2px 0 0; }
+.item .note { font-size: 0.95rem; margin: 8px 0 0; background: var(--warn); border-radius: 8px; padding: 4px 8px; }
+.item .acts { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.go { flex: 1 1 160px; min-height: 52px; font-size: 1.05rem; }
+.go.pick { background: var(--sea); border-color: var(--sea); color: #fff; }
+.go.swap { background: #fff; }
+.go.book { background: var(--mango); border-color: var(--mango); color: var(--navy); }
+.picker { margin-top: 10px; background: var(--sand); border-radius: 10px; padding: 10px; }
+.picker p { margin: 0 0 8px; font-size: 0.95rem; }
+.choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.choice { border-radius: 12px; border: 1px solid #CFC5B2; min-height: 48px; padding: 6px 10px; font-size: 0.98rem; background: #fff; }
+.choice[aria-pressed=true] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.fine { font-size: 0.85rem; color: var(--soft); margin: 8px 0 0; }
+.cred { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; border-bottom: 1px dashed var(--line); padding: 10px 0; font-size: 1rem; }
+.cred b { display: block; line-height: 1.3; }
+.cred span.s { color: var(--soft); font-size: 0.95rem; }
+.cred .st { font-weight: 800; text-align: right; font-size: 0.95rem; }
+.cred .st.due { color: var(--red); } .cred .st.soon { color: #8A5A00; } .cred .st.ok { color: var(--sea); }
+.cred .go { grid-column: 1 / -1; min-height: 48px; }
+/* manager */
+.tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table.roster { border-collapse: separate; border-spacing: 3px; width: 100%; font-size: 0.85rem; min-width: 560px; }
+table.roster th { font-size: 0.75rem; color: var(--soft); font-weight: 800; text-align: center; line-height: 1.2; padding: 2px; }
+table.roster th.rh { text-align: left; white-space: nowrap; padding-right: 6px; }
+@media (max-width: 640px) { table.roster { min-width: 0; border-spacing: 2px; } .cellb { font-size: 0.85rem; } table.roster th { font-size: 0.7rem; } }
+table.roster th .dn { display: block; font-size: 0.95rem; color: var(--ink); }
+table.roster th.grp { text-align: left; color: var(--ink); font-size: 0.8rem; padding-top: 8px; }
+.cellb { width: 100%; min-height: 44px; border-radius: 8px; border: 1px solid var(--line); background: #fff; padding: 2px; font-weight: 800; font-size: 0.95rem; }
+.cellb small { display: block; font-size: 0.68rem; font-weight: 700; color: var(--soft); }
+.cellb.short { background: var(--hot); border-color: #F3C6B9; color: var(--red); }
+.cellb.below { background: var(--coral); border-color: var(--coral); color: #fff; }
+.cellb.below small { color: #fff; }
+.cellb[aria-pressed=true] { outline: 3px solid var(--navy); outline-offset: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.8rem; color: var(--soft); margin: 6px 0 0; }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; border: 1px solid var(--line); }
+.celldetail { background: var(--sand); border-radius: 10px; padding: 10px 12px; margin-top: 10px; font-size: 0.92rem; }
+.celldetail b { display: block; }
+.rows { display: grid; gap: 8px; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; border: 1px solid var(--line); border-left: 5px solid var(--coral); border-radius: 10px; padding: 8px 10px; font-size: 0.92rem; }
+.row.swapr { border-left-color: var(--sea); }
+.row.offered { border-left-color: var(--mango); }
+.row b { display: block; }
+.row .sub { color: var(--soft); font-size: 0.84rem; }
+.row .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 640px) { .row { grid-template-columns: minmax(0, 1fr); } .row .acts { justify-content: flex-start; } }
+table.creds { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+table.creds th, table.creds td { text-align: left; padding: 6px; border-bottom: 1px solid var(--line); }
+table.creds th { color: var(--soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+table.creds td.r, table.creds th.r { text-align: right; } table.creds td.r { white-space: nowrap; }
+@media (max-width: 640px) { table.creds { font-size: 0.82rem; } table.creds th, table.creds td { padding: 6px 3px; } }
+table.creds td.hotn { color: var(--red); font-weight: 800; }
+/* office */
+.units { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; }
+.ucard { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.ucard.press { border-color: var(--coral); background: #FFF8F5; }
+.ucard h4 { margin: 0 0 6px; font-size: 1rem; display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.ucard h4 span { color: var(--soft); font-size: 0.8rem; font-weight: 700; }
+.wl { display: flex; gap: 8px; margin-bottom: 8px; }
+.wl label { display: flex; flex-direction: column; font-size: 0.75rem; font-weight: 700; color: var(--soft); gap: 2px; flex: 1; }
+.wl input { width: 100%; min-height: 40px; padding: 4px 8px; }
+table.mx { width: 100%; border-collapse: separate; border-spacing: 3px; font-size: 0.85rem; }
+table.mx th { font-size: 0.72rem; color: var(--soft); text-align: center; font-weight: 800; }
+table.mx th.rh { text-align: left; }
+table.mx td { text-align: center; border-radius: 8px; background: var(--sand); padding: 4px 2px; font-weight: 800; line-height: 1.15; }
+table.mx td small { display: block; font-size: 0.7rem; font-weight: 700; color: var(--soft); }
+table.mx td.short { background: var(--hot); color: var(--red); }
+table.mx td.short small { color: var(--red); }
+table.mx td.spare { background: var(--wash); }
+.moveform { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-top: 4px; font-size: 0.85rem; }
+.moveform label { display: flex; flex-direction: column; gap: 3px; font-weight: 700; color: var(--soft); min-width: 0; max-width: 100%; }
+details.set { margin-top: 16px; }
+details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.basis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+.basis h4 { grid-column: 1 / -1; margin: 6px 0 0; font-size: 0.9rem; }
+.basis label { display: flex; flex-direction: column; gap: 4px; font-size: 0.8rem; font-weight: 700; color: var(--soft); }
+.basis input { width: 100%; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.82rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg .why { color: var(--soft); font-size: 0.82rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.decide > p { margin: 0; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+.prop .who { color: var(--soft); font-size: 0.82rem; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Staffing, rosters and credentials</h1>
+  <p class="lead">Each shift shows staff rostered against staff needed for today's workload, by unit and skill group. Gaps show early, cover is tracked to filled, and expiring training is flagged weeks ahead. It measures cover, never people. The guide suggests; a manager decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-staff" aria-pressed="false">Staff member</button>
+    <button type="button" id="r-manager" aria-pressed="false">Unit manager</button>
+    <button type="button" id="r-office" aria-pressed="false">Staffing office</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <b>Demo tools:</b>
+    <button type="button" class="small" id="t-sick">Someone calls in sick tonight</button>
+    <button type="button" class="small" id="t-clock">Move clock on 1 hour</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <div class="viewhead"><h2 id="view-h">Staffing</h2><div id="viewctl"></div></div>
+        <div class="stats" id="kpis"></div>
+        <p class="stathint" id="stathint"></p>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads the roster, open shifts, workload counts and the settings your site chose, and suggests where to look, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal. The unit manager decides.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its units, the staff initials, rosters and workload counts. It counts cover by unit, shift and skill group; it never scores, ranks or compares people, and it has nothing to do with pay. Staff needed comes from a workload basis each site sets for itself; the numbers here are example settings, not a standard, and the demo does not set clinical acuity or care decisions. Coming next (Feb 2027): roster planning weeks ahead with leave and minimum cover, cover requests tracked from gap to filled, a full credentials tracker for HR, and staff needed against staff available over time, by unit. <a href="../../areas/staffing-and-rostering/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var M = 60000, H = 60 * M, DAY = 24 * H;
+var STORE = 'ospeli.staffing.v1';
+
+// ---------- Fixed reference data (fictional) ----------
+var UNITS = [
+  { id: 'W1', name: 'Ward 1', kind: 'Medical' }, { id: 'W2', name: 'Ward 2', kind: 'Medical' },
+  { id: 'W3', name: 'Ward 3', kind: 'Surgical' }, { id: 'W4', name: 'Ward 4', kind: 'Surgical' },
+  { id: 'W5', name: 'Ward 5', kind: 'Short stay' }
+];
+var UNAME = { RP: 'Relief pool' }; UNITS.forEach(function (u) { UNAME[u.id] = u.name; });
+var SK = { rn: { one: 'Registered nurse', many: 'registered nurses', short: 'RN' }, na: { one: 'Nursing assistant', many: 'nursing assistants', short: 'NA' } };
+var SKILLS = ['rn', 'na'], SHIFTS = ['D', 'N'];
+var SHIFT = { D: { name: 'Day', time: '07:00–19:00' }, N: { name: 'Night', time: '19:00–07:00' } };
+// Planned staff per shift (the published roster pattern for each unit).
+var TEMPLATE = {
+  W1: { D: { rn: 5, na: 3 }, N: { rn: 4, na: 2 } }, W2: { D: { rn: 5, na: 3 }, N: { rn: 4, na: 2 } },
+  W3: { D: { rn: 5, na: 3 }, N: { rn: 4, na: 2 } }, W4: { D: { rn: 4, na: 3 }, N: { rn: 3, na: 2 } },
+  W5: { D: { rn: 3, na: 2 }, N: { rn: 2, na: 1 } }
+};
+// Workload basis: example settings for this demo only, not a standard. Each site sets its own.
+// "Points" = the workload count one person covers on that shift; "min" = minimum cover per shift.
+var DEFAULT_BASIS = { rn: { D: 6, N: 7, min: 2 }, na: { D: 9, N: 12, min: 1 } };
+// Workload count recorded by each unit: the last two shifts, then today's day and tonight.
+var WORKLOAD = { W1: { hist: [22, 24], D: 27, N: 24 }, W2: { hist: [25, 26], D: 26, N: 19 }, W3: { hist: [26, 25], D: 26, N: 24 }, W4: { hist: [22, 21], D: 22, N: 21 }, W5: { hist: [15, 16], D: 16, N: 12 } };
+// Open shifts at the start: [unit, day (0 = today), shift, skill, hours since the gap was raised, reason]
+var GAPS = [['W4', 0, 'N', 'rn', 3, 'Unplanned absence'], ['W5', 1, 'N', 'rn', 20, 'Vacant post'], ['W3', 2, 'D', 'rn', 30, 'Leave approved'],
+  ['W1', 1, 'D', 'na', 26, 'Vacant post'], ['W3', 4, 'N', 'na', 40, 'Vacant post'], ['W2', 5, 'D', 'rn', 12, 'Training day'],
+  ['W4', 3, 'D', 'na', 8, 'Leave approved'], ['W1', 6, 'N', 'rn', 5, 'Vacant post']];
+// Gaps already filled earlier this week: [unit, hours from gap raised to cover confirmed, how]
+var PAST_FILLS = [['W1', 4, 'relief pool'], ['W1', 18, 'own unit'], ['W2', 6, 'relief pool'], ['W3', 2, 'own unit'], ['W3', 27, 'relief pool'], ['W4', 9, 'moved between units'], ['W5', 31, 'own unit'], ['W2', 3, 'own unit'], ['W4', 14, 'relief pool']];
+var CRED = {
+  reg: { name: 'Professional registration', roles: ['rn'], action: 'Start renewal', doneWord: 'Renewal started' },
+  ls: { name: 'Life support training', roles: ['rn', 'na'], action: 'Book a place', doneWord: 'Place booked' },
+  mh: { name: 'Manual handling training', roles: ['rn', 'na'], action: 'Book a place', doneWord: 'Place booked' },
+  fs: { name: 'Fire safety training', roles: ['rn', 'na'], action: 'Book a place', doneWord: 'Place booked' }
+};
+
+// ---------- Seeded example (deterministic) ----------
+function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function startOfToday() { var d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); }
+function seed() {
+  var r = rng(20270201), T = Date.now();
+  var s = { v: 1, day0: startOfToday(), created: T, offset: 0, role: window.matchMedia('(max-width: 640px)').matches ? 'staff' : 'office',
+    unit: 'W3', guide: true, kpiOpen: null, cell: null, swapFor: null, swapTo: null, seq: 0,
+    basis: clone(DEFAULT_BASIS), work: clone(WORKLOAD), plan: {}, staff: [], asg: [], open: [], fills: [], swaps: [], pending: [], dismissed: {}, reminded: {}, log: [], me: null };
+  // Initials: unique, invented.
+  var L = 'ABCDEFGHJKLMNPRSTVW', used = {};
+  function ini() { var x; do { x = L[Math.floor(r() * L.length)] + '.' + L[Math.floor(r() * L.length)] + '.'; } while (used[x]); used[x] = 1; return x; }
+  function creds(skill) { var c = {}; Object.keys(CRED).forEach(function (k) { if (CRED[k].roles.indexOf(skill) < 0) return; var p = r(); c[k] = { days: p < 0.04 ? -1 - Math.floor(r() * 40) : p < 0.11 ? Math.floor(r() * 31) : p < 0.22 ? 31 + Math.floor(r() * 60) : 91 + Math.floor(r() * 800), booked: false }; }); return c; }
+  UNITS.forEach(function (u) {
+    s.plan[u.id] = [];
+    for (var d = 0; d < 7; d++) s.plan[u.id].push(clone(TEMPLATE[u.id]));
+    SKILLS.forEach(function (k) {
+      var per = 0; SHIFTS.forEach(function (sh) { per += TEMPLATE[u.id][sh][k]; });
+      var n = Math.ceil(per * 7 / 3.5) + 1;
+      for (var i = 0; i < n; i++) s.staff.push({ id: 's' + s.staff.length, ini: ini(), unit: u.id, skill: k, units: [u.id], relief: false, creds: creds(k) });
+    });
+  });
+  // Relief pool: internal staff who are not tied to one unit, with the slots they have offered.
+  [['rn', 4], ['na', 2]].forEach(function (x) {
+    for (var i = 0; i < x[1]; i++) {
+      var av = [];
+      for (var d = 0; d < 7; d++) SHIFTS.forEach(function (sh) { if (r() < 0.55) av.push(d + sh); });
+      if (i === 0) { if (av.indexOf('1N') < 0) av.push('1N'); if (av.indexOf('1D') < 0) av.push('1D'); if (av.indexOf('0N') < 0) av.push('0N'); }
+      s.staff.push({ id: 's' + s.staff.length, ini: ini(), unit: 'RP', skill: x[0], units: UNITS.map(function (u) { return u.id; }), relief: true, avail: av, creds: creds(x[0]) });
+    }
+  });
+  // Build the roster: fewest shifts first, one shift a day, no day shift straight after a night.
+  var count = {};
+  function gapsIn(u, d, sh, k) { return GAPS.filter(function (g) { return g[0] === u && g[1] === d && g[2] === sh && g[3] === k; }).length; }
+  for (var d = 0; d < 7; d++) SHIFTS.forEach(function (sh) {
+    UNITS.forEach(function (u) {
+      SKILLS.forEach(function (k) {
+        var need = TEMPLATE[u.id][sh][k] - gapsIn(u.id, d, sh, k);
+        var pool = s.staff.filter(function (p) { return p.unit === u.id && p.skill === k; });
+        pool.sort(function (a, b) { return (count[a.id] || 0) - (count[b.id] || 0) || ((+a.id.slice(1) * 7 + d * 3) % 11) - ((+b.id.slice(1) * 7 + d * 3) % 11); });
+        for (var i = 0; i < pool.length && need > 0; i++) {
+          var p = pool[i];
+          if ((count[p.id] || 0) >= 4 || !canWorkIn(s, p.id, d, sh)) continue;
+          s.asg.push({ id: 'a' + (++s.seq), staff: p.id, unit: u.id, day: d, shift: sh, skill: k, src: 'roster' });
+          count[p.id] = (count[p.id] || 0) + 1; need--;
+        }
+      });
+    });
+  });
+  GAPS.forEach(function (g) { s.open.push({ id: 'o' + (++s.seq), unit: g[0], day: g[1], shift: g[2], skill: g[3], raised: T - g[4] * H, reason: g[5], status: 'open', filledAt: null, how: null }); });
+  PAST_FILLS.forEach(function (f) { s.fills.push({ unit: f[0], hours: f[1], how: f[2] }); });
+  // "You" on the staff view: a Ward 3 registered nurse who could take the open Ward 3 shift.
+  var w3open = s.open.filter(function (o) { return o.unit === 'W3' && o.skill === 'rn'; })[0];
+  var me = s.staff.filter(function (p) { return p.unit === 'W3' && p.skill === 'rn' && (count[p.id] || 0) >= 3 && canWorkIn(s, p.id, w3open.day, w3open.shift); })[0];
+  me.units = ['W3', 'W4']; s.me = me.id;
+  me.creds = { reg: { days: 140, booked: false }, ls: { days: 23, booked: false }, mh: { days: 300, booked: false }, fs: { days: 75, booked: false } };
+  // One swap already asked for by another Ward 3 colleague.
+  var other = s.asg.filter(function (a) { return a.unit === 'W3' && a.skill === 'rn' && a.day === 3 && a.staff !== me.id; })[0];
+  var taker = other && s.staff.filter(function (p) { return p.unit === 'W3' && p.skill === 'rn' && p.id !== other.staff && p.id !== me.id && canWorkIn(s, p.id, 3, other.shift); })[0];
+  if (other && taker) s.swaps.push({ id: 'w' + (++s.seq), asg: other.id, from: other.staff, to: taker.id, at: T - 5 * H });
+  // History for the log (newest first).
+  s.log = [
+    { t: T - 3 * H, text: 'Unplanned absence logged: Ward 4 tonight, 1 registered nurse. Gap raised.' },
+    other && taker ? { t: T - 5 * H, text: 'Ward 3: a swap was asked for (' + dayLabel(s.day0, 3) + ', ' + SHIFT[other.shift].name.toLowerCase() + ' shift). Waiting for the unit manager.' } : null,
+    { t: T - 8 * H, text: 'Ward 4: leave approved for ' + dayLabel(s.day0, 3) + ' day. Open shift raised for 1 nursing assistant.' },
+    { t: T - 9 * H, text: 'Ward 4 gap filled from the relief pool (9 h from gap to cover).' },
+    { t: T - 12 * H, text: 'Ward 2: training day booked for ' + dayLabel(s.day0, 5) + '. Open shift raised for 1 registered nurse.' }
+  ].filter(Boolean);
+  return s;
+}
+
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE));
+    // The example week starts today: start a fresh one on a new day.
+    if (!s || s.v !== 1 || !s.asg || s.day0 !== startOfToday()) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function now() { return Date.now() + (state.offset || 0); }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+// ---------- Derived data (pure) ----------
+function staffById(id) { return state.staff.filter(function (p) { return p.id === id; })[0]; }
+function me() { return staffById(state.me); }
+function label(p) { return 'Staff ' + p.ini + (p.relief ? ' (relief)' : ''); }
+function works(s, staffId, d) { return s.asg.filter(function (a) { return a.staff === staffId && a.day === d; })[0]; }
+// One shift a day; no day shift straight after a night (example rest rule); relief staff only in slots they offered.
+function canWorkIn(s, staffId, d, sh) {
+  if (works(s, staffId, d)) return false;
+  if (sh === 'D' && d > 0) { var p = works(s, staffId, d - 1); if (p && p.shift === 'N') return false; }
+  if (sh === 'N' && d < 6) { var n = works(s, staffId, d + 1); if (n && n.shift === 'D') return false; }
+  var st = s.staff.filter(function (x) { return x.id === staffId; })[0];
+  if (st && st.relief && st.avail.indexOf(d + sh) < 0) return false;
+  return true;
+}
+function canWork(id, d, sh) { return canWorkIn(state, id, d, sh); }
+function inCell(u, d, sh, k) { return state.asg.filter(function (a) { return a.unit === u && a.day === d && a.shift === sh && a.skill === k; }); }
+function planned(u, d, sh, k) { return state.plan[u][d][sh][k]; }
+function needed(u, sh, k) { var b = state.basis[k]; return Math.max(+b.min || 0, Math.ceil((+state.work[u][sh] || 0) / Math.max(1, +b[sh] || 1))); }
+function openShifts(u) { return state.open.filter(function (o) { return o.status !== 'filled' && (!u || o.unit === u); }).sort(function (a, b) { return a.day - b.day || (a.shift === 'D' ? -1 : 1) - (b.shift === 'D' ? -1 : 1); }); }
+function reliefFree(k, d, sh) { return state.staff.filter(function (p) { return p.relief && p.skill === k && canWork(p.id, d, sh); }); }
+function credStatus(days) { return days < 0 ? 'expired' : days <= 30 ? 'due30' : days <= 90 ? 'due90' : 'ok'; }
+function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function kpis(scope) {
+  var us = scope ? [scope] : UNITS.map(function (u) { return u.id; });
+  var plan = 0, filled = 0, need = 0, cov = 0, short = 0;
+  us.forEach(function (u) {
+    for (var d = 0; d < 7; d++) SHIFTS.forEach(function (sh) { SKILLS.forEach(function (k) { var p = planned(u, d, sh, k), n = inCell(u, d, sh, k).length; plan += p; filled += Math.min(p, n); }); });
+    SHIFTS.forEach(function (sh) { SKILLS.forEach(function (k) { var q = needed(u, sh, k), n = inCell(u, 0, sh, k).length; need += q; cov += Math.min(q, n); short += Math.max(0, q - n); }); });
+  });
+  var fills = state.fills.filter(function (f) { return !scope || f.unit === scope; });
+  var people = state.staff.filter(function (p) { return scope ? p.unit === scope : true; });
+  var req = 0, cur = 0;
+  people.forEach(function (p) { Object.keys(p.creds).forEach(function (k) { req++; if (p.creds[k].days >= 0) cur++; }); });
+  var ttf = median(fills.map(function (f) { return f.hours; }));
+  return { scope: scope ? UNAME[scope] : 'All units', fillRatePct: plan ? Math.round(1000 * filled / plan) / 10 : null, filledShifts: filled, plannedShifts: plan,
+    openShifts: openShifts(scope).length, coverTodayPct: need ? Math.round(100 * cov / need) : null, shortToday: short,
+    timeToFillMedianH: ttf == null ? null : Math.round(ttf * 10) / 10, gapsFilled: fills.length,
+    credentialsInDatePct: req ? Math.round(1000 * cur / req) / 10 : null, credentialsRequired: req };
+}
+
+// ---------- The guide: plain, checkable rules ----------
+function suggest() {
+  var out = [], taken = {};
+  // 1. One unit over its need and another short, same skill group and shift, today or tonight.
+  var best = null;
+  SHIFTS.forEach(function (sh) {
+    SKILLS.forEach(function (k) {
+      var rows = UNITS.map(function (u) { var n = inCell(u.id, 0, sh, k).length, q = needed(u.id, sh, k); return { u: u.id, n: n, q: q, d: n - q }; });
+      var over = rows.filter(function (x) { return x.d >= 1 && x.n - 1 >= state.basis[k].min; }).sort(function (a, b) { return b.d - a.d; })[0];
+      var under = rows.filter(function (x) { return x.d <= -1; }).sort(function (a, b) { return a.d - b.d; })[0];
+      if (over && under && !best) best = { sh: sh, k: k, over: over, under: under };
+    });
+  });
+  if (best) {
+    var b = best, when = b.sh === 'D' ? 'today' : 'tonight', id = 'move-' + b.sh + b.k + b.over.u + b.under.u;
+    taken[b.under.u + '0' + b.sh + b.k] = true;
+    out.push({ id: id, kind: 'move', title: 'Move 1 ' + SK[b.k].one.toLowerCase() + ' from ' + UNAME[b.over.u] + ' to ' + UNAME[b.under.u] + ' ' + when,
+      text: UNAME[b.under.u] + ' has ' + b.under.n + ' of ' + b.under.q + ' ' + SK[b.k].many + ' needed ' + when + '. ' + UNAME[b.over.u] + ' has ' + b.over.n + ' where ' + b.over.q + ' are needed for its workload count.',
+      why: 'Staff needed comes from each unit\'s workload count and the workload basis in Settings (example settings, not a standard). It counts cover only; it does not choose a person.',
+      acts: [{ label: 'Propose this move', primary: true, fn: function () { propose({ id: id, kind: 'move', sh: b.sh, k: b.k, from: b.over.u, to: b.under.u, text: 'Move 1 ' + SK[b.k].one.toLowerCase() + ' from ' + UNAME[b.over.u] + ' to ' + UNAME[b.under.u] + ' for ' + when + ' (' + SHIFT[b.sh].time + '). ' + UNAME[b.over.u] + '\'s manager agrees who goes.' }); } }] });
+  }
+  // 2. An open shift in the next 48 hours: offer it to internal relief staff first. Below minimum cover comes first.
+  var soon = openShifts().filter(function (o) { return o.day <= 1 && o.status !== 'filled' && !taken[o.unit + o.day + o.shift + o.skill]; });
+  soon.forEach(function (o) { o._below = inCell(o.unit, o.day, o.shift, o.skill).length < state.basis[o.skill].min; });
+  soon.sort(function (a, b) { return (b._below - a._below) || a.day - b.day || (a.shift === 'D' ? -1 : 1); });
+  var o = soon[0];
+  if (o) {
+    var rf = reliefFree(o.skill, o.day, o.shift)[0], when2 = whenWord(o.day, o.shift), n = inCell(o.unit, o.day, o.shift, o.skill).length, sid = 'relief-' + o.id;
+    var base = o._below
+      ? { title: UNAME[o.unit] + ' ' + when2 + ' is below minimum cover', text: UNAME[o.unit] + ' has ' + n + ' ' + (n === 1 ? SK[o.skill].one.toLowerCase() : SK[o.skill].many) + ' rostered for ' + when2 + '; the minimum set for this site is ' + state.basis[o.skill].min + '. Asking now gives more people the chance to say yes.' }
+      : { title: 'Offer ' + UNAME[o.unit] + '\'s open shift ' + when2 + ' to relief staff first', text: '1 ' + SK[o.skill].one.toLowerCase() + ' is still needed on ' + UNAME[o.unit] + ' ' + when2 + ' (' + n + ' of ' + planned(o.unit, o.day, o.shift, o.skill) + ' planned).' };
+    base.id = sid; base.kind = 'time';
+    base.why = 'An open shift in the next 48 hours, matched to relief staff in the same skill group who offered that slot and are rested (no day shift straight after a night). Minimum cover is an example setting, not a standard.';
+    if (rf) {
+      base.text += ' Staff ' + rf.ini + ' in the relief pool is free then.';
+      base.acts = [{ label: 'Propose: offer to Staff ' + rf.ini + ' (relief)', primary: true, fn: function () { propose({ id: sid, kind: 'relief', open: o.id, staff: rf.id, text: 'Offer ' + UNAME[o.unit] + ' ' + when2 + ' (' + SK[o.skill].one.toLowerCase() + ') to Staff ' + rf.ini + ' from the relief pool, and book it if they say yes.' }); } }];
+    } else {
+      base.text += ' No one in the relief pool is free then.';
+      base.acts = [{ label: 'Propose: offer to ' + UNAME[o.unit] + ' staff', primary: true, fn: function () { propose({ id: sid, kind: 'unitoffer', open: o.id, text: 'Offer ' + UNAME[o.unit] + ' ' + when2 + ' (' + SK[o.skill].one.toLowerCase() + ') to ' + UNAME[o.unit] + ' staff, so they can pick it up on their phones.' }); } }];
+    }
+    out.push(base);
+  }
+  // 3. A unit's workload count has risen two shifts running.
+  UNITS.forEach(function (u) {
+    var w = state.work[u.id];
+    if (!(w.hist[0] < w.hist[1] && w.hist[1] < +w.D)) return;
+    out.push({ id: 'rise-' + u.id + '-' + w.D, kind: 'ask', title: u.name + '\'s workload count has risen two shifts running',
+      text: w.hist[0] + ', then ' + w.hist[1] + ', now ' + w.D + ' on today\'s day shift. Check next week\'s roster for ' + u.name + ' before it is published.',
+      why: 'Workload counts recorded at the start of the last three shifts. A trend to look at, not a forecast.',
+      acts: [{ label: 'Show ' + u.name + '\'s roster', fn: function () { state.role = 'manager'; state.unit = u.id; state.cell = null; render(); document.getElementById('view-h').scrollIntoView({ block: 'start' }); } }] });
+  });
+  // 4. Credentials expired or due within 30 days in a unit: draft reminders for the HR officer to send.
+  var byUnit = UNITS.map(function (u) {
+    var c = {}, n = 0;
+    state.staff.filter(function (p) { return p.unit === u.id; }).forEach(function (p) { Object.keys(p.creds).forEach(function (k) { var st = credStatus(p.creds[k].days); if ((st === 'expired' || st === 'due30') && !p.creds[k].booked) { c[k] = (c[k] || 0) + 1; n++; } }); });
+    return { u: u.id, n: n, c: c };
+  }).filter(function (x) { return x.n && !state.reminded[x.u]; }).sort(function (a, b) { return b.n - a.n; })[0];
+  if (byUnit) {
+    var parts = Object.keys(byUnit.c).map(function (k) { return CRED[k].name.toLowerCase() + ' ' + byUnit.c[k]; }).join(', ');
+    var cid = 'creds-' + byUnit.u;
+    out.push({ id: cid, kind: 'ask', title: byUnit.n + ' credentials in ' + UNAME[byUnit.u] + ' are expired or due within 30 days',
+      text: parts.charAt(0).toUpperCase() + parts.slice(1) + '. A reminder can go to each person concerned, from HR.',
+      why: 'Expiry dates on the credentials record. Counted by unit and role; no one is named or compared here.',
+      acts: [{ label: 'Draft reminders for the HR officer', primary: true, fn: function () { propose({ id: cid, kind: 'hr', unit: byUnit.u, n: byUnit.n, text: 'Draft: ' + byUnit.n + ' reminders for ' + UNAME[byUnit.u] + ' staff (' + parts + '). Each goes only to the person concerned. The HR officer checks and sends them.' }); } }] });
+  }
+  return out.filter(function (x) { return !state.dismissed[x.id]; }).slice(0, 4);
+}
+function propose(p) {
+  if (state.pending.some(function (x) { return x.id === p.id; })) return toast('Already waiting for a decision.');
+  p.at = now(); state.pending.push(p);
+  addLog('Guide proposal added: ' + p.text);
+  render(); toast(state.role === 'manager' ? 'Proposed. Approve or decline it below the guide.' : 'Proposed. The unit manager decides.');
+}
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x !== p && x.id !== p.id; });
+  if (!yes) { state.dismissed[p.id] = true; addLog('Unit manager declined: ' + p.text); render(); return toast('Declined. Nothing changed.'); }
+  if (p.kind === 'move') {
+    var from = inCell(p.from, 0, p.sh, p.k), q = needed(p.from, p.sh, p.k);
+    var a = from.filter(function (x) { return x.staff !== state.me; })[0];
+    if (!a || from.length - 1 < state.basis[p.k].min) { render(); return toast(UNAME[p.from] + ' would drop below the minimum set for the site. Nothing changed.'); }
+    a.unit = p.to; a.src = 'moved';
+    // Where the unit had more than its workload needs, its plan for that shift comes down to match.
+    if (from.length > q) state.plan[p.from][0][p.sh][p.k] = Math.max(0, state.plan[p.from][0][p.sh][p.k] - 1);
+    var o = state.open.filter(function (x) { return x.status !== 'filled' && x.unit === p.to && x.day === 0 && x.shift === p.sh && x.skill === p.k; })[0];
+    if (o) fillOpen(o, 'moved between units');
+    addLog('Unit manager approved: Staff ' + staffById(a.staff).ini + ' moves from ' + UNAME[p.from] + ' to ' + UNAME[p.to] + ' ' + (p.sh === 'D' ? 'today' : 'tonight') + '. ' + UNAME[p.from] + '\'s plan for that shift updated to match its workload.' + (o ? ' Gap filled in ' + fmtH(o.hoursToFill) + '.' : ''));
+    toast('Move approved. Both units updated.');
+  } else if (p.kind === 'relief' || p.kind === 'unitoffer') {
+    var op = state.open.filter(function (x) { return x.id === p.open; })[0];
+    if (!op || op.status === 'filled') { render(); return toast('That shift is already filled.'); }
+    if (p.kind === 'unitoffer') { op.status = 'offered-unit'; addLog('Unit manager offered ' + UNAME[op.unit] + ' ' + whenWord(op.day, op.shift) + ' to unit staff.'); toast('Offered to unit staff.'); }
+    else {
+      if (!canWork(p.staff, op.day, op.shift)) { render(); return toast('Staff ' + staffById(p.staff).ini + ' is no longer free then.'); }
+      bookRelief(op, p.staff); toast('Booked from the relief pool.');
+    }
+  } else if (p.kind === 'hr') {
+    state.reminded[p.unit] = true;
+    addLog('HR officer sent ' + p.n + ' credential reminders to ' + UNAME[p.unit] + ' staff, one to each person concerned.');
+    toast('Reminders sent by the HR officer.');
+  }
+  render();
+}
+function fillOpen(o, how) { o.status = 'filled'; o.filledAt = now(); o.how = how; o.hoursToFill = Math.max(0, (o.filledAt - o.raised) / H); state.fills.push({ unit: o.unit, hours: o.hoursToFill, how: how }); }
+function bookRelief(o, staffId) {
+  state.asg.push({ id: 'a' + (++state.seq), staff: staffId, unit: o.unit, day: o.day, shift: o.shift, skill: o.skill, src: 'relief' });
+  fillOpen(o, 'relief pool');
+  addLog('Staff ' + staffById(staffId).ini + ' (relief pool) booked for ' + UNAME[o.unit] + ' ' + whenWord(o.day, o.shift) + '. Gap filled in ' + fmtH(o.hoursToFill) + '.');
+}
+
+// ---------- Helpers ----------
+function dayLabel(day0, d) { return new Date(day0 + d * DAY + 12 * H).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); }
+function dayName(d) { return d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : dayLabel(state.day0, d); }
+function whenWord(d, sh) { if (d === 0) return sh === 'N' ? 'tonight' : 'today (day)'; if (d === 1) return sh === 'N' ? 'tomorrow night' : 'tomorrow (day)'; return dayLabel(state.day0, d) + ' ' + SHIFT[sh].name.toLowerCase(); }
+function fmtH(h) { if (h == null) return '–'; if (h < 1) return Math.max(1, Math.round(h * 60)) + ' min'; return Math.round(h) + ' h'; }
+function hhmm(t) { var d = new Date(t); return ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2); }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+var lastLogT = 0;
+function addLog(text) { lastLogT = now(); state.log.unshift({ t: lastLogT, text: text }); state.log = state.log.slice(0, 60); }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2400); }
+function shiftChip(sh) { return el('span', { class: 'chip ' + (sh === 'D' ? 'day' : 'night'), text: SHIFT[sh].name }); }
+
+// ---------- Render ----------
+var HINTS = {
+  staff: 'A staff member\'s phone. Your next shifts, a swap request, open shifts you can pick up, and your own training and registration dates. Only you see your reminders.',
+  manager: 'A unit manager\'s view. This week\'s roster as filled against planned, by day, shift and skill group. Fill open shifts, approve swaps and guide proposals, and see credentials due in your unit as counts, never a league table.',
+  office: 'The staffing office (or bed office). Today and tonight across all units: staff needed by the workload basis your site sets, staff rostered, and gaps. Propose moves between units; the unit manager approves.'
+};
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  ['staff', 'manager', 'office'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('view-h').textContent = { staff: 'My shifts', manager: 'Unit roster', office: 'Staffing board' }[state.role];
+  var ctl = document.getElementById('viewctl'); ctl.textContent = '';
+  if (state.role === 'manager') {
+    var sel = el('select', { id: 'unit-pick', onchange: function (e) { state.unit = e.target.value; state.cell = null; render(); } });
+    UNITS.forEach(function (u) { sel.appendChild(el('option', { value: u.id, text: u.name + ' · ' + u.kind })); });
+    sel.value = state.unit;
+    ctl.appendChild(el('label', { for: 'unit-pick' }, ['Your unit', sel]));
+  }
+  renderKpis();
+  var v = document.getElementById('view'); v.textContent = '';
+  v.appendChild(state.role === 'staff' ? staffView() : state.role === 'manager' ? managerView() : officeView());
+  renderGuide();
+  renderLog();
+  save();
+  if (aid) { var e = document.getElementById(aid); if (e) e.focus({ preventScroll: true }); }
+}
+function scope() { return state.role === 'staff' ? me().unit : state.role === 'manager' ? state.unit : null; }
+function renderKpis() {
+  var k = kpis(scope()), box = document.getElementById('kpis'); box.textContent = '';
+  var tiles = [
+    ['fill', k.fillRatePct == null ? '–' : Math.round(k.fillRatePct) + '%', 'Roster fill rate', k.openShifts + ' open shift' + (k.openShifts === 1 ? '' : 's') + ', next 7 days', 'Shifts filled to planned level ÷ shifts planned, counted per person-shift, today and the next 6 days. Local definition.', k.fillRatePct < 97],
+    ['cover', k.coverTodayPct == null ? '–' : k.coverTodayPct + '%', 'Cover against workload', k.shortToday ? k.shortToday + ' short today and tonight' : 'No one short today or tonight', 'Staff rostered ÷ staff needed by the workload basis your site sets, per unit and skill group, for today\'s day shift and tonight (a unit with spare staff counts as 100%). Local definition. The WHO WISN method (Workload Indicators of Staffing Need) uses the same idea, staff available against staff required by workload, for yearly planning.', k.shortToday > 0],
+    ['ttf', fmtH(k.timeToFillMedianH), 'Time to fill a gap', 'median of ' + k.gapsFilled + ' gaps this week', 'From a shift gap being raised to cover being confirmed (median, this week). Local definition.', false],
+    ['creds', k.credentialsInDatePct == null ? '–' : Math.round(k.credentialsInDatePct) + '%', 'Credentials in date', k.credentialsRequired + ' required', 'Required credentials current ÷ required credentials (registration and mandatory training), by role. Local definition.', false]
+  ];
+  tiles.forEach(function (t) {
+    var open = state.kpiOpen === t[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat' + (t[5] ? ' alert' : ''), 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def', text: t[4] })]));
+  });
+  document.getElementById('stathint').textContent = k.scope + '. Tap a tile for its definition.';
+}
+
+function staffView() {
+  var frag = document.createDocumentFragment(), p = me();
+  frag.appendChild(el('div', { class: 'me' }, [el('span', { class: 'pill', text: 'You: ' + label(p) }), el('span', { class: 'pill', text: SK[p.skill].one }), el('span', { class: 'pill', text: UNAME[p.unit] })]));
+  // My upcoming shifts
+  var mine = state.asg.filter(function (a) { return a.staff === p.id; }).sort(function (a, b) { return a.day - b.day; });
+  frag.appendChild(el('h3', { class: 'sec', text: 'My next 7 days · ' + mine.length + ' shifts' }));
+  var list = el('div', { class: 'items', id: 'my-shifts' });
+  mine.forEach(function (a) {
+    var sw = state.swaps.filter(function (x) { return x.asg === a.id; })[0];
+    var kids = [el('div', { class: 'top' }, [el('p', { class: 'when', text: dayName(a.day) + (a.day < 2 ? ' · ' + dayLabel(state.day0, a.day) : '') }), shiftChip(a.shift)]),
+      el('p', { class: 'meta', text: SHIFT[a.shift].time + ' · ' + UNAME[a.unit] + ' · team of ' + inCell(a.unit, a.day, a.shift, a.skill).length + ' ' + SK[a.skill].short + 's' })];
+    if (a.src === 'pickup') kids.push(el('p', { class: 'note', text: 'You picked this shift up.' }));
+    if (sw) kids.push(el('p', { class: 'note', text: 'Swap asked: Staff ' + staffById(sw.to).ini + ' takes it. Waiting for your unit manager.' }));
+    else if (state.swapFor === a.id) kids.push(swapPicker(a));
+    else kids.push(el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'go swap', id: 'sw-' + a.id, 'aria-label': 'Ask to swap: ' + dayName(a.day) + ' ' + SHIFT[a.shift].name.toLowerCase() + ' shift', onclick: function () { state.swapFor = a.id; state.swapTo = null; render(); var f = document.querySelector('.picker .choice'); if (f) f.focus(); }, text: 'Ask to swap' })]));
+    list.appendChild(el('article', { class: 'item' + (a.shift === 'N' ? ' n' : ''), 'aria-label': dayName(a.day) + ', ' + SHIFT[a.shift].name + ' shift, ' + UNAME[a.unit] }, kids));
+  });
+  if (!mine.length) list.appendChild(el('p', { class: 'empty', text: 'No shifts in the next 7 days.' }));
+  frag.appendChild(list);
+  // Open shifts I can pick up
+  var all = openShifts().filter(function (o) { return o.skill === p.skill && p.units.indexOf(o.unit) >= 0; });
+  var ok = all.filter(function (o) { return canWork(p.id, o.day, o.shift); });
+  frag.appendChild(el('h3', { class: 'sec', text: 'Open shifts I can pick up · ' + ok.length }));
+  var ol = el('div', { class: 'items', id: 'open-mine' });
+  ok.forEach(function (o) {
+    ol.appendChild(el('article', { class: 'item open', 'aria-label': 'Open shift ' + UNAME[o.unit] + ', ' + whenWord(o.day, o.shift) }, [
+      el('div', { class: 'top' }, [el('p', { class: 'when', text: dayName(o.day) + (o.day < 2 ? ' · ' + dayLabel(state.day0, o.day) : '') }), shiftChip(o.shift)]),
+      el('p', { class: 'meta', text: SHIFT[o.shift].time + ' · ' + UNAME[o.unit] + (o.unit === p.unit ? ' (your unit)' : '') + ' · ' + inCell(o.unit, o.day, o.shift, o.skill).length + ' of ' + planned(o.unit, o.day, o.shift, o.skill) + ' ' + SK[o.skill].many + ' booked' }),
+      el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'go pick', id: 'pk-' + o.id, 'aria-label': 'Pick up: ' + UNAME[o.unit] + ', ' + whenWord(o.day, o.shift), onclick: function () { pickUp(o); }, text: 'Pick up this shift' })])
+    ]));
+  });
+  if (!ok.length) ol.appendChild(el('p', { class: 'empty', text: 'No open shifts that fit around your own right now.' }));
+  frag.appendChild(ol);
+  if (all.length > ok.length) frag.appendChild(el('p', { class: 'fine', text: (all.length - ok.length) + ' more open shift' + (all.length - ok.length > 1 ? 's clash' : ' clashes') + ' with your shifts or the rest rule (no day shift straight after a night; an example setting). Units you are signed off for: ' + p.units.map(function (u) { return UNAME[u]; }).join(', ') + '.' }));
+  // My reminders (only mine)
+  frag.appendChild(el('h3', { class: 'sec', text: 'My registration and training' }));
+  var cl = el('div', { id: 'my-creds' });
+  Object.keys(p.creds).sort(function (a, b) { return p.creds[a].days - p.creds[b].days; }).forEach(function (k) {
+    var c = p.creds[k], st = credStatus(c.days);
+    var word = st === 'expired' ? 'Expired' : c.days <= 90 ? 'Due in ' + c.days + ' days' : 'In date';
+    var due = new Date(state.day0 + c.days * DAY + 12 * H).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    var kids = [el('div', {}, [el('b', { text: CRED[k].name }), el('span', { class: 's', text: (c.days < 0 ? 'Ran out ' : 'Runs out ') + due })]),
+      el('span', { class: 'st ' + (c.booked ? 'ok' : st === 'ok' ? 'ok' : st === 'due90' ? 'soon' : 'due'), text: c.booked ? CRED[k].doneWord : word })];
+    if (st !== 'ok' && !c.booked) kids.push(el('button', { type: 'button', class: 'go book', id: 'bk-' + k, onclick: function () { c.booked = true; addLog('You: ' + CRED[k].doneWord.toLowerCase() + ' for ' + CRED[k].name.toLowerCase() + '.'); render(); toast(CRED[k].doneWord + '. HR sees it when they check the record.'); }, text: CRED[k].action }));
+    cl.appendChild(el('div', { class: 'cred' }, kids));
+  });
+  frag.appendChild(cl);
+  frag.appendChild(el('p', { class: 'fine', text: 'Reminders about your own credentials go to you only. Your manager sees counts by role for the unit, not your name.' }));
+  return frag;
+}
+function swapPicker(a) {
+  var p = me();
+  var cands = state.staff.filter(function (x) { return !x.relief && x.id !== p.id && x.skill === a.skill && x.units.indexOf(a.unit) >= 0 && canWork(x.id, a.day, a.shift); }).slice(0, 6);
+  var box = el('div', { class: 'picker' }, [el('p', { text: 'Who takes this shift? Colleagues in the same skill group who are free and rested then:' })]);
+  var ch = el('div', { class: 'choices', role: 'group', 'aria-label': 'Choose a colleague' });
+  cands.forEach(function (c) { ch.appendChild(el('button', { type: 'button', class: 'choice', id: 'sc-' + c.id, 'aria-pressed': String(state.swapTo === c.id), onclick: function () { state.swapTo = c.id; render(); }, text: 'Staff ' + c.ini })); });
+  box.appendChild(cands.length ? ch : el('p', { class: 'empty', text: 'No one in the same skill group is free then.' }));
+  box.appendChild(el('div', { class: 'acts' }, [
+    el('button', { type: 'button', class: 'go pick', id: 'sw-send', disabled: state.swapTo ? false : 'disabled', onclick: function () {
+      state.swaps.push({ id: 'w' + (++state.seq), asg: a.id, from: p.id, to: state.swapTo, at: now() });
+      addLog('Staff ' + p.ini + ' asked to swap ' + whenWord(a.day, a.shift) + ' on ' + UNAME[a.unit] + ' with Staff ' + staffById(state.swapTo).ini + '. Waiting for the unit manager.');
+      state.swapFor = null; state.swapTo = null; render(); toast('Swap request sent to your unit manager.');
+    }, text: 'Send swap request' }),
+    el('button', { type: 'button', class: 'go', id: 'sw-cancel', onclick: function () { state.swapFor = null; state.swapTo = null; render(); }, text: 'Cancel' })
+  ]));
+  box.appendChild(el('p', { class: 'fine', text: 'Your unit manager approves the swap. Cover stays the same because the skill group is the same.' }));
+  return box;
+}
+function pickUp(o) {
+  var p = me();
+  if (!canWork(p.id, o.day, o.shift)) return toast('That clashes with another shift.');
+  state.asg.push({ id: 'a' + (++state.seq), staff: p.id, unit: o.unit, day: o.day, shift: o.shift, skill: o.skill, src: 'pickup' });
+  fillOpen(o, 'own unit');
+  addLog('Staff ' + p.ini + ' picked up ' + UNAME[o.unit] + ' ' + whenWord(o.day, o.shift) + ' (' + SK[o.skill].one.toLowerCase() + '). Gap filled in ' + fmtH(o.hoursToFill) + '.');
+  render(); toast('Booked. It is on your shifts and on the unit roster.');
+}
+
+function managerView() {
+  var frag = document.createDocumentFragment(), u = state.unit;
+  frag.appendChild(el('h3', { class: 'sec', text: 'This week: booked of planned' }));
+  var tw = el('div', { class: 'tablewrap', tabindex: '0', 'aria-label': 'Roster table; scroll sideways on a small screen' });
+  var t = el('table', { class: 'roster' }), hr = el('tr', {}, [el('th', { class: 'rh', scope: 'col', text: 'Shift' })]);
+  for (var d = 0; d < 7; d++) { var dl = new Date(state.day0 + d * DAY + 12 * H); hr.appendChild(el('th', { scope: 'col', 'aria-label': dayLabel(state.day0, d) }, [dl.toLocaleDateString('en-GB', { weekday: 'short' }), el('span', { class: 'dn', text: String(dl.getDate()) })])); }
+  t.appendChild(el('thead', {}, [hr]));
+  var tb = el('tbody');
+  SHIFTS.forEach(function (sh) {
+    tb.appendChild(el('tr', {}, [el('th', { class: 'grp', colspan: '8', scope: 'colgroup', text: SHIFT[sh].name + ' ' + SHIFT[sh].time })]));
+    SKILLS.forEach(function (k) {
+      var tr = el('tr', {}, [el('th', { class: 'rh', scope: 'row', text: SK[k].short })]);
+      for (var d = 0; d < 7; d++) (function (d) {
+        var n = inCell(u, d, sh, k).length, pl = planned(u, d, sh, k), key = d + sh + k;
+        var cls = n < state.basis[k].min ? ' below' : n < pl ? ' short' : '';
+        tr.appendChild(el('td', {}, [el('button', { type: 'button', class: 'cellb' + cls, id: 'c-' + key, 'aria-pressed': String(state.cell === key), 'aria-label': dayLabel(state.day0, d) + ', ' + SHIFT[sh].name + ', ' + SK[k].many + ': ' + n + ' booked of ' + pl + ' planned', onclick: function () { state.cell = state.cell === key ? null : key; render(); } }, [n + '/' + pl])]));
+      })(d);
+      tb.appendChild(tr);
+    });
+  });
+  t.appendChild(tb); tw.appendChild(t); frag.appendChild(tw);
+  frag.appendChild(el('div', { class: 'legend' }, [el('span', {}, [el('i', { style: 'background:var(--hot)' }), 'Below plan']), el('span', {}, [el('i', { style: 'background:var(--coral)' }), 'Below the minimum set for the site']), el('span', { text: 'RN = registered nurse · NA = nursing assistant. Tap a cell to see who is booked.' })]));
+  if (state.cell) {
+    var cd = +state.cell[0], csh = state.cell[1], ck = state.cell.slice(2), who = inCell(u, cd, csh, ck);
+    frag.appendChild(el('div', { class: 'celldetail', id: 'celldetail' }, [el('b', { text: dayLabel(state.day0, cd) + ' · ' + SHIFT[csh].name + ' · ' + SK[ck].many }),
+      who.length ? who.map(function (a) { var s = staffById(a.staff); return 'Staff ' + s.ini + (a.src === 'relief' ? ' (relief pool)' : a.src === 'pickup' ? ' (picked up)' : a.src === 'swap' ? ' (swapped in)' : ''); }).join(' · ') : 'No one booked yet.']));
+  }
+  // Open shifts
+  var os = openShifts(u);
+  frag.appendChild(el('h3', { class: 'sec', text: 'Open shifts · ' + os.length }));
+  var rows = el('div', { class: 'rows', id: 'open-unit' });
+  os.forEach(function (o) {
+    var rf = reliefFree(o.skill, o.day, o.shift)[0], acts = [];
+    if (o.status === 'offered-relief') {
+      if (rf) acts.push(el('button', { type: 'button', class: 'small primary', id: 'bkr-' + o.id, onclick: function () { bookRelief(o, rf.id); render(); toast('Booked from the relief pool.'); }, text: 'Staff ' + rf.ini + ' said yes: book' }));
+      else acts.push(el('span', { class: 'sub', text: 'No one in the relief pool is free then.' }));
+    } else acts.push(el('button', { type: 'button', class: 'small primary', id: 'ofr-' + o.id, onclick: function () { o.status = 'offered-relief'; addLog('Unit manager offered ' + UNAME[o.unit] + ' ' + whenWord(o.day, o.shift) + ' to the relief pool.'); render(); toast('Offered to the relief pool first.'); }, text: 'Offer to relief pool' }));
+    if (o.status !== 'offered-unit') acts.push(el('button', { type: 'button', class: 'small', id: 'ofu-' + o.id, onclick: function () { o.status = 'offered-unit'; addLog('Unit manager offered ' + UNAME[o.unit] + ' ' + whenWord(o.day, o.shift) + ' to unit staff.'); render(); toast('Offered to unit staff. They can pick it up on their phones.'); }, text: 'Offer to unit staff' }));
+    var st = o.status === 'open' ? 'Not offered yet' : o.status === 'offered-relief' ? 'Offered to relief pool' : 'Offered to unit staff';
+    rows.appendChild(el('div', { class: 'row' + (o.status !== 'open' ? ' offered' : '') }, [
+      el('div', {}, [el('b', { text: dayName(o.day) + ' · ' + SHIFT[o.shift].name + ' · ' + SK[o.skill].one }), el('span', { class: 'sub', text: o.reason + ' · gap raised ' + fmtH((now() - o.raised) / H) + ' ago · ' + st })]),
+      el('div', { class: 'acts' }, acts)]));
+  });
+  if (!os.length) rows.appendChild(el('p', { class: 'empty', text: 'Every planned shift this week is booked.' }));
+  frag.appendChild(rows);
+  // Swaps
+  var sw = state.swaps.filter(function (x) { var a = state.asg.filter(function (y) { return y.id === x.asg; })[0]; return a && a.unit === u; });
+  frag.appendChild(el('h3', { class: 'sec', text: 'Swap requests · ' + sw.length }));
+  var sr = el('div', { class: 'rows', id: 'swaps' });
+  sw.forEach(function (x) {
+    var a = state.asg.filter(function (y) { return y.id === x.asg; })[0], n = inCell(u, a.day, a.shift, a.skill).length;
+    sr.appendChild(el('div', { class: 'row swapr' }, [
+      el('div', {}, [el('b', { text: 'Staff ' + staffById(x.from).ini + ' → Staff ' + staffById(x.to).ini }), el('span', { class: 'sub', text: dayName(a.day) + ' · ' + SHIFT[a.shift].name + ' · ' + SK[a.skill].one + '. Same skill group: cover stays ' + n + ' of ' + planned(u, a.day, a.shift, a.skill) + '.' })]),
+      el('div', { class: 'acts' }, [
+        el('button', { type: 'button', class: 'small primary', id: 'swa-' + x.id, onclick: function () { approveSwap(x, true); }, text: 'Approve' }),
+        el('button', { type: 'button', class: 'small', id: 'swd-' + x.id, onclick: function () { approveSwap(x, false); }, text: 'Decline' })])]));
+  });
+  if (!sw.length) sr.appendChild(el('p', { class: 'empty', text: 'No swap requests waiting.' }));
+  frag.appendChild(sr);
+  // Credentials: counts by role, no names
+  frag.appendChild(el('h3', { class: 'sec', text: 'Credentials in ' + UNAME[u] + ', by role' }));
+  var ct = el('table', { class: 'creds' }), body = el('tbody');
+  ct.appendChild(el('thead', {}, [el('tr', {}, [el('th', { scope: 'col', text: 'Credential' }), el('th', { scope: 'col', text: 'Role' }), el('th', { class: 'r', scope: 'col', text: 'Expired' }), el('th', { class: 'r', scope: 'col', text: '≤ 30 days' }), el('th', { class: 'r', scope: 'col', text: '31–90 days' }), el('th', { class: 'r', scope: 'col', text: 'In date' })])]));
+  Object.keys(CRED).forEach(function (k) {
+    CRED[k].roles.forEach(function (role) {
+      var c = { expired: 0, due30: 0, due90: 0, ok: 0, all: 0 };
+      state.staff.filter(function (p) { return p.unit === u && p.skill === role && p.creds[k]; }).forEach(function (p) { c[credStatus(p.creds[k].days)]++; c.all++; });
+      body.appendChild(el('tr', {}, [el('td', { text: CRED[k].name }), el('td', { text: SK[role].short }), el('td', { class: 'r' + (c.expired ? ' hotn' : ''), text: String(c.expired) }), el('td', { class: 'r' + (c.due30 ? ' hotn' : ''), text: String(c.due30) }), el('td', { class: 'r', text: String(c.due90) }), el('td', { class: 'r', text: (c.all - c.expired) + '/' + c.all })]));
+    });
+  });
+  ct.appendChild(body);
+  frag.appendChild(el('div', { class: 'tablewrap' }, [ct]));
+  frag.appendChild(el('p', { class: 'fine', text: 'Counts only. Each person sees their own dates on their phone, and the HR officer sends reminders. No one is ranked or compared.' }));
+  return frag;
+}
+function approveSwap(x, yes) {
+  state.swaps = state.swaps.filter(function (y) { return y.id !== x.id; });
+  var a = state.asg.filter(function (y) { return y.id === x.asg; })[0];
+  if (yes) {
+    a.staff = null;
+    if (!canWork(x.to, a.day, a.shift)) { a.staff = x.from; render(); return toast('Staff ' + staffById(x.to).ini + ' is no longer free then. Nothing changed.'); }
+    a.staff = x.to; a.src = 'swap';
+    addLog('Unit manager approved a swap on ' + UNAME[a.unit] + ', ' + whenWord(a.day, a.shift) + ': Staff ' + staffById(x.to).ini + ' takes the shift.');
+    toast('Swap approved. The roster is updated.');
+  } else { addLog('Unit manager declined a swap on ' + UNAME[a.unit] + ', ' + whenWord(a.day, a.shift) + '.'); toast('Swap declined. Nothing changed.'); }
+  render();
+}
+
+function officeView() {
+  var frag = document.createDocumentFragment();
+  frag.appendChild(el('h3', { class: 'sec', text: 'Today and tonight: rostered / needed' }));
+  var grid = el('div', { class: 'units' });
+  UNITS.forEach(function (u) {
+    var short = 0;
+    var mx = el('table', { class: 'mx' }), head = el('tr', {}, [el('th', { class: 'rh', scope: 'col', text: '' })]);
+    SHIFTS.forEach(function (sh) { head.appendChild(el('th', { scope: 'col', text: sh === 'D' ? 'Today (day)' : 'Tonight' })); });
+    mx.appendChild(el('thead', {}, [head]));
+    var tb = el('tbody');
+    SKILLS.forEach(function (k) {
+      var tr = el('tr', {}, [el('th', { class: 'rh', scope: 'row', text: SK[k].short })]);
+      SHIFTS.forEach(function (sh) {
+        var n = inCell(u.id, 0, sh, k).length, q = needed(u.id, sh, k), d = n - q;
+        if (d < 0) short -= d;
+        tr.appendChild(el('td', { class: d < 0 ? 'short' : d > 0 ? 'spare' : '', id: 'm-' + u.id + sh + k }, [n + ' / ' + q, el('small', { text: d < 0 ? 'short ' + (-d) : d > 0 ? 'spare ' + d : 'covered' })]));
+      });
+      tb.appendChild(tr);
+    });
+    mx.appendChild(tb);
+    var wl = el('div', { class: 'wl' });
+    SHIFTS.forEach(function (sh) {
+      var id = 'wl-' + u.id + sh;
+      wl.appendChild(el('label', { for: id }, ['Workload count, ' + (sh === 'D' ? 'day' : 'night'),
+        el('input', { type: 'number', id: id, min: '0', max: '80', step: '1', inputmode: 'numeric', value: String(state.work[u.id][sh]), onchange: function (e) { var v = Math.max(0, Math.min(80, Math.round(+e.target.value || 0))); if (v === +state.work[u.id][sh]) return; state.work[u.id][sh] = v; addLog(u.name + ' workload count for ' + (sh === 'D' ? 'today (day)' : 'tonight') + ' recorded as ' + v + '.'); render(); } })]));
+    });
+    grid.appendChild(el('div', { class: 'ucard' + (short ? ' press' : '') }, [el('h4', {}, [u.name, el('span', { text: u.kind })]), wl, mx]));
+  });
+  frag.appendChild(grid);
+  frag.appendChild(el('p', { class: 'fine', text: 'RN = registered nurse · NA = nursing assistant. Needed = workload count ÷ the points one person covers on that shift, rounded up, and never below the minimum (Settings below). Each unit records its own workload count at the start of the shift.' }));
+  // Gaps list
+  var gaps = [];
+  UNITS.forEach(function (u) { SHIFTS.forEach(function (sh) { SKILLS.forEach(function (k) { var d = needed(u.id, sh, k) - inCell(u.id, 0, sh, k).length; if (d > 0) gaps.push({ u: u.id, sh: sh, k: k, d: d }); }); }); });
+  frag.appendChild(el('h3', { class: 'sec', text: 'Gaps today and tonight · ' + gaps.length }));
+  var gl = el('div', { class: 'rows', id: 'gaps' });
+  gaps.forEach(function (g) {
+    var o = state.open.filter(function (x) { return x.status !== 'filled' && x.unit === g.u && x.day === 0 && x.shift === g.sh && x.skill === g.k; })[0];
+    gl.appendChild(el('div', { class: 'row' }, [el('div', {}, [el('b', { text: UNAME[g.u] + ' · ' + (g.sh === 'D' ? 'Today (day)' : 'Tonight') + ' · short ' + g.d + ' ' + (g.d === 1 ? SK[g.k].one.toLowerCase() : SK[g.k].many) }),
+      el('span', { class: 'sub', text: o ? 'Open shift raised ' + fmtH((now() - o.raised) / H) + ' ago · ' + (o.status === 'open' ? 'not offered yet' : o.status === 'offered-relief' ? 'offered to relief pool' : 'offered to unit staff') : 'Need has risen above the roster with today\'s workload count' })])]));
+  });
+  if (!gaps.length) gl.appendChild(el('p', { class: 'empty', text: 'Every unit is covered for today and tonight.' }));
+  frag.appendChild(gl);
+  // Propose a move
+  frag.appendChild(el('h3', { class: 'sec', text: 'Propose a move between units' }));
+  var fs = el('select', { id: 'mv-sh' }, [el('option', { value: 'D', text: 'Today (day)' }), el('option', { value: 'N', text: 'Tonight' })]);
+  var fk = el('select', { id: 'mv-k' }, SKILLS.map(function (k) { return el('option', { value: k, text: SK[k].one }); }));
+  var ff = el('select', { id: 'mv-from' }, UNITS.map(function (u) { return el('option', { value: u.id, text: u.name }); }));
+  var ft = el('select', { id: 'mv-to' }, UNITS.map(function (u) { return el('option', { value: u.id, text: u.name }); }));
+  fs.value = 'N'; ff.value = 'W2'; ft.value = 'W4';
+  frag.appendChild(el('div', { class: 'moveform' }, [el('label', { for: 'mv-sh' }, ['Shift', fs]), el('label', { for: 'mv-k' }, ['Skill group', fk]), el('label', { for: 'mv-from' }, ['From', ff]), el('label', { for: 'mv-to' }, ['To', ft]),
+    el('button', { type: 'button', class: 'small', id: 'mv-go', onclick: function () {
+      var sh = fs.value, k = fk.value, a = ff.value, b = ft.value;
+      if (a === b) return toast('Pick two different units.');
+      if (inCell(a, 0, sh, k).length - 1 < state.basis[k].min) return toast(UNAME[a] + ' would drop below the minimum set for the site.');
+      var when = sh === 'D' ? 'today' : 'tonight';
+      propose({ id: 'move-' + sh + k + a + b, kind: 'move', sh: sh, k: k, from: a, to: b, text: 'Move 1 ' + SK[k].one.toLowerCase() + ' from ' + UNAME[a] + ' to ' + UNAME[b] + ' for ' + when + ' (' + SHIFT[sh].time + '). ' + UNAME[a] + '\'s manager agrees who goes.' });
+    }, text: 'Propose move' })]));
+  frag.appendChild(el('p', { class: 'fine', text: 'A move is only a proposal until the unit manager approves it.' }));
+  // Settings: workload basis
+  var det = el('details', { class: 'set', id: 'settings' }, [el('summary', { text: 'Settings: workload basis for this site' })]);
+  det.appendChild(el('p', { class: 'fine', text: 'Example settings, not a standard. Each site sets its own basis, from its own workload study and policies. Change a number and the staff needed updates everywhere.' }));
+  var bx = el('div', { class: 'basis' });
+  SKILLS.forEach(function (k) {
+    bx.appendChild(el('h4', { text: SK[k].many.charAt(0).toUpperCase() + SK[k].many.slice(1) }));
+    [['D', 'Points per person, day'], ['N', 'Points per person, night'], ['min', 'Minimum per shift']].forEach(function (f) {
+      var id = 'b-' + k + '-' + f[0];
+      bx.appendChild(el('label', { for: id }, [f[1], el('input', { type: 'number', id: id, min: f[0] === 'min' ? '0' : '1', max: '40', step: '1', inputmode: 'numeric', value: String(state.basis[k][f[0]]), onchange: function (e) { var v = Math.max(f[0] === 'min' ? 0 : 1, Math.min(40, Math.round(+e.target.value || 0))); state.basis[k][f[0]] = v; addLog('Workload basis changed: ' + SK[k].many + ', ' + f[1].toLowerCase() + ' = ' + v + '.'); render(); } })]));
+    });
+  });
+  det.appendChild(bx);
+  if (state.settingsOpen) det.open = true;
+  det.addEventListener('toggle', function () { state.settingsOpen = det.open; save(); });
+  frag.appendChild(det);
+  return frag;
+}
+
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'); box.textContent = '';
+  var dec = document.getElementById('decide'); dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Rosters, open shifts, swaps and counts all work without it.' })); }
+  else {
+    var list = suggest();
+    if (!list.length) box.appendChild(el('p', { class: 'how', text: 'Nothing to suggest right now.' }));
+    list.forEach(function (sg) {
+      var waiting = state.pending.some(function (p) { return p.id === sg.id; });
+      var acts = (sg.acts || []).map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: waiting && a.primary ? 'disabled' : false, onclick: a.fn, text: waiting && a.primary ? 'Waiting for a decision' : a.label }); });
+      acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+      box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
+        el('span', { class: 'tag ' + (sg.kind === 'time' ? 'time' : sg.kind === 'ask' ? 'ask' : ''), text: sg.kind === 'time' ? 'Cover soon' : sg.kind === 'move' ? 'Balance the units' : sg.id.indexOf('creds') === 0 ? 'Credentials' : 'Plan ahead' }),
+        el('h3', { text: sg.title }), el('p', { text: sg.text }), el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
+      ]));
+    });
+  }
+  if (state.pending.length) {
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for a decision' })]);
+    state.pending.forEach(function (p) {
+      var yes = p.kind === 'hr' ? 'Send (HR officer)' : 'Approve';
+      d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }),
+        state.role === 'manager'
+          ? el('div', { class: 'acts', style: 'display:flex;gap:8px;flex-wrap:wrap' }, [el('button', { type: 'button', class: 'small primary', id: 'ok-' + p.id, onclick: function () { decide(p, true); }, text: yes }), el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])
+          : el('p', { class: 'who', style: 'margin:0', text: 'Switch to the Unit manager view to approve or decline.' })]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Proposals wait here for the unit manager.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 25).forEach(function (e) { ol.appendChild(el('li', { class: e.t === lastLogT && now() - e.t < 5000 ? 'new' : '' }, [el('time', { text: hhmm(e.t) }), el('span', { text: e.text })])); });
+}
+
+// ---------- Wiring ----------
+['staff', 'manager', 'office'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; state.swapFor = null; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-clock').addEventListener('click', function () { state.offset = (state.offset || 0) + H; addLog('Demo: clock moved on 1 hour.'); render(); toast('Clock moved on 1 hour. Open gaps have waited longer.'); });
+document.getElementById('t-sick').addEventListener('click', function () {
+  var order = ['W1', 'W3', 'W5', 'W2', 'W4'];
+  for (var i = 0; i < order.length; i++) {
+    var u = order[(i + (state.sick || 0)) % order.length];
+    var a = inCell(u, 0, 'N', 'rn').filter(function (x) { return x.staff !== state.me && x.src !== 'moved'; })[0];
+    if (!a) continue;
+    state.sick = (state.sick || 0) + 1;
+    state.asg = state.asg.filter(function (x) { return x !== a; });
+    state.open.push({ id: 'o' + (++state.seq), unit: u, day: 0, shift: 'N', skill: 'rn', raised: now(), reason: 'Unplanned absence', status: 'open', filledAt: null, how: null });
+    addLog('Unplanned absence logged: ' + UNAME[u] + ' tonight, 1 registered nurse. Gap raised; time to fill starts now.');
+    render(); return toast(UNAME[u] + ' is now 1 registered nurse short tonight.');
+  }
+  toast('No one left to call in sick in this example.');
+});
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; render(); toast('Example reset to the start of the week.'); });
+
+// Read-only view for software agents (no writes): window.ospeliStaffingDemo
+window.ospeliStaffingDemo = Object.freeze({
+  describe: function () { return 'Read-only staffing and rostering demo for a fictional hospital. get() returns units with staff needed and rostered by skill group for today and tonight, open shifts and the workload basis; kpis() the measures for all units (with byUnit); suggestions() the guide\'s current suggestions. Counts cover only; it never scores people. Runs in the browser; nothing is sent anywhere.'; },
+  get: function () {
+    return clone({ role: state.role, now: new Date(now()).toISOString(), workloadBasis: state.basis, basisNote: 'Example settings, not a standard; each site sets its own.',
+      units: UNITS.map(function (u) { var o = { id: u.id, name: u.name, kind: u.kind, workloadCount: { day: state.work[u.id].D, night: state.work[u.id].N }, today: {} };
+        SHIFTS.forEach(function (sh) { o.today[sh === 'D' ? 'day' : 'night'] = SKILLS.map(function (k) { return { skill: SK[k].one, needed: needed(u.id, sh, k), rostered: inCell(u.id, 0, sh, k).length, planned: planned(u.id, 0, sh, k) }; }); });
+        return o; }),
+      openShifts: openShifts().map(function (o) { return { id: o.id, unit: UNAME[o.unit], day: dayLabel(state.day0, o.day), shift: SHIFT[o.shift].name, skill: SK[o.skill].one, status: o.status, hoursSinceRaised: Math.round((now() - o.raised) / H) }; }),
+      swapRequests: state.swaps.length, pendingDecisions: state.pending.map(function (p) { return p.text; }) });
+  },
+  kpis: function () { var k = kpis(null); k.byUnit = UNITS.map(function (u) { return kpis(u.id); }); return k; },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text, why: s.why }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>

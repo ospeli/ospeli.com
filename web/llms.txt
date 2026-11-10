@@ -13,6 +13,10 @@
 - [Theatres and procedure lists preview](https://ospeli.com/demo/theatres/): Case times on one timeline, session use, cancellations on the day with reasons, and tomorrow's readiness: bed, kit and checklist. Fictional data.
 - [Outpatients and clinics preview](https://ospeli.com/demo/clinics/): Clinic reception on a phone, the referral waiting list and free slots for booking, and utilisation and did-not-attend for the manager. Fictional data.
 - [Facilities and utilities preview](https://ospeli.com/demo/facilities/): Report a building fault by room or QR code, technician job queues by trade, planned maintenance, utility checks and a plant status board. Fictional data.
+- [Staffing, rosters and credentials preview](https://ospeli.com/demo/staffing/): My shifts and swaps on a phone, the unit roster as booked against planned, and today and tonight across units, measured as cover, never by person. Fictional data.
+- [Patient transport and transfers preview](https://ospeli.com/demo/transport/): Book a transfer from the ward, a dispatch desk with vehicles and crews, crew status on a phone, and fleet checks for the manager. Fictional data.
+- [Diagnostics: imaging and laboratory preview](https://ospeli.com/demo/diagnostics/): Where each sample or scan is, step by step; lab reception, imaging bookings, equipment status and turnaround by step. Never shows results. Fictional data.
+- [Emergency preparedness and continuity preview](https://ospeli.com/demo/continuity/): Readiness checklists, a printable downtime pack, incident mode with action cards and a decision log, and a switch to show it keeps working offline. Fictional data.
 - [All 30 areas](https://ospeli.com/areas/): what each area of hospital operations will do, who uses it, what it records, its measures and its AI assistant commands; spec in https://ospeli.com/areas/areas.json.
 - [Front page](https://ospeli.com/): what Ospeli is, its modules, how a pilot runs, and its governance rules.
 

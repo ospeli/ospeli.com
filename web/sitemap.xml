@@ -16,6 +16,10 @@
   <url><loc>https://ospeli.com/demo/theatres/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://ospeli.com/demo/clinics/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://ospeli.com/demo/facilities/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/staffing/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/transport/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/diagnostics/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/continuity/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://ospeli.com/areas/</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://ospeli.com/areas/outpatients-and-clinics/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://ospeli.com/areas/emergency-department-flow/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
