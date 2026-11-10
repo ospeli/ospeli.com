@@ -1,0 +1,885 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Outpatients and clinics demo · Ospeli</title>
+<meta name="description" content="Clinic check-in on a phone, one referral waiting list with free slots and reminders, and a manager view of slot use, did-not-attend rates and waits past each service's target. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Outpatients and clinics demo · Ospeli">
+<meta property="og:description" content="Clinic check-in on a phone, one referral waiting list with free slots and reminders, and a manager view of slot use, did-not-attend rates and waits past each service's target. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/clinics/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button { font: inherit; color: var(--ink); }
+select, input[type=number] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 560px) { .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 14px; width: 100%; } .roles button { padding: 6px 4px; line-height: 1.2; font-size: 0.95rem; } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; max-width: 52em; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.tools .clocknow { font-weight: 800; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-variant-numeric: tabular-nums; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.95rem; font-weight: 700; display: block; line-height: 1.3; }
+.stat .n { color: var(--soft); font-size: 0.85rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.85rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stathint { color: var(--soft); font-size: 0.85rem; margin: 6px 0 0; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 0.95rem; font-weight: 700; background: var(--sand); }
+.pill.ok { background: var(--wash); }
+.pill.hot { background: var(--hot); color: #8E2C18; }
+.empty { text-align: center; color: var(--soft); padding: 18px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; margin: 0; }
+/* reception */
+.pickbar { margin-top: 14px; }
+.pickbar label { font-weight: 800; display: flex; flex-direction: column; gap: 4px; font-size: 0.95rem; }
+.pickbar select { font-weight: 700; width: 100%; max-width: 420px; font-size: 1rem; }
+.screen { background: var(--navy); color: #fff; border-radius: 14px; padding: 14px 16px; margin-top: 14px; }
+.screen .lbl { font-size: 0.78rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 800; color: var(--foam); }
+.screen .now { font-size: 1.35rem; font-weight: 800; margin: 4px 0 2px; line-height: 1.25; }
+.screen .now span { color: var(--mango); }
+.screen .line { font-size: 1rem; margin: 0; color: #DCE7EF; }
+.screen .line b { color: #fff; }
+.screen .notice { background: var(--mango); color: var(--navy); border-radius: 10px; padding: 6px 10px; font-weight: 800; margin-top: 8px; font-size: 0.98rem; }
+.appts { display: grid; gap: 10px; }
+.appt { border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 12px; padding: 12px; background: #fff; font-size: 1rem; }
+.appt.s-booked { border-left-color: #CFC5B2; }
+.appt.s-arrived { border-left-color: var(--mango); }
+.appt.s-called { border-left-color: var(--navy); background: #F7FAFC; }
+.appt.overdue { box-shadow: 0 0 0 2px var(--coral) inset; }
+.appt .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.appt .code { font-size: 1.2rem; font-weight: 800; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+.appt .meta { color: var(--soft); font-size: 0.95rem; margin: 2px 0 0; }
+.chip { display: inline-block; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; background: var(--sand); vertical-align: 2px; margin-left: 4px; }
+.chip.next { background: var(--navy); color: #fff; }
+.chip.late { background: var(--coral); color: #fff; }
+.chip.offer { background: var(--warn); }
+.chip.booked { background: var(--wash); }
+.clock { text-align: right; font-weight: 800; font-size: 1.15rem; line-height: 1.1; white-space: nowrap; }
+.clock small { display: block; font-size: 0.8rem; font-weight: 700; color: var(--soft); }
+.appt .acts { display: flex; gap: 8px; margin-top: 10px; }
+.appt .acts .go { flex: 1; min-height: 52px; font-size: 1.05rem; }
+.go.arrive { background: var(--sea); border-color: var(--sea); color: #fff; }
+.go.call { background: var(--navy); color: #fff; }
+.go.finish { background: var(--mango); border-color: var(--mango); color: var(--navy); }
+.appt .acts .dna { min-height: 52px; font-size: 0.98rem; border-color: #CFC5B2; }
+.donelist { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.donelist li { display: flex; justify-content: space-between; gap: 8px; font-size: 0.95rem; border-bottom: 1px dashed var(--line); padding: 4px 0; }
+.donelist li b { font-variant-numeric: tabular-nums; }
+.undo { margin-top: 10px; }
+#view.v-reception h3.sec, #view.v-reception .screen .lbl, #view.v-reception .chip, #view.v-reception .clock small { font-size: 0.95rem; }
+#view.v-reception .chip { vertical-align: 1px; }
+/* booking */
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.filters button { min-height: 40px; font-size: 0.88rem; border-color: #CFC5B2; padding: 4px 12px; }
+.filters button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.refs { display: grid; gap: 8px; }
+.ref { border: 1px solid var(--line); border-left: 5px solid #CFC5B2; border-radius: 10px; padding: 10px 12px; }
+.ref.past { border-left-color: var(--coral); background: #FFF8F5; }
+.ref.u-booked { border-left-color: var(--sea); }
+.ref .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.ref b.code { font-size: 1.02rem; letter-spacing: 0.03em; }
+.ref .sub { color: var(--soft); font-size: 0.88rem; display: block; }
+.ref .wk { text-align: right; font-weight: 800; font-size: 1.15rem; line-height: 1.1; white-space: nowrap; }
+.ref .wk small { display: block; font-size: 0.75rem; color: var(--soft); font-weight: 700; }
+.ref.past .wk { color: #B23A22; }
+.ref .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: end; }
+.ref .acts label { display: flex; flex-direction: column; gap: 3px; font-size: 0.82rem; font-weight: 700; color: var(--soft); flex: 1 1 220px; min-width: 0; }
+.ref .acts select { width: 100%; }
+.more { margin-top: 10px; }
+.slots { display: grid; gap: 10px; }
+.day h4 { margin: 0 0 6px; font-size: 0.95rem; }
+.slotchips { display: flex; flex-wrap: wrap; gap: 6px; }
+.slotchip { border: 1px solid var(--line); border-radius: 10px; padding: 4px 10px; font-size: 0.85rem; background: #FBF8F2; }
+.slotchip b { font-variant-numeric: tabular-nums; }
+.slotchip.late { border-color: var(--coral); background: var(--hot); }
+.remind { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 6px 0 10px; text-align: center; }
+.remind div { background: var(--sand); border-radius: 10px; padding: 8px 4px; }
+.remind b { display: block; font-size: 1.25rem; line-height: 1.1; }
+.remind span { font-size: 0.78rem; color: var(--soft); font-weight: 700; }
+/* manager */
+.swipe { display: none; font-size: 0.85rem; color: var(--soft); margin: 0 0 4px; }
+@media (max-width: 760px) { .swipe { display: block; } table.t td:first-child, table.t th:first-child { position: sticky; left: 0; background: #fff; } table.t tr.flag td:first-child { background: #FFF8F5; } }
+.tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table.t { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+table.t th, table.t td { text-align: left; padding: 7px 5px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.t th { white-space: normal; vertical-align: bottom; line-height: 1.25; color: var(--soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+table.t td.r, table.t th.r { text-align: right; font-variant-numeric: tabular-nums; }
+table.t tr.flag td { background: #FFF8F5; }
+table.t td .hot { color: #B23A22; font-weight: 800; }
+.util { display: inline-block; width: 44px; height: 8px; border-radius: 4px; background: var(--sand); vertical-align: middle; margin-left: 6px; overflow: hidden; }
+.util i { display: block; height: 100%; background: var(--sea); }
+.dnarow { display: grid; grid-template-columns: 150px minmax(0, 1fr) 150px; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.9rem; }
+.dnarow.flag { background: #FFF8F5; border-radius: 8px; }
+.dnarow .nm { font-weight: 800; }
+.spark { display: flex; align-items: flex-end; gap: 3px; height: 34px; }
+.spark i { flex: 1; background: var(--foam); border-radius: 2px 2px 0 0; min-height: 2px; }
+.spark i.recent { background: var(--sea); }
+.spark i.flag { background: var(--coral); }
+.dnarow .txt { color: var(--soft); font-size: 0.82rem; line-height: 1.3; }
+.dnarow .txt b { color: var(--ink); }
+@media (max-width: 640px) { .dnarow { grid-template-columns: minmax(0, 1fr) 110px; } .dnarow .txt { grid-column: 1 / -1; } }
+.trend { display: flex; align-items: flex-end; gap: 4px; height: 110px; padding-top: 18px; }
+.trend div { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; min-width: 0; }
+.trend i { display: block; width: 100%; background: var(--foam); border-radius: 3px 3px 0 0; }
+.trend div.now i { background: var(--navy); }
+.trend span { font-size: 0.68rem; color: var(--soft); font-weight: 700; }
+.trend em { font-style: normal; font-size: 0.7rem; font-weight: 800; color: var(--soft); }
+.trendaxis { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--soft); margin-top: 4px; }
+details.set { margin-top: 14px; }
+details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.targets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+@media (max-width: 640px) { .targets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.targets label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 700; color: var(--soft); }
+.targets input { width: 100%; }
+.fine { font-size: 0.82rem; color: var(--soft); margin: 8px 0 0; }
+.reviews { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.reviews li { background: var(--warn); border-radius: 10px; padding: 8px 10px; font-size: 0.9rem; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.82rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg .why { color: var(--soft); font-size: 0.82rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin: 4px 0 0; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+.prop .who { color: var(--soft); font-size: 0.85rem; margin: 0; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.95rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Outpatients and clinics</h1>
+  <p class="lead">Every referral on one waiting list, with its wait shown. Reception checks patients in by code, so the waiting area sees live waits. The booking team fills free and late-cancelled slots. The manager sees slot use, did-not-attend rates and who is waiting past the target the service set. The guide suggests; a person decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-reception" aria-pressed="false">Clinic reception</button>
+    <button type="button" id="r-booking" aria-pressed="false">Booking team</button>
+    <button type="button" id="r-manager" aria-pressed="false">Outpatient manager</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <b>Demo tools:</b>
+    <span class="clocknow" id="clocknow" aria-live="off"></span>
+    <button type="button" class="small" id="t-clock">Move clock on 10 min</button>
+    <button type="button" class="small" id="t-cancel">A patient cancels late</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <h2 id="view-h">Clinics</h2>
+        <div class="stats" id="kpis"></div>
+        <p class="stathint" id="stathint">Today's clinics so far and the waiting list now. Tap a tile for its definition.</p>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads today's clinics, the waiting list and the free slots, and suggests where to look, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal; a person confirms it. It uses waiting times and slot data only, never clinical urgency.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its services, clinics, rooms, codes and times. Patients appear only as anonymous codes. Targets are example settings that each service sets for itself, not national standards. It measures clinics and waits, never individual clinicians, and it does not decide the clinical urgency of a referral or who needs follow-up. Coming next (Jan 2027): clinic templates with held and released slots, referral intake that starts the waiting-time clock, reminder replies linked to attendance, and a clinic day summary for the operations manager. <a href="../../areas/outpatients-and-clinics/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var M = 60000;
+var STORE = 'ospeli.clinics.v1';
+
+// ---------- Fixed reference data (fictional) ----------
+var SERVICES = {
+  card: { name: 'Cardiology', room: 'Room 2' },
+  derm: { name: 'Dermatology', room: 'Room 4' },
+  orth: { name: 'Orthopaedics', room: 'Room 6' },
+  diab: { name: 'Diabetes', room: 'Room 1' },
+  ent:  { name: 'Ear, nose and throat', room: 'Room 3' }
+};
+var SVC = ['card', 'derm', 'orth', 'diab', 'ent'];
+// Example settings for this demo only. Each service sets its own target; these are not standards.
+var DEFAULT_TARGETS = { card: 16, derm: 18, orth: 18, diab: 12, ent: 14 };
+var DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+var DAY_LONG = ['Monday (today)', 'Tuesday (tomorrow)', 'Wednesday', 'Thursday', 'Friday'];
+// Today's clinics. bunch = how many patients the template books at the clinic start.
+var CLINICS = [
+  { id: 'card', svc: 'card', start: 540, len: 15, n: 12, late: 22, dur: [15, 24], dna: [3], gone: [9] },
+  { id: 'derm', svc: 'derm', start: 540, len: 20, n: 9, late: 2, dur: [12, 19], dna: [3], gone: [7] },
+  { id: 'orth', svc: 'orth', start: 540, len: 15, n: 12, late: 4, dur: [10, 15], dna: [8], gone: [], bunch: 6 },
+  { id: 'diab', svc: 'diab', start: 570, len: 20, n: 9, late: 0, dur: [13, 19], dna: [1, 6], gone: [] },
+  { id: 'ent',  svc: 'ent',  start: 810, len: 15, n: 12, late: 0, dur: [10, 15], dna: [], gone: [5] }
+];
+// Did not attend in recent weeks per service, as [did not attend, booked] (fictional).
+var DNA_PCT = { card: [7, 9, 8, 6, 8, 7, 9, 8], derm: [10, 9, 11, 12, 10, 11, 9, 10], orth: [6, 8, 7, 7, 6, 8, 7, 6], diab: [9, 8, 10, 9, 8, 14, 16, 15], ent: [8, 7, 9, 8, 8, 9, 7, 8] };
+// Referral accepted to first appointment attended, median weeks over the last 8 weeks (fictional).
+var R2F = { card: 11, derm: 14, orth: 17, diab: 8, ent: 12 };
+
+function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// ---------- State ----------
+function seed() {
+  var R = rng(20270104), used = {};
+  var between = function (a, b) { return a + Math.floor(R() * (b - a + 1)); };
+  function code() { var A = 'ACDEFHJKLMNPRTVWXY34679', c; do { c = 'P-'; for (var i = 0; i < 4; i++) c += A[Math.floor(R() * A.length)]; } while (used[c]); used[c] = 1; return c; }
+  var phone = window.matchMedia('(max-width: 640px)').matches;
+  var s = { v: 1, created: Date.now(), startMin: 620, offset: 0, role: phone ? 'reception' : 'manager', clinic: 'card', guide: true,
+    filter: 'all', kpiOpen: null, showAll: false, openRef: null, targets: Object.assign({}, DEFAULT_TARGETS), behindMin: 20, startWindow: 10,
+    pending: [], dismissed: {}, log: [], seq: 0, cancelSeq: 0, notices: {}, extraReminder: {}, reviews: [], undo: null,
+    clinics: [], appts: [], slots: [], refs: [], trend: [], dnaHist: {}, replies: { confirmed: 0, change: 0 } };
+  var NOW = s.startMin, ev = [];
+  // Today's clinics, simulated up to the demo clock.
+  CLINICS.forEach(function (c) {
+    var cl = { id: c.id, svc: c.svc, start: c.start, len: c.len, template: [] };
+    for (var i = 0; i < c.n; i++) {
+      var t = c.bunch ? (i < c.bunch ? c.start : c.start + i * c.len) : c.start + i * c.len;
+      if (c.gone.indexOf(i) >= 0) { cl.template.push({ t: t, a: null, lateCancel: true }); continue; }
+      var a = { id: 'A' + (++s.seq), code: code(), clinic: c.id, booked: t, status: 'booked', arr: null, call: null, fin: null, dnaAt: null,
+        _dna: c.dna.indexOf(i) >= 0, _arr: t + between(-14, 8), _dur: between(c.dur[0], c.dur[1]) };
+      cl.template.push({ t: t, a: a.id, lateCancel: false });
+      s.appts.push(a);
+    }
+    var free = c.start + c.late;
+    s.appts.filter(function (a) { return a.clinic === c.id && !a._dna; }).sort(function (x, y) { return (x.booked - y.booked) || (x._arr - y._arr); }).forEach(function (a) {
+      a._call = Math.max(free, a._arr); a._fin = a._call + a._dur; free = a._fin;
+    });
+    s.appts.filter(function (a) { return a.clinic === c.id; }).forEach(function (a) {
+      if (a._dna) { if (a.booked + 30 <= NOW) { a.status = 'dna'; a.dnaAt = a.booked + 30; ev.push({ t: a.dnaAt, text: label(a) + ' marked did not attend (booked ' + hhmm(a.booked) + ')' }); } }
+      else if (a._arr <= NOW) {
+        a.arr = a._arr; a.status = 'arrived'; ev.push({ t: a.arr, text: label(a) + ' arrived (booked ' + hhmm(a.booked) + ')' });
+        if (a._call <= NOW) { a.call = a._call; a.status = 'called'; ev.push({ t: a.call, text: label(a) + ' called in after ' + fmt(a.call - a.arr) + ' waiting' }); }
+        if (a._fin <= NOW) { a.fin = a._fin; a.status = 'finished'; ev.push({ t: a.fin, text: label(a) + ' finished' }); }
+      }
+      ['_dna', '_arr', '_dur', '_call', '_fin'].forEach(function (k) { delete a[k]; });
+    });
+    s.clinics.push(cl);
+  });
+  function label(a) { return a.code + ' · ' + SERVICES[a.svc || CLINICS.filter(function (c) { return c.id === a.clinic; })[0].svc].name; }
+  // New-patient slots for the rest of the week, and the referrals booked into them.
+  var rn = 0;
+  for (var d = 1; d <= 4; d++) SVC.forEach(function (sv) {
+    for (var i = 0; i < 4; i++) {
+      var sl = { id: 'S' + d + sv + i, svc: sv, day: d, t: 540 + i * 30 + (sv === 'ent' ? 270 : 0), ref: null, held: null, lateCancel: false, reminded: false };
+      if (R() < 0.74) {
+        var r = { id: 'R' + (++rn), code: code(), svc: sv, days: between(25, 105), status: 'booked', slot: sl.id, declined: [] };
+        sl.ref = r.id; s.refs.push(r);
+        if (d === 1) sl.reminded = R() < 0.6;
+      }
+      s.slots.push(sl);
+    }
+  });
+  SVC.forEach(function (sv) {
+    var n = sv === 'orth' ? 11 : sv === 'diab' ? 7 : 9;
+    for (var i = 0; i < n; i++) s.refs.push({ id: 'R' + (++rn), code: code(), svc: sv, days: between(6, sv === 'orth' ? 170 : 140), status: 'unbooked', slot: null, declined: [] });
+  });
+  // One late cancellation for tomorrow is already on the list.
+  var lc = s.slots.filter(function (x) { return x.svc === 'card' && x.day === 1 && x.ref; })[0];
+  if (lc) { var lr = byIdIn(s.refs, lc.ref); lr.status = 'unbooked'; lr.slot = null; lr.cancelled = lc.id; lc.ref = null; lc.lateCancel = true; lc.reminded = false; ev.push({ t: NOW - 95, text: 'Late cancellation: ' + lr.code + ' cancelled Cardiology, Tue ' + hhmm(lc.t) + ' (cancelled by the patient). Slot is free.' }); }
+  // Waiting list size over the last 11 weeks.
+  var open = s.refs.length;
+  for (var w = 11; w >= 1; w--) s.trend.push(Math.max(10, Math.round(open - w * 1.7 + (R() * 6 - 3))));
+  SVC.forEach(function (sv) { s.dnaHist[sv] = DNA_PCT[sv].map(function (p) { var b = between(36, 46); return [Math.round(p * b / 100), b]; }); });
+  ev.push({ t: NOW - 140, text: 'Reminders sent for Tuesday\'s clinics: ' + s.slots.filter(function (x) { return x.day === 1 && x.reminded; }).length + ' by text message.' });
+  ev.sort(function (a, b) { return b.t - a.t; });
+  s.log = ev.slice(0, 40);
+  return s;
+}
+function byIdIn(list, id) { return list.filter(function (x) { return x.id === id; })[0]; }
+
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE));
+    // An example clinic day goes stale: start a fresh one after 8 hours.
+    if (!s || s.v !== 1 || !s.appts || Date.now() - s.created > 8 * 60 * M) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+// The demo clock: starts at 10:20 on a fictional Monday and runs in real time.
+function nowMin() { return Math.floor(state.startMin + (Date.now() - state.created) / M + (state.offset || 0)); }
+
+// ---------- Derived data (pure) ----------
+function clinic(id) { return byIdIn(state.clinics, id); }
+function appt(id) { return byIdIn(state.appts, id); }
+function ref(id) { return byIdIn(state.refs, id); }
+function slot(id) { return byIdIn(state.slots, id); }
+function svcOf(a) { return clinic(a.clinic).svc; }
+function cname(c) { return SERVICES[c.svc].name; }
+function apptsOf(cid) { return state.appts.filter(function (a) { return a.clinic === cid; }).sort(function (a, b) { return (a.booked - b.booked) || (a.id > b.id ? 1 : -1); }); }
+function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function weeks(r) { return Math.floor(r.days / 7); }
+function pastTarget(r) { return r.days > (+state.targets[r.svc] || 0) * 7; }
+function isFree(sl) { return !sl.ref && !sl.held; }
+function bunched(c) { return clinic(c.id).template.filter(function (x) { return x.t === c.start && x.a; }).length >= 3; }
+function clinicStats(cid) {
+  var c = clinic(cid), n = nowMin(), as = apptsOf(cid);
+  var called = as.filter(function (a) { return a.call != null; });
+  var waiting = as.filter(function (a) { return a.status === 'arrived'; });
+  var first = called.reduce(function (m, a) { return m == null || a.call < m ? a.call : m; }, null);
+  var behind = 0;
+  if (first != null || waiting.length) {
+    var last = called.slice().sort(function (a, b) { return b.call - a.call; })[0];
+    if (last) behind = Math.max(0, last.call - last.booked);
+    waiting.forEach(function (a) { behind = Math.max(behind, n - a.booked); });
+    if (first == null) behind = Math.max(behind, n - c.start);
+  }
+  var waits = called.map(function (a) { return a.call - a.arr; });
+  var tpl = c.template, past = tpl.filter(function (x) { return x.t <= n || (x.a && appt(x.a).arr != null); });
+  var used = tpl.filter(function (x) { return x.a && appt(x.a).arr != null; }).length;
+  return {
+    id: cid, name: cname(c), room: SERVICES[c.svc].room, start: c.start, firstCall: first, started: first != null,
+    punctual: first != null ? first - c.start <= (+state.startWindow || 0) : null,
+    slots: tpl.length, booked: tpl.filter(function (x) { return x.a; }).length, used: used,
+    empty: tpl.filter(function (x) { return !x.a && !x.lateCancel; }).length, lateCancel: tpl.filter(function (x) { return x.lateCancel; }).length,
+    dna: as.filter(function (a) { return a.status === 'dna'; }).length, slotsSoFar: past.length,
+    waitingNow: waiting.length, longestWait: waiting.reduce(function (m, a) { return Math.max(m, n - a.arr); }, 0),
+    withClinician: as.filter(function (a) { return a.status === 'called'; }).length,
+    finished: as.filter(function (a) { return a.status === 'finished'; }).length,
+    toArrive: as.filter(function (a) { return a.status === 'booked'; }).length,
+    medianWait: waits.length ? Math.round(median(waits)) : null, calledCount: called.length,
+    behind: Math.round(behind), bunched: bunched(c), nowCalling: as.filter(function (a) { return a.status === 'called'; }).sort(function (a, b) { return b.call - a.call; })[0] || null
+  };
+}
+function kpis() {
+  var n = nowMin(), avail = 0, used = 0, booked = 0, dna = 0, waits = [];
+  state.clinics.forEach(function (c) {
+    c.template.forEach(function (x) {
+      var a = x.a ? appt(x.a) : null;
+      if (x.t > n && !(a && a.arr != null)) return;
+      avail++;
+      if (!a) return;
+      booked++;
+      if (a.status === 'dna') dna++; else if (a.arr != null) used++;
+    });
+  });
+  state.appts.forEach(function (a) { if (a.call != null) waits.push(a.call - a.arr); });
+  var open = state.refs, past = open.filter(pastTarget);
+  return {
+    slotUtilisationPct: avail ? Math.round(100 * used / avail) : null, slotsUsed: used, slotsAvailable: avail,
+    dnaRatePct: booked ? Math.round(100 * dna / booked) : null, dnaCount: dna, bookedSoFar: booked,
+    waitInClinicMin: waits.length ? Math.round(median(waits)) : null, calledCount: waits.length,
+    pastTarget: past.length, pastTargetUnbooked: past.filter(function (r) { return r.status === 'unbooked'; }).length,
+    openReferrals: open.length, unbooked: open.filter(function (r) { return r.status === 'unbooked'; }).length,
+    freeSlotsThisWeek: state.slots.filter(isFree).length, lateCancelledFree: state.slots.filter(function (x) { return x.lateCancel && isFree(x); }).length
+  };
+}
+function waitingList(svc) {
+  var order = { unbooked: 0, offered: 1, booked: 2 };
+  return state.refs.filter(function (r) { return !svc || svc === 'all' || r.svc === svc; }).sort(function (a, b) { return (order[a.status] - order[b.status]) || (b.days - a.days) || (a.id > b.id ? 1 : -1); });
+}
+function freeSlots(svc) { return state.slots.filter(function (x) { return isFree(x) && (!svc || svc === 'all' || x.svc === svc); }).sort(function (a, b) { return (a.day - b.day) || (a.t - b.t); }); }
+function dnaTrend(sv) {
+  var h = state.dnaHist[sv], pct = h.map(function (x) { return Math.round(100 * x[0] / x[1]); });
+  var early = pct.slice(0, 5), recentRows = h.slice(5);
+  var recent = Math.round(100 * recentRows.reduce(function (s, x) { return s + x[0]; }, 0) / recentRows.reduce(function (s, x) { return s + x[1]; }, 0));
+  var lo = Math.min.apply(null, early), hi = Math.max.apply(null, early);
+  return { pct: pct, lo: lo, hi: hi, recent: recent, above: recent > hi };
+}
+
+// ---------- The guide: plain, checkable rules ----------
+function suggest() {
+  var out = [];
+  // 1. Slots cancelled late (within two days of clinic) and still empty: offer to the longest unbooked wait for that service.
+  freeSlots().filter(function (x) { return x.lateCancel && x.day <= 2; }).slice(0, 2).forEach(function (sl) {
+    var cands = state.refs.filter(function (r) { return r.svc === sl.svc && r.status === 'unbooked' && r.cancelled !== sl.id && r.declined.indexOf(sl.id) < 0; }).sort(function (a, b) { return b.days - a.days; });
+    if (!cands.length) return;
+    var r = cands[0], nm = SERVICES[sl.svc].name, id = 'offer-' + sl.id + '-' + r.id, when = DAYS[sl.day] + ' ' + hhmm(sl.t);
+    out.push({ id: id, kind: 'slot', who: 'booking',
+      title: 'Offer the late-cancelled ' + nm + ' slot (' + when + ') to the longest wait',
+      text: r.code + ' has waited ' + weeks(r) + ' weeks with no appointment, the longest unbooked wait for ' + nm + (cands[1] ? '. Next in line: ' + cands[1].code + ', ' + weeks(cands[1]) + ' weeks.' : '.'),
+      why: 'The slot was cancelled less than two days before the clinic and is still empty. Ordered by time waited only; any clinical priority stays with the service.',
+      acts: [{ label: 'Propose: offer to ' + r.code, primary: true, fn: function () { propose({ id: id, kind: 'offer', who: 'booking', slot: sl.id, ref: r.id, text: 'Offer ' + nm + ', ' + when + ' to ' + r.code + ' (waiting ' + weeks(r) + ' weeks).' }); } },
+        { label: 'Show the ' + nm + ' list', fn: function () { state.role = 'booking'; state.filter = sl.svc; render(); scrollToView(); } }] });
+  });
+  // 2. A clinic running behind its booked times (not explained by everyone being booked for the start).
+  state.clinics.map(function (c) { return clinicStats(c.id); }).filter(function (k) { return !k.bunched && k.behind >= (+state.behindMin || 0) && (k.waitingNow || k.withClinician) && !state.notices[k.id]; })
+    .sort(function (a, b) { return b.behind - a.behind; }).slice(0, 1).forEach(function (k) {
+      var mins = Math.max(5, Math.round(k.behind / 5) * 5), id = 'behind-' + k.id + '-' + mins;
+      out.push({ id: id, kind: 'time', who: 'reception',
+        title: k.name + ' is running about ' + mins + ' min behind',
+        text: k.waitingNow + ' waiting now; the longest has waited ' + fmt(k.longestWait) + ' since checking in. Tell the waiting area, and ask the clinic lead whether the clinic needs help or a later finish.',
+        why: 'Time now and call-in times against booked times today. Your threshold for "running behind" is ' + state.behindMin + ' min, a local setting.',
+        acts: [{ label: 'Propose: show a delay notice', primary: true, fn: function () { propose({ id: id, kind: 'notice', who: 'reception', clinic: k.id, minutes: mins, text: 'Show on the ' + k.name + ' waiting area screen: running about ' + mins + ' minutes late.' }); } },
+          { label: 'Show this clinic', fn: function () { state.role = 'reception'; state.clinic = k.id; render(); scrollToView(); } }] });
+    });
+  // 3. A clinic's did-not-attend rate above its usual range in recent weeks.
+  SVC.forEach(function (sv) {
+    var t = dnaTrend(sv); if (!t.above || state.extraReminder[sv]) return;
+    var nm = SERVICES[sv].name, id = 'dna-' + sv;
+    out.push({ id: id, kind: 'ask', who: 'booking',
+      title: nm + ': did-not-attend rate is above its usual range',
+      text: 'Last 3 weeks: ' + t.recent + '% of booked appointments. The 5 weeks before ranged from ' + t.lo + '% to ' + t.hi + '%. Try a second reminder two days before, and check the contact details on the list.',
+      why: 'Weekly did-not-attend counts for ' + nm + ' clinics against booked appointments, recent weeks against earlier weeks.',
+      acts: [{ label: 'Propose: add a second reminder', primary: true, fn: function () { propose({ id: id, kind: 'remind', who: 'booking', svc: sv, text: 'Send a second reminder two days before ' + nm + ' appointments, from this week.' }); } }] });
+  });
+  // 4. Everyone booked for the clinic start: suggest a staggered template, showing the current waits.
+  state.clinics.forEach(function (c) {
+    var k = clinicStats(c.id); if (!k.bunched || state.reviews.some(function (r) { return r.clinic === c.id; })) return;
+    var atStart = c.template.filter(function (x) { return x.t === c.start && x.a; }).length, id = 'stagger-' + c.id;
+    out.push({ id: id, kind: 'ask', who: 'manager',
+      title: k.name + ': ' + atStart + ' patients booked for ' + hhmm(c.start) + ', the clinic start',
+      text: 'Patients called so far waited a median of ' + (k.medianWait == null ? '–' : fmt(k.medianWait)) + ' after checking in' + (k.waitingNow ? '; ' + k.waitingNow + ' still waiting, the longest for ' + fmt(k.longestWait) : '') + '. A staggered template, with booked times spread across the clinic, is designed to shorten these waits.',
+      why: 'Booked times in today\'s template, and check-in to call-in times logged today.',
+      acts: [{ label: 'Propose: add to template review', primary: true, fn: function () { propose({ id: id, kind: 'template', who: 'manager', clinic: c.id, text: 'Review the ' + k.name + ' clinic template: ' + atStart + ' booked at ' + hhmm(c.start) + ', median wait ' + (k.medianWait == null ? '–' : fmt(k.medianWait)) + ' today.' }); } }] });
+  });
+  return out.filter(function (x) { return !state.dismissed[x.id]; }).slice(0, 4);
+}
+var WHO = { reception: 'clinic reception', booking: 'the booking team', manager: 'the outpatient manager' };
+var VIEW = { reception: 'Clinic reception', booking: 'Booking team', manager: 'Outpatient manager' };
+function propose(p) {
+  if (state.pending.some(function (x) { return x.id === p.id; })) return;
+  p.at = nowMin(); state.pending.push(p);
+  addLog('Guide proposed: ' + p.text + ' Waiting for ' + WHO[p.who] + '.');
+  render(); toast('Proposed. ' + WHO[p.who].charAt(0).toUpperCase() + WHO[p.who].slice(1) + ' decides.');
+}
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x.id !== p.id; });
+  var by = VIEW[p.who];
+  if (!yes) { state.dismissed[p.id] = true; addLog(by + ' declined: ' + p.text); render(); toast('Declined. Nothing changed.'); return; }
+  if (p.kind === 'offer') {
+    var sl = slot(p.slot), r = ref(p.ref);
+    if (!sl || !isFree(sl) || !r || r.status !== 'unbooked') { addLog('Could not offer: the slot or the referral has changed since the proposal.'); render(); toast('That slot or referral has changed.'); return; }
+    sl.held = r.id; r.status = 'offered'; r.slot = sl.id;
+  } else if (p.kind === 'notice') { state.notices[p.clinic] = p.minutes; }
+  else if (p.kind === 'remind') { state.extraReminder[p.svc] = true; }
+  else if (p.kind === 'template') { state.reviews.push({ clinic: p.clinic, text: p.text, at: nowMin() }); }
+  addLog(by + ' confirmed: ' + p.text);
+  render(); toast(p.kind === 'offer' ? 'Offered. The slot is held until the patient replies.' : p.kind === 'notice' ? 'The waiting area screen now shows the delay.' : 'Confirmed.');
+}
+
+// ---------- Helpers ----------
+function fmt(m) { m = Math.round(+m || 0); if (m < 60) return m + ' min'; var h = Math.floor(m / 60), r = m % 60; return h + ' h ' + (r < 10 ? '0' : '') + r; }
+function hhmm(m) { m = Math.round(m); var h = Math.floor(m / 60) % 24, r = ((m % 60) + 60) % 60; return (h < 10 ? '0' : '') + h + ':' + (r < 10 ? '0' : '') + r; }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+function aname(a) { return a.code + ' · ' + SERVICES[svcOf(a)].name; }
+function slotName(sl) { return SERVICES[sl.svc].name + ', ' + DAYS[sl.day] + ' ' + hhmm(sl.t); }
+var lastLogT = null;
+function addLog(text) { lastLogT = nowMin(); state.log.unshift({ t: lastLogT, text: text, fresh: Date.now() }); state.log = state.log.slice(0, 40); }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+function scrollToView() { var h = document.getElementById('view-h'); if (h && h.scrollIntoView) h.scrollIntoView({ block: 'start' }); }
+
+// ---------- Actions: reception ----------
+function mark(a, what) {
+  var n = nowMin();
+  state.undo = { id: a.id, prev: { status: a.status, arr: a.arr, call: a.call, fin: a.fin, dnaAt: a.dnaAt }, what: what };
+  if (what === 'arrive') { a.arr = n; a.status = 'arrived'; addLog(aname(a) + ' arrived (booked ' + hhmm(a.booked) + ')' + (n - a.booked > 0 ? ', ' + fmt(n - a.booked) + ' after the booked time' : '')); toast('Checked in. The wait clock has started.'); }
+  else if (what === 'call') { a.call = n; a.status = 'called'; addLog(aname(a) + ' called in after ' + fmt(n - a.arr) + ' waiting'); toast('Called in. The waiting area screen shows ' + a.code + '.'); }
+  else if (what === 'finish') { a.fin = n; a.status = 'finished'; addLog(aname(a) + ' finished'); toast('Finished.'); }
+  else if (what === 'dna') { a.dnaAt = n; a.status = 'dna'; addLog(aname(a) + ' marked did not attend (booked ' + hhmm(a.booked) + '). Goes to the booking team to rebook.'); toast('Marked did not attend. The booking team will see it.'); }
+  render();
+}
+function undo() {
+  var u = state.undo; if (!u) return; var a = appt(u.id); if (!a) return;
+  Object.assign(a, u.prev); state.undo = null;
+  addLog('Undone: last change to ' + aname(a) + '.'); render(); toast('Undone.');
+}
+
+// ---------- Actions: booking ----------
+function book(r, slId, offerOnly) {
+  var sl = slot(slId); if (!sl || !isFree(sl) || r.status !== 'unbooked') { toast('That slot is no longer free.'); render(); return; }
+  if (offerOnly) { sl.held = r.id; r.status = 'offered'; r.slot = sl.id; addLog('Booking team offered ' + slotName(sl) + ' to ' + r.code + ' (waiting ' + weeks(r) + ' weeks). Slot held for the reply.'); toast('Offered. The slot is held until the patient replies.'); }
+  else { sl.ref = r.id; r.status = 'booked'; r.slot = sl.id; addLog('Booking team booked ' + r.code + ' into ' + slotName(sl) + (sl.lateCancel ? ' (a late-cancelled slot, now filled)' : '') + '.'); toast('Booked. A reminder will go out before the clinic.'); }
+  state.openRef = null; render();
+}
+function reply(r, yes) {
+  var sl = slot(r.slot); if (!sl) return;
+  if (yes) { sl.held = null; sl.ref = r.id; r.status = 'booked'; addLog(r.code + ' accepted ' + slotName(sl) + '. Booked.'); toast('Accepted and booked.'); }
+  else { sl.held = null; r.status = 'unbooked'; r.slot = null; r.declined.push(sl.id); addLog(r.code + ' declined ' + slotName(sl) + '. The slot is free again.'); toast('Declined. The slot is free again.'); }
+  render();
+}
+function sendReminders() {
+  var due = state.slots.filter(function (x) { return x.day === 1 && x.ref && !x.reminded; });
+  if (!due.length) return;
+  due.forEach(function (x) { x.reminded = true; });
+  var conf = Math.round(due.length * 0.6), ch = due.length >= 4 ? 1 : 0;
+  state.replies.confirmed += conf; state.replies.change += ch;
+  addLog('Reminders sent for Tuesday\'s clinics: ' + due.length + ' by text message.');
+  addLog('Replies so far: ' + conf + ' confirmed' + (ch ? ', ' + ch + ' asked to change' : '') + '.');
+  render(); toast(due.length + ' reminders sent.');
+}
+
+// ---------- Render ----------
+var HINTS = {
+  reception: 'A reception tablet or phone. Mark each patient arrived, called in and finished, or did not attend. The waiting area screen updates as you go. Patients show as codes only.',
+  booking: 'The booking team\'s view. One waiting list for every service: unbooked first, longest waits at the top. Book or offer free slots this week, and send reminders.',
+  manager: 'The outpatient manager\'s view. How today\'s clinics use their slots, did-not-attend rates by clinic, the waiting list trend, and who is waiting past the target each service set.'
+};
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  ['reception', 'booking', 'manager'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('view-h').textContent = { reception: 'Today\'s clinic', booking: 'Waiting list and slots', manager: 'Clinics and waiting list' }[state.role];
+  document.getElementById('clocknow').textContent = 'Demo clock: Mon ' + hhmm(nowMin());
+  renderKpis();
+  var v = document.getElementById('view'); v.textContent = ''; v.className = 'v-' + state.role;
+  v.appendChild(state.role === 'reception' ? reception() : state.role === 'booking' ? booking() : manager());
+  renderGuide();
+  renderLog();
+  save();
+  if (aid) { var e = document.getElementById(aid); if (e) e.focus({ preventScroll: true }); }
+  sig = signature();
+}
+function renderKpis() {
+  var k = kpis(), box = document.getElementById('kpis'); box.textContent = '';
+  var tiles = [
+    ['util', k.slotUtilisationPct == null ? '–' : k.slotUtilisationPct + '%', 'Slot utilisation', k.slotsUsed + ' of ' + k.slotsAvailable + ' slots used today', 'Slots used / slots available in the template, for today\'s clinics so far. A slot is used when its patient checked in. Empty and late-cancelled slots count as not used. Local definition.'],
+    ['dna', k.dnaRatePct == null ? '–' : k.dnaRatePct + '%', 'Did not attend', k.dnaCount + ' of ' + k.bookedSoFar + ' booked so far', 'Appointments marked did not attend / appointments booked, today so far (booked time reached). Local definition.'],
+    ['wait', k.waitInClinicMin == null ? '–' : fmt(k.waitInClinicMin), 'Wait in clinic', 'median of ' + k.calledCount + ' called today', 'Patient checked in → called in, median of patients called today, all clinics. Local definition.'],
+    ['past', String(k.pastTarget), 'Waiting past target', k.pastTargetUnbooked + ' of them not booked', 'Open referrals waiting longer than the target their service set, counted in weeks from the referral being accepted. Each service sets its own target (see the manager\'s Local settings); they are not national standards.']
+  ];
+  tiles.forEach(function (t) {
+    var open = state.kpiOpen === t[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat' + (t[0] === 'past' && k.pastTargetUnbooked ? ' alert' : ''), 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def', text: t[4] })]));
+  });
+}
+
+function reception() {
+  var frag = document.createDocumentFragment(), n = nowMin();
+  var sel = el('select', { id: 'clinic-pick', onchange: function (e) { state.clinic = e.target.value; state.undo = null; render(); } });
+  state.clinics.forEach(function (c) { sel.appendChild(el('option', { value: c.id, text: cname(c) + ' · ' + SERVICES[c.svc].room + ' · from ' + hhmm(c.start) })); });
+  sel.value = state.clinic;
+  frag.appendChild(el('div', { class: 'pickbar' }, [el('label', { for: 'clinic-pick' }, ['Your clinic', sel])]));
+  var k = clinicStats(state.clinic), c = clinic(state.clinic);
+  // Waiting area screen
+  var scr = [el('div', { class: 'lbl', text: 'Waiting area screen · ' + k.name + ', ' + k.room })];
+  if (k.nowCalling) scr.push(el('p', { class: 'now' }, ['Now calling ', el('span', { text: k.nowCalling.code }), ' to ' + k.room]));
+  else scr.push(el('p', { class: 'now', text: k.started ? 'Please wait to be called' : 'Clinic starts at ' + hhmm(c.start) }));
+  scr.push(el('p', { class: 'line', id: 'screen-line' }, [el('b', { text: String(k.waitingNow) }), ' waiting' + (k.waitingNow ? ' · longest wait ' : ''), k.waitingNow ? el('b', { 'data-wait': 'longest', text: fmt(k.longestWait) }) : null,
+    k.started && k.behind >= 5 ? ' · running about ' + Math.round(k.behind / 5) * 5 + ' min behind' : (k.started ? ' · running to time' : '')]));
+  if (state.notices[k.id]) scr.push(el('p', { class: 'notice', id: 'notice', text: 'This clinic is running about ' + state.notices[k.id] + ' minutes late. Thank you for waiting. Please ask at reception if you need help.' }));
+  frag.appendChild(el('div', { class: 'screen', id: 'screen', role: 'region', 'aria-label': 'Waiting area screen' }, scr));
+  frag.appendChild(el('div', { class: 'pills' }, [
+    el('span', { class: 'pill', text: k.toArrive + ' to arrive' }), el('span', { class: 'pill' + (k.longestWait > 30 ? ' hot' : ''), text: k.waitingNow + ' waiting' }),
+    el('span', { class: 'pill', text: k.withClinician + ' with clinician' }), el('span', { class: 'pill ok', text: k.finished + ' finished' }),
+    el('span', { class: 'pill', text: k.dna + ' did not attend' })
+  ]));
+  var as = apptsOf(state.clinic);
+  function card(a, opts) {
+    var wait = a.status === 'arrived' ? n - a.arr : null; // consultations are never timed on screen
+    var late = a.status === 'booked' && n - a.booked >= 15;
+    var head = [el('div', {}, [el('span', { class: 'code', text: a.code }), opts.next ? el('span', { class: 'chip next', text: 'Next' }) : null, late ? el('span', { class: 'chip late', text: 'Not here yet' }) : null]),
+      wait != null ? el('div', { class: 'clock', 'data-since': a.id }, [fmt(wait), el('small', { text: 'waiting' })]) : (a.status === 'called' ? el('div', { class: 'clock' }, [hhmm(a.call), el('small', { text: 'called in' })]) : el('div', { class: 'clock' }, [hhmm(a.booked), el('small', { text: 'booked' })]))];
+    var meta = 'Booked ' + hhmm(a.booked) + (a.arr != null ? ' · arrived ' + hhmm(a.arr) : '') + (a.call != null ? ' · called ' + hhmm(a.call) : '');
+    var acts = [];
+    if (a.status === 'booked') {
+      acts.push(el('button', { type: 'button', id: 'go-' + a.id, class: 'go arrive', 'aria-label': 'Arrived: ' + a.code, onclick: function () { mark(a, 'arrive'); }, text: 'Arrived' }));
+      if (n >= a.booked) acts.push(el('button', { type: 'button', id: 'dna-' + a.id, class: 'dna', 'aria-label': 'Did not attend: ' + a.code, onclick: function () { mark(a, 'dna'); }, text: 'Did not attend' }));
+    } else if (a.status === 'arrived') acts.push(el('button', { type: 'button', id: 'go-' + a.id, class: 'go call', 'aria-label': 'Call in: ' + a.code, onclick: function () { mark(a, 'call'); }, text: 'Call in' }));
+    else if (a.status === 'called') acts.push(el('button', { type: 'button', id: 'go-' + a.id, class: 'go finish', 'aria-label': 'Finished: ' + a.code, onclick: function () { mark(a, 'finish'); }, text: 'Finished' }));
+    return el('article', { class: 'appt s-' + a.status + (late ? ' overdue' : ''), 'aria-label': a.code + ', booked ' + hhmm(a.booked) }, [el('div', { class: 'top' }, head), el('p', { class: 'meta', text: meta }), el('div', { class: 'acts' }, acts)]);
+  }
+  function section(title, list, id, opts) {
+    frag.appendChild(el('h3', { class: 'sec', text: title + ' · ' + list.length }));
+    if (!list.length) { frag.appendChild(el('p', { class: 'empty', text: opts.empty })); return; }
+    var box = el('div', { class: 'appts', id: id });
+    list.forEach(function (a, i) { box.appendChild(card(a, { next: opts.next && i === 0 })); });
+    frag.appendChild(box);
+  }
+  section('In the waiting area', as.filter(function (a) { return a.status === 'arrived'; }), 'waiting', { next: true, empty: 'No one waiting. Mark patients arrived as they check in.' });
+  section('With the clinician', as.filter(function (a) { return a.status === 'called'; }), 'withdoc', { empty: 'No one called in yet.' });
+  section('Still to arrive', as.filter(function (a) { return a.status === 'booked'; }), 'toarrive', { empty: 'Everyone booked has arrived or been marked.' });
+  if (state.undo && appt(state.undo.id) && appt(state.undo.id).clinic === state.clinic) frag.appendChild(el('div', { class: 'undo' }, [el('button', { type: 'button', id: 'undo', onclick: undo, text: 'Undo last change (' + appt(state.undo.id).code + ')' })]));
+  var done = as.filter(function (a) { return a.status === 'finished' || a.status === 'dna'; });
+  var gaps = c.template.filter(function (x) { return !x.a; });
+  frag.appendChild(el('h3', { class: 'sec', text: 'Finished, did not attend and empty slots · ' + (done.length + gaps.length) }));
+  var ul = el('ul', { class: 'donelist' });
+  done.sort(function (a, b) { return a.booked - b.booked; }).forEach(function (a) { ul.appendChild(el('li', {}, [el('span', {}, [el('b', { text: a.code }), ' · booked ' + hhmm(a.booked)]), el('span', { text: a.status === 'dna' ? 'Did not attend' : 'Finished ' + hhmm(a.fin) })])); });
+  gaps.forEach(function (x) { ul.appendChild(el('li', {}, [el('span', { text: hhmm(x.t) + ' slot' }), el('span', { text: x.lateCancel ? 'Cancelled late, empty' : 'Not booked' })])); });
+  frag.appendChild(ul);
+  return frag;
+}
+
+var SHOW = 12;
+function booking() {
+  var frag = document.createDocumentFragment(), k = kpis();
+  var fb = el('div', { class: 'filters', role: 'group', 'aria-label': 'Service' });
+  [['all', 'All services']].concat(SVC.map(function (sv) { return [sv, SERVICES[sv].name]; })).forEach(function (f) {
+    var cnt = state.refs.filter(function (r) { return (f[0] === 'all' || r.svc === f[0]) && r.status === 'unbooked'; }).length;
+    fb.appendChild(el('button', { type: 'button', id: 'f-' + f[0], 'aria-pressed': String(state.filter === f[0]), onclick: function () { state.filter = f[0]; state.showAll = false; render(); }, text: f[1] + ' · ' + cnt }));
+  });
+  frag.appendChild(el('h3', { class: 'sec', text: 'Referral waiting list' }));
+  frag.appendChild(fb);
+  frag.appendChild(el('div', { class: 'pills', style: 'margin:0 0 10px' }, [
+    el('span', { class: 'pill', text: k.openReferrals + ' open referrals' }), el('span', { class: 'pill' + (k.unbooked ? ' hot' : ''), id: 'unbooked-pill', text: k.unbooked + ' not booked' }),
+    el('span', { class: 'pill ok', text: k.freeSlotsThisWeek + ' free slots this week' })]));
+  var list = waitingList(state.filter), shown = state.showAll ? list : list.slice(0, SHOW);
+  var box = el('div', { class: 'refs', id: 'reflist' });
+  shown.forEach(function (r) {
+    var past = pastTarget(r), sl = r.slot ? slot(r.slot) : null;
+    var chip = r.status === 'unbooked' ? el('span', { class: 'chip late', text: 'Not booked' }) : r.status === 'offered' ? el('span', { class: 'chip offer', text: 'Offered' }) : el('span', { class: 'chip booked', text: 'Booked' });
+    var sub = SERVICES[r.svc].name + (sl ? ' · ' + (r.status === 'offered' ? 'offered ' : '') + DAYS[sl.day] + ' ' + hhmm(sl.t) : '') + (past ? ' · past the ' + state.targets[r.svc] + '-week target' : '');
+    var kids = [el('div', { class: 'row' }, [el('div', {}, [el('b', { class: 'code', text: r.code }), chip, el('span', { class: 'sub', text: sub })]), el('div', { class: 'wk' }, [weeks(r) + ' wk', el('small', { text: 'waiting' })])])];
+    if (r.status === 'unbooked') {
+      if (state.openRef === r.id) {
+        var opts = freeSlots(r.svc).filter(function (x) { return r.declined.indexOf(x.id) < 0 && r.cancelled !== x.id; });
+        if (!opts.length) kids.push(el('p', { class: 'fine', text: 'No free ' + SERVICES[r.svc].name + ' slots this week. Keep on the list, or ask the manager to release a held slot.' }));
+        else {
+          var ss = el('select', { id: 'slot-' + r.id });
+          opts.forEach(function (x) { ss.appendChild(el('option', { value: x.id, text: DAYS[x.day] + ' ' + hhmm(x.t) + ' · ' + SERVICES[x.svc].room + (x.lateCancel ? ' · late cancellation' : '') })); });
+          kids.push(el('div', { class: 'acts' }, [el('label', { for: 'slot-' + r.id }, ['Free slot', ss]),
+            el('button', { type: 'button', class: 'primary', id: 'book-' + r.id, onclick: function () { book(r, ss.value, false); }, text: 'Book' }),
+            el('button', { type: 'button', id: 'offer-' + r.id, onclick: function () { book(r, ss.value, true); }, text: 'Offer' }),
+            el('button', { type: 'button', class: 'small', onclick: function () { state.openRef = null; render(); }, text: 'Close' })]));
+        }
+      } else kids.push(el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'small', id: 'open-' + r.id, 'aria-label': 'Book or offer a slot: ' + r.code, onclick: function () { state.openRef = r.id; render(); var f = document.getElementById('slot-' + r.id); if (f) f.focus(); }, text: 'Book or offer a slot' })]));
+    } else if (r.status === 'offered') {
+      kids.push(el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'small primary', id: 'yes-' + r.id, onclick: function () { reply(r, true); }, text: 'Patient accepted' }), el('button', { type: 'button', class: 'small', id: 'no-' + r.id, onclick: function () { reply(r, false); }, text: 'Patient declined' })]));
+    }
+    box.appendChild(el('div', { class: 'ref u-' + r.status + (past ? ' past' : ''), 'data-ref': r.id }, kids));
+  });
+  frag.appendChild(box);
+  if (list.length > SHOW) frag.appendChild(el('div', { class: 'more' }, [el('button', { type: 'button', class: 'small', id: 'more', onclick: function () { state.showAll = !state.showAll; render(); }, text: state.showAll ? 'Show fewer' : 'Show all ' + list.length })]));
+  // Free slots this week
+  frag.appendChild(el('h3', { class: 'sec', text: 'Free slots this week' + (state.filter !== 'all' ? ' · ' + SERVICES[state.filter].name : '') }));
+  var fs = freeSlots(state.filter), sb = el('div', { class: 'slots', id: 'freeslots' });
+  if (!fs.length) sb.appendChild(el('p', { class: 'empty', text: 'No free slots this week for this service.' }));
+  [1, 2, 3, 4].forEach(function (d) {
+    var day = fs.filter(function (x) { return x.day === d; }); if (!day.length) return;
+    var chips = el('div', { class: 'slotchips' });
+    day.forEach(function (x) { chips.appendChild(el('span', { class: 'slotchip' + (x.lateCancel ? ' late' : '') }, [el('b', { text: hhmm(x.t) }), ' ' + SERVICES[x.svc].name + (x.lateCancel ? ' · cancelled late' : '')])); });
+    sb.appendChild(el('div', { class: 'day' }, [el('h4', { text: DAY_LONG[d] }), chips]));
+  });
+  frag.appendChild(sb);
+  // Reminders
+  var tm = state.slots.filter(function (x) { return x.day === 1 && x.ref; }), sent = tm.filter(function (x) { return x.reminded; }).length;
+  frag.appendChild(el('h3', { class: 'sec', text: 'Reminders for Tuesday\'s clinics' }));
+  frag.appendChild(el('div', { class: 'remind', id: 'remind' }, [
+    el('div', {}, [el('b', { text: String(tm.length) }), el('span', { text: 'booked' })]), el('div', {}, [el('b', { id: 'rem-sent', text: String(sent) }), el('span', { text: 'reminders sent' })]), el('div', {}, [el('b', { text: String(tm.length - sent) }), el('span', { text: 'not sent yet' })])]));
+  frag.appendChild(el('button', { type: 'button', class: 'primary', id: 'send-rem', disabled: tm.length === sent ? 'disabled' : false, onclick: sendReminders, text: tm.length === sent ? 'All reminders sent' : 'Send ' + (tm.length - sent) + ' reminders now' }));
+  var extra = SVC.filter(function (sv) { return state.extraReminder[sv]; }).map(function (sv) { return SERVICES[sv].name; });
+  frag.appendChild(el('p', { class: 'fine', text: (state.replies.confirmed ? 'Replies today: ' + state.replies.confirmed + ' confirmed' + (state.replies.change ? ', ' + state.replies.change + ' asked to change. ' : '. ') : '') + 'Reminders go by text message the day before. ' + (extra.length ? 'Second reminder two days before: ' + extra.join(', ') + '.' : '') }));
+  return frag;
+}
+
+function manager() {
+  var frag = document.createDocumentFragment(), n = nowMin();
+  // Clinic day summary
+  frag.appendChild(el('h3', { class: 'sec', text: 'Today\'s clinics' }));
+  var ks = state.clinics.map(function (c) { return clinicStats(c.id); });
+  var tb = el('tbody');
+  ks.forEach(function (k) {
+    var util = k.slotsSoFar ? Math.round(100 * k.used / k.slotsSoFar) : null;
+    var flag = k.started && k.behind >= state.behindMin;
+    tb.appendChild(el('tr', { class: flag ? 'flag' : '' }, [
+      el('td', {}, [el('b', { text: k.name })]),
+      el('td', { text: k.started ? hhmm(k.firstCall) + (k.punctual ? '' : ' (late)') : 'from ' + hhmm(k.start) }),
+      el('td', { class: 'r' }, [k.used + ' of ' + k.slots, el('span', { class: 'util', 'aria-hidden': 'true' }, [el('i', { style: 'width:' + (util || 0) + '%' })]), ' ' + (util == null ? '–' : util + '%')]),
+      el('td', { class: 'r', text: String(k.empty) }), el('td', { class: 'r', text: String(k.lateCancel) }), el('td', { class: 'r', text: String(k.dna) }),
+      el('td', { class: 'r', text: k.medianWait == null ? '–' : fmt(k.medianWait) }),
+      el('td', { class: 'r' }, [k.started ? (flag ? el('span', { class: 'hot', text: fmt(k.behind) }) : fmt(k.behind)) : '–'])
+    ]));
+  });
+  var th = el('tr', {}, ['Clinic', 'Started', 'Slots used so far', 'Empty', 'Late cancel', 'Did not attend', 'Wait in clinic', 'Behind'].map(function (h, i) { return el('th', { class: i > 1 ? 'r' : '', scope: 'col', text: h }); }));
+  frag.appendChild(el('p', { class: 'swipe', text: 'Swipe the tables sideways for more columns.' }));
+  frag.appendChild(el('div', { class: 'tablewrap', tabindex: '0', 'aria-label': 'Today\'s clinics table' }, [el('table', { class: 't', id: 'daytable' }, [el('thead', {}, [th]), tb])]));
+  var started = ks.filter(function (k) { return k.started; });
+  frag.appendChild(el('p', { class: 'fine', text: 'Clinic start punctuality: ' + started.filter(function (k) { return k.punctual; }).length + ' of ' + started.length + ' clinics held so far started within ' + state.startWindow + ' min of the scheduled time (first patient called; local definition). "So far" counts slots whose time has come.' }));
+  // DNA by clinic
+  frag.appendChild(el('h3', { class: 'sec', text: 'Did not attend by clinic · last 8 weeks' }));
+  var dbox = el('div', { id: 'dnabox' });
+  SVC.forEach(function (sv) {
+    var t = dnaTrend(sv), max = 20;
+    var bars = el('div', { class: 'spark', 'aria-hidden': 'true' }, t.pct.map(function (p, i) { return el('i', { class: i >= 5 ? (t.above ? 'flag' : 'recent') : '', style: 'height:' + Math.min(100, 100 * p / max) + '%', title: (8 - i) + ' weeks ago: ' + p + '%' }); }));
+    var today = ks.filter(function (k) { return clinic(k.id).svc === sv; })[0];
+    dbox.appendChild(el('div', { class: 'dnarow' + (t.above ? ' flag' : ''), 'aria-label': SERVICES[sv].name + ': last 3 weeks ' + t.recent + ' percent, usual range ' + t.lo + ' to ' + t.hi + ' percent' }, [
+      el('span', { class: 'nm', text: SERVICES[sv].name }), bars,
+      el('span', { class: 'txt' }, ['Last 3 weeks ', el('b', { text: t.recent + '%' }), ' · usual ' + t.lo + '–' + t.hi + '%' + (today ? ' · today ' + today.dna : '') + (state.extraReminder[sv] ? ' · second reminder on' : '')])]));
+  });
+  frag.appendChild(dbox);
+  // Waiting list trend
+  var k = kpis(), tr = state.trend.concat([k.openReferrals]), tmax = Math.max.apply(null, tr) * 1.1;
+  frag.appendChild(el('h3', { class: 'sec', text: 'Waiting list size · open referrals, last 12 weeks' }));
+  frag.appendChild(el('div', { class: 'trend', id: 'trend', role: 'img', 'aria-label': 'Open referrals rose from ' + tr[0] + ' 11 weeks ago to ' + tr[tr.length - 1] + ' this week.' }, tr.map(function (v, i) {
+    return el('div', { class: i === tr.length - 1 ? 'now' : '' }, [el('em', { text: i === 0 || i === tr.length - 1 || i === 6 ? String(v) : '' }), el('i', { style: 'height:' + (100 * v / tmax) + '%' })]);
+  })));
+  frag.appendChild(el('div', { class: 'trendaxis', 'aria-hidden': 'true' }, [el('span', { text: '11 weeks ago' }), el('span', { text: 'This week' })]));
+  // By service: past target
+  frag.appendChild(el('h3', { class: 'sec', text: 'Waiting past the target each service set' }));
+  var sb = el('tbody');
+  SVC.forEach(function (sv) {
+    var rs = state.refs.filter(function (r) { return r.svc === sv; }), past = rs.filter(pastTarget), longest = rs.reduce(function (m, r) { return Math.max(m, weeks(r)); }, 0);
+    sb.appendChild(el('tr', { class: past.filter(function (r) { return r.status === 'unbooked'; }).length ? 'flag' : '' }, [
+      el('td', {}, [el('b', { text: SERVICES[sv].name })]), el('td', { class: 'r', text: String(rs.length) }), el('td', { class: 'r', text: String(rs.filter(function (r) { return r.status === 'unbooked'; }).length) }),
+      el('td', { class: 'r', text: state.targets[sv] + ' wk' }), el('td', { class: 'r' }, [past.length ? el('span', { class: 'hot', text: String(past.length) }) : '0']),
+      el('td', { class: 'r', text: longest + ' wk' }), el('td', { class: 'r', text: R2F[sv] + ' wk' })]));
+  });
+  var sh = el('tr', {}, ['Service', 'Open', 'Not booked', 'Target', 'Past target', 'Longest', 'Referral to first appt'].map(function (h, i) { return el('th', { class: i ? 'r' : '', scope: 'col', text: h }); }));
+  frag.appendChild(el('div', { class: 'tablewrap', tabindex: '0', 'aria-label': 'Waiting by service table' }, [el('table', { class: 't', id: 'svctable' }, [el('thead', {}, [sh]), sb])]));
+  frag.appendChild(el('p', { class: 'fine', text: 'Referral to first appointment: referral accepted → first appointment attended, median over the last 8 weeks (local definition). Targets are each service\'s own example settings.' }));
+  if (state.reviews.length) {
+    frag.appendChild(el('h3', { class: 'sec', text: 'Template reviews to do' }));
+    frag.appendChild(el('ul', { class: 'reviews', id: 'reviews' }, state.reviews.map(function (r) { return el('li', { text: hhmm(r.at) + ' · ' + r.text + ' Playbook: clinic template review (compare demand and slots, output a revised template).' }); })));
+  }
+  // Local settings
+  var det = el('details', { class: 'set', id: 'settings' });
+  if (state.settingsOpen) det.open = true;
+  det.addEventListener('toggle', function () { state.settingsOpen = det.open; save(); });
+  var grid = el('div', { class: 'targets' });
+  SVC.forEach(function (sv) {
+    grid.appendChild(el('label', { for: 'tg-' + sv }, [SERVICES[sv].name + ' target (weeks)', el('input', { type: 'number', id: 'tg-' + sv, min: '1', max: '104', step: '1', inputmode: 'numeric', value: String(state.targets[sv]), onchange: function (e) { var v = Math.max(1, Math.min(104, Math.round(+e.target.value || 0))); state.targets[sv] = v; addLog('Outpatient manager set the ' + SERVICES[sv].name + ' target to ' + v + ' weeks.'); render(); } })]));
+  });
+  grid.appendChild(el('label', { for: 'tg-behind' }, ['Running behind after (min)', el('input', { type: 'number', id: 'tg-behind', min: '5', max: '120', step: '5', inputmode: 'numeric', value: String(state.behindMin), onchange: function (e) { state.behindMin = Math.max(5, Math.min(120, Math.round(+e.target.value || 0))); render(); } })]));
+  grid.appendChild(el('label', { for: 'tg-start' }, ['On-time start window (min)', el('input', { type: 'number', id: 'tg-start', min: '0', max: '60', step: '5', inputmode: 'numeric', value: String(state.startWindow), onchange: function (e) { state.startWindow = Math.max(0, Math.min(60, Math.round(+e.target.value || 0))); render(); } })]));
+  det.appendChild(el('summary', { text: 'Local settings: targets and thresholds' }));
+  det.appendChild(grid);
+  det.appendChild(el('p', { class: 'fine', text: 'Each service sets its own waiting-time target, and the organisation sets its thresholds. The values here are examples for this demo, not standards.' }));
+  frag.appendChild(det);
+  return frag;
+}
+
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Check-in, the waiting list, booking, reminders and the measures all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag: no empty late-cancelled slots, no clinic running behind, and did-not-attend rates are in their usual range.' }));
+  list.forEach(function (sg) {
+    var pend = state.pending.some(function (p) { return p.id === sg.id; });
+    var acts = sg.acts.map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend && a.primary ? 'disabled' : false, onclick: a.fn, text: pend && a.primary ? 'Proposed' : a.label }); });
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
+      el('span', { class: 'tag ' + (sg.kind === 'time' ? 'time' : sg.kind === 'ask' ? 'ask' : ''), text: { slot: 'Fill a slot', time: 'Running behind', ask: sg.id.indexOf('dna') === 0 ? 'Did not attend' : 'Template' }[sg.kind] }),
+      el('h3', { text: sg.title }), el('p', { text: sg.text }),
+      el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  if (state.pending.length) {
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for a person to decide' })]);
+    state.pending.forEach(function (p) {
+      d.appendChild(el('div', { class: 'prop', 'data-prop': p.id }, [el('p', { text: p.text }),
+        state.role === p.who
+          ? el('div', { class: 'acts', style: 'display:flex;gap:8px;flex-wrap:wrap' }, [el('button', { type: 'button', class: 'small primary', onclick: function () { decide(p, true); }, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])
+          : el('p', { class: 'who' }, ['For ' + WHO[p.who] + '. ', el('button', { type: 'button', class: 'small', onclick: function () { state.role = p.who; render(); }, text: 'Switch to ' + VIEW[p.who] })])]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Proposals wait here for the right role to confirm or decline.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 25).forEach(function (e) { ol.appendChild(el('li', { class: e.fresh && Date.now() - e.fresh < 5000 ? 'new' : '' }, [el('time', { text: hhmm(e.t) }), el('span', { text: e.text })])); });
+}
+
+// Live clocks: update the minute counters in place; redraw fully only when what the guide sees changes.
+var sig = '';
+function signature() { return nowMin() + '|' + suggest().map(function (s) { return s.id; }).join(','); }
+var lastMin = null;
+function tick() {
+  var n = nowMin();
+  if (n === lastMin) return; lastMin = n;
+  var a = document.activeElement;
+  if (a && (a.tagName === 'SELECT' || a.tagName === 'INPUT')) { document.getElementById('clocknow').textContent = 'Demo clock: Mon ' + hhmm(n); return; }
+  if (signature() !== sig) render();
+}
+setInterval(tick, 5000);
+
+// ---------- Wiring ----------
+['reception', 'booking', 'manager'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-clock').addEventListener('click', function () { state.offset = (state.offset || 0) + 10; addLog('Demo: clock moved on 10 minutes.'); render(); toast('Clock moved on 10 minutes. Waits have grown.'); });
+document.getElementById('t-cancel').addEventListener('click', function () {
+  var cands = state.slots.filter(function (x) { return x.ref && x.day <= 2 && !x.lateCancel; }).sort(function (a, b) { return (a.day - b.day) || (a.t - b.t) || (a.svc > b.svc ? 1 : -1); });
+  if (!cands.length) { toast('No booked slots left to cancel in the next two days.'); return; }
+  var sl = cands[(state.cancelSeq * 7) % cands.length], r = ref(sl.ref); state.cancelSeq++;
+  sl.ref = null; sl.lateCancel = true; sl.reminded = false; r.status = 'unbooked'; r.slot = null; r.cancelled = sl.id;
+  addLog('Late cancellation: ' + r.code + ' cancelled ' + slotName(sl) + ' (cancelled by the patient). Slot is free.');
+  render(); toast(slotName(sl) + ' is free. The guide may suggest who to offer it to.');
+});
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; render(); toast('Example reset to the start of the demo.'); });
+
+// Read-only view for software agents (no writes): window.ospeliClinicsDemo
+window.ospeliClinicsDemo = Object.freeze({
+  describe: function () { return 'Read-only outpatients and clinics demo for a fictional hospital. get() returns today\'s clinics, appointments by anonymous code, the referral waiting list and free slots; kpis() the measures; suggestions() the guide\'s current suggestions; listWaiting(service, limit) and findSlots(service) mirror the read-only commands. Runs in the browser; nothing is sent anywhere. Changes are made by people in the page, never through this object.'; },
+  get: function () {
+    return clone({ role: state.role, clock: 'Mon ' + hhmm(nowMin()), targetsWeeks: state.targets, behindThresholdMin: state.behindMin,
+      clinics: state.clinics.map(function (c) { return clinicStats(c.id); }).map(function (k) { k.nowCalling = k.nowCalling ? k.nowCalling.code : null; return k; }),
+      appointments: state.appts.map(function (a) { return { code: a.code, clinic: SERVICES[svcOf(a)].name, booked: hhmm(a.booked), status: a.status, arrived: a.arr == null ? null : hhmm(a.arr), called: a.call == null ? null : hhmm(a.call), finished: a.fin == null ? null : hhmm(a.fin) }; }),
+      waitingList: waitingList('all').map(function (r) { return { code: r.code, service: SERVICES[r.svc].name, weeksWaiting: weeks(r), status: r.status, slot: r.slot ? slotName(slot(r.slot)) : null, pastTarget: pastTarget(r) }; }),
+      freeSlots: freeSlots().map(function (x) { return { service: SERVICES[x.svc].name, day: DAYS[x.day], time: hhmm(x.t), lateCancellation: x.lateCancel }; }),
+      pendingDecisions: state.pending.map(function (p) { return { text: p.text, decidedBy: WHO[p.who] }; }) });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text, why: s.why, decidedBy: WHO[s.who] }; }) : []; },
+  listWaiting: function (service, limit) { var sv = SVC.filter(function (k) { return k === service || SERVICES[k].name === service; })[0] || 'all'; return this.get().waitingList.filter(function (r) { return sv === 'all' || r.service === SERVICES[sv].name; }).slice(0, limit || 50); },
+  findSlots: function (service) { var sv = SVC.filter(function (k) { return k === service || SERVICES[k].name === service; })[0]; return this.get().freeSlots.filter(function (x) { return !sv || x.service === SERVICES[sv].name; }); }
+});
+render();
+})();
+</script>
+</body>
+</html>

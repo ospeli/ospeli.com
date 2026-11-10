@@ -1,0 +1,953 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Theatres and procedure lists demo · Ospeli</title>
+<meta name="description" content="Today's theatre lists on a timeline, case times in one tap, cancellations with reasons and tomorrow's readiness check. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Theatres and procedure lists demo · Ospeli">
+<meta property="og:description" content="Today's theatre lists on a timeline, case times in one tap, cancellations with reasons and tomorrow's readiness check. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/theatres/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button { font: inherit; color: var(--ink); }
+select, input[type=number] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 520px) { .roles { display: grid; grid-template-columns: 1fr; border-radius: 14px; width: 100%; } .roles button { padding: 8px 6px; } .roles button + button { border-left: 0; border-top: 1px solid var(--line); } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.clocknow { font-weight: 800; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } .ms li { font-size: 0.68rem; } }
+/* KPI tiles */
+.stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+.stats.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 900px) { .stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stats > .stat:nth-child(5) { grid-column: 1 / -1; } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.88rem; font-weight: 700; display: block; line-height: 1.3; }
+.stat .n { color: var(--soft); font-size: 0.78rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.8rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stathint { color: var(--soft); font-size: 0.78rem; margin: 6px 0 0; }
+/* timeline */
+.tl { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px 6px; }
+.scale { position: relative; height: 18px; font-size: 0.72rem; color: var(--soft); font-weight: 700; margin-bottom: 2px; }
+.scale span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.tlrow { display: block; width: 100%; text-align: left; border: 0; border-radius: 10px; background: none; padding: 6px 0 8px; min-height: 0; font-weight: 600; border-top: 1px dashed var(--line); }
+.tlrow:first-of-type { border-top: 0; }
+.tlrow.sel { background: #F7FBFA; box-shadow: 0 0 0 2px var(--sea) inset; padding-inline: 6px; margin-inline: -6px; width: calc(100% + 12px); }
+.tlhead { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; font-size: 0.9rem; margin-bottom: 4px; }
+.tlhead b { font-weight: 800; }
+.tlhead .proj { font-size: 0.8rem; color: var(--soft); font-weight: 700; }
+.tlhead .proj.over { color: #B23A22; }
+.track { position: relative; height: 34px; background: #FBF8F2; border-radius: 6px; overflow: hidden; }
+.track .sess { position: absolute; top: 0; bottom: 0; background: #EEF6F3; border-left: 2px solid var(--foam); border-right: 2px solid var(--foam); }
+.track .sess.rel { background: repeating-linear-gradient(135deg, #EFE8DA 0 6px, #F8F4EC 6px 12px); border-color: #CFC5B2; }
+.track .bk { position: absolute; top: 3px; height: 11px; border: 1.5px solid #8FA3B5; border-radius: 3px; background: #fff; }
+.track .bk.cx { border-style: dashed; border-color: var(--coral); background: var(--hot); }
+.track .ac { position: absolute; top: 17px; height: 13px; border-radius: 3px; background: var(--sea); }
+.track .ac.live { background: var(--mango); }
+.track .ac.proj { background: repeating-linear-gradient(135deg, #C9D6E0 0 4px, #E4EBF0 4px 8px); }
+.track .now { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--coral); }
+.track .end { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px dotted #B23A22; }
+.legend { display: flex; gap: 12px; font-size: 0.8rem; color: var(--soft); margin: 8px 0 0; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 14px; height: 10px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
+/* theatre tabs and cases */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.tabs button { min-height: 44px; font-size: 0.92rem; border-color: #CFC5B2; }
+.tabs button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.sesshead { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; align-items: baseline; margin: 14px 0 6px; font-size: 0.95rem; }
+.sesshead span { color: var(--soft); font-size: 0.85rem; font-weight: 700; }
+.cases { display: grid; gap: 10px; }
+.case { border: 1px solid var(--line); border-left: 6px solid #8FA3B5; border-radius: 12px; padding: 12px; background: #fff; }
+.case.s-live { border-left-color: var(--mango); background: #FFFCF5; }
+.case.s-done { border-left-color: var(--sea); }
+.case.s-cx { border-left-color: var(--coral); background: #FFF8F5; }
+.case .top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; align-items: flex-start; }
+.case .top > div { flex: 1 1 200px; min-width: 0; }
+.case .code { font-weight: 800; font-size: 1.12rem; line-height: 1.2; }
+.case .what { color: var(--soft); font-size: 0.95rem; margin: 2px 0 0; }
+.chip { display: inline-block; font-size: 0.76rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; background: var(--sand); white-space: nowrap; }
+.chip.live { background: var(--mango); color: var(--navy); } .chip.done { background: var(--sea); color: #fff; } .chip.cx { background: var(--coral); color: #fff; } .chip.wait { background: var(--warn); }
+.ms { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin: 10px 0 0; padding: 0; list-style: none; }
+.ms li { overflow-wrap: anywhere; hyphens: auto; font-size: 0.74rem; color: var(--soft); border-top: 4px solid var(--line); padding-top: 4px; font-weight: 700; line-height: 1.2; }
+.ms li.on { border-top-color: var(--sea); color: var(--ink); }
+.ms li.next { border-top-color: var(--mango); color: var(--ink); }
+.ms li time { display: block; font-weight: 800; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.case .note { font-size: 0.92rem; margin: 8px 0 0; background: var(--warn); border-radius: 8px; padding: 4px 8px; }
+.case .note.hotline { background: var(--hot); color: #8E2C18; }
+.case .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.case .acts .go { flex: 1 1 220px; min-height: 52px; font-size: 1.02rem; background: var(--navy); color: #fff; }
+.case .acts .go.big { background: var(--sea); border-color: var(--sea); }
+.case .acts .alt { min-height: 52px; }
+.picker { margin-top: 10px; border: 1px dashed #CFC5B2; border-radius: 12px; padding: 10px; }
+.picker p { margin: 0 0 8px; font-weight: 800; font-size: 0.95rem; }
+.choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.choice { border-radius: 12px; border: 1px solid #CFC5B2; min-height: 48px; text-align: left; padding: 8px 12px; font-size: 0.95rem; font-weight: 700; }
+.choice[aria-pressed=true] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.picker .row2 { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+/* manager */
+.sessions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .sessions { grid-template-columns: minmax(0, 1fr); } }
+.sc { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.sc.flag { border-color: var(--coral); background: #FFF8F5; }
+.sc.rel { background: #FBF8F2; }
+.sc h4 { margin: 0; font-size: 0.95rem; }
+.sc .sub { color: var(--soft); font-size: 0.82rem; margin: 0 0 6px; }
+.sc .nums { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; text-align: center; margin: 6px 0; }
+.sc .nums b { display: block; font-size: 1.1rem; line-height: 1.15; }
+.sc .nums span { font-size: 0.68rem; color: var(--soft); font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.2; display: block; }
+.sc .nums .bad b { color: #B23A22; }
+.sc p { margin: 0; font-size: 0.84rem; color: var(--soft); }
+.ubar { height: 10px; border-radius: 5px; background: var(--sand); overflow: hidden; margin: 4px 0 6px; }
+.ubar i { display: block; height: 100%; background: var(--sea); }
+.reasons { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.reasons li { display: grid; grid-template-columns: minmax(0, 1fr) 2.5em; gap: 8px; align-items: center; font-size: 0.9rem; }
+.reasons .rb { height: 8px; border-radius: 4px; background: var(--coral); margin-top: 3px; }
+.reasons small { color: var(--soft); display: block; font-size: 0.8rem; }
+.reasons b { text-align: right; }
+/* readiness */
+.ready { display: grid; gap: 8px; }
+.rrow { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; }
+.rrow.gap { border-left: 5px solid var(--coral); }
+.rrow.ok { border-left: 5px solid var(--sea); }
+.rrow .who b { display: block; font-size: 1rem; }
+.rrow .who span { color: var(--soft); font-size: 0.85rem; }
+.rrow .items { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 520px) { .rrow .items { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.ri { border-radius: 10px; border: 1px solid var(--line); padding: 6px 8px; font-size: 0.84rem; font-weight: 700; text-align: left; min-height: 44px; line-height: 1.2; background: #fff; }
+.ri small { display: block; font-weight: 600; color: var(--soft); font-size: 0.76rem; }
+.ri.ok { background: var(--wash); border-color: var(--wash); }
+.ri.gap { background: var(--hot); border-color: #F3C6B9; color: #8E2C18; }
+.ri.asked { background: var(--warn); border-color: #F1D9A8; }
+button.ri { border-radius: 10px; }
+.filters { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.filters button { min-height: 40px; font-size: 0.88rem; border-color: #CFC5B2; }
+.filters button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+details.set { margin-top: 16px; }
+details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.targets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+@media (max-width: 640px) { .targets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.targets label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 700; color: var(--soft); }
+.targets input { width: 100%; }
+.fine { font-size: 0.82rem; color: var(--soft); margin: 8px 0 0; }
+/* ward nurse */
+.wardbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin: 14px 0 4px; }
+.wardbar label { font-weight: 800; display: flex; flex-direction: column; gap: 4px; font-size: 0.95rem; }
+.pts { display: grid; gap: 12px; }
+.pt { border: 1px solid var(--line); border-left: 6px solid var(--coral); border-radius: 12px; padding: 12px; font-size: 1rem; }
+.pt.isready { border-left-color: var(--sea); }
+.pt.gone { border-left-color: #8FA3B5; background: #FBFBFA; }
+.pt.cx { border-left-color: #CFC5B2; background: #FBF8F2; }
+.pt .top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.pt .code { font-weight: 800; font-size: 1.2rem; line-height: 1.2; }
+.pt .meta { color: var(--soft); font-size: 0.95rem; margin: 2px 0 0; }
+.pt .stage { font-weight: 800; margin: 8px 0 0; font-size: 1rem; }
+.pt .note { font-size: 0.95rem; margin: 8px 0 0; background: var(--warn); border-radius: 8px; padding: 6px 10px; }
+.pt .note.hotline { background: var(--hot); color: #8E2C18; }
+.ticks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+@media (max-width: 560px) { .ticks { grid-template-columns: minmax(0, 1fr); } }
+.tick { border-radius: 12px; border: 1px solid #CFC5B2; min-height: 54px; text-align: left; padding: 8px 12px; font-size: 1rem; display: flex; align-items: center; gap: 10px; }
+.tick .box { flex: none; width: 26px; height: 26px; border-radius: 7px; border: 2px solid #8FA3B5; display: grid; place-items: center; font-size: 1rem; line-height: 1; }
+.tick[aria-pressed=true] { background: var(--wash); border-color: var(--sea); }
+.tick[aria-pressed=true] .box { background: var(--sea); border-color: var(--sea); color: #fff; }
+.tick small { display: block; font-weight: 600; color: var(--soft); font-size: 0.85rem; }
+.empty { text-align: center; color: var(--soft); padding: 18px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.82rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg ul { margin: 0 0 8px; padding-left: 18px; font-size: 0.88rem; }
+.sugg .why { color: var(--soft); font-size: 0.82rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin: 4px 0 0; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Theatres and procedure lists</h1>
+  <p class="lead">Every theatre's list on one timeline: booked against actual. Case times are recorded in one tap, cancellations carry a reason, and tomorrow's cases missing a bed, kit or checklist show up the day before. The guide flags risks; a person decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-coord" aria-pressed="false">Theatre coordinator</button>
+    <button type="button" id="r-manager" aria-pressed="false">Theatre manager</button>
+    <button type="button" id="r-nurse" aria-pressed="false">Ward nurse (phone)</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <b>Demo tools:</b>
+    <span class="clocknow" id="clocknow" aria-live="polite"></span>
+    <button type="button" class="small" id="t-clock">Move clock on 15 min</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <h2 id="view-h">Today's lists</h2>
+        <div class="stats" id="kpis"></div>
+        <p class="stathint" id="stathint">Today so far. Tap a tile for its definition.</p>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads the lists, booked times, recorded times and tomorrow's readiness check, and suggests where to look, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal. The theatre coordinator decides. It never decides which patient goes first or whether a patient is fit for surgery.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its theatres, wards, lists, patient codes and times. It measures sessions, lists and waits, never individual surgeons or staff, and it does not decide the order of patients or clinical fitness. Coming next (due Jan 2027): case times tapped on a phone by the theatre nurse, trays per list for sterile services, released and unused sessions over time, and the live link to beds on the bed board. <a href="../../areas/theatres-and-procedures/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var STORE = 'ospeli.theatres.v1';
+
+// ---------- Fixed reference data (fictional) ----------
+// Times are minutes after midnight on the demo day.
+var MS = [
+  { k: 'sent', label: 'Sent for', verb: 'Sent for' },
+  { k: 'anae', label: 'In anaesthetic room', verb: 'In anaesthetic room' },
+  { k: 'knife', label: 'Knife to skin', verb: 'Knife to skin' },
+  { k: 'out', label: 'Out of theatre', verb: 'Out of theatre' },
+  { k: 'rec', label: 'Left recovery', verb: 'Left recovery' }
+];
+var WARDS = { W5: 'Ward 5', W6: 'Ward 6', DSU: 'Day surgery unit' };
+var CANCEL_REASONS = ['No bed available', 'List ran out of time', 'Kit or tray not available', 'Staff not available', 'Patient did not attend', 'Paperwork not ready', 'Equipment fault', 'Clinical reason (decided by the clinical team)', 'Other'];
+var LATE_REASONS = ['Waiting for a bed', 'Kit or tray not ready', 'Staff not available', 'Patient not ready on the ward', 'Previous session overran', 'Other'];
+var READY_ITEMS = [['bed', 'Bed held'], ['transport', 'Transport booked'], ['paperwork', 'Paperwork complete']];
+var TOMORROW_ITEMS = [['bed', 'Bed'], ['kit', 'Kit'], ['staff', 'Staff'], ['check', 'Pre-op checklist']];
+// Example settings for this demo only, not a standard: each organisation sets its own.
+var DEFAULT_SETTINGS = { turnaround: 15, lateWindow: 15, sendLead: 30, overrunTolerance: 0 };
+var START_CLOCK = 11 * 60 + 20;
+
+// ---------- State ----------
+function t(s) { if (!s) return null; var p = s.split(':'); return +p[0] * 60 + +p[1]; }
+function seed() {
+  var s = { v: 1, created: Date.now(), clock: START_CLOCK, role: window.matchMedia('(max-width: 640px)').matches ? 'nurse' : 'coord',
+    theatre: 'T2', ward: 'W5', guide: true, kpiOpen: null, readyFilter: 'gaps', settings: Object.assign({}, DEFAULT_SETTINGS),
+    open: null, pick: null, pending: [], dismissed: {}, log: [], sessions: [], tomorrow: [] };
+  // [id, theatre, service, start, end, released, late-start reason]
+  // cases: [code, what, booked min, ward, sent, anae, knife, out, rec, checklist, cancelled reason, cancelled at, ready flags bed/transport/paperwork]
+  var S = [
+    ['T1', 'Theatre 1', 'General surgery', '08:30', '17:30', false, null, [
+      ['P-2041', 'Gallbladder removal (keyhole)', 75, 'W6', '08:05', '08:41', '09:02', '09:58', '10:45', true],
+      ['P-2187', 'Hernia repair', 60, 'DSU', '09:45', '10:16', '10:31', '11:12', null, true],
+      ['P-2230', 'Bowel operation (keyhole)', 180, 'W6', '11:05'],
+      ['P-2302', 'Hernia repair', 60, 'DSU', null, null, null, null, null, null, null, null, '111'],
+      ['P-2355', 'Gallbladder removal (keyhole)', 75, 'W6', null, null, null, null, null, null, null, null, '101']]],
+    ['T2', 'Theatre 2', 'Orthopaedics', '08:30', '17:30', false, 'Kit or tray not ready', [
+      ['P-3104', 'Hip replacement', 120, 'W5', '08:00', '08:58', '09:35', '11:02', null, true],
+      ['P-3150', 'Knee replacement', 120, 'W5', null, null, null, null, null, null, null, null, '101'],
+      ['P-3222', 'Knee arthroscopy', 45, 'DSU', null, null, null, null, null, null, null, null, '111'],
+      ['P-3260', 'Shoulder repair', 120, 'W5', null, null, null, null, null, null, null, null, '100'],
+      ['P-3291', 'Wrist fracture fixation', 60, 'W5', null, null, null, null, null, null, null, null, '001']]],
+    ['T3a', 'Theatre 3', 'Gynaecology', '08:30', '12:30', false, null, [
+      ['P-4012', 'Hysteroscopy', 30, 'DSU', '08:00', '08:34', '08:45', '09:10', '09:55', true],
+      ['P-4033', 'Ovarian cyst removal (keyhole)', 75, 'W6', '09:05', '09:31', '09:50', '10:52', null, false],
+      ['P-4058', 'Vaginal hysterectomy', 90, 'W6', null, null, null, null, null, null, 'No bed available', '07:40', '011'],
+      ['P-4071', 'Hysteroscopy', 30, 'DSU', '10:40', '11:09', '11:16']]],
+    ['T3p', 'Theatre 3', 'Urology', '13:30', '17:30', false, null, [
+      ['P-4120', 'Bladder camera check', 30, 'DSU', null, null, null, null, null, null, null, null, '111'],
+      ['P-4141', 'Prostate operation', 90, 'W5', null, null, null, null, null, null, null, null, '100'],
+      ['P-4166', 'Kidney stone removal', 75, 'W6', null, null, null, null, null, null, null, null, '110']]],
+    ['T4a', 'Theatre 4', 'Ear, nose and throat (day cases)', '08:30', '12:30', false, null, [
+      ['P-5007', 'Tonsil removal', 45, 'DSU', '08:00', '08:31', '08:44', '09:20', '10:05', true],
+      ['P-5019', 'Ear tubes (grommets)', 30, 'DSU', '09:15', '09:38', '09:46', '10:08', '10:50', true],
+      ['P-5026', 'Nasal septum repair', 60, 'DSU', null, null, null, null, null, null, 'Kit or tray not available', '10:12', '111'],
+      ['P-5040', 'Sinus surgery', 75, 'DSU', '10:05', '10:24', '10:40']]],
+    ['T4p', 'Theatre 4', 'Session released (unused)', '13:30', '17:30', true, null, []]
+  ];
+  S.forEach(function (r) {
+    var sess = { id: r[0], theatre: r[0].slice(0, 2), name: r[1], service: r[2], start: t(r[3]), end: t(r[4]), released: r[5], lateReason: r[6], cases: [] };
+    r[7].forEach(function (c) {
+      var rf = c[12] || '111';
+      var cs = { code: c[0], what: c[1], booked: c[2], ward: c[3], times: { sent: t(c[4]), anae: t(c[5]), knife: t(c[6]), out: t(c[7]), rec: t(c[8]) },
+        checklist: c[9] == null ? null : c[9], cancelled: c[10] || null, cancelledAt: t(c[11]),
+        ready: { bed: rf[0] === '1', transport: rf[1] === '1', paperwork: rf[2] === '1' }, atRisk: false, reminder: false };
+      if (cs.times.sent) cs.ready = { bed: true, transport: true, paperwork: true };
+      sess.cases.push(cs);
+    });
+    s.sessions.push(sess);
+  });
+  // Tomorrow's lists: [code, session label, theatre, what, ward, bed, kit, staff, check]  (1 ready, 0 gap)
+  [['P-6011', 'Theatre 1 · General surgery · all day', 'Gallbladder removal (keyhole)', 'W6', '0111'],
+   ['P-6024', 'Theatre 1 · General surgery · all day', 'Hernia repair', 'DSU', '1110'],
+   ['P-6038', 'Theatre 1 · General surgery · all day', 'Bowel operation (keyhole)', 'W6', '0111'],
+   ['P-6102', 'Theatre 2 · Orthopaedics · all day', 'Hip replacement', 'W5', '1011'],
+   ['P-6115', 'Theatre 2 · Orthopaedics · all day', 'Knee replacement', 'W5', '0111'],
+   ['P-6127', 'Theatre 2 · Orthopaedics · all day', 'Knee arthroscopy', 'DSU', '1111'],
+   ['P-6203', 'Theatre 3 · Urology · morning', 'Bladder camera check', 'DSU', '1101'],
+   ['P-6219', 'Theatre 3 · Urology · morning', 'Kidney stone removal', 'W6', '1001'],
+   ['P-6301', 'Theatre 4 · Ear, nose and throat · morning', 'Tonsil removal', 'DSU', '1111'],
+   ['P-6314', 'Theatre 4 · Ear, nose and throat · morning', 'Ear tubes (grommets)', 'DSU', '1110']
+  ].forEach(function (r) {
+    var f = r[4], st = function (ch) { return ch === '1' ? 'ok' : 'gap'; };
+    s.tomorrow.push({ code: r[0], session: r[1], what: r[2], ward: r[3], items: { bed: st(f[0]), kit: st(f[1]), staff: st(f[2]), check: st(f[3]) } });
+  });
+  // The log so far, built from recorded times (newest first).
+  var ev = [];
+  s.sessions.forEach(function (ss) { ss.cases.forEach(function (c) {
+    MS.forEach(function (m) { if (c.times[m.k] != null) ev.push({ t: c.times[m.k], text: ss.name + ' · ' + c.code + ': ' + m.label.toLowerCase().replace(/^./, function (x) { return x.toUpperCase(); }) }); });
+    if (c.cancelled) ev.push({ t: c.cancelledAt, text: ss.name + ' · ' + c.code + ': cancelled on the day. Reason: ' + c.cancelled });
+  }); });
+  ev.push({ t: t('08:58'), text: 'Theatre 2 · Orthopaedics: late start, 28 min after the session start. Reason: Kit or tray not ready' });
+  ev.push({ t: t('07:30'), text: 'Theatre 4 afternoon session released two weeks ago and not reused: 4 h offered, not used' });
+  ev.sort(function (a, b) { return b.t - a.t; });
+  s.log = ev.slice(0, 40);
+  return s;
+}
+
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE));
+    if (!s || s.v !== 1 || !s.sessions || Date.now() - s.created > 8 * 3600000) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+function now() { return state.clock; }
+
+// ---------- Derived data (pure) ----------
+function allCases() { var a = []; state.sessions.forEach(function (s) { s.cases.forEach(function (c) { a.push({ s: s, c: c }); }); }); return a; }
+function findCase(code) { return allCases().filter(function (x) { return x.c.code === code; })[0]; }
+function nextMs(c) { if (c.cancelled) return null; for (var i = 0; i < MS.length; i++) if (c.times[MS[i].k] == null) return MS[i]; return null; }
+function stage(c) {
+  if (c.cancelled) return { key: 'cx', text: 'Cancelled' };
+  var T = c.times;
+  if (T.rec != null) return { key: 'done', text: 'Left recovery' };
+  if (T.out != null) return { key: 'done', text: 'In recovery' };
+  if (T.knife != null) return { key: 'live', text: 'Operation under way' };
+  if (T.anae != null) return { key: 'live', text: 'In anaesthetic room' };
+  if (T.sent != null) return { key: 'wait', text: 'Sent for' };
+  return { key: 'todo', text: 'Waiting on the ward' };
+}
+function inRoom(c) { return c.times.anae != null && c.times.out == null; }
+// Booked plan: each case's planned start from the session start, booked minutes and the turnaround allowance.
+function plan(s) {
+  var tt = s.start, set = state.settings, out = {};
+  s.cases.forEach(function (c) { out[c.code] = { start: tt, end: tt + c.booked }; tt += c.booked + (+set.turnaround || 0); });
+  return out;
+}
+// Projection: recorded times where we have them, booked minutes for the rest. A what-if, not a prediction.
+function project(s) {
+  var set = state.settings, prevEnd = null, out = {}, n = now();
+  s.cases.forEach(function (c) {
+    if (c.cancelled) return;
+    var st, en;
+    if (c.times.anae != null) { st = c.times.anae; en = c.times.out != null ? c.times.out : Math.max(n, st + c.booked); }
+    else { st = Math.max(s.start, n, prevEnd == null ? s.start : prevEnd + (+set.turnaround || 0)); en = st + c.booked; }
+    out[c.code] = { start: st, end: en, est: c.times.anae == null, live: inRoom(c) };
+    prevEnd = en;
+  });
+  var finish = prevEnd;
+  return { cases: out, finish: finish, overrun: finish == null ? 0 : finish - s.end };
+}
+function held(s) { return !s.released && s.start <= now() && s.cases.some(function (c) { return !c.cancelled; }); }
+function firstCase(s) { return s.cases.filter(function (c) { return !c.cancelled; })[0]; }
+function lateBy(s) { var f = firstCase(s); if (!f) return null; var a = f.times.anae != null ? f.times.anae : (now() > s.start ? now() : null); return a == null ? null : a - s.start; }
+function isLateStart(s) { var l = lateBy(s); return l != null && l > (+state.settings.lateWindow || 0); }
+function usedMin(s) {
+  var n = now(), u = 0;
+  s.cases.forEach(function (c) { if (c.times.anae == null) return; var a = Math.max(c.times.anae, s.start), b = Math.min(c.times.out != null ? c.times.out : n, s.end); if (b > a) u += b - a; });
+  return u;
+}
+function plannedSoFar(s) { return Math.max(0, Math.min(now(), s.end) - s.start); }
+function turnarounds(s) {
+  var out = [], live = s.cases.filter(function (c) { return !c.cancelled; });
+  for (var i = 1; i < live.length; i++) if (live[i - 1].times.out != null && live[i].times.anae != null) out.push(live[i].times.anae - live[i - 1].times.out);
+  return out;
+}
+function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function wardStats(w) {
+  var due = allCases().filter(function (x) { return x.c.ward === w && !x.c.cancelled && x.c.times.sent == null; });
+  return { ward: WARDS[w], due: due.length, ready: due.filter(function (x) { return isReady(x.c); }).length };
+}
+function isReady(c) { return READY_ITEMS.every(function (r) { return c.ready[r[0]]; }); }
+function missing(c) { return READY_ITEMS.filter(function (r) { return !c.ready[r[0]]; }).map(function (r) { return r[1].toLowerCase().replace(/ (held|booked|complete)$/, ''); }); }
+function kpis() {
+  var ss = state.sessions.filter(held), plannedT = 0, used = 0, tr = [], listed = 0, cx = 0, outN = 0, chk = 0, late = 0;
+  ss.forEach(function (s) { plannedT += plannedSoFar(s); used += usedMin(s); tr = tr.concat(turnarounds(s)); if (isLateStart(s)) late++; });
+  state.sessions.forEach(function (s) { s.cases.forEach(function (c) { listed++; if (c.cancelled) cx++; if (c.times.out != null) { outN++; if (c.checklist === true) chk++; } }); });
+  var w = wardStats(state.ward), med = median(tr);
+  return {
+    utilisationPct: plannedT ? Math.round(100 * used / plannedT) : null, usedMin: used, plannedMinSoFar: plannedT,
+    lateStarts: late, sessionsHeld: ss.length,
+    cancelledOnDay: cx, casesListed: listed, cancellationPct: listed ? Math.round(100 * cx / listed) : 0,
+    turnaroundMedianMin: med == null ? null : Math.round(med), turnaroundCount: tr.length,
+    checklistDone: chk, casesOut: outN, checklistPct: outN ? Math.round(100 * chk / outN) : null,
+    releasedSessions: state.sessions.filter(function (s) { return s.released; }).length,
+    wardReady: w.ready, wardDue: w.due,
+    tomorrowGaps: state.tomorrow.filter(function (r) { return Object.keys(r.items).some(function (k) { return r.items[k] !== 'ok'; }); }).length
+  };
+}
+
+// ---------- The guide: plain, checkable rules ----------
+function suggest() {
+  var out = [], set = state.settings;
+  // 1. Tomorrow's cases with no bed booked: flag to the patient flow team today.
+  var noBed = state.tomorrow.filter(function (r) { return r.items.bed === 'gap'; });
+  if (noBed.length) out.push({ id: 'beds-' + noBed.map(function (r) { return r.code; }).join(''), kind: 'ask',
+    title: noBed.length + (noBed.length > 1 ? ' of tomorrow\'s cases have' : ' of tomorrow\'s cases has') + ' no bed booked',
+    list: noBed.map(function (r) { return r.code + ' · ' + r.session.split(' · ').slice(0, 2).join(' · ') + ' · ' + WARDS[r.ward]; }),
+    why: 'From tomorrow\'s readiness check: the bed item is not confirmed. Asking today gives the patient flow team time to plan.',
+    acts: [{ label: 'Propose: ask the patient flow team for ' + (noBed.length > 1 ? 'these beds' : 'this bed'), primary: true, fn: function (sg) { propose({ id: sg.id, kind: 'beds', codes: noBed.map(function (r) { return r.code; }), text: 'Ask the patient flow team to book beds for tomorrow: ' + noBed.map(function (r) { return r.code; }).join(', ') + '.' }); } },
+      { label: 'Show tomorrow', fn: function () { state.readyFilter = 'gaps'; if (state.role === 'nurse') state.role = 'coord'; render(); var e = document.getElementById('ready-h'); if (e) e.scrollIntoView({ block: 'start' }); } }] });
+  // 2. A list likely to overrun on booked durations.
+  state.sessions.forEach(function (s) {
+    if (s.released) return;
+    var p = project(s); if (p.overrun <= (+set.overrunTolerance || 0)) return;
+    var last = s.cases.filter(function (c) { return !c.cancelled && c.times.sent == null; }).slice(-1)[0];
+    if (!last) return;
+    var id = 'overrun-' + s.id + '-' + last.code;
+    out.push({ id: id, kind: 'time',
+      title: s.name + ' (' + s.service + ') looks likely to finish ' + hhmm(p.finish) + ', ' + fmt(p.overrun) + ' after the session ends',
+      text: 'Recorded times so far plus booked times for the cases still to come, with a ' + set.turnaround + ' min turnaround allowance. The last case is ' + last.code + ' from ' + WARDS[last.ward] + '.',
+      why: 'Booked durations against the session end (' + hhmm(s.end) + '). An estimate from booked times, not a prediction: the list\'s team knows best.',
+      acts: [{ label: 'Propose: tell ' + WARDS[last.ward] + ' early', primary: true, fn: function () { propose({ id: id, kind: 'atrisk', code: last.code, text: 'Tell ' + WARDS[last.ward] + ' now that ' + last.code + ' (last on ' + s.name + ') may not go today if the list overruns, and agree with the list\'s team whether to run over or rebook.' }); } }] });
+  });
+  // 3. The next patient due soon is not ready on the ward.
+  state.sessions.forEach(function (s) {
+    if (s.released) return;
+    var p = project(s);
+    var nx = s.cases.filter(function (c) { return !c.cancelled && c.times.sent == null; })[0];
+    if (!nx || isReady(nx) || nx.reminder) return;
+    var due = p.cases[nx.code].start - (+set.sendLead || 0);
+    if (due > now() + 30) return;
+    var id = 'notready-' + nx.code + '-' + missing(nx).join('');
+    out.push({ id: id, kind: 'time',
+      title: nx.code + ' is next on ' + s.name + ' but ' + WARDS[nx.ward] + ' shows: ' + missing(nx).join(', ') + ' not done',
+      text: 'Expected to be sent for ' + (due <= now() ? 'now' : 'about ' + hhmm(due)) + '. Sorting it out now may avoid a gap in the list.',
+      why: 'The ward\'s ready checklist for this patient, and an expected send-for time ' + set.sendLead + ' min before the estimated start. Operational items only.',
+      acts: [{ label: 'Propose: send ' + WARDS[nx.ward] + ' a reminder', primary: true, fn: function () { propose({ id: id, kind: 'remind', code: nx.code, text: 'Send ' + WARDS[nx.ward] + ' a reminder: ' + nx.code + ' is next on ' + s.name + '; still to do: ' + missing(nx).join(', ') + '.' }); } }] });
+  });
+  // 4. Cancellations on the day for one reason are rising.
+  var by = {};
+  allCases().forEach(function (x) { if (x.c.cancelled) (by[x.c.cancelled] = by[x.c.cancelled] || []).push(x); });
+  Object.keys(by).forEach(function (r) {
+    if (by[r].length < 2) return;
+    var id = 'cx-' + r + '-' + by[r].length;
+    out.push({ id: id, kind: 'ask', title: by[r].length + ' cancellations on the day today for one reason: ' + r.toLowerCase(),
+      list: by[r].map(function (x) { return x.c.code + ' · ' + x.s.name + ' · ' + x.s.service; }),
+      why: 'Counted from today\'s cancellations and their reason category. A short review of one cause is designed to find avoidable losses.',
+      acts: [{ label: 'Propose: add to the cancellation review', primary: true, fn: function () { propose({ id: id, kind: 'review', text: 'Add "' + r + '" to this month\'s cancellation review, with cases ' + by[r].map(function (x) { return x.c.code; }).join(', ') + '.' }); } }] });
+  });
+  return out.filter(function (x) { return !state.dismissed[x.id]; });
+}
+function propose(p) {
+  if (state.pending.some(function (x) { return x.id === p.id; })) return;
+  p.at = now(); state.pending.push(p);
+  addLog('Guide proposed: ' + p.text + ' Waiting for the theatre coordinator.');
+  render(); toast('Proposed. The theatre coordinator decides.');
+}
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x.id !== p.id; });
+  state.dismissed[p.id] = true;
+  if (!yes) { addLog('Theatre coordinator declined: ' + p.text); render(); toast('Declined. Nothing changed.'); return; }
+  if (p.kind === 'beds') state.tomorrow.forEach(function (r) { if (p.codes.indexOf(r.code) >= 0 && r.items.bed === 'gap') r.items.bed = 'asked'; });
+  else if (p.kind === 'atrisk') { var x = findCase(p.code); if (x) x.c.atRisk = true; }
+  else if (p.kind === 'remind') { var y = findCase(p.code); if (y) y.c.reminder = true; }
+  addLog('Theatre coordinator confirmed: ' + p.text);
+  render(); toast('Confirmed. Shown to the people who need it.');
+}
+
+// ---------- Helpers ----------
+function fmt(m) { m = Math.round(+m || 0); var neg = m < 0; m = Math.abs(m); var s = m < 60 ? m + ' min' : Math.floor(m / 60) + ' h ' + ((m % 60) < 10 ? '0' : '') + (m % 60); return (neg ? '−' : '') + s; }
+function hhmm(m) { m = Math.round(m); var h = Math.floor(m / 60), r = m % 60; return (h < 10 ? '0' : '') + h + ':' + (r < 10 ? '0' : '') + r; }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+var lastLogT = null;
+function addLog(text) { lastLogT = now(); state.log.unshift({ t: lastLogT, text: text, fresh: true }); state.log.forEach(function (e, i) { if (i) e.fresh = false; }); state.log = state.log.slice(0, 40); }
+var toastT; function toast(msg) { var e = document.getElementById('toast'); e.textContent = msg; e.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { e.classList.remove('on'); }, 2600); }
+
+// ---------- Actions ----------
+function record(code) {
+  var x = findCase(code); if (!x) return;
+  var c = x.c, m = nextMs(c); if (!m) return;
+  c.times[m.k] = now();
+  var line = x.s.name + ' · ' + c.code + ': ' + m.label.toLowerCase().replace(/^./, function (z) { return z.toUpperCase(); });
+  if (m.k === 'sent' && !isReady(c)) line += ' (' + WARDS[c.ward] + ' showed not ready: ' + missing(c).join(', ') + ')';
+  if (m.k === 'sent') c.ready = { bed: true, transport: true, paperwork: true };
+  addLog(line);
+  state.open = null;
+  if (m.k === 'anae' && firstCase(x.s) === c && isLateStart(x.s) && !x.s.lateReason) { state.open = { code: c.code, kind: 'late' }; state.pick = null; }
+  if (m.k === 'out') { state.open = { code: c.code, kind: 'check' }; }
+  render();
+  toast(m.label + ' recorded at ' + hhmm(now()) + '.');
+}
+function undo(code) {
+  var x = findCase(code); if (!x) return;
+  for (var i = MS.length - 1; i >= 0; i--) if (x.c.times[MS[i].k] != null) { var k = MS[i].k; x.c.times[k] = null; if (k === 'out') x.c.checklist = null; addLog(x.s.name + ' · ' + code + ': undid “' + MS[i].label + '”'); break; }
+  state.open = null; render(); toast('Undone.');
+}
+function setChecklist(code, yes) {
+  var x = findCase(code); if (!x) return;
+  x.c.checklist = yes; state.open = null;
+  addLog(x.s.name + ' · ' + code + ': surgical safety checklist recorded ' + (yes ? 'complete' : 'not complete'));
+  render(); toast(yes ? 'Checklist recorded complete.' : 'Recorded as not complete.');
+}
+function cancelCase(code, reason) {
+  var x = findCase(code); if (!x || !reason) return;
+  x.c.cancelled = reason; x.c.cancelledAt = now(); state.open = null; state.pick = null;
+  addLog(x.s.name + ' · ' + code + ': cancelled on the day. Reason: ' + reason);
+  render(); toast('Cancellation recorded with its reason.');
+}
+function setLateReason(sid, reason) {
+  var s = state.sessions.filter(function (z) { return z.id === sid; })[0]; if (!s) return;
+  s.lateReason = reason; state.open = null; state.pick = null;
+  addLog(s.name + ' · ' + s.service + ': late start, ' + fmt(lateBy(s)) + ' after the session start. Reason: ' + reason);
+  render(); toast('Late start reason recorded.');
+}
+function toggleReady(code, item) {
+  var x = findCase(code); if (!x) return;
+  x.c.ready[item] = !x.c.ready[item];
+  var lbl = READY_ITEMS.filter(function (r) { return r[0] === item; })[0][1];
+  addLog(WARDS[x.c.ward] + ' · ' + code + ': ' + lbl.toLowerCase() + (x.c.ready[item] ? ' ✓' : ' un-ticked') + (isReady(x.c) ? '. Ready for theatre' : ''));
+  render(); toast(isReady(x.c) ? code + ' is ready for theatre.' : (x.c.ready[item] ? 'Ticked.' : 'Un-ticked.'));
+}
+function setTomorrow(code, item) {
+  var r = state.tomorrow.filter(function (z) { return z.code === code; })[0]; if (!r) return;
+  r.items[item] = r.items[item] === 'ok' ? 'gap' : 'ok';
+  var lbl = TOMORROW_ITEMS.filter(function (z) { return z[0] === item; })[0][1];
+  addLog('Tomorrow · ' + code + ': ' + lbl.toLowerCase() + (r.items[item] === 'ok' ? ' confirmed' : ' marked as a gap'));
+  render(); toast(r.items[item] === 'ok' ? lbl + ' confirmed.' : lbl + ' marked as a gap.');
+}
+
+// ---------- Render ----------
+var HINTS = {
+  coord: 'The theatre coordinator\'s view. Every list on one timeline, booked against actual. Pick a theatre, then tap to record each case time as it happens. Record cancellations with a reason.',
+  manager: 'The theatre manager\'s view. Session use, late starts, cancellations on the day by reason, turnaround between cases, and tomorrow\'s readiness. Measures sessions and lists, never named staff.',
+  nurse: 'A ward or pre-op nurse\'s phone. Your patients going to theatre today, and three operational checks for each: bed held, transport booked, paperwork complete.'
+};
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  ['coord', 'manager', 'nurse'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('clocknow').textContent = 'Demo clock ' + hhmm(now());
+  document.getElementById('view-h').textContent = { coord: 'Today\'s lists', manager: 'Session review', nurse: 'My patients going to theatre today' }[state.role];
+  renderKpis();
+  var v = document.getElementById('view'); v.textContent = '';
+  if (state.role === 'coord') v.appendChild(coordView());
+  else if (state.role === 'manager') v.appendChild(managerView());
+  else v.appendChild(nurseView());
+  renderGuide();
+  renderLog();
+  save();
+  if (aid) { var e = document.getElementById(aid); if (e) e.focus({ preventScroll: true }); }
+}
+function renderKpis() {
+  var k = kpis(), box = document.getElementById('kpis'); box.textContent = '';
+  var tiles;
+  if (state.role === 'nurse') {
+    box.className = 'stats two';
+    var nxt = nextSendFor(state.ward);
+    tiles = [
+      ['ready', k.wardReady + ' of ' + k.wardDue, 'Ready for theatre', WARDS[state.ward] + ', still to go', 'Patients still on this ward who are due in theatre today with bed held, transport booked and paperwork complete. Operational checks only. Local definition.', k.wardReady < k.wardDue],
+      ['next', nxt ? hhmm(nxt.at) : '–', 'Next send-for', nxt ? nxt.code + ' · estimate' : 'none due', 'The estimated time theatres will send for your next patient: the estimated start from booked times on the list, less ' + state.settings.sendLead + ' min (an example setting). An estimate, not a booking.', false]
+    ];
+    document.getElementById('stathint').textContent = 'Tap a tile for its definition.';
+  } else {
+    box.className = 'stats';
+    tiles = [
+      ['util', k.utilisationPct == null ? '–' : k.utilisationPct + '%', 'Session use', fmt(k.usedMin) + ' of ' + fmt(k.plannedMinSoFar) + ' so far', 'Session utilisation: time patients are in theatre (in anaesthetic room to out of theatre) within the planned session, divided by planned session time so far today. Released sessions are shown separately. Local definition.', false],
+      ['late', k.lateStarts + ' of ' + k.sessionsHeld, 'Late starts', 'sessions held', 'Sessions where the first patient went into the anaesthetic room more than ' + state.settings.lateWindow + ' min (an example setting) after the session start, out of sessions held so far. Local definition.', k.lateStarts > 0],
+      ['cancel', k.cancellationPct + '%', 'Cancelled on the day', k.cancelledOnDay + ' of ' + k.casesListed + ' cases', 'Cases cancelled on the day, divided by cases listed today. Each carries a reason from a fixed list. Local definition.', k.cancelledOnDay > 0],
+      ['turn', k.turnaroundMedianMin == null ? '–' : fmt(k.turnaroundMedianMin), 'Turnaround', 'median of ' + k.turnaroundCount, 'Patient out of theatre to the next patient in the anaesthetic room, median, today. Local definition.', false],
+      ['check', k.checklistPct == null ? '–' : k.checklistPct + '%', 'Safety checklist', k.checklistDone + ' of ' + k.casesOut + ' cases', 'Cases with the surgical safety checklist recorded complete, divided by cases out of theatre today. Checklist: WHO Surgical Safety Checklist; this completion measure is a local definition.', k.checklistPct != null && k.checklistPct < 100]
+    ];
+    document.getElementById('stathint').textContent = 'Today so far, at ' + hhmm(now()) + '. Tap a tile for its definition.';
+  }
+  tiles.forEach(function (x) {
+    var open = state.kpiOpen === x[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + x[0], class: 'stat' + (x[5] ? ' alert' : ''), 'aria-expanded': String(open), title: x[4], onclick: function () { state.kpiOpen = open ? null : x[0]; render(); } },
+      [el('b', { text: x[1] }), el('span', { class: 'lbl', text: x[2] }), el('span', { class: 'n', text: x[3] }), el('span', { class: 'def', text: x[4] })]));
+  });
+}
+// --- coordinator ---
+var T0 = 8 * 60, T1 = 18 * 60 + 30;
+function pct(m) { return (100 * (Math.max(T0, Math.min(T1, m)) - T0) / (T1 - T0)).toFixed(2) + '%'; }
+function wid(a, b) { return Math.max(0.6, 100 * (Math.min(T1, b) - Math.max(T0, a)) / (T1 - T0)).toFixed(2) + '%'; }
+function theatres() { var ids = []; state.sessions.forEach(function (s) { if (ids.indexOf(s.theatre) < 0) ids.push(s.theatre); }); return ids; }
+function sessionsOf(th) { return state.sessions.filter(function (s) { return s.theatre === th; }); }
+function timeline() {
+  var box = el('div', { class: 'tl' });
+  var sc = el('div', { class: 'scale', 'aria-hidden': 'true' });
+  for (var h = 8; h <= 18; h += 2) sc.appendChild(el('span', { style: 'left:' + pct(h * 60) + (h === 8 ? ';transform:none' : ''), text: (h < 10 ? '0' : '') + h + ':00' }));
+  box.appendChild(sc);
+  theatres().forEach(function (th) {
+    var ss = sessionsOf(th), track = el('div', { class: 'track' }), summary = [];
+    var worst = null;
+    ss.forEach(function (s) {
+      track.appendChild(el('i', { class: 'sess' + (s.released ? ' rel' : ''), style: 'left:' + pct(s.start) + ';width:' + wid(s.start, s.end) }));
+      if (s.released) { summary.push('PM released'); return; }
+      var pl = plan(s), pr = project(s);
+      s.cases.forEach(function (c) {
+        var b = pl[c.code];
+        track.appendChild(el('i', { class: 'bk' + (c.cancelled ? ' cx' : ''), style: 'left:' + pct(b.start) + ';width:' + wid(b.start, b.end), title: c.code + ' booked ' + hhmm(b.start) + '–' + hhmm(b.end) + (c.cancelled ? ' · cancelled' : '') }));
+        var p = pr.cases[c.code]; if (!p) return;
+        track.appendChild(el('i', { class: 'ac' + (p.live ? ' live' : p.est ? ' proj' : ''), style: 'left:' + pct(p.start) + ';width:' + wid(p.start, p.end), title: c.code + (p.est ? ' estimate ' : ' actual ') + hhmm(p.start) + '–' + hhmm(p.end) }));
+      });
+      if (pr.finish != null && (worst == null || pr.overrun > worst.overrun)) worst = { s: s, overrun: pr.overrun, finish: pr.finish };
+    });
+    ss.forEach(function (s) { track.appendChild(el('i', { class: 'end', style: 'left:' + pct(s.end) })); });
+    track.appendChild(el('i', { class: 'now', style: 'left:' + pct(now()) }));
+    var over = worst && worst.overrun > 0;
+    var live = ss.map(function (s) { return s.cases.filter(inRoom)[0]; }).filter(Boolean)[0];
+    var status = live ? live.code + ': ' + stage(live).text.toLowerCase() : 'No one in theatre';
+    var proj = worst ? (over ? 'Likely finish ' + hhmm(worst.finish) + ' · ' + fmt(worst.overrun) + ' over' : 'Likely finish ' + hhmm(worst.finish)) : '';
+    var label = ss[0].name + ' · ' + ss.filter(function (s) { return !s.released; }).map(function (s) { return s.service; }).join(', then ');
+    box.appendChild(el('button', { type: 'button', id: 'tl-' + th, class: 'tlrow' + (state.theatre === th ? ' sel' : ''), 'aria-pressed': String(state.theatre === th),
+      'aria-label': label + '. ' + status + '. ' + proj + '. Show cases.', onclick: function () { state.theatre = th; state.open = null; render(); } }, [
+      el('div', { class: 'tlhead' }, [el('span', {}, [el('b', { text: ss[0].name }), ' · ' + ss.filter(function (s) { return !s.released; }).map(function (s) { return s.service.replace(' (day cases)', ''); }).join(', then ')]), el('span', { class: 'proj' + (over ? ' over' : ''), text: proj })]),
+      track
+    ]));
+  });
+  return box;
+}
+function legend() {
+  return el('div', { class: 'legend' }, [
+    el('span', {}, [el('i', { style: 'background:#fff;border:1.5px solid #8FA3B5' }), 'Booked']),
+    el('span', {}, [el('i', { style: 'background:var(--sea)' }), 'Actual']),
+    el('span', {}, [el('i', { style: 'background:var(--mango)' }), 'In theatre now']),
+    el('span', {}, [el('i', { style: 'background:repeating-linear-gradient(135deg,#C9D6E0 0 4px,#E4EBF0 4px 8px)' }), 'Estimate from booked times']),
+    el('span', {}, [el('i', { style: 'background:var(--hot);border:1.5px dashed var(--coral)' }), 'Cancelled']),
+    el('span', {}, [el('i', { style: 'background:var(--coral);width:3px' }), 'Now'])
+  ]);
+}
+function coordView() {
+  var frag = document.createDocumentFragment();
+  frag.appendChild(el('h3', { class: 'sec', text: 'All theatres · booked against actual' }));
+  frag.appendChild(timeline());
+  frag.appendChild(legend());
+  frag.appendChild(el('h3', { class: 'sec', text: 'Record case times' }));
+  var tabs = el('div', { class: 'tabs', role: 'group', 'aria-label': 'Choose a theatre' });
+  theatres().forEach(function (th) { tabs.appendChild(el('button', { type: 'button', id: 'th-' + th, 'aria-pressed': String(state.theatre === th), onclick: function () { state.theatre = th; state.open = null; render(); }, text: sessionsOf(th)[0].name })); });
+  frag.appendChild(tabs);
+  sessionsOf(state.theatre).forEach(function (s) {
+    var pr = project(s), lb = lateBy(s);
+    var sub = s.released ? 'Released, not reused: ' + fmt(s.end - s.start) + ' offered, not used' : (pr.finish != null ? 'Likely finish ' + hhmm(pr.finish) + (pr.overrun > 0 ? ' · ' + fmt(pr.overrun) + ' over' : pr.overrun < 0 ? ' · ' + fmt(-pr.overrun) + ' spare' : '') : '');
+    frag.appendChild(el('div', { class: 'sesshead' }, [el('b', { text: s.service + ' · ' + hhmm(s.start) + '–' + hhmm(s.end) }), el('span', { text: sub })]));
+    if (s.released) { frag.appendChild(el('p', { class: 'empty', text: 'This session was released two weeks ago and no other service took it. The manager sees it as capacity offered and lost.' })); return; }
+    if (isLateStart(s) && firstCase(s).times.anae != null) {
+      frag.appendChild(el('p', { class: 'fine', style: 'margin:0 0 8px', text: 'Late start: first patient in ' + fmt(lb) + ' after the session start' + (s.lateReason ? '. Reason: ' + s.lateReason : '. Reason not recorded yet.') }));
+    }
+    var list = el('div', { class: 'cases' }), pl = plan(s);
+    s.cases.forEach(function (c, i) { list.appendChild(caseCard(s, c, i, pl[c.code], pr.cases[c.code])); });
+    frag.appendChild(list);
+  });
+  frag.appendChild(readinessSection(true));
+  return frag;
+}
+function caseCard(s, c, i, b, p) {
+  var st = stage(c), m = nextMs(c), cls = st.key === 'cx' ? 's-cx' : st.key === 'done' ? 's-done' : st.key === 'live' ? 's-live' : '';
+  var chipCls = st.key === 'cx' ? 'cx' : st.key === 'done' ? 'done' : st.key === 'live' ? 'live' : st.key === 'wait' ? 'wait' : '';
+  var kids = [el('div', { class: 'top' }, [
+    el('div', {}, [el('div', { class: 'code', text: (i + 1) + '. ' + c.code }), el('p', { class: 'what', text: c.what + ' · ' + WARDS[c.ward] + ' · booked ' + fmt(c.booked) + ' from ' + hhmm(b.start) })]),
+    el('span', { class: 'chip ' + chipCls, text: st.text })])];
+  if (c.cancelled) { kids.push(el('p', { class: 'note hotline', text: 'Cancelled on the day at ' + hhmm(c.cancelledAt) + '. Reason: ' + c.cancelled })); return el('article', { class: 'case ' + cls, id: 'case-' + c.code }, kids); }
+  var ol = el('ol', { class: 'ms', 'aria-label': 'Case times' });
+  MS.forEach(function (x) { var v = c.times[x.k]; ol.appendChild(el('li', { class: v != null ? 'on' : (m && m.k === x.k ? 'next' : '') }, [el('time', { text: v != null ? hhmm(v) : '–' }), x.label])); });
+  kids.push(ol);
+  if (c.times.sent == null && !isReady(c)) kids.push(el('p', { class: 'note', text: WARDS[c.ward] + ' shows not ready: ' + missing(c).join(', ') + (c.reminder ? ' · reminder sent' : '') }));
+  if (c.atRisk) kids.push(el('p', { class: 'note hotline', text: 'At risk of overrun: ' + WARDS[c.ward] + ' has been told.' }));
+  if (p && p.est && c.times.sent == null) kids.push(el('p', { class: 'fine', style: 'margin:6px 0 0', text: 'Estimated start ' + hhmm(p.start) + ' from booked times.' }));
+  if (c.times.out != null && c.checklist !== true && !(state.open && state.open.code === c.code)) kids.push(el('p', { class: 'note', text: c.checklist === false ? 'Surgical safety checklist recorded as not complete.' : 'Surgical safety checklist not recorded yet.' }));
+  var open = state.open && state.open.code === c.code ? state.open : null;
+  var acts = el('div', { class: 'acts' });
+  var firstWaiting = s.cases.filter(function (z) { return !z.cancelled && z.times.sent == null; })[0];
+  if (m && m.k === 'sent' && firstWaiting !== c) m = null;
+  if (m) acts.appendChild(el('button', { type: 'button', id: 'rec-' + c.code, class: 'go' + (m.k === 'knife' || m.k === 'out' ? ' big' : ''), 'aria-label': 'Record ' + m.label + ' now for ' + c.code, onclick: function () { record(c.code); }, text: 'Record: ' + m.label + ' · ' + hhmm(now()) }));
+  if (c.times.sent != null || c.times.anae != null) acts.appendChild(el('button', { type: 'button', id: 'undo-' + c.code, class: 'alt small', 'aria-label': 'Undo the last time for ' + c.code, onclick: function () { undo(c.code); }, text: 'Undo last' }));
+  if (c.times.anae == null) acts.appendChild(el('button', { type: 'button', id: 'cx-' + c.code, class: 'alt small', 'aria-expanded': String(!!(open && open.kind === 'cancel')), onclick: function () { state.open = open && open.kind === 'cancel' ? null : { code: c.code, kind: 'cancel' }; state.pick = null; render(); }, text: 'Cancel on the day' }));
+  if (c.times.out != null && c.checklist !== true && !(open && open.kind === 'check')) acts.appendChild(el('button', { type: 'button', id: 'chk-open-' + c.code, class: 'alt small', onclick: function () { state.open = { code: c.code, kind: 'check' }; render(); }, text: 'Record checklist' }));
+  if (acts.childNodes.length) kids.push(acts);
+  if (open && open.kind === 'cancel') {
+    var ch = el('div', { class: 'choices', role: 'group', 'aria-label': 'Reason for cancellation' });
+    CANCEL_REASONS.forEach(function (r, k) { ch.appendChild(el('button', { type: 'button', class: 'choice', id: 'cr-' + k, 'aria-pressed': String(state.pick === r), onclick: function () { state.pick = r; render(); }, text: r })); });
+    kids.push(el('div', { class: 'picker' }, [el('p', { text: 'Why is ' + c.code + ' cancelled? Choose one reason.' }), ch,
+      el('div', { class: 'row2' }, [el('button', { type: 'button', id: 'cx-confirm', class: 'primary', disabled: state.pick ? false : 'disabled', onclick: function () { cancelCase(c.code, state.pick); }, text: 'Record cancellation' }), el('button', { type: 'button', onclick: function () { state.open = null; state.pick = null; render(); }, text: 'Keep on the list' })])]));
+  }
+  if (open && open.kind === 'check') {
+    kids.push(el('div', { class: 'picker' }, [el('p', { text: 'Surgical safety checklist recorded complete for ' + c.code + '?' }),
+      el('div', { class: 'row2' }, [el('button', { type: 'button', id: 'chk-yes-' + c.code, class: 'primary', onclick: function () { setChecklist(c.code, true); }, text: 'Yes, complete' }), el('button', { type: 'button', id: 'chk-no-' + c.code, onclick: function () { setChecklist(c.code, false); }, text: 'No' })])]));
+  }
+  if (open && open.kind === 'late') {
+    var lc = el('div', { class: 'choices', role: 'group', 'aria-label': 'Reason for late start' });
+    LATE_REASONS.forEach(function (r, k) { lc.appendChild(el('button', { type: 'button', class: 'choice', id: 'lr-' + k, onclick: function () { setLateReason(s.id, r); }, text: r })); });
+    kids.push(el('div', { class: 'picker' }, [el('p', { text: 'The session started ' + fmt(lateBy(s)) + ' late. What delayed the first case?' }), lc]));
+  }
+  return el('article', { class: 'case ' + cls, id: 'case-' + c.code }, kids);
+}
+function readinessSection(editable) {
+  var frag = document.createDocumentFragment();
+  var gaps = state.tomorrow.filter(function (r) { return Object.keys(r.items).some(function (k) { return r.items[k] !== 'ok'; }); });
+  frag.appendChild(el('h3', { class: 'sec', id: 'ready-h', text: 'Tomorrow · readiness check · ' + gaps.length + ' of ' + state.tomorrow.length + ' cases with a gap' }));
+  var f = el('div', { class: 'filters', role: 'group', 'aria-label': 'Which cases' });
+  [['gaps', 'Gaps only'], ['all', 'All tomorrow']].forEach(function (x) { f.appendChild(el('button', { type: 'button', id: 'rf-' + x[0], 'aria-pressed': String(state.readyFilter === x[0]), onclick: function () { state.readyFilter = x[0]; render(); }, text: x[1] })); });
+  frag.appendChild(f);
+  var rows = state.readyFilter === 'gaps' ? gaps : state.tomorrow, box = el('div', { class: 'ready', id: 'ready' });
+  if (!rows.length) box.appendChild(el('p', { class: 'empty', text: 'No gaps: every case tomorrow has a bed, kit, staff and pre-op checklist confirmed.' }));
+  rows.forEach(function (r) {
+    var gap = Object.keys(r.items).some(function (k) { return r.items[k] !== 'ok'; });
+    var items = el('div', { class: 'items' });
+    TOMORROW_ITEMS.forEach(function (it) {
+      var v = r.items[it[0]], word = v === 'ok' ? 'Confirmed' : v === 'asked' ? 'Asked for' : 'Missing';
+      var kids = [it[1], el('small', { text: word + (editable ? (v === 'ok' ? ' · tap to undo' : ' · tap to confirm') : '') })];
+      items.appendChild(editable
+        ? el('button', { type: 'button', id: 'tm-' + r.code + '-' + it[0], class: 'ri ' + v, 'aria-label': it[1] + ' for ' + r.code + ': ' + word + '. Tap to ' + (v === 'ok' ? 'mark as a gap' : 'confirm'), onclick: function () { setTomorrow(r.code, it[0]); } }, kids)
+        : el('div', { class: 'ri ' + v }, [it[1], el('small', { text: word })]));
+    });
+    box.appendChild(el('div', { class: 'rrow ' + (gap ? 'gap' : 'ok') }, [el('div', { class: 'who' }, [el('b', { text: r.code + ' · ' + r.what }), el('span', { text: r.session + ' · ' + WARDS[r.ward] })]), items]));
+  });
+  frag.appendChild(box);
+  frag.appendChild(el('p', { class: 'fine', text: editable ? 'The coordinator confirms each item as wards, sterile services and the rota confirm it. Pre-op checklist means the paperwork and checks the organisation requires; it records done or not done only.' : 'The theatre coordinator updates these. Gaps show the day before so they can be fixed in time.' }));
+  return frag;
+}
+// --- manager ---
+function managerView() {
+  var frag = document.createDocumentFragment();
+  frag.appendChild(el('h3', { class: 'sec', text: 'Sessions today' }));
+  var g = el('div', { class: 'sessions' });
+  state.sessions.forEach(function (s) {
+    if (s.released) {
+      g.appendChild(el('div', { class: 'sc rel' }, [el('h4', { text: s.name + ' · ' + hhmm(s.start) + '–' + hhmm(s.end) }), el('p', { class: 'sub', text: 'Session released, not reused' }), el('p', { text: fmt(s.end - s.start) + ' offered and not used. Released sessions are counted separately from session use.' })]));
+      return;
+    }
+    var pr = project(s), used = usedMin(s), ps = plannedSoFar(s), u = ps ? Math.round(100 * used / ps) : null, tr = turnarounds(s), lb = lateBy(s), late = isLateStart(s);
+    var cx = s.cases.filter(function (c) { return c.cancelled; }).length, flag = late || pr.overrun > 0 || cx > 0;
+    var started = s.start <= now();
+    g.appendChild(el('div', { class: 'sc' + (flag ? ' flag' : ''), id: 'sc-' + s.id }, [
+      el('h4', { text: s.name + ' · ' + s.service.replace(' (day cases)', '') }),
+      el('p', { class: 'sub', text: hhmm(s.start) + '–' + hhmm(s.end) + ' · ' + s.cases.length + ' cases listed' }),
+      el('div', { class: 'ubar', title: 'Session use so far' }, [el('i', { style: 'width:' + (u || 0) + '%' })]),
+      el('div', { class: 'nums' }, [
+        el('div', {}, [el('b', { text: started ? (u == null ? '–' : u + '%') : '–' }), el('span', { text: 'Use so far' })]),
+        el('div', { class: late ? 'bad' : '' }, [el('b', { text: !started ? hhmm(s.start) : lb == null ? '–' : lb <= 0 ? 'On time' : '+' + fmt(lb) }), el('span', { text: started ? 'First start' : 'Starts' })]),
+        el('div', {}, [el('b', { text: tr.length ? fmt(median(tr)) : '–' }), el('span', { text: 'Turnaround' })]),
+        el('div', { class: cx ? 'bad' : '' }, [el('b', { text: String(cx) }), el('span', { text: 'Cancelled' })])
+      ]),
+      el('p', { text: (late ? 'Late start reason: ' + (s.lateReason || 'not recorded yet') + '. ' : '') + (pr.finish == null ? '' : pr.overrun > 0 ? 'Likely to finish ' + hhmm(pr.finish) + ', ' + fmt(pr.overrun) + ' over.' : pr.overrun < 0 ? 'Likely to finish ' + hhmm(pr.finish) + ', ' + fmt(-pr.overrun) + ' early.' : 'Likely to finish on time.') })
+    ]));
+  });
+  frag.appendChild(g);
+  // Cancellations on the day by reason (fixed list)
+  frag.appendChild(el('h3', { class: 'sec', text: 'Cancellations on the day, by reason' }));
+  var by = {}, total = 0;
+  allCases().forEach(function (x) { if (x.c.cancelled) { (by[x.c.cancelled] = by[x.c.cancelled] || []).push(x.c.code); total++; } });
+  if (!total) frag.appendChild(el('p', { class: 'empty', text: 'No cancellations on the day so far.' }));
+  else {
+    var ul = el('ul', { class: 'reasons', id: 'reasons' });
+    Object.keys(by).sort(function (a, b) { return by[b].length - by[a].length; }).forEach(function (r) {
+      ul.appendChild(el('li', {}, [el('div', {}, [r, el('small', { text: by[r].join(', ') }), el('div', { class: 'rb', style: 'width:' + Math.round(100 * by[r].length / total) + '%' })]), el('b', { text: String(by[r].length) })]));
+    });
+    frag.appendChild(ul);
+    frag.appendChild(el('p', { class: 'fine', text: 'Reasons come from a fixed list, so causes can be compared over weeks. Cases are shown by code only.' }));
+  }
+  frag.appendChild(readinessSection(false));
+  // Example settings
+  var d = el('details', { class: 'set' }, [el('summary', { text: 'Example settings' })]);
+  var tg = el('div', { class: 'targets' });
+  [['turnaround', 'Turnaround allowance (min)'], ['lateWindow', 'Late start after (min)'], ['sendLead', 'Send for before start (min)'], ['overrunTolerance', 'Flag overruns beyond (min)']].forEach(function (x) {
+    tg.appendChild(el('label', { for: 'set-' + x[0] }, [x[1], el('input', { type: 'number', id: 'set-' + x[0], min: '0', max: '120', step: '5', inputmode: 'numeric', value: String(state.settings[x[0]]), onchange: function (e) { state.settings[x[0]] = Math.max(0, Math.min(120, +e.target.value || 0)); addLog('Setting changed: ' + x[1].toLowerCase() + ' = ' + state.settings[x[0]]); render(); } })]));
+  });
+  d.appendChild(tg);
+  d.appendChild(el('p', { class: 'fine', text: 'These are example settings for this demo, not a standard. Each organisation sets its own. The guide and the measures use them straight away.' }));
+  if (state.settingsOpen) d.open = true;
+  d.addEventListener('toggle', function () { state.settingsOpen = d.open; save(); });
+  frag.appendChild(d);
+  return frag;
+}
+// --- ward nurse ---
+function nextSendFor(w) {
+  var best = null;
+  state.sessions.forEach(function (s) {
+    if (s.released) return; var pr = project(s);
+    s.cases.forEach(function (c) { if (c.ward !== w || c.cancelled || c.times.sent != null) return; var at = Math.max(now(), pr.cases[c.code].start - (+state.settings.sendLead || 0)); if (!best || at < best.at) best = { code: c.code, at: at }; });
+  });
+  return best;
+}
+function nurseView() {
+  var frag = document.createDocumentFragment();
+  var sel = el('select', { id: 'ward-pick', onchange: function (e) { state.ward = e.target.value; render(); } });
+  Object.keys(WARDS).forEach(function (w) { sel.appendChild(el('option', { value: w, text: WARDS[w] })); });
+  sel.value = state.ward;
+  frag.appendChild(el('div', { class: 'wardbar' }, [el('label', { for: 'ward-pick' }, ['Your ward', sel])]));
+  var mine = [];
+  state.sessions.forEach(function (s) { if (s.released) return; var pr = project(s); s.cases.forEach(function (c, i) { if (c.ward === state.ward) mine.push({ s: s, c: c, i: i, p: pr.cases[c.code] }); }); });
+  var toGo = mine.filter(function (x) { return !x.c.cancelled && x.c.times.sent == null; }).sort(function (a, b) { return a.p.start - b.p.start; });
+  var gone = mine.filter(function (x) { return x.c.cancelled || x.c.times.sent != null; });
+  frag.appendChild(el('h3', { class: 'sec', text: 'Still to go · ' + toGo.length }));
+  var box = el('div', { class: 'pts', id: 'to-go' });
+  if (!toGo.length) box.appendChild(el('p', { class: 'empty', text: 'No more patients from this ward for theatre today.' }));
+  toGo.forEach(function (x) {
+    var c = x.c, ok = isReady(c), at = Math.max(now(), x.p.start - (+state.settings.sendLead || 0));
+    var ticks = el('div', { class: 'ticks', role: 'group', 'aria-label': 'Ready checks for ' + c.code });
+    READY_ITEMS.forEach(function (r) {
+      var on = c.ready[r[0]];
+      ticks.appendChild(el('button', { type: 'button', class: 'tick', id: 'rd-' + c.code + '-' + r[0], 'aria-pressed': String(on), 'aria-label': r[1] + ' for ' + c.code, onclick: function () { toggleReady(c.code, r[0]); } },
+        [el('span', { class: 'box', 'aria-hidden': 'true', text: on ? '✓' : '' }), el('span', {}, [r[1], el('small', { text: on ? 'Done' : 'Tap when done' })])]));
+    });
+    var notes = [];
+    if (c.reminder && !ok) notes.push(el('p', { class: 'note hotline', text: 'Theatres asked: please get ' + c.code + ' ready. Still to do: ' + missing(c).join(', ') + '.' }));
+    if (c.atRisk) notes.push(el('p', { class: 'note', text: 'Theatres say this list may overrun. ' + c.code + ' may not go today; the list\'s team will confirm.' }));
+    box.appendChild(el('article', { class: 'pt' + (ok ? ' isready' : ''), id: 'pt-' + c.code }, [
+      el('div', { class: 'top' }, [el('div', {}, [el('div', { class: 'code', text: c.code }), el('p', { class: 'meta', text: x.s.name + ' · ' + x.s.service.replace(' (day cases)', '') + ' · number ' + (x.i + 1) + ' on the list' })]),
+        el('span', { class: 'chip ' + (ok ? 'done' : 'cx'), text: ok ? 'Ready' : 'Not ready' })]),
+      el('p', { class: 'stage', text: 'Expected to be sent for about ' + hhmm(at) }),
+      el('p', { class: 'meta', text: 'Estimate from booked times on the list. Theatres will send for the patient.' })
+    ].concat(notes).concat([ticks])));
+  });
+  frag.appendChild(box);
+  if (gone.length) {
+    frag.appendChild(el('h3', { class: 'sec', text: 'Gone to theatre or cancelled · ' + gone.length }));
+    var g = el('div', { class: 'pts' });
+    gone.forEach(function (x) {
+      var st = stage(x.c), last = null;
+      MS.forEach(function (m) { if (x.c.times[m.k] != null) last = x.c.times[m.k]; });
+      g.appendChild(el('article', { class: 'pt ' + (x.c.cancelled ? 'cx' : 'gone') }, [
+        el('div', { class: 'top' }, [el('div', {}, [el('div', { class: 'code', text: x.c.code }), el('p', { class: 'meta', text: x.s.name + ' · ' + x.s.service.replace(' (day cases)', '') })]), el('span', { class: 'chip ' + (x.c.cancelled ? 'cx' : st.key === 'live' ? 'live' : st.key === 'done' ? 'done' : 'wait'), text: st.text })]),
+        el('p', { class: 'stage', text: x.c.cancelled ? 'Cancelled on the day at ' + hhmm(x.c.cancelledAt) + '. Reason: ' + x.c.cancelled : st.text + ' since ' + hhmm(last) + (st.text === 'In recovery' ? '. Recovery will call when ready to come back.' : '') })
+      ]));
+    });
+    frag.appendChild(g);
+  }
+  return frag;
+}
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Lists, case times, cancellations, readiness and the measures all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag: lists look on time, the next patients are ready and tomorrow has no bed gaps.' }));
+  list.forEach(function (sg) {
+    var pend = state.pending.some(function (p) { return p.id === sg.id; });
+    var acts = sg.acts.map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend && a.primary ? 'disabled' : false, onclick: function () { a.fn(sg); }, text: pend && a.primary ? 'Proposed' : a.label }); });
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
+      el('span', { class: 'tag ' + sg.kind, text: sg.id.indexOf('beds') === 0 ? 'Tomorrow' : sg.id.indexOf('overrun') === 0 ? 'List at risk' : sg.id.indexOf('notready') === 0 ? 'Next patient' : 'Cancellations' }),
+      el('h3', { text: sg.title }), sg.text ? el('p', { text: sg.text }) : null,
+      sg.list ? el('ul', {}, sg.list.map(function (x) { return el('li', { text: x }); })) : null,
+      el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  if (state.pending.length) {
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for the theatre coordinator to decide' })]);
+    state.pending.forEach(function (p) {
+      d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }),
+        state.role === 'coord'
+          ? el('div', { class: 'acts', style: 'display:flex;gap:8px;flex-wrap:wrap' }, [el('button', { type: 'button', class: 'small primary', onclick: function () { decide(p, true); }, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])
+          : el('p', { style: 'margin:0;color:var(--soft);font-size:0.85rem', text: 'Switch to the Theatre coordinator view to confirm or decline.' })]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Proposals wait here for the theatre coordinator.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 30).forEach(function (e) { ol.appendChild(el('li', { class: e.fresh ? 'new' : '' }, [el('time', { text: hhmm(e.t) }), el('span', { text: e.text })])); });
+}
+
+// ---------- Wiring ----------
+['coord', 'manager', 'nurse'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; state.kpiOpen = null; state.open = null; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-clock').addEventListener('click', function () {
+  if (state.clock >= T1 - 15) { toast('The demo day ends at ' + hhmm(T1) + '. Reset to start again.'); return; }
+  state.clock += 15; render(); toast('Clock moved on to ' + hhmm(now()) + '. Estimates updated.');
+});
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; render(); toast('Example reset.'); });
+
+// Read-only view for software agents (no writes): window.ospeliTheatresDemo
+window.ospeliTheatresDemo = Object.freeze({
+  describe: function () { return 'Read-only theatres and procedure lists demo for a fictional hospital. get() returns today\'s sessions with cases by patient code, case times, cancellations and estimates, plus tomorrow\'s readiness check; kpis() the day\'s measures; suggestions() the guide\'s current suggestions. Operational only: it does not decide patient order or clinical fitness. Runs in the browser; nothing is sent anywhere.'; },
+  get: function () {
+    return clone({ role: state.role, clock: hhmm(now()), settingsMin: state.settings,
+      sessions: state.sessions.map(function (s) {
+        var pr = project(s);
+        return { id: s.id, theatre: s.name, service: s.service, start: hhmm(s.start), end: hhmm(s.end), released: s.released, lateStart: isLateStart(s), lateReason: s.lateReason,
+          likelyFinish: pr.finish == null ? null : hhmm(pr.finish), overrunMin: pr.finish == null ? 0 : pr.overrun,
+          cases: s.cases.map(function (c) { var tm = {}; MS.forEach(function (m) { tm[m.k] = c.times[m.k] == null ? null : hhmm(c.times[m.k]); }); return { code: c.code, procedure: c.what, ward: WARDS[c.ward], bookedMin: c.booked, stage: stage(c).text, times: tm, checklist: c.checklist, cancelled: c.cancelled, readyOnWard: isReady(c), missing: missing(c) }; }) };
+      }),
+      tomorrow: state.tomorrow, pendingDecisions: state.pending.map(function (p) { return p.text; }) });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text || (s.list || []).join('; '), why: s.why }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>

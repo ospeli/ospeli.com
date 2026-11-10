@@ -30,6 +30,9 @@ LIVE = {
     "B4": ("Open the stores and stock preview", "../../demo/stores-stock/"),
     "X2": ("Open the daily operations report preview", "../../demo/daily-report/"),
     "D4": ("Open the daily operations report preview", "../../demo/daily-report/"),
+    "A4": ("Open the theatres preview", "../../demo/theatres/"),
+    "A1": ("Open the outpatient clinics preview", "../../demo/clinics/"),
+    "B2": ("Open the facilities preview", "../../demo/facilities/"),
     "A2": ("Open the emergency department preview", "../../demo/ed-flow/"),
 }
 

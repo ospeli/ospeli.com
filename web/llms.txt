@@ -10,6 +10,9 @@
 - [Incidents and actions preview](https://ospeli.com/demo/actions/): staff reports, learning review, one action tracker, risk register; read-only agent view at `window.ospeliActionsDemo`; fictional data.
 - [Stores and stock preview](https://ospeli.com/demo/stores-stock/): ward stock reports, storekeeper pick list, supply view; read-only agent view at `window.ospeliStoresDemo`; fictional data.
 - [Daily operations report preview](https://ospeli.com/demo/daily-report/): decisions for today, run charts, bottleneck finder, huddle list; read-only agent view at `window.ospeliDailyReportDemo`; fictional data.
+- [Theatres and procedure lists preview](https://ospeli.com/demo/theatres/): Case times on one timeline, session use, cancellations on the day with reasons, and tomorrow's readiness: bed, kit and checklist. Fictional data.
+- [Outpatients and clinics preview](https://ospeli.com/demo/clinics/): Clinic reception on a phone, the referral waiting list and free slots for booking, and utilisation and did-not-attend for the manager. Fictional data.
+- [Facilities and utilities preview](https://ospeli.com/demo/facilities/): Report a building fault by room or QR code, technician job queues by trade, planned maintenance, utility checks and a plant status board. Fictional data.
 - [All 30 areas](https://ospeli.com/areas/): what each area of hospital operations will do, who uses it, what it records, its measures and its AI assistant commands; spec in https://ospeli.com/areas/areas.json.
 - [Front page](https://ospeli.com/): what Ospeli is, its modules, how a pilot runs, and its governance rules.
 

@@ -1,0 +1,958 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Facilities and utilities demo · Ospeli</title>
+<meta name="description" content="Report a building fault from a room label in three taps, work the job queue on a phone, and see open work orders, planned maintenance, utility checks and plant status in one place. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Facilities and utilities demo · Ospeli">
+<meta property="og:description" content="Report a building fault from a room label in three taps, work the job queue on a phone, and see open work orders, planned maintenance, utility checks and plant status in one place. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/facilities/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button, textarea { font: inherit; color: var(--ink); }
+select, input[type=number], input[type=text], textarea { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+textarea { width: 100%; resize: vertical; min-height: 64px; font-size: 1rem; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 520px) { .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 14px; width: 100%; } .roles button { padding: 6px 4px; line-height: 1.2; font-size: 0.95rem; } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.88rem; font-weight: 700; display: block; line-height: 1.3; }
+.stat .n { color: var(--soft); font-size: 0.78rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.8rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stathint { color: var(--soft); font-size: 0.78rem; margin: 6px 0 0; }
+.empty { text-align: center; color: var(--soft); padding: 18px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; }
+.fine { font-size: 0.82rem; color: var(--soft); margin: 8px 0 0; }
+.chip { display: inline-block; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; background: var(--sand); white-space: nowrap; }
+.chip.p-urgent { background: var(--coral); color: #fff; } .chip.p-high { background: var(--mango); color: var(--navy); } .chip.p-routine { background: var(--sand); }
+.chip.st-accepted { background: var(--warn); } .chip.st-onsite { background: var(--wash); } .chip.st-parts { background: #EDE7F6; } .chip.st-done { background: var(--sea); color: #fff; }
+.chip.over { background: var(--hot); color: #8E2C18; }
+.chip.closed { background: var(--navy); color: #fff; }
+/* reporter (anyone) */
+.steps { display: grid; gap: 18px; margin-top: 4px; }
+.stepq { font-weight: 800; font-size: 1rem; margin: 0 0 8px; display: flex; gap: 8px; align-items: center; }
+.stepq i { font-style: normal; width: 26px; height: 26px; border-radius: 50%; background: var(--navy); color: #fff; display: grid; place-items: center; font-size: 0.85rem; flex: none; }
+.stepq.done i { background: var(--sea); }
+.how2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.choices.faults { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+@media (max-width: 420px) { .choices, .choices.faults { grid-template-columns: 1fr 1fr; } }
+.choice { border-radius: 12px; border: 1px solid #CFC5B2; min-height: 54px; text-align: left; padding: 8px 12px; font-size: 1rem; line-height: 1.25; }
+.choice small { display: block; font-weight: 600; color: var(--soft); font-size: 0.88rem; }
+@media (max-width: 520px) { .fine, .clock small, .track span { font-size: 0.9rem; } .chip { font-size: 0.82rem; } }
+.choice[aria-pressed=true] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.choice[aria-pressed=true] small { color: #D6E2EC; }
+.choice .ic { display: block; font-size: 1.3rem; line-height: 1; margin-bottom: 4px; }
+.floors { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.floors button { min-height: 44px; border-color: #CFC5B2; font-size: 0.95rem; }
+.floors button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.pickrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+.pickrow label { display: flex; flex-direction: column; gap: 4px; font-weight: 800; font-size: 0.95rem; min-width: 0; max-width: 100%; }
+.scanbox { border: 2px dashed var(--sea); border-radius: 14px; padding: 14px; text-align: center; background: var(--wash); margin-top: 8px; }
+.scanbox .frame { width: 96px; height: 96px; margin: 0 auto 8px; border-radius: 10px; background: repeating-linear-gradient(90deg, var(--navy) 0 6px, transparent 6px 10px), repeating-linear-gradient(0deg, transparent 0 8px, #fff 8px 12px); opacity: 0.85; }
+.scanbox p { margin: 0 0 8px; font-size: 0.95rem; }
+.located { display: flex; justify-content: space-between; gap: 10px; align-items: center; background: var(--wash); border-radius: 12px; padding: 10px 12px; margin-top: 8px; }
+.located b { display: block; font-size: 1.05rem; line-height: 1.3; }
+.located span { color: var(--soft); font-size: 0.9rem; }
+.opt { display: flex; align-items: center; gap: 10px; font-weight: 700; min-height: 44px; cursor: pointer; font-size: 0.98rem; }
+.opt input { width: 22px; height: 22px; flex: none; }
+.photo { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.photo .thumb { width: 64px; height: 48px; border-radius: 8px; background: linear-gradient(135deg, var(--foam), var(--sea)); display: grid; place-items: center; color: #fff; font-size: 0.75rem; font-weight: 800; }
+.sendrow .send { width: 100%; min-height: 56px; font-size: 1.08rem; }
+.safety { background: var(--warn); border-radius: 10px; padding: 8px 12px; font-size: 0.92rem; margin: 0 0 14px; }
+.rq { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.rq .top { display: flex; justify-content: space-between; gap: 8px; font-weight: 800; align-items: flex-start; }
+.rq .line { font-size: 0.95rem; color: var(--soft); margin: 2px 0 0; }
+.track { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-top: 8px; }
+.track span { font-size: 0.78rem; color: var(--soft); border-top: 4px solid var(--line); padding-top: 4px; font-weight: 700; line-height: 1.25; }
+.track span.on { border-top-color: var(--sea); color: var(--ink); }
+.track span.wait { border-top-color: #9C8BC9; color: var(--ink); }
+.track span em { display: block; font-style: normal; font-weight: 600; color: var(--soft); }
+.list { display: grid; gap: 10px; }
+/* technician */
+.teambar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; }
+.teambar label { font-weight: 800; display: flex; flex-direction: column; gap: 4px; font-size: 0.95rem; }
+.summary { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 0.95rem; font-weight: 700; background: var(--sand); }
+.pill.hot { background: var(--hot); color: #B23A22; }
+.job { border: 1px solid var(--line); border-left: 6px solid var(--foam); border-radius: 12px; padding: 12px; background: #fff; font-size: 1rem; }
+.job.pr-urgent { border-left-color: var(--coral); } .job.pr-high { border-left-color: var(--mango); }
+.job.over { box-shadow: 0 0 0 2px var(--coral) inset; }
+.job.mine { background: #F7FBFA; }
+.job .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.job .kind { font-weight: 800; font-size: 0.95rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.clock { text-align: right; font-weight: 800; font-size: 1.1rem; line-height: 1.1; white-space: nowrap; }
+.clock small { display: block; font-size: 0.75rem; font-weight: 700; color: var(--soft); }
+.job.over .clock { color: #B23A22; }
+.job .where { font-size: 1.12rem; font-weight: 800; margin: 6px 0 2px; line-height: 1.3; }
+.job .meta { color: var(--soft); font-size: 0.95rem; margin: 0; }
+.job .note { font-size: 0.95rem; margin: 6px 0 0; background: var(--warn); border-radius: 8px; padding: 4px 8px; }
+.job .note.overline { background: var(--hot); color: #8E2C18; }
+.job .note.parts { background: #EDE7F6; }
+.job .notes { margin-top: 10px; }
+.job .notes label { font-weight: 800; font-size: 0.9rem; display: block; margin-bottom: 4px; }
+.job .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.job .acts .go { flex: 1 1 140px; min-height: 52px; font-size: 1.05rem; }
+.job .acts .go.accept { background: var(--sea); border-color: var(--sea); color: #fff; }
+.job .acts .go.onsite { background: var(--navy); color: #fff; }
+.job .acts .go.done { background: var(--mango); border-color: var(--mango); color: var(--navy); }
+.job .acts .alt { flex: 1 1 140px; min-height: 52px; }
+/* manager */
+.filters { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.filters button { min-height: 40px; font-size: 0.88rem; border-color: #CFC5B2; }
+.filters button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+table.grid { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+table.grid th, table.grid td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.grid th { color: var(--soft); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+table.grid td.r, table.grid th.r { text-align: right; }
+table.grid td.hot { color: #B23A22; font-weight: 800; }
+.tablewrap { overflow-x: auto; }
+.bld { margin-bottom: 12px; }
+.bld h4 { margin: 0 0 6px; font-size: 0.95rem; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.bld h4 span { color: var(--soft); font-weight: 700; font-size: 0.82rem; }
+.wrow { display: grid; grid-template-columns: minmax(0, 1fr) 96px 130px; gap: 10px; align-items: center; border: 1px solid var(--line); border-left: 5px solid var(--foam); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; font-size: 0.9rem; }
+.wrow.pr-urgent { border-left-color: var(--coral); } .wrow.pr-high { border-left-color: var(--mango); }
+.wrow.over { background: #FFF8F5; }
+.wrow b { display: block; }
+.wrow .sub { color: var(--soft); font-size: 0.82rem; }
+.wrow .w { font-weight: 800; text-align: right; white-space: nowrap; }
+.wrow.over .w { color: #B23A22; }
+.wrow .w small { display: block; font-size: 0.72rem; color: var(--soft); font-weight: 700; }
+.wrow select { width: 100%; min-height: 40px; font-size: 0.85rem; padding: 4px 8px; }
+@media (max-width: 640px) { .wrow { grid-template-columns: minmax(0, 1fr) auto; } .wrow .prsel { grid-column: 1 / -1; } }
+.pmrow, .ucrow { display: grid; grid-template-columns: 104px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 0.9rem; }
+.pmrow .day { font-weight: 800; }
+.pmrow .day small, .ucrow small { display: block; color: var(--soft); font-weight: 700; font-size: 0.78rem; }
+.pmrow .sub, .ucrow .sub { color: var(--soft); font-size: 0.82rem; display: block; }
+.pmrow.over .day { color: #B23A22; }
+@media (max-width: 560px) { .pmrow { grid-template-columns: 76px minmax(0, 1fr); } .pmrow .end { grid-column: 2; } }
+.ucrow { grid-template-columns: minmax(0, 1fr) auto; }
+.ucrow .form { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; justify-content: flex-end; }
+.ucrow .form select, .ucrow .form input { min-height: 40px; font-size: 0.85rem; padding: 4px 8px; }
+.ucrow .form input { width: 88px; }
+@media (max-width: 560px) { .ucrow { grid-template-columns: minmax(0, 1fr); } .ucrow .form { justify-content: flex-start; } }
+.plant { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 760px) { .plant { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.pl { border: 1px solid var(--line); border-top: 5px solid var(--sea); border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 4px; }
+.pl.down { border-top-color: var(--coral); background: #FFF8F5; }
+.pl.watch { border-top-color: var(--mango); }
+.pl h4 { margin: 0; font-size: 0.92rem; line-height: 1.25; }
+.pl .state { font-weight: 800; font-size: 1.05rem; }
+.pl.down .state { color: #B23A22; }
+.pl p { margin: 0; font-size: 0.8rem; color: var(--soft); flex: 1; }
+.pl button { margin-top: 4px; }
+.outs { list-style: none; margin: 0; padding: 0; }
+.outs li { display: flex; justify-content: space-between; gap: 8px; font-size: 0.9rem; border-bottom: 1px dashed var(--line); padding: 6px 0; flex-wrap: wrap; }
+.panes { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.82rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg ul { margin: 0 0 8px; padding-left: 18px; font-size: 0.88rem; }
+.sugg .why { color: var(--soft); font-size: 0.82rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; font-size: 0.85rem; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Facilities and utilities: faults, planned work and plant checks</h1>
+  <p class="lead">Anyone can report a leak, power cut, broken light, air conditioning, lift or door fault from the room in three taps. Technicians work the queue on a phone. The facilities manager sees open work orders, planned maintenance, utility checks and which plant is up or down. The guide points out patterns; a person decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-anyone" data-role="anyone" aria-pressed="false">Anyone</button>
+    <button type="button" id="r-tech" data-role="tech" aria-pressed="false">Technician</button>
+    <button type="button" id="r-manager" data-role="manager" aria-pressed="false">Facilities manager</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <b>Demo tools:</b>
+    <button type="button" class="small" id="t-clock">Move clock on 1 hour</button>
+    <button type="button" class="small" id="t-fault">A new fault comes in</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <h2 id="view-h">Facilities</h2>
+        <div class="stats" id="kpis"></div>
+        <p class="stathint">Tap a tile for its definition. Targets and intervals are example settings for this demo, not a standard.</p>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads open work orders, planned jobs and the utility log, and points out patterns with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal. The facilities manager decides. Ospeli never switches or controls plant.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its buildings, rooms, plant, jobs and times. It measures jobs, checks and outages, never individual technicians. It is not a building management or control system and never switches plant. Coming next (Dec 2026): QR labels for every room and plant item, the compliance calendar for fire, water safety, lift, pressure system and gas inspections with certificates, and the healthcare waste log by stream. <a href="../../areas/facilities-utilities/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var M = 60000, H = 60 * M, D = 24 * H;
+var STORE = 'ospeli.facilities.v1';
+
+// ---------- Fixed reference data (fictional) ----------
+var BUILDINGS = {
+  main: { name: 'Main block', floors: [
+    ['G', 'Ground', [['M-G-01', 'Emergency department waiting area'], ['M-G-02', 'Emergency department cubicles'], ['M-G-03', 'Main entrance'], ['M-G-04', 'Imaging department'], ['M-G-05', 'Pharmacy store']]],
+    ['1', 'Floor 1', [['M-1-01', 'Ward 1 bay A'], ['M-1-02', 'Ward 1 bay B'], ['M-1-03', 'Ward 2 bay A'], ['M-1-04', 'Ward 2 sluice room'], ['M-1-05', 'Ward 2 staff base'], ['M-1-06', 'Floor 1 lift lobby']]],
+    ['2', 'Floor 2', [['M-2-01', 'Theatres corridor'], ['M-2-02', 'Recovery'], ['M-2-03', 'Ward 3 bay A'], ['M-2-04', 'Ward 3 side room 4']]]
+  ] },
+  east: { name: 'East block', floors: [
+    ['G', 'Ground', [['E-G-01', 'Outpatient clinic rooms'], ['E-G-02', 'Laboratory'], ['E-G-03', 'Staff changing rooms'], ['E-G-04', 'Kitchen']]],
+    ['1', 'Floor 1', [['E-1-01', 'Ward 5 bay A'], ['E-1-02', 'Ward 5 bathroom'], ['E-1-03', 'Ward 6 bay B'], ['E-1-04', 'Ward 6 side room 2'], ['E-1-05', 'Floor 1 corridor']]]
+  ] },
+  serv: { name: 'Services building', floors: [
+    ['G', 'Ground', [['S-G-01', 'Generator room'], ['S-G-02', 'Chiller plant'], ['S-G-03', 'Medical gas plant room'], ['S-G-04', 'Water tanks and pumps']]]
+  ] }
+};
+var ROOMS = {};
+Object.keys(BUILDINGS).forEach(function (b) { BUILDINGS[b].floors.forEach(function (f) { f[2].forEach(function (r) { ROOMS[r[0]] = { id: r[0], name: r[1], b: b, floor: f[1] }; }); }); });
+var FAULTS = {
+  leak:   { label: 'Leak',             ic: '\u{1F4A7}', hint: 'water, drip, flooding',  trade: 'plumb', pri: 'high' },
+  power:  { label: 'No power',         ic: '⚡',    hint: 'sockets or supply off',  trade: 'elec',  pri: 'urgent' },
+  lights: { label: 'Lights',           ic: '\u{1F4A1}', hint: 'out or flickering',      trade: 'elec',  pri: 'routine' },
+  ac:     { label: 'Air conditioning', ic: '❄️', hint: 'too hot, cold, noisy', trade: 'hvac',  pri: 'high' },
+  lift:   { label: 'Lift',             ic: '↕️', hint: 'stuck or not coming', trade: 'lift',  pri: 'urgent' },
+  door:   { label: 'Door or lock',     ic: '\u{1F6AA}', hint: 'will not close or lock', trade: 'lift',  pri: 'routine' }
+};
+var TRADES = { plumb: 'Plumbing', elec: 'Electrical', hvac: 'Air conditioning', lift: 'Lifts and doors' };
+var PRI = { urgent: 'Urgent', high: 'High', routine: 'Routine' };
+var PRI_ORDER = { urgent: 0, high: 1, routine: 2 };
+// Example settings for this demo only, not a standard: each organisation sets its own.
+var CLOSE_TARGET_H = { urgent: 4, high: 24, routine: 120 };
+var QUIET = { from: 19, label: '19:00 to 22:00' };
+var WATER_SET = 50, FUEL_SET = 40, GEN_EVERY_D = 7;
+var CHECKS = {
+  gen1:  { label: 'Generator 1 on-load test', every: GEN_EVERY_D * D, reading: false, plant: 'gen1' },
+  gen2:  { label: 'Generator 2 on-load test', every: GEN_EVERY_D * D, reading: false, plant: 'gen2' },
+  fuel:  { label: 'Generator fuel level', every: D, reading: true, unit: '%' },
+  water: { label: 'Stored water level', every: D, reading: true, unit: '%' },
+  gas:   { label: 'Medical gas plant check', every: D, reading: false, sub: 'oxygen, medical air and vacuum plant, alarms panel' }
+};
+var STATUS_WORD = { new: 'New', accepted: 'Accepted', onsite: 'On site', parts: 'Waiting for parts', done: 'Done', merged: 'Grouped' };
+
+// ---------- State ----------
+function dayStart(t) { var d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); }
+function seed() {
+  var T = Date.now(), T0 = dayStart(T);
+  var s = { v: 1, created: T, offset: 0, role: window.matchMedia('(max-width: 640px)').matches ? 'anyone' : 'manager',
+    trade: 'plumb', guide: true, filter: 'all', kpiOpen: null, pending: [], dismissed: {}, log: [], seq: 200,
+    rep: { how: 'list', b: 'main', floor: '1', room: null, fault: null, photo: false, unsafe: false, closed: false, note: '' },
+    jobs: [], pm: [], checks: [], genSched: [], plant: {}, outages: [], waterOrder: null, bookings: {} };
+  // Closed in the last 14 days: [fault, room, days ago reported, hours to close, priority]
+  [['leak', 'M-1-04', 9, 7, 'high'], ['lights', 'M-1-02', 13, 46, 'routine'], ['power', 'E-G-04', 12, 2.5, 'urgent'], ['ac', 'M-2-02', 11, 11, 'high'],
+   ['door', 'M-G-05', 10, 70, 'routine'], ['lift', 'M-1-06', 8, 3, 'urgent'], ['lights', 'E-1-03', 8, 30, 'routine'], ['leak', 'E-G-03', 7, 20, 'high'],
+   ['power', 'M-2-01', 6, 1.5, 'urgent'], ['ac', 'E-G-01', 6, 15, 'high'], ['door', 'E-1-01', 5, 52, 'routine'], ['lights', 'M-G-04', 4, 100, 'routine'],
+   ['leak', 'M-2-03', 3, 9, 'high'], ['power', 'M-1-03', 3, 4.5, 'urgent'], ['ac', 'M-G-02', 2, 30, 'high'], ['lights', 'S-G-02', 2, 26, 'routine'], ['door', 'M-1-05', 1, 6, 'high']
+  ].forEach(function (r) {
+    var j = mk(s, r[0], r[1], T - r[2] * D - 3 * H, '', r[4]);
+    j.acc = j.req + 0.3 * H; j.onsite = j.req + Math.min(r[3] * 0.4, 6) * H; j.done = j.req + r[3] * H;
+    j.notes = 'Fixed and tested.';
+  });
+  // Open now: [fault, room, hours ago reported, status, detail, priority, room out of use, notes]
+  [['leak', 'M-1-04', 5, 'new', 'Water under the sink unit', null, false, ''],
+   ['leak', 'M-1-04', 0.8, 'new', 'Drip from a ceiling tile near the door', null, false, ''],
+   ['lift', 'M-1-06', 28, 'parts', 'Lift B stops between floors; door sensor faulty', 'high', false, 'Door sensor ordered. Lift B locked off; Lift A in use.'],
+   ['power', 'M-2-02', 0.7, 'accepted', 'Two wall sockets dead, bay 3', null, false, ''],
+   ['lights', 'M-G-03', 70, 'new', 'Two ceiling lights out by the doors', null, false, ''],
+   ['lights', 'E-1-05', 140, 'new', 'Corridor light flickering', null, false, ''],
+   ['ac', 'M-G-01', 9, 'onsite', 'Too hot in the waiting area', null, false, 'Filter blocked; cleaning now.'],
+   ['ac', 'E-G-02', 30, 'parts', 'Unit noisy, then stopped', null, false, 'Fan motor failed. Part ordered through the purchasing process.'],
+   ['door', 'E-1-04', 46, 'new', 'Door closer broken; door slams', null, false, ''],
+   ['door', 'M-G-05', 2, 'new', 'Store door lock not engaging', 'high', false, ''],
+   ['leak', 'E-1-02', 3, 'accepted', 'Shower drain overflowing', null, true, ''],
+   ['power', 'E-G-04', 6, 'new', 'Socket by the dishwasher sparks when used', 'high', true, ''],
+   ['lights', 'M-1-01', 20, 'accepted', 'Bed-head light not working, bed 4', null, false, '']
+  ].forEach(function (r) {
+    var j = mk(s, r[0], r[1], T - r[2] * H, r[4], r[5]);
+    if (r[3] !== 'new') j.acc = j.req + Math.min(0.5, r[2] / 3) * H;
+    if (r[3] === 'onsite' || r[3] === 'parts') j.onsite = j.req + Math.min(2, r[2] / 2) * H;
+    if (r[3] === 'parts') j.parts = j.onsite + 1.5 * H;
+    j.closedRoom = r[6]; j.notes = r[7];
+    if (r[6]) j.closedAt = j.req + 10 * M;
+  });
+  // Planned maintenance this week: [id, task, place, day offset, clinical area, done (hour on due day) or null, slot (day, hour) or null]
+  s.pm = [['pm1', 'Emergency lighting monthly test', 'Outpatient clinic rooms', -1, true, 10, null], ['pm2', 'Chiller 2 quarterly service', 'Chiller plant', -2, false, 14, null],
+    ['pm3', 'Roof gutter and drain check', 'Main block roof', -1, false, null, null], ['pm4', 'Fire door inspection', 'Main block floor 1', 0, true, null, null],
+    ['pm5', 'Air handling unit filter change', 'Theatres corridor', 1, true, null, null], ['pm6', 'Lift A monthly service', 'Floor 1 lift lobby', 2, true, null, null],
+    ['pm7', 'Water outlet flushing (little-used taps)', 'Ward 6', 3, true, null, null], ['pm8', 'Medical gas alarm panel test', 'Ward 3', 4, true, null, [4, 19]]
+  ].map(function (r) {
+    return { id: r[0], task: r[1], place: r[2], due: T0 + r[3] * D + D - M, clinical: r[4], done: r[5] != null ? T0 + r[3] * D + r[5] * H : null, slot: r[6] ? T0 + r[6][0] * D + r[6][1] * H : null };
+  });
+  // Generator tests: weekly, last 8 weeks. Generator 1's latest test is 2 days overdue; Generator 2 is up to date.
+  for (var k = 0; k < 8; k++) {
+    var d1 = T - 2 * D - k * 7 * D, d2 = T - 3 * D - k * 7 * D;
+    s.genSched.push({ gen: 'gen1', due: d1, done: k === 0 ? null : d1 + 2 * H });
+    s.genSched.push({ gen: 'gen2', due: d2, done: d2 + 1 * H });
+  }
+  s.genSched.push({ gen: 'gen1', due: T + 5 * D, done: null }, { gen: 'gen2', due: T + 4 * D, done: null });
+  // Utility check log
+  s.checks = [
+    { t: T - 9 * D, check: 'gen1', result: 'pass', reading: null, note: '' }, { t: T - 3 * D + H, check: 'gen2', result: 'pass', reading: null, note: '' },
+    { t: T - 26 * H, check: 'water', result: 'pass', reading: 61, note: '' }, { t: T - 2 * H, check: 'water', result: 'pass', reading: 46, note: '' },
+    { t: T - 5 * H, check: 'fuel', result: 'pass', reading: 72, note: '' }, { t: T - 3 * H, check: 'gas', result: 'pass', reading: null, note: 'All alarms clear' }
+  ];
+  // Plant board (status reported by staff; Ospeli records it and never switches plant)
+  s.plant = {
+    gen1: { name: 'Generator 1', up: true, since: T - 30 * D }, gen2: { name: 'Generator 2', up: true, since: T - 30 * D },
+    ch1: { name: 'Chiller 1', up: true, since: T - 30 * D }, ch2: { name: 'Chiller 2', up: true, since: T - 2 * D, note: 'Serviced 2 days ago' },
+    liftA: { name: 'Lift A · Main block', up: true, since: T - 30 * D }, liftB: { name: 'Lift B · Main block', up: false, since: T - 28 * H, note: 'Locked off; waiting for a part' },
+    liftC: { name: 'Lift C · East block', up: true, since: T - 30 * D }, pumps: { name: 'Water pumps', up: true, since: T - 30 * D }
+  };
+  s.outages = [{ util: 'Power (mains)', start: T - 6 * D - 4 * H, end: T - 6 * D - 4 * H + 35 * M, note: 'Generators carried the load' },
+               { util: 'Water', start: T - 12 * D - 9 * H, end: T - 12 * D - 9 * H + 130 * M, note: 'Pump changeover' },
+               { util: 'Lift B', start: T - 28 * H, end: null, note: 'Door sensor' }];
+  // Log from events so far
+  var ev = [];
+  s.jobs.forEach(function (j) { ['req', 'acc', 'onsite', 'parts', 'done'].forEach(function (k) { if (j[k] && T - j[k] < 3 * D) ev.push({ t: j[k], text: eventText(s, j, k) }); }); });
+  s.checks.forEach(function (c) { if (T - c.t < 3 * D) ev.push({ t: c.t, text: checkText(c) }); });
+  s.pm.forEach(function (p) { if (p.done) ev.push({ t: p.done, text: 'Planned job done: ' + p.task + ', ' + p.place + '.' }); });
+  ev.sort(function (a, b) { return b.t - a.t; });
+  s.log = ev.slice(0, 40);
+  return s;
+}
+function mk(s, fault, room, req, detail, pri) {
+  var j = { id: 'WO-' + (++s.seq), fault: fault, room: room, detail: detail || '', pri: pri || FAULTS[fault].pri, trade: FAULTS[fault].trade, req: req, acc: null, onsite: null, parts: null, done: null, notes: '', mine: false, mineRep: false, photo: false, closedRoom: false, closedAt: null, merged: null, group: [] };
+  s.jobs.push(j); return j;
+}
+
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE));
+    // The example goes stale: start fresh after 8 hours.
+    if (!s || s.v !== 1 || !s.jobs || Date.now() - s.created > 8 * H) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function now() { return Date.now() + (state.offset || 0); }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+// ---------- Derived data (pure) ----------
+function status(j) { return j.merged ? 'merged' : j.done ? 'done' : j.parts ? 'parts' : j.onsite ? 'onsite' : j.acc ? 'accepted' : 'new'; }
+function openJobs() { return state.jobs.filter(function (j) { return !j.done && !j.merged; }); }
+function ageH(j) { return ((j.done || now()) - j.req) / H; }
+function isOver(j) { return !j.done && !j.merged && ageH(j) > CLOSE_TARGET_H[j.pri]; }
+function place(j) { return ROOMS[j.room].name; }
+function bname(j) { return BUILDINGS[ROOMS[j.room].b].name; }
+function byId(id) { return state.jobs.filter(function (j) { return j.id === id; })[0]; }
+function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function queue(trade) {
+  return openJobs().filter(function (j) { return j.trade === trade && !j.acc; }).sort(function (a, b) {
+    return (PRI_ORDER[a.pri] - PRI_ORDER[b.pri]) || (isOver(b) - isOver(a)) || (a.req - b.req);
+  });
+}
+function lastCheck(id) { return state.checks.filter(function (c) { return c.check === id; }).sort(function (a, b) { return b.t - a.t; })[0] || null; }
+function genOverdue(gen) { return state.genSched.filter(function (g) { return g.gen === gen && !g.done && g.due < now(); }).sort(function (a, b) { return a.due - b.due; })[0] || null; }
+function checkDue(id) {
+  var c = CHECKS[id];
+  if (c.plant) { var o = genOverdue(id); if (o) return { due: o.due, over: true }; var nx = state.genSched.filter(function (g) { return g.gen === id && !g.done; }).sort(function (a, b) { return a.due - b.due; })[0]; return { due: nx ? nx.due : null, over: false }; }
+  var l = lastCheck(id), due = l ? l.t + c.every : now();
+  return { due: due, over: due < now() };
+}
+function kpis() {
+  var since = now() - 14 * D, closed = state.jobs.filter(function (j) { return j.done && j.done >= since; });
+  var med = function (p) { var v = median(closed.filter(function (j) { return !p || j.pri === p; }).map(function (j) { return (j.done - j.req) / H; })); return v == null ? null : Math.round(v * 10) / 10; };
+  var endToday = dayStart(now()) + D;
+  var pmDue = state.pm.filter(function (p) { return p.due < endToday; }), pmOk = pmDue.filter(function (p) { return p.done && p.done <= p.due; });
+  var gs = state.genSched.filter(function (g) { return g.due <= now() && g.due > now() - 56 * D; }), gd = gs.filter(function (g) { return g.done; });
+  var open = openJobs();
+  var outH = state.outages.filter(function (o) { return o.util.indexOf('Lift') < 0 && o.start > now() - 30 * D; }).reduce(function (s, o) { return s + ((o.end || now()) - o.start) / H; }, 0);
+  return {
+    open: open.length, overdue: open.filter(isOver).length, waitingParts: open.filter(function (j) { return j.parts; }).length,
+    completionMedianH: med(null), completionByPriorityH: { urgent: med('urgent'), high: med('high'), routine: med('routine') }, closed14d: closed.length,
+    pmDue: pmDue.length, pmOnTime: pmOk.length, pmCompliancePct: pmDue.length ? Math.round(100 * pmOk.length / pmDue.length) : null,
+    genScheduled: gs.length, genDone: gd.length, genCompliancePct: gs.length ? Math.round(100 * gd.length / gs.length) : null,
+    roomsOutOfUse: roomsOut().length, utilityOutageHours30d: Math.round(outH * 10) / 10,
+    plantDown: Object.keys(state.plant).filter(function (k) { return !state.plant[k].up; }).length
+  };
+}
+function roomsOut() { var m = {}; openJobs().forEach(function (j) { if (j.closedRoom) m[j.room] = m[j.room] || j; }); return Object.keys(m).map(function (r) { return m[r]; }); }
+
+// Quiet-hour slots: evenings from QUIET.from, two jobs per evening at most.
+function quietSlots(n, taken) {
+  var out = [], t0 = dayStart(now()), used = {};
+  (taken || []).forEach(function (t) { used[t] = true; });
+  for (var d = 0; out.length < n && d < 14; d++) {
+    [QUIET.from, QUIET.from + 1.5].forEach(function (h) { var t = t0 + d * D + h * H; if (t > now() + 30 * M && !used[t] && out.length < n) { out.push(t); used[t] = true; } });
+  }
+  return out;
+}
+
+// ---------- The guide: plain, checkable rules ----------
+function suggest() {
+  var out = [];
+  // 1. Generator test overdue (interval is the site's setting).
+  ['gen1', 'gen2'].forEach(function (g) {
+    var o = genOverdue(g); if (!o) return;
+    var last = lastCheck(g), booked = state.bookings[g], id = 'gen-' + g + '-' + o.due;
+    out.push({ id: id, kind: 'time',
+      title: state.plant[g].name + ' test is overdue by ' + fmtH((now() - o.due) / H),
+      text: 'Last on-load test logged ' + (last ? dayName(last.t) + ' ' + hhmm(last.t) : 'never') + '. ' + (booked ? 'Booked for ' + dayName(booked) + ' ' + hhmm(booked) + '; log it when done.' : 'No test booked yet.'),
+      why: 'A weekly test is the example interval set for this site (your setting, not a standard). Backup power is only proven by a logged test.',
+      acts: booked ? [{ label: 'Go to utility checks', fn: function () { goManager('uc-h'); } }] : [
+        { label: 'Propose: book it for ' + slotWord(quietSlots(1)[0]), primary: true, fn: function () { var t = quietSlots(1)[0]; propose({ id: id, kind: 'book', gen: g, at: t, text: 'Book the ' + state.plant[g].name + ' on-load test for ' + dayName(t) + ' ' + hhmm(t) + ' (quiet hours).' }); } },
+        { label: 'Go to utility checks', fn: function () { goManager('uc-h'); } }] });
+  });
+  // 2. Repeated faults in the same room, same trade: one visit instead of several.
+  var groups = {};
+  openJobs().forEach(function (j) { var k = j.room + '|' + j.trade; (groups[k] = groups[k] || []).push(j); });
+  Object.keys(groups).forEach(function (k) {
+    var g = groups[k].sort(function (a, b) { return a.req - b.req; }); if (g.length < 2) return;
+    var room = g[0].room, n30 = state.jobs.filter(function (j) { return j.room === room && !j.merged && j.req > now() - 30 * D; }).length;
+    var id = 'group-' + g.map(function (j) { return j.id; }).join('-');
+    var acts = [{ label: 'Propose: one job', primary: true, fn: function () { propose({ id: id, kind: 'merge', ids: g.map(function (j) { return j.id; }), text: 'Group ' + g.length + ' ' + TRADES[g[0].trade].toLowerCase() + ' faults in ' + ROOMS[room].name + ' into ' + g[0].id + '. Each report keeps its own time.' }); } }];
+    var hasSurvey = state.pm.some(function (p) { return p.survey === room; });
+    if (n30 >= 3 && !hasSurvey) acts.push({ label: 'Propose: planned survey', fn: function () { propose({ id: id + '-survey', kind: 'survey', room: room, text: 'Add a planned survey of ' + ROOMS[room].name + ' this week, instead of more one-off fixes.' }); } });
+    out.push({ id: id, kind: 'ask',
+      title: g.length + ' ' + TRADES[g[0].trade].toLowerCase() + ' faults open in ' + ROOMS[room].name,
+      list: g.map(function (j) { return j.id + ': ' + (j.detail || FAULTS[j.fault].label) + ' (' + fmtH(ageH(j)) + ')'; }),
+      text: n30 >= 3 ? 'This room has logged ' + n30 + ' faults in the last 30 days.' : '',
+      why: 'Same room and same trade, both still open. One visit can cover them. Repeat faults in a room can point to a cause worth a survey.',
+      acts: acts });
+  });
+  // 3. Planned jobs in clinical areas with no slot yet: suggest quiet hours.
+  var un = state.pm.filter(function (p) { return !p.done && !p.slot && p.clinical && p.due >= dayStart(now()); }).sort(function (a, b) { return a.due - b.due; });
+  if (un.length) {
+    var taken = state.pm.filter(function (p) { return p.slot; }).map(function (p) { return p.slot; });
+    var slots = quietSlots(un.length, taken), id3 = 'slots-' + un.map(function (p) { return p.id; }).join('');
+    out.push({ id: id3, kind: 'move',
+      title: 'Schedule ' + un.length + ' planned job' + (un.length > 1 ? 's' : '') + ' into quiet hours',
+      list: un.map(function (p, i) { return p.task + ', ' + p.place + ' → ' + dayName(slots[i]) + ' ' + hhmm(slots[i]) + (slots[i] > p.due ? ' (after due date)' : ''); }),
+      why: 'These are in clinical areas and have no time booked. Quiet hours here are ' + QUIET.label + ' (your setting), when fewer patients and staff are in the way.',
+      acts: [{ label: 'Propose these times', primary: true, fn: function () { propose({ id: id3, kind: 'slots', map: un.map(function (p, i) { return [p.id, slots[i]]; }), text: 'Book ' + un.map(function (p, i) { return p.task.toLowerCase() + ' for ' + dayName(slots[i]) + ' ' + hhmm(slots[i]); }).join('; ') + '.' }); } }] });
+  }
+  // 4. Stored water below the site's set level.
+  var w = lastCheck('water');
+  if (w && w.reading != null && w.reading < WATER_SET && !(state.waterOrder && state.waterOrder > w.t)) {
+    out.push({ id: 'water-' + w.t, kind: 'time',
+      title: 'Stored water is below the set level',
+      text: 'Last reading ' + w.reading + '% at ' + hhmm(w.t) + '; the set level is ' + WATER_SET + '%. No delivery is booked.',
+      why: 'From the latest stored water check in the utility log, compared with the level this site set (your setting).',
+      acts: [{ label: 'Propose: request a delivery', primary: true, fn: function () { propose({ id: 'water-' + w.t, kind: 'water', text: 'Request a water delivery through the purchasing process; reading ' + w.reading + '% against a set level of ' + WATER_SET + '%.' }); } }] });
+  }
+  return out.filter(function (x) { return !state.dismissed[x.id]; });
+}
+function propose(p) {
+  if (state.pending.some(function (x) { return x.id === p.id; })) return;
+  p.t = now(); state.pending.push(p);
+  addLog('Guide proposed: ' + p.text + ' Waiting for the facilities manager.');
+  render(); toast('Proposed. The facilities manager decides.');
+}
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x.id !== p.id; });
+  if (!yes) { state.dismissed[p.id] = true; addLog('Facilities manager declined: ' + p.text); render(); toast('Declined. Nothing changed.'); return; }
+  if (p.kind === 'merge') {
+    var live = p.ids.map(byId).filter(function (j) { return j && !j.done && !j.merged; });
+    if (live.length < 2) { render(); toast('Those jobs have changed; nothing to group.'); return; }
+    var main = live[0];
+    live.slice(1).forEach(function (j) { j.merged = main.id; main.group.push({ id: j.id, req: j.req, detail: j.detail }); if (j.closedRoom) main.closedRoom = true; if (PRI_ORDER[j.pri] < PRI_ORDER[main.pri]) main.pri = j.pri; });
+  } else if (p.kind === 'survey') {
+    state.pm.push({ id: 'pm' + (++state.seq), task: 'Planned survey: repeat faults', place: ROOMS[p.room].name, due: dayStart(now()) + 5 * D - M, clinical: true, done: null, slot: null, survey: p.room });
+  } else if (p.kind === 'book') {
+    state.bookings[p.gen] = p.at;
+  } else if (p.kind === 'slots') {
+    p.map.forEach(function (m) { var x = state.pm.filter(function (q) { return q.id === m[0]; })[0]; if (x && !x.done) x.slot = m[1]; });
+  } else if (p.kind === 'water') {
+    state.waterOrder = now();
+  }
+  addLog('Facilities manager confirmed: ' + p.text);
+  render(); toast('Confirmed. The plan has updated.');
+}
+function goManager(anchor) { state.role = 'manager'; render(); var e = document.getElementById(anchor); if (e) e.scrollIntoView({ block: 'start' }); }
+
+// ---------- Helpers ----------
+function fmtH(h) { var m = Math.round((+h || 0) * 60); if (m < 60) return m + ' min'; if (m < 48 * 60) { var hh = Math.floor(m / 60), r = m % 60; return hh + ' h' + (r ? ' ' + (r < 10 ? '0' : '') + r : ''); } var d = Math.floor(m / 1440), rh = Math.round((m % 1440) / 60); return d + ' d' + (rh ? ' ' + rh + ' h' : ''); }
+function hhmm(t) { var d = new Date(t); return (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes(); }
+var DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function dayName(t) { var diff = Math.round((dayStart(t) - dayStart(now())) / D); return diff === 0 ? 'Today' : diff === 1 ? 'Tomorrow' : diff === -1 ? 'Yesterday' : DAYS[new Date(t).getDay()] + ' ' + new Date(t).getDate() + ' ' + MONTHS[new Date(t).getMonth()]; }
+function slotWord(t) { return t ? dayName(t).replace('Today', 'today').replace('Tomorrow', 'tomorrow') + ' ' + hhmm(t) : 'quiet hours'; }
+function stamp(t) { var dn = dayName(t); return (dn === 'Today' ? '' : dn + ' ') + hhmm(t); }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+function eventText(s, j, k) {
+  var L = FAULTS[j.fault].label, where = ROOMS[j.room].name, tr = TRADES[j.trade];
+  if (k === 'req') return L + ' reported: ' + where + (j.detail ? ' (' + j.detail.toLowerCase() + ')' : '') + ' · ' + j.id + ', ' + PRI[j.pri].toLowerCase();
+  if (k === 'acc') return tr + ' accepted ' + j.id + ': ' + L + ', ' + where;
+  if (k === 'onsite') return tr + ' on site for ' + j.id + ': ' + where;
+  if (k === 'parts') return j.id + ' waiting for parts: ' + L + ', ' + where;
+  return tr + ' closed ' + j.id + ': ' + L + ', ' + where + '.';
+}
+function checkText(c) { var C = CHECKS[c.check]; return 'Utility check logged: ' + C.label + ' · ' + (c.result === 'pass' ? 'OK' : 'problem found') + (c.reading != null ? ' · ' + c.reading + (C.unit || '') : '') + (c.note ? ' · ' + c.note : ''); }
+var lastLogT = 0;
+function addLog(text) { lastLogT = now(); state.log.unshift({ t: lastLogT, text: text }); state.log = state.log.slice(0, 40); }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+
+// ---------- Actions ----------
+function advance(j, to) {
+  var st = status(j);
+  if (to === 'parts') { j.parts = now(); addLog(eventText(state, j, 'parts') + (j.notes ? ' Note: ' + j.notes : '')); render(); toast('Marked waiting for parts. The reporter can see it.'); return; }
+  if (st === 'new') { j.acc = now(); j.mine = true; addLog(eventText(state, j, 'acc')); render(); toast('Accepted. The reporter can see someone is coming.'); return; }
+  if (st === 'accepted' || st === 'parts') { if (st === 'parts') j.parts = null; j.onsite = now(); addLog(eventText(state, j, 'onsite')); render(); toast('On site.'); return; }
+  if (st === 'onsite') {
+    j.done = now();
+    addLog(eventText(state, j, 'done') + (j.notes ? ' Note: ' + j.notes : ''));
+    if (j.closedRoom && !openJobs().some(function (x) { return x.room === j.room && x.closedRoom; })) addLog(ROOMS[j.room].name + ' can go back into use (the area in charge decides).');
+    if (j.fault === 'lift' && !state.plant.liftB.up && /Lift B/.test(j.detail)) { setPlant('liftB', true, true); }
+    render(); toast('Closed in ' + fmtH(ageH(j)) + ' from report.');
+  }
+}
+function handBack(j) { j.acc = null; j.mine = false; addLog(TRADES[j.trade] + ' handed back ' + j.id + ' to the queue.'); render(); toast('Handed back to the queue.'); }
+function setPlant(id, up, quiet) {
+  var p = state.plant[id]; if (p.up === up) return;
+  p.up = up; p.since = now(); p.note = up ? 'Back in service ' + hhmm(now()) : 'Reported down ' + hhmm(now());
+  if (!up) state.outages.unshift({ util: p.name, start: now(), end: null, note: 'Reported by staff' });
+  else state.outages.forEach(function (o) { if (o.util === p.name && !o.end) o.end = now(); });
+  addLog('Plant status: ' + p.name + (up ? ' back in service.' : ' reported down. Outage clock started.'));
+  if (!quiet) { render(); toast(p.name + (up ? ' recorded as back up.' : ' recorded as down.') + ' Ospeli records; it does not switch plant.'); }
+}
+function logCheck(id, result, reading, note) {
+  var c = { t: now(), check: id, result: result, reading: reading, note: note || '' };
+  state.checks.push(c);
+  if (CHECKS[id].plant) {
+    var g = genOverdue(id) || state.genSched.filter(function (x) { return x.gen === id && !x.done && x.due < now() + 2 * D; })[0];
+    if (g) g.done = now();
+    if (!state.genSched.some(function (x) { return x.gen === id && !x.done; })) state.genSched.push({ gen: id, due: now() + GEN_EVERY_D * D, done: null });
+    delete state.bookings[id];
+  }
+  addLog(checkText(c));
+  render(); toast('Logged at ' + hhmm(c.t) + '.');
+}
+function sendReport() {
+  var r = state.rep; if (!r.room || !r.fault) return;
+  var pri = r.unsafe ? 'urgent' : FAULTS[r.fault].pri;
+  var j = mk(state, r.fault, r.room, now(), r.note.trim(), pri);
+  j.mineRep = true; j.photo = r.photo; j.closedRoom = r.closed; if (r.closed) j.closedAt = now();
+  addLog(eventText(state, j, 'req') + (r.photo ? ' · photo attached' : '') + (r.closed ? ' · room marked out of use' : ''));
+  state.rep = { how: r.how, b: r.b, floor: r.floor, room: null, fault: null, photo: false, unsafe: false, closed: false, note: '' };
+  render();
+  toast('Sent as ' + j.id + ' to ' + TRADES[j.trade] + '. You can follow it below.');
+  var first = document.querySelector('#my-reports .rq'); if (first) first.scrollIntoView({ block: 'nearest' });
+}
+var SCAN_ORDER = ['M-1-04', 'E-1-02', 'M-G-01', 'E-G-02', 'M-2-03'];
+function scan() {
+  var i = (state.scanN = ((state.scanN || 0) + 1)) - 1, id = SCAN_ORDER[i % SCAN_ORDER.length], R = ROOMS[id];
+  state.rep.room = id; state.rep.b = R.b; state.rep.floor = BUILDINGS[R.b].floors.filter(function (f) { return f[1] === R.floor; })[0][0];
+  render(); toast('Label read: ' + id + ', ' + R.name + '.');
+}
+
+// ---------- Render ----------
+var HINTS = {
+  anyone: 'Anyone\'s phone: a ward clerk, nurse, porter or visitor desk. Scan the room label or pick the room, choose what is wrong, send. Three taps.',
+  tech: 'A technician\'s phone. Pick your trade, take the next job, then tap On site and Done, or Waiting for parts. Add a note for the next person.',
+  manager: 'The facilities manager\'s view: open work orders by building and priority, planned maintenance this week, utility checks and plant status.'
+};
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  ['anyone', 'tech', 'manager'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('view-h').textContent = { anyone: 'Report a building fault', tech: 'My jobs', manager: 'Facilities overview' }[state.role];
+  renderKpis();
+  var v = document.getElementById('view'); v.textContent = '';
+  v.appendChild(state.role === 'anyone' ? reporter() : state.role === 'tech' ? techView() : managerView());
+  renderGuide();
+  renderLog();
+  save();
+  if (aid) { var e = document.getElementById(aid); if (e) e.focus({ preventScroll: true }); }
+  sig = signature();
+}
+function renderKpis() {
+  var k = kpis(), box = document.getElementById('kpis'); box.textContent = '';
+  var by = k.completionByPriorityH, w = function (x) { return x == null ? '–' : fmtH(x); };
+  var tiles = [
+    ['open', String(k.open), 'Open work orders', k.overdue + ' overdue · ' + k.waitingParts + ' waiting for parts', 'Reactive building and plant jobs not yet closed. Overdue: open longer than the close target for its priority (example settings: urgent ' + CLOSE_TARGET_H.urgent + ' h, high ' + CLOSE_TARGET_H.high + ' h, routine ' + CLOSE_TARGET_H.routine / 24 + ' days). Local definition.', k.overdue > 0],
+    ['close', w(k.completionMedianH), 'Report to closed', 'Urgent ' + w(by.urgent) + ' · High ' + w(by.high) + ' · Routine ' + w(by.routine), 'Reactive work-order completion time by priority: fault reported → work order closed, median per priority, jobs closed in the last 14 days (' + k.closed14d + '). Local definition.', false],
+    ['pm', k.pmCompliancePct == null ? '–' : k.pmCompliancePct + '%', 'Planned maintenance on time', k.pmOnTime + ' of ' + k.pmDue + ' due by today', 'Planned maintenance compliance: planned facilities jobs done by their due date / jobs due (this week, up to today). Local definition.', k.pmCompliancePct != null && k.pmCompliancePct < 100],
+    ['gen', k.genCompliancePct == null ? '–' : k.genCompliancePct + '%', 'Generator tests done', k.genDone + ' of ' + k.genScheduled + ' scheduled · 8 weeks', 'Generator test compliance: scheduled generator tests completed / tests scheduled, last 8 weeks. The weekly interval is an example setting. Local definition.', k.genCompliancePct != null && k.genCompliancePct < 100]
+  ];
+  tiles.forEach(function (t) {
+    var open = state.kpiOpen === t[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat' + (t[5] ? ' alert' : ''), 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def', text: t[4] })]));
+  });
+}
+function priChip(p) { return el('span', { class: 'chip p-' + p, text: PRI[p] }); }
+function stChip(j) { var st = status(j); return st === 'new' ? null : el('span', { class: 'chip st-' + st, text: STATUS_WORD[st] }); }
+
+// Anyone: report a fault
+function reporter() {
+  var frag = document.createDocumentFragment(), r = state.rep;
+  frag.appendChild(el('p', { class: 'safety', text: 'If anyone is in danger (fire, flooding near electrics, a smell of gas, someone stuck in a lift), follow your local emergency procedure first, then report here.' }));
+  var steps = el('div', { class: 'steps' });
+  // 1. Where
+  var s1 = el('div', {}, [el('p', { class: 'stepq' + (r.room ? ' done' : '') }, [el('i', { text: '1' }), 'Where is it?'])]);
+  if (r.room) {
+    var R = ROOMS[r.room];
+    s1.appendChild(el('div', { class: 'located', id: 'located' }, [el('div', {}, [el('b', { text: R.name }), el('span', { text: BUILDINGS[R.b].name + ' · ' + R.floor + ' · label ' + R.id })]),
+      el('button', { type: 'button', class: 'small', id: 'loc-change', onclick: function () { r.room = null; render(); }, text: 'Change' })]));
+  } else {
+    var how = el('div', { class: 'how2', role: 'group', 'aria-label': 'How to find the room' }, [
+      el('button', { type: 'button', class: 'choice', id: 'how-scan', 'aria-pressed': String(r.how === 'scan'), onclick: function () { r.how = 'scan'; render(); } }, ['Scan room label', el('small', { text: 'QR on the door' })]),
+      el('button', { type: 'button', class: 'choice', id: 'how-list', 'aria-pressed': String(r.how === 'list'), onclick: function () { r.how = 'list'; render(); } }, ['Pick from list', el('small', { text: 'building, floor, room' })])
+    ]);
+    s1.appendChild(how);
+    if (r.how === 'scan') {
+      s1.appendChild(el('div', { class: 'scanbox' }, [el('div', { class: 'frame', 'aria-hidden': 'true' }), el('p', { text: 'Point the camera at the label by the door. In this preview the camera is simulated.' }),
+        el('button', { type: 'button', class: 'primary', id: 'loc-scan', onclick: scan, text: 'Simulate a scan' })]));
+    } else {
+      var bs = el('select', { id: 'rep-b', onchange: function (e) { r.b = e.target.value; r.floor = BUILDINGS[r.b].floors[0][0]; render(); } });
+      Object.keys(BUILDINGS).forEach(function (b) { bs.appendChild(el('option', { value: b, text: BUILDINGS[b].name })); });
+      bs.value = r.b;
+      s1.appendChild(el('div', { class: 'pickrow', style: 'margin-top:10px' }, [el('label', { for: 'rep-b' }, ['Building', bs])]));
+      var fl = BUILDINGS[r.b].floors, cur = fl.filter(function (f) { return f[0] === r.floor; })[0] || fl[0];
+      var fb = el('div', { class: 'floors', role: 'group', 'aria-label': 'Floor' });
+      fl.forEach(function (f) { fb.appendChild(el('button', { type: 'button', id: 'fl-' + f[0], 'aria-pressed': String(f === cur), onclick: function () { r.floor = f[0]; render(); }, text: f[1] })); });
+      s1.appendChild(fb);
+      var rc = el('div', { class: 'choices', role: 'group', 'aria-label': 'Room' });
+      cur[2].forEach(function (x) { rc.appendChild(el('button', { type: 'button', class: 'choice', id: 'rm-' + x[0], onclick: function () { r.room = x[0]; render(); } }, [x[1], el('small', { text: x[0] })])); });
+      s1.appendChild(rc);
+    }
+  }
+  steps.appendChild(s1);
+  // 2. What
+  var s2 = el('div', {}, [el('p', { class: 'stepq' + (r.fault ? ' done' : '') }, [el('i', { text: '2' }), 'What is wrong?'])]);
+  var fc = el('div', { class: 'choices faults', role: 'group', 'aria-label': 'What is wrong?' });
+  Object.keys(FAULTS).forEach(function (f) { fc.appendChild(el('button', { type: 'button', class: 'choice', id: 'ft-' + f, 'aria-pressed': String(r.fault === f), onclick: function () { r.fault = f; render(); } }, [el('span', { class: 'ic', 'aria-hidden': 'true', text: FAULTS[f].ic }), FAULTS[f].label, el('small', { text: FAULTS[f].hint })])); });
+  s2.appendChild(fc);
+  steps.appendChild(s2);
+  // 3. Send
+  var s3 = el('div', {}, [el('p', { class: 'stepq' }, [el('i', { text: '3' }), 'Anything to add? Then send'])]);
+  var note = el('input', { type: 'text', id: 'rep-note', maxlength: '120', placeholder: 'e.g. water through the ceiling', style: 'width:100%', oninput: function (e) { r.note = e.target.value; save(); } }); note.value = r.note;
+  s3.appendChild(el('label', { for: 'rep-note', style: 'display:block;font-weight:700;font-size:0.95rem;margin-bottom:4px' }, ['Short note (optional)']));
+  s3.appendChild(note);
+  s3.appendChild(el('div', { class: 'photo', style: 'margin:10px 0 4px' }, [
+    r.photo ? el('span', { class: 'thumb', 'aria-hidden': 'true', text: 'Photo' }) : null,
+    el('button', { type: 'button', id: 'rep-photo', 'aria-pressed': String(r.photo), onclick: function () { r.photo = !r.photo; render(); }, text: r.photo ? 'Remove photo' : 'Add a photo (optional)' }),
+    el('span', { class: 'fine', style: 'margin:0', text: 'Placeholder in this preview.' })
+  ]));
+  var u = el('input', { type: 'checkbox', id: 'rep-unsafe', onchange: function (e) { r.unsafe = e.target.checked; render(); } }); u.checked = r.unsafe;
+  var c = el('input', { type: 'checkbox', id: 'rep-closed', onchange: function (e) { r.closed = e.target.checked; save(); } }); c.checked = r.closed;
+  s3.appendChild(el('label', { class: 'opt', for: 'rep-unsafe' }, [u, 'It is unsafe or stopping work']));
+  s3.appendChild(el('label', { class: 'opt', for: 'rep-closed' }, [c, 'The room cannot be used until fixed']));
+  var pri = r.fault ? (r.unsafe ? 'urgent' : FAULTS[r.fault].pri) : null;
+  s3.appendChild(el('div', { class: 'sendrow', style: 'margin-top:8px' }, [el('button', { type: 'button', class: 'primary send', id: 'rep-send', disabled: r.room && r.fault ? false : 'disabled', onclick: sendReport, text: !r.room ? 'Choose the room first' : !r.fault ? 'Choose what is wrong' : 'Send to the ' + TRADES[FAULTS[r.fault].trade].toLowerCase() + ' team' })]));
+  if (pri) s3.appendChild(el('p', { class: 'fine', text: 'Goes in as ' + PRI[pri].toLowerCase() + ' priority (set by fault type and your answer above; the facilities manager can change it). ' + queue(FAULTS[r.fault].trade).length + ' waiting in that queue now.' }));
+  steps.appendChild(s3);
+  frag.appendChild(steps);
+  // My reports
+  var mine = state.jobs.filter(function (j) { return j.mineRep && (!j.done || now() - j.done < 24 * H); }).sort(function (a, b) { return b.req - a.req; });
+  frag.appendChild(el('h3', { class: 'sec', text: 'Your reports from this phone' }));
+  if (!mine.length) frag.appendChild(el('p', { class: 'empty', text: 'Nothing reported yet. Your faults appear here, with when they are accepted, on site and fixed.' }));
+  var list = el('div', { class: 'list', id: 'my-reports' });
+  mine.forEach(function (j) {
+    var st = status(j), m = j.merged ? byId(j.merged) : null;
+    var line = st === 'new' ? 'Waiting ' + fmtH(ageH(j)) + ' · ' + queue(j.trade).length + ' in the ' + TRADES[j.trade].toLowerCase() + ' queue' : st === 'accepted' ? TRADES[j.trade] + ' is on the way' : st === 'onsite' ? 'Technician on site' : st === 'parts' ? 'Waiting for parts' + (j.notes ? ': ' + j.notes : '') : st === 'merged' ? 'Grouped with ' + j.merged + ' so one visit covers both' + (m && m.done ? '; fixed at ' + hhmm(m.done) : '') : 'Fixed at ' + hhmm(j.done) + (j.notes ? ': ' + j.notes : '');
+    var src = m || j;
+    list.appendChild(el('div', { class: 'rq' }, [
+      el('div', { class: 'top' }, [el('span', { text: j.id + ' · ' + FAULTS[j.fault].label + ', ' + place(j) }), el('span', { class: 'chip st-' + st, text: STATUS_WORD[st] })]),
+      el('p', { class: 'line', text: line }),
+      el('div', { class: 'track', 'aria-label': 'Progress' }, [['req', 'Reported'], ['acc', 'Accepted'], ['onsite', src.parts ? 'Parts' : 'On site'], ['done', 'Fixed']].map(function (x) { var t = x[0] === 'req' ? j.req : src[x[0]]; return el('span', { class: t ? (x[1] === 'Parts' ? 'wait' : 'on') : '' }, [x[1], el('em', { text: t ? hhmm(t) : '–' })]); }))
+    ]));
+  });
+  frag.appendChild(list);
+  return frag;
+}
+
+// Technician
+function jobCard(j, opts) {
+  var st = status(j), over = isOver(j);
+  var chips = [el('span', { text: FAULTS[j.fault].label }), priChip(j.pri)];
+  if (opts.next) chips.push(el('span', { class: 'chip closed', text: 'Next up' }));
+  if (st !== 'new') chips.push(stChip(j));
+  var notes = [];
+  if (over) notes.push(el('p', { class: 'note overline', text: 'Past the ' + fmtH(CLOSE_TARGET_H[j.pri]) + ' close target' }));
+  if (j.closedRoom) notes.push(el('p', { class: 'note', text: 'Room out of use until fixed' }));
+  if (j.group.length) notes.push(el('p', { class: 'note', text: 'Also covers ' + j.group.map(function (g) { return g.id + ' (' + (g.detail || 'same room').toLowerCase() + ')'; }).join(', ') }));
+  if (st === 'parts') notes.push(el('p', { class: 'note parts', text: 'Waiting for parts since ' + stamp(j.parts) }));
+  var kids = [el('div', { class: 'top' }, [el('div', { class: 'kind' }, chips), el('div', { class: 'clock', 'data-since': j.id }, [fmtH(ageH(j)), el('small', { text: 'since reported' })])]),
+    el('p', { class: 'where', text: place(j) }),
+    el('p', { class: 'meta', text: bname(j) + ' · ' + ROOMS[j.room].floor + ' · ' + j.id + (j.detail ? ' · ' + j.detail : '') }),
+    el('p', { class: 'meta', text: 'Reported ' + stamp(j.req) + (j.acc ? ' · accepted ' + stamp(j.acc) : '') + (j.onsite ? ' · on site ' + stamp(j.onsite) : '') + (j.photo ? ' · photo attached' : '') })].concat(notes);
+  if (opts.act) {
+    if (st !== 'new') {
+      var ta = el('textarea', { id: 'n-' + j.id, rows: '2', placeholder: 'What you found or did', onchange: function (e) { j.notes = e.target.value.trim(); addLog('Note on ' + j.id + ': ' + (j.notes || '(cleared)')); render(); } }); ta.value = j.notes || '';
+      kids.push(el('div', { class: 'notes' }, [el('label', { for: 'n-' + j.id, text: 'Notes' }), ta]));
+    } else if (j.notes) kids.push(el('p', { class: 'meta', text: 'Note: ' + j.notes }));
+    var main = { new: ['Accept', 'accept'], accepted: ['On site', 'onsite'], parts: ['Parts here, back on site', 'onsite'], onsite: ['Done, fixed', 'done'] }[st];
+    var acts = [el('button', { type: 'button', id: 'a-' + j.id, class: 'go ' + main[1], 'aria-label': main[0] + ': ' + j.id + ', ' + FAULTS[j.fault].label + ', ' + place(j), onclick: function () { advance(j); }, text: main[0] })];
+    if (st === 'onsite') acts.push(el('button', { type: 'button', id: 'p-' + j.id, class: 'alt', 'aria-label': 'Waiting for parts: ' + j.id, onclick: function () { advance(j, 'parts'); }, text: 'Waiting for parts' }));
+    if (st === 'accepted') acts.push(el('button', { type: 'button', id: 'b-' + j.id, class: 'alt', 'aria-label': 'Hand back: ' + j.id, onclick: function () { handBack(j); }, text: 'Hand back' }));
+    kids.push(el('div', { class: 'acts' }, acts));
+  }
+  return el('article', { class: 'job pr-' + j.pri + (over ? ' over' : '') + (j.mine ? ' mine' : ''), 'aria-label': j.id + ', ' + FAULTS[j.fault].label + ', ' + place(j) }, kids);
+}
+function techView() {
+  var frag = document.createDocumentFragment(), tr = state.trade;
+  var sel = el('select', { id: 'trade-pick', onchange: function (e) { state.trade = e.target.value; render(); } });
+  Object.keys(TRADES).forEach(function (t) { sel.appendChild(el('option', { value: t, text: TRADES[t] })); });
+  sel.value = tr;
+  frag.appendChild(el('div', { class: 'teambar' }, [el('label', { for: 'trade-pick' }, ['Your trade', sel])]));
+  var q = queue(tr), all = openJobs().filter(function (j) { return j.trade === tr; });
+  var mine = all.filter(function (j) { return j.acc; }).sort(function (a, b) { return (a.parts ? 1 : 0) - (b.parts ? 1 : 0) || PRI_ORDER[a.pri] - PRI_ORDER[b.pri] || a.req - b.req; });
+  var ov = all.filter(isOver).length;
+  frag.appendChild(el('div', { class: 'summary' }, [el('span', { class: 'pill', text: mine.length + ' in hand' }), el('span', { class: 'pill', text: q.length + ' waiting' }), el('span', { class: 'pill' + (ov ? ' hot' : ''), text: ov + ' overdue' })]));
+  frag.appendChild(el('h3', { class: 'sec', text: 'In hand · ' + mine.length }));
+  if (mine.length) { var m = el('div', { class: 'list', id: 'inhand' }); mine.forEach(function (j) { m.appendChild(jobCard(j, { act: true })); }); frag.appendChild(m); }
+  else frag.appendChild(el('p', { class: 'empty', text: 'Nothing in hand. Accept the next job below.' }));
+  frag.appendChild(el('h3', { class: 'sec', text: 'Incoming · urgent first, then oldest · ' + q.length }));
+  if (q.length) { var l = el('div', { class: 'list', id: 'incoming' }); q.forEach(function (j, i) { l.appendChild(jobCard(j, { act: true, next: i === 0 })); }); frag.appendChild(l); }
+  else frag.appendChild(el('p', { class: 'empty', text: 'The queue is clear. New faults appear here as soon as they are reported.' }));
+  frag.appendChild(el('p', { class: 'fine', text: 'Jobs go to a trade queue, not to a named person. The order is priority, then age; the facilities manager can change a priority.' }));
+  return frag;
+}
+
+// Facilities manager
+function managerView() {
+  var frag = document.createDocumentFragment(), open = openJobs();
+  // A. Open work orders by building and priority
+  frag.appendChild(el('h3', { class: 'sec', id: 'wo-h', text: 'Open work orders by building and priority' }));
+  var tb = el('tbody');
+  Object.keys(BUILDINGS).forEach(function (b) {
+    var js = open.filter(function (j) { return ROOMS[j.room].b === b; });
+    var c = function (p) { return js.filter(function (j) { return j.pri === p; }).length; }, ov = js.filter(isOver).length;
+    tb.appendChild(el('tr', {}, [el('td', { text: BUILDINGS[b].name }), el('td', { class: 'r' + (c('urgent') ? ' hot' : ''), text: String(c('urgent')) }), el('td', { class: 'r', text: String(c('high')) }), el('td', { class: 'r', text: String(c('routine')) }), el('td', { class: 'r' + (ov ? ' hot' : ''), text: String(ov) })]));
+  });
+  frag.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 'grid', id: 'wo-matrix' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Building' }), el('th', { class: 'r', text: 'Urgent' }), el('th', { class: 'r', text: 'High' }), el('th', { class: 'r', text: 'Routine' }), el('th', { class: 'r', text: 'Overdue' })])]), tb])]));
+  var f = el('div', { class: 'filters', role: 'group', 'aria-label': 'Show work orders', style: 'margin-top:12px' });
+  [['all', 'All open'], ['over', 'Overdue'], ['parts', 'Waiting for parts'], ['new', 'Not accepted']].forEach(function (x) {
+    f.appendChild(el('button', { type: 'button', id: 'f-' + x[0], 'aria-pressed': String(state.filter === x[0]), onclick: function () { state.filter = x[0]; render(); }, text: x[1] }));
+  });
+  frag.appendChild(f);
+  var list = open.filter(function (j) { return state.filter === 'over' ? isOver(j) : state.filter === 'parts' ? !!j.parts : state.filter === 'new' ? !j.acc : true; });
+  if (!list.length) frag.appendChild(el('p', { class: 'empty', text: 'No work orders match.' }));
+  var wrap = el('div', { id: 'wo-list' });
+  Object.keys(BUILDINGS).forEach(function (b) {
+    var js = list.filter(function (j) { return ROOMS[j.room].b === b; }).sort(function (x, y) { return (isOver(y) - isOver(x)) || (PRI_ORDER[x.pri] - PRI_ORDER[y.pri]) || (x.req - y.req); });
+    if (!js.length) return;
+    var box = el('div', { class: 'bld' }, [el('h4', {}, [BUILDINGS[b].name, el('span', { text: js.length + ' shown' })])]);
+    js.forEach(function (j) {
+      var sel = el('select', { id: 'pr-' + j.id, 'aria-label': 'Priority for ' + j.id, onchange: function (e) { var was = j.pri; j.pri = e.target.value; addLog('Facilities manager changed ' + j.id + ' from ' + PRI[was].toLowerCase() + ' to ' + PRI[j.pri].toLowerCase() + '.'); render(); toast(j.id + ' is now ' + PRI[j.pri].toLowerCase() + '.'); } });
+      Object.keys(PRI).forEach(function (p) { sel.appendChild(el('option', { value: p, text: PRI[p] })); }); sel.value = j.pri;
+      box.appendChild(el('div', { class: 'wrow pr-' + j.pri + (isOver(j) ? ' over' : '') }, [
+        el('div', {}, [el('b', { text: FAULTS[j.fault].label + ' · ' + place(j) }), el('span', { class: 'sub', text: j.id + ' · ' + TRADES[j.trade] + ' · ' + STATUS_WORD[status(j)] + (j.group.length ? ' · covers ' + (j.group.length + 1) + ' reports' : '') + (j.closedRoom ? ' · room out of use' : '') + (isOver(j) ? ' · overdue' : '') })]),
+        el('div', { class: 'w', 'data-since': j.id }, [fmtH(ageH(j)), el('small', { text: 'target ' + fmtH(CLOSE_TARGET_H[j.pri]) })]),
+        el('div', { class: 'prsel' }, [sel])
+      ]));
+    });
+    wrap.appendChild(box);
+  });
+  frag.appendChild(wrap);
+  var ro = roomsOut();
+  frag.appendChild(el('p', { class: 'fine', id: 'rooms-out' }, [el('b', { text: 'Rooms out of use: ' + ro.length + '. ' }), ro.length ? ro.map(function (j) { return place(j) + ' (' + j.id + ', since ' + stamp(j.closedAt || j.req) + ')'; }).join('; ') + '. They show as available again when the job is closed and the area in charge agrees.' : 'None.']));
+
+  // B. Planned maintenance this week
+  frag.appendChild(el('h3', { class: 'sec', id: 'pm-h', text: 'Planned maintenance this week' }));
+  var pmBox = el('div', { id: 'pm-list' });
+  state.pm.slice().sort(function (a, b) { return a.due - b.due; }).forEach(function (p) {
+    var over = !p.done && p.due < now(), late = p.done && p.done > p.due;
+    var end = p.done ? el('span', { class: 'chip ' + (late ? 'over' : 'st-done'), text: late ? 'Done late' : 'Done' })
+      : el('button', { type: 'button', class: 'small', id: 'pm-done-' + p.id, 'aria-label': 'Mark done: ' + p.task, onclick: function () { p.done = now(); addLog('Planned job done: ' + p.task + ', ' + p.place + (p.done > p.due ? ' (after its due date).' : '.')); render(); toast(p.done > p.due ? 'Done, after its due date.' : 'Done on time.'); }, text: 'Mark done' });
+    pmBox.appendChild(el('div', { class: 'pmrow' + (over ? ' over' : '') }, [
+      el('div', { class: 'day' }, [dayName(p.due), el('small', { text: over ? 'overdue' : 'due' })]),
+      el('div', {}, [el('b', { text: p.task }), el('span', { class: 'sub', text: p.place + (p.clinical ? ' · clinical area' : '') + ' · ' + (p.done ? 'done ' + stamp(p.done) : p.slot ? 'booked ' + dayName(p.slot) + ' ' + hhmm(p.slot) : 'no time booked') })]),
+      el('div', { class: 'end' }, [end])
+    ]));
+  });
+  frag.appendChild(pmBox);
+
+  // C. Utility checks and D. plant status
+  var uc = el('div', { id: 'uc-list' });
+  Object.keys(CHECKS).forEach(function (id) {
+    var C = CHECKS[id], l = lastCheck(id), du = checkDue(id);
+    var res = el('select', { id: 'uc-res-' + id, 'aria-label': 'Result for ' + C.label }, [el('option', { value: 'pass', text: 'OK' }), el('option', { value: 'fail', text: 'Problem found' })]);
+    var rd = C.reading ? el('input', { type: 'number', id: 'uc-val-' + id, min: '0', max: '100', inputmode: 'numeric', placeholder: C.unit, 'aria-label': C.label + ' reading (' + C.unit + ')' }) : null;
+    var btn = el('button', { type: 'button', class: 'small primary', id: 'uc-log-' + id, 'aria-label': 'Log ' + C.label, onclick: function () {
+      var v = rd ? rd.value.trim() : '';
+      if (rd && (v === '' || isNaN(+v) || +v < 0 || +v > 100)) { toast('Enter a reading from 0 to 100.'); rd.focus(); return; }
+      logCheck(id, res.value, rd ? Math.round(+v) : null, '');
+    }, text: 'Log' });
+    var lowRead = l && l.reading != null && ((id === 'water' && l.reading < WATER_SET) || (id === 'fuel' && l.reading < FUEL_SET));
+    uc.appendChild(el('div', { class: 'ucrow' }, [
+      el('div', {}, [el('b', { text: C.label }), el('span', { class: 'sub', text: (C.sub ? C.sub + ' · ' : '') + 'Last: ' + (l ? stamp(l.t) + ', ' + (l.result === 'pass' ? 'OK' : 'problem found') + (l.reading != null ? ', ' + l.reading + C.unit : '') : 'none logged') }),
+        el('small', { style: du.over || lowRead ? 'color:#B23A22' : '', text: (du.over ? 'Overdue since ' + stamp(du.due) : du.due ? 'Next due ' + stamp(du.due) : '') + (lowRead ? ' · below set level (' + (id === 'water' ? WATER_SET : FUEL_SET) + '%)' : '') + (state.bookings[id] ? ' · booked ' + dayName(state.bookings[id]) + ' ' + hhmm(state.bookings[id]) : '') })]),
+      el('div', { class: 'form' }, [res, rd, btn])
+    ]));
+  });
+  var recent = state.checks.slice().sort(function (a, b) { return b.t - a.t; }).slice(0, 5);
+  var ul = el('ul', { class: 'outs', id: 'uc-recent' });
+  recent.forEach(function (c) { ul.appendChild(el('li', {}, [el('span', { text: CHECKS[c.check].label + (c.reading != null ? ' · ' + c.reading + CHECKS[c.check].unit : '') }), el('b', { style: c.result === 'pass' ? '' : 'color:#B23A22', text: (c.result === 'pass' ? 'OK' : 'Problem') + ' · ' + stamp(c.t) })])); });
+
+  var plant = el('div', { class: 'plant', id: 'plant' });
+  Object.keys(state.plant).forEach(function (id) {
+    var p = state.plant[id], ov = (id === 'gen1' || id === 'gen2') && genOverdue(id);
+    plant.appendChild(el('div', { class: 'pl' + (p.up ? (ov ? ' watch' : '') : ' down') }, [
+      el('h4', { text: p.name }), el('span', { class: 'state', text: p.up ? 'Up' : 'Down' }),
+      el('p', { text: (p.up ? (ov ? 'Test overdue' : (p.note || 'In service')) : (p.note || 'Out of service') + ' · ' + fmtH((now() - p.since) / H)) }),
+      el('button', { type: 'button', class: 'small', id: 'pl-' + id, 'aria-label': (p.up ? 'Report down: ' : 'Report back up: ') + p.name, onclick: function () { setPlant(id, !p.up); }, text: p.up ? 'Report down' : 'Report back up' })
+    ]));
+  });
+  var k = kpis();
+  var outs = el('ul', { class: 'outs', id: 'outages' });
+  state.outages.filter(function (o) { return o.start > now() - 30 * D; }).slice(0, 5).forEach(function (o) { outs.appendChild(el('li', {}, [el('span', { text: o.util + ' · ' + (o.note || '') }), el('b', { style: o.end ? '' : 'color:#B23A22', text: stamp(o.start) + (o.end ? ' · ' + fmtH((o.end - o.start) / H) : ' · ongoing') })])); });
+
+  frag.appendChild(el('div', { class: 'panes' }, [
+    el('div', {}, [el('h3', { class: 'sec', id: 'uc-h', text: 'Utility checks' }), uc, el('h3', { class: 'sec', text: 'Recently logged' }), ul]),
+    el('div', {}, [el('h3', { class: 'sec', id: 'pl-h', text: 'Plant status' }), plant,
+      el('p', { class: 'fine', text: 'Status as reported by staff. Ospeli records it with times; it never switches or controls plant.' }),
+      el('h3', { class: 'sec', text: 'Outages, last 30 days · utilities ' + fmtH(k.utilityOutageHours30d) }), outs])
+  ]));
+  frag.appendChild(el('p', { class: 'fine', text: 'Measures jobs, checks and outages, never individual technicians. Targets, intervals and set levels are example settings, not a standard.' }));
+  return frag;
+}
+
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Reporting, the job queue, the manager view and the measures all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag: no repeat faults, tests are up to date, planned work is booked and stored water is above its set level.' }));
+  list.forEach(function (sg) {
+    var pend = state.pending.some(function (p) { return p.id === sg.id || p.id === sg.id + '-survey'; });
+    var acts = sg.acts.filter(Boolean).map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend && a.primary ? 'disabled' : false, onclick: a.fn, text: pend && a.primary ? 'Proposed' : a.label }); });
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
+      el('span', { class: 'tag ' + (sg.kind === 'time' ? 'time' : sg.kind === 'ask' ? 'ask' : ''), text: sg.kind === 'time' ? 'Overdue or low' : sg.kind === 'ask' ? 'Repeat faults' : 'Quiet hours' }),
+      el('h3', { text: sg.title }), sg.text ? el('p', { text: sg.text }) : null,
+      sg.list ? el('ul', {}, sg.list.map(function (x) { return el('li', { text: x }); })) : null,
+      el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  if (state.pending.length) {
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for the facilities manager to decide' })]);
+    state.pending.forEach(function (p) {
+      d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }),
+        state.role === 'manager'
+          ? el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, [el('button', { type: 'button', class: 'small primary', onclick: function () { decide(p, true); }, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])
+          : el('p', { style: 'margin:0;color:var(--soft);font-size:0.85rem', text: 'Switch to the Facilities manager view to confirm or decline.' })]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Proposals wait here for the facilities manager.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 25).forEach(function (e) { ol.appendChild(el('li', { class: e.t === lastLogT && now() - e.t < 5000 ? 'new' : '' }, [el('time', { text: stamp(e.t) }), el('span', { text: e.text })])); });
+}
+
+// Live clocks: update ages in place; redraw fully only when what the guide or overdue counts see changes.
+var sig = '';
+function signature() { return openJobs().filter(isOver).map(function (j) { return j.id; }).join(',') + '|' + suggest().map(function (s) { return s.id; }).join(','); }
+function tick() {
+  if (signature() !== sig) { render(); return; }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-since]'), function (n) { var j = byId(n.getAttribute('data-since')); if (j && n.firstChild) n.firstChild.textContent = fmtH(ageH(j)); });
+}
+setInterval(tick, 30000);
+
+// ---------- Wiring ----------
+['anyone', 'tech', 'manager'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-clock').addEventListener('click', function () { state.offset = (state.offset || 0) + H; addLog('Demo: clock moved on 1 hour.'); render(); toast('Clock moved on 1 hour. Ages have grown.'); });
+var NEW_FAULTS = [['lights', 'M-2-04', 'Light over the sink out'], ['ac', 'E-1-01', 'Too cold, cannot adjust'], ['leak', 'E-G-04', 'Dripping tap at the hand basin'], ['door', 'M-1-02', 'Bay door sticks'], ['power', 'M-G-04', 'Socket strip tripping']];
+document.getElementById('t-fault').addEventListener('click', function () {
+  var n = NEW_FAULTS[(state.seq) % NEW_FAULTS.length], j = mk(state, n[0], n[1], now(), n[2]);
+  addLog(eventText(state, j, 'req'));
+  render(); toast(FAULTS[j.fault].label + ' reported in ' + place(j) + '. It went to ' + TRADES[j.trade].toLowerCase() + '.');
+});
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; render(); toast('Example reset to the start of the demo.'); });
+
+// Read-only view for software agents (no writes): window.ospeliFacilitiesDemo
+window.ospeliFacilitiesDemo = Object.freeze({
+  describe: function () { return 'Read-only facilities and utilities demo for a fictional hospital. get() returns open work orders, planned maintenance, utility checks and plant status; kpis() the measures; suggestions() the guide\'s current suggestions. Runs in the browser; nothing is sent anywhere. It never switches plant.'; },
+  get: function () {
+    return clone({ role: state.role, now: new Date(now()).toISOString(), closeTargetHours: CLOSE_TARGET_H, quietHours: QUIET.label,
+      openWorkOrders: openJobs().map(function (j) { return { id: j.id, fault: j.fault, label: FAULTS[j.fault].label, room: place(j), roomLabel: j.room, building: bname(j), trade: TRADES[j.trade], priority: j.pri, status: status(j), ageHours: Math.round(ageH(j) * 10) / 10, overdue: isOver(j), roomOutOfUse: j.closedRoom, covers: j.group.map(function (g) { return g.id; }), notes: j.notes }; }),
+      plannedMaintenance: state.pm.map(function (p) { return { id: p.id, task: p.task, place: p.place, due: new Date(p.due).toISOString(), done: p.done ? new Date(p.done).toISOString() : null, booked: p.slot ? new Date(p.slot).toISOString() : null }; }),
+      utilityChecks: Object.keys(CHECKS).map(function (id) { var l = lastCheck(id), du = checkDue(id); return { id: id, label: CHECKS[id].label, last: l ? { at: new Date(l.t).toISOString(), result: l.result, reading: l.reading } : null, overdue: du.over }; }),
+      plant: Object.keys(state.plant).map(function (id) { return { id: id, name: state.plant[id].name, up: state.plant[id].up }; }),
+      pendingDecisions: state.pending.map(function (p) { return p.text; }) });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text || (s.list || []).join('; '), why: s.why }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>
