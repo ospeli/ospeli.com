@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pharmacy operations demo · Ospeli</title>
+<meta name="description" content="Ward requests, the dispensary queue and the ready shelf, discharge medicines turnaround, stock-outs and items near expiry: pharmacy operations in one place. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Pharmacy operations demo · Ospeli">
+<meta property="og:description" content="Ward requests, the dispensary queue and the ready shelf, discharge medicines turnaround, stock-outs and items near expiry: pharmacy operations in one place. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/pharmacy/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button { font: inherit; color: var(--ink); }
+select, input[type=number] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 520px) { .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 14px; width: 100%; } .roles button { padding: 8px 4px; font-size: 0.95rem; } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.88rem; font-weight: 700; display: block; line-height: 1.3; }
+.stat .n { color: var(--soft); font-size: 0.78rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.8rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stathint { color: var(--soft); font-size: 0.78rem; margin: 6px 0 0; }
+.chip { display: inline-block; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; background: var(--sand); white-space: nowrap; }
+.chip.next { background: var(--navy); color: #fff; }
+.chip.bed { background: var(--warn); color: #6E4A00; }
+.chip.t-discharge { background: #FBE3C2; } .chip.t-inpatient { background: var(--wash); } .chip.t-outpatient { background: #E4ECF4; }
+.chip.st-req { background: var(--sand); } .chip.st-prep { background: var(--warn); } .chip.st-chk { background: var(--wash); } .chip.st-ready { background: var(--sea); color: #fff; } .chip.st-coll { background: #DCE3EA; }
+.empty { text-align: center; color: var(--soft); padding: 18px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; }
+.fine { font-size: 0.85rem; color: var(--soft); margin: 8px 0 0; }
+/* ward phone */
+.wardbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; justify-content: space-between; margin-top: 14px; }
+.wardbar label { font-weight: 800; display: flex; flex-direction: column; gap: 4px; font-size: 0.95rem; }
+.wardbar select { font-weight: 700; min-width: 160px; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 0.95rem; font-weight: 700; background: var(--sand); }
+.pill.hot { background: var(--hot); color: #8E2C18; }
+.steps { display: grid; gap: 16px; }
+.stepq { font-weight: 800; font-size: 1rem; margin: 0 0 8px; display: flex; gap: 8px; align-items: center; }
+.stepq i { font-style: normal; width: 26px; height: 26px; border-radius: 50%; background: var(--navy); color: #fff; display: grid; place-items: center; font-size: 0.85rem; flex: none; }
+.choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.choices.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 420px) { .choices.three { grid-template-columns: minmax(0, 1fr); } }
+.choice { border-radius: 12px; border: 1px solid #CFC5B2; min-height: 52px; text-align: left; padding: 8px 12px; font-size: 1rem; line-height: 1.3; }
+.choice small { display: block; font-weight: 600; color: var(--soft); font-size: 0.85rem; }
+.choice small.low { color: #B23A22; font-weight: 800; }
+.choice[aria-pressed=true] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.choice[aria-pressed=true] small { color: #D6E2EC; }
+.qty { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.qty button { width: 52px; height: 52px; padding: 0; font-size: 1.4rem; line-height: 1; }
+.qty output { font-size: 1.4rem; font-weight: 800; min-width: 2.2em; text-align: center; }
+.qty span { color: var(--soft); font-size: 0.95rem; }
+.sendrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.sendrow .send { flex: 1 1 220px; min-height: 54px; font-size: 1.05rem; background: var(--sea); border-color: var(--sea); color: #fff; }
+.rqs { display: grid; gap: 10px; }
+.rq { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: #fff; }
+.rq .top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; font-weight: 800; font-size: 1.02rem; line-height: 1.3; }
+.rq .line { font-size: 0.95rem; color: var(--soft); margin: 4px 0 0; }
+.rq .line b { color: var(--ink); }
+.track { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-top: 10px; }
+.track span { font-size: 0.75rem; color: var(--soft); border-top: 4px solid var(--line); padding-top: 4px; font-weight: 700; line-height: 1.2; overflow-wrap: anywhere; }
+.track span.on { border-top-color: var(--sea); color: var(--ink); }
+.track span em { display: block; font-style: normal; font-weight: 600; color: var(--soft); }
+/* dispensary */
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 10px; }
+.filters button { min-height: 40px; font-size: 0.9rem; border-color: #CFC5B2; }
+.filters button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.jobs { display: grid; gap: 10px; }
+.job { border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 12px; padding: 12px; background: #fff; }
+.job.t-discharge { border-left-color: var(--mango); } .job.t-outpatient { border-left-color: #6C8BAA; }
+.job.first { box-shadow: 0 0 0 2px var(--navy) inset; }
+.job .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.job .kind { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.job .what { font-size: 1.08rem; font-weight: 800; margin: 6px 0 2px; line-height: 1.3; }
+.job .meta { color: var(--soft); font-size: 0.95rem; margin: 0; }
+.job ul.lines { margin: 4px 0 0; padding-left: 18px; font-size: 0.92rem; }
+.job ul.lines li.short { color: #B23A22; font-weight: 700; }
+.clock { text-align: right; font-weight: 800; font-size: 1.15rem; line-height: 1.1; white-space: nowrap; }
+.clock small { display: block; font-size: 0.75rem; font-weight: 700; color: var(--soft); }
+.job .acts { display: flex; gap: 8px; margin-top: 10px; }
+.job .acts .go { flex: 1; min-height: 52px; font-size: 1.02rem; }
+@media (min-width: 700px) { .job .acts .go { flex: 0 1 280px; margin-left: auto; } }
+.go.s-req { background: var(--navy); color: #fff; }
+.go.s-prep { background: var(--sea); border-color: var(--sea); color: #fff; }
+.go.s-chk { background: var(--mango); border-color: var(--mango); color: var(--navy); }
+.shelf { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.slot { border: 2px dashed var(--foam); border-radius: 12px; padding: 10px 12px; background: #F7FBFA; display: flex; flex-direction: column; gap: 4px; }
+.slot .sn { font-weight: 800; font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--sea); }
+.slot b { font-size: 1rem; line-height: 1.3; }
+.slot .meta { color: var(--soft); font-size: 0.9rem; margin: 0; }
+.slot.long { border-color: var(--coral); background: #FFF8F5; }
+.slot.long .meta.w { color: #B23A22; font-weight: 800; }
+.slot button { margin-top: auto; }
+/* manager */
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+.panel { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.panel h4 { margin: 0 0 8px; font-size: 0.98rem; }
+.bars { display: grid; gap: 8px; }
+.barrow { display: grid; grid-template-columns: minmax(0, 1fr) 64px; gap: 4px 10px; align-items: center; font-size: 0.9rem; }
+.barrow .bl { grid-column: 1 / -1; display: flex; justify-content: space-between; gap: 8px; }
+.barrow .bl span { color: var(--soft); font-size: 0.8rem; }
+.barrow .track2 { height: 12px; background: var(--sand); border-radius: 6px; overflow: hidden; }
+.barrow .track2 i { display: block; height: 100%; background: var(--sea); border-radius: 6px; }
+.barrow.top .track2 i { background: var(--coral); }
+.barrow .v { font-weight: 800; text-align: right; }
+.tablewrap { overflow-x: auto; }
+table.t { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+table.t th, table.t td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+@media (max-width: 420px) { table.t th, table.t td { padding: 5px 4px; } table.t { font-size: 0.82rem; } }
+table.t th { white-space: normal; vertical-align: bottom; color: var(--soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+table.t td.r, table.t th.r { text-align: right; font-variant-numeric: tabular-nums; }
+table.t tr.hi td { background: #FFF8F5; }
+table.t tr.hi td.r.k { color: #B23A22; font-weight: 800; }
+ul.watch { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+ul.watch li { display: flex; justify-content: space-between; gap: 10px; font-size: 0.9rem; border-bottom: 1px dashed var(--line); padding: 4px 0; }
+ul.watch li span:last-child { text-align: right; color: var(--soft); flex: 0 1 45%; }
+ul.watch li.bad span:last-child { color: #B23A22; font-weight: 800; }
+.mini { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; }
+.mini div { background: var(--sand); border-radius: 10px; padding: 6px 8px; }
+.mini b { display: block; font-size: 1.15rem; }
+.mini span { font-size: 0.75rem; color: var(--soft); font-weight: 700; }
+details.set { margin-top: 14px; }
+details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.settings { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+@media (max-width: 520px) { .settings { grid-template-columns: minmax(0, 1fr); } }
+.settings label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 700; color: var(--soft); }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.82rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg .why { color: var(--soft); font-size: 0.82rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.flow { background: var(--hot); } .tag.stock { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+.prop .who { color: var(--soft); font-size: 0.82rem; margin: 0; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Pharmacy operations: requests, dispensing and stock</h1>
+  <p class="lead">Wards ask for top-ups, non-stock items and discharge medicines from a phone, and see where each request is. The dispensary works one queue by type and marks each stage. The pharmacy manager sees turnaround, the queue against staff on shift, stock-outs and items near expiry. The guide points out where to look; a person decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-ward" aria-pressed="false">Ward</button>
+    <button type="button" id="r-dispensary" aria-pressed="false">Dispensary</button>
+    <button type="button" id="r-manager" aria-pressed="false">Manager</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <b>Demo tools:</b>
+    <button type="button" class="small" id="t-clock">Move clock on 15 min</button>
+    <button type="button" class="small" id="t-delivery">A delivery arrives</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <h2 id="view-h">Pharmacy</h2>
+        <div class="stats" id="kpis"></div>
+        <p class="stathint" id="stathint">Today so far. Tap a tile for its definition.</p>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads the queue, stock levels, expiry dates and the bed board's count of patients waiting for a bed, and suggests where to look, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal. The pharmacist or pharmacy manager decides.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its wards, stock lines, patient codes, requests and times. Stock lines are plain labels, not real products. It tracks requests, stages and stock; it does not choose medicines, doses or substitutions, check prescriptions clinically, or rank pharmacy staff. Coming next (Jan 2027): stock counts by location on a phone, top-up levels per ward, reorder drafts from use and lead time, and the live link from planned discharges on the bed board. <a href="../../areas/pharmacy-operations/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var M = 60000, D = 24 * 60 * M;
+var STORE = 'ospeli.pharmacy.v1';
+
+// ---------- Fixed reference data (fictional) ----------
+var WARDS = { W1: 'Ward 1', W2: 'Ward 2', W3: 'Ward 3', W4: 'Ward 4', W5: 'Ward 5', W6: 'Ward 6', OP: 'Outpatients', PH: 'Pharmacy store' };
+var WARD_IDS = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6'];
+var TYPES = { discharge: 'Discharge', inpatient: 'Inpatient', outpatient: 'Outpatient' };
+var STAGES = ['req', 'prep', 'chk', 'ready', 'coll'];
+var STAGE_WORD = { req: 'Requested', prep: 'Being prepared', chk: 'Checked', ready: 'Ready to collect', coll: 'Collected' };
+var NEXT = { req: ['prep', 'Start preparing'], prep: ['chk', 'Mark checked'], chk: ['ready', 'Ready: put on shelf'], ready: ['coll', 'Handed over'] };
+// Stock lines are plain labels only: [line, pack, tracer, pharmacy stock, reorder level, use per day, delivery lead days, on order]
+var LINES = [
+  [101, 'tablets, box of 28', true, 140, 60, 12, 4, 0], [102, 'tablets, box of 56', true, 64, 30, 5, 4, 0],
+  [103, 'capsules, box of 30', true, 48, 30, 6, 4, 0], [104, 'oral liquid, 100 ml bottle', true, 22, 15, 3, 5, 0],
+  [105, 'cream, 50 g tube', false, 36, 20, 2, 5, 0], [106, 'eye drops, 10 ml bottle', false, 18, 10, 1.5, 5, 0],
+  [107, 'inhaler, 1 device', true, 10, 20, 3, 4, 0], [108, 'vials, pack of 10', true, 30, 12, 2, 4, 0],
+  [109, 'ampoules, pack of 10', false, 26, 10, 1, 5, 0], [110, 'infusion bags, box of 20', true, 40, 20, 4, 3, 0],
+  [111, 'sachets, box of 20', false, 25, 10, 2, 5, 0], [112, 'patches, box of 5', false, 14, 8, 1, 6, 0],
+  [113, 'tablets, box of 100', true, 0, 20, 4, 4, 60], [114, 'ointment, 30 g tube', false, 12, 6, 0.5, 6, 0],
+  [115, 'oral liquid, 200 ml bottle', false, 9, 6, 0.8, 6, 0], [116, 'prefilled syringes, pack of 5', false, 8, 4, 0.5, 5, 0]
+];
+var PACK = {}; LINES.forEach(function (l) { PACK[l[0]] = l[1]; });
+// Lines each ward holds as ward stock: [line, top-up level, on the shelf now]
+var WARD_STOCK = {
+  W1: [[101, 10, 7], [102, 6, 2], [104, 4, 3], [105, 4, 1], [110, 6, 5], [111, 4, 4]],
+  W2: [[101, 12, 9], [103, 8, 3], [107, 4, 2], [108, 4, 4], [109, 3, 2], [105, 4, 3]],
+  W3: [[101, 10, 8], [104, 4, 1], [106, 3, 3], [110, 6, 2], [112, 3, 3], [102, 6, 5]],
+  W4: [[101, 10, 4], [103, 6, 5], [109, 3, 3], [112, 4, 0], [111, 4, 2], [108, 4, 3]],
+  W5: [[102, 6, 3], [105, 4, 4], [106, 3, 1], [107, 6, 1], [113, 4, 0], [110, 6, 6]],
+  W6: [[101, 8, 6], [108, 4, 1], [109, 6, 6], [111, 4, 3], [114, 2, 2], [104, 4, 4]]
+};
+// Packs used per week by ward, for the lines that have stock near expiry (fictional)
+var WARD_USE = { 106: { W1: 0.3, W2: 0.4, W3: 0.3, W4: 0.2, W5: 2.5, W6: 0.3 }, 109: { W1: 0.5, W2: 3.5, W3: 0.4, W4: 1, W5: 0.5, W6: 0.5 }, 114: { W1: 0.2, W2: 0.2, W3: 0.3, W4: 0.2, W5: 0.3, W6: 0.4 } };
+// Staff on shift in the dispensary, by hour (fictional roster)
+var STAFF = { 8: 3, 9: 4, 10: 4, 11: 4, 12: 3, 13: 3, 14: 4, 15: 4, 16: 3, 17: 2, 18: 2, 19: 1, 20: 1, 21: 1 };
+// Example settings for this demo only, not a standard: each organisation sets its own.
+var DEFAULT_SET = { expiryDays: 60, lateHour: 14 };
+var START_MIN = 13 * 60 + 40; // the example day starts at 13:40
+
+// ---------- State ----------
+function seed() {
+  var C = Date.now(), d0 = new Date(C); d0.setHours(0, 0, 0, 0);
+  var dayStart = d0.getTime(), at = function (h, m) { return dayStart + (h * 60 + m) * M; };
+  var B = dayStart + START_MIN * M;
+  // The example day always opens at 13:40; the page clock then runs normally from there.
+  var s = { v: 1, created: C, offset: B - C,
+    role: window.matchMedia('(max-width: 640px)').matches ? 'ward' : 'dispensary',
+    ward: 'W5', filter: 'all', guide: true, kpiOpen: null, set: Object.assign({}, DEFAULT_SET),
+    form: { kind: null, line: null, code: null, qty: 1 }, pending: [], dismissed: {}, noted: {}, log: [], seq: 100,
+    // Patients waiting for a bed on each ward, as the bed board would show it (fictional count only)
+    demand: { W1: 0, W2: 2, W3: 0, W4: 1, W5: 3, W6: 0 },
+    // Planned discharges today from the bed board, by patient code, not yet requested
+    planned: { W1: ['6J2'], W2: ['1V7'], W3: ['5S4', '9W1'], W4: ['3H8'], W5: ['2L5', '8X3'], W6: ['7C9'] },
+    stock: {}, batches: [], wardStock: {}, reqs: [], hist: {} };
+  LINES.forEach(function (l) { s.stock[l[0]] = { line: l[0], pack: l[1], tracer: l[2], qty: l[3], level: l[4], use: l[5], lead: l[6], onOrder: l[7], outSince: l[3] === 0 ? B - 2 * D - 5 * 60 * M : null }; });
+  Object.keys(WARD_STOCK).forEach(function (w) { s.wardStock[w] = {}; WARD_STOCK[w].forEach(function (x) { s.wardStock[w][x[0]] = { level: x[1], have: x[2] }; }); });
+  // Batches with an expiry date inside or near the window: [line, location, packs, days to expiry]
+  [[106, 'W3', 3, 21], [109, 'W6', 6, 34], [114, 'PH', 5, 52], [115, 'PH', 4, 75]].forEach(function (b, i) { s.batches.push({ id: 'B' + (i + 1), line: b[0], loc: b[1], qty: b[2], exp: B + b[3] * D }); });
+  // Discharge request times over the last 7 days, by ward (hours of the day; fictional)
+  var r = 7; function rnd() { r = (r * 9301 + 49297) % 233280; return r / 233280; }
+  WARD_IDS.forEach(function (w) {
+    if (w === 'W4') { s.hist[w] = [15.2, 16.1, 14.4, 13.1, 15.8, 16.6, 14.9, 11.6, 15.5, 16.3, 14.2, 12.4, 15.9]; return; }
+    var n = 10 + Math.floor(rnd() * 5), a = []; for (var i = 0; i < n; i++) a.push(Math.round((11.6 + (rnd() * 4 - 2)) * 10) / 10); s.hist[w] = a;
+  });
+  // Requests today: [type, ward, code or ticket, items, lines, req, prep, chk, ready, coll] (h, m pairs; null = not yet)
+  var T = function (x) { return x ? at(x[0], x[1]) : null; };
+  [
+    ['inpatient', 'W1', null, 0, [[101, 8], [105, 4], [110, 6]], [8, 30], [8, 55], [9, 20], [9, 25], [10, 0]],
+    ['discharge', 'W1', '2C5', 3, null, [8, 50], [9, 5], [9, 40], [9, 50], [10, 30]],
+    ['outpatient', 'OP', 'Ticket 021', 2, null, [9, 10], [9, 18], [9, 34], [9, 40], [9, 45]],
+    ['discharge', 'W2', '8H1', 2, null, [9, 15], [9, 50], [10, 20], [10, 28], [11, 5]],
+    ['inpatient', 'W5', null, 0, [[113, 4], [102, 3]], [9, 30], [10, 5], [10, 30], [10, 40], [11, 10]],
+    ['discharge', 'W5', '4T9', 5, null, [9, 40], [10, 30], [11, 15], [11, 25], [12, 20]],
+    ['inpatient', 'W3', null, 0, [[104, 3], [110, 4]], [9, 55], [10, 40], [11, 0], [11, 5], [11, 40]],
+    ['discharge', 'W3', '6B3', 2, null, [10, 5], [10, 50], [11, 20], [11, 30], [11, 55]],
+    ['outpatient', 'OP', 'Ticket 027', 1, null, [10, 30], [10, 41], [10, 52], [10, 55], [11, 2]],
+    ['discharge', 'W4', '1N6', 4, null, [10, 40], [11, 45], [12, 30], [12, 40], [13, 25]],
+    ['inpatient', 'W6', null, 0, [[101, 2], [108, 3], [111, 1]], [10, 50], [11, 30], [11, 50], [11, 55], [12, 30]],
+    ['discharge', 'W6', '5P8', 1, null, [11, 10], [11, 55], [12, 15], [12, 22], null],
+    ['outpatient', 'OP', 'Ticket 031', 3, null, [11, 20], [11, 35], [11, 58], [12, 5], [12, 16]],
+    ['discharge', 'W2', '9K4', 3, null, [11, 50], [12, 40], [13, 10], [13, 18], null],
+    ['discharge', 'W2', '4M1', 2, null, [11, 55], [12, 50], [13, 30], null, null],
+    ['inpatient', 'W2', null, 0, [[103, 5], [107, 2]], [12, 10], [12, 40], [13, 0], [13, 5], [13, 30]],
+    ['outpatient', 'OP', 'Ticket 034', 2, null, [12, 15], [12, 30], [12, 48], [12, 52], [13, 0]],
+    ['discharge', 'W4', '2R6', 2, null, [12, 20], [13, 5], null, null, null],
+    ['discharge', 'W3', '3D7', 3, null, [12, 35], null, null, null, null],
+    ['inpatient', 'W5', null, 0, [[107, 5], [106, 2]], [12, 45], [13, 20], null, null, null],
+    ['discharge', 'W5', '7Q2', 4, null, [12, 55], null, null, null, null],
+    ['outpatient', 'OP', 'Ticket 036', 3, null, [12, 58], [13, 5], [13, 20], [13, 28], null],
+    ['inpatient', 'W4', null, 0, [[101, 6], [112, 4]], [13, 10], null, null, null, null],
+    ['outpatient', 'OP', 'Ticket 038', 2, null, [13, 15], null, null, null, null],
+    ['discharge', 'W1', '8F3', 3, null, [13, 20], null, null, null, null],
+    ['inpatient', 'W6', null, 0, [[116, 1]], [13, 25], null, null, null, null],
+    ['outpatient', 'OP', 'Ticket 039', 1, null, [13, 32], null, null, null, null]
+  ].forEach(function (x) {
+    var q = mk(s, x[0], x[1], x[2], x[3], x[4], T(x[5]));
+    if (q.lines && x[4][0][0] !== 116) q.kind = 'topup';
+    q.prep = T(x[6]); q.chk = T(x[7]); q.ready = T(x[8]); q.coll = T(x[9]);
+    if (q.ready) { q.shelf = slot(s, q.type); if (q.lines) q.lines.forEach(function (l) { l.supplied = l.line === 113 ? 0 : l.qty; }); }
+  });
+  var ev = [];
+  s.reqs.forEach(function (q) { STAGES.forEach(function (k) { if (q[k]) ev.push({ t: q[k], text: eventText(q, k) }); }); });
+  ev.push({ t: s.stock[113].outSince, text: 'Stock-out started: Line 113 · tablets, box of 100. 60 packs on order.' });
+  ev.sort(function (a, b) { return b.t - a.t; });
+  s.log = ev.slice(0, 40);
+  return s;
+}
+function mk(s, type, ward, code, items, lines, req) {
+  var q = { id: 'R' + (++s.seq), type: type, kind: type === 'inpatient' ? 'nonstock' : type, ward: ward, code: code, items: items,
+    lines: lines ? lines.map(function (l) { return { line: l[0], qty: l[1], supplied: null }; }) : null,
+    req: req, prep: null, chk: null, ready: null, coll: null, shelf: null, rank: 0 };
+  s.reqs.push(q); return q;
+}
+function slot(s, type) {
+  var k = type === 'discharge' ? 'D' : type === 'inpatient' ? 'W' : 'O', used = s.reqs.filter(function (q) { return q.shelf && !q.coll; }).map(function (q) { return q.shelf; }), n = 1;
+  while (used.indexOf(k + n) >= 0) n++;
+  return k + n;
+}
+
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE));
+    // An example day goes stale: start a fresh one after 8 hours.
+    if (!s || s.v !== 1 || !s.reqs || Date.now() - s.created > 8 * 60 * M) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function now() { return Date.now() + (state.offset || 0); }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+// ---------- Derived data (pure) ----------
+function status(q) { return q.coll ? 'coll' : q.ready ? 'ready' : q.chk ? 'chk' : q.prep ? 'prep' : 'req'; }
+function inQueue(q) { return !q.ready; }
+function waitMin(q) { return Math.max(0, Math.floor(((q.ready || now()) - q.req) / M)); }
+function onShelfMin(q) { return Math.max(0, Math.floor(((q.coll || now()) - q.ready) / M)); }
+function lineLabel(n) { return 'Line ' + n + ' · ' + PACK[n]; }
+function who(q) {
+  if (q.type === 'outpatient') return 'Outpatients · ' + q.code;
+  if (q.type === 'discharge') return WARDS[q.ward] + ' · patient ' + q.code;
+  return WARDS[q.ward] + ' · ' + (q.kind === 'topup' ? 'top-up, ' + q.lines.length + (q.lines.length > 1 ? ' lines' : ' line') : 'non-stock item');
+}
+function sizeText(q) { return q.lines ? q.lines.map(function (l) { return lineLabel(l.line) + ' × ' + l.qty; }).join('; ') : q.items + (q.items > 1 ? ' items' : ' item'); }
+function queue(filter) {
+  return state.reqs.filter(function (q) { return inQueue(q) && (!filter || filter === 'all' || q.type === filter); }).sort(function (a, b) {
+    return ((a.rank || 999) - (b.rank || 999)) || (a.req - b.req);
+  });
+}
+function shelf() { return state.reqs.filter(function (q) { return q.ready && !q.coll; }).sort(function (a, b) { return a.ready - b.ready; }); }
+function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function daysLeft(b) { return Math.max(0, Math.ceil((b.exp - now()) / D)); }
+function nearExpiry() { return state.batches.filter(function (b) { return b.qty > 0 && daysLeft(b) <= (+state.set.expiryDays || 0); }).sort(function (a, b) { return a.exp - b.exp; }); }
+function stockOuts() { return Object.keys(state.stock).map(function (k) { return state.stock[k]; }).filter(function (x) { return x.qty <= 0; }); }
+function stepMedians() {
+  var ds = state.reqs.filter(function (q) { return q.type === 'discharge'; });
+  var m = function (from, to) { var v = ds.filter(function (q) { return q[from] && q[to]; }).map(function (q) { return (q[to] - q[from]) / M; }); return { min: v.length ? Math.round(median(v)) : null, n: v.length }; };
+  return [['Waiting to start', m('req', 'prep')], ['Preparing', m('prep', 'chk')], ['Checked to on the shelf', m('chk', 'ready')], ['On the shelf to collected', m('ready', 'coll')]];
+}
+function fillRate(ward) {
+  var lines = [];
+  state.reqs.forEach(function (q) { if (q.kind === 'topup' && q.ready && (!ward || q.ward === ward)) lines = lines.concat(q.lines); });
+  var full = lines.filter(function (l) { return l.supplied >= l.qty; }).length;
+  return { pct: lines.length ? Math.round(100 * full / lines.length) : null, full: full, lines: lines.length };
+}
+function kpis() {
+  var ready = state.reqs.filter(function (q) { return q.type === 'discharge' && q.ready; });
+  var t = median(ready.map(function (q) { return (q.ready - q.req) / M; }));
+  var open = queue(), fr = fillRate(), tr = Object.keys(state.stock).map(function (k) { return state.stock[k]; }).filter(function (x) { return x.tracer; });
+  return {
+    dischargeTurnaroundMin: t == null ? null : Math.round(t), dischargesReady: ready.length,
+    inQueue: open.length, dischargeInQueue: open.filter(function (q) { return q.type === 'discharge'; }).length, onShelf: shelf().length,
+    topUpFillRatePct: fr.pct, topUpLinesFull: fr.full, topUpLines: fr.lines,
+    stockOuts: stockOuts().length, nearExpiryBatches: nearExpiry().length,
+    tracerAvailablePct: Math.round(100 * tr.filter(function (x) { return x.qty > 0; }).length / tr.length), tracerListed: tr.length
+  };
+}
+function byHour() {
+  var rows = {}, nowH = new Date(now()).getHours();
+  state.reqs.forEach(function (q) { var h = new Date(q.req).getHours(); if (!rows[h]) rows[h] = { discharge: 0, inpatient: 0, outpatient: 0 }; rows[h][q.type]++; });
+  var out = [];
+  for (var h = 8; h <= Math.max(nowH, 8) && h < 22; h++) { var r = rows[h] || { discharge: 0, inpatient: 0, outpatient: 0 }, tot = r.discharge + r.inpatient + r.outpatient, st = STAFF[h] || 1; out.push({ hour: h, discharge: r.discharge, inpatient: r.inpatient, outpatient: r.outpatient, total: tot, staff: st, perPerson: Math.round(10 * tot / st) / 10 }); }
+  return out;
+}
+function lateShare(w) { var a = state.hist[w] || [], late = a.filter(function (h) { return h >= +state.set.lateHour; }); return { late: late.length, n: a.length, median: median(a) }; }
+function expectedReady(q) {
+  // Estimate only, from today's medians: the steps still to do, and the discharge requests ahead of this one.
+  var med = stepMedians(), st = status(q), mins = med[2][1].min || 0;
+  if (st === 'req' || st === 'prep') mins += med[1][1].min || 0;
+  if (st === 'req') mins += med[0][1].min || 0;
+  var est = (st === 'req' ? q.req : now()) + mins * M;
+  if (st === 'req') {
+    var ahead = queue('discharge').filter(function (x) { return status(x) === 'req'; }).map(function (x) { return x.id; }).indexOf(q.id);
+    est = Math.max(est, now() + (Math.max(0, ahead) + 1) * (med[1][1].min || 0) * M / 2);
+  }
+  return Math.max(est, now() + 5 * M);
+}
+
+// ---------- The guide: plain, checkable rules ----------
+function suggest() {
+  var out = [], k = kpis();
+  // 1. Discharge requests not started: prepare first where the bed board shows patients waiting for a bed.
+  var waiting = queue('discharge').filter(function (q) { return status(q) === 'req'; });
+  if (waiting.length >= 2) {
+    var order = waiting.slice().sort(function (a, b) { return ((state.demand[b.ward] || 0) - (state.demand[a.ward] || 0)) || (a.req - b.req); });
+    var top = order[0];
+    if (top.id !== waiting[0].id && state.demand[top.ward] > 0) {
+      var id = 'order-' + order.map(function (q) { return q.id; }).join('');
+      out.push({ id: id, kind: 'flow', tag: 'Discharges',
+        title: 'Prepare ' + WARDS[top.ward] + ' patient ' + top.code + ' next?',
+        text: 'The bed board shows ' + state.demand[top.ward] + ' waiting for a bed on ' + WARDS[top.ward] + ' and ' + (state.demand[waiting[0].ward] || 0) + ' on ' + WARDS[waiting[0].ward] + '. ' + WARDS[waiting[0].ward] + ' patient ' + waiting[0].code + ' has waited longer (' + fmt(waitMin(waiting[0])) + ').',
+        why: 'Bed board count of patients waiting for a bed, by ward. It uses nothing about any patient\'s condition or medicines.',
+        acts: [{ label: 'Propose this order', primary: true, fn: function () { propose({ id: id, who: 'dispensary', kind: 'order', ids: order.map(function (q) { return q.id; }), text: 'Prepare discharge requests in this order: ' + order.map(function (q) { return WARDS[q.ward] + ' ' + q.code; }).join(', then ') + '.' }); } },
+          { label: 'Show in the queue', fn: function () { state.role = 'dispensary'; state.filter = 'discharge'; render(); document.getElementById('view-h').scrollIntoView({ block: 'start' }); } }] });
+    }
+  }
+  // 2. Stock will reach zero before the next delivery could arrive, and nothing is on order.
+  var risk = Object.keys(state.stock).map(function (n) { return state.stock[n]; }).filter(function (x) { return x.qty > 0 && x.onOrder === 0 && x.qty / x.use < x.lead; }).sort(function (a, b) { return a.qty / a.use - b.qty / b.use; })[0];
+  if (risk) {
+    var qty = Math.ceil((risk.use * (risk.lead + 7) + risk.level - risk.qty) / 10) * 10, rid = 'reorder-' + risk.line;
+    out.push({ id: rid, kind: 'stock', tag: 'Stock',
+      title: 'Reorder ' + lineLabel(risk.line) + '?',
+      text: risk.qty + ' left: about ' + fmt1(risk.qty / risk.use) + ' days at current use (' + risk.use + ' a day). A delivery takes ' + risk.lead + ' days. Suggested order: ' + qty + ' packs (use until the delivery, one week more, and back to the reorder level of ' + risk.level + ').',
+      why: 'Stock on hand divided by average daily use, against the delivery lead time. Nothing is on order for this line.',
+      acts: [{ label: 'Propose order of ' + qty, primary: true, fn: function () { propose({ id: rid, who: 'manager', kind: 'reorder', line: risk.line, qty: qty, text: 'Order ' + qty + ' packs of ' + lineLabel(risk.line) + '.' }); } }] });
+  }
+  // 3. Stock near expiry held where it is used slowly, when another ward uses it faster.
+  nearExpiry().some(function (b) {
+    if (b.loc === 'PH' || !WARD_USE[b.line]) return false;
+    var use = WARD_USE[b.line], here = use[b.loc] || 0, best = WARD_IDS.filter(function (w) { return w !== b.loc; }).sort(function (x, y) { return use[y] - use[x]; })[0];
+    if (!best || use[best] < 2 * here || use[best] < 1) return false;
+    var mid = 'move-' + b.id + '-' + best, weeks = daysLeft(b) / 7;
+    out.push({ id: mid, kind: 'stock', tag: 'Expiry',
+      title: 'Move ' + b.qty + ' packs of Line ' + b.line + ' from ' + WARDS[b.loc] + ' to ' + WARDS[best] + '?',
+      text: 'They expire in ' + daysLeft(b) + ' days. ' + WARDS[b.loc] + ' uses about ' + here + ' a week (' + fmt1(here * weeks) + ' before expiry); ' + WARDS[best] + ' uses about ' + use[best] + ' a week (' + fmt1(use[best] * weeks) + ').',
+      why: 'Expiry dates by location against each ward\'s average weekly use. The expiry window (' + state.set.expiryDays + ' days) is an example setting, not a standard.',
+      acts: [{ label: 'Propose the move', primary: true, fn: function () { propose({ id: mid, who: 'manager', kind: 'move', batch: b.id, to: best, text: 'Move ' + b.qty + ' packs of ' + lineLabel(b.line) + ' from ' + WARDS[b.loc] + ' to ' + WARDS[best] + ', to use before they expire.' }); } }] });
+    return true;
+  });
+  // 4. Discharge medicine requests that usually arrive late in the day, by ward.
+  WARD_IDS.forEach(function (w) {
+    var ls = lateShare(w);
+    if (state.noted[w] || ls.n < 5 || ls.late / ls.n < 0.5) return;
+    var nid = 'late-' + w + '-' + state.set.lateHour;
+    out.push({ id: nid, kind: 'flow', tag: 'Request times',
+      title: WARDS[w] + ': ask for discharge medicines earlier?',
+      text: 'In the last 7 days, ' + ls.late + ' of ' + ls.n + ' of ' + WARDS[w] + '\'s discharge medicine requests arrived after ' + pad(state.set.lateHour) + ':00. The middle request time was ' + hm(ls.median) + '. Requests made when a discharge is first planned give the dispensary more time.',
+      why: 'Request times for this ward over the last 7 days. The ' + pad(state.set.lateHour) + ':00 cut-off is an example setting, not a standard.',
+      acts: [{ label: 'Propose a note to ' + WARDS[w], primary: true, fn: function () { propose({ id: nid, who: 'manager', kind: 'note', ward: w, text: 'Add a note to ' + WARDS[w] + '\'s handover: request discharge medicines as soon as a discharge is planned.' }); } }] });
+  });
+  return out.filter(function (x) { return !state.dismissed[x.id]; }).slice(0, 4);
+}
+function propose(p) {
+  if (state.pending.some(function (x) { return x.id === p.id; })) return;
+  p.at = now(); state.pending.push(p);
+  addLog('Guide proposed: ' + p.text + ' Waiting for the ' + ROLE_WORD[p.who] + '.');
+  render(); toast('Proposed. The ' + ROLE_WORD[p.who] + ' decides.');
+}
+var ROLE_WORD = { dispensary: 'pharmacist in the dispensary', manager: 'pharmacy manager' };
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x.id !== p.id; });
+  var by = p.who === 'manager' ? 'Pharmacy manager' : 'Pharmacist';
+  if (!yes) { state.dismissed[p.id] = true; addLog(by + ' declined: ' + p.text); render(); toast('Declined. Nothing changed.'); return; }
+  if (p.kind === 'order') {
+    var live = p.ids.filter(function (id) { var q = byId(id); return q && status(q) === 'req'; });
+    live.forEach(function (id, i) { byId(id).rank = i + 1; });
+  } else if (p.kind === 'reorder') {
+    state.stock[p.line].onOrder += p.qty;
+  } else if (p.kind === 'move') {
+    var b = state.batches.filter(function (x) { return x.id === p.batch; })[0];
+    if (b) { if (state.wardStock[b.loc] && state.wardStock[b.loc][b.line]) state.wardStock[b.loc][b.line].have = Math.max(0, state.wardStock[b.loc][b.line].have - b.qty); b.loc = p.to; }
+  } else if (p.kind === 'note') {
+    state.noted[p.ward] = true;
+  }
+  state.dismissed[p.id] = true;
+  addLog(by + ' confirmed: ' + p.text);
+  render(); toast(p.kind === 'order' ? 'Done. The dispensary queue has updated.' : p.kind === 'reorder' ? 'Order placed. It shows as on order.' : 'Done. Recorded in the log.');
+}
+function byId(id) { return state.reqs.filter(function (q) { return q.id === id; })[0]; }
+
+// ---------- Helpers ----------
+function fmt(m) { m = Math.round(+m || 0); if (m < 60) return m + ' min'; var h = Math.floor(m / 60), r = m % 60; return h + ' h ' + (r < 10 ? '0' : '') + r; }
+function fmt1(x) { return String(Math.round(x * 10) / 10); }
+function pad(n) { return (n < 10 ? '0' : '') + n; }
+function hm(hours) { if (hours == null) return '–'; var h = Math.floor(hours), m = Math.round((hours - h) * 60); if (m === 60) { h++; m = 0; } return pad(h) + ':' + pad(m); }
+function hhmm(t) { var d = new Date(t); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+function eventText(q, k) {
+  var w = who(q);
+  if (k === 'req') return (q.type === 'outpatient' ? 'Outpatient prescription received: ' + q.code : 'Request received from ' + WARDS[q.ward] + ': ' + (q.type === 'discharge' ? 'discharge medicines, patient ' + q.code : w.split(' · ')[1])) + ' (' + sizeText(q) + ')';
+  if (k === 'prep') return 'Dispensary started preparing: ' + w;
+  if (k === 'chk') return 'Checked in the dispensary: ' + w;
+  if (k === 'ready') return 'Ready to collect on shelf ' + q.shelf + ': ' + w + (q.lines ? ' · ' + supplyText(q) : '');
+  return 'Handed over' + (q.type === 'outpatient' ? ' at the counter: ' : ' for the ward: ') + w;
+}
+function supplyText(q) {
+  var short = q.lines.filter(function (l) { return l.supplied < l.qty; });
+  if (!short.length) return 'all lines in full';
+  return short.map(function (l) { return 'Line ' + l.line + ' ' + l.supplied + ' of ' + l.qty + ' (' + (l.qty - l.supplied) + ' owed)'; }).join('; ');
+}
+var lastLogT = 0;
+function addLog(text) { lastLogT = now(); state.log.unshift({ t: lastLogT, text: text }); state.log = state.log.slice(0, 40); }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+
+// ---------- Actions ----------
+function advance(q) {
+  var st = status(q), nx = NEXT[st]; if (!nx) return;
+  var k = nx[0]; q[k] = now();
+  if (k === 'prep') q.rank = 0;
+  if (k === 'ready') {
+    q.shelf = slot(state, q.type);
+    if (q.lines) q.lines.forEach(function (l) {
+      var s = state.stock[l.line]; l.supplied = Math.max(0, Math.min(l.qty, s.qty)); s.qty -= l.supplied;
+      if (s.qty <= 0 && !s.outSince) { s.outSince = now(); addLog('Stock-out started: ' + lineLabel(l.line) + (s.onOrder ? '. ' + s.onOrder + ' on order.' : '. Nothing on order.')); }
+    });
+  }
+  if (k === 'coll' && q.lines && state.wardStock[q.ward]) q.lines.forEach(function (l) { var ws = state.wardStock[q.ward][l.line]; if (ws) ws.have += l.supplied; });
+  addLog(eventText(q, k));
+  if (k === 'ready' && q.type === 'discharge') addLog(WARDS[q.ward] + ' can see patient ' + q.code + '\'s medicines are ready to collect.');
+  render();
+  toast(k === 'prep' ? 'Started. The ward sees "being prepared".' : k === 'chk' ? 'Checked.' : k === 'ready' ? 'On shelf ' + q.shelf + '. ' + (q.type === 'outpatient' ? 'Ready at the counter.' : WARDS[q.ward] + ' can see it is ready.') + (q.lines && supplyText(q) !== 'all lines in full' ? ' Part-filled: ' + supplyText(q) + '.' : '') : 'Handed over. Turnaround recorded.');
+}
+function sendRequest() {
+  var f = state.form, w = state.ward, q;
+  if (f.kind === 'discharge') {
+    if (!f.code) return;
+    q = mk(state, 'discharge', w, f.code, f.qty, null, now());
+    state.planned[w] = state.planned[w].filter(function (c) { return c !== f.code; });
+  } else if (f.kind === 'topup' || f.kind === 'nonstock') {
+    if (!f.line) return;
+    q = mk(state, 'inpatient', w, null, 0, [[f.line, f.qty]], now()); q.kind = f.kind;
+  } else return;
+  addLog(eventText(q, 'req'));
+  state.form = { kind: null, line: null, code: null, qty: 1 };
+  render();
+  toast('Sent to the pharmacy. You will see each stage here.');
+  var first = document.querySelector('#ward-requests .rq'); if (first) first.scrollIntoView({ block: 'nearest' });
+}
+
+// ---------- Render ----------
+var HINTS = {
+  ward: 'A charge nurse\'s phone. Ask for a top-up, a non-stock item or discharge medicines in a few taps, then see each request move from requested to ready to collect.',
+  dispensary: 'The dispensary screen for technicians and pharmacists. One queue by type, how long each request has waited, one tap per stage, and the ready-for-collection shelf.',
+  manager: 'The pharmacy manager\'s view. Discharge medicines turnaround by step, the queue by hour against staff on shift, stock-outs, items near expiry and ward top-up fill rate.'
+};
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  ['ward', 'dispensary', 'manager'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('view-h').textContent = { ward: 'Ward requests', dispensary: 'Dispensing queue', manager: 'Pharmacy overview' }[state.role];
+  renderKpis();
+  var v = document.getElementById('view'); v.textContent = '';
+  v.appendChild(state.role === 'ward' ? wardView() : state.role === 'dispensary' ? dispensary() : manager());
+  renderGuide();
+  renderLog();
+  save();
+  if (aid) { var e = document.getElementById(aid); if (e) e.focus({ preventScroll: true }); }
+  sig = signature();
+}
+function renderKpis() {
+  var k = kpis(), box = document.getElementById('kpis'); box.textContent = '';
+  var tiles = [
+    ['turn', k.dischargeTurnaroundMin == null ? '–' : fmt(k.dischargeTurnaroundMin), 'Discharge medicines turnaround', 'median of ' + k.dischargesReady + ' today', 'Request received → ready for collection, median, discharge requests today. Local definition.'],
+    ['queue', String(k.inQueue), 'In the pharmacy queue', k.dischargeInQueue + ' discharge · ' + k.onShelf + ' on the shelf', 'Requests received and not yet ready for collection, all types, now. Items on the ready shelf are counted separately. Local definition.'],
+    ['fill', k.topUpFillRatePct == null ? '–' : k.topUpFillRatePct + '%', 'Ward top-up fill rate', k.topUpLinesFull + ' of ' + k.topUpLines + ' lines in full', 'Top-up lines supplied in full / top-up lines requested, for top-ups made ready today. A line part-filled because the pharmacy is out counts as not in full. Local definition.'],
+    ['out', String(k.stockOuts), 'Stock-outs now', k.nearExpiryBatches + ' near expiry', 'Stock lines with none left in the pharmacy store, now. Stock-out duration (days out of stock per line) follows the WHO harmonized PSM indicators; this count is a local definition. Near expiry: batches expiring within the window in Settings (an example setting).']
+  ];
+  tiles.forEach(function (t) {
+    var open = state.kpiOpen === t[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat' + (t[0] === 'out' && k.stockOuts ? ' alert' : ''), 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def', text: t[4] })]));
+  });
+}
+function trackEl(q) {
+  return el('div', { class: 'track', 'aria-label': 'Progress: ' + STAGE_WORD[status(q)] }, STAGES.map(function (k) {
+    return el('span', { class: q[k] ? 'on' : '' }, [{ req: 'Asked', prep: 'Preparing', chk: 'Checked', ready: 'Ready', coll: 'Collected' }[k], el('em', { text: q[k] ? hhmm(q[k]) : '–' })]);
+  }));
+}
+function wardView() {
+  var frag = document.createDocumentFragment(), w = state.ward, f = state.form;
+  var sel = el('select', { id: 'ward-pick', onchange: function (e) { state.ward = e.target.value; state.form = { kind: null, line: null, code: null, qty: 1 }; render(); } });
+  WARD_IDS.forEach(function (id) { var o = el('option', { value: id, text: WARDS[id] }); if (id === w) o.selected = true; sel.appendChild(o); });
+  var mine = state.reqs.filter(function (q) { return q.ward === w; });
+  var readyN = mine.filter(function (q) { return status(q) === 'ready'; }).length, openN = mine.filter(inQueue).length;
+  frag.appendChild(el('div', { class: 'wardbar' }, [el('label', { for: 'ward-pick' }, ['Your ward', sel]),
+    el('div', { class: 'pills' }, [el('span', { class: 'pill', text: openN + ' with pharmacy' }), el('span', { class: 'pill' + (readyN ? ' hot' : ''), text: readyN + ' ready to collect' })])]));
+  // Ask the pharmacy
+  frag.appendChild(el('h3', { class: 'sec', text: 'Ask the pharmacy' }));
+  var steps = el('div', { class: 'steps' });
+  var c1 = el('div', { class: 'choices three', role: 'group', 'aria-label': 'What do you need?' });
+  [['topup', 'Top-up', 'a line we keep on the ward'], ['nonstock', 'Non-stock item', 'a line we do not keep'], ['discharge', 'Discharge medicines', 'for a planned discharge']].forEach(function (t) {
+    c1.appendChild(el('button', { type: 'button', class: 'choice', id: 'q-' + t[0], 'aria-pressed': String(f.kind === t[0]), onclick: function () { state.form = { kind: t[0], line: null, code: null, qty: t[0] === 'discharge' ? 3 : 1 }; render(); } }, [t[1], el('small', { text: t[2] })]));
+  });
+  steps.appendChild(el('div', {}, [el('p', { class: 'stepq' }, [el('i', { text: '1' }), 'What do you need?']), c1]));
+  if (f.kind) {
+    var c2 = el('div', { class: 'choices', role: 'group', 'aria-label': f.kind === 'discharge' ? 'Which patient?' : 'Which stock line?' }), opts = [];
+    if (f.kind === 'topup') {
+      Object.keys(state.wardStock[w]).forEach(function (n, i) {
+        var ws = state.wardStock[w][n], low = ws.have < ws.level / 2;
+        c2.appendChild(el('button', { type: 'button', class: 'choice', id: 'w-' + i, 'aria-pressed': String(f.line === +n), onclick: function () { f.line = +n; f.qty = Math.max(1, ws.level - ws.have); render(); } }, ['Line ' + n, el('small', { text: state.stock[n].pack }), el('small', { class: low ? 'low' : '', text: ws.have + ' of ' + ws.level + ' on the ward' })]));
+      });
+    } else if (f.kind === 'nonstock') {
+      Object.keys(state.stock).filter(function (n) { return !state.wardStock[w][n]; }).slice(0, 8).forEach(function (n, i) {
+        var s = state.stock[n];
+        c2.appendChild(el('button', { type: 'button', class: 'choice', id: 'w-' + i, 'aria-pressed': String(f.line === +n), onclick: function () { f.line = +n; f.qty = 1; render(); } }, ['Line ' + n, el('small', { text: s.pack }), el('small', { class: s.qty ? '' : 'low', text: s.qty ? 'pharmacy has stock' : 'pharmacy is out: will be owed' })]));
+      });
+    } else {
+      opts = state.planned[w] || [];
+      opts.forEach(function (c, i) { c2.appendChild(el('button', { type: 'button', class: 'choice', id: 'w-' + i, 'aria-pressed': String(f.code === c), onclick: function () { f.code = c; render(); } }, ['Patient ' + c, el('small', { text: 'planned discharge today' })])); });
+      if (!opts.length) c2 = el('p', { class: 'empty', text: 'No planned discharges left to request on ' + WARDS[w] + ' today.' });
+    }
+    steps.appendChild(el('div', {}, [el('p', { class: 'stepq' }, [el('i', { text: '2' }), f.kind === 'discharge' ? 'Which patient? (codes from the bed board)' : 'Which stock line?']), c2]));
+    if (f.line || f.code) {
+      var unit = f.kind === 'discharge' ? 'items on the prescription' : 'packs';
+      var out = el('output', { id: 'q-qty', 'aria-live': 'polite', text: String(f.qty) });
+      steps.appendChild(el('div', {}, [el('p', { class: 'stepq' }, [el('i', { text: '3' }), f.kind === 'discharge' ? 'How many items?' : 'How many?']),
+        el('div', { class: 'qty' }, [el('button', { type: 'button', id: 'q-minus', 'aria-label': 'One fewer', onclick: function () { f.qty = Math.max(1, f.qty - 1); render(); }, text: '−' }), out,
+          el('button', { type: 'button', id: 'q-plus', 'aria-label': 'One more', onclick: function () { f.qty = Math.min(f.kind === 'discharge' ? 15 : 40, f.qty + 1); render(); }, text: '+' }), el('span', { text: unit })]),
+        el('div', { class: 'sendrow', style: 'margin-top:12px' }, [el('button', { type: 'button', class: 'send', id: 'q-send', onclick: sendRequest, text: 'Send to pharmacy' })]),
+        f.kind === 'discharge' ? el('p', { class: 'fine', text: 'The prescription itself stays in your prescribing system. This request starts the clock and lets you follow it.' }) : null]));
+    }
+  }
+  frag.appendChild(steps);
+  // Discharge medicines status
+  var ds = mine.filter(function (q) { return q.type === 'discharge' && (!q.coll || now() - q.coll < 3 * 60 * M); }).sort(function (a, b) { return (!!a.coll - !!b.coll) || (b.req - a.req); });
+  frag.appendChild(el('h3', { class: 'sec', text: WARDS[w] + ': discharge medicines' }));
+  var list = el('div', { class: 'rqs', id: 'ward-requests' });
+  if (!ds.length) list.appendChild(el('p', { class: 'empty', text: 'No discharge medicine requests today.' }));
+  var other = mine.filter(function (q) { return q.type === 'inpatient' && (!q.coll || now() - q.coll < 3 * 60 * M); }).sort(function (a, b) { return b.req - a.req; });
+  ds.concat(other).forEach(function (q, i) {
+    if (i === ds.length && other.length) list.appendChild(el('h3', { class: 'sec', style: 'margin:8px 0 0', text: 'Top-ups and non-stock items' }));
+    var st = status(q), line;
+    if (st === 'ready') line = [el('b', { text: 'Ready on shelf ' + q.shelf }), ' since ' + hhmm(q.ready) + ' (' + fmt(onShelfMin(q)) + ')' + (q.lines ? '. ' + supplyText(q) : '')];
+    else if (st === 'coll') line = ['Collected at ' + hhmm(q.coll) + ' · request to ready ' + fmt((q.ready - q.req) / M)];
+    else line = ['Asked ' + hhmm(q.req) + ' (' + fmt(waitMin(q)) + ' ago) · ', el('b', { text: 'expected about ' + hhmm(expectedReady(q)) }), ' (estimate from today\'s times)'];
+    list.appendChild(el('div', { class: 'rq' }, [
+      el('div', { class: 'top' }, [el('span', { text: q.type === 'discharge' ? 'Patient ' + q.code + ' · ' + sizeText(q) : (q.kind === 'topup' ? 'Top-up · ' : 'Non-stock · ') + sizeText(q) }), el('span', { class: 'chip st-' + st, text: STAGE_WORD[st] })]),
+      el('p', { class: 'line' }, line), trackEl(q)]));
+  });
+  frag.appendChild(list);
+  return frag;
+}
+function jobCard(q, first) {
+  var st = status(q), nx = NEXT[st];
+  var chips = [el('span', { class: 'chip t-' + q.type, text: TYPES[q.type] })];
+  if (first) chips.push(el('span', { class: 'chip next', text: 'Next up' }));
+  if (q.type === 'discharge' && state.demand[q.ward] > 0) chips.push(el('span', { class: 'chip bed', text: 'Bed wanted · ' + state.demand[q.ward] + ' waiting' }));
+  if (st !== 'req') chips.push(el('span', { class: 'chip st-' + st, text: STAGE_WORD[st] }));
+  var body = [el('div', { class: 'top' }, [el('div', { class: 'kind' }, chips), el('div', { class: 'clock', 'data-since': q.id }, [fmt(waitMin(q)), el('small', { text: 'since asked' })])]),
+    el('p', { class: 'what', text: who(q) })];
+  if (q.lines) body.push(el('ul', { class: 'lines' }, q.lines.map(function (l) { var s = state.stock[l.line], short = s.qty < l.qty; return el('li', { class: short ? 'short' : '', text: lineLabel(l.line) + ' × ' + l.qty + (short ? ' · pharmacy has ' + s.qty : '') }); })));
+  else body.push(el('p', { class: 'meta', text: sizeText(q) + ' · asked ' + hhmm(q.req) }));
+  body.push(el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'go s-' + st, id: 'go-' + q.id, onclick: function () { advance(q); }, 'aria-label': nx[1] + ': ' + who(q), text: nx[1] })]));
+  return el('div', { class: 'job t-' + q.type + (first ? ' first' : '') }, body);
+}
+function dispensary() {
+  var frag = document.createDocumentFragment(), all = queue();
+  var fl = el('div', { class: 'filters', role: 'group', 'aria-label': 'Filter by type' });
+  [['all', 'All'], ['discharge', 'Discharge'], ['inpatient', 'Inpatient'], ['outpatient', 'Outpatient']].forEach(function (t) {
+    var n = t[0] === 'all' ? all.length : all.filter(function (q) { return q.type === t[0]; }).length;
+    fl.appendChild(el('button', { type: 'button', id: 'f-' + t[0], 'aria-pressed': String(state.filter === t[0]), onclick: function () { state.filter = t[0]; render(); }, text: t[1] + ' (' + n + ')' }));
+  });
+  frag.appendChild(fl);
+  var q = queue(state.filter), box = el('div', { class: 'jobs', id: 'queue' });
+  if (!q.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing waiting of this type.' }));
+  q.forEach(function (x, i) { box.appendChild(jobCard(x, i === 0)); });
+  frag.appendChild(box);
+  frag.appendChild(el('p', { class: 'fine', text: 'Oldest request first, unless the pharmacist has confirmed a different order. Stages are marked by the team, never scored by person.' }));
+  var sh = shelf();
+  frag.appendChild(el('h3', { class: 'sec', text: 'Ready-for-collection shelf (' + sh.length + ')' }));
+  var g = el('div', { class: 'shelf', id: 'shelf' });
+  if (!sh.length) g.appendChild(el('p', { class: 'empty', text: 'The shelf is empty.' }));
+  sh.forEach(function (x) {
+    var long = onShelfMin(x) >= 60;
+    g.appendChild(el('div', { class: 'slot' + (long ? ' long' : '') }, [el('span', { class: 'sn', text: 'Shelf ' + x.shelf + ' · ' + TYPES[x.type] }), el('b', { text: who(x) }),
+      el('p', { class: 'meta' + (long ? ' w' : ''), 'data-shelf': x.id, text: 'Ready ' + fmt(onShelfMin(x)) }),
+      el('button', { type: 'button', class: 'small primary', id: 'go-' + x.id, onclick: function () { advance(x); }, 'aria-label': 'Handed over: ' + who(x), text: 'Handed over' })]));
+  });
+  frag.appendChild(g);
+  if (sh.some(function (x) { return onShelfMin(x) >= 60; })) frag.appendChild(el('p', { class: 'fine', text: 'Red border: ready for an hour or more and not yet collected (an example setting).' }));
+  return frag;
+}
+function manager() {
+  var frag = document.createDocumentFragment(), k = kpis();
+  var g = el('div', { class: 'grid2', style: 'margin-top:14px' });
+  // Turnaround by step
+  var med = stepMedians(), maxm = Math.max.apply(null, med.map(function (m) { return m[1].min || 0; }).concat([1]));
+  var topIdx = med.reduce(function (bi, m, i) { return (m[1].min || 0) > (med[bi][1].min || 0) ? i : bi; }, 0);
+  var bars = el('div', { class: 'bars' });
+  med.forEach(function (m, i) {
+    bars.appendChild(el('div', { class: 'barrow' + (i === topIdx ? ' top' : '') }, [el('div', { class: 'bl' }, [el('b', { text: m[0] }), el('span', { text: m[1].n + ' requests' })]),
+      el('div', { class: 'track2' }, [el('i', { style: 'width:' + (100 * (m[1].min || 0) / maxm) + '%' })]), el('span', { class: 'v', text: m[1].min == null ? '–' : fmt(m[1].min) })]));
+  });
+  g.appendChild(el('div', { class: 'panel', id: 'p-steps' }, [el('h4', { text: 'Discharge medicines turnaround by step' }), bars,
+    el('p', { class: 'fine', text: 'Median minutes, discharge requests today. Red: the longest step. Local definition.' })]));
+  // Queue by hour vs staff
+  var rows = byHour(), tb = el('tbody'), peak = rows.reduce(function (m, r) { return Math.max(m, r.perPerson); }, 0);
+  rows.forEach(function (r) {
+    tb.appendChild(el('tr', { class: r.perPerson === peak && peak > 0 ? 'hi' : '' }, [el('td', { text: pad(r.hour) + ':00' }), el('td', { class: 'r', text: String(r.discharge) }), el('td', { class: 'r', text: String(r.inpatient) }), el('td', { class: 'r', text: String(r.outpatient) }), el('td', { class: 'r', text: String(r.total) }), el('td', { class: 'r', text: String(r.staff) }), el('td', { class: 'r k', text: fmt1(r.perPerson) })]));
+  });
+  g.appendChild(el('div', { class: 'panel', id: 'p-hours' }, [el('h4', { text: 'Requests received by hour, against staff on shift' }),
+    el('div', { class: 'tablewrap' }, [el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, ['Hour', 'Dis.', 'Inp.', 'Out.', 'All', 'Staff', 'Each'].map(function (h, i) { return el('th', { class: i ? 'r' : '', scope: 'col', text: h }); }))]), tb])]),
+    el('p', { class: 'fine', text: 'Dis. discharge, Inp. inpatient, Out. outpatient. Staff: the dispensary roster for each hour. Each: requests per person on shift. Highlighted: the busiest hour per person.' })]));
+  // Stock watch
+  var outs = stockOuts(), ne = nearExpiry(), below = Object.keys(state.stock).filter(function (n) { var s = state.stock[n]; return s.qty > 0 && s.qty < s.level; }).length;
+  var sw = el('ul', { class: 'watch', id: 'stockouts' });
+  outs.forEach(function (s) { sw.appendChild(el('li', { class: 'bad' }, [el('span', { text: lineLabel(s.line) }), el('span', { text: 'out ' + fmt1(Math.max(0, (now() - s.outSince) / D)) + ' days' + (s.onOrder ? ' · ' + s.onOrder + ' on order' : ' · none on order') })])); });
+  if (!outs.length) sw.appendChild(el('li', {}, [el('span', { text: 'No stock-outs now.' }), el('span', { text: '' })]));
+  Object.keys(state.stock).forEach(function (n) { var s = state.stock[n]; if (s.qty > 0 && s.onOrder) sw.appendChild(el('li', {}, [el('span', { text: lineLabel(s.line) }), el('span', { text: s.qty + ' left · ' + s.onOrder + ' on order' })])); });
+  g.appendChild(el('div', { class: 'panel', id: 'p-stock' }, [el('h4', { text: 'Stock-outs and orders' }),
+    el('div', { class: 'mini' }, [el('div', {}, [el('b', { text: String(outs.length) }), el('span', { text: 'out of stock' })]), el('div', {}, [el('b', { text: String(below) }), el('span', { text: 'below reorder level' })]), el('div', { title: 'Tracer lines in stock today / tracer lines listed. WHO harmonized PSM indicators.' }, [el('b', { text: k.tracerAvailablePct + '%' }), el('span', { text: 'tracer lines in stock' })])]),
+    sw, el('p', { class: 'fine', text: 'Tracer availability: tracer lines in stock today / tracer lines listed (' + k.tracerListed + '), as in the WHO harmonized PSM indicators. Which lines are tracers is the organisation\'s choice.' })]));
+  var ew = el('ul', { class: 'watch', id: 'expiry' });
+  ne.forEach(function (b) { ew.appendChild(el('li', { class: daysLeft(b) <= 30 ? 'bad' : '' }, [el('span', { text: lineLabel(b.line) + ' × ' + b.qty + ' · ' + WARDS[b.loc] }), el('span', { text: daysLeft(b) + ' days' })])); });
+  if (!ne.length) ew.appendChild(el('li', {}, [el('span', { text: 'Nothing expiring within the window.' }), el('span', { text: '' })]));
+  g.appendChild(el('div', { class: 'panel', id: 'p-expiry' }, [el('h4', { text: 'Near expiry: ' + ne.length + (ne.length === 1 ? ' batch' : ' batches') + ' within ' + state.set.expiryDays + ' days' }), ew,
+    el('p', { class: 'fine', text: 'By location, soonest first. Red: 30 days or less.' })]));
+  frag.appendChild(g);
+  // By ward
+  var tb2 = el('tbody');
+  WARD_IDS.forEach(function (w) {
+    var fr = fillRate(w), ls = lateShare(w), late = ls.n && ls.late / ls.n >= 0.5;
+    tb2.appendChild(el('tr', { class: late ? 'hi' : '' }, [el('td', { text: WARDS[w] }), el('td', { class: 'r', text: fr.pct == null ? '–' : fr.pct + '%' }), el('td', { class: 'r' + (late ? ' k' : ''), text: ls.late + ' of ' + ls.n }), el('td', { class: 'r', text: hm(ls.median) }), el('td', { class: 'r', text: String(state.demand[w]) })]));
+  });
+  frag.appendChild(el('div', { class: 'panel', style: 'margin-top:14px', id: 'p-wards' }, [el('h4', { text: 'By ward' }),
+    el('div', { class: 'tablewrap' }, [el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, ['Ward', 'Top-up fill', 'Late requests', 'Middle time', 'Bed waits'].map(function (h, i) { return el('th', { class: i ? 'r' : '', scope: 'col', text: h }); }))]), tb2])]),
+    el('p', { class: 'fine', text: 'Top-up fill: lines in full today. Late requests: discharge medicine requests after ' + pad(state.set.lateHour) + ':00 in the last 7 days. Middle time: their median request time. Bed waits: the bed board\'s count of patients waiting for a bed. This view measures flows and stock, never individual staff.' })]));
+  // Settings
+  var d = el('details', { class: 'set', id: 'settings' }, [el('summary', { text: 'Settings (example settings, not a standard)' })]);
+  var expIn = el('input', { type: 'number', id: 's-exp', min: '7', max: '365', step: '1', value: String(state.set.expiryDays), inputmode: 'numeric', onchange: function (e) { state.set.expiryDays = Math.max(7, Math.min(365, +e.target.value || 60)); render(); } });
+  var lateSel = el('select', { id: 's-late', onchange: function (e) { state.set.lateHour = +e.target.value; render(); } });
+  [11, 12, 13, 14, 15, 16].forEach(function (h) { var o = el('option', { value: String(h), text: pad(h) + ':00' }); if (h === +state.set.lateHour) o.selected = true; lateSel.appendChild(o); });
+  d.appendChild(el('div', { class: 'settings' }, [el('label', { for: 's-exp' }, ['Near-expiry window (days)', expIn]), el('label', { for: 's-late' }, ['A discharge request is "late" after', lateSel])]));
+  frag.appendChild(d);
+  return frag;
+}
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Requests, the queue, the shelf, stock and the measures all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag right now.' }));
+  list.forEach(function (sg) {
+    var pend = state.pending.some(function (p) { return p.id === sg.id; });
+    var acts = sg.acts.map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend && a.primary ? 'disabled' : false, onclick: a.fn, text: pend && a.primary ? 'Proposed' : a.label }); });
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [el('span', { class: 'tag ' + sg.kind, text: sg.tag }), el('h3', { text: sg.title }), el('p', { text: sg.text }), el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)]));
+  });
+  if (state.pending.length) {
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for a person to decide' })]);
+    state.pending.forEach(function (p) {
+      d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }),
+        state.role === p.who
+          ? el('div', { class: 'acts', style: 'display:flex;gap:8px;flex-wrap:wrap' }, [el('button', { type: 'button', class: 'small primary', onclick: function () { decide(p, true); }, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])
+          : el('p', { class: 'who' }, ['For the ' + ROLE_WORD[p.who] + '. ', el('button', { type: 'button', class: 'small', onclick: function () { state.role = p.who; render(); }, text: 'Open the ' + (p.who === 'manager' ? 'Manager' : 'Dispensary') + ' view' })])]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Proposals wait here for the pharmacist or the pharmacy manager.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 25).forEach(function (e) { ol.appendChild(el('li', { class: e.t === lastLogT && now() - e.t < 5000 ? 'new' : '' }, [el('time', { text: hhmm(e.t) }), el('span', { text: e.text })])); });
+}
+
+// Live clocks: update the minute counters in place; redraw fully only when what the guide sees changes.
+var sig = '';
+function signature() { return suggest().map(function (s) { return s.id; }).join(',') + '|' + nearExpiry().length; }
+function tick() {
+  if (signature() !== sig) { render(); return; }
+  Array.prototype.forEach.call(document.querySelectorAll('[data-since]'), function (n) { var q = byId(n.getAttribute('data-since')); if (q && n.firstChild) n.firstChild.textContent = fmt(waitMin(q)); });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-shelf]'), function (n) { var q = byId(n.getAttribute('data-shelf')); if (q) n.textContent = 'Ready ' + fmt(onShelfMin(q)); });
+}
+setInterval(tick, 15000);
+
+// ---------- Wiring ----------
+['ward', 'dispensary', 'manager'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-clock').addEventListener('click', function () { state.offset = (state.offset || 0) + 15 * M; addLog('Demo: clock moved on 15 minutes.'); render(); toast('Clock moved on 15 minutes. Waits have grown.'); });
+document.getElementById('t-delivery').addEventListener('click', function () {
+  var got = Object.keys(state.stock).map(function (n) { return state.stock[n]; }).filter(function (s) { return s.onOrder > 0; });
+  if (!got.length) { toast('Nothing is on order.'); return; }
+  got.forEach(function (s) {
+    var ended = s.outSince ? fmt1((now() - s.outSince) / D) : null;
+    addLog('Delivery received: ' + lineLabel(s.line) + ' × ' + s.onOrder + '.' + (ended ? ' Stock-out ended after ' + ended + ' days.' : ''));
+    s.qty += s.onOrder; s.onOrder = 0; s.outSince = null;
+  });
+  render(); toast('Delivery booked in: ' + got.map(function (s) { return 'Line ' + s.line; }).join(', ') + '.');
+});
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; render(); toast('Example reset to the start of the demo.'); });
+
+// Read-only view for software agents (no writes): window.ospeliPharmacyDemo
+window.ospeliPharmacyDemo = Object.freeze({
+  describe: function () { return 'Read-only pharmacy operations demo for a fictional hospital: ward requests (top-ups, non-stock items, discharge medicines), the dispensing queue by type and stage, the ready shelf, stock, expiry and turnaround. get() returns the queue, shelf and stock; kpis() the measures; suggestions() the guide\'s current suggestions. Operations only: no medicines, doses or clinical checks. Runs in the browser; nothing is sent anywhere.'; },
+  get: function () {
+    var map = function (q) { return { id: q.id, type: q.type, kind: q.kind, who: who(q), size: sizeText(q), stage: STAGE_WORD[status(q)], waitMin: waitMin(q), shelf: q.shelf }; };
+    return clone({ role: state.role, now: new Date(now()).toISOString(), ward: WARDS[state.ward], settings: state.set,
+      queue: queue().map(map), shelf: shelf().map(map),
+      stock: Object.keys(state.stock).map(function (n) { var s = state.stock[n]; return { line: s.line, pack: s.pack, tracer: s.tracer, qty: s.qty, reorderLevel: s.level, usePerDay: s.use, daysLeft: Math.round(10 * s.qty / s.use) / 10, onOrder: s.onOrder }; }),
+      nearExpiry: nearExpiry().map(function (b) { return { line: b.line, location: WARDS[b.loc], qty: b.qty, daysLeft: daysLeft(b) }; }),
+      bedBoardWaiting: state.demand, pendingDecisions: state.pending.map(function (p) { return { text: p.text, decidedBy: ROLE_WORD[p.who] }; }) });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text, why: s.why }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>

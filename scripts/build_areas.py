@@ -37,6 +37,10 @@ LIVE = {
     "B5": ("Open the patient transport preview", "../../demo/transport/"),
     "A5": ("Open the diagnostics preview", "../../demo/diagnostics/"),
     "E1": ("Open the continuity preview", "../../demo/continuity/"),
+    "A6": ("Open the pharmacy operations preview", "../../demo/pharmacy/"),
+    "E4": ("Open the patient feedback preview", "../../demo/feedback/"),
+    "D3": ("Open the IT and digital preview", "../../demo/it-digital/"),
+    "D1": ("Open the finance preview", "../../demo/finance/"),
     "A2": ("Open the emergency department preview", "../../demo/ed-flow/"),
 }
 

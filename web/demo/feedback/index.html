@@ -1,0 +1,911 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Patient feedback and complaints demo · Ospeli</title>
+<meta name="description" content="A three-question feedback card for patients and visitors, a themes and 'you said, we did' board for department leads, and a complaints queue with due dates. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Patient feedback and complaints demo · Ospeli">
+<meta property="og:description" content="A three-question feedback card for patients and visitors, a themes and 'you said, we did' board for department leads, and a complaints queue with due dates. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/feedback/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 22px 0 8px; font-weight: 800; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+h3.sec span { text-transform: none; letter-spacing: 0; font-weight: 700; font-size: 0.85rem; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button, textarea { font: inherit; color: var(--ink); }
+select, input[type=text], input[type=number], textarea { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+textarea { width: 100%; resize: vertical; line-height: 1.4; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 560px) { .roles { display: grid; grid-template-columns: 1fr 1fr; border-radius: 14px; width: 100%; } .roles button { padding: 8px 6px; line-height: 1.25; } .roles button:nth-child(3) { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.tools label { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; max-width: 100%; }
+.tools select { min-height: 38px; padding: 4px 8px; font-size: 0.9rem; max-width: 100%; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.88rem; font-weight: 700; display: block; }
+.stat .n { color: var(--soft); font-size: 0.78rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.8rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stathint { color: var(--soft); font-size: 0.78rem; margin: 6px 0 0; }
+.chip { display: inline-block; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; background: var(--sand); white-space: nowrap; }
+.chip.st-new { background: var(--warn); } .chip.st-ack { background: var(--wash); } .chip.st-responded { background: var(--sea); color: #fff; } .chip.st-closed { background: #E4E9EE; } .chip.st-shared { background: #E4E9EE; }
+.chip.kind-compliment { background: var(--foam); }
+.chip.hot { background: var(--coral); color: #fff; }
+.chip.soon { background: var(--mango); color: var(--navy); }
+.chip.pub { background: var(--sea); color: #fff; } .chip.draft { background: var(--warn); }
+.empty { text-align: center; color: var(--soft); padding: 18px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; }
+.fine { font-size: 0.82rem; color: var(--soft); margin: 8px 0 0; }
+/* patient card */
+.pv { font-size: 1.06rem; max-width: 560px; }
+.pv h2 { font-size: 1.4rem; line-height: 1.25; margin: 0 0 4px; }
+.pv .sub { color: var(--soft); margin: 0 0 16px; font-size: 1rem; }
+.q { margin: 0 0 20px; border: 0; padding: 0; min-width: 0; }
+.q legend, .q .qt { font-weight: 800; font-size: 1.12rem; margin: 0 0 10px; display: flex; gap: 10px; align-items: center; padding: 0; }
+.q .qt i, .q legend i { font-style: normal; width: 30px; height: 30px; border-radius: 50%; background: var(--navy); color: #fff; display: grid; place-items: center; font-size: 0.95rem; flex: none; }
+.q .opt { font-weight: 600; color: var(--soft); font-size: 0.95rem; }
+.faces { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
+.face { min-height: 64px; padding: 6px 0; border-radius: 16px; border: 2px solid transparent; background: var(--sand); display: grid; place-items: center; }
+.face svg { width: 46px; height: 46px; display: block; }
+.face[aria-pressed=true] { border-color: var(--navy); background: #fff; box-shadow: 0 0 0 3px var(--foam); }
+.faces.chosen .face[aria-pressed=false] { opacity: 0.55; }
+.facelabel { min-height: 1.6em; margin: 8px 0 0; font-weight: 800; font-size: 1.1rem; text-align: center; }
+.facescale { display: flex; justify-content: space-between; color: var(--soft); font-size: 0.95rem; margin-top: 4px; }
+.pv textarea { font-size: 1.06rem; min-height: 96px; }
+.quick { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.quick button { border-color: #CFC5B2; font-weight: 700; font-size: 0.98rem; min-height: 44px; padding: 6px 14px; }
+.check { display: flex; align-items: center; gap: 12px; font-weight: 700; min-height: 48px; cursor: pointer; font-size: 1.04rem; }
+.check input { width: 24px; height: 24px; flex: none; }
+.contactbox { margin-top: 8px; display: grid; gap: 6px; }
+.contactbox label { font-weight: 700; font-size: 1rem; }
+.contactbox input { width: 100%; font-size: 1.06rem; }
+.promise { background: var(--wash); border-radius: 14px; padding: 14px 16px; margin: 4px 0 16px; font-size: 1rem; }
+.promise h3 { margin: 0 0 6px; font-size: 1.05rem; }
+.promise ol { margin: 0; padding-left: 22px; }
+.promise li { margin-bottom: 4px; }
+.urgent { font-size: 0.98rem; color: var(--soft); margin: 0 0 14px; border-left: 4px solid var(--mango); padding: 4px 0 4px 12px; }
+.pv h3.sec { font-size: 0.95rem; }
+.pv .yc .said b, .pv .yc .did b, .pv .yc .meta { font-size: 0.95rem; }
+.send { width: 100%; min-height: 58px; font-size: 1.15rem; background: var(--sea); border-color: var(--sea); color: #fff; }
+.thanks { text-align: center; padding: 8px 0 4px; }
+.thanks svg { width: 64px; height: 64px; }
+.thanks h2 { margin: 8px 0 6px; }
+.refcode { display: inline-block; font-weight: 800; font-size: 1.3rem; letter-spacing: 0.06em; background: var(--sand); border-radius: 10px; padding: 4px 14px; margin: 4px 0 12px; }
+.thanks .promise { text-align: left; }
+.thanks button { min-height: 52px; font-size: 1.05rem; width: 100%; }
+.ysw { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.yc { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: #fff; display: flex; flex-direction: column; }
+.yc .said { background: var(--sand); padding: 10px 12px; }
+.yc .did { background: var(--wash); padding: 10px 12px; flex: 1; }
+.yc .said b, .yc .did b { display: block; font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--soft); }
+.yc p { margin: 2px 0 0; font-size: 1rem; }
+.yc .meta { padding: 8px 12px; display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 0.85rem; color: var(--soft); border-top: 1px solid var(--line); }
+.yc.draft { border: 2px dashed var(--mango); }
+.yc textarea { min-height: 64px; font-size: 0.95rem; margin-top: 4px; }
+.yc .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+/* lists */
+.rows { display: grid; gap: 8px; }
+.crow { display: grid; grid-template-columns: minmax(0, 1fr) 170px 150px 170px; gap: 10px; align-items: center; border: 1px solid var(--line); border-left: 5px solid var(--sea); border-radius: 10px; padding: 8px 10px; font-size: 0.9rem; }
+.crow.k-compliment { border-left-color: var(--foam); }
+.crow.over { background: #FFF8F5; border-left-color: var(--coral); }
+.crow.near { border-left-color: var(--mango); }
+.crow.done { opacity: 0.75; }
+.crow b { display: block; }
+.crow .sub { color: var(--soft); font-size: 0.82rem; }
+.crow .due { font-weight: 800; white-space: nowrap; }
+.crow .due small { display: block; font-weight: 700; color: var(--soft); font-size: 0.75rem; }
+.crow.over .due { color: #B23A22; }
+.crow select { width: 100%; min-height: 38px; font-size: 0.85rem; padding: 4px 8px; }
+.crow .go { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 760px) { .crow { grid-template-columns: minmax(0, 1fr) auto; } .crow .own { grid-column: 1 / -1; } .crow .go { grid-column: 1 / -1; justify-content: flex-start; } }
+.cc { border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 12px; padding: 12px; }
+.cc.over { border-left-color: var(--coral); box-shadow: 0 0 0 2px var(--coral) inset; }
+.cc.near { border-left-color: var(--mango); }
+.cc.done { opacity: 0.8; }
+.cc .top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.cc .top b { font-size: 1rem; }
+.cc .meta { color: var(--soft); font-size: 0.92rem; margin: 2px 0 0; }
+.cc .clock { text-align: right; font-weight: 800; line-height: 1.15; white-space: nowrap; }
+.cc .clock small { display: block; font-size: 0.75rem; font-weight: 700; color: var(--soft); }
+.cc.over .clock { color: #B23A22; }
+.cc .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.cc textarea { margin-top: 8px; font-size: 0.95rem; min-height: 120px; }
+.track { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; margin-top: 8px; }
+.track span { font-size: 0.78rem; color: var(--soft); border-top: 4px solid var(--line); padding-top: 4px; font-weight: 700; line-height: 1.25; }
+.track span { min-width: 0; hyphens: manual; }
+@media (max-width: 420px) { .track span { font-size: 0.7rem; } }
+.track span.on { border-top-color: var(--sea); color: var(--ink); }
+.track span em { display: block; font-style: normal; font-weight: 600; color: var(--soft); }
+.addact { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.addact input { flex: 1 1 180px; min-height: 40px; }
+.filters { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.filters button { min-height: 38px; font-size: 0.88rem; border-color: #CFC5B2; }
+.filters button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.themes { display: grid; gap: 6px; }
+.th { display: grid; grid-template-columns: minmax(0, 1fr) 40px 92px; gap: 10px; align-items: center; padding: 6px 2px; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+.th.w { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) 40px 92px; }
+.th.head { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--soft); font-weight: 800; border-bottom: 1px solid var(--line); }
+.th b.c { text-align: right; font-size: 1.05rem; }
+.th .rise { color: #B23A22; font-weight: 800; font-size: 0.78rem; display: block; }
+.spark { display: block; }
+@media (max-width: 520px) { .th.w { grid-template-columns: minmax(0, 1fr) 36px 84px; } .th.w .svc { grid-column: 1 / -1; font-size: 0.8rem; color: var(--soft); margin-bottom: -6px; } }
+.sort { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 6px; }
+.sort q { font-style: italic; quotes: '\201C' '\201D'; }
+.sort .r { display: flex; justify-content: space-between; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 0.82rem; color: var(--soft); }
+.sort select { min-height: 40px; font-size: 0.9rem; }
+.acts-list { display: grid; gap: 8px; }
+.act { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 0.92rem; }
+.act .sub { color: var(--soft); font-size: 0.82rem; display: block; }
+.act.over { background: #FFF8F5; }
+table.ot { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+table.ot th, table.ot td { text-align: left; padding: 6px; border-bottom: 1px solid var(--line); }
+table.ot th { color: var(--soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
+table.ot .r { text-align: right; }
+.meter { display: inline-block; width: 70px; height: 8px; border-radius: 4px; background: var(--sand); vertical-align: middle; margin-left: 6px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--sea); }
+.logform { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; align-items: end; }
+.logform label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 700; color: var(--soft); min-width: 0; }
+.logform select { width: 100%; }
+.logform .full { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+@media (max-width: 640px) { .logform { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+details.set { margin-top: 14px; }
+details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.targets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+@media (max-width: 640px) { .targets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.targets label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 700; color: var(--soft); }
+.targets input { width: 100%; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.82rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg ul { margin: 0 0 8px; padding-left: 18px; font-size: 0.88rem; }
+.sugg .why { color: var(--soft); font-size: 0.82rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Patient feedback and complaints</h1>
+  <p class="lead">Patients and visitors leave a three-question card on their phone. Complaints and compliments from any channel get one record, an owner role and due dates. Department leads see the themes for their area and publish what changed. The guide flags complaints near their due date and drafts proposals; a person decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-patient" aria-pressed="false">Patient or visitor</button>
+    <button type="button" id="r-lead" aria-pressed="false">Department lead</button>
+    <button type="button" id="r-manager" aria-pressed="false">Patient experience manager</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <b>Demo tools:</b>
+    <label for="t-dept">Department <select id="t-dept"></select></label>
+    <button type="button" class="small" id="t-day">Move on 1 day</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <h2 id="view-h">Feedback</h2>
+        <div id="kpiwrap"><div class="stats" id="kpis"></div><p class="stathint" id="stathint"></p></div>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads the comments, complaints, due dates and actions, and suggests where to look, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal or a draft. A person confirms, edits and publishes.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its departments, comments, complaints and dates. Response deadlines are example settings, set locally, not a standard. Themes describe services and processes; it never names, scores or ranks staff, and it does not judge clinical care: clinical concerns go to clinical review. Patients are known only by a reference code. Coming next (Mar 2027): log complaints from letters, email, phone and the desk in one place, full response timelines, a themes board with control-chart trends, and a monthly feedback report. <a href="../../areas/patient-experience/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+// ---------- Fictional reference data ----------
+var SERVICES = [
+  { id: 'ed', name: 'Emergency department', short: 'Emergency dept' },
+  { id: 'w4', name: 'Ward 4 (medicine)', short: 'Ward 4' },
+  { id: 'w7', name: 'Ward 7 (surgery)', short: 'Ward 7' },
+  { id: 'opd', name: 'Outpatient clinics', short: 'Outpatients' },
+  { id: 'mat', name: 'Maternity', short: 'Maternity' },
+  { id: 'rad', name: 'Imaging (X-ray and scans)', short: 'Imaging' }
+];
+var THEMES = [
+  { id: 'wait', name: 'Waiting times', kw: ['wait', 'queue', 'delay', 'slow', 'ages', 'hours'] },
+  { id: 'comm', name: 'Being kept informed', kw: ['told', 'explain', 'inform', 'update', 'nobody', 'plan', 'know'] },
+  { id: 'noise', name: 'Noise at night', kw: ['noise', 'noisy', 'sleep', 'loud', 'banging'] },
+  { id: 'food', name: 'Food and drink', kw: ['food', 'meal', 'drink', 'water', 'hungry', 'tea'] },
+  { id: 'clean', name: 'Cleanliness', kw: ['clean', 'dirty', 'toilet', 'bathroom', 'bins', 'smell'] },
+  { id: 'access', name: 'Getting here and finding us', kw: ['park', 'sign', 'find', 'lift', 'bus', 'wheelchair', 'lost'] },
+  { id: 'kind', name: 'Kindness and respect', kw: ['kind', 'rude', 'respect', 'caring', 'lovely', 'friendly', 'dignity'] },
+  { id: 'appt', name: 'Appointments and letters', kw: ['appointment', 'cancel', 'booking', 'rebook', 'letter', 'phone line'] }
+];
+var SAYS = {
+  wait: ['Waited a long time to be seen with no update.', 'The queue at the desk was very slow.', 'Waited hours for medicines to go home.', 'Long delay before anyone came.'],
+  comm: ['Nobody told us what was happening next.', 'Please explain the plan in plain words.', 'I did not know who to ask for an update.'],
+  noise: ['Too noisy at night to sleep.', 'Doors banging all night.', 'Loud talking at the desk at night.'],
+  food: ['Food arrived cold.', 'Hard to get a drink of water at night.', 'Meal came while I was asleep and was taken away.'],
+  clean: ['The bathroom needed cleaning more often.', 'Bins were full in the bay.'],
+  access: ['Hard to find the department; better signs please.', 'Parking was very difficult.', 'The lift was out and there was no sign.'],
+  kind: ['Staff were kind and patient with my mum.', 'Everyone was friendly and caring.', 'Treated with real respect.'],
+  appt: ['My appointment was cancelled the day before.', 'The booking phone line is always busy.', 'The letter came after the appointment date.']
+};
+// Monthly feedback per service and theme in earlier periods: [low, high] counts (invented)
+var PROFILE = {
+  ed: { wait: [5, 8], comm: [2, 4], kind: [2, 4], clean: [1, 2], access: [1, 3] },
+  w4: { noise: [2, 3], comm: [2, 4], food: [1, 2], kind: [2, 4], clean: [1, 2] },
+  w7: { food: [2, 4], kind: [3, 5], comm: [1, 3], noise: [1, 2] },
+  opd: { appt: [3, 5], access: [2, 4], wait: [2, 4], kind: [1, 3] },
+  mat: { comm: [2, 4], kind: [3, 5], food: [1, 2], clean: [1, 2] },
+  rad: { wait: [2, 4], access: [1, 2], kind: [1, 3] }
+};
+var THIS_MONTH_BOOST = { w4: { noise: 8 } }; // so the example has one rising theme
+var OWNERS = ['Department lead', 'Patient liaison officer', 'Service manager', 'Facilities lead'];
+var CHANNELS = ['Email', 'Letter', 'Phone', 'In person', 'Online form', 'Feedback card'];
+var FACES = [[1, 'Very poor'], [2, 'Poor'], [3, 'OK'], [4, 'Good'], [5, 'Very good']];
+var QUICK = ['Waiting times', 'Noise at night', 'Food and drink', 'Being kept informed', 'Cleanliness'];
+var DEFAULTS = { ackDays: 3, respDays: 25, warnDays: 5, shareDays: 7 };
+var STAGE_WORD = { 'new': 'New', ack: 'Acknowledged', responded: 'Responded', closed: 'Closed', shared: 'Shared with team' };
+var STORE = 'ospeli.feedback.v1';
+var DAY = 86400000, MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+var SVC = {}, TH = {};
+SERVICES.forEach(function (s) { SVC[s.id] = s; }); THEMES.forEach(function (t) { TH[t.id] = t; });
+
+// ---------- Helpers ----------
+function rng(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function midnight(ms) { var d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k === 'html') e.innerHTML = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+function pad(n) { return (n < 10 ? '0' : '') + n; }
+function hhmm(ms) { var d = new Date(ms); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+function median(a) { if (!a.length) return null; var s = a.slice().sort(function (x, y) { return x - y; }), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; }
+function pct(a, b) { return b ? Math.round(100 * a / b) : null; }
+function days(n) { n = Math.round(n * 10) / 10; return n + (n === 1 ? ' day' : ' days'); }
+// Hide names after a title, email addresses and phone numbers before a comment is shared with staff.
+function tidy(text) {
+  return String(text || '').replace(/\b(Dr|Doctor|Nurse|Sister|Matron|Mr|Mrs|Ms|Miss)\.?\s+[A-Z][a-zA-Z'-]+/g, '$1 [name hidden]')
+    .replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g, '[contact hidden]').replace(/\+?\d[\d\s-]{6,}\d/g, '[number hidden]').trim();
+}
+function matchTheme(text) {
+  var t = String(text).toLowerCase(), best = null, score = 0;
+  THEMES.forEach(function (th) { var n = th.kw.filter(function (k) { return t.indexOf(k) >= 0; }).length; if (n > score) { score = n; best = th.id; } });
+  return best;
+}
+function faceSvg(n) {
+  var fill = ['', '#E0583E', '#F3A07F', '#F6C35B', '#94D2BD', '#0A9396'][n];
+  var mouth = ['', '<path d="M15 35 Q24 25 33 35" fill="none" stroke="#0B2F4E" stroke-width="3.2" stroke-linecap="round"/>',
+    '<path d="M16 33 Q24 28.5 32 33" fill="none" stroke="#0B2F4E" stroke-width="3.2" stroke-linecap="round"/>',
+    '<path d="M16 32 H32" fill="none" stroke="#0B2F4E" stroke-width="3.2" stroke-linecap="round"/>',
+    '<path d="M16 29.5 Q24 36 32 29.5" fill="none" stroke="#0B2F4E" stroke-width="3.2" stroke-linecap="round"/>',
+    '<path d="M14 28 Q24 41 34 28 Z" fill="#0B2F4E" stroke="#0B2F4E" stroke-width="2" stroke-linejoin="round"/>'][n];
+  var brows = n === 1 ? '<path d="M13 15 L20 17.5 M35 15 L28 17.5" stroke="#0B2F4E" stroke-width="2.6" stroke-linecap="round"/>' : '';
+  return '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false"><circle cx="24" cy="24" r="22" fill="' + fill + '"/>' + brows + '<circle cx="17" cy="21" r="2.8" fill="#0B2F4E"/><circle cx="31" cy="21" r="2.8" fill="#0B2F4E"/>' + mouth + '</svg>';
+}
+
+// ---------- State ----------
+function seed() {
+  var r = rng(20270301), ri = function (lo, hi) { return lo + Math.floor(r() * (hi - lo + 1)); };
+  var s = { v: 1, day0: midnight(Date.now()), offset: 0, role: window.matchMedia('(max-width: 640px)').matches ? 'patient' : 'manager', dept: 'w4', guide: true,
+    settings: clone(DEFAULTS), filter: 'open', kpiOpen: null, dismissed: {}, pending: [], log: [], seq: { fb: 4817, c: 2045, k: 121, a: 20, y: 10 },
+    history: {}, items: [], complaints: [], actions: [], cards: [], form: { face: 0, text: '', contact: false }, sent: null, openDraft: null };
+  var fb = 4100;
+  SERVICES.forEach(function (sv) {
+    s.history[sv.id] = {};
+    Object.keys(PROFILE[sv.id]).forEach(function (th) {
+      var p = PROFILE[sv.id][th], h = [];
+      for (var i = 0; i < 5; i++) h.push(ri(p[0], p[1]));
+      s.history[sv.id][th] = h;
+      var n = (THIS_MONTH_BOOST[sv.id] || {})[th] || ri(p[0], p[1]);
+      for (var j = 0; j < n; j++) {
+        var says = SAYS[th];
+        s.items.push({ id: 'i' + (fb++), ref: 'FB-' + fb, svc: sv.id, face: th === 'kind' ? ri(4, 5) : ri(1, 3), text: says[ri(0, says.length - 1)], theme: th, day: -ri(2, 29) });
+      }
+    });
+    for (var k = 0; k < ri(5, 9); k++) s.items.push({ id: 'i' + (fb++), ref: 'FB-' + fb, svc: sv.id, face: ri(3, 5), text: '', theme: null, day: -ri(0, 29) });
+  });
+  // New comments not yet grouped into a theme
+  [['w4', 2, 'Hard to sleep with the noise from the corridor.'], ['w4', 1, 'So loud at night, phones and doors banging.'], ['w4', 2, 'Waited ages for my discharge letter.'],
+   ['ed', 2, 'Waited hours and nobody gave an update.'], ['ed', 1, 'The waiting room toilet was dirty.'], ['opd', 2, 'My appointment was moved twice by letter.'],
+   ['mat', 4, 'Midwives were kind but nobody explained the plan for going home.']].forEach(function (u, i) {
+    s.items.push({ id: 'i' + (fb++), ref: 'FB-' + fb, svc: u[0], face: u[1], text: u[2], theme: null, day: -(i % 3) });
+  });
+  // Complaints and compliments: [ref, svc, theme, channel, received days ago, ack after, response after, closed after, owner, kind]
+  [['C-2027', 'opd', 'wait', 'Email', 55, 1, 18, 20, 0], ['C-2028', 'ed', 'clean', 'Letter', 50, 2, 26, 28, 3], ['C-2029', 'mat', 'food', 'Phone', 47, 1, 15, 16, 0],
+   ['C-2030', 'w7', 'comm', 'Online form', 44, 1, 24, 25, 0], ['C-2031', 'ed', 'wait', 'Email', 40, 1, 22, 24, 0], ['C-2032', 'w4', 'noise', 'Letter', 33, 2, 27, 30, 0],
+   ['C-2033', 'opd', 'appt', 'Phone', 28, 1, 20, 21, 1], ['C-2034', 'w7', 'food', 'In person', 26, 3, 23, null, 0], ['C-2035', 'ed', 'comm', 'Email', 22, 1, null, null, 0],
+   ['C-2036', 'mat', 'comm', 'Phone', 21, 2, null, null, 0], ['C-2037', 'w4', 'comm', 'Letter', 27, 4, null, null, 0], ['C-2038', 'rad', 'wait', 'Online form', 15, 1, null, null, 2],
+   ['C-2039', 'ed', 'wait', 'Phone', 9, 2, null, null, 0], ['C-2040', 'w4', 'clean', 'In person', 6, 1, null, null, 3], ['C-2041', 'opd', 'access', 'Email', 4, 2, null, null, 3],
+   ['C-2042', 'w7', 'kind', 'Letter', 2, null, null, null, 0], ['C-2043', 'ed', 'wait', 'Online form', 1, null, null, null, 1], ['C-2044', 'w4', 'noise', 'Phone', 0, null, null, null, 0],
+   ['K-115', 'w4', 'kind', 'Feedback card', 12, null, 3, null, 0, 'compliment'], ['K-116', 'ed', 'kind', 'Email', 9, null, null, null, 1, 'compliment'], ['K-117', 'mat', 'kind', 'Letter', 8, null, 2, null, 0, 'compliment'],
+   ['K-118', 'rad', 'kind', 'Online form', 5, null, null, null, 1, 'compliment'], ['K-119', 'w7', 'clean', 'In person', 3, null, null, null, 0, 'compliment'], ['K-120', 'w4', 'comm', 'Email', 1, null, null, null, 0, 'compliment']
+  ].forEach(function (c) {
+    var rec = -c[4], compliment = c[9] === 'compliment';
+    s.complaints.push({ ref: c[0], kind: compliment ? 'compliment' : 'complaint', svc: c[1], theme: c[2], channel: c[3], rec: rec,
+      ack: c[5] == null ? null : rec + c[5], resp: compliment ? null : (c[6] == null ? null : rec + c[6]), shared: compliment && c[6] != null ? rec + c[6] : null,
+      closed: c[7] == null ? null : rec + c[7], owner: OWNERS[c[8]], draft: '', reminded: null });
+  });
+  // Agreed actions: [id, svc, theme, text, due (days from today), closed (days from today or null), from]
+  [['A-11', 'ed', 'access', 'Lit signs to the department entrance from the car park', -30, -34, 'C-2026'],
+   ['A-12', 'w7', 'food', 'Check meal temperature on the ward before serving', -10, -12, 'C-2029'],
+   ['A-13', 'opd', 'appt', 'Text reminder two days before, with a rebooking number', -15, -20, 'C-2027'],
+   ['A-14', 'w4', 'noise', 'Soft-close bins and a quiet-hours check at 23:00', -3, -5, 'C-2032'],
+   ['A-15', 'w4', 'comm', 'Daily plan written on the bedside board each morning', -10, -8, 'Themes'],
+   ['A-16', 'ed', 'wait', 'Show the expected wait on the waiting room screen, updated hourly', 10, null, 'C-2031'],
+   ['A-17', 'mat', 'comm', 'A written “what happens next” sheet at each shift handover', -3, null, 'C-2036'],
+   ['A-18', 'ed', 'comm', 'One contact role each shift for updates to relatives', 14, null, 'C-2035'],
+   ['A-19', 'rad', 'wait', 'Text patients when the scanner list is running late', 20, null, 'C-2038']
+  ].forEach(function (a) { s.actions.push({ id: a[0], svc: a[1], theme: a[2], text: a[3], due: a[4], closed: a[5], from: a[6], owner: 'Department lead' }); });
+  s.cards.push({ id: 'Y-7', svc: 'ed', action: 'A-11', said: 'It was hard to find us at night.', did: 'We put lit signs from the car park to the entrance.', status: 'published', day: -32 });
+  s.cards.push({ id: 'Y-8', svc: 'w7', action: 'A-12', said: 'Food sometimes arrived cold.', did: 'We now check the temperature of each meal on the ward before serving.', status: 'published', day: -11 });
+  s.cards.push({ id: 'Y-9', svc: 'opd', action: 'A-13', said: 'Appointments were missed because letters came late.', did: 'We now send a text reminder two days before, with a number to rebook.', status: 'published', day: -18 });
+  s.log.push({ t: Date.now(), text: 'Example loaded: ' + s.complaints.length + ' complaints and compliments, ' + s.items.length + ' feedback cards in the last 30 days.' });
+  return s;
+}
+function load() { try { var s = JSON.parse(localStorage.getItem(STORE)); return s && s.v === 1 && s.complaints ? s : null; } catch (e) { return null; } }
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+var state = load() || seed();
+function today() { return Math.round((midnight(Date.now()) - state.day0) / DAY) + state.offset; }
+function dstr(d) { var x = new Date(state.day0 + d * DAY + 12 * 3600000); return x.getDate() + ' ' + MON[x.getMonth()]; }
+function log(text) { state.log.unshift({ t: Date.now(), text: text }); if (state.log.length > 60) state.log.length = 60; lastLogT = state.log[0].t; }
+var lastLogT = 0;
+
+// ---------- Derived data (pure) ----------
+function stage(c) { if (c.kind === 'compliment') return c.shared != null ? 'shared' : 'new'; return c.closed != null ? 'closed' : c.resp != null ? 'responded' : c.ack != null ? 'ack' : 'new'; }
+function dueOf(c) {
+  var st = stage(c), S = state.settings;
+  if (c.kind === 'compliment') return st === 'new' ? { what: 'Share by', day: c.rec + S.shareDays } : null;
+  if (st === 'new') return { what: 'Acknowledge by', day: c.rec + S.ackDays };
+  if (st === 'ack') return { what: 'Respond by', day: c.rec + S.respDays };
+  return null;
+}
+function timing(c) {
+  var d = dueOf(c); if (!d) return { due: null, left: null, over: false, near: false };
+  var left = d.day - today(), warn = stage(c) === 'ack' ? state.settings.warnDays : 1;
+  return { due: d, left: left, over: left < 0, near: left >= 0 && left <= warn };
+}
+function inScope(svc) { return function (x) { return !svc || x.svc === svc; }; }
+function kpis(svc) {
+  var T = today(), S = state.settings, cs = state.complaints.filter(inScope(svc)).filter(function (c) { return c.kind === 'complaint'; });
+  var acked = cs.filter(function (c) { return c.ack != null; }), resp = cs.filter(function (c) { return c.resp != null; });
+  var dueSet = cs.filter(function (c) { return c.resp != null || T > c.rec + S.respDays; }), onTime = dueSet.filter(function (c) { return c.resp != null && c.resp - c.rec <= S.respDays; });
+  var acts = state.actions.filter(inScope(svc)), aDue = acts.filter(function (a) { return a.closed != null || T > a.due; }), aOn = aDue.filter(function (a) { return a.closed != null && a.closed <= a.due; });
+  var open = cs.filter(function (c) { return stage(c) !== 'closed'; }), live = cs.map(function (c) { return timing(c); });
+  var items = state.items.filter(inScope(svc)).filter(function (i) { return i.day > T - 30; });
+  return {
+    acknowledgementMedianDays: median(acked.map(function (c) { return c.ack - c.rec; })), acknowledgedCount: acked.length,
+    responseMedianDays: median(resp.map(function (c) { return c.resp - c.rec; })), respondedCount: resp.length,
+    responsesOnTimePct: pct(onTime.length, dueSet.length), responsesOnTime: onTime.length, responsesDue: dueSet.length,
+    actionsClosedPct: pct(aOn.length, aDue.length), actionsClosedOnTime: aOn.length, actionsDue: aDue.length,
+    openComplaints: open.length, overdue: live.filter(function (t) { return t.over; }).length, nearDue: live.filter(function (t) { return t.near; }).length,
+    feedbackLast30Days: items.length, goodOrVeryGoodPct: pct(items.filter(function (i) { return i.face >= 4; }).length, items.length),
+    commentsToSort: items.filter(function (i) { return i.text && !i.theme; }).length,
+    compliments: state.complaints.filter(inScope(svc)).filter(function (c) { return c.kind === 'compliment'; }).length
+  };
+}
+// Themes: count of grouped comments in the last 30 days, against the five 30-day periods before.
+function themeRows(svc) {
+  var T = today(), rows = [];
+  SERVICES.filter(function (s) { return !svc || s.id === svc; }).forEach(function (sv) {
+    var hist = state.history[sv.id] || {}, cur = {};
+    state.items.forEach(function (i) { if (i.svc === sv.id && i.theme && i.day > T - 30) cur[i.theme] = (cur[i.theme] || 0) + 1; });
+    var ids = Object.keys(hist); Object.keys(cur).forEach(function (k) { if (ids.indexOf(k) < 0) ids.push(k); });
+    ids.forEach(function (th) {
+      var h = hist[th] || [0, 0, 0, 0, 0], n = cur[th] || 0, avg = h.reduce(function (a, b) { return a + b; }, 0) / h.length;
+      rows.push({ svc: sv.id, theme: th, count: n, series: h.concat([n]), avg: avg, rising: n > Math.max.apply(null, h) && n >= avg + 3, falling: n < Math.min.apply(null, h) });
+    });
+  });
+  return rows.sort(function (a, b) { return (b.rising - a.rising) || (b.count - a.count); });
+}
+function spark(series, rising) {
+  var max = Math.max.apply(null, series.concat([1])), w = 10, g = 5, H = 26, out = '';
+  series.forEach(function (v, i) { var h = Math.max(2, Math.round(H * v / max)); out += '<rect x="' + (i * (w + g)) + '" y="' + (H - h) + '" width="' + w + '" height="' + h + '" rx="2" fill="' + (i === series.length - 1 ? (rising ? '#E0583E' : '#0A9396') : '#CFC5B2') + '"/>'; });
+  return el('span', { class: 'spark', html: '<svg width="' + (series.length * (w + g) - g) + '" height="' + H + '" viewBox="0 0 ' + (series.length * (w + g) - g) + ' ' + H + '" role="img" aria-label="Last six 30-day periods: ' + series.join(', ') + '">' + out + '</svg>' });
+}
+
+// ---------- The guide: plain rules, each with its reason ----------
+function suggest() {
+  if (state.role === 'patient') return [];
+  var scope = state.role === 'lead' ? state.dept : null, T = today(), out = [];
+  // 1. Complaints near or past their due date with no draft response
+  var due = state.complaints.filter(inScope(scope)).filter(function (c) { var t = timing(c); return c.kind === 'complaint' && (t.over || t.near) && !c.draft && c.reminded !== T; })
+    .sort(function (a, b) { return timing(a).left - timing(b).left; });
+  if (due.length) out.push({ id: 'remind', kind: 'time', title: due.length + ' complaint' + (due.length > 1 ? 's are' : ' is') + ' near or past the due date',
+    list: due.slice(0, 4).map(function (c) { var t = timing(c); return c.ref + ' · ' + SVC[c.svc].short + ' · ' + t.due.what.toLowerCase() + ' ' + dstr(t.due.day) + ' (' + (t.over ? -t.left + ' days late' : t.left === 0 ? 'today' : 'in ' + days(t.left)) + ')' + (stage(c) === 'ack' ? ', no draft yet' : ''); }),
+    why: 'Due dates come from the response deadlines in settings (example settings, not a standard). A complaint counts as near when it is within ' + state.settings.warnDays + ' days of its response date, or 1 day of its acknowledgement date.',
+    acts: [{ label: 'Propose reminders', primary: true, fn: function () { propose({ id: 'remind', kind: 'remind', refs: due.map(function (c) { return c.ref; }), text: 'Remind the owner role and the patient liaison officer about ' + due.map(function (c) { return c.ref; }).join(', ') + '.' }); } }] });
+  // 2. New comments that look like an existing theme
+  var loose = state.items.filter(inScope(scope)).filter(function (i) { return i.text && !i.theme && matchTheme(i.text); }), groups = {};
+  loose.forEach(function (i) { var k = i.svc + ':' + matchTheme(i.text); (groups[k] = groups[k] || []).push(i); });
+  var gk = Object.keys(groups).sort(function (a, b) { return groups[b].length - groups[a].length; })[0];
+  if (gk) {
+    var g = groups[gk], sv = gk.split(':')[0], th = gk.split(':')[1];
+    out.push({ id: 'group-' + gk, kind: 'ask', title: g.length + ' new comment' + (g.length > 1 ? 's look' : ' looks') + ' like “' + TH[th].name + '” (' + SVC[sv].short + ')',
+      list: g.slice(0, 3).map(function (i) { return '“' + i.text + '”'; }),
+      why: 'The words match the theme’s keywords (' + TH[th].kw.slice(0, 4).join(', ') + '). A keyword rule can be wrong, so a person checks before they are grouped.',
+      acts: [{ label: 'Propose grouping', primary: true, fn: function () { propose({ id: 'group-' + gk, kind: 'group', ids: g.map(function (i) { return i.id; }), theme: th, text: 'Group ' + g.length + ' new comment' + (g.length > 1 ? 's' : '') + ' from ' + SVC[sv].short + ' into “' + TH[th].name + '”.' }); } }] });
+  }
+  // 3. A closed action with no 'you said, we did' card (department lead)
+  if (state.role === 'lead') {
+    var closedNoCard = state.actions.filter(inScope(scope)).filter(function (a) { return a.closed != null && !state.cards.some(function (c) { return c.action === a.id; }); });
+    if (closedNoCard.length) {
+      var a = closedNoCard[0];
+      out.push({ id: 'card-' + a.id, kind: 'card', title: 'Action done, not yet shown to patients: “' + a.text + '”',
+        text: 'Draft a “You said, we did” card from it. You edit the words and choose whether to publish.',
+        why: 'Action ' + a.id + ' was closed on ' + dstr(a.closed) + ' and has no card on this department’s board.',
+        acts: [{ label: 'Draft a card to edit', primary: true, fn: function () { draftCard(a, true); } }] });
+    }
+  }
+  // 4. A theme above its usual range
+  var rise = themeRows(scope).filter(function (r) { return r.rising && !state.actions.some(function (a) { return a.svc === r.svc && a.theme === r.theme && a.closed == null && a.review; }); })[0];
+  if (rise) out.push({ id: 'rise-' + rise.svc + rise.theme, kind: 'time', title: '“' + TH[rise.theme].name + '” is above its usual range in ' + SVC[rise.svc].short,
+    text: rise.count + ' comments in the last 30 days; ' + rise.series.slice(0, 5).join(', ') + ' in the five periods before. Suggest a review with the service.',
+    why: 'Example rule: more than in any of the last five 30-day periods, and at least 3 above their average. This is a simple trend, not a statistical test.',
+    acts: [{ label: 'Propose a review', primary: true, fn: function () { propose({ id: 'rise-' + rise.svc + rise.theme, kind: 'review', svc: rise.svc, theme: rise.theme, text: 'Add an action: review “' + TH[rise.theme].name + '” with the ' + SVC[rise.svc].short + ' team within 14 days.' }); } }] });
+  return out.filter(function (x) { return !state.dismissed[x.id]; }).slice(0, 4);
+}
+function propose(p) { if (state.pending.some(function (q) { return q.id === p.id; })) return; state.pending.push(p); log('Guide proposed: ' + p.text); render(); toast('Proposed. A person confirms or declines it below.'); }
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (q) { return q !== p; });
+  if (!yes) { state.dismissed[p.id] = true; log('Declined: ' + p.text); render(); return; }
+  var T = today(), who = state.role === 'lead' ? 'Department lead' : 'Patient experience manager';
+  if (p.kind === 'remind') { p.refs.forEach(function (r) { var c = byRef(r); if (c) c.reminded = T; }); log(who + ' confirmed reminders for ' + p.refs.join(', ') + '. (In this preview nothing is sent.)'); }
+  if (p.kind === 'group') { var n = 0; state.items.forEach(function (i) { if (p.ids.indexOf(i.id) >= 0 && !i.theme) { i.theme = p.theme; n++; } }); log(who + ' grouped ' + n + ' comment' + (n > 1 ? 's' : '') + ' into “' + TH[p.theme].name + '”.'); }
+  if (p.kind === 'review') { var a = { id: 'A-' + (state.seq.a++), svc: p.svc, theme: p.theme, text: 'Review “' + TH[p.theme].name + '” with the team and agree changes', due: T + 14, closed: null, from: 'Themes', owner: 'Department lead', review: true }; state.actions.push(a); log(who + ' added action ' + a.id + ' for ' + SVC[p.svc].short + ': ' + a.text + ', due ' + dstr(a.due) + '.'); }
+  render(); toast('Confirmed.');
+}
+function byRef(r) { return state.complaints.filter(function (c) { return c.ref === r; })[0]; }
+
+// ---------- Actions people take ----------
+function sendCard() {
+  var f = state.form; if (!f.face) return;
+  var ref = 'FB-' + (state.seq.fb++), text = tidy(f.text).slice(0, 300);
+  state.items.push({ id: 'n' + ref, ref: ref, svc: state.dept, face: f.face, text: text, theme: null, day: today() });
+  log('Feedback card ' + ref + ' for ' + SVC[state.dept].short + ': “' + FACES[f.face - 1][1] + '”' + (text ? ', with a comment' : '') + (f.contact ? ', contact requested' : '') + '.');
+  state.sent = { ref: ref, contact: f.contact }; state.form = { face: 0, text: '', contact: false };
+  render(); var h = document.getElementById('thanks-h'); if (h) { h.focus(); h.scrollIntoView({ block: 'nearest' }); }
+}
+function advance(c, step) {
+  var T = today(), who = state.role === 'lead' ? 'Department lead' : 'Patient experience manager';
+  if (step === 'ack') { c.ack = T; log(c.ref + ' acknowledged by the ' + who.toLowerCase() + '.'); toast(c.ref + ' acknowledged. Respond by ' + dstr(c.rec + state.settings.respDays) + '.'); }
+  if (step === 'resp') { c.resp = T; state.openDraft = null; log(c.ref + ' response sent (' + (T - c.rec) + ' days after it was received' + (T - c.rec <= state.settings.respDays ? ', on time' : ', late') + '). In this preview nothing is sent.'); toast('Response recorded for ' + c.ref + '.'); }
+  if (step === 'close') { c.closed = T; log(c.ref + ' closed.'); toast(c.ref + ' closed.'); }
+  if (step === 'share') { c.shared = T; log('Compliment ' + c.ref + ' shared with the ' + SVC[c.svc].short + ' team.'); toast('Shared with the team.'); }
+  render();
+}
+function draftFromRecord(c) {
+  var acts = state.actions.filter(function (a) { return a.from === c.ref; });
+  return 'Reference ' + c.ref + '\n\nThank you for telling us about ' + TH[c.theme].name.toLowerCase() + ' in ' + SVC[c.svc].name + '. We are sorry it was not the experience you should have had.\n\n' +
+    'What we looked at: [owner to write]\n\nWhat we are changing: ' + (acts.length ? acts.map(function (a) { return a.text; }).join('; ') + '.' : '[owner to write]') +
+    '\n\nIf you would like to talk this through, contact the patient liaison officer and quote your reference.';
+}
+function addAction(c, text) {
+  text = tidy(text).slice(0, 120); if (!text) return;
+  var a = { id: 'A-' + (state.seq.a++), svc: c.svc, theme: c.theme, text: text, due: today() + 30, closed: null, from: c.ref, owner: 'Department lead' };
+  state.actions.push(a); log('Action ' + a.id + ' agreed from ' + c.ref + ': ' + text + ', due ' + dstr(a.due) + '.'); render(); toast('Action added. Due ' + dstr(a.due) + '.');
+}
+function closeAction(a) { a.closed = today(); log('Action ' + a.id + ' marked done' + (a.closed <= a.due ? ' (on time)' : ' (after its due date)') + ': ' + a.text + '.'); render(); toast('Action done. You can now write a “You said, we did” card.'); }
+function draftCard(a, byGuide) {
+  if (state.cards.some(function (c) { return c.action === a.id; })) return;
+  var said = byGuide ? 'You told us about ' + TH[a.theme].name.toLowerCase() + '.' : '';
+  var did = byGuide ? 'We ' + a.text.charAt(0).toLowerCase() + a.text.slice(1) + '.' : a.text + '.';
+  var c = { id: 'Y-' + (state.seq.y++), svc: a.svc, action: a.id, said: said, did: did, status: 'draft', day: today() };
+  state.cards.push(c); log((byGuide ? 'Guide drafted' : 'Department lead started') + ' a “You said, we did” card from action ' + a.id + ' (draft, not published).');
+  if (state.role !== 'lead') { state.role = 'lead'; state.dept = a.svc; }
+  render(); var t = document.getElementById('said-' + c.id); if (t) { t.focus(); t.scrollIntoView({ block: 'center' }); }
+  toast('Draft added to the board. Edit it, then publish.');
+}
+
+// ---------- Render ----------
+var HINTS = {
+  patient: 'What a patient or visitor sees after scanning the code on a poster in the department. Large text, three questions, works one-handed.',
+  lead: 'What a department lead sees for their own area: themes, the “You said, we did” board and their complaints. Change the department in the demo tools.',
+  manager: 'What the patient experience manager sees for the whole organisation: every complaint and compliment, themes by service, and responses on time.'
+};
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  ['patient', 'lead', 'manager'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('t-dept').value = state.dept;
+  document.getElementById('t-dept').parentNode.style.display = state.role === 'manager' ? 'none' : '';
+  document.getElementById('view-h').textContent = state.role === 'patient' ? 'On the patient’s phone' : state.role === 'lead' ? SVC[state.dept].name + ': my area' : 'All services · Example General Hospital';
+  document.getElementById('kpiwrap').hidden = state.role === 'patient';
+  if (state.role !== 'patient') renderKpis();
+  var v = document.getElementById('view'); v.textContent = '';
+  v.appendChild(state.role === 'patient' ? patientView() : state.role === 'lead' ? leadView() : managerView());
+  renderGuide(); renderLog(); save();
+  if (aid) { var e = document.getElementById(aid); if (e) e.focus({ preventScroll: true }); }
+}
+function renderKpis() {
+  var lead = state.role === 'lead', k = kpis(lead ? state.dept : null), box = document.getElementById('kpis'); box.textContent = '';
+  var tiles = lead ? [
+    ['good', k.goodOrVeryGoodPct == null ? '–' : k.goodOrVeryGoodPct + '%', 'Good or very good', k.feedbackLast30Days + ' cards, last 30 days', 'Feedback cards where “How was today?” was Good or Very good, out of all cards for this department in the last 30 days. Local definition.', false],
+    ['sort', String(k.commentsToSort), 'Comments to sort', 'not yet in a theme', 'Comments from feedback cards in the last 30 days that have not yet been grouped into a theme. Local definition.', k.commentsToSort > 0],
+    ['open', String(k.openComplaints), 'Complaints open', k.overdue + ' overdue · ' + k.nearDue + ' due soon', 'Complaints for this department not yet closed. Overdue: past the acknowledgement or response date set in the settings (example settings, not a standard). Local definition.', k.overdue > 0],
+    ['acts', k.actionsClosedPct == null ? '–' : k.actionsClosedPct + '%', 'Actions closed on time', k.actionsClosedOnTime + ' of ' + k.actionsDue + ' due', 'Complaint- and theme-linked actions closed by their due date, out of actions due so far. Local definition.', false]
+  ] : [
+    ['ack', k.acknowledgementMedianDays == null ? '–' : days(k.acknowledgementMedianDays), 'Acknowledgement time', 'median of ' + k.acknowledgedCount, 'Complaint received → acknowledged, in days (median of all acknowledged complaints in the example). Local definition.', false],
+    ['resp', k.responseMedianDays == null ? '–' : days(k.responseMedianDays), 'Response time', 'median of ' + k.respondedCount, 'Complaint received → full response sent, in days (median). Local definition.', false],
+    ['ontime', k.responsesOnTimePct == null ? '–' : k.responsesOnTimePct + '%', 'Responses on time', k.responsesOnTime + ' of ' + k.responsesDue + ' due · ' + k.overdue + ' overdue now', 'Complaints answered by their response due date, out of complaints whose response is due (answered, or past the date). Due dates use the example settings below. Local definition.', k.overdue > 0],
+    ['acts', k.actionsClosedPct == null ? '–' : k.actionsClosedPct + '%', 'Actions closed', k.actionsClosedOnTime + ' of ' + k.actionsDue + ' due', 'Complaint-linked actions closed by their due date, out of actions due so far. Local definition.', false]
+  ];
+  tiles.forEach(function (t) {
+    var open = state.kpiOpen === t[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat' + (t[5] ? ' alert' : ''), 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def', text: t[4] })]));
+  });
+  document.getElementById('stathint').textContent = (lead ? 'This department. ' : 'All services. ') + 'Tap a tile for its definition.';
+}
+
+// Patient or visitor: three questions, large text, one hand
+function patientView() {
+  var f = state.form, sv = SVC[state.dept], frag = el('div', { class: 'pv' });
+  if (state.sent) {
+    frag.appendChild(el('div', { class: 'thanks' }, [
+      el('span', { html: '<svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="30" fill="#0A9396"/><path d="M19 33 L28 42 L46 23" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>' }),
+      el('h2', { id: 'thanks-h', tabindex: '-1', text: 'Thank you. We have your card.' }),
+      el('p', { style: 'margin:0', text: 'Your reference is' }), el('div', { class: 'refcode', id: 'refcode', text: state.sent.ref }),
+      promise(state.sent.contact),
+      el('button', { type: 'button', id: 'again', class: 'primary', onclick: function () { state.sent = null; render(); var b = document.getElementById('face-1'); if (b) b.focus(); }, text: 'Leave another card' })
+    ]));
+    frag.appendChild(boardForPatients(sv));
+    return frag;
+  }
+  frag.appendChild(el('h2', { text: 'How was your visit to ' + sv.name + '?' }));
+  frag.appendChild(el('p', { class: 'sub', text: 'Three quick questions. You do not need to give your name.' }));
+  // 1
+  var q1 = el('fieldset', { class: 'q' }, [el('legend', {}, [el('i', { text: '1' }), 'How was today?'])]);
+  var faces = el('div', { class: 'faces' + (f.face ? ' chosen' : '') });
+  FACES.forEach(function (x) {
+    faces.appendChild(el('button', { type: 'button', class: 'face', id: 'face-' + x[0], 'aria-pressed': String(f.face === x[0]), 'aria-label': x[1], title: x[1], html: faceSvg(x[0]),
+      onclick: function () { state.form.face = x[0]; render(); } }));
+  });
+  q1.appendChild(faces);
+  q1.appendChild(f.face ? el('p', { class: 'facelabel', 'aria-live': 'polite', text: FACES[f.face - 1][1] }) : el('div', { class: 'facescale', 'aria-hidden': 'true' }, [el('span', { text: 'Very poor' }), el('span', { text: 'Very good' })]));
+  frag.appendChild(q1);
+  // 2
+  var q2 = el('div', { class: 'q' }, [el('label', { class: 'qt', for: 'fix' }, [el('i', { text: '2' }), el('span', {}, ['What one thing should we fix? ', el('span', { class: 'opt', text: '(optional)' })])])]);
+  var ta = el('textarea', { id: 'fix', rows: '3', maxlength: '300', placeholder: 'For example: it was hard to sleep because of noise' });
+  ta.value = f.text; ta.addEventListener('input', function () { state.form.text = ta.value; save(); });
+  q2.appendChild(ta);
+  var quick = el('div', { class: 'quick', role: 'group', 'aria-label': 'Or tap one' });
+  QUICK.forEach(function (w, i) { quick.appendChild(el('button', { type: 'button', id: 'quick-' + i, onclick: function () { state.form.text = w; ta.value = w; ta.focus(); save(); }, text: w })); });
+  q2.appendChild(el('p', { class: 'fine', style: 'font-size:0.95rem;margin:10px 0 0', text: 'Or tap one:' })); q2.appendChild(quick);
+  frag.appendChild(q2);
+  // 3
+  var q3 = el('div', { class: 'q' }, [el('div', { class: 'qt' }, [el('i', { text: '3' }), el('span', {}, ['Can we contact you? ', el('span', { class: 'opt', text: '(optional)' })])])]);
+  var cb = el('input', { type: 'checkbox', id: 'contact' }); cb.checked = f.contact;
+  cb.addEventListener('change', function () { state.form.contact = cb.checked; render(); });
+  q3.appendChild(el('label', { class: 'check', for: 'contact' }, [cb, 'Yes, I would like someone to contact me']));
+  if (f.contact) q3.appendChild(el('div', { class: 'contactbox' }, [el('label', { for: 'contact-how', text: 'Phone number or email' }), el('input', { type: 'text', id: 'contact-how', autocomplete: 'off', inputmode: 'email' }),
+    el('p', { class: 'fine', style: 'font-size:0.95rem', text: 'Only the patient experience team sees this. It is kept apart from your comment. In this preview it is not kept at all.' })]));
+  frag.appendChild(q3);
+  frag.appendChild(promise(f.contact));
+  frag.appendChild(el('p', { class: 'urgent', text: 'This card is not for urgent help or questions about your care. If you are worried now, please speak to a member of staff.' }));
+  frag.appendChild(el('button', { type: 'button', id: 'send', class: 'send', disabled: f.face ? false : 'disabled', onclick: sendCard, text: f.face ? 'Send my feedback' : 'Choose a face to send' }));
+  frag.appendChild(boardForPatients(sv));
+  return frag;
+}
+function promise(contact) {
+  return el('div', { class: 'promise' }, [el('h3', { text: 'What happens next' }), el('ol', {}, [
+    el('li', { text: 'The team for this department reads every card.' }),
+    el('li', { text: 'Each month we group comments into themes and agree what to change.' }),
+    el('li', { text: 'We post what we changed on the “You said, we did” board here.' }),
+    el('li', { text: contact ? 'The patient experience team will contact you within ' + state.settings.ackDays + ' days.' : 'If you want a reply, tick “contact me”, or ask any member of staff how to make a complaint.' })
+  ])]);
+}
+function boardForPatients(sv) {
+  var cards = state.cards.filter(function (c) { return c.svc === sv.id && c.status === 'published'; }).sort(function (a, b) { return b.day - a.day; });
+  var box = el('div', {}, [el('h3', { class: 'sec', text: 'You said, we did: ' + sv.short })]);
+  if (!cards.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing posted here yet. Changes appear here when the team publishes them.' }));
+  else { var g = el('div', { class: 'ysw' }); cards.forEach(function (c) { g.appendChild(ycard(c, false)); }); box.appendChild(g); }
+  return box;
+}
+function ycard(c, editable) {
+  if (editable && c.status === 'draft') {
+    var said = el('textarea', { id: 'said-' + c.id, maxlength: '160', 'aria-label': 'You said (draft)' }), did = el('textarea', { id: 'did-' + c.id, maxlength: '200', 'aria-label': 'We did (draft)' });
+    said.value = c.said; did.value = c.did;
+    said.addEventListener('input', function () { c.said = said.value; save(); }); did.addEventListener('input', function () { c.did = did.value; save(); });
+    return el('div', { class: 'yc draft' }, [el('div', { class: 'said' }, [el('b', { text: 'You said' }), said]), el('div', { class: 'did' }, [el('b', { text: 'We did' }), did]),
+      el('div', { class: 'meta' }, [el('span', { class: 'chip draft', text: 'Draft' }), el('div', { class: 'acts' }, [
+        el('button', { type: 'button', class: 'small primary', id: 'pub-' + c.id, onclick: function () { c.said = tidy(c.said); c.did = tidy(c.did); if (!c.said || !c.did) { toast('Write both parts before publishing.'); return; } c.status = 'published'; c.day = today(); log('Department lead published a “You said, we did” card for ' + SVC[c.svc].short + '.'); render(); toast('Published. Patients see it on the feedback card.'); }, text: 'Publish' }),
+        el('button', { type: 'button', class: 'small', onclick: function () { state.cards = state.cards.filter(function (x) { return x !== c; }); log('Draft card discarded.'); render(); }, text: 'Discard' })])])]);
+  }
+  return el('div', { class: 'yc' }, [el('div', { class: 'said' }, [el('b', { text: 'You said' }), el('p', { text: c.said })]), el('div', { class: 'did' }, [el('b', { text: 'We did' }), el('p', { text: c.did })]),
+    el('div', { class: 'meta' }, [el('span', { text: 'Posted ' + dstr(c.day) }), editable ? el('button', { type: 'button', class: 'small', onclick: function () { c.status = 'draft'; log('Card taken down to edit.'); render(); }, text: 'Take down to edit' }) : null])]);
+}
+
+// Department lead: my themes, my board, my complaints
+function leadView() {
+  var svc = state.dept, frag = el('div');
+  // Complaints first: they have dates
+  var cs = state.complaints.filter(inScope(svc)).filter(function (c) { return stage(c) !== 'closed' && stage(c) !== 'shared'; }).sort(sorter);
+  frag.appendChild(el('h3', { class: 'sec' }, ['Complaints and compliments for my area', el('span', { text: cs.length + ' open' })]));
+  if (!cs.length) frag.appendChild(el('p', { class: 'empty', text: 'Nothing open for this department.' }));
+  var list = el('div', { class: 'rows', id: 'lead-complaints' }); cs.forEach(function (c) { list.appendChild(leadComplaint(c)); }); frag.appendChild(list);
+  // Themes
+  var rows = themeRows(svc).filter(function (r) { return r.count || r.avg >= 1; });
+  frag.appendChild(el('h3', { class: 'sec' }, ['Themes, last 30 days', el('span', { text: 'grey bars: the five 30-day periods before' })]));
+  var th = el('div', { class: 'themes' }, [el('div', { class: 'th head' }, [el('span', { text: 'Theme' }), el('span', { style: 'text-align:right', text: 'Now' }), el('span', { text: 'Trend' })])]);
+  rows.forEach(function (r) { th.appendChild(el('div', { class: 'th' }, [el('span', {}, [TH[r.theme].name, r.rising ? el('span', { class: 'rise', text: 'Above its usual range' }) : null]), el('b', { class: 'c', text: String(r.count) }), spark(r.series, r.rising)])); });
+  frag.appendChild(th);
+  // Comments to sort
+  var loose = state.items.filter(inScope(svc)).filter(function (i) { return i.text && !i.theme && i.day > today() - 30; }).sort(function (a, b) { return b.day - a.day; });
+  frag.appendChild(el('h3', { class: 'sec' }, ['New comments to sort', el('span', { text: 'names and contact details are hidden automatically' })]));
+  if (!loose.length) frag.appendChild(el('p', { class: 'empty', text: 'All comments are in a theme.' }));
+  var sl = el('div', { class: 'rows' });
+  loose.forEach(function (i) {
+    var sel = el('select', { id: 'sort-' + i.id, 'aria-label': 'Add comment ' + i.ref + ' to a theme' }, [el('option', { value: '', text: 'Add to theme…' })].concat(THEMES.map(function (t) { return el('option', { value: t.id, text: t.name }); })));
+    sel.addEventListener('change', function () { if (!sel.value) return; i.theme = sel.value; log('Department lead added a comment (' + i.ref + ') to “' + TH[i.theme].name + '”.'); render(); toast('Added to “' + TH[i.theme].name + '”.'); });
+    sl.appendChild(el('div', { class: 'sort' }, [el('q', { text: i.text }), el('div', { class: 'r' }, [el('span', { text: i.ref + ' · ' + FACES[i.face - 1][1] + ' · ' + dstr(i.day) }), sel])]));
+  });
+  frag.appendChild(sl);
+  // Actions and the board
+  var acts = state.actions.filter(inScope(svc)).sort(function (a, b) { return (a.closed != null) - (b.closed != null) || a.due - b.due; });
+  frag.appendChild(el('h3', { class: 'sec' }, ['Agreed actions', el('span', { text: acts.filter(function (a) { return a.closed == null; }).length + ' open' })]));
+  var al = el('div', { class: 'acts-list' });
+  if (!acts.length) al.appendChild(el('p', { class: 'empty', text: 'No actions yet. Agree one from a complaint or a theme.' }));
+  acts.forEach(function (a) {
+    var hasCard = state.cards.some(function (c) { return c.action === a.id; }), over = a.closed == null && a.due < today();
+    al.appendChild(el('div', { class: 'act' + (over ? ' over' : '') }, [el('span', {}, [el('b', { text: a.text }), el('span', { class: 'sub', text: a.id + ' · from ' + a.from + ' · ' + (a.closed != null ? 'done ' + dstr(a.closed) : 'due ' + dstr(a.due) + (over ? ' (overdue)' : '')) })]),
+      a.closed == null ? el('button', { type: 'button', class: 'small', id: 'done-' + a.id, onclick: function () { closeAction(a); }, text: 'Mark done' })
+        : hasCard ? el('span', { class: 'chip pub', text: 'On the board' }) : el('button', { type: 'button', class: 'small', id: 'write-' + a.id, onclick: function () { draftCard(a, false); }, text: 'Write a card' })]));
+  });
+  frag.appendChild(al);
+  var cards = state.cards.filter(inScope(svc)).sort(function (a, b) { return (a.status === 'draft' ? -1 : 0) - (b.status === 'draft' ? -1 : 0) || b.day - a.day; });
+  frag.appendChild(el('h3', { class: 'sec' }, ['You said, we did: board to publish', el('span', { text: cards.filter(function (c) { return c.status === 'published'; }).length + ' published' })]));
+  if (!cards.length) frag.appendChild(el('p', { class: 'empty', text: 'No cards yet. Close an action, then write a card about it.' }));
+  else { var g = el('div', { class: 'ysw', id: 'board' }); cards.forEach(function (c) { g.appendChild(ycard(c, true)); }); frag.appendChild(g); }
+  frag.appendChild(el('p', { class: 'fine', text: 'Published cards appear on this department’s feedback card for patients and visitors. Switch to “Patient or visitor” to see them.' }));
+  return frag;
+}
+function sorter(a, b) {
+  var ta = timing(a), tb = timing(b);
+  if (ta.over !== tb.over) return ta.over ? -1 : 1;
+  if ((ta.left == null) !== (tb.left == null)) return ta.left == null ? 1 : -1;
+  return (ta.left == null ? 0 : ta.left - tb.left) || b.rec - a.rec;
+}
+function dueText(t) { return t.over ? (-t.left) + (t.left === -1 ? ' day late' : ' days late') : t.left === 0 ? 'due today' : t.left === 1 ? 'due tomorrow' : 'in ' + t.left + ' days'; }
+function nextSteps(c, small) {
+  var st = stage(c), cls = small ? 'small' : 'small primary', out = [];
+  if (c.kind === 'compliment') { if (st === 'new') out.push(el('button', { type: 'button', class: cls, id: 'adv-' + c.ref, onclick: function () { advance(c, 'share'); }, text: 'Share with team' })); return out; }
+  if (st === 'new') out.push(el('button', { type: 'button', class: cls, id: 'adv-' + c.ref, onclick: function () { advance(c, 'ack'); }, text: 'Mark acknowledged' }));
+  if (st === 'ack') out.push(el('button', { type: 'button', class: cls, id: 'adv-' + c.ref, onclick: function () { advance(c, 'resp'); }, text: 'Mark response sent' }));
+  if (st === 'responded') out.push(el('button', { type: 'button', class: cls, id: 'adv-' + c.ref, onclick: function () { advance(c, 'close'); }, text: 'Close' }));
+  return out;
+}
+function leadComplaint(c) {
+  var st = stage(c), t = timing(c), comp = c.kind === 'compliment';
+  var box = el('div', { class: 'cc' + (t.over ? ' over' : t.near ? ' near' : ''), 'data-ref': c.ref }, [
+    el('div', { class: 'top' }, [el('div', {}, [el('b', { text: c.ref + ' · ' + TH[c.theme].name }), el('p', { class: 'meta' }, [el('span', { class: 'chip ' + (comp ? 'kind-compliment' : 'st-' + st), text: comp ? 'Compliment' : STAGE_WORD[st] }), ' ' + c.channel + ' · received ' + dstr(c.rec) + ' · owner: ' + c.owner])]),
+      t.due ? el('div', { class: 'clock' }, [dstr(t.due.day), el('small', { text: t.due.what.replace(' by', '') + ' · ' + dueText(t) })]) : el('div', { class: 'clock' }, [el('small', { text: st === 'responded' ? 'Responded ' + dstr(c.resp) : '' })])])
+  ]);
+  if (!comp) box.appendChild(el('div', { class: 'track', 'aria-label': 'Progress' }, [['rec', 'Received'], ['ack', 'Acknow\u00ADledged'], ['resp', 'Responded'], ['closed', 'Closed']].map(function (x) { return el('span', { class: c[x[0]] != null ? 'on' : '' }, [x[1], el('em', { text: c[x[0]] != null ? dstr(c[x[0]]) : '–' })]); })));
+  var acts = el('div', { class: 'acts' }, nextSteps(c));
+  if (!comp && st === 'ack') {
+    acts.appendChild(el('button', { type: 'button', class: 'small', id: 'draft-' + c.ref, 'aria-expanded': String(state.openDraft === c.ref), onclick: function () {
+      if (state.openDraft === c.ref) { state.openDraft = null; render(); return; }
+      if (!c.draft) { c.draft = state.guide ? draftFromRecord(c) : 'Reference ' + c.ref + '\n\n'; log((state.guide ? 'Guide drafted a response summary for ' : 'Department lead started a response for ') + c.ref + ' (draft; the owner edits and sends).'); }
+      state.openDraft = c.ref; render(); var x = document.getElementById('text-' + c.ref); if (x) x.focus();
+    }, text: c.draft ? (state.openDraft === c.ref ? 'Hide draft' : 'Open draft') : state.guide ? 'Draft from the record' : 'Start a response' }));
+  }
+  box.appendChild(acts);
+  if (state.openDraft === c.ref && c.draft) {
+    var ta = el('textarea', { id: 'text-' + c.ref, 'aria-label': 'Response draft for ' + c.ref }); ta.value = c.draft;
+    ta.addEventListener('input', function () { c.draft = ta.value; save(); });
+    box.appendChild(ta); box.appendChild(el('p', { class: 'fine', text: 'A draft from the record. Check every word, fill the gaps and send it your usual way. Then mark the response sent.' }));
+  }
+  if (!comp && st !== 'new') {
+    var inp = el('input', { type: 'text', id: 'act-' + c.ref, maxlength: '120', placeholder: 'Agreed action, e.g. quiet-hours check at night', 'aria-label': 'Agreed action for ' + c.ref });
+    box.appendChild(el('div', { class: 'addact' }, [inp, el('button', { type: 'button', class: 'small', onclick: function () { addAction(c, inp.value); }, text: 'Add action' })]));
+  }
+  return box;
+}
+
+// Patient experience manager: everything, by stage and due date
+function managerView() {
+  var frag = el('div'), T = today();
+  var FILTERS = [['open', 'All open'], ['over', 'Overdue'], ['near', 'Due soon'], ['compliment', 'Compliments'], ['closed', 'Closed']];
+  var f = el('div', { class: 'filters', role: 'group', 'aria-label': 'Show' });
+  FILTERS.forEach(function (x) { f.appendChild(el('button', { type: 'button', id: 'f-' + x[0], 'aria-pressed': String(state.filter === x[0]), onclick: function () { state.filter = x[0]; render(); }, text: x[1] })); });
+  var all = state.complaints.slice().sort(sorter).filter(function (c) {
+    var st = stage(c), t = timing(c), done = st === 'closed' || st === 'shared';
+    return state.filter === 'open' ? !done : state.filter === 'over' ? t.over : state.filter === 'near' ? t.near : state.filter === 'compliment' ? c.kind === 'compliment' : done;
+  });
+  frag.appendChild(el('h3', { class: 'sec' }, ['Complaints and compliments', el('span', { text: 'overdue first, then by due date' })]));
+  frag.appendChild(f);
+  var rows = el('div', { class: 'rows', id: 'queue' });
+  if (!all.length) rows.appendChild(el('p', { class: 'empty', text: 'Nothing here.' }));
+  all.forEach(function (c) {
+    var st = stage(c), t = timing(c), comp = c.kind === 'compliment';
+    var sel = el('select', { id: 'own-' + c.ref, 'aria-label': 'Owner role for ' + c.ref }, OWNERS.map(function (o) { return el('option', { value: o, text: o }); })); sel.value = c.owner;
+    sel.addEventListener('change', function () { c.owner = sel.value; log(c.ref + ' owner role set to ' + c.owner + '.'); render(); toast(c.ref + ' now owned by: ' + c.owner + '.'); });
+    rows.appendChild(el('div', { class: 'crow k-' + c.kind + (t.over ? ' over' : t.near ? ' near' : '') + (st === 'closed' || st === 'shared' ? ' done' : ''), 'data-ref': c.ref }, [
+      el('div', {}, [el('b', { text: c.ref + ' · ' + SVC[c.svc].short }), el('span', { class: 'sub', text: TH[c.theme].name + ' · ' + c.channel + ' · received ' + dstr(c.rec) })]),
+      el('div', { class: 'own' }, [el('span', { class: 'chip ' + (comp ? 'kind-compliment' : 'st-' + st), text: comp ? (st === 'new' ? 'Compliment' : 'Shared') : STAGE_WORD[st] }), sel]),
+      t.due ? el('div', { class: 'due' }, [dstr(t.due.day), el('small', { text: t.due.what.replace(' by', '') + ' · ' + dueText(t) })]) : el('div', { class: 'due' }, [el('small', { text: st === 'closed' ? 'Closed ' + dstr(c.closed) : st === 'responded' ? 'Responded ' + dstr(c.resp) : st === 'shared' ? 'Shared ' + dstr(c.shared) : '' })]),
+      el('div', { class: 'go' }, nextSteps(c, true))
+    ]));
+  });
+  frag.appendChild(rows);
+  // Log one
+  frag.appendChild(el('h3', { class: 'sec', text: 'Log a complaint or compliment' }));
+  var lf = el('form', { class: 'logform', id: 'logform', autocomplete: 'off' });
+  function sel(id, label, opts, val) { var s = el('select', { id: id }, opts.map(function (o) { return el('option', { value: o[0], text: o[1] }); })); if (val) s.value = val; return el('label', { for: id }, [label, s]); }
+  lf.appendChild(sel('l-kind', 'Type', [['complaint', 'Complaint'], ['compliment', 'Compliment']]));
+  lf.appendChild(sel('l-channel', 'How it came in', CHANNELS.map(function (c) { return [c, c]; })));
+  lf.appendChild(sel('l-svc', 'Service', SERVICES.map(function (s) { return [s.id, s.name]; })));
+  lf.appendChild(sel('l-theme', 'Theme', THEMES.map(function (t) { return [t.id, t.name]; })));
+  lf.appendChild(sel('l-owner', 'Owner role', OWNERS.map(function (o) { return [o, o]; })));
+  lf.appendChild(el('div', { class: 'full' }, [el('button', { type: 'submit', class: 'primary', id: 'l-save', text: 'Log it' }), el('span', { class: 'fine', style: 'margin:0', text: 'No patient details here: the record gets a reference code. Clinical concerns go to clinical review.' })]));
+  lf.addEventListener('submit', function (e) {
+    e.preventDefault(); var v = function (id) { return document.getElementById(id).value; }, kind = v('l-kind');
+    var c = { ref: kind === 'compliment' ? 'K-' + (state.seq.k++) : 'C-' + (state.seq.c++), kind: kind, svc: v('l-svc'), theme: v('l-theme'), channel: v('l-channel'), rec: T, ack: null, resp: null, shared: null, closed: null, owner: v('l-owner'), draft: '', reminded: null };
+    state.complaints.push(c); state.filter = 'open';
+    log('Logged ' + (kind === 'compliment' ? 'compliment ' : 'complaint ') + c.ref + ' for ' + SVC[c.svc].short + ' (' + c.channel.toLowerCase() + ', ' + TH[c.theme].name.toLowerCase() + '), owner: ' + c.owner + '.');
+    render(); var d = dueOf(c); toast('Logged ' + c.ref + '. ' + d.what + ' ' + dstr(d.day) + '.');
+  });
+  frag.appendChild(lf);
+  // Themes by service
+  var tr = themeRows(null).filter(function (r) { return r.count; }).slice(0, 10);
+  frag.appendChild(el('h3', { class: 'sec' }, ['Themes by service, last 30 days', el('span', { text: 'top 10 · grey bars: the five 30-day periods before' })]));
+  var th = el('div', { class: 'themes', id: 'themes' }, [el('div', { class: 'th w head' }, [el('span', { class: 'svc', text: 'Service' }), el('span', { text: 'Theme' }), el('span', { style: 'text-align:right', text: 'Now' }), el('span', { text: 'Trend' })])]);
+  tr.forEach(function (r) { th.appendChild(el('div', { class: 'th w' }, [el('span', { class: 'svc', text: SVC[r.svc].short }), el('span', {}, [TH[r.theme].name, r.rising ? el('span', { class: 'rise', text: 'Above its usual range' }) : null]), el('b', { class: 'c', text: String(r.count) }), spark(r.series, r.rising)])); });
+  frag.appendChild(th);
+  frag.appendChild(el('p', { class: 'fine', text: 'Counts are comments grouped into a theme. “Above its usual range” is an example rule (more than any of the five periods before and at least 3 above their average), not a statistical test.' }));
+  // Responses on time by service
+  frag.appendChild(el('h3', { class: 'sec', text: 'Responses on time, by service' }));
+  var tb = el('tbody');
+  SERVICES.forEach(function (s) { var k = kpis(s.id); tb.appendChild(el('tr', {}, [el('td', { text: s.short }), el('td', { class: 'r', text: k.responsesOnTime + ' of ' + k.responsesDue }), el('td', { class: 'r' }, [k.responsesOnTimePct == null ? '–' : k.responsesOnTimePct + '%', el('span', { class: 'meter', 'aria-hidden': 'true' }, [el('i', { style: 'width:' + (k.responsesOnTimePct || 0) + '%' })])]), el('td', { class: 'r', text: String(k.overdue) })])); });
+  frag.appendChild(el('div', { style: 'overflow-x:auto' }, [el('table', { class: 'ot' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Service' }), el('th', { class: 'r', text: 'On time' }), el('th', { class: 'r', text: '%' }), el('th', { class: 'r', text: 'Overdue now' })])]), tb])]));
+  // Settings
+  var det = el('details', { class: 'set', id: 'settings' }, [el('summary', { text: 'Response deadlines (example settings)' })]);
+  var grid = el('div', { class: 'targets' });
+  [['ackDays', 'Acknowledge within (days)'], ['respDays', 'Full response within (days)'], ['warnDays', 'Warn when due within (days)'], ['shareDays', 'Share compliments within (days)']].forEach(function (x) {
+    var inp = el('input', { type: 'number', id: 's-' + x[0], min: '0', max: '90', step: '1', inputmode: 'numeric' }); inp.value = state.settings[x[0]];
+    inp.addEventListener('change', function () { var n = Math.max(0, Math.min(90, Math.round(+inp.value || 0))); state.settings[x[0]] = n; log('Setting changed: ' + x[1].toLowerCase() + ' = ' + n + '.'); render(); });
+    grid.appendChild(el('label', { for: 's-' + x[0] }, [x[1], inp]));
+  });
+  det.appendChild(grid);
+  det.appendChild(el('p', { class: 'fine', text: 'Example settings, not a standard. Your organisation sets its own deadlines and they are stored only in this browser. Due dates, overdue counts and responses on time update straight away.' }));
+  frag.appendChild(det);
+  return frag;
+}
+
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Feedback cards, themes, the board, the queue and the measures all work without it. Response drafts start blank.' })); return; }
+  if (state.role === 'patient') { box.appendChild(el('p', { class: 'empty', text: 'The guide helps staff and is not shown to patients. Switch to Department lead or Patient experience manager to see its suggestions.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag: no complaints near their due date, no comments to group and no theme above its usual range.' }));
+  list.forEach(function (sg) {
+    var pend = state.pending.some(function (p) { return p.id === sg.id; });
+    var acts = sg.acts.map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend && a.primary ? 'disabled' : false, onclick: a.fn, text: pend && a.primary ? 'Proposed' : a.label }); });
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
+      el('span', { class: 'tag ' + (sg.kind === 'time' ? 'time' : sg.kind === 'ask' ? 'ask' : ''), text: sg.id === 'remind' ? 'Due soon' : sg.kind === 'ask' ? 'Group comments' : sg.kind === 'card' ? 'You said, we did' : 'Theme rising' }),
+      el('h3', { text: sg.title }), sg.text ? el('p', { text: sg.text }) : null,
+      sg.list ? el('ul', {}, sg.list.map(function (x) { return el('li', { text: x }); })) : null,
+      el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  if (state.pending.length) {
+    var who = state.role === 'lead' ? 'department lead' : 'patient experience manager';
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for the ' + who + ' to decide' })]);
+    state.pending.forEach(function (p) {
+      d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }), el('div', { class: 'acts', style: 'display:flex;gap:8px;flex-wrap:wrap' }, [
+        el('button', { type: 'button', class: 'small primary', onclick: function () { decide(p, true); }, text: 'Confirm' }),
+        el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Proposals wait here; drafts wait on the board until someone edits and publishes them.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 25).forEach(function (e) { ol.appendChild(el('li', { class: e.t === lastLogT && Date.now() - e.t < 5000 ? 'new' : '' }, [el('time', { text: hhmm(e.t) }), el('span', { text: e.text })])); });
+}
+
+// ---------- Wiring ----------
+['patient', 'lead', 'manager'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; state.openDraft = null; render(); }); });
+var dsel = document.getElementById('t-dept');
+SERVICES.forEach(function (s) { dsel.appendChild(el('option', { value: s.id, text: s.name })); });
+dsel.addEventListener('change', function () { state.dept = dsel.value; state.sent = null; state.openDraft = null; render(); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-day').addEventListener('click', function () { state.offset++; log('Demo clock moved on to ' + dstr(today()) + '.'); render(); toast('It is now ' + dstr(today()) + '. Due dates have moved closer.'); });
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role, dept = state.dept; state = seed(); state.role = role; state.dept = dept; render(); toast('Example reset.'); });
+
+// Read-only view for software agents (no writes): window.ospeliFeedbackDemo
+window.ospeliFeedbackDemo = Object.freeze({
+  describe: function () { return 'Read-only patient feedback and complaints demo for a fictional hospital. get() returns the current view, complaints and compliments with stage, owner role and due dates, themes, actions and published cards; kpis() the measures (optionally for one service id); suggestions() the guide\'s current suggestions. Runs in the browser; nothing is sent anywhere. Patients are known only by reference codes.'; },
+  get: function () {
+    return clone({ role: state.role, department: state.dept, today: dstr(today()), settingsDays: state.settings, services: SERVICES.map(function (s) { return { id: s.id, name: s.name }; }),
+      complaints: state.complaints.slice().sort(sorter).map(function (c) { var t = timing(c); return { ref: c.ref, kind: c.kind, service: c.svc, theme: TH[c.theme].name, channel: c.channel, stage: STAGE_WORD[stage(c)], ownerRole: c.owner, due: t.due ? { what: t.due.what, date: dstr(t.due.day), daysLeft: t.left } : null, overdue: t.over, nearDue: t.near }; }),
+      themes: themeRows(state.role === 'lead' ? state.dept : null).filter(function (r) { return r.count; }).map(function (r) { return { service: r.svc, theme: TH[r.theme].name, last30Days: r.count, previousPeriods: r.series.slice(0, 5), aboveUsualRange: r.rising }; }),
+      actions: state.actions.map(function (a) { return { id: a.id, service: a.svc, text: a.text, due: dstr(a.due), done: a.closed != null }; }),
+      cards: state.cards.map(function (c) { return { service: c.svc, status: c.status, youSaid: c.said, weDid: c.did }; }),
+      pendingProposals: state.pending.map(function (p) { return p.text; }) });
+  },
+  kpis: function (svc) { return kpis(svc && SVC[svc] ? svc : null); },
+  suggestions: function () { var role = state.role; if (role === 'patient') state.role = 'manager'; var s = suggest(); state.role = role; return s.map(function (x) { return { id: x.id, title: x.title, text: x.text || (x.list || []).join('; '), why: x.why }; }); }
+});
+render();
+})();
+</script>
+</body>
+</html>

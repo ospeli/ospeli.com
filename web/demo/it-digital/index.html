@@ -1,0 +1,900 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IT, digital and cyber demo · Ospeli</title>
+<meta name="description" content="Report an IT problem from a phone, see which systems are up or down, work the service desk queue, run downtime, and track leaver access and device updates. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="IT, digital and cyber demo · Ospeli">
+<meta property="og:description" content="Report an IT problem from a phone, see which systems are up or down, work the service desk queue, run downtime, and track leaver access and device updates. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/it-digital/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button, textarea { font: inherit; color: var(--ink); }
+select, input[type=number], input[type=text] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 560px) { .roles { display: grid; grid-template-columns: 1fr 1fr; border-radius: 14px; width: 100%; } .roles button { padding: 8px 6px; } .roles button:nth-child(3) { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--line); } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.88rem; font-weight: 700; display: block; }
+.stat .n { color: var(--soft); font-size: 0.78rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.8rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stathint { color: var(--soft); font-size: 0.78rem; margin: 6px 0 0; }
+/* status banner */
+.banner { border-radius: 14px; padding: 12px 14px; margin-top: 14px; border: 1px solid var(--line); background: var(--wash); }
+.banner.down { background: var(--hot); border-color: #F1B9A9; }
+.banner.deg { background: var(--warn); border-color: #F2D29B; }
+.banner .head { display: flex; gap: 10px; align-items: center; font-weight: 800; font-size: 1.05rem; line-height: 1.3; }
+.banner ul { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 6px; }
+.banner li { background: #fff; border-radius: 10px; padding: 8px 10px; font-size: 0.95rem; }
+.banner li b { display: block; }
+.banner li span { color: var(--soft); font-size: 0.9rem; }
+.banner details { margin-top: 8px; font-size: 0.95rem; }
+.banner summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.allsys { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px 12px; }
+.allsys li { background: none !important; padding: 2px 0 !important; display: flex; gap: 8px; align-items: center; }
+.dot { width: 12px; height: 12px; border-radius: 50%; flex: none; display: inline-block; }
+.dot.up { background: var(--sea); } .dot.degraded { background: var(--mango); } .dot.down { background: var(--coral); }
+.chip { display: inline-block; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; background: var(--sand); white-space: nowrap; }
+.chip.up { background: var(--wash); color: #06686A; } .chip.degraded { background: var(--warn); color: #8A5A00; } .chip.down { background: var(--coral); color: #fff; }
+.chip.p1 { background: var(--coral); color: #fff; } .chip.p2 { background: var(--mango); color: var(--navy); } .chip.p3 { background: var(--sand); } .chip.p4 { background: #EEF2F5; }
+.chip.late { background: var(--hot); color: #8E2C18; } .chip.fault { background: var(--navy); color: #fff; }
+/* report form */
+.steps { display: grid; gap: 16px; margin-top: 16px; }
+.stepq { font-weight: 800; font-size: 1rem; margin: 0 0 8px; display: flex; gap: 8px; align-items: center; }
+.stepq i { font-style: normal; width: 26px; height: 26px; border-radius: 50%; background: var(--navy); color: #fff; display: grid; place-items: center; font-size: 0.85rem; flex: none; }
+.choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.choice { border-radius: 12px; border: 1px solid #CFC5B2; min-height: 56px; text-align: left; padding: 8px 12px; font-size: 1rem; display: flex; gap: 10px; align-items: center; line-height: 1.25; }
+.choice svg { width: 26px; height: 26px; flex: none; stroke: var(--sea); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.choice small { display: block; font-weight: 600; color: var(--soft); font-size: 0.95rem; }
+.steps .fine, .banner li span { font-size: 0.95rem; }
+.choice[aria-pressed=true] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.choice[aria-pressed=true] small { color: #D6E2EC; }
+.choice[aria-pressed=true] svg { stroke: var(--foam); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips button { border-color: #CFC5B2; font-weight: 700; }
+.chips button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.field { display: flex; flex-direction: column; gap: 4px; font-weight: 800; font-size: 0.95rem; }
+.field select, .field input { font-weight: 600; width: 100%; }
+.check { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; min-height: 44px; cursor: pointer; font-size: 0.98rem; }
+.check input { width: 22px; height: 22px; flex: none; }
+.send { width: 100%; min-height: 56px; font-size: 1.08rem; }
+.known { background: var(--warn); border-radius: 10px; padding: 8px 10px; font-size: 0.95rem; margin: 8px 0 0; }
+.fine { font-size: 0.85rem; color: var(--soft); margin: 8px 0 0; }
+.rq { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+.rq .top { display: flex; justify-content: space-between; gap: 8px; font-weight: 800; align-items: flex-start; }
+.rq .line { font-size: 0.95rem; color: var(--soft); margin: 2px 0 0; }
+.track { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin-top: 8px; }
+.track span { font-size: 0.8rem; color: var(--soft); border-top: 4px solid var(--line); padding-top: 4px; font-weight: 700; line-height: 1.25; }
+.track span.on { border-top-color: var(--sea); color: var(--ink); }
+.track span em { display: block; font-style: normal; font-weight: 600; color: var(--soft); }
+.empty { text-align: center; color: var(--soft); padding: 18px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; }
+/* desk */
+.filters { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.filters button { min-height: 40px; font-size: 0.88rem; border-color: #CFC5B2; }
+.filters button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.trow { display: grid; grid-template-columns: minmax(0, 1fr) 112px 330px; gap: 10px; align-items: center; border: 1px solid var(--line); border-left: 5px solid var(--line); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; font-size: 0.92rem; }
+.trow.p1 { border-left-color: var(--coral); } .trow.p2 { border-left-color: var(--mango); } .trow.p3 { border-left-color: var(--foam); } .trow.p4 { border-left-color: #C9D3DC; }
+.trow.late { background: #FFF8F5; }
+.trow b { display: block; line-height: 1.3; }
+.trow .sub { color: var(--soft); font-size: 0.84rem; }
+.trow .chipline { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 2px; }
+.trow .age { text-align: right; font-weight: 800; white-space: nowrap; line-height: 1.2; }
+.trow .age small { display: block; font-weight: 700; color: var(--soft); font-size: 0.75rem; }
+.trow.late .age small { color: #B23A22; }
+.trow .ctl { display: grid; grid-template-columns: 66px minmax(0, 1fr) auto; gap: 6px; align-items: center; }
+.trow .ctl select { min-height: 40px; font-size: 0.85rem; padding: 4px 6px; width: 100%; }
+.trow .resolve { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--wash); border-radius: 8px; padding: 6px; }
+.trow .resolve select { flex: 1 1 180px; }
+@media (max-width: 760px) { .trow { grid-template-columns: minmax(0, 1fr) auto; } .trow .ctl { grid-column: 1 / -1; } }
+.fault { border: 1px solid var(--navy); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; background: #F7FAFC; }
+.fault .top { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-weight: 800; }
+.fault p { margin: 4px 0 8px; font-size: 0.9rem; color: var(--soft); }
+.fault .acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.fault select { min-height: 40px; font-size: 0.85rem; flex: 1 1 180px; }
+.sysrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; border-bottom: 1px dashed var(--line); padding: 8px 0; }
+.sysrow b { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sysrow .sub { color: var(--soft); font-size: 0.84rem; display: block; }
+.dt { min-width: 170px; display: inline-flex; gap: 8px; align-items: center; justify-content: center; font-size: 0.88rem; }
+.dt .knob { width: 34px; height: 20px; border-radius: 999px; background: #CFC5B2; position: relative; flex: none; transition: background 0.15s; }
+.dt .knob::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: left 0.15s; }
+.dt[aria-pressed=true] { background: var(--coral); border-color: var(--coral); color: #fff; }
+.dt[aria-pressed=true] .knob { background: #fff; } .dt[aria-pressed=true] .knob::after { left: 16px; background: var(--coral); }
+@media (max-width: 480px) { .sysrow { grid-template-columns: minmax(0, 1fr); } .dt { width: 100%; } }
+/* lead */
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 760px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
+.panel { border: 1px solid var(--line); border-radius: 12px; padding: 12px; min-width: 0; }
+.panel h4 { margin: 0 0 8px; font-size: 0.98rem; }
+.big { font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
+.big small { font-size: 0.85rem; color: var(--soft); font-weight: 700; }
+.risk { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .risk { grid-template-columns: minmax(0, 1fr); } }
+.risk .panel.hot { background: #FFF8F5; border-color: #F1B9A9; }
+.risk ul, .panel ul.plain { list-style: none; margin: 8px 0 0; padding: 0; font-size: 0.88rem; }
+.risk li, .panel ul.plain li { display: flex; justify-content: space-between; gap: 8px; border-bottom: 1px dashed var(--line); padding: 3px 0; }
+.risk li b, .panel ul.plain li b { white-space: nowrap; }
+table.t { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+table.t th, table.t td { text-align: left; padding: 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.t th { color: var(--soft); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em; }
+table.t td.r, table.t th.r { text-align: right; white-space: nowrap; }
+.tablewrap { overflow-x: auto; }
+.auditbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-bottom: 8px; }
+.auditbar label { display: flex; flex-direction: column; gap: 3px; font-size: 0.82rem; font-weight: 700; color: var(--soft); }
+.act-read { color: var(--soft); } .act-changed { color: var(--navy); font-weight: 800; }
+details.set { margin-top: 16px; }
+details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.targets { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 6px; }
+.targets label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 700; color: var(--soft); }
+.targets input { width: 100%; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.82rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg ul { margin: 0 0 8px; padding-left: 18px; font-size: 0.88rem; }
+.sugg .why { color: var(--soft); font-size: 0.82rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.hot { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+.prop .who { color: var(--soft); font-size: 0.82rem; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>IT, digital and cyber</h1>
+  <p class="lead">Any staff member reports an IT problem from a phone in a few taps and sees which systems are up, slow or down. The service desk works one queue and switches a system into downtime, which tells the affected departments. IT and data protection leads see open tickets, downtime, leaver accounts and device updates as counts. The guide spots patterns; a person decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-staff" aria-pressed="false">Any staff</button>
+    <button type="button" id="r-desk" aria-pressed="false">IT service desk</button>
+    <button type="button" id="r-lead" aria-pressed="false">IT and data protection lead</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <b>Demo tools:</b>
+    <button type="button" class="small" id="t-clock">Move clock on 15 min</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <h2 id="view-h">IT</h2>
+        <div class="stats" id="kpis"></div>
+        <p class="stathint">Tap a tile for its definition. All figures are from this fictional example.</p>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads open tickets, system status, restore tests and access counts, and suggests where to look, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal; a named role confirms it. Ospeli never disables accounts or changes other systems.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its areas, systems, tickets and counts. It measures systems, tickets and access, never individual staff, and it does not monitor anyone's computer use. It is not antivirus or network monitoring. Coming next (Feb 2027): report a fault by scanning a QR label on a device, downtime mode with printable paper forms and a catch-up entry list, backup restore test tracking, and playbooks for downtime drills, quarterly access reviews and the first hour of a cyber incident. <a href="../../areas/it-digital-cyber/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var M = 60000, H = 60 * M, D = 24 * H;
+var STORE = 'ospeli.itdigital.v1';
+
+// ---------- Fixed reference data (fictional) ----------
+var AREAS = {
+  W1: { name: 'Ward 1', block: 'Main' }, W2: { name: 'Ward 2', block: 'Main' }, W3: { name: 'Ward 3', block: 'Main' }, W4: { name: 'Ward 4', block: 'Main' },
+  ED: { name: 'Emergency department', block: 'Main' }, OP: { name: 'Outpatients', block: 'Main' }, AD: { name: 'Admin offices', block: 'Main' },
+  W5: { name: 'Ward 5', block: 'East' }, W6: { name: 'Ward 6', block: 'East' }, W7: { name: 'Ward 7', block: 'East' },
+  IM: { name: 'Imaging', block: 'East' }, TH: { name: 'Theatres', block: 'East' }, PH: { name: 'Pharmacy', block: 'East' }
+};
+var AREA_ORDER = ['W1', 'W2', 'W3', 'W4', 'ED', 'OP', 'W5', 'W6', 'W7', 'IM', 'TH', 'PH', 'AD'];
+var SYSTEMS = [
+  { id: 'ehr', name: 'Clinical record system', clinical: true, depts: ['All wards', 'Emergency department', 'Outpatients', 'Theatres'] },
+  { id: 'pas', name: 'Patient administration system', clinical: true, depts: ['Emergency department', 'Outpatients', 'All wards'] },
+  { id: 'lab', name: 'Lab results system', clinical: true, depts: ['All wards', 'Emergency department', 'Outpatients'] },
+  { id: 'img', name: 'Imaging viewer', clinical: true, depts: ['Imaging', 'Emergency department', 'Theatres', 'All wards'] },
+  { id: 'pha', name: 'Pharmacy system', clinical: true, depts: ['Pharmacy', 'All wards'] },
+  { id: 'wifiM', name: 'Staff Wi-Fi · Main block', depts: ['Wards 1–4', 'Emergency department', 'Outpatients', 'Admin offices'] },
+  { id: 'wifiE', name: 'Staff Wi-Fi · East block', depts: ['Wards 5–7', 'Imaging', 'Theatres', 'Pharmacy'] },
+  { id: 'print', name: 'Printing service', depts: ['All areas'] },
+  { id: 'email', name: 'Email', depts: ['All areas'] },
+  { id: 'roster', name: 'Rostering', depts: ['All areas (rota managers)'] }
+];
+function sysById(id) { return SYSTEMS.filter(function (s) { return s.id === id; })[0]; }
+var ICON = {
+  printer: '<path d="M6 9V3h12v6"/><path d="M6 18H4.5A1.5 1.5 0 0 1 3 16.5V11a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5.5a1.5 1.5 0 0 1-1.5 1.5H18"/><rect x="6" y="14" width="12" height="7" rx="1"/>',
+  computer: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+  login: '<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16.5 6.5l3 3M14 9l2 2"/>',
+  network: '<path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0"/><circle cx="12" cy="19.5" r="1"/>',
+  slow: '<path d="M3 18a9 9 0 1 1 18 0"/><path d="M12 18l-4-5"/><path d="M12 9v1M7 11l.7.7M17 11l-.7.7"/>',
+  other: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6V14M12 17.5v.01"/>',
+  access: '<rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/>'
+};
+var CATS = {
+  printer: { label: 'Printer', hint: 'won’t print, jammed, offline', team: 'Desktop support', chips: ['Won’t print', 'Paper jam', 'Shows offline', 'Toner or labels'] },
+  computer: { label: 'Computer', hint: 'won’t start, frozen, screen', team: 'Desktop support', chips: ['Won’t start', 'Frozen', 'Screen problem', 'Keyboard or mouse'] },
+  login: { label: 'Login', hint: 'locked out, password', team: 'Service desk', chips: ['Locked out', 'Forgot password', 'No access to a system'] },
+  network: { label: 'Network or Wi-Fi', hint: 'no connection, drops', team: 'Network team', chips: ['No connection', 'Keeps dropping', 'Very slow'] },
+  slow: { label: 'Clinical system slow', hint: 'or not responding', team: 'Applications team', chips: ['Very slow', 'Not responding', 'Error message'] },
+  other: { label: 'Something else', hint: 'phone, scanner, other', team: 'Service desk', chips: ['Desk phone', 'Scanner', 'Something else'] },
+  access: { label: 'Access', hint: 'accounts', team: 'Identity and access team', chips: [] }
+};
+var CAT_ORDER = ['printer', 'computer', 'login', 'network', 'slow', 'other'];
+var TEAMS = ['Service desk', 'Desktop support', 'Network team', 'Applications team', 'Identity and access team', 'Supplier'];
+var PRI = { 1: 'Critical', 2: 'High', 3: 'Normal', 4: 'Low' };
+var CAUSES = ['Hardware fault fixed', 'Settings or software fixed', 'Account unlocked or password reset', 'Network fault fixed', 'Fixed by the supplier', 'Advice given; working now', 'Duplicate of another ticket', 'Leaver accounts disabled by IT'];
+var ROLE_NAME = { staff: 'Ward staff member', desk: 'IT service desk analyst', lead: 'IT and data protection lead' };
+// Example settings for this demo only, not a standard: each organisation sets its own.
+var DEFAULT_TARGETS = { 1: 4, 2: 8, 3: 24, 4: 72 }; // hours to resolve, by priority
+var CLUSTER = { tickets: 3, withinMin: 60 };
+
+// Small seeded random numbers so the example is the same every time.
+function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// ---------- State ----------
+function seed() {
+  var T = Date.now(), R = rng(31);
+  var s = { v: 1, created: T, offset: 0, role: window.matchMedia('(max-width: 640px)').matches ? 'staff' : 'desk',
+    guide: true, kpiOpen: null, seq: 2400, fseq: 0, filter: 'open', resolving: null, auditFilter: 'all',
+    targets: Object.assign({}, DEFAULT_TARGETS), pending: [], dismissed: {}, log: [], audit: [],
+    report: { cat: null, area: 'W4', sys: null, chip: null, detail: '', stops: false },
+    status: {}, tickets: [], faults: [], downtimes: [],
+    access: { periodDays: 1, leavers30: 18, onTime: 13, late: 0, sentTicket: null,
+      // Leavers whose accounts are still active: days since leave date, and how many system accounts each still has.
+      active: [{ days: 0.5, accts: 2 }, { days: 4, accts: 3 }, { days: 7, accts: 2 }, { days: 10, accts: 1 }, { days: 16, accts: 3 }],
+      bySystem: [['Clinical record system', 4], ['Email', 4], ['Remote access', 2], ['Rostering', 1]] },
+    reviews: [['Pharmacy system', 42, 21], ['Imaging viewer', 65, 9], ['Rostering', 30, 3]], // [system, accounts, days overdue]
+    reviewsTotal: 10,
+    devices: [['Shared ward computers', 9, 88], ['Office desktops', 14, 420], ['Laptops', 6, 130], ['Servers', 1, 40]], // [type, missing critical updates, in scope]
+    patchDays: 14,
+    backups: [
+      { sys: 'Clinical record system', due: -20, result: 'passed' }, { sys: 'Patient administration system', due: -16, result: 'passed' },
+      { sys: 'Lab results system', due: -12, result: 'passed' }, { sys: 'Email', due: -9, result: 'passed' },
+      { sys: 'Imaging viewer', due: -5, result: 'failed', note: 'restore stopped part way' }, { sys: 'Pharmacy system', due: -6, result: 'overdue' }
+    ] };
+  SYSTEMS.forEach(function (x) { s.status[x.id] = { st: 'up', since: T - 9 * D, note: '' }; });
+  s.status.wifiE = { st: 'degraded', since: T - 48 * M, note: 'Some areas report drops.' };
+  s.status.roster = { st: 'down', since: T - 52 * M, note: 'Supplier fault; the supplier is working on it.' };
+  // Downtime records in the last 30 days: [system, days ago started, minutes long, reason]
+  [['lab', 12, 95, 'Unplanned: database fault'], ['email', 20, 40, 'Unplanned: mail server restart'], ['pas', 5, 30, 'Planned: upgrade'], ['wifiM', 26, 25, 'Unplanned: switch failure']].forEach(function (d) {
+    var st = T - d[1] * D - 3 * H; s.downtimes.push({ id: 'DT' + (++s.fseq), sys: d[0], start: st, end: st + d[2] * M, why: d[3] });
+  });
+  s.downtimes.push({ id: 'DT' + (++s.fseq), sys: 'roster', start: T - 52 * M, end: null, why: 'Unplanned: supplier fault' });
+  // Resolved in the last 30 days (for time to resolve).
+  for (var i = 0; i < 46; i++) {
+    var pri = R() < 0.06 ? 1 : R() < 0.25 ? 2 : R() < 0.8 ? 3 : 4, cat = CAT_ORDER[Math.floor(R() * 6)], area = AREA_ORDER[Math.floor(R() * 12)];
+    var raised = T - (1 + R() * 29) * D, took = DEFAULT_TARGETS[pri] * H * (0.15 + R() * 1.05);
+    var t = mk(s, cat, area, cat === 'slow' ? SYSTEMS[Math.floor(R() * 5)].id : null, CATS[cat].chips[Math.floor(R() * CATS[cat].chips.length)], pri, raised);
+    t.team = CATS[cat].team; t.assigned = raised + Math.min(took / 3, 40 * M); t.resolved = Math.min(raised + took, T - (7 + i * 9) * M); t.cause = CAUSES[Math.floor(R() * 6)];
+  }
+  // Open now: [cat, area, system, what, priority, minutes ago raised, team or null, mine]
+  [['network', 'W5', null, 'Keeps dropping', 3, 41, null, false],
+   ['network', 'W6', null, 'No connection', 3, 27, null, false],
+   ['network', 'IM', null, 'Very slow', 3, 16, null, false],
+   ['slow', 'W2', 'ehr', 'Very slow', 3, 34, 'Applications team', false],
+   ['slow', 'ED', 'ehr', 'Not responding', 2, 13, null, false],
+   ['printer', 'W1', null, 'Shows offline', 3, 27 * 60, 'Desktop support', false],
+   ['printer', 'W4', null, 'Paper jam', 4, 95, null, true],
+   ['login', 'OP', null, 'Locked out', 3, 52, 'Service desk', false],
+   ['computer', 'PH', null, 'Won’t start', 3, 5 * 60, 'Desktop support', false],
+   ['other', 'TH', null, 'Desk phone', 4, 2 * 24 * 60, 'Supplier', false],
+   ['computer', 'AD', null, 'Keyboard or mouse', 4, 3 * 60, null, false]
+  ].forEach(function (r) {
+    var t = mk(s, r[0], r[1], r[2], r[3], r[4], T - r[5] * M);
+    t.mine = r[7]; if (r[6]) { t.team = r[6]; t.assigned = t.raised + Math.min(20, r[5] / 3) * M; }
+  });
+  // Build the log from events so far (newest first).
+  var ev = [];
+  s.tickets.forEach(function (t) {
+    if (t.raised > T - 6 * H) ev.push({ t: t.raised, text: 'IT problem reported: ' + tTitle(t) });
+    if (t.assigned && t.assigned > T - 6 * H) ev.push({ t: t.assigned, text: t.id + ' assigned to ' + t.team });
+    if (t.resolved && t.resolved > T - 6 * H) ev.push({ t: t.resolved, text: t.id + ' resolved: ' + t.cause });
+  });
+  ev.push({ t: T - 52 * M, text: 'Downtime started: Rostering (supplier fault). Rota managers told to use the printed rota.' });
+  ev.push({ t: T - 48 * M, text: 'Staff Wi-Fi · East block marked slow or patchy by the service desk.' });
+  ev.sort(function (a, b) { return b.t - a.t; });
+  s.log = ev.slice(0, 30);
+  // Audit sample: which role read or changed each kind of Ospeli record (no names).
+  var AR = [['Ward staff member', 'changed', 'IT ticket'], ['IT service desk analyst', 'read', 'IT ticket'], ['IT service desk analyst', 'changed', 'IT ticket'],
+    ['IT lead', 'changed', 'Downtime record'], ['IT lead', 'read', 'System status'], ['Data protection lead', 'read', 'Access review summary'],
+    ['Operations manager', 'read', 'Downtime record'], ['Data protection lead', 'read', 'Device update summary'], ['Department manager', 'changed', 'Access review summary'],
+    ['Ward staff member', 'read', 'System status'], ['IT service desk analyst', 'changed', 'System status']];
+  for (var k = 0; k < 26; k++) { var a = AR[Math.floor(R() * AR.length)]; s.audit.push({ t: T - (6 + R() * 46 * 60) * M, role: a[0], act: a[1], rec: a[2] }); }
+  s.audit.sort(function (a, b) { return b.t - a.t; });
+  return s;
+}
+function mk(s, cat, area, sys, what, pri, raised) {
+  var t = { id: 'IT-' + (++s.seq), cat: cat, area: area, sys: sys, what: what, detail: '', pri: pri, team: null, raised: raised, assigned: null, resolved: null, cause: null, fault: null, mine: false };
+  s.tickets.push(t); return t;
+}
+function tTitle(t) { return CATS[t.cat].label + (t.sys ? ' (' + sysById(t.sys).name + ')' : '') + ', ' + AREAS[t.area].name + ': ' + t.what.toLowerCase(); }
+
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE));
+    if (!s || s.v !== 1 || !s.tickets || Date.now() - s.created > 8 * H) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function now() { return Date.now() + (state.offset || 0); }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+// ---------- Derived data (pure) ----------
+function openTickets() { return state.tickets.filter(function (t) { return !t.resolved; }); }
+function ageMin(t) { return Math.max(0, ((t.resolved || now()) - t.raised) / M); }
+function leftMin(t) { return state.targets[t.pri] * 60 - ageMin(t); }
+function isLate(t) { return !t.resolved && leftMin(t) < 0; }
+function sortQueue(a, b) { return (a.pri - b.pri) || (a.raised - b.raised); }
+function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function downMin(sysId, from, to) {
+  return state.downtimes.filter(function (d) { return d.sys === sysId; }).reduce(function (n, d) {
+    var a = Math.max(d.start, from), b = Math.min(d.end || to, to); return n + Math.max(0, b - a) / M; }, 0);
+}
+function availability() {
+  var to = now(), from = to - 30 * D, mins = 30 * 24 * 60;
+  var per = SYSTEMS.map(function (x) {
+    var dm = downMin(x.id, from, to), ev = state.downtimes.filter(function (d) { return d.sys === x.id && (d.end || to) > from; }).length;
+    return { id: x.id, name: x.name, events: ev, downMin: Math.round(dm), pct: 100 * (1 - dm / mins) };
+  });
+  var tot = per.reduce(function (n, p) { return n + p.downMin; }, 0);
+  return { overall: 100 * (1 - tot / (mins * SYSTEMS.length)), per: per, totalDownMin: tot };
+}
+function leaversPast() { var p = +state.access.periodDays || 0; return state.access.active.filter(function (a) { return a.days > p; }); }
+function kpis() {
+  var open = openTickets(), late = open.filter(isLate);
+  var from = now() - 30 * D, done = state.tickets.filter(function (t) { return t.resolved && t.resolved > from; });
+  var byPri = {};
+  [1, 2, 3, 4].forEach(function (p) {
+    var d = done.filter(function (t) { return t.pri === p; }), o = open.filter(function (t) { return t.pri === p; });
+    byPri[p] = { open: o.length, late: o.filter(isLate).length, resolved: d.length, medianMin: median(d.map(ageMin)), targetH: state.targets[p] };
+  });
+  var av = availability(), low = av.per.slice().sort(function (a, b) { return a.pct - b.pct; })[0];
+  var acc = state.access, past = leaversPast();
+  var dev = state.devices.reduce(function (n, d) { return [n[0] + d[1], n[1] + d[2]]; }, [0, 0]);
+  var bk = state.backups, passed = bk.filter(function (b) { return b.result === 'passed'; }).length;
+  return {
+    openTickets: open.length, pastTarget: late.length, unassigned: open.filter(function (t) { return !t.team; }).length,
+    resolveMedianMin: median(done.map(ageMin)), resolvedCount: done.length, byPriority: byPri,
+    availabilityPct: +av.overall.toFixed(2), lowestSystem: { name: low.name, pct: +low.pct.toFixed(2) }, downtimeMin30d: Math.round(av.totalDownMin),
+    systemsDown: SYSTEMS.filter(function (x) { return state.status[x.id].st === 'down'; }).length,
+    systemsDegraded: SYSTEMS.filter(function (x) { return state.status[x.id].st === 'degraded'; }).length,
+    leaverOnTimePct: Math.round(100 * acc.onTime / acc.leavers30), leaversInPeriod: acc.leavers30,
+    leaverAccountsActivePastPeriod: past.length, leaverSystemAccountsPastPeriod: past.reduce(function (n, a) { return n + a.accts; }, 0),
+    accessReviewsOverdue: state.reviews.length, accessReviewsTotal: state.reviewsTotal,
+    devicesMissingUpdates: dev[0], devicesInScope: dev[1], patchCompliancePct: Math.round(1000 * (1 - dev[0] / dev[1])) / 10,
+    restoreTestsPassed: passed, restoreTestsScheduled: bk.length, restoreSuccessPct: Math.round(100 * passed / bk.length)
+  };
+}
+
+// ---------- The guide: plain, checkable rules ----------
+function windowGroups(list) {
+  // Largest set of tickets raised within CLUSTER.withinMin of the first one.
+  list = list.slice().sort(function (a, b) { return a.raised - b.raised; });
+  var best = [];
+  list.forEach(function (t, i) { var g = list.slice(i).filter(function (x) { return x.raised - t.raised <= CLUSTER.withinMin * M; }); if (g.length > best.length) best = g; });
+  return best;
+}
+function names(ids) { var a = ids.map(function (x) { return AREAS[x].name; }); return a.length > 1 ? a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1] : a[0]; }
+function uniq(a) { return a.filter(function (x, i) { return a.indexOf(x) === i; }); }
+function suggest() {
+  var out = [], open = openTickets();
+  // 1. Many network reports from one block within an hour: probably one fault.
+  ['Main', 'East'].forEach(function (blk) {
+    var g = windowGroups(open.filter(function (t) { return t.cat === 'network' && !t.fault && AREAS[t.area].block === blk; }));
+    if (g.length < CLUSTER.tickets) return;
+    var span = Math.round((g[g.length - 1].raised - g[0].raised) / M), ids = g.map(function (t) { return t.id; }), id = 'link-' + ids.join('');
+    out.push({ id: id, kind: 'link', title: 'Link ' + g.length + ' network reports from ' + blk + ' block to one fault',
+      text: names(uniq(g.map(function (t) { return t.area; }))) + ' reported network problems within ' + span + ' minutes. One fault record, worked by the network team, keeps one owner and one update for everyone. Each ticket stays open until the fault is fixed.',
+      why: CLUSTER.tickets + ' or more open network or Wi-Fi tickets from one block within ' + CLUSTER.withinMin + ' minutes (example setting, not a standard).',
+      acts: [{ label: 'Propose: link to one fault', primary: true, fn: function () { propose({ id: id, kind: 'link', ids: ids, block: blk, who: ['desk'], text: 'Link ' + ids.join(', ') + ' to one network fault for ' + blk + ' block, assigned to the network team.' }); } },
+        { label: 'Show in queue', fn: function () { state.role = 'desk'; state.filter = 'open'; render(); document.getElementById('view-h').scrollIntoView({ block: 'start' }); } }] });
+  });
+  // 2. The same system reported slow from several areas within an hour: consider downtime.
+  SYSTEMS.filter(function (x) { return x.clinical && state.status[x.id].st !== 'down'; }).forEach(function (x) {
+    var g = windowGroups(open.filter(function (t) { return t.cat === 'slow' && t.sys === x.id; }));
+    var areas = uniq(g.map(function (t) { return t.area; }));
+    if (areas.length < 3) return;
+    var id = 'down-' + x.id + '-' + areas.join('');
+    out.push({ id: id, kind: 'hot', title: x.name + ': reported slow by ' + areas.length + ' areas within an hour. Consider declaring downtime?',
+      text: 'Reported from ' + names(areas) + '. If staff cannot work in it, declaring downtime tells ' + x.depts.join(', ') + ' to switch to their paper downtime procedure, and starts a downtime record.',
+      why: 'Three or more areas reporting the same system within ' + CLUSTER.withinMin + ' minutes (example setting, not a standard). Whether to declare downtime is a judgement for IT.',
+      acts: [{ label: 'Propose: declare downtime', primary: true, fn: function () { propose({ id: id, kind: 'downtime', sys: x.id, who: ['desk', 'lead'], text: 'Declare downtime for the ' + x.name + ' and tell ' + x.depts.join(', ') + '.' }); } }] });
+  });
+  // 3. Leaver accounts still active past the set period.
+  var past = leaversPast();
+  if (past.length && !state.access.sentTicket) {
+    var n = past.reduce(function (s, a) { return s + a.accts; }, 0), id3 = 'leavers-' + past.length + '-' + state.access.periodDays;
+    out.push({ id: id3, kind: 'hot', title: past.length + ' leaver' + (past.length > 1 ? 's' : '') + ' still have active accounts past the set period',
+      list: [n + ' system accounts in all', 'Left ' + past.map(function (a) { return Math.round(a.days); }).sort(function (a, b) { return a - b; }).join(', ') + ' days ago', 'Set period: ' + state.access.periodDays + ' day' + (state.access.periodDays == 1 ? '' : 's') + ' after the leave date'],
+      text: 'Send the list to the identity and access team as one ticket. IT disables the accounts in their own systems; Ospeli never does.',
+      why: 'Leave dates compared with accounts still active. The period is an example setting, not a standard; your organisation sets its own.',
+      acts: [{ label: 'Propose: send the list to IT', primary: true, fn: function () { propose({ id: id3, kind: 'leavers', count: past.length, accts: n, who: ['lead'], text: 'Raise one ticket for the identity and access team to disable ' + n + ' accounts of ' + past.length + ' leavers in their own systems.' }); } }] });
+  }
+  // 4. Backup restore tests failed or overdue.
+  var bad = state.backups.filter(function (b) { return (b.result === 'failed' || b.result === 'overdue') && !b.retest; });
+  if (bad.length) {
+    var id4 = 'backup-' + bad.map(function (b) { return b.sys; }).join('');
+    out.push({ id: id4, kind: 'ask', title: 'Restore tests: ' + bad.map(function (b) { return b.result; }).join(', '),
+      list: bad.map(function (b) { return b.sys + ': ' + (b.result === 'failed' ? 'failed ' + (-b.due) + ' days ago (' + b.note + ')' : 'due ' + (-b.due) + ' days ago, not done'); }),
+      text: 'A backup only counts once a restore has worked. Schedule a retest and add it to the action tracker.',
+      why: 'Restore tests in the last 30 days with a failed or missing result.',
+      acts: [{ label: 'Propose: schedule retests', primary: true, fn: function () { propose({ id: id4, kind: 'backup', who: ['lead'], text: 'Schedule a restore retest for ' + bad.map(function (b) { return b.sys; }).join(' and ') + ' within 7 days, and add it to the action tracker.' }); } }] });
+  }
+  return out.filter(function (x) { return !state.dismissed[x.id]; });
+}
+function propose(p) {
+  if (state.pending.some(function (x) { return x.id === p.id; })) return;
+  p.at = now(); state.pending.push(p);
+  addLog('Guide proposed: ' + p.text + ' Waiting for ' + whoWord(p.who) + '.');
+  audit('changed', 'Guide proposal');
+  render(); toast('Proposed. ' + whoWord(p.who).replace(/^the /, 'The ') + ' decides.');
+}
+function whoWord(w) { return w.map(function (r) { return r === 'desk' ? 'the IT service desk' : 'the IT and data protection lead'; }).join(' or '); }
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x.id !== p.id; });
+  if (!yes) { state.dismissed[p.id] = true; addLog(ROLE_NAME[state.role] + ' declined: ' + p.text); render(); toast('Declined. Nothing changed.'); return; }
+  if (p.kind === 'link') {
+    var f = { id: 'F' + (++state.fseq), block: p.block, team: 'Network team', ids: p.ids, created: now(), resolved: null };
+    state.faults.push(f);
+    p.ids.forEach(function (id) { var t = byId(id); if (t && !t.resolved) { t.fault = f.id; t.team = 'Network team'; if (!t.assigned) t.assigned = now(); } });
+    addLog('Confirmed: ' + p.ids.length + ' tickets linked to network fault ' + f.id + ' (' + p.block + ' block), owned by the network team.');
+    audit('changed', 'IT ticket');
+  } else if (p.kind === 'downtime') {
+    startDowntime(p.sys, 'Confirmed from a guide proposal');
+  } else if (p.kind === 'leavers') {
+    var t = mk(state, 'access', 'AD', null, 'Disable ' + p.accts + ' accounts of ' + p.count + ' leavers past the set period', 2, now());
+    t.team = 'Identity and access team'; t.assigned = now(); t.detail = 'The list goes to the team in their own system; it is not shown here.';
+    state.access.sentTicket = t.id;
+    addLog('Confirmed: ' + t.id + ' raised for the identity and access team to disable ' + p.accts + ' leaver accounts in their own systems.');
+    audit('changed', 'Access review summary'); audit('changed', 'IT ticket');
+  } else if (p.kind === 'backup') {
+    state.backups.forEach(function (b) { if (b.result === 'failed' || b.result === 'overdue') b.retest = true; });
+    addLog('Confirmed: restore retests scheduled within 7 days and added to the action tracker.');
+  }
+  render(); toast('Confirmed. Recorded in What happened.');
+}
+function byId(id) { return state.tickets.filter(function (t) { return t.id === id; })[0]; }
+
+// ---------- Actions ----------
+function addLog(text) { lastLogT = now(); state.log.unshift({ t: lastLogT, text: text }); state.log = state.log.slice(0, 40); }
+function audit(act, rec) { state.audit.unshift({ t: now(), role: ROLE_NAME[state.role], act: act, rec: rec }); state.audit = state.audit.slice(0, 80); }
+var lastLogT = 0;
+function startDowntime(sysId, how) {
+  var x = sysById(sysId); if (state.status[sysId].st === 'down' && openDowntime(sysId)) return;
+  state.status[sysId] = { st: 'down', since: now(), note: 'Downtime declared. Use the paper downtime procedure.' };
+  state.downtimes.push({ id: 'DT' + (++state.fseq), sys: sysId, start: now(), end: null, why: how || 'Declared by IT' });
+  addLog('Downtime started: ' + x.name + '. Told ' + x.depts.join(', ') + ' to use the paper downtime procedure.');
+  audit('changed', 'Downtime record'); audit('changed', 'System status');
+  toast('Downtime started. ' + x.depts.length + ' department groups told.');
+}
+function endDowntime(sysId) {
+  var x = sysById(sysId), d = openDowntime(sysId); if (!d) return;
+  d.end = now();
+  state.status[sysId] = { st: 'up', since: now(), note: '' };
+  addLog('Downtime ended: ' + x.name + ' after ' + fmt((d.end - d.start) / M) + '. ' + x.depts.join(', ') + ' told to enter what they recorded on paper (catch-up).');
+  audit('changed', 'Downtime record'); audit('changed', 'System status');
+  toast('Downtime ended. Departments told to catch up.');
+}
+function openDowntime(sysId) { return state.downtimes.filter(function (d) { return d.sys === sysId && !d.end; })[0]; }
+function sendReport() {
+  var r = state.report; if (!r.cat || !r.chip || (r.cat === 'slow' && !r.sys)) return;
+  var t = mk(state, r.cat, r.area, r.cat === 'slow' ? r.sys : null, r.chip, r.stops ? 2 : 3, now());
+  t.detail = (r.detail || '').trim().slice(0, 120); t.mine = true;
+  addLog('IT problem reported: ' + tTitle(t) + (r.stops ? ' · stops work' : '') + '.');
+  audit('changed', 'IT ticket');
+  state.report = { cat: null, area: r.area, sys: null, chip: null, detail: '', stops: false };
+  render();
+  toast('Reported as ' + t.id + '. You can follow it below.');
+  var first = document.querySelector('#my-reports .rq'); if (first) first.scrollIntoView({ block: 'nearest' });
+}
+function assign(t, team) {
+  t.team = team || null; if (team && !t.assigned) t.assigned = now();
+  addLog(t.id + (team ? ' assigned to ' + team : ' unassigned') + '.'); audit('changed', 'IT ticket'); render();
+}
+function setPri(t, p) { t.pri = +p; addLog(t.id + ' priority set to P' + p + ' ' + PRI[p] + '.'); audit('changed', 'IT ticket'); render(); }
+function resolve(t, cause) {
+  t.resolved = now(); t.cause = cause; if (!t.team) { t.team = 'Service desk'; t.assigned = t.assigned || now(); }
+  state.resolving = null;
+  addLog(t.id + ' resolved after ' + fmt(ageMin(t)) + ': ' + cause + '.');
+  if (t.id === state.access.sentTicket) {
+    var past = leaversPast(); state.access.late += past.length;
+    state.access.active = state.access.active.filter(function (a) { return past.indexOf(a) < 0; });
+    addLog('IT confirmed ' + past.length + ' leavers\' accounts are disabled in their own systems. The access counts have updated.');
+  }
+  audit('changed', 'IT ticket'); render(); toast(t.id + ' resolved.');
+}
+function resolveFault(f, cause) {
+  f.resolved = now(); var n = 0;
+  f.ids.forEach(function (id) { var t = byId(id); if (t && !t.resolved) { t.resolved = now(); t.cause = cause; n++; } });
+  addLog('Network fault ' + f.id + ' fixed: ' + cause + '. ' + n + ' linked tickets resolved; each reporter can see it.');
+  var wifi = f.block === 'East' ? 'wifiE' : 'wifiM';
+  if (state.status[wifi].st === 'degraded') { state.status[wifi] = { st: 'up', since: now(), note: '' }; addLog(sysById(wifi).name + ' back to normal on the status board.'); }
+  audit('changed', 'IT ticket'); audit('changed', 'System status'); render(); toast('Fault fixed. ' + n + ' tickets resolved.');
+}
+
+// ---------- Helpers ----------
+function fmt(m) { m = Math.round(+m || 0); if (m < 60) return m + ' min'; if (m < 48 * 60) { var h = Math.floor(m / 60), r = m % 60; return h + ' h' + (r ? ' ' + (r < 10 ? '0' : '') + r : ''); } var d = Math.floor(m / 1440), hh = Math.round((m % 1440) / 60); return d + ' d' + (hh ? ' ' + hh + ' h' : ''); }
+function hhmm(t) { var d = new Date(t); return (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes(); }
+function when(t) { var d = now() - t; return d < 20 * H ? hhmm(t) : Math.round(d / D) + ' d ago'; }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+function icon(name) { var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('aria-hidden', 'true'); s.innerHTML = ICON[name]; return s; }
+var STW = { up: 'Up', degraded: 'Slow or patchy', down: 'Down' };
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+
+// ---------- Render ----------
+var HINTS = {
+  staff: 'Any staff member\'s phone. Check whether a system is already known to be down, then report a problem in three taps and follow it.',
+  desk: 'The IT service desk. One queue, highest priority and oldest first, with time left on target. Assign to a team, resolve with a cause, and switch a system into downtime.',
+  lead: 'The IT and data protection lead. Tickets, downtime, restore tests and access risks as counts, plus Ospeli\'s own audit view. No staff names, no scoring of people.'
+};
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  ['staff', 'desk', 'lead'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('view-h').textContent = { staff: 'Report an IT problem', desk: 'Service desk', lead: 'IT and data protection overview' }[state.role];
+  renderKpis();
+  var v = document.getElementById('view'); v.textContent = '';
+  if (state.role === 'staff') v.appendChild(staffView());
+  else if (state.role === 'desk') v.appendChild(deskView());
+  else v.appendChild(leadView());
+  renderGuide(); renderLog(); save();
+  if (aid) { var e = document.getElementById(aid); if (e) e.focus({ preventScroll: true }); }
+  sig = signature();
+}
+function renderKpis() {
+  var k = kpis(), box = document.getElementById('kpis'); box.textContent = '';
+  var tiles = [
+    ['open', String(k.openTickets), 'Open IT tickets', k.pastTarget + ' past target · ' + k.unassigned + ' not assigned', 'Tickets raised and not yet resolved. “Past target” uses the time-to-resolve targets by priority in the lead\'s settings, which are example settings, not a standard.', k.pastTarget > 0],
+    ['resolve', k.resolveMedianMin == null ? '–' : fmt(k.resolveMedianMin), 'Time to resolve', 'median of ' + k.resolvedCount + ', last 30 days', 'IT ticket time to resolve: ticket raised → ticket resolved (median, all priorities, last 30 days). By priority in the lead view. Local definition.'],
+    ['avail', k.availabilityPct.toFixed(2) + '%', 'System availability', 'lowest: ' + k.lowestSystem.name + ' ' + k.lowestSystem.pct.toFixed(2) + '%', 'Minutes up ÷ scheduled service minutes, per system, last 30 days, averaged over ' + SYSTEMS.length + ' systems. This example treats every system as scheduled 24 hours a day, and counts “slow or patchy” as up. Local definition.', k.systemsDown > 0],
+    ['leaver', k.leaverOnTimePct + '%', 'Leaver access removed on time', k.leaverAccountsActivePastPeriod + ' leavers still active past period', 'Leaver accounts disabled by the local deadline ÷ leavers in the last 30 days (' + k.leaversInPeriod + '). Local definition; the deadline is a setting.', k.leaverAccountsActivePastPeriod > 0]
+  ];
+  tiles.forEach(function (t) {
+    var open = state.kpiOpen === t[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat' + (t[5] ? ' alert' : ''), 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def', text: t[4] })]));
+  });
+}
+function banner() {
+  var bad = SYSTEMS.filter(function (x) { return state.status[x.id].st !== 'up'; });
+  var down = bad.filter(function (x) { return state.status[x.id].st === 'down'; });
+  var b = el('section', { class: 'banner' + (down.length ? ' down' : bad.length ? ' deg' : ''), id: 'status-banner', 'aria-labelledby': 'banner-h' });
+  b.appendChild(el('div', { class: 'head', id: 'banner-h' }, [el('span', { class: 'dot ' + (down.length ? 'down' : bad.length ? 'degraded' : 'up') }),
+    bad.length ? 'Systems status: ' + down.length + ' down, ' + (bad.length - down.length) + ' slow or patchy' : 'Systems status: all ' + SYSTEMS.length + ' systems up']));
+  if (bad.length) {
+    var ul = el('ul');
+    bad.sort(function (a, c) { return (state.status[a.id].st === 'down' ? 0 : 1) - (state.status[c.id].st === 'down' ? 0 : 1); }).forEach(function (x) {
+      var s = state.status[x.id];
+      ul.appendChild(el('li', {}, [el('b', {}, [x.name + ' ', el('span', { class: 'chip ' + s.st, text: STW[s.st] })]),
+        el('span', { text: 'Since ' + hhmm(s.since) + ' · ' + (s.note || '') + (s.st === 'down' ? ' Affects ' + x.depts.join(', ') + '. No need to report it again.' : '') })]));
+    });
+    b.appendChild(ul);
+  }
+  var d = el('details', {}, [el('summary', { text: 'All systems' })]);
+  d.appendChild(el('ul', { class: 'allsys' }, SYSTEMS.map(function (x) { var s = state.status[x.id].st; return el('li', {}, [el('span', { class: 'dot ' + s }), x.name + ' · ' + STW[s]]); })));
+  b.appendChild(d);
+  return b;
+}
+function staffView() {
+  var frag = document.createDocumentFragment(), r = state.report;
+  frag.appendChild(banner());
+  var steps = el('div', { class: 'steps' });
+  var c1 = el('div', { class: 'choices', role: 'group', 'aria-label': 'What is the problem?' });
+  CAT_ORDER.forEach(function (c) {
+    c1.appendChild(el('button', { type: 'button', class: 'choice', id: 'c-' + c, 'aria-pressed': String(r.cat === c), onclick: function () { r.cat = c; r.chip = null; r.sys = null; render(); } },
+      [icon(c), el('span', {}, [CATS[c].label, el('small', { text: CATS[c].hint })])]));
+  });
+  steps.appendChild(el('div', {}, [el('p', { class: 'stepq' }, [el('i', { text: '1' }), 'What is the problem?']), c1]));
+  if (r.cat) {
+    var where = el('select', { id: 'rep-area', onchange: function (e) { r.area = e.target.value; render(); } });
+    AREA_ORDER.forEach(function (a) { where.appendChild(el('option', { value: a, text: AREAS[a].name })); });
+    where.value = r.area;
+    var s2 = [el('p', { class: 'stepq' }, [el('i', { text: '2' }), 'Where are you?']), el('label', { class: 'field', for: 'rep-area' }, ['Location', where])];
+    if (r.cat === 'slow') {
+      s2.push(el('p', { class: 'stepq', style: 'margin-top:12px' }, ['Which system?']));
+      s2.push(el('div', { class: 'chips', role: 'group', 'aria-label': 'Which system?' }, SYSTEMS.filter(function (x) { return x.clinical; }).map(function (x) {
+        return el('button', { type: 'button', id: 'sys-' + x.id, 'aria-pressed': String(r.sys === x.id), onclick: function () { r.sys = x.id; render(); }, text: x.name }); })));
+    }
+    var known = knownIssue(r);
+    if (known) s2.push(el('p', { class: 'known', id: 'known', text: known }));
+    steps.appendChild(el('div', {}, s2));
+    var chips = el('div', { class: 'chips', role: 'group', 'aria-label': 'What is happening?' }, CATS[r.cat].chips.map(function (c, i) {
+      return el('button', { type: 'button', id: 'h-' + i, 'aria-pressed': String(r.chip === c), onclick: function () { r.chip = c; render(); }, text: c }); }));
+    var det = el('input', { type: 'text', id: 'rep-detail', maxlength: '120', autocomplete: 'off', placeholder: 'e.g. printer by the nurses\' station', value: r.detail, oninput: function (e) { r.detail = e.target.value; save(); } });
+    var stops = el('input', { type: 'checkbox', id: 'rep-stops', onchange: function (e) { r.stops = e.target.checked; save(); } }); stops.checked = !!r.stops;
+    var ready = r.chip && (r.cat !== 'slow' || r.sys);
+    steps.appendChild(el('div', {}, [el('p', { class: 'stepq' }, [el('i', { text: '3' }), 'What is happening?']), chips,
+      el('label', { class: 'field', for: 'rep-detail', style: 'margin-top:12px' }, ['Anything else? (optional, no patient details)', det]),
+      el('label', { class: 'check', for: 'rep-stops', style: 'margin-top:6px' }, [stops, 'This stops me working']),
+      el('button', { type: 'button', class: 'primary send', id: 'rep-send', style: 'margin-top:8px', disabled: ready ? false : 'disabled', onclick: sendReport, text: ready ? 'Send to the IT service desk' : (r.cat === 'slow' && !r.sys ? 'Choose the system first' : 'Choose what is happening first') }),
+      el('p', { class: 'fine', text: 'The service desk sets the final priority using local rules. “Stops me working” marks it high.' })]));
+  }
+  frag.appendChild(steps);
+  frag.appendChild(el('h3', { class: 'sec', text: 'Your reports' }));
+  var mine = state.tickets.filter(function (t) { return t.mine; }).sort(function (a, b) { return b.raised - a.raised; });
+  if (!mine.length) frag.appendChild(el('p', { class: 'empty', text: 'Nothing reported from this phone yet.' }));
+  var list = el('div', { id: 'my-reports' });
+  mine.forEach(function (t) {
+    var st = t.resolved ? 'Resolved' : t.team ? 'With ' + t.team : 'Waiting for the service desk';
+    list.appendChild(el('div', { class: 'rq' }, [
+      el('div', { class: 'top' }, [el('span', { text: t.id + ' · ' + CATS[t.cat].label }), el('span', { class: 'chip ' + (t.resolved ? 'up' : 'p' + t.pri), text: t.resolved ? 'Resolved' : 'P' + t.pri + ' ' + PRI[t.pri] })]),
+      el('p', { class: 'line', text: AREAS[t.area].name + ' · ' + t.what + (t.sys ? ' · ' + sysById(t.sys).name : '') + ' · ' + (t.resolved ? t.cause : st) }),
+      el('div', { class: 'track', 'aria-label': 'Progress' }, [['raised', 'Reported'], ['assigned', 'Assigned'], ['resolved', 'Resolved']].map(function (x) { return el('span', { class: t[x[0]] ? 'on' : '' }, [x[1], el('em', { text: t[x[0]] ? when(t[x[0]]) : '–' })]); }))
+    ]));
+  });
+  frag.appendChild(list);
+  return frag;
+}
+function knownIssue(r) {
+  if (r.cat === 'slow' && r.sys && state.status[r.sys].st !== 'up') return sysById(r.sys).name + ' is already marked ' + STW[state.status[r.sys].st].toLowerCase() + ' on the status board. Report it if your area is affected; it helps IT see how wide the problem is.';
+  if (r.cat === 'network') { var w = AREAS[r.area].block === 'East' ? 'wifiE' : 'wifiM'; if (state.status[w].st !== 'up') return sysById(w).name + ' is already marked ' + STW[state.status[w].st].toLowerCase() + '. Your report still helps IT see which areas are affected.'; }
+  if (r.cat === 'slow' && r.sys) { var n = openTickets().filter(function (t) { return t.cat === 'slow' && t.sys === r.sys; }).length; if (n) return n + ' other report' + (n > 1 ? 's' : '') + ' about this system ' + (n > 1 ? 'are' : 'is') + ' open. Yours adds your area.'; }
+  return '';
+}
+function deskView() {
+  var frag = document.createDocumentFragment(), open = openTickets();
+  var counts = { open: open.length, late: open.filter(isLate).length, unassigned: open.filter(function (t) { return !t.team; }).length };
+  frag.appendChild(el('h3', { class: 'sec', text: 'Ticket queue' }));
+  frag.appendChild(el('div', { class: 'filters', role: 'group', 'aria-label': 'Filter the queue' }, [['open', 'All open'], ['late', 'Past target'], ['unassigned', 'Not assigned']].map(function (f) {
+    return el('button', { type: 'button', id: 'f-' + f[0], 'aria-pressed': String(state.filter === f[0]), onclick: function () { state.filter = f[0]; render(); }, text: f[1] + ' (' + counts[f[0]] + ')' }); })));
+  var rows = open.filter(function (t) { return state.filter === 'late' ? isLate(t) : state.filter === 'unassigned' ? !t.team : true; }).sort(sortQueue);
+  var q = el('div', { id: 'queue' });
+  if (!rows.length) q.appendChild(el('p', { class: 'empty', text: 'No tickets here.' }));
+  rows.forEach(function (t) {
+    var late = isLate(t), left = leftMin(t);
+    var chipline = [el('span', { class: 'chip p' + t.pri, text: 'P' + t.pri + ' ' + PRI[t.pri] }), el('span', { class: 'chip', text: CATS[t.cat].label })];
+    if (t.fault) chipline.push(el('span', { class: 'chip fault', text: 'Fault ' + t.fault }));
+    if (late) chipline.push(el('span', { class: 'chip late', text: 'Past target' }));
+    var ps = el('select', { id: 'pri-' + t.id, 'aria-label': 'Priority for ' + t.id, onchange: function (e) { setPri(t, e.target.value); } });
+    [1, 2, 3, 4].forEach(function (p) { ps.appendChild(el('option', { value: String(p), text: 'P' + p })); }); ps.value = String(t.pri);
+    var ts = el('select', { id: 'team-' + t.id, 'aria-label': 'Team for ' + t.id, onchange: function (e) { assign(t, e.target.value); } });
+    ts.appendChild(el('option', { value: '', text: 'Assign a team…' }));
+    TEAMS.forEach(function (n) { ts.appendChild(el('option', { value: n, text: n })); }); ts.value = t.team || '';
+    var ctl = el('div', { class: 'ctl' }, [ps, ts, el('button', { type: 'button', class: 'small', id: 'res-' + t.id, 'aria-expanded': String(state.resolving === t.id), onclick: function () { state.resolving = state.resolving === t.id ? null : t.id; render(); }, text: 'Resolve' })]);
+    if (state.resolving === t.id) {
+      var cs = el('select', { id: 'cause-' + t.id, 'aria-label': 'Cause for ' + t.id });
+      CAUSES.forEach(function (c) { cs.appendChild(el('option', { value: c, text: c })); });
+      cs.value = t.cat === 'access' ? CAUSES[7] : t.cat === 'login' ? CAUSES[2] : t.cat === 'network' ? CAUSES[3] : CAUSES[1];
+      ctl.appendChild(el('div', { class: 'resolve' }, [cs, el('button', { type: 'button', class: 'small primary', id: 'ok-' + t.id, onclick: function () { resolve(t, cs.value); }, text: 'Confirm resolved' })]));
+    }
+    q.appendChild(el('div', { class: 'trow p' + t.pri + (late ? ' late' : ''), 'data-id': t.id }, [
+      el('div', {}, [el('div', { class: 'chipline' }, chipline), el('b', { text: AREAS[t.area].name + ' · ' + t.what + (t.sys ? ' · ' + sysById(t.sys).name : '') }),
+        el('span', { class: 'sub', text: t.id + (t.detail ? ' · ' + t.detail : '') + (t.team ? ' · ' + t.team : ' · not assigned') })]),
+      el('div', { class: 'age' }, [fmt(ageMin(t)), el('small', { text: late ? 'past target by ' + fmt(-left) : fmt(left) + ' left' })]),
+      ctl
+    ]));
+  });
+  frag.appendChild(q);
+  var faults = state.faults.filter(function (f) { return !f.resolved; });
+  if (faults.length) {
+    frag.appendChild(el('h3', { class: 'sec', text: 'Linked faults' }));
+    faults.forEach(function (f) {
+      var n = f.ids.filter(function (id) { var t = byId(id); return t && !t.resolved; }).length;
+      var cs = el('select', { id: 'fcause-' + f.id, 'aria-label': 'Cause for fault ' + f.id });
+      CAUSES.slice(0, 6).forEach(function (c) { cs.appendChild(el('option', { value: c, text: c })); }); cs.value = CAUSES[3];
+      frag.appendChild(el('div', { class: 'fault' }, [el('div', { class: 'top' }, [el('span', { text: 'Fault ' + f.id + ' · Network, ' + f.block + ' block' }), el('span', { class: 'chip', text: n + ' linked tickets' })]),
+        el('p', { text: 'Owned by the ' + f.team.toLowerCase() + ' since ' + hhmm(f.created) + '. Fixing the fault resolves every linked ticket and tells each reporter.' }),
+        el('div', { class: 'acts' }, [cs, el('button', { type: 'button', class: 'small primary', id: 'fix-' + f.id, onclick: function () { resolveFault(f, cs.value); }, text: 'Fault fixed' })])]));
+    });
+  }
+  frag.appendChild(el('h3', { class: 'sec', text: 'Systems and downtime' }));
+  frag.appendChild(el('p', { class: 'fine', style: 'margin:0 0 6px', text: 'Turning downtime on starts a downtime record, marks the system down on everyone\'s status banner and tells the affected departments to use their paper procedure. Turning it off ends the record and starts catch-up entry.' }));
+  var sl = el('div', { id: 'systems' });
+  SYSTEMS.forEach(function (x) {
+    var s = state.status[x.id], on = !!openDowntime(x.id);
+    sl.appendChild(el('div', { class: 'sysrow' }, [
+      el('div', {}, [el('b', {}, [x.name, el('span', { class: 'chip ' + s.st, text: STW[s.st] })]), el('span', { class: 'sub', text: (s.st === 'up' ? 'Affects if down: ' : 'Since ' + hhmm(s.since) + ' · affects: ') + x.depts.join(', ') })]),
+      el('button', { type: 'button', class: 'dt', id: 'dt-' + x.id, 'aria-pressed': String(on), 'aria-label': 'Downtime for ' + x.name, onclick: function () { if (on) endDowntime(x.id); else startDowntime(x.id, 'Declared by the IT service desk'); render(); } },
+        [el('span', { class: 'knob' }), on ? 'Downtime on · end' : 'Downtime off · start'])
+    ]));
+  });
+  frag.appendChild(sl);
+  return frag;
+}
+function leadView() {
+  var frag = document.createDocumentFragment(), k = kpis(), av = availability();
+  var g = el('div', { class: 'grid2', style: 'margin-top:14px' });
+  // Tickets by priority
+  var tb = el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Priority' }), el('th', { class: 'r', text: 'Open' }), el('th', { class: 'r', text: 'Late' }), el('th', { class: 'r', text: 'Median' }), el('th', { class: 'r', text: 'Target' })])])]);
+  var body = el('tbody');
+  [1, 2, 3, 4].forEach(function (p) { var b = k.byPriority[p]; body.appendChild(el('tr', {}, [el('td', {}, [el('span', { class: 'chip p' + p, text: 'P' + p + ' ' + PRI[p] })]), el('td', { class: 'r', text: String(b.open) }), el('td', { class: 'r', text: String(b.late) }), el('td', { class: 'r', text: b.medianMin == null ? '–' : fmt(b.medianMin), title: b.resolved + ' resolved' }), el('td', { class: 'r', text: b.targetH + ' h' })])); });
+  tb.appendChild(body);
+  g.appendChild(el('div', { class: 'panel' }, [el('h4', { text: 'Open tickets and time to resolve' }), el('div', { class: 'tablewrap' }, [tb]), el('p', { class: 'fine', text: 'Late: open past its target. Median: time to resolve, tickets resolved in the last 30 days. Targets are example settings, not a standard.' })]));
+  // Downtime this month
+  var dt = el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'System' }), el('th', { class: 'r', text: 'Events' }), el('th', { class: 'r', text: 'Down' }), el('th', { class: 'r', text: 'Available' })])])]);
+  var db = el('tbody');
+  av.per.filter(function (p) { return p.events; }).sort(function (a, b) { return b.downMin - a.downMin; }).forEach(function (p) {
+    db.appendChild(el('tr', {}, [el('td', {}, [p.name, openDowntime(p.id) ? el('span', { class: 'chip down', style: 'margin-left:6px', text: 'Now' }) : null]), el('td', { class: 'r', text: String(p.events) }), el('td', { class: 'r', text: fmt(p.downMin) }), el('td', { class: 'r', text: p.pct.toFixed(2) + '%' })])); });
+  dt.appendChild(db);
+  g.appendChild(el('div', { class: 'panel', id: 'downtime-panel' }, [el('h4', { text: 'System downtime, last 30 days' }), el('div', { class: 'tablewrap' }, [dt]), el('p', { class: 'fine', text: 'Total ' + fmt(k.downtimeMin30d) + ' across ' + SYSTEMS.length + ' systems. Other systems had no downtime.' })]));
+  frag.appendChild(g);
+  // Access, reviews, updates as counts
+  frag.appendChild(el('h3', { class: 'sec', text: 'Access and updates (counts only)' }));
+  var past = leaversPast();
+  frag.appendChild(el('div', { class: 'risk' }, [
+    el('div', { class: 'panel' + (past.length ? ' hot' : ''), id: 'leaver-panel' }, [el('h4', { text: 'Leaver accounts still active' }), el('div', { class: 'big' }, [String(past.length), el('small', { text: ' leavers past the set period' })]),
+      el('ul', {}, [el('li', {}, ['System accounts involved', el('b', { text: String(k.leaverSystemAccountsPastPeriod) })]), el('li', {}, ['Still within the period', el('b', { text: String(state.access.active.length - past.length) })]),
+        el('li', {}, ['Set period', el('b', { text: state.access.periodDays + ' d' })]), state.access.sentTicket ? el('li', {}, ['Sent to IT as', el('b', { text: state.access.sentTicket })]) : null])]),
+    el('div', { class: 'panel' + (state.reviews.length ? ' hot' : '') }, [el('h4', { text: 'Access reviews overdue' }), el('div', { class: 'big' }, [String(k.accessReviewsOverdue), el('small', { text: ' of ' + k.accessReviewsTotal + ' systems' })]),
+      el('ul', {}, state.reviews.map(function (r) { return el('li', {}, [r[0] + ' (' + r[1] + ' accounts)', el('b', { text: r[2] + ' d late' })]); }))]),
+    el('div', { class: 'panel' }, [el('h4', { text: 'Devices missing critical updates' }), el('div', { class: 'big' }, [String(k.devicesMissingUpdates), el('small', { text: ' of ' + k.devicesInScope + ' (' + k.patchCompliancePct + '% up to date)' })]),
+      el('ul', {}, state.devices.map(function (d) { return el('li', {}, [d[0], el('b', { text: d[1] + ' / ' + d[2] })]); }))])
+  ]));
+  frag.appendChild(el('p', { class: 'fine', text: 'Updates count as missing after ' + state.patchDays + ' days (example setting). Ospeli shows counts from IT\'s own tools; it never disables accounts or patches devices itself.' }));
+  // Backups
+  frag.appendChild(el('h3', { class: 'sec', text: 'Backup restore tests, last 30 days' }));
+  frag.appendChild(el('div', { class: 'panel' }, [el('div', { class: 'big' }, [k.restoreTestsPassed + ' of ' + k.restoreTestsScheduled, el('small', { text: ' passed (' + k.restoreSuccessPct + '%)' })]),
+    el('ul', { class: 'plain' }, state.backups.map(function (b) { return el('li', {}, [b.sys, el('b', { text: b.result === 'passed' ? 'passed' : b.result === 'failed' ? 'failed' + (b.retest ? ' · retest scheduled' : '') : 'overdue' + (b.retest ? ' · retest scheduled' : '') })]); }))]));
+  // Audit view
+  frag.appendChild(el('h3', { class: 'sec', text: 'Audit view (sample)' }));
+  var recs = uniq(state.audit.map(function (a) { return a.rec; })).sort();
+  var fs = el('select', { id: 'audit-filter', onchange: function (e) { state.auditFilter = e.target.value; render(); } });
+  fs.appendChild(el('option', { value: 'all', text: 'All record types' }));
+  recs.forEach(function (r) { fs.appendChild(el('option', { value: r, text: r })); }); fs.value = recs.indexOf(state.auditFilter) >= 0 ? state.auditFilter : 'all';
+  var rows = state.audit.filter(function (a) { return fs.value === 'all' || a.rec === fs.value; });
+  var byRole = {}; rows.forEach(function (a) { byRole[a.role] = (byRole[a.role] || 0) + 1; });
+  var at = el('table', { class: 't', id: 'audit' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'When' }), el('th', { text: 'Role' }), el('th', { text: 'Did' }), el('th', { text: 'Record type' })])])]);
+  var ab = el('tbody');
+  rows.slice(0, 12).forEach(function (a) { ab.appendChild(el('tr', {}, [el('td', { text: when(a.t) }), el('td', { text: a.role }), el('td', { class: 'act-' + a.act, text: a.act }), el('td', { text: a.rec })])); });
+  at.appendChild(ab);
+  frag.appendChild(el('div', { class: 'panel' }, [
+    el('div', { class: 'auditbar' }, [el('label', { for: 'audit-filter' }, ['Record type', fs]), el('p', { class: 'fine', style: 'margin:0', text: rows.length + ' entries in the last 2 days · ' + Object.keys(byRole).length + ' roles' })]),
+    el('div', { class: 'tablewrap' }, [at]),
+    el('p', { class: 'fine', text: 'Ospeli\'s own log of which role read or changed each kind of Ospeli record, and when. It shows roles, not names, and it does not watch what staff do on their computers. Your actions in this demo appear here.' })]));
+  // Settings
+  var d = el('details', { class: 'set', id: 'settings' }, [el('summary', { text: 'Settings (example settings, not a standard)' })]);
+  var tg = el('div', { class: 'targets' });
+  tg.appendChild(el('label', { for: 'set-period' }, ['Leaver period (days)', el('input', { type: 'number', id: 'set-period', min: '0', max: '30', step: '1', inputmode: 'numeric', value: String(state.access.periodDays), onchange: function (e) { state.access.periodDays = Math.max(0, Math.min(30, Math.round(+e.target.value || 0))); addLog('Leaver period set to ' + state.access.periodDays + ' days.'); audit('changed', 'Settings'); render(); } })]));
+  [1, 2, 3, 4].forEach(function (p) { tg.appendChild(el('label', { for: 'set-p' + p }, ['P' + p + ' target (hours)', el('input', { type: 'number', id: 'set-p' + p, min: '1', max: '500', step: '1', inputmode: 'numeric', value: String(state.targets[p]), onchange: function (e) { state.targets[p] = Math.max(1, Math.min(500, Math.round(+e.target.value || 1))); addLog('P' + p + ' target set to ' + state.targets[p] + ' hours.'); audit('changed', 'Settings'); render(); } })])); });
+  d.appendChild(tg);
+  d.appendChild(el('p', { class: 'fine', text: 'Your organisation sets its own periods and targets. Ospeli flags against them; it does not set them.' }));
+  if (settingsOpen) d.open = true;
+  d.addEventListener('toggle', function () { settingsOpen = d.open; });
+  frag.appendChild(d);
+  return frag;
+}
+var settingsOpen = false;
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Reporting, the queue, downtime and the counts all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag right now.' }));
+  list.forEach(function (sg) {
+    var pend = state.pending.some(function (p) { return p.id === sg.id; });
+    var acts = sg.acts.map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend && a.primary ? 'disabled' : false, onclick: a.fn, text: pend && a.primary ? 'Proposed' : a.label }); });
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
+      el('span', { class: 'tag ' + (sg.kind === 'hot' ? 'hot' : sg.kind === 'ask' ? 'ask' : ''), text: sg.kind === 'link' ? 'One fault, many reports' : sg.kind === 'hot' ? (sg.id.indexOf('down') === 0 ? 'Possible downtime' : 'Access risk') : 'Recovery check' }),
+      el('h3', { text: sg.title }), sg.list ? el('ul', {}, sg.list.map(function (x) { return el('li', { text: x }); })) : null,
+      sg.text ? el('p', { text: sg.text }) : null,
+      el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  if (state.pending.length) {
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for a person to decide' })]);
+    state.pending.forEach(function (p) {
+      var mine = p.who.indexOf(state.role) >= 0;
+      d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }),
+        mine ? el('div', { class: 'acts', style: 'display:flex;gap:8px;flex-wrap:wrap' }, [el('button', { type: 'button', class: 'small primary', onclick: function () { decide(p, true); }, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])
+          : el('p', { class: 'who', style: 'margin:0', text: 'Decided by ' + whoWord(p.who) + '. Switch to that view to confirm or decline.' })]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Proposals wait here for the right role.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 25).forEach(function (e) { ol.appendChild(el('li', { class: e.t === lastLogT && now() - e.t < 5000 ? 'new' : '' }, [el('time', { text: hhmm(e.t) }), el('span', { text: e.text })])); });
+}
+
+// Live clock: redraw when what the guide or targets see changes.
+var sig = '';
+function signature() { return openTickets().filter(isLate).map(function (t) { return t.id; }).join(',') + '|' + suggest().map(function (s) { return s.id; }).join(','); }
+setInterval(function () { if (signature() !== sig) render(); }, 30000);
+
+// ---------- Wiring ----------
+['staff', 'desk', 'lead'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () {
+  if (state.role !== r) { state.role = r; if (r === 'lead') { audit('read', 'Access review summary'); audit('read', 'Device update summary'); } else if (r === 'desk') audit('read', 'IT ticket'); else audit('read', 'System status'); }
+  render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-clock').addEventListener('click', function () { state.offset = (state.offset || 0) + 15 * M; addLog('Demo: clock moved on 15 minutes.'); render(); toast('Clock moved on 15 minutes. Tickets have aged.'); });
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; render(); toast('Example reset to the start of the demo.'); });
+
+// Read-only view for software agents (no writes): window.ospeliItDigitalDemo
+window.ospeliItDigitalDemo = Object.freeze({
+  describe: function () { return 'Read-only IT, digital and cyber demo for a fictional hospital. get() returns system status, open tickets, faults, open downtime and access counts; kpis() the measures; suggestions() the guide\'s current suggestions. Counts only, no staff names. Runs in the browser; nothing is sent anywhere.'; },
+  get: function () {
+    return clone({ role: state.role, now: new Date(now()).toISOString(), targetsHours: state.targets,
+      systems: SYSTEMS.map(function (x) { var s = state.status[x.id]; return { id: x.id, name: x.name, status: s.st, since: new Date(s.since).toISOString(), affects: x.depts, downtimeOpen: !!openDowntime(x.id) }; }),
+      openTickets: openTickets().sort(sortQueue).map(function (t) { return { id: t.id, category: CATS[t.cat].label, area: AREAS[t.area].name, system: t.sys ? sysById(t.sys).name : null, what: t.what, priority: t.pri, team: t.team, ageMin: Math.round(ageMin(t)), pastTarget: isLate(t), fault: t.fault }; }),
+      faults: state.faults.map(function (f) { return { id: f.id, block: f.block, team: f.team, tickets: f.ids, resolved: !!f.resolved }; }),
+      access: { leaversActivePastPeriod: leaversPast().length, periodDays: state.access.periodDays, overdueReviews: state.reviews.length, devicesMissingUpdates: kpis().devicesMissingUpdates },
+      pendingDecisions: state.pending.map(function (p) { return { text: p.text, decidedBy: p.who }; }) });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text || (s.list || []).join('; '), why: s.why }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>

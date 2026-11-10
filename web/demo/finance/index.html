@@ -1,0 +1,859 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Finance and budgets demo · Ospeli</title>
+<meta name="description" content="Budget versus actual for each ward and department, with the reason beside it: a phone view for budget holders, a variance board for finance, and an organisation summary that links cost to beds and theatre use. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Finance and budgets demo · Ospeli">
+<meta property="og:description" content="Budget versus actual for each ward and department, with the reason beside it: a phone view for budget holders, a variance board for finance, and an organisation summary that links cost to beds and theatre use. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/finance/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; --plan:#7D8B99; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button, textarea { font: inherit; color: var(--ink); }
+select, input[type=number], textarea { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+textarea { width: 100%; resize: vertical; line-height: 1.45; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible, summary:focus-visible, .hit:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 560px) { .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 14px; width: 100%; } .roles button { padding: 6px 4px; min-height: 54px; line-height: 1.2; font-size: 0.95rem; } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.tools label { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }
+.tools select { min-height: 36px; padding: 4px 8px; font-size: 0.85rem; }
+.period { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stat .lbl { color: var(--ink); font-size: 0.95rem; font-weight: 700; display: block; line-height: 1.3; }
+.stat .n { color: var(--soft); font-size: 0.85rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.85rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stat.good { background: var(--wash); }
+.stathint { color: var(--soft); font-size: 0.85rem; margin: 6px 0 0; }
+.pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 0.95rem; font-weight: 700; background: var(--sand); }
+.pill.ok { background: var(--wash); } .pill.hot { background: var(--hot); color: #8E2C18; } .pill.wait { background: var(--warn); }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.chip { display: inline-block; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 2px 9px; background: var(--sand); white-space: nowrap; }
+.chip.missing { background: var(--coral); color: #fff; } .chip.late { background: #B23A22; color: #fff; }
+.chip.received { background: var(--warn); } .chip.agreed { background: var(--sea); color: #fff; } .chip.sentback { background: var(--mango); color: var(--navy); }
+.chip.within { background: var(--wash); }
+.empty { text-align: center; color: var(--soft); padding: 16px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; margin: 0; }
+.fine { font-size: 0.85rem; color: var(--soft); margin: 8px 0 0; }
+.pick { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: end; justify-content: space-between; }
+.pick label { font-weight: 800; display: flex; flex-direction: column; gap: 4px; font-size: 0.95rem; }
+.pick select { font-weight: 700; min-width: 220px; }
+.pick .who { color: var(--soft); font-size: 0.95rem; }
+/* budget holder */
+.hero { border-radius: 14px; padding: 14px 16px; margin-top: 14px; background: var(--wash); }
+.hero.over { background: var(--hot); } .hero.under { background: var(--warn); }
+.hero .big { font-size: 1.6rem; font-weight: 800; line-height: 1.15; margin: 0; letter-spacing: -0.01em; }
+.hero.over .big { color: #8E2C18; }
+.hero .sub { margin: 6px 0 0; font-size: 0.98rem; }
+.hero .sub b { font-variant-numeric: tabular-nums; }
+.hero .tolline { margin: 8px 0 0; font-weight: 800; font-size: 0.95rem; }
+.lines { display: grid; gap: 4px; }
+.lrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 8px 0; border-bottom: 1px dashed var(--line); font-size: 0.98rem; }
+.lrow.sub { padding-left: 14px; font-size: 0.95rem; }
+.lrow.sub .nm { font-weight: 600; }
+.lrow .nm { font-weight: 800; }
+.lrow .v { font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lrow .v.over { color: #B23A22; } .lrow .v.under { color: #0B6E70; }
+.lrow .amt { grid-column: 1 / -1; color: var(--soft); font-size: 0.95rem; font-variant-numeric: tabular-nums; }
+.bar { grid-column: 1 / -1; position: relative; height: 10px; border-radius: 6px; background: #EFE9DD; margin: 2px 0; }
+.bar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; background: var(--sea); }
+.bar i.over { background: var(--coral); }
+.bar s { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--navy); text-decoration: none; }
+.drivers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 760px) { .drivers { grid-template-columns: minmax(0, 1fr); } }
+.drv { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 0.95rem; }
+.drv b { display: block; font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.drv .t { font-weight: 800; display: block; }
+.drv .c { color: var(--soft); display: block; }
+.drv.up { border-left: 5px solid var(--coral); } .drv.down { border-left: 5px solid var(--sea); } .drv.flat { border-left: 5px solid var(--foam); }
+.noteform { display: grid; gap: 10px; }
+.noteform label { font-weight: 800; font-size: 0.95rem; display: grid; gap: 4px; }
+.noteform .row { display: flex; flex-wrap: wrap; gap: 8px; }
+.noteform .row button { flex: 1 1 160px; min-height: 52px; font-size: 1.02rem; }
+.drafted { background: var(--warn); border-radius: 10px; padding: 8px 10px; font-size: 0.95rem; margin: 0; }
+.notebox { border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 0.98rem; }
+.notebox p { margin: 0 0 6px; }
+.notebox .meta { color: var(--soft); font-size: 0.95rem; margin: 0; }
+.ask { background: var(--warn); border-radius: 10px; padding: 8px 10px; font-size: 0.95rem; margin: 0; }
+/* finance partner */
+.setrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin-top: 12px; }
+.setrow label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 700; color: var(--soft); }
+.setrow input { width: 110px; }
+.filters { display: inline-flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.filters button { min-height: 38px; font-size: 0.88rem; border-color: #CFC5B2; }
+.filters button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.crow { border: 1px solid var(--line); border-left: 5px solid var(--foam); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; }
+.crow.missing { border-left-color: var(--coral); } .crow.received { border-left-color: var(--mango); } .crow.agreed { border-left-color: var(--sea); } .crow.sentback { border-left-color: var(--mango); }
+.crow .hd { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+.crow .hd b { font-size: 1rem; }
+.crow .hd .own { color: var(--soft); font-size: 0.85rem; display: block; font-weight: 600; }
+.crow .nums { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 8px; }
+.crow .nums div { background: var(--sand); border-radius: 8px; padding: 4px 8px; min-width: 0; }
+.crow .nums span { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--soft); font-weight: 800; }
+.crow .nums b { font-variant-numeric: tabular-nums; font-size: 0.95rem; display: block; line-height: 1.25; }
+.crow .nums b small { display: block; font-size: 0.85rem; font-weight: 700; }
+.crow .nums b.over { color: #B23A22; }
+.crow .note { margin: 8px 0 0; font-size: 0.92rem; background: #FFFDF9; border: 1px dashed var(--line); border-radius: 8px; padding: 6px 8px; }
+.crow .note em { font-style: normal; color: var(--soft); }
+.crow .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.crow .miss { margin: 6px 0 0; font-size: 0.88rem; color: #8E2C18; }
+.fbox { background: var(--sand); border-radius: 12px; padding: 12px; font-size: 0.95rem; }
+.fbox p { margin: 0 0 6px; }
+/* leadership */
+.sum3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+@media (max-width: 760px) { .sum3 { grid-template-columns: minmax(0, 1fr); } }
+.sbox { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.sbox h4 { margin: 0 0 4px; font-size: 0.85rem; color: var(--soft); text-transform: uppercase; letter-spacing: 0.06em; }
+.sbox dl { margin: 0; display: grid; grid-template-columns: auto auto; gap: 2px 10px; font-size: 0.95rem; }
+.sbox dt { color: var(--soft); } .sbox dd { margin: 0; text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+.sbox dd.over { color: #B23A22; }
+ol.top { margin: 0; padding: 0; list-style: none; counter-reset: t; display: grid; gap: 8px; }
+ol.top li { counter-increment: t; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 4px 10px; align-items: start; border-bottom: 1px dashed var(--line); padding-bottom: 8px; font-size: 0.95rem; }
+ol.top li::before { content: counter(t); width: 24px; height: 24px; border-radius: 50%; background: var(--navy); color: #fff; display: grid; place-items: center; font-size: 0.8rem; font-weight: 800; }
+ol.top .r { color: var(--soft); font-size: 0.9rem; display: block; }
+ol.top .v { font-weight: 800; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+ol.top .v.over { color: #B23A22; }
+.chartbox { position: relative; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.85rem; color: var(--soft); font-weight: 700; margin: 0 0 4px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--sea); }
+.legend i.plan { border-top: 2px dashed var(--plan); }
+svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+svg.chart text { font-family: inherit; fill: var(--soft); font-size: 12px; }
+svg.chart .grid { stroke: #ECE5D8; stroke-width: 1; }
+.hit { fill: transparent; cursor: crosshair; outline: none; }
+.tip { position: absolute; pointer-events: none; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 0.85rem; box-shadow: 0 4px 14px rgba(11,47,78,0.12); display: none; min-width: 150px; }
+.tip b { font-variant-numeric: tabular-nums; }
+.tip .k { display: inline-block; width: 12px; border-top: 2px solid var(--sea); margin-right: 6px; vertical-align: middle; }
+.tip .k.plan { border-top: 2px dashed var(--plan); }
+details.tbl summary { cursor: pointer; font-weight: 800; font-size: 0.9rem; min-height: 44px; display: flex; align-items: center; }
+table.t { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+table.t th, table.t td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--line); }
+table.t th { color: var(--soft); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+table.t .r { text-align: right; font-variant-numeric: tabular-nums; }
+.tablewrap { overflow-x: auto; }
+.follow { display: grid; gap: 8px; }
+.frow { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.frow h4 { margin: 0 0 6px; font-size: 0.98rem; }
+.frow .fig { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.frow .fig div { background: var(--sand); border-radius: 8px; padding: 4px 8px; }
+.frow .fig span { display: block; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--soft); font-weight: 800; }
+.frow .fig b { font-variant-numeric: tabular-nums; }
+.frow p { margin: 6px 0 0; font-size: 0.92rem; }
+.signbox { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 16px; font-size: 0.95rem; }
+.signbox p { margin: 0 0 8px; }
+.signbox .acts { display: flex; flex-wrap: wrap; gap: 8px; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.85rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.92rem; }
+.sugg ul { margin: 0 0 8px; padding-left: 18px; font-size: 0.9rem; }
+.sugg .why { color: var(--soft); font-size: 0.85rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.95rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; line-height: 1.25; }
+ol.log time small { display: block; font-weight: 700; font-size: 0.78rem; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Finance and budgets: spend beside the work behind it</h1>
+  <p class="lead">Each ward and department sees its budget, what it spent and why, the week the month closes. Spend sits beside activity from the event log, so cost per occupied bed-day uses the same counts as operations. Budget holders explain variances in a line; finance sees what is still missing; leadership sees which costs follow the beds and theatre lists. The guide suggests; a person decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-holder" data-role="holder" aria-pressed="false">Budget holder</button>
+    <button type="button" id="r-partner" data-role="partner" aria-pressed="false">Finance partner</button>
+    <button type="button" id="r-lead" data-role="lead" aria-pressed="false">COO / finance lead</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <b>Demo tools:</b>
+    <label for="cur">Show amounts as <select id="cur"><option value="units">currency units</option><option value="sym">¤ (generic sign)</option></select></label>
+    <button type="button" class="small" id="t-day">Move to day 9 (past the due date)</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <h2 id="view-h">Budget</h2>
+        <div class="period" id="period"></div>
+        <div class="stats" id="kpis"></div>
+        <p class="stathint">Tap a tile for its definition. Every measure here is a local definition.</p>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads the month's ledger lines, the budget, the tolerance and the activity counts, and suggests where to look first, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. It can draft a variance note, but the budget holder edits and sends it. Other suggestions only become proposals; the finance partner decides.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its cost centres, budgets, spend, activity and notes. Amounts are in generic currency units. It measures spend and activity by cost centre, never individual staff or patients' care. It is not an accounting ledger or payroll system. Coming next (Feb 2027): ledger extract import with the source file kept, cost centre mapping, spend requests with approval, budget setting with manager sign-off, and recovery plans tracked against budget. <a href="../../areas/finance-budgets/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var STORE = 'ospeli.finance.v1';
+var MONTH = 7, MONTHS = 12, DUE = 8, DAYS = 30;
+// Example setting for this demo only, not a standard: each organisation sets its own tolerance.
+var DEFAULT_TOL = 3;
+
+// ---------- Fixed reference data (fictional) ----------
+var UNIT = { ward: ['occupied bed-day', 'occupied bed-days'], ed: ['attendance', 'attendances'], theatre: ['case', 'cases'], imaging: ['exam', 'exams'], outpatients: ['visit', 'visits'] };
+var REASONS = [['activity', 'Activity above or below plan'], ['temp', 'Temporary staff cover'], ['vacancy', 'Vacancies'], ['price', 'Supply prices'], ['usage', 'Supplies usage'], ['oneoff', 'One-off cost'], ['timing', 'Timing (cost in a different month)'], ['other', 'Other']];
+function cc(id, name, kind, owner, act, perm, relief, agency, rate, other, f) { return { id: id, name: name, kind: kind, owner: owner, act: act, perm: perm, relief: relief, agency: agency, rate: rate, other: other, f: f || {} }; }
+// Monthly factors (months 1 to 7) against plan: act = activity, perm/relief/agency = staff cost, rate = supplies per unit, other.
+var CCS = [
+  cc('W1', 'Ward 1', 'ward', 'Ward 1 manager', 780, 180000, 8000, 2000, 22, 6000, { agency: [1, 0.8, 1.2, 1, 0.9, 1.1, 1] }),
+  cc('W2', 'Ward 2', 'ward', 'Ward 2 manager', 760, 176000, 8000, 2000, 22, 6000, { act: [1, 1.004, 0.997, 1.002, 1, 0.998, 1.003], perm: [1, 1, 1, 1, 0.99, 0.985, 0.98], relief: [1, 1, 1.05, 1.1, 1.2, 1.3, 1.7], agency: [1, 1, 1.1, 1.3, 1.6, 2, 3.5] }),
+  cc('W3', 'Ward 3', 'ward', 'Ward 3 manager', 800, 184000, 8000, 2000, 21, 6000, { perm: [0.99, 0.99, 0.985, 0.99, 0.985, 0.99, 0.985] }),
+  cc('W4', 'Ward 4', 'ward', 'Ward 4 manager', 780, 180000, 8000, 2000, 22, 6000, { act: [1, 1, 1.01, 1.02, 1.03, 1.05, 1.06], rate: [1, 1, 1, 1.01, 1.02, 1.03, 1.03], relief: [1, 1, 1.1, 1.2, 1.4, 1.6, 1.7], agency: [1, 1, 1.5, 2, 3, 4, 4.5] }),
+  cc('W5', 'Ward 5', 'ward', 'Ward 5 manager', 740, 170000, 8000, 2000, 22, 6000, { act: [1, 1, 0.99, 1, 1, 0.98, 0.92], relief: [1, 1, 1, 1, 1, 0.9, 0.5], agency: [1, 1, 1, 1, 1, 0.6, 0] }),
+  cc('W6', 'Ward 6', 'ward', 'Ward 6 manager', 760, 176000, 8000, 2000, 22, 6000, { other: [1, 1, 1, 1, 1, 1.1, 2.4] }),
+  cc('ED', 'Emergency department', 'ed', 'Emergency department manager', 6000, 320000, 12000, 6000, 9, 10000, { act: [1, 1.01, 1.02, 1.03, 1.04, 1.05, 1.07], relief: [1, 1, 1.05, 1.1, 1.1, 1.2, 1.4], agency: [1, 1, 1.1, 1.2, 1.5, 1.8, 2.2] }),
+  cc('TH', 'Theatres', 'theatre', 'Theatres manager', 520, 260000, 6000, 4000, 160, 15000, { act: [1, 1, 0.98, 1, 0.97, 0.95, 0.88], rate: [1, 1, 1, 1, 1, 1, 0.99], relief: [1, 1, 1, 1, 1, 0.9, 0.7], agency: [1, 1, 1, 1, 0.8, 0.7, 0.5] }),
+  cc('IM', 'Imaging', 'imaging', 'Imaging manager', 4200, 110000, 3000, 1000, 6, 8000, { rate: [1, 1, 1, 1.05, 1.1, 1.15, 1.22] }),
+  cc('OP', 'Outpatients', 'outpatients', 'Outpatients manager', 5000, 90000, 2000, 500, 3, 7000, { act: [1, 0.99, 1.01, 1, 1.02, 1, 1.01] })
+];
+var GROUPS = [['ward', 'Inpatient wards'], ['ed', 'Emergency department'], ['theatre', 'Theatres'], ['imaging', 'Imaging'], ['outpatients', 'Outpatients']];
+function nz(s) { var h = 7; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0; return ((Math.abs(h) % 1000) / 1000 - 0.5) * 0.006; }
+function fx(c, k, m) { var a = c.f[k]; return a ? a[m - 1] : 1; }
+var DATA = {};
+CCS.forEach(function (c) {
+  DATA[c.id] = [];
+  for (var m = 1; m <= MONTH; m++) {
+    var act = Math.round(c.act * fx(c, 'act', m));
+    DATA[c.id].push({ m: m, planAct: c.act, act: act,
+      b: { perm: c.perm, relief: c.relief, agency: c.agency, sup: Math.round(c.rate * c.act), other: c.other },
+      a: { perm: Math.round(c.perm * fx(c, 'perm', m) * (1 + nz(c.id + m + 'p'))), relief: Math.round(c.relief * fx(c, 'relief', m)), agency: Math.round(c.agency * fx(c, 'agency', m)),
+           sup: Math.round(c.rate * fx(c, 'rate', m) * act), other: Math.round(c.other * fx(c, 'other', m) * (1 + nz(c.id + m + 'o'))) } });
+  }
+});
+function byCc(id) { return CCS.filter(function (c) { return c.id === id; })[0]; }
+
+// ---------- State ----------
+function seed() {
+  var T = Date.now(), M = 60000;
+  var s = { v: 1, created: T, role: window.matchMedia('(max-width: 640px)').matches ? 'holder' : 'lead', cc: 'W4', cur: 'units', tol: DEFAULT_TOL, day: 5,
+    guide: true, filter: 'beyond', kpiOpen: null, pending: [], dismissed: {}, reminded: {}, drafts: {}, signed: false, confirmSign: false, log: [],
+    notes: {
+      W5: { status: 'agreed', reason: 'activity', text: 'Four beds closed for facilities work for most of the month, so fewer bed-days and less relief cover.', day: 2 },
+      TH: { status: 'agreed', reason: 'activity', text: 'Theatre lists cancelled during ventilation repairs; fewer cases used fewer supplies.', day: 3 },
+      W6: { status: 'agreed', reason: 'oneoff', text: 'One-off repair to ward equipment; the invoice covers two months of work.', day: 4 },
+      W2: { status: 'received', reason: 'temp', text: 'Two staff vacancies covered by internal relief and agency staff while we recruit; both posts are at interview stage.', day: 4 }
+    },
+    history: { W4: 'Month 6 note (agreed): More occupied bed-days than plan; agency cover for staff sickness.' } };
+  var L = function (day, minsAgo, text) { var d = new Date(T - minsAgo * M); s.log.push({ day: day, hm: hhmm(d), text: text }); };
+  L(5, 25, 'Variance board refreshed: ' + beyondList(s).length + ' cost centres beyond the ±' + s.tol + '% tolerance for month 7.');
+  L(5, 40, 'Activity counts for month 7 linked from the event log: occupied bed-days, attendances, cases, exams and visits.');
+  L(4, 300, 'Ward 2 manager sent a variance note for month 7.');
+  L(4, 420, 'Ward 6 manager sent a variance note; finance partner agreed it.');
+  L(3, 360, 'Theatres manager sent a variance note; finance partner agreed it.');
+  L(2, 480, 'Ward 5 manager sent a variance note; finance partner agreed it.');
+  L(1, 540, 'Ledger extract for month 7 imported (source file kept: ledger_month07.csv, 10 cost centres).');
+  return s;
+}
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE));
+    if (!s || s.v !== 1 || !s.notes || Date.now() - s.created > 24 * 3600000) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+// ---------- Derived data (pure) ----------
+function tot(o) { return o.perm + o.relief + o.agency + o.sup + o.other; }
+function staff(o) { return o.perm + o.relief + o.agency; }
+function temp(o) { return o.relief + o.agency; }
+function md(id, m) { return DATA[id][m - 1]; }
+function pos(id, m) { var d = md(id, m), b = tot(d.b), a = tot(d.a); return { budget: b, actual: a, v: a - b, pct: (a - b) / b * 100 }; }
+function ytd(id) { var b = 0, a = 0; for (var m = 1; m <= MONTH; m++) { b += tot(md(id, m).b); a += tot(md(id, m).a); } return { budget: b, actual: a, v: a - b, pct: (a - b) / b * 100 }; }
+function forecast(id) { var y = ytd(id), annual = tot(md(id, 1).b) * MONTHS, f = y.actual / MONTH * MONTHS; return { annual: annual, forecast: f, v: f - annual, pct: (f - annual) / annual * 100 }; }
+function orgSum(fn) { var r = { budget: 0, actual: 0 }; CCS.forEach(function (c) { var p = fn(c.id); r.budget += p.budget; r.actual += p.actual; }); r.v = r.actual - r.budget; r.pct = r.v / r.budget * 100; return r; }
+function orgForecast() { var a = 0, f = 0; CCS.forEach(function (c) { var x = forecast(c.id); a += x.annual; f += x.forecast; }); return { annual: a, forecast: f, v: f - a, pct: (f - a) / a * 100 }; }
+function isBeyond(id, s, m) { return Math.abs(pos(id, m || MONTH).pct) > (s || state).tol; }
+function beyondList(s) { return CCS.filter(function (c) { return isBeyond(c.id, s); }); }
+function noteStatus(id) { var n = state.notes[id]; if (n) return n.status; return isBeyond(id) ? 'missing' : 'within'; }
+function needsNote(id) { var st = noteStatus(id); return isBeyond(id) && (st === 'missing' || st === 'sentback'); }
+function twoRunning(id) { var a = pos(id, MONTH - 1).pct, b = pos(id, MONTH).pct; return Math.abs(a) > state.tol && Math.abs(b) > state.tol && (a > 0) === (b > 0); }
+function unitCost(ids, m) { var a = 0, b = 0, act = 0, plan = 0; ids.forEach(function (id) { var d = md(id, m); a += tot(d.a); b += tot(d.b); act += d.act; plan += d.planAct; }); return { actual: a / act, plan: b / plan }; }
+function wardIds() { return CCS.filter(function (c) { return c.kind === 'ward'; }).map(function (c) { return c.id; }); }
+function tempShare(ids, m) { var t = 0, s = 0, tb = 0, sb = 0; ids.forEach(function (id) { var d = md(id, m); t += temp(d.a); s += staff(d.a); tb += temp(d.b); sb += staff(d.b); }); return { actual: t / s * 100, plan: tb / sb * 100, cost: t }; }
+function allIds() { return CCS.map(function (c) { return c.id; }); }
+function creditor() {
+  // Fictional ledger figures: trade payables at month end and non-pay purchases in the month (supplies + other costs).
+  var purchases = 0; CCS.forEach(function (c) { var d = md(c.id, MONTH); purchases += d.a.sup + d.a.other; });
+  var payables = Math.round(purchases * 1.38);
+  return { days: payables / (purchases / DAYS), payables: payables, purchases: purchases };
+}
+function kpis() {
+  var bl = beyondList(), id = state.cc, me = pos(id, MONTH), c = byCc(id), d = md(id, MONTH);
+  var st = {}; bl.forEach(function (x) { var s = noteStatus(x.id); st[s] = (st[s] || 0) + 1; });
+  var onTime = bl.filter(function (x) { var n = state.notes[x.id]; return n && n.status === 'agreed' && n.day <= DUE; }).length;
+  var cpd = unitCost(wardIds(), MONTH), ts = tempShare(allIds(), MONTH), org = orgSum(function (i) { return pos(i, MONTH); }), f = orgForecast(), cr = creditor();
+  var mine = unitCost([id], MONTH), myTs = tempShare([id], MONTH);
+  return {
+    period: 'Month ' + MONTH, day: state.day, dueDay: DUE, tolerancePct: state.tol,
+    costCentres: CCS.length, beyondTolerance: bl.length, notesMissing: (st.missing || 0) + (st.sentback || 0), notesReceived: st.received || 0, notesAgreed: st.agreed || 0,
+    explainedOnTime: onTime, explainedOnTimePct: bl.length ? Math.round(onTime / bl.length * 100) : 100,
+    orgVariancePct: round1(org.pct), orgVariance: Math.round(org.v), forecastYearEndVariance: Math.round(f.v), forecastYearEndVariancePct: round1(f.pct),
+    costPerOccupiedBedDay: round1(cpd.actual), costPerOccupiedBedDayPlan: round1(cpd.plan), tempStaffingSharePct: round1(ts.actual), tempStaffingSharePlanPct: round1(ts.plan),
+    creditorDays: round1(cr.days),
+    myCostCentre: c.name, myVariancePct: round1(me.pct), myVariance: Math.round(me.v), myCostPerUnit: round1(mine.actual), myCostPerUnitPlan: round1(mine.plan), myUnit: UNIT[c.kind][0],
+    myTempStaffingSharePct: round1(myTs.actual), myNotesWaiting: needsNote(id) ? 1 : 0, myActivity: d.act, myActivityPlan: d.planAct
+  };
+}
+function round1(x) { return Math.round(x * 10) / 10; }
+
+// ---------- Formatting ----------
+function grp(n) { return String(Math.round(Math.abs(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+function sign(n, signed) { return n > 0.0001 ? (signed ? '+' : '') : n < -0.0001 ? '−' : ''; }
+function money(n, signed) { var s = sign(Math.round(n), signed); return state.cur === 'sym' ? s + '¤' + grp(n) : s + grp(n) + ' units'; }
+function kmoney(n, signed, bare) { var k = Math.abs(n) / 1000, v = (k >= 100 ? grp(k) : k.toFixed(1)) + 'k', s = Math.abs(n) < 50 ? '' : sign(n, signed); return state.cur === 'sym' ? s + '¤' + v : s + v + (bare ? '' : ' units'); }
+function upc(n) { return state.cur === 'sym' ? '¤' + n.toFixed(2) : n.toFixed(2) + ' units'; }
+function pct(x, signed) { var r = round1(x); return (r === 0 ? '' : sign(r, signed)) + Math.abs(r).toFixed(1) + '%'; }
+function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+function hhmm(d) { return (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes(); }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+function svg(tag, attrs) { var e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (var k in attrs) e.setAttribute(k, attrs[k]); return e; }
+var lastLog = null;
+function addLog(text) { var e = { day: state.day, hm: hhmm(new Date()), text: text, at: Date.now() }; lastLog = e.at; state.log.unshift(e); state.log = state.log.slice(0, 40); }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2800); }
+var STATUS = { missing: 'Note missing', received: 'Note received', agreed: 'Agreed', sentback: 'Sent back', within: 'Within tolerance' };
+function chip(id) { var st = noteStatus(id), late = (st === 'missing' || st === 'sentback') && state.day > DUE; return el('span', { class: 'chip ' + (late ? 'late' : st), text: late ? STATUS[st] + ' · late' : STATUS[st] }); }
+
+// ---------- The variance note draft (built from the ledger lines and activity counts) ----------
+function parts(id) {
+  var c = byCc(id), d = md(id, MONTH), supVol = (d.act - d.planAct) * c.rate, supV = d.a.sup - d.b.sup;
+  return { temp: temp(d.a) - temp(d.b), agency: d.a.agency - d.b.agency, relief: d.a.relief - d.b.relief, perm: d.a.perm - d.b.perm, supVol: supVol, supRate: supV - supVol, sup: supV, other: d.a.other - d.b.other };
+}
+function draftNote(id) {
+  var c = byCc(id), p = pos(id, MONTH), d = md(id, MONTH), u = UNIT[c.kind], x = parts(id), out = [];
+  out.push(c.name + ' is ' + pct(Math.abs(p.pct)) + ' ' + (p.v >= 0 ? 'over' : 'under') + ' budget in month ' + MONTH + ' (' + kmoney(p.v, true) + ').');
+  var actPct = (d.act - d.planAct) / d.planAct * 100;
+  if (Math.abs(actPct) >= 1) out.push(cap(u[1]) + ' were ' + pct(Math.abs(actPct)) + ' ' + (actPct > 0 ? 'above' : 'below') + ' plan (' + grp(d.act) + ' against ' + grp(d.planAct) + ').');
+  var items = [
+    ['temp', x.temp, 'Temporary staff ' + kmoney(x.temp, true) + ' against plan (agency ' + kmoney(x.agency, true) + ', internal relief ' + kmoney(x.relief, true) + ').'],
+    [x.perm < 0 ? 'vacancy' : 'other', x.perm, 'Permanent staff ' + kmoney(x.perm, true) + ' against plan.'],
+    ['activity', x.supVol, 'Supplies ' + kmoney(x.supVol, true) + ' from the change in activity.'],
+    [x.supRate > 0 ? 'usage' : 'other', x.supRate, 'Supplies per ' + u[0] + ' ' + upc(d.a.sup / d.act) + ' against ' + upc(c.rate) + ' planned (' + kmoney(x.supRate, true) + '): check price or usage.'],
+    ['oneoff', x.other, 'Other costs ' + kmoney(x.other, true) + ' against plan.']
+  ].filter(function (i) { return Math.abs(i[1]) >= 800 && (i[1] > 0) === (p.v > 0); }).sort(function (a, b) { return Math.abs(b[1]) - Math.abs(a[1]); }).slice(0, 2);
+  items.forEach(function (i) { out.push(i[2]); });
+  out.push('Action: [add what you will do, and by when].');
+  var reason = items.length ? items[0][0] : 'other';
+  return { text: out.join(' '), reason: reason };
+}
+function doDraft(id) {
+  var dn = draftNote(id);
+  state.drafts[id] = { text: dn.text, reason: dn.reason, byGuide: true };
+  state.role = 'holder'; state.cc = id;
+  addLog('Guide drafted a variance note for ' + byCc(id).name + ' from the ledger lines and activity counts. The budget holder edits and decides whether to send.');
+  render(); toast('Draft added. Edit it, then send. You own the note.');
+  var t = document.getElementById('n-text'); if (t) { t.focus({ preventScroll: true }); t.scrollIntoView({ block: 'center' }); }
+}
+
+// ---------- The guide: plain, checkable rules ----------
+function suggest() {
+  var out = [], r = state.role, T = state.tol;
+  if (r === 'holder') {
+    var id = state.cc, c = byCc(id), p = pos(id, MONTH);
+    if (needsNote(id)) {
+      var x = parts(id), lines = [['Temporary staff', x.temp], ['Permanent staff', x.perm], ['Supplies', x.sup], ['Other costs', x.other]].filter(function (l) { return Math.abs(l[1]) >= 800; }).sort(function (a, b) { return Math.abs(b[1]) - Math.abs(a[1]); }).slice(0, 3);
+      out.push({ id: 'draft-' + id, kind: 'ask', tag: 'Explain this first', title: 'Draft your variance note from the operations data',
+        list: lines.map(function (l) { return l[0] + ': ' + kmoney(l[1], true); }),
+        why: c.name + ' is ' + pct(p.pct, true) + ' against budget, beyond the ±' + T + '% tolerance, and the note is due by day ' + DUE + '. The draft uses this month\'s ledger lines and activity counts from the event log. You edit it and decide whether to send.',
+        acts: [{ label: 'Draft the note', primary: true, fn: function () { doDraft(id); } }] });
+    }
+    if (twoRunning(id)) out.push(reviewSugg(c, true));
+    var w = wfCheck(c); if (w) out.push(w);
+  } else {
+    var miss = CCS.filter(function (c) { return needsNote(c.id); }).sort(function (a, b) { return Math.abs(pos(b.id, MONTH).v) - Math.abs(pos(a.id, MONTH).v); });
+    if (miss.length) {
+      var key = 'remind-' + miss.map(function (c) { return c.id; }).join('');
+      out.push({ id: key, kind: 'time', tag: state.day > DUE ? 'Past the due date' : 'Before sign-off', title: miss.length + (miss.length > 1 ? ' variances still need' : ' variance still needs') + ' an explanation',
+        list: miss.map(function (c) { var p = pos(c.id, MONTH); return c.name + ': ' + kmoney(p.v, true) + ' (' + pct(p.pct, true) + ') · ' + c.owner + (state.reminded[c.id] ? ' · reminded day ' + state.reminded[c.id] : ''); }),
+        why: 'Beyond the ±' + T + '% tolerance with no note yet, or sent back. Largest first, because they move the month-end position most. Notes are due by day ' + DUE + '; today is day ' + state.day + '.',
+        acts: [{ label: r === 'partner' ? 'Propose: remind the owners' : 'Propose: ask finance to chase', primary: true, fn: function () { propose({ id: key, kind: 'remind', ids: miss.map(function (c) { return c.id; }), text: 'Remind ' + miss.map(function (c) { return 'the ' + c.owner; }).join(', ') + ' that the month ' + MONTH + ' note is due by day ' + DUE + '.' }); } }] });
+    }
+    CCS.filter(function (c) { return twoRunning(c.id); }).forEach(function (c) { out.push(reviewSugg(c, false)); });
+    if (r === 'partner') CCS.forEach(function (c) { var w = wfCheck(c); if (w) out.push(w); });
+    if (r === 'lead') { var vr = volumeRate(); if (vr) out.push(vr); }
+  }
+  return out.filter(function (x) { return !state.dismissed[x.id]; }).slice(0, 4);
+}
+function reviewSugg(c, own) {
+  var x = parts(c.id), a = pos(c.id, MONTH - 1), b = pos(c.id, MONTH), id = 'review-' + c.id;
+  var lines = [['Agency staff', x.agency], ['Internal relief staff', x.relief], ['Permanent staff', x.perm], ['Supplies', x.sup], ['Other costs', x.other]].filter(function (l) { return (l[1] > 0) === (b.v > 0) && Math.abs(l[1]) >= 500; }).sort(function (p, q) { return Math.abs(q[1]) - Math.abs(p[1]); }).slice(0, 3);
+  return { id: id, kind: 'review', tag: 'Two months running', title: (own ? 'Your cost centre' : c.name) + ' is beyond tolerance two months running',
+    text: 'Month ' + (MONTH - 1) + ': ' + pct(a.pct, true) + '. Month ' + MONTH + ': ' + pct(b.pct, true) + '. Largest spend lines against plan:',
+    list: lines.map(function (l) { return l[0] + ': ' + kmoney(l[1], true); }),
+    why: 'Both months are beyond the ±' + state.tol + '% tolerance in the same direction. A review is suggested so the drivers get an owner and an action. It looks at spend lines, not at any person.',
+    acts: [{ label: own ? 'Propose: ask for a review' : 'Propose: book a review with the ' + c.owner, primary: true, fn: function () { propose({ id: id, kind: 'review', cc: c.id, text: 'Book a budget review with the ' + c.owner + ': ' + lines.map(function (l) { return l[0].toLowerCase() + ' ' + kmoney(l[1], true); }).join(', ') + '.' }); } }] };
+}
+function wfCheck(c) {
+  if (c.kind !== 'ward') return null;
+  var a = md(c.id, MONTH - 2), b = md(c.id, MONTH), rise = (temp(b.a) - temp(a.a)) / temp(a.a) * 100, actChg = (b.act - a.act) / a.act * 100;
+  if (!(rise >= 25 && Math.abs(actChg) < 2)) return null;
+  var id = 'wf-' + c.id;
+  return { id: id, kind: 'move', tag: 'Staffing', title: c.name + ': temporary staff cost up ' + Math.round(rise) + '% while bed-days are flat',
+    text: 'Temporary staff ' + kmoney(temp(a.a)) + ' in month ' + (MONTH - 2) + ', ' + kmoney(temp(b.a)) + ' in month ' + MONTH + '. Occupied bed-days ' + grp(a.act) + ' and ' + grp(b.act) + '.',
+    why: 'Cost rising without more activity often points to rostering gaps or vacancies. Suggests checking with the workforce lead before more shifts are booked. Counts shifts and cost, never individuals.',
+    acts: [{ label: 'Propose: raise with the workforce lead', primary: true, fn: function () { propose({ id: id, kind: 'workforce', cc: c.id, text: 'Ask the workforce lead to check rostering gaps and vacancies on ' + c.name + ' (temporary staff cost up ' + Math.round(rise) + '% over two months, bed-days flat).' }); } }] };
+}
+function volumeRate() {
+  var org = orgSum(function (i) { return pos(i, MONTH); }), vol = 0, top = [];
+  CCS.forEach(function (c) { var v = parts(c.id).supVol; vol += v; if (Math.abs(v) >= 1000) top.push([c, v]); });
+  top.sort(function (a, b) { return Math.abs(b[1]) - Math.abs(a[1]); });
+  return { id: 'volrate', kind: 'info', tag: 'Volume or rate', title: Math.abs(org.v - vol) >= Math.abs(vol) ? 'Most of this month\'s variance is rate, not activity' : 'Most of this month\'s variance follows activity',
+    text: 'The organisation is ' + kmoney(org.v, true) + ' against budget. Activity changes moved supplies by about ' + kmoney(vol, true) + ' at the planned cost per unit (' + top.slice(0, 2).map(function (t) { return t[0].name.toLowerCase() + ' ' + kmoney(t[1], true); }).join(', ') + '). The other ' + kmoney(org.v - vol, true) + ' is rate: staffing mix, prices and one-off costs.',
+    why: 'Activity counts come from the event log; the planned cost per unit comes from the budget. Only supplies are flexed with activity here; staff budgets are treated as fixed.',
+    acts: [{ label: 'Show costs that follow activity', fn: function () { var e = document.getElementById('follow-h'); if (e) e.scrollIntoView({ block: 'start' }); } }] };
+}
+function propose(p) {
+  if (state.pending.some(function (x) { return x.id === p.id; })) return;
+  state.pending.push(p);
+  addLog('Guide proposed: ' + p.text + ' Waiting for the finance partner.');
+  render(); toast('Proposed. The finance partner decides.');
+}
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x.id !== p.id; });
+  if (!yes) { state.dismissed[p.id] = true; addLog('Finance partner declined: ' + p.text); render(); toast('Declined. Nothing changed.'); return; }
+  if (p.kind === 'remind') { p.ids.forEach(function (id) { state.reminded[id] = state.day; }); addLog('Finance partner sent reminders: ' + p.ids.map(function (id) { return byCc(id).owner; }).join(', ') + '. Note due by day ' + DUE + '.'); }
+  else if (p.kind === 'review') { state.dismissed[p.id] = true; addLog('Finance partner booked a budget review with the ' + byCc(p.cc).owner + '.'); }
+  else { state.dismissed[p.id] = true; addLog('Finance partner raised ' + byCc(p.cc).name + ' with the workforce lead: check rostering gaps and vacancies.'); }
+  render(); toast('Confirmed and logged.');
+}
+
+// ---------- Actions ----------
+function sendNote(id) {
+  var t = document.getElementById('n-text'), r = document.getElementById('n-reason'), text = (t.value || '').trim();
+  if (text.length < 10) { toast('Add a short reason first (a line is enough).'); t.focus(); return; }
+  if (/\[add what you will do/.test(text)) { toast('Replace the [Action] placeholder with your action, or delete it.'); t.focus(); return; }
+  var was = state.notes[id];
+  state.notes[id] = { status: 'received', reason: r.value, text: text, day: state.day, byGuide: !!(state.drafts[id] && state.drafts[id].byGuide) };
+  delete state.drafts[id];
+  addLog(byCc(id).owner + ' sent a variance note for month ' + MONTH + (was && was.status === 'sentback' ? ' (revised)' : '') + (state.day > DUE ? ', after the day ' + DUE + ' due date' : '') + ': “' + text.slice(0, 90) + (text.length > 90 ? '…' : '') + '”');
+  render(); toast('Sent to the finance partner. You will see when it is agreed.');
+}
+function agree(id) { var n = state.notes[id]; n.status = 'agreed'; addLog('Finance partner agreed the ' + byCc(id).name + ' variance note.'); render(); toast('Agreed. Counted in “explained on time” if sent by day ' + DUE + '.'); }
+function sendBack(id) { var n = state.notes[id]; n.status = 'sentback'; n.ask = 'Please add the action you will take, and by when.'; addLog('Finance partner sent the ' + byCc(id).name + ' note back: please add the action and a date.'); render(); toast('Sent back to the budget holder with a question.'); }
+
+// ---------- Render ----------
+var HINTS = {
+  holder: 'A ward or department manager\'s phone. This month against plan for staff, supplies and other costs, what is driving it, and a one-line note when it is beyond tolerance.',
+  partner: 'The finance business partner. Every cost centre by variance, which explanations are in or missing, and a straight-line forecast to year end.',
+  lead: 'The COO or finance lead. The organisation\'s position, the five largest variances with their reasons, and which costs follow beds, theatre lists and attendances.'
+};
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  ['holder', 'partner', 'lead'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('view-h').textContent = { holder: 'My budget', partner: 'Variance board', lead: 'Organisation summary' }[state.role];
+  document.getElementById('cur').value = state.cur;
+  document.getElementById('t-day').textContent = state.day > DUE ? 'Back to day 5 (before the due date)' : 'Move to day 9 (past the due date)';
+  var per = document.getElementById('period'); per.textContent = '';
+  per.appendChild(el('span', { class: 'pill', text: 'Month ' + MONTH + ' of ' + MONTHS + ' closed' }));
+  per.appendChild(el('span', { class: 'pill' + (state.day > DUE ? ' hot' : ' wait'), text: 'Today: day ' + state.day + ' · notes due by day ' + DUE }));
+  per.appendChild(el('span', { class: 'pill', text: 'Tolerance ±' + state.tol + '% (example setting)' }));
+  renderKpis();
+  var v = document.getElementById('view'); v.textContent = '';
+  v.appendChild(state.role === 'holder' ? holderView() : state.role === 'partner' ? partnerView() : leadView());
+  renderGuide();
+  renderLog();
+  save();
+  if (aid) { var e = document.getElementById(aid); if (e) e.focus({ preventScroll: true }); }
+}
+function renderKpis() {
+  var k = kpis(), box = document.getElementById('kpis'); box.textContent = '';
+  var DEF = {
+    var: 'Budget variance: (actual spend − budget) ÷ budget, per cost centre and period. Local definition.',
+    cpd: 'Cost per inpatient bed-day: inpatient costs for the period ÷ occupied bed-days from the event log. Local definition.',
+    temp: 'Temporary staffing spend share: agency and internal relief staff cost ÷ total staff cost. Local definition.',
+    ontime: 'Variances explained on time: variances beyond tolerance with an agreed note by the due date ÷ all variances beyond tolerance. Local definition.',
+    cred: 'Creditor days: trade payables ÷ (purchases for the period ÷ days in period). Here purchases are non-pay spend (supplies and other costs) and the period is a 30-day month. Local definition.'
+  };
+  var tiles, unit = UNIT[byCc(state.cc).kind];
+  if (state.role === 'holder') tiles = [
+    ['var', pct(k.myVariancePct, true), 'Budget variance', 'month ' + MONTH + ' · ' + kmoney(k.myVariance, true), DEF.var, Math.abs(k.myVariancePct) > state.tol],
+    ['cpd', upc(k.myCostPerUnit).replace(' units', ''), unit[0] === 'occupied bed-day' ? 'Cost per bed-day' : 'Cost per ' + unit[0], 'plan ' + upc(k.myCostPerUnitPlan).replace(' units', '') + (state.cur === 'sym' ? '' : ' units'), unit[0] === 'occupied bed-day' ? DEF.cpd : 'Cost per ' + unit[0] + ': costs for the period ÷ ' + unit[1] + ' from the event log. Local definition.'],
+    ['temp', pct(k.myTempStaffingSharePct), 'Temporary staffing share', 'plan ' + pct(tempShare([state.cc], MONTH).plan), DEF.temp],
+    ['notes', String(k.myNotesWaiting), 'Notes waiting for me', k.myNotesWaiting ? 'due by day ' + DUE : 'nothing to explain', 'Variances on your cost centre beyond tolerance with no note sent yet, or sent back to you with a question. Local definition.', k.myNotesWaiting > 0]
+  ];
+  else if (state.role === 'partner') tiles = [
+    ['beyond', String(k.beyondTolerance), 'Beyond tolerance', 'of ' + k.costCentres + ' cost centres', 'Cost centres whose month ' + MONTH + ' variance is more than ±' + state.tol + '% of budget. The tolerance is an example setting, not a standard.'],
+    ['ontime', k.explainedOnTimePct + '%', 'Explained on time', k.explainedOnTime + ' of ' + k.beyondTolerance + ' agreed by day ' + DUE, DEF.ontime, k.notesMissing > 0],
+    ['fcst', pct(k.forecastYearEndVariancePct, true), 'Year-end forecast', kmoney(k.forecastYearEndVariance, true) + ' · straight line', 'Forecast variance at year end: (actual so far ÷ ' + MONTH + ' months × ' + MONTHS + ') − annual budget. A straight line; it does not know about planned changes. Local definition.'],
+    ['temp', pct(k.tempStaffingSharePct), 'Temporary staffing share', 'plan ' + pct(k.tempStaffingSharePlanPct) + ' · all cost centres', DEF.temp]
+  ];
+  else tiles = [
+    ['var', pct(k.orgVariancePct, true), 'Budget variance', 'organisation · ' + kmoney(k.orgVariance, true), DEF.var],
+    ['cpd', upc(k.costPerOccupiedBedDay).replace(' units', ''), 'Cost per bed-day', 'inpatient wards · plan ' + upc(k.costPerOccupiedBedDayPlan).replace(' units', ''), DEF.cpd],
+    ['temp', pct(k.tempStaffingSharePct), 'Temporary staffing share', 'plan ' + pct(k.tempStaffingSharePlanPct), DEF.temp],
+    ['cred', k.creditorDays.toFixed(1), 'Creditor days', 'end of month ' + MONTH, DEF.cred]
+  ];
+  tiles.forEach(function (t) {
+    var open = state.kpiOpen === t[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat' + (t[5] ? ' alert' : ''), 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def', text: t[4] })]));
+  });
+}
+function ccSelect(id, label) {
+  var sel = el('select', { id: id, onchange: function (e) { state.cc = e.target.value; render(); } });
+  CCS.forEach(function (c) { sel.appendChild(el('option', { value: c.id, text: c.name })); });
+  sel.value = state.cc;
+  return el('label', { for: id }, [label, sel]);
+}
+function lineRow(name, b, a, sub) {
+  var v = a - b, p = b ? v / b * 100 : 0, scale = 1.3, w = Math.min(a / b, scale) / scale * 100;
+  return el('div', { class: 'lrow' + (sub ? ' sub' : '') }, [
+    el('span', { class: 'nm', text: name }),
+    el('span', { class: 'v ' + (v > 0 && p > state.tol ? 'over' : v < 0 && -p > state.tol ? 'under' : ''), text: kmoney(v, true, true) + ' · ' + pct(p, true) }),
+    sub ? null : el('div', { class: 'bar', 'aria-hidden': 'true' }, [el('i', { class: a > b ? 'over' : '', style: 'width:' + w.toFixed(1) + '%' }), el('s', { style: 'left:' + (100 / scale).toFixed(1) + '%' })]),
+    el('span', { class: 'amt', text: 'Actual ' + kmoney(a, false, true) + ' of ' + kmoney(b, false, true) + ' budget' })
+  ]);
+}
+function holderView() {
+  var frag = document.createDocumentFragment(), id = state.cc, c = byCc(id), p = pos(id, MONTH), d = md(id, MONTH), y = ytd(id), u = UNIT[c.kind], st = noteStatus(id), beyond = isBeyond(id);
+  frag.appendChild(el('div', { class: 'pick' }, [ccSelect('cc-pick', 'Your cost centre'), el('span', { class: 'who', text: 'Signed in as: ' + c.owner + ' (example role)' })]));
+  frag.appendChild(el('div', { class: 'hero ' + (beyond ? (p.v > 0 ? 'over' : 'under') : '') }, [
+    el('p', { class: 'big', text: pct(Math.abs(p.pct)) + ' ' + (p.v >= 0 ? 'over' : 'under') + ' budget' }),
+    el('p', { class: 'sub' }, ['Month ' + MONTH + ': spent ', el('b', { text: money(p.actual) }), ' against ', el('b', { text: money(p.budget) }), ' (', el('b', { text: money(p.v, true) }), ').']),
+    el('p', { class: 'tolline', text: beyond ? 'Beyond the ±' + state.tol + '% tolerance: a one-line note is needed by day ' + DUE + '.' : 'Within the ±' + state.tol + '% tolerance: no note needed this month.' })
+  ]));
+  frag.appendChild(el('h3', { class: 'sec', text: 'Month ' + MONTH + ' by line · amounts in thousands' }));
+  var L = el('div', { class: 'lines' });
+  L.appendChild(lineRow('Staff', staff(d.b), staff(d.a)));
+  L.appendChild(lineRow('Permanent staff', d.b.perm, d.a.perm, true));
+  L.appendChild(lineRow('Internal relief staff', d.b.relief, d.a.relief, true));
+  L.appendChild(lineRow('Agency staff', d.b.agency, d.a.agency, true));
+  L.appendChild(lineRow('Supplies', d.b.sup, d.a.sup));
+  L.appendChild(lineRow('Other costs', d.b.other, d.a.other));
+  frag.appendChild(L);
+  frag.appendChild(el('p', { class: 'fine', text: 'Bars: actual against budget; the dark mark is 100% of budget.' }));
+  // Drivers.
+  frag.appendChild(el('h3', { class: 'sec', text: 'What\'s driving it' }));
+  var actPct = (d.act - d.planAct) / d.planAct * 100, ts = tempShare([id], MONTH), rateA = d.a.sup / d.act, ratePct = (rateA - c.rate) / c.rate * 100;
+  var dir = function (x, lim) { return x > lim ? 'up' : x < -lim ? 'down' : 'flat'; };
+  frag.appendChild(el('div', { class: 'drivers' }, [
+    el('div', { class: 'drv ' + dir(actPct, 1) }, [el('span', { class: 't', text: cap(u[1]) }), el('b', { text: grp(d.act) + ' · ' + pct(actPct, true) }), el('span', { class: 'c', text: 'against ' + grp(d.planAct) + ' planned. From the event log.' })]),
+    el('div', { class: 'drv ' + dir(ts.actual - ts.plan, 0.5) }, [el('span', { class: 't', text: 'Agency and internal relief staff' }), el('b', { text: kmoney(temp(d.a)) }), el('span', { class: 'c', text: 'against ' + kmoney(temp(d.b)) + ' planned · ' + pct(ts.actual) + ' of staff cost (plan ' + pct(ts.plan) + ')' })]),
+    el('div', { class: 'drv ' + dir(ratePct, 1) }, [el('span', { class: 't', text: 'Supplies per ' + u[0] }), el('b', { text: upc(rateA) }), el('span', { class: 'c', text: 'against ' + upc(c.rate) + ' planned · ' + pct(ratePct, true) })])
+  ]));
+  frag.appendChild(el('p', { class: 'fine', text: 'Year to date: ' + money(y.actual) + ' against ' + money(y.budget) + ' (' + pct(y.pct, true) + '). Forecast to year end, straight line: ' + kmoney(forecast(id).v, true) + '.' }));
+  // Variance note.
+  frag.appendChild(el('h3', { class: 'sec', id: 'note-h', text: 'Variance note · month ' + MONTH }));
+  var n = state.notes[id];
+  if (n && (n.status === 'received' || n.status === 'agreed')) {
+    frag.appendChild(el('div', { class: 'notebox', id: 'note-sent' }, [el('p', { text: n.text }), el('p', { class: 'meta' }, [chip(id), ' Sent day ' + n.day + (n.status === 'agreed' ? ' · agreed by the finance partner' : ' · waiting for the finance partner')])]));
+  } else if (beyond || (n && n.status === 'sentback')) {
+    var dr = state.drafts[id] || { text: n ? n.text : '', reason: n ? n.reason : '' };
+    var reason = el('select', { id: 'n-reason', onchange: function (e) { (state.drafts[id] = state.drafts[id] || { text: '' }).reason = e.target.value; save(); } });
+    reason.appendChild(el('option', { value: '', text: 'Choose a reason' }));
+    REASONS.forEach(function (r) { reason.appendChild(el('option', { value: r[0], text: r[1] })); });
+    reason.value = dr.reason || '';
+    var ta = el('textarea', { id: 'n-text', rows: '4', maxlength: '400', placeholder: 'For example: agency cover for two vacancies; posts at interview stage.' });
+    ta.value = dr.text || '';
+    ta.addEventListener('input', function (e) { var x = state.drafts[id] = state.drafts[id] || { reason: reason.value }; x.text = e.target.value; save(); });
+    var form = el('div', { class: 'noteform' }, [
+      n && n.status === 'sentback' ? el('p', { class: 'ask', text: 'Finance partner asked: ' + n.ask }) : null,
+      dr.byGuide ? el('p', { class: 'drafted', text: 'Drafted by the guide from the ledger and the event log. Check it, edit it, and replace the [Action] part. You decide whether to send.' }) : null,
+      el('label', { for: 'n-reason' }, ['Main reason', reason]),
+      el('label', { for: 'n-text' }, ['In one line, what happened and what you will do', ta]),
+      el('div', { class: 'row' }, [
+        state.guide ? el('button', { type: 'button', id: 'n-draft', onclick: function () { doDraft(id); }, text: 'Draft from the data' }) : null,
+        el('button', { type: 'button', id: 'n-send', class: 'primary', onclick: function () { sendNote(id); }, text: 'Send note' })
+      ])
+    ]);
+    frag.appendChild(form);
+  } else frag.appendChild(el('p', { class: 'empty', text: 'Within tolerance: no note needed this month.' }));
+  if (state.history[id]) frag.appendChild(el('p', { class: 'fine', text: state.history[id] }));
+  return frag;
+}
+function partnerView() {
+  var frag = document.createDocumentFragment(), k = kpis();
+  var tol = el('input', { type: 'number', id: 'tol', min: '0.5', max: '20', step: '0.5', inputmode: 'decimal', value: String(state.tol), onchange: function (e) { var t = Math.max(0.5, Math.min(20, Math.round((+e.target.value || DEFAULT_TOL) * 2) / 2)); state.tol = t; addLog('Finance partner set the variance tolerance to ±' + t + '%.'); render(); toast('Tolerance ±' + t + '%. The board has updated.'); } });
+  frag.appendChild(el('div', { class: 'setrow' }, [el('label', { for: 'tol' }, ['Tolerance (± % of budget)', tol]), el('p', { class: 'fine', style: 'margin:0 0 6px' , text: 'Example setting, not a standard. Each organisation sets its own.' })]));
+  frag.appendChild(el('div', { class: 'pills' }, [
+    el('span', { class: 'pill' + (k.notesMissing ? ' hot' : ' ok'), text: k.notesMissing + ' missing' }),
+    el('span', { class: 'pill wait', text: k.notesReceived + ' received, to agree' }),
+    el('span', { class: 'pill ok', text: k.notesAgreed + ' agreed' })
+  ]));
+  frag.appendChild(el('h3', { class: 'sec', text: 'Cost centres, largest variance first' }));
+  var f = el('div', { class: 'filters', role: 'group', 'aria-label': 'Show' });
+  [['beyond', 'Beyond tolerance'], ['open', 'Needs action'], ['all', 'All cost centres']].forEach(function (x) {
+    f.appendChild(el('button', { type: 'button', id: 'f-' + x[0], 'aria-pressed': String(state.filter === x[0]), onclick: function () { state.filter = x[0]; render(); }, text: x[1] }));
+  });
+  frag.appendChild(f);
+  var list = CCS.filter(function (c) { var st = noteStatus(c.id); return state.filter === 'all' ? true : state.filter === 'open' ? (st === 'missing' || st === 'sentback' || st === 'received') : isBeyond(c.id) || st === 'sentback'; })
+    .sort(function (a, b) { return Math.abs(pos(b.id, MONTH).v) - Math.abs(pos(a.id, MONTH).v); });
+  if (!list.length) frag.appendChild(el('p', { class: 'empty', text: 'Nothing here. Every variance beyond tolerance has an agreed note.' }));
+  var wrap = el('div', { id: 'board' });
+  list.forEach(function (c) {
+    var p = pos(c.id, MONTH), y = ytd(c.id), fc = forecast(c.id), st = noteStatus(c.id), n = state.notes[c.id];
+    var row = el('div', { class: 'crow ' + st, id: 'row-' + c.id }, [
+      el('div', { class: 'hd' }, [el('div', {}, [el('b', { text: c.name }), el('span', { class: 'own', text: c.owner })]), chip(c.id)]),
+      el('div', { class: 'nums' }, [
+        el('div', {}, [el('span', { text: 'Month ' + MONTH }), el('b', { class: Math.abs(p.pct) > state.tol && p.v > 0 ? 'over' : '' }, [kmoney(p.v, true, true), el('small', { text: pct(p.pct, true) })])]),
+        el('div', {}, [el('span', { text: 'Year to date' }), el('b', {}, [kmoney(y.v, true, true), el('small', { text: pct(y.pct, true) })])]),
+        el('div', {}, [el('span', { text: 'Year end' }), el('b', {}, [kmoney(fc.v, true, true), el('small', { text: pct(fc.pct, true) })])])
+      ])
+    ]);
+    if (n && n.text && st !== 'within') row.appendChild(el('p', { class: 'note' }, [el('em', { text: 'Note, day ' + n.day + (n.byGuide ? ', from a guide draft' : '') + ': ' }), n.text]));
+    if (st === 'received') row.appendChild(el('div', { class: 'acts' }, [
+      el('button', { type: 'button', class: 'small primary', id: 'ag-' + c.id, onclick: function () { agree(c.id); }, text: 'Agree note' }),
+      el('button', { type: 'button', class: 'small', id: 'sb-' + c.id, onclick: function () { sendBack(c.id); }, text: 'Ask for more' })
+    ]));
+    if (st === 'missing' || st === 'sentback') row.appendChild(el('p', { class: 'miss', text: (st === 'sentback' ? 'Sent back, waiting for the ' : 'No note yet from the ') + c.owner + '. Due by day ' + DUE + (state.reminded[c.id] ? ' · reminded day ' + state.reminded[c.id] : '') + '.' }));
+    wrap.appendChild(row);
+  });
+  frag.appendChild(wrap);
+  var of = orgForecast(), y = orgSum(ytd);
+  frag.appendChild(el('h3', { class: 'sec', text: 'Forecast to year end' }));
+  frag.appendChild(el('div', { class: 'fbox' }, [
+    el('p', {}, [el('b', { text: 'Method: straight line. ' }), 'Actual so far ÷ ' + MONTH + ' months × ' + MONTHS + '. It assumes the rest of the year looks like the average so far. It does not know about planned changes, such as beds reopening or a new list; a person adjusts for those.']),
+    el('p', { text: 'Actual so far ' + money(y.actual) + ' → forecast ' + money(of.forecast) + ' against an annual budget of ' + money(of.annual) + ': ' + money(of.v, true) + ' (' + pct(of.pct, true) + ').' })
+  ]));
+  return frag;
+}
+function leadView() {
+  var frag = document.createDocumentFragment(), m = orgSum(function (i) { return pos(i, MONTH); }), y = orgSum(ytd), f = orgForecast(), k = kpis();
+  var box = function (h, rows) { var dl = el('dl'); rows.forEach(function (r) { dl.appendChild(el('dt', { text: r[0] })); dl.appendChild(el('dd', { class: r[2] ? 'over' : '', text: r[1] })); }); return el('div', { class: 'sbox' }, [el('h4', { text: h }), dl]); };
+  frag.appendChild(el('p', { class: 'fine', text: 'Amounts in thousands (k) of ' + (state.cur === 'sym' ? 'currency (¤)' : 'currency units') + '.' }));
+  frag.appendChild(el('div', { class: 'sum3' }, [
+    box('Month ' + MONTH, [['Budget', kmoney(m.budget, false, true)], ['Actual', kmoney(m.actual, false, true)], ['Variance', kmoney(m.v, true, true), m.v > 0], ['Of budget', pct(m.pct, true), m.v > 0]]),
+    box('Year to date', [['Budget', kmoney(y.budget, false, true)], ['Actual', kmoney(y.actual, false, true)], ['Variance', kmoney(y.v, true, true), y.v > 0], ['Of budget', pct(y.pct, true), y.v > 0]]),
+    box('Year end (straight line)', [['Budget', kmoney(f.annual, false, true)], ['Forecast', kmoney(f.forecast, false, true)], ['Variance', kmoney(f.v, true, true), f.v > 0], ['Of budget', pct(f.pct, true), f.v > 0]])
+  ]));
+  // Top 5.
+  frag.appendChild(el('h3', { class: 'sec', text: 'Top 5 variances this month, with reasons' }));
+  var top = CCS.slice().sort(function (a, b) { return Math.abs(pos(b.id, MONTH).v) - Math.abs(pos(a.id, MONTH).v); }).slice(0, 5);
+  var ol = el('ol', { class: 'top', id: 'top5' });
+  top.forEach(function (c) {
+    var p = pos(c.id, MONTH), n = state.notes[c.id], st = noteStatus(c.id);
+    var why = n && n.status === 'agreed' ? n.text : n && n.status === 'received' ? 'Note received, not yet agreed: ' + n.text : isBeyond(c.id) ? 'No agreed note yet (' + c.owner + ', due day ' + DUE + ').' : 'Within tolerance; no note needed.';
+    ol.appendChild(el('li', {}, [el('div', {}, [el('b', { text: c.name + ' ' }), chip(c.id), el('span', { class: 'r', text: why })]), el('span', { class: 'v' + (p.v > 0 ? ' over' : ''), text: kmoney(p.v, true, true) + ' · ' + pct(p.pct, true) })]));
+  });
+  frag.appendChild(ol);
+  // Trend chart.
+  frag.appendChild(el('h3', { class: 'sec', text: 'Cost per occupied bed-day, inpatient wards' }));
+  frag.appendChild(trendChart());
+  // Costs that follow activity.
+  frag.appendChild(el('h3', { class: 'sec', id: 'follow-h', text: 'When activity changes, the costs that follow · month ' + MONTH }));
+  var fol = el('div', { class: 'follow' });
+  GROUPS.forEach(function (g) {
+    var ids = CCS.filter(function (c) { return c.kind === g[0]; }).map(function (c) { return c.id; }), act = 0, plan = 0, sb = 0, sa = 0, vol = 0, stb = 0, sta = 0, tv = 0;
+    ids.forEach(function (id) { var d = md(id, MONTH), c = byCc(id); act += d.act; plan += d.planAct; sb += d.b.sup; sa += d.a.sup; vol += (d.act - d.planAct) * c.rate; stb += staff(d.b); sta += staff(d.a); tv += temp(d.a) - temp(d.b); });
+    var ap = (act - plan) / plan * 100, sp = (sa - sb) / sb * 100, vp = vol / sb * 100, tp = (sta - stb) / stb * 100, u = UNIT[g[0]][1];
+    var txt = cap(u) + ' ' + (Math.abs(ap) < 0.5 ? 'on plan' : pct(Math.abs(ap)) + (ap > 0 ? ' above' : ' below') + ' plan') + '. Supplies ' + pct(sp, true) + ': ' + pct(vp, true) + ' follows activity, ' + pct(sp - vp, true) + ' is price or usage. Staff ' + pct(tp, true) + (Math.abs(tv) < 50 ? ', temporary staff on plan.' : ', of which temporary staff ' + kmoney(tv, true) + '.');
+    fol.appendChild(el('div', { class: 'frow' }, [el('h4', { text: g[1] }), el('div', { class: 'fig' }, [
+      el('div', {}, [el('span', { text: cap(u) }), el('b', { text: pct(ap, true) })]),
+      el('div', {}, [el('span', { text: 'Supplies' }), el('b', { text: pct(sp, true) })]),
+      el('div', {}, [el('span', { text: 'Staff' }), el('b', { text: pct(tp, true) })])
+    ]), el('p', { text: txt })]));
+  });
+  frag.appendChild(fol);
+  frag.appendChild(el('p', { class: 'fine', text: 'Against plan. Activity counts come from the event log that the bed board, theatres and emergency department modules write to. Supplies are flexed at the planned cost per unit; staff budgets are treated as fixed.' }));
+  // Sign-off.
+  var sb = el('div', { class: 'signbox', id: 'signbox' });
+  if (state.signed) sb.appendChild(el('p', { text: 'Month ' + MONTH + ' position signed off on day ' + state.signed + '.' }));
+  else if (state.confirmSign) {
+    sb.appendChild(el('p', { text: k.notesMissing + k.notesReceived + ' variance' + (k.notesMissing + k.notesReceived === 1 ? '' : 's') + ' beyond tolerance still without an agreed note. Sign off anyway? They will be listed as open in the pack.' }));
+    sb.appendChild(el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'small primary', id: 'sign-yes', onclick: function () { doSign(); }, text: 'Sign off anyway' }), el('button', { type: 'button', class: 'small', id: 'sign-no', onclick: function () { state.confirmSign = false; render(); }, text: 'Not yet' })]));
+  } else {
+    sb.appendChild(el('p', { text: 'The finance lead signs off the monthly position. ' + (k.notesMissing + k.notesReceived ? (k.notesMissing + k.notesReceived) + ' variance notes are not agreed yet.' : 'Every variance beyond tolerance has an agreed note.') }));
+    sb.appendChild(el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'small primary', id: 'sign', onclick: function () { if (k.notesMissing + k.notesReceived) { state.confirmSign = true; render(); } else doSign(); }, text: 'Sign off month ' + MONTH }) ]));
+  }
+  frag.appendChild(sb);
+  return frag;
+}
+function doSign() { var k = kpis(), open = k.notesMissing + k.notesReceived; state.signed = state.day; state.confirmSign = false; addLog('Finance lead signed off the month ' + MONTH + ' position' + (open ? ' with ' + open + ' variance note' + (open === 1 ? '' : 's') + ' still open, listed in the pack.' : '.')); render(); toast('Signed off and logged.'); }
+function trendChart() {
+  var ids = wardIds(), pts = [];
+  for (var m = 1; m <= MONTH; m++) { var u = unitCost(ids, m); pts.push({ m: m, a: u.actual, p: u.plan }); }
+  var W = 600, H = 210, L = 44, R = 92, Tp = 12, B = 30;
+  var lo = Math.min.apply(null, pts.map(function (x) { return Math.min(x.a, x.p); })), hi = Math.max.apply(null, pts.map(function (x) { return Math.max(x.a, x.p); }));
+  lo = Math.floor((lo - 2) / 5) * 5; hi = Math.ceil((hi + 2) / 5) * 5;
+  var X = function (m) { return L + (m - 1) / (MONTH - 1) * (W - L - R); }, Y = function (v) { return Tp + (hi - v) / (hi - lo) * (H - Tp - B); };
+  var s = svg('svg', { class: 'chart', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Cost per occupied bed-day by month, actual against plan. Month ' + MONTH + ': ' + pts[MONTH - 1].a.toFixed(2) + ' against ' + pts[MONTH - 1].p.toFixed(2) + ' planned.' });
+  for (var g = lo; g <= hi; g += 5) { s.appendChild(svg('line', { class: 'grid', x1: L, x2: W - R, y1: Y(g), y2: Y(g) })); var t = svg('text', { x: L - 8, y: Y(g) + 4, 'text-anchor': 'end' }); t.textContent = g; s.appendChild(t); }
+  pts.forEach(function (x) { var t = svg('text', { x: X(x.m), y: H - 8, 'text-anchor': 'middle' }); t.textContent = 'M' + x.m; s.appendChild(t); });
+  var path = function (k) { return pts.map(function (x, i) { return (i ? 'L' : 'M') + X(x.m).toFixed(1) + ' ' + Y(x[k]).toFixed(1); }).join(' '); };
+  s.appendChild(svg('path', { d: path('p'), fill: 'none', stroke: '#7D8B99', 'stroke-width': 2, 'stroke-dasharray': '6 5' }));
+  s.appendChild(svg('path', { d: path('a'), fill: 'none', stroke: '#0A9396', 'stroke-width': 2, 'stroke-linejoin': 'round' }));
+  pts.forEach(function (x) { s.appendChild(svg('circle', { cx: X(x.m), cy: Y(x.a), r: 4, fill: '#0A9396', stroke: '#fff', 'stroke-width': 2 })); });
+  var last = pts[MONTH - 1], la = svg('text', { x: X(MONTH) + 10, y: Y(last.a) + 4, style: 'fill:#0B2F4E;font-weight:800' }); la.textContent = 'Actual ' + last.a.toFixed(0);
+  var lp = svg('text', { x: X(MONTH) + 10, y: Y(last.p) + (Math.abs(Y(last.p) - Y(last.a)) < 14 ? 18 : 4) }); lp.textContent = 'Plan ' + last.p.toFixed(0);
+  s.appendChild(la); s.appendChild(lp);
+  var cross = svg('line', { x1: 0, x2: 0, y1: Tp, y2: H - B, stroke: '#44607A', 'stroke-width': 1, opacity: 0 }); s.appendChild(cross);
+  var tip = el('div', { class: 'tip', role: 'status' });
+  var show = function (x) {
+    cross.setAttribute('x1', X(x.m)); cross.setAttribute('x2', X(x.m)); cross.setAttribute('opacity', 1);
+    tip.textContent = '';
+    tip.appendChild(el('div', { style: 'font-weight:800;margin-bottom:2px', text: 'Month ' + x.m }));
+    tip.appendChild(el('div', {}, [el('span', { class: 'k' }), el('b', { text: upc(x.a) }), ' actual']));
+    tip.appendChild(el('div', {}, [el('span', { class: 'k plan' }), el('b', { text: upc(x.p) }), ' plan']));
+    tip.style.display = 'block';
+    var bw = s.getBoundingClientRect().width / W, left = X(x.m) * bw + 12;
+    if (left + 170 > s.getBoundingClientRect().width) left = X(x.m) * bw - 172;
+    tip.style.left = Math.max(0, left) + 'px'; tip.style.top = (Y(x.a) * bw + 10) + 'px';
+  };
+  var hide = function () { tip.style.display = 'none'; cross.setAttribute('opacity', 0); };
+  pts.forEach(function (x) {
+    var w = (W - L - R) / (MONTH - 1), r = svg('rect', { class: 'hit', x: X(x.m) - w / 2, y: Tp, width: w, height: H - Tp - B, tabindex: 0, 'aria-label': 'Month ' + x.m + ': ' + x.a.toFixed(2) + ' actual, ' + x.p.toFixed(2) + ' plan' });
+    r.addEventListener('pointerenter', function () { show(x); }); r.addEventListener('pointermove', function () { show(x); }); r.addEventListener('pointerleave', hide);
+    r.addEventListener('focus', function () { show(x); }); r.addEventListener('blur', hide);
+    s.appendChild(r);
+  });
+  var tb = el('tbody');
+  pts.forEach(function (x) { tb.appendChild(el('tr', {}, [el('td', { text: 'Month ' + x.m }), el('td', { class: 'r', text: upc(x.a) }), el('td', { class: 'r', text: upc(x.p) }), el('td', { class: 'r', text: pct((x.a - x.p) / x.p * 100, true) })])); });
+  var wrap = el('div', {}, [
+    el('div', { class: 'legend' }, [el('span', {}, [el('i'), 'Actual']), el('span', {}, [el('i', { class: 'plan' }), 'Plan (budget ÷ planned bed-days)'])]),
+    el('div', { class: 'chartbox' }, [s, tip]),
+    el('details', { class: 'tbl' }, [el('summary', { text: 'Show as a table' }), el('div', { class: 'tablewrap' }, [el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Month' }), el('th', { class: 'r', text: 'Actual' }), el('th', { class: 'r', text: 'Plan' }), el('th', { class: 'r', text: 'Difference' })])]), tb])])]),
+    el('p', { class: 'fine', text: 'All ward costs ÷ occupied bed-days from the event log, per month. Plan is flat because this example budget is the same every month.' })
+  ]);
+  return wrap;
+}
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Budgets, the variance board, notes, forecasts and the measures all work without it; budget holders write notes themselves.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag for this view: variances are explained or within tolerance.' }));
+  list.forEach(function (sg) {
+    var pend = state.pending.some(function (p) { return p.id === sg.id; });
+    var acts = sg.acts.map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend && a.primary ? 'disabled' : false, onclick: a.fn, text: pend && a.primary ? 'Proposed' : a.label }); });
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
+      el('span', { class: 'tag ' + (sg.kind === 'time' ? 'time' : sg.kind === 'ask' || sg.kind === 'review' ? 'ask' : ''), text: sg.tag }),
+      el('h3', { text: sg.title }), sg.text ? el('p', { text: sg.text }) : null,
+      sg.list && sg.list.length ? el('ul', {}, sg.list.map(function (x) { return el('li', { text: x }); })) : null,
+      el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  if (state.pending.length) {
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for the finance partner to decide' })]);
+    state.pending.forEach(function (p) {
+      d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }),
+        state.role === 'partner'
+          ? el('div', { class: 'acts', style: 'display:flex;gap:8px;flex-wrap:wrap' }, [el('button', { type: 'button', class: 'small primary', onclick: function () { decide(p, true); }, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])
+          : el('p', { class: 'why', style: 'margin:0;color:var(--soft);font-size:0.85rem', text: 'Switch to the Finance partner view to confirm or decline.' })]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Drafts go to the budget holder to edit; proposals wait here for the finance partner.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 25).forEach(function (e) { ol.appendChild(el('li', { class: e.at && e.at === lastLog && Date.now() - e.at < 5000 ? 'new' : '' }, [el('time', {}, [e.hm, el('small', { text: 'day ' + e.day })]), el('span', { text: e.text })])); });
+}
+
+// ---------- Wiring ----------
+['holder', 'partner', 'lead'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('cur').addEventListener('change', function (e) { state.cur = e.target.value; render(); });
+document.getElementById('t-day').addEventListener('click', function () {
+  state.day = state.day > DUE ? 5 : 9;
+  addLog('Demo: moved to day ' + state.day + (state.day > DUE ? ', past the day ' + DUE + ' due date for notes.' : '.'));
+  render(); toast(state.day > DUE ? 'Day 9. Notes still missing are now late.' : 'Back to day 5.');
+});
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role, cur = state.cur; state = seed(); state.role = role; state.cur = cur; render(); toast('Example reset to the start of the demo.'); });
+
+// Read-only view for software agents (no writes): window.ospeliFinanceDemo
+window.ospeliFinanceDemo = Object.freeze({
+  describe: function () { return 'Read-only finance and budgets demo for a fictional hospital. Amounts are generic currency units. get() returns cost centres with budget, actual, variance, activity, note status and straight-line forecast; kpis() the measures; suggestions() the guide\'s current suggestions. Runs in the browser; nothing is sent anywhere.'; },
+  get: function () {
+    return clone({ role: state.role, period: 'Month ' + MONTH + ' of ' + MONTHS, day: state.day, notesDueDay: DUE, tolerancePct: state.tol, currency: 'generic currency units',
+      costCentres: CCS.map(function (c) { var p = pos(c.id, MONTH), d = md(c.id, MONTH), y = ytd(c.id), f = forecast(c.id), n = state.notes[c.id];
+        return { id: c.id, name: c.name, owner: c.owner, activityUnit: UNIT[c.kind][1], activity: d.act, activityPlan: d.planAct, budget: p.budget, actual: p.actual, variance: p.v, variancePct: round1(p.pct),
+          lines: { budget: d.b, actual: d.a }, ytdVariancePct: round1(y.pct), forecastYearEndVariance: Math.round(f.v), beyondTolerance: isBeyond(c.id), noteStatus: noteStatus(c.id), note: n ? n.text : null }; }),
+      pendingDecisions: state.pending.map(function (p) { return p.text; }), signedOff: !!state.signed });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text || (s.list || []).join('; '), why: s.why }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>

@@ -17,6 +17,10 @@
 - [Patient transport and transfers preview](https://ospeli.com/demo/transport/): Book a transfer from the ward, a dispatch desk with vehicles and crews, crew status on a phone, and fleet checks for the manager. Fictional data.
 - [Diagnostics: imaging and laboratory preview](https://ospeli.com/demo/diagnostics/): Where each sample or scan is, step by step; lab reception, imaging bookings, equipment status and turnaround by step. Never shows results. Fictional data.
 - [Emergency preparedness and continuity preview](https://ospeli.com/demo/continuity/): Readiness checklists, a printable downtime pack, incident mode with action cards and a decision log, and a switch to show it keeps working offline. Fictional data.
+- [Pharmacy operations preview](https://ospeli.com/demo/pharmacy/): Ward requests and discharge medicines status, a dispensary queue by stage, and turnaround, stock and expiry for the manager. Never chooses medicines or doses. Fictional data.
+- [Patient experience and feedback preview](https://ospeli.com/demo/feedback/): A three-question card for patients and visitors, themes and "you said, we did" for department leads, and complaints by stage and due date. Fictional data.
+- [IT, digital and cyber preview](https://ospeli.com/demo/it-digital/): Report an IT problem, a systems status banner, a service desk queue with downtime switches, and access reviews and an audit view for the data protection lead. Fictional data.
+- [Finance and budgets preview](https://ospeli.com/demo/finance/): A budget holder's month against plan with the reasons behind it, variance notes for the finance partner, and cost per occupied bed day for leadership. Fictional data.
 - [All 30 areas](https://ospeli.com/areas/): what each area of hospital operations will do, who uses it, what it records, its measures and its AI assistant commands; spec in https://ospeli.com/areas/areas.json.
 - [Front page](https://ospeli.com/): what Ospeli is, its modules, how a pilot runs, and its governance rules.
 
