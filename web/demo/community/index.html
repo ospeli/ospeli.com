@@ -1,0 +1,1030 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Primary and community care demo · Ospeli</title>
+<meta name="description" content="Home visit rounds and clinic lists on a phone that keep working offline, a health centre view of sessions, follow-ups, stock and hospital referrals, and a district view of community places. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Primary and community care demo · Ospeli">
+<meta property="og:description" content="Home visit rounds and clinic lists on a phone that keep working offline, a health centre view of sessions, follow-ups, stock and hospital referrals, and a district view of community places. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/community/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button { font: inherit; color: var(--ink); }
+select, input[type=number] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 38px; padding: 4px 12px; font-size: 0.88rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 560px) { .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 14px; width: 100%; } .roles button { padding: 6px 4px; font-size: 0.92rem; line-height: 1.2; } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 12px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.clocknow { font-weight: 800; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-variant-numeric: tabular-nums; font-size: 0.88rem; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.viewcard { display: flex; flex-direction: column; }
+.viewcard > * { min-width: 0; }
+.viewcard.front .kpiwrap { order: 3; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
+.viewcard.front #view { order: 2; }
+.cardhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; order: 0; }
+.kpiwrap { order: 1; margin-bottom: 4px; }
+#view { order: 2; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.88rem; font-weight: 700; display: block; }
+.stat .n { color: var(--soft); font-size: 0.78rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.8rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stathint { color: var(--soft); font-size: 0.78rem; margin: 6px 0 0; }
+/* network */
+.netbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; }
+.nettoggle { display: inline-flex; align-items: center; gap: 10px; border-color: #CFC5B2; padding: 8px 14px 8px 10px; font-size: 0.95rem; }
+.nettoggle .knob { width: 40px; height: 24px; border-radius: 999px; background: #D9D1C2; position: relative; flex: none; transition: background 0.15s; }
+.nettoggle .knob::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left 0.15s; }
+.nettoggle[aria-pressed=true] { border-color: var(--coral); }
+.nettoggle[aria-pressed=true] .knob { background: var(--coral); }
+.nettoggle[aria-pressed=true] .knob::after { left: 19px; }
+.syncpill { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 12px; font-weight: 800; font-size: 0.9rem; background: var(--wash); }
+.syncpill .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--sea); flex: none; }
+.syncpill.off { background: var(--hot); color: #8E2C18; }
+.syncpill.off .dot { background: var(--coral); }
+.syncpill.busy .dot { background: var(--mango); animation: pulse 0.8s infinite alternate; }
+@keyframes pulse { to { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .syncpill.busy .dot { animation: none; } }
+.offbanner { background: var(--navy); color: #fff; border-radius: 12px; padding: 10px 14px; margin: 0 0 12px; font-size: 0.95rem; }
+.offbanner b { color: #FFD38A; }
+.syncnote { background: var(--warn); border-radius: 10px; padding: 8px 12px; font-size: 0.9rem; margin: 0 0 12px; }
+/* segmented */
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #CFC5B2; border-radius: 12px; overflow: hidden; margin: 0 0 12px; background: #fff; }
+.seg button { border: 0; border-radius: 0; min-height: 46px; font-size: 0.98rem; }
+.seg button + button { border-left: 1px solid #CFC5B2; }
+.seg button[aria-pressed=true] { background: var(--sea); color: #fff; }
+.summary { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 0.95rem; font-weight: 700; background: var(--sand); }
+.pill.good { background: var(--wash); }
+.pill.hot { background: var(--hot); color: #B23A22; }
+/* visit cards */
+.jobs { display: grid; gap: 10px; }
+.job { border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 12px; padding: 12px; background: #fff; font-size: 1rem; }
+.job.a-old { border-left-color: var(--mango); } .job.a-riv { border-left-color: var(--navy); } .job.a-hill { border-left-color: var(--foam); }
+.job.next { box-shadow: 0 0 0 2px var(--sea) inset; background: #F7FBFA; }
+.job .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.job .kind { font-weight: 800; font-size: 0.95rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip { display: inline-block; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; background: var(--sand); }
+.chip.next { background: var(--navy); color: #fff; }
+.chip.q { background: var(--warn); color: #7A4B00; }
+.chip.st-arrived { background: var(--wash); } .chip.st-seen { background: var(--sea); color: #fff; } .chip.st-nothome, .chip.st-dna { background: var(--hot); color: #8E2C18; } .chip.st-resched { background: var(--warn); }
+.timebox { text-align: right; font-weight: 800; font-size: 1.1rem; line-height: 1.1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.timebox small { display: block; font-size: 0.75rem; font-weight: 700; color: var(--soft); }
+.job .where { font-size: 1.12rem; font-weight: 800; margin: 6px 0 2px; line-height: 1.3; }
+.job .meta { color: var(--soft); font-size: 0.95rem; margin: 0; }
+.job .note { font-size: 0.95rem; margin: 6px 0 0; background: var(--warn); border-radius: 8px; padding: 4px 8px; }
+.job .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.job .acts .go { flex: 1 1 100%; min-height: 52px; font-size: 1.05rem; }
+.job .acts .go.arrive { background: var(--sea); border-color: var(--sea); color: #fff; }
+.job .acts .go.done { background: var(--mango); border-color: var(--mango); color: var(--navy); }
+.job .acts.row3 button { flex: 1 1 0; min-height: 48px; font-size: 0.9rem; padding: 4px 6px; white-space: nowrap; }
+.job .acts .alt { flex: 1 1 0; min-height: 48px; font-size: 0.98rem; padding: 8px 8px; }
+.job.compact { padding: 10px 12px; }
+.job.compact .where { font-size: 1.02rem; margin: 2px 0; }
+.donelist { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.donelist li { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 0.95rem; border-bottom: 1px dashed var(--line); padding: 6px 0; }
+.donelist li span:first-child { min-width: 0; }
+.empty { text-align: center; color: var(--soft); padding: 16px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; margin: 0; }
+.fu { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 10px; border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.fu b { display: block; }
+.fu .sub { color: var(--soft); font-size: 0.9rem; }
+.fu > div { flex: 1 1 180px; min-width: 0; }
+.fu button { flex: 0 0 auto; }
+/* manager + district */
+.pickbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin: 0 0 6px; }
+.pickbar label { font-weight: 800; display: flex; flex-direction: column; gap: 4px; font-size: 0.95rem; }
+.rows { display: grid; gap: 8px; }
+.row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; font-size: 0.92rem; }
+.row.hot { background: #FFF8F5; border-color: #F3C9BC; }
+.row b { display: block; }
+.row .sub { color: var(--soft); font-size: 0.84rem; }
+.row .acts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+@media (max-width: 520px) { .row { grid-template-columns: minmax(0, 1fr); } .row .acts { justify-content: flex-start; } }
+table.t { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+table.t th, table.t td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); }
+table.t th { color: var(--soft); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em; }
+table.t td.r, table.t th.r { text-align: right; font-variant-numeric: tabular-nums; }
+table.t tr.hot td { background: #FFF8F5; }
+table.t td.hi { color: #B23A22; font-weight: 800; }
+.tablewrap { overflow-x: auto; }
+.days { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 900px) { .days { grid-template-columns: minmax(0, 1fr); } }
+.day h4 { margin: 0 0 6px; font-size: 0.9rem; }
+.day h4 span { color: var(--soft); font-weight: 700; font-size: 0.8rem; }
+.day.today h4 { color: var(--sea); }
+.sess { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; font-size: 0.86rem; }
+.sess.cancelled { background: #F7F3EC; color: var(--soft); }
+.sess.cancelled b { text-decoration: line-through; }
+.sess b { display: block; font-size: 0.9rem; line-height: 1.25; }
+.sess .sub { color: var(--soft); font-size: 0.8rem; }
+.bar { height: 8px; border-radius: 999px; background: var(--sand); overflow: hidden; margin: 5px 0 3px; }
+.bar i { display: block; height: 100%; background: var(--sea); }
+.bar.warn i { background: var(--mango); }
+.bar.bad i { background: var(--coral); }
+.sess .cx { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.sess .cx select { min-height: 38px; padding: 4px 6px; font-size: 0.82rem; flex: 1 1 100%; }
+.sess .cx button { flex: 0 0 auto; padding: 4px 12px; }
+.row > .chip { justify-self: start; }
+@media (max-width: 520px) { table.t { font-size: 0.84rem; } table.t th, table.t td { padding: 6px 4px; } }
+.stock { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; gap: 10px; align-items: center; border-bottom: 1px dashed var(--line); padding: 8px 0; font-size: 0.92rem; }
+.stock .sub { color: var(--soft); font-size: 0.82rem; display: block; }
+.stock .dl { font-weight: 800; font-variant-numeric: tabular-nums; font-size: 0.85rem; }
+.stock.low .dl { color: #B23A22; }
+@media (max-width: 520px) { .stock { grid-template-columns: minmax(0, 1fr) auto; } .stock .meter { grid-column: 1 / -1; order: 3; } }
+.domains { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+.domain { border: 1px solid var(--line); border-radius: 12px; padding: 10px; }
+.domain h4 { margin: 0 0 6px; font-size: 0.88rem; display: flex; justify-content: space-between; gap: 6px; }
+.domain h4 span { color: var(--soft); }
+.ritem { display: flex; width: 100%; align-items: center; gap: 8px; text-align: left; border: 0; border-radius: 8px; padding: 6px 6px; min-height: 40px; font-weight: 700; font-size: 0.88rem; background: transparent; }
+.ritem .box { width: 20px; height: 20px; border-radius: 6px; border: 2px solid #CFC5B2; flex: none; display: grid; place-items: center; }
+.ritem[aria-pressed=true] .box { background: var(--sea); border-color: var(--sea); }
+.ritem[aria-pressed=false] { color: #8E2C18; }
+.ritem:hover { background: var(--sand); }
+.ritem[disabled] { opacity: 1; cursor: default; }
+.centres { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 900px) { .centres { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 460px) { .centres { grid-template-columns: minmax(0, 1fr); } }
+.centre { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.centre h4 { margin: 0 0 6px; font-size: 0.95rem; }
+.metric { font-size: 0.82rem; margin-bottom: 6px; }
+.metric .mh { display: flex; justify-content: space-between; gap: 6px; font-weight: 700; color: var(--soft); }
+.metric .mh b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.metric.worst .mh b { color: #B23A22; }
+.places { display: grid; gap: 12px; }
+.svc h4 { margin: 0 0 4px; font-size: 0.95rem; display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; }
+.svc h4 span { color: var(--soft); font-weight: 700; font-size: 0.82rem; }
+.slots { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+.slot { width: 22px; height: 22px; border-radius: 6px; background: var(--navy); }
+.slot.free { background: #fff; border: 2px solid var(--sea); }
+.slot.held { background: var(--mango); }
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 0.8rem; color: var(--soft); margin: 0 0 6px; }
+.legend span { display: inline-flex; align-items: center; gap: 5px; }
+.legend .slot { width: 14px; height: 14px; border-radius: 4px; }
+details.set { margin-top: 14px; }
+details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.targets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+@media (max-width: 640px) { .targets { grid-template-columns: minmax(0, 1fr); } }
+.targets label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 700; color: var(--soft); }
+.targets input { width: 100%; }
+.fine { font-size: 0.82rem; color: var(--soft); margin: 8px 0 0; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.82rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg ul { margin: 0 0 8px; padding-left: 18px; font-size: 0.88rem; }
+.sugg .why { color: var(--soft); font-size: 0.82rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin: 4px 0 0; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+.prop .who { color: var(--soft); font-size: 0.82rem; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+ol.log .qd { display: inline-block; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; background: var(--warn); border-radius: 999px; padding: 0 6px; margin-left: 4px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+#headtools select { font-weight: 800; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Primary and community care: visits, clinics, follow-ups and community places</h1>
+  <p class="lead">Home visit rounds and clinic lists on a phone that keeps working without a signal. Health centre managers see sessions, follow-ups, stock and referrals from the hospital in one place. The district manager compares centres as rates and sees which community places are free for patients ready to leave hospital. The guide points things out; a person decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-front" aria-pressed="false">Nurse or clinic</button>
+    <button type="button" id="r-manager" aria-pressed="false">Centre manager</button>
+    <button type="button" id="r-district" aria-pressed="false">District manager</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <span class="clocknow" id="clocknow"></span>
+    <b>Demo tools:</b>
+    <button type="button" class="small" id="t-clock">Move clock on 30 min</button>
+    <button type="button" class="small" id="t-referral">Hospital sends a referral</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card viewcard" id="viewcard" aria-labelledby="view-h">
+        <div class="cardhead"><h2 id="view-h">Today</h2><div id="headtools"></div></div>
+        <div class="kpiwrap"><div class="stats" id="kpis"></div><p class="stathint" id="kpihint">Tap a tile for its definition.</p></div>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h" style="margin-bottom:10px">What happened today</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads the visit round, the follow-up register, sessions, stock and community places, and suggests where to look, with its reasons. In this preview it uses clear rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal. A named role confirms or declines it.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: the community services of Example General Hospital, its four health centres, areas, sessions and times. Patients appear only as codes. It measures visits, sessions, follow-ups and waits, never individual staff, and it does not judge clinical control, change treatment or decide who is clinically eligible for a place. Coming in Mar 2027: clinic sessions, visit rounds and follow-up lists sharing one log, with wards able to see community and step-down capacity and placement waits timed. <a href="../../areas/community-care/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var STORE = 'ospeli.community.v1';
+var DAY = 1440, TODAY = 1; // demo week: Monday is day 0, today is Tuesday
+var START = TODAY * DAY + 11 * 60 + 40; // demo clock starts at 11:40 on Tuesday
+var DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+// ---------- Fixed reference data (fictional) ----------
+var CENTRES = { N: 'North Health Centre', E: 'East Health Centre', S: 'South Health Centre', W: 'West Health Centre' };
+var CIDS = ['N', 'E', 'S', 'W'];
+var PROGS = { ltc: 'Long-term conditions', child: 'Child health', wound: 'Wound care', mat: 'Maternal and newborn', older: 'Older adults at home' };
+var PIDS = ['ltc', 'child', 'wound', 'mat', 'older'];
+var AREAS = { old: 'Old Town', riv: 'Riverside', hill: 'Hilltop' };
+var SERVICES = { step: 'Step-down beds', home: 'Home-care packages', ltp: 'Long-term places' };
+var DOMAINS = [
+  { k: 'amen', name: 'Basic amenities', items: [['power', 'Power'], ['water', 'Clean water'], ['toilet', 'Patient toilet'], ['comms', 'Phone or radio link']] },
+  { k: 'equip', name: 'Basic equipment', items: [['scale', 'Scales'], ['bp', 'Blood pressure device'], ['thermo', 'Thermometer'], ['light', 'Examination light']] },
+  { k: 'prec', name: 'Standard precautions', items: [['steril', 'Sterilisation'], ['sharps', 'Sharps disposal'], ['gloves', 'Gloves in stock', 'gloves'], ['rub', 'Hand rub in stock', 'rub']] },
+  { k: 'diag', name: 'Diagnostic capacity', items: [['glu', 'Blood glucose test', 'strips'], ['urine', 'Urine test'], ['hb', 'Haemoglobin test']] },
+  { k: 'meds', name: 'Medicines', items: [['basket', 'Tracer medicines list complete'], ['cold', 'Cold chain working']] }
+];
+var STOCK = [['dress', 'Dressing packs', 'packs'], ['gloves', 'Examination gloves', 'boxes'], ['strips', 'Glucose test strips', 'tubs'], ['syr', 'Syringes and needles', 'boxes'], ['rub', 'Hand rub', 'bottles']];
+// Example settings for this demo only, not a standard: each organisation sets its own.
+var DEFAULT_SET = { recallAt: 5, stockDays: 10, acceptHours: 24 };
+
+// Small seeded random generator so the example is the same on every visit.
+function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// ---------- State ----------
+function seed() {
+  var R = rng(20261110), code = function () { return 'P-' + (1000 + Math.floor(R() * 8999)); };
+  var s = { v: 1, created: Date.now(), offset: 0, role: window.matchMedia('(max-width: 640px)').matches ? 'front' : 'manager', mode: 'visits', centre: 'N',
+    guide: true, kpiOpen: null, offline: false, queue: [], syncing: false, lastSync: START - 6, settings: Object.assign({}, DEFAULT_SET),
+    pending: [], dismissed: {}, log: [], seq: 100, resched: null,
+    visits: [], clinic: [], fu: [], sessions: [], stock: {}, ready: {}, refs: [], places: [], waits: [], week: {}, waitOther: { E: 24, S: 15, W: 31 } };
+  var T = TODAY * DAY, hm = function (h, m) { return T + h * 60 + m; };
+  // Today's home visit round for one community nursing team at North Health Centre (planned order).
+  [['P-3104', 'hill', 'Blue gate, ring twice', 'wound', hm(8, 30), 'seen', hm(8, 41), hm(9, 5)],
+   ['P-2259', 'riv', 'Flat 2, ground floor', 'older', hm(9, 15), 'seen', hm(9, 28), hm(9, 52)],
+   ['P-4471', 'hill', 'House behind the corner shop', 'ltc', hm(10, 0), 'nothome', hm(10, 14), hm(10, 14)],
+   ['P-1836', 'old', 'Side door, dog in the yard', 'wound', hm(10, 45), 'seen', hm(10, 58), hm(11, 21)],
+   ['P-5012', 'riv', 'Top floor, lift often out of order', 'mat', hm(11, 30), 'planned'],
+   ['P-2790', 'hill', 'Green door at the top of the steps', 'older', hm(12, 15), 'planned'],
+   ['P-3348', 'old', 'Ask at the pharmacy for the yard key', 'ltc', hm(13, 0), 'planned'],
+   ['P-4105', 'riv', 'Back entrance by the car park', 'wound', hm(13, 45), 'planned'],
+   ['P-1977', 'hill', 'Second house past the school', 'mat', hm(14, 30), 'planned'],
+   ['P-2611', 'old', 'Knock loudly, hard of hearing', 'older', hm(15, 15), 'planned']
+  ].forEach(function (r, i) { s.visits.push({ id: 'V' + (i + 1), code: r[0], area: r[1], note: r[2], prog: r[3], plan: r[4], status: r[5], arr: r[6] || null, done: r[7] || null, order: i + 1, fu: null, when: null }); });
+  // Today's clinic list at North Health Centre.
+  var am = [[9, 0, 'seen', 8, 52, 10], [9, 15, 'seen', 9, 13, 21], [9, 30, 'dna'], [9, 45, 'seen', 9, 41, 22], [10, 0, 'seen', 9, 58, 12], [10, 15, 'seen', 10, 9, 18],
+            [10, 30, 'seen', 10, 31, 15], [10, 45, 'seen', 10, 44, 27], [11, 0, 'seen', 10, 57, 31], [11, 15, 'arrived', 11, 12], [11, 30, 'arrived', 11, 33], [11, 45, 'booked']];
+  am.forEach(function (r, i) { var c = { id: 'C' + (i + 1), code: code(), sess: 'am', prog: 'ltc', slot: hm(r[0], r[1]), status: r[2], arr: r[3] != null ? hm(r[3], r[4]) : null, seen: null };
+    if (r[2] === 'seen') c.seen = c.arr + r[5]; s.clinic.push(c); });
+  [[13, 30], [13, 45], [14, 0], [14, 15], [14, 30], [14, 45], [15, 0], [15, 15]].forEach(function (r, i) { s.clinic.push({ id: 'C' + (20 + i), code: code(), sess: 'pm', prog: 'child', slot: hm(r[0], r[1]), status: 'booked', arr: null, seen: null }); });
+  // Follow-up register for each centre: due in the last four weeks and the next few days.
+  var miss = { N: { ltc: 0.34, child: 0.1, wound: 0.12, mat: 0.08, older: 0.06 }, E: { ltc: 0.14, child: 0.36, wound: 0.1, mat: 0.12, older: 0.06 },
+               S: { ltc: 0.08, child: 0.07, wound: 0.06, mat: 0.05, older: 0.04 }, W: { ltc: 0.16, child: 0.12, wound: 0.22, mat: 0.18, older: 0.08 } };
+  var fid = 0;
+  CIDS.forEach(function (c) {
+    for (var d = -27; d <= 5; d++) {
+      if (((d % 7) + 7) % 7 >= 5) continue; // weekdays only
+      PIDS.forEach(function (p) {
+        var n = (p === 'ltc' || (c === 'E' && p === 'child') ? 2 : 0) + (R() < 0.6 ? 1 : 0);
+        for (var i = 0; i < n; i++) {
+          var f = { id: 'F' + (++fid), centre: c, code: code(), prog: p, due: d, status: 'due', booked: null, mine: false };
+          if (d < TODAY) { if (R() < miss[c][p]) { f.status = 'missed'; if (R() < 0.3) { f.status = 'rebooked'; f.booked = TODAY + 1 + Math.floor(R() * 3); } } else f.status = 'attended'; }
+          else if (d === TODAY) continue;
+          else if (R() < 0.7) { f.status = 'booked'; f.booked = d; }
+          s.fu.push(f);
+        }
+      });
+    }
+  });
+  // Follow-ups linked to today's visits, and due soon on this team's caseload.
+  [['V3', 'nothome'], ['V5'], ['V7']].forEach(function (x) { var v = byIdIn(s.visits, x[0]); var f = { id: 'F' + (++fid), centre: 'N', code: v.code, prog: v.prog, due: TODAY, status: x[1] === 'nothome' ? 'missed' : 'due', booked: null, mine: true, visit: v.id }; v.fu = f.id; s.fu.push(f); });
+  [['P-2048', 'riv', 'wound', 2], ['P-3561', 'old', 'older', 2], ['P-4720', 'riv', 'ltc', 3], ['P-1593', 'hill', 'mat', 4]].forEach(function (x) { s.fu.push({ id: 'F' + (++fid), centre: 'N', code: x[0], area: x[1], prog: x[2], due: x[3], status: 'due', booked: null, mine: true }); });
+  // Clinic sessions this week for each centre.
+  var sid = 0;
+  CIDS.forEach(function (c) {
+    for (var d = 0; d < 5; d++) {
+      [['am', 'ltc', 'Room 1', 12], ['am', 'wound', 'Nurse room', 8], ['pm', d % 2 ? 'mat' : 'child', 'Room 2', d % 2 ? 8 : 10]].forEach(function (t) {
+        var x = { id: 'S' + (++sid), centre: c, day: d, part: t[0], prog: t[1], room: t[2], cap: t[3], booked: 0, status: 'planned', reason: null };
+        if (d < TODAY) { x.status = 'held'; x.booked = t[3] - Math.floor(R() * 2); }
+        else if (d === TODAY) { x.status = t[0] === 'am' ? 'held' : 'planned'; x.booked = t[3] - Math.floor(R() * 3); }
+        else x.booked = Math.round(t[3] * (0.45 + R() * 0.35));
+        if (c === 'N' && d === TODAY && t[1] === 'ltc') x.booked = 12;
+        if (c === 'N' && d === TODAY && t[0] === 'pm') x.booked = 8;
+        s.sessions.push(x);
+      });
+    }
+  });
+  var cxl = s.sessions.filter(function (x) { return x.centre === 'E' && x.day === 0 && x.part === 'pm'; })[0]; cxl.status = 'cancelled'; cxl.reason = 'Staff absence';
+  var cxl2 = s.sessions.filter(function (x) { return x.centre === 'W' && x.day === 0 && x.prog === 'wound'; })[0]; cxl2.status = 'cancelled'; cxl2.reason = 'Room unavailable';
+  // Stock of key items (on hand and typical use per day) and readiness checks.
+  var stockSeed = { N: [40, 9, 3, 14, 6], E: [22, 7, 9, 3, 11], S: [55, 12, 10, 16, 14], W: [12, 6, 8, 9, 2] }, use = [4, 0.5, 0.4, 0.6, 0.5];
+  CIDS.forEach(function (c) {
+    s.stock[c] = STOCK.map(function (x, i) { return { k: x[0], onHand: stockSeed[c][i], perDay: use[i], req: false }; });
+    var r = {}; DOMAINS.forEach(function (d) { d.items.forEach(function (it) { if (!it[2]) r[it[0]] = true; }); });
+    if (c === 'N') { r.hb = false; }
+    if (c === 'E') { r.comms = false; r.light = false; }
+    if (c === 'W') { r.cold = false; r.urine = false; r.water = false; }
+    s.ready[c] = r;
+  });
+  // Visits completed as planned earlier this week (Monday), per centre: [planned, completed on the day].
+  s.week = { N: [11, 9], E: [14, 10], S: [9, 9], W: [12, 8] };
+  // Referrals received from the hospital for community services, per centre.
+  var rid = 0, svc = ['Home nursing', 'Wound care', 'Long-term conditions review', 'Maternal and newborn visits'];
+  CIDS.forEach(function (c, ci) {
+    for (var i = 0; i < 6; i++) { var recv = (TODAY - 1 - Math.floor(R() * 9)) * DAY + 9 * 60 + Math.floor(R() * 420); s.refs.push({ id: 'R' + (++rid), centre: c, code: code(), service: svc[Math.floor(R() * 4)], recv: recv, acc: recv + Math.round((4 + R() * (c === 'W' ? 40 : 22)) * 60), status: 'accepted' }); }
+    [[-1, 15 * 60 + 10 + ci * 7], [0, 9 * 60 + 5 + ci * 11]].forEach(function (x, j) { if (c === 'S' && j === 0) return; s.refs.push({ id: 'R' + (++rid), centre: c, code: code(), service: svc[(ci + j) % 4], recv: (TODAY + x[0]) * DAY + x[1], acc: null, status: 'received' }); });
+  });
+  // Community places and hospital referrals waiting for one (district).
+  var pid = 0;
+  [['step', 10, 7, 1], ['home', 14, 12, 0], ['ltp', 6, 6, 0]].forEach(function (x) { for (var i = 0; i < x[1]; i++) s.places.push({ id: 'PL' + (++pid), svc: x[0], n: i + 1, state: i < x[2] ? 'occupied' : i < x[2] + x[3] ? 'held' : 'free', ref: null }); });
+  s.placeRefs = [
+    { id: 'H1', code: code(), svc: 'step', accepted: (TODAY - 2) * DAY + 10 * 60 + 20, started: null, place: null },
+    { id: 'H2', code: code(), svc: 'step', accepted: TODAY * DAY + 9 * 60 + 10, started: null, place: null },
+    { id: 'H3', code: code(), svc: 'home', accepted: (TODAY - 3) * DAY + 14 * 60 + 5, started: null, place: null },
+    { id: 'H4', code: code(), svc: 'ltp', accepted: (TODAY - 6) * DAY + 11 * 60 + 45, started: null, place: null }
+  ];
+  var held = s.places.filter(function (p) { return p.state === 'held'; })[0]; held.ref = 'H2'; s.placeRefs[1].place = held.id;
+  s.waits = [3.1, 5.4, 2.2, 4.0, 6.3, 1.4, 2.9, 7.8, 2.6, 4.4]; // days, accepted → place started, recent placements (fictional)
+  // Build today's log from the seeded events, in time order.
+  var ev = [];
+  s.visits.forEach(function (v) { if (v.arr) ev.push([v.arr, 'Community nurse arrived: ' + v.code + ', ' + AREAS[v.area]]); if (v.status === 'seen') ev.push([v.done, 'Visit done: ' + v.code + ' (' + PROGS[v.prog] + ')']); if (v.status === 'nothome') ev.push([v.done, 'Not home: ' + v.code + '. Follow-up recorded as missed.']); });
+  s.clinic.forEach(function (c) { if (c.arr) ev.push([c.arr, 'Checked in at North Health Centre: ' + c.code]); if (c.seen) ev.push([c.seen, 'Seen: ' + c.code + ' (waited ' + (c.seen - c.arr) + ' min)']); if (c.status === 'dna') ev.push([c.slot + 20, 'Did not attend: ' + c.code + '. Added to recalls.']); });
+  s.refs.forEach(function (r) { if (Math.floor(r.recv / DAY) === TODAY) ev.push([r.recv, 'Referral received from Example General Hospital: ' + r.code + ', ' + r.service + ' (' + CENTRES[r.centre] + ')']); });
+  ev.push([hm(8, 2), 'North Health Centre opened. Readiness check done by the centre manager.']);
+  ev.push([hm(8, 20), 'Community nurse round synced to the phone: 10 visits.']);
+  ev.push([hm(9, 10), 'Placement coordinator accepted ' + s.placeRefs[1].code + ' for a step-down bed and held place 8.']);
+  ev.sort(function (a, b) { return b[0] - a[0]; });
+  s.log = ev.filter(function (e) { return e[0] <= START; }).map(function (e) { return { t: e[0], text: e[1] }; });
+  return s;
+}
+function byIdIn(list, id) { return list.filter(function (x) { return x.id === id; })[0]; }
+
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE));
+    if (!s || s.v !== 1 || !s.visits || Date.now() - s.created > 8 * 3600000) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+// The demo clock starts at 11:40 on a fictional Tuesday and runs in real time.
+function now() { return START + Math.floor((Date.now() - state.created) / 60000) + (state.offset || 0); }
+
+// ---------- Derived data (pure) ----------
+function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function pct(n, d) { return d ? Math.round(100 * n / d) : null; }
+function remaining() { return state.visits.filter(function (v) { return v.status === 'planned' || v.status === 'arrived'; }).sort(function (a, b) { return a.order - b.order; }); }
+function closed() { return state.visits.filter(function (v) { return v.status !== 'planned' && v.status !== 'arrived'; }).sort(function (a, b) { return (a.done || 0) - (b.done || 0); }); }
+function areaChanges(list, from) { var n = 0, prev = from; list.forEach(function (v) { if (prev && v.area !== prev) n++; prev = v.area; }); return n; }
+function lastArea() { var c = closed().filter(function (v) { return v.status !== 'resched'; }); var a = state.visits.filter(function (v) { return v.status === 'arrived'; }); return a.length ? a[0].area : c.length ? c[c.length - 1].area : null; }
+function grouped() {
+  var rem = remaining(), here = lastArea(), order = [];
+  if (here && rem.some(function (v) { return v.area === here; })) order.push(here);
+  rem.forEach(function (v) { if (order.indexOf(v.area) < 0) order.push(v.area); });
+  // Keep a visit already arrived at first.
+  return rem.slice().sort(function (a, b) { return ((b.status === 'arrived') - (a.status === 'arrived')) || (order.indexOf(a.area) - order.indexOf(b.area)) || (a.order - b.order); });
+}
+function asPlanned(c) {
+  var w = state.week[c], n = w[0], d = w[1];
+  if (c === 'N') { state.visits.forEach(function (v) { if (v.status !== 'planned' && v.status !== 'arrived') { n++; if (v.status === 'seen') d++; } }); }
+  else { n += { E: 6, S: 4, W: 5 }[c]; d += { E: 4, S: 4, W: 3 }[c]; }
+  return { planned: n, done: d, pct: pct(d, n) };
+}
+function fuStats(c, prog) {
+  var fs = state.fu.filter(function (f) { return (!c || f.centre === c) && (!prog || f.prog === prog) && f.due >= TODAY - 27 && f.due <= TODAY && (f.due < TODAY || f.status !== 'due'); });
+  var missed = fs.filter(function (f) { return f.status === 'missed' || f.status === 'rebooked'; }).length;
+  var overdue = state.fu.filter(function (f) { return (!c || f.centre === c) && (!prog || f.prog === prog) && f.status === 'missed'; });
+  var rebooked = state.fu.filter(function (f) { return (!c || f.centre === c) && (!prog || f.prog === prog) && f.status === 'rebooked'; }).length;
+  return { due: fs.length, missed: missed, pct: pct(missed, fs.length), overdue: overdue.length, rebooked: rebooked, list: overdue.sort(function (a, b) { return a.due - b.due; }) };
+}
+function clinicWait(c) {
+  if (c !== 'N') return state.waitOther[c];
+  var w = state.clinic.filter(function (x) { return x.seen && x.arr; }).map(function (x) { return x.seen - x.arr; });
+  var m = median(w); return m == null ? null : Math.round(m);
+}
+function acceptHours(c) {
+  var t = now(), rs = state.refs.filter(function (r) { return (!c || r.centre === c) && r.acc && t - r.recv <= 14 * DAY; });
+  var m = median(rs.map(function (r) { return (r.acc - r.recv) / 60; })); return m == null ? null : Math.round(m);
+}
+function waitingRefs(c) { return state.refs.filter(function (r) { return r.centre === c && !r.acc; }).sort(function (a, b) { return a.recv - b.recv; }); }
+function readyItem(c, it) { if (it[2]) { var st = state.stock[c].filter(function (x) { return x.k === it[2]; })[0]; return st.onHand > 0; } return !!state.ready[c][it[0]]; }
+function readiness(c) {
+  var doms = DOMAINS.map(function (d) { var ok = d.items.filter(function (it) { return readyItem(c, it); }).length; return { k: d.k, name: d.name, ok: ok, of: d.items.length, pct: 100 * ok / d.items.length }; });
+  return { pct: Math.round(doms.reduce(function (s, d) { return s + d.pct; }, 0) / doms.length), domains: doms };
+}
+function daysLeft(x) { return x.perDay ? x.onHand / x.perDay : 99; }
+function sessHeld(c) { var ps = state.sessions.filter(function (x) { return x.centre === c && x.day < TODAY; }); return pct(ps.filter(function (x) { return x.status === 'held'; }).length, ps.length); }
+function freeSlots(c, prog) { var t = now(); return state.sessions.filter(function (x) { return x.centre === c && x.prog === prog && x.status === 'planned' && sessStart(x) > t && x.booked < x.cap; }).sort(function (a, b) { return sessStart(a) - sessStart(b); }); }
+function sessStart(x) { return x.day * DAY + (x.part === 'am' ? 9 * 60 : 13 * 60 + 30); }
+function placeWait() { var m = median(state.waits); return m == null ? null : Math.round(m * 10) / 10; }
+function waitingPlaces() { return state.placeRefs.filter(function (h) { return !h.started; }); }
+function queued() { return state.queue.length; }
+function kpis() {
+  var c = state.role === 'front' ? 'N' : state.centre, rem = remaining();
+  var all = CIDS.map(asPlanned), allPlanned = all.reduce(function (s, x) { return s + x.planned; }, 0), allDone = all.reduce(function (s, x) { return s + x.done; }, 0);
+  return {
+    visitsToday: state.visits.length, visitsDoneToday: state.visits.filter(function (v) { return v.status === 'seen'; }).length, visitsLeftToday: rem.length,
+    visitsAsPlannedPct: asPlanned('N').pct, visitsAsPlannedAllPct: pct(allDone, allPlanned),
+    followUpsDueThisWeek: state.fu.filter(function (f) { return f.mine && f.status === 'due' && f.due > TODAY && f.due <= TODAY + 3; }).length,
+    clinicWaitMedianMin: clinicWait(c), missedFollowUpPct: fuStats(c).pct, missedFollowUpAllPct: fuStats(null).pct, overdueFollowUps: fuStats(c).overdue,
+    referralAcceptMedianH: acceptHours(c), referralsWaiting: waitingRefs(c).length, readinessPct: readiness(c).pct,
+    readinessAllPct: Math.round(CIDS.reduce(function (s, x) { return s + readiness(x).pct; }, 0) / CIDS.length),
+    placementWaitMedianDays: placeWait(), placesFree: state.places.filter(function (p) { return p.state === 'free'; }).length, waitingForPlace: waitingPlaces().filter(function (h) { return !h.place; }).length,
+    queuedChanges: queued(), centre: CENTRES[c]
+  };
+}
+
+// ---------- The guide: plain, checkable rules ----------
+function suggest() {
+  var out = [], r = state.role;
+  if (r === 'front') {
+    // 1. Group the rest of today's round by area.
+    var rem = remaining(), g = grouped(), here = lastArea(), a = areaChanges(rem, here), b = areaChanges(g, here);
+    if (rem.length >= 3 && a - b >= 2) {
+      var gid = 'route-' + g.map(function (v) { return v.id; }).join('');
+      out.push({ id: gid, kind: 'ask', tag: 'Fewer trips', title: 'Group the rest of today\'s round by area',
+        text: 'The planned order crosses between areas ' + a + ' times. Grouped by area, starting where you are' + (here ? ' (' + AREAS[here] + ')' : '') + ', it crosses ' + b + ' times.',
+        list: [g.map(function (v) { return AREAS[v.area]; }).filter(function (x, i, arr) { return arr.indexOf(x) === i; }).join(' → ')],
+        why: 'Counts area changes in the remaining visits. Visit times agreed with patients may matter more; the nurse decides.',
+        acts: [{ label: 'Propose this order', primary: true, fn: function () { propose({ id: gid, kind: 'route', ids: g.map(function (v) { return v.id; }), who: 'front', text: 'Reorder the rest of today\'s round by area: ' + g.map(function (v) { return v.code + ' (' + AREAS[v.area] + ')'; }).join(', ') + '.' }); } }] });
+    }
+    // 2. Follow-ups due soon on this caseload, not booked yet.
+    var due = state.fu.filter(function (f) { return f.mine && f.status === 'due' && f.due > TODAY && f.due <= TODAY + 3; });
+    if (due.length) {
+      var did = 'fu-' + due.map(function (f) { return f.id; }).join('');
+      out.push({ id: did, kind: 'time', tag: 'Follow-ups due', title: due.length + ' follow-up' + (due.length > 1 ? 's' : '') + ' due in the next 3 days ' + (due.length > 1 ? 'are' : 'is') + ' not booked',
+        list: due.map(function (f) { return f.code + ', ' + PROGS[f.prog] + ', ' + AREAS[f.area] + ', due ' + dayName(f.due); }),
+        why: 'Due date from the follow-up register, and no visit or clinic slot booked yet. Adding them to tomorrow\'s round keeps them inside the due date.',
+        acts: [{ label: 'Propose: add to tomorrow\'s round', primary: true, fn: function () { propose({ id: did, kind: 'tomorrow', ids: due.map(function (f) { return f.id; }), who: 'front', text: 'Add ' + due.map(function (f) { return f.code; }).join(', ') + ' to tomorrow\'s round, grouped by area.' }); } }] });
+    }
+    if (state.offline && queued()) out.push({ id: 'offline-' + queued(), kind: 'ask', tag: 'Working offline', title: queued() + ' change' + (queued() > 1 ? 's are' : ' is') + ' kept on this phone',
+      text: 'Keep working as normal. They are sent in order when the signal is back.', why: 'The network is down (simulated) and these changes have not been sent yet.', acts: [] });
+  }
+  if (r === 'manager') {
+    var c = state.centre;
+    // 3. Overdue follow-ups by programme past the example setting: recall list into open session slots.
+    PIDS.filter(function (p) { return p !== 'older'; }).forEach(function (p) {
+      var st = fuStats(c, p); if (st.overdue < state.settings.recallAt) return;
+      var slots = freeSlots(c, p), offer = [], list = st.list.slice();
+      slots.forEach(function (x) { for (var k = 0; k < x.cap - x.booked && list.length && offer.length < 6; k++) offer.push({ f: list.shift().id, s: x.id }); });
+      var id = 'recall-' + c + '-' + p + '-' + st.overdue;
+      out.push({ id: id, kind: 'time', tag: 'Recalls', title: PROGS[p] + ': ' + st.overdue + ' follow-ups overdue at ' + CENTRES[c],
+        text: offer.length ? 'There are ' + slots.reduce(function (s2, x) { return s2 + x.cap - x.booked; }, 0) + ' open slots in ' + PROGS[p].toLowerCase() + ' sessions later this week. A recall list for the ' + offer.length + ' longest overdue:' : 'No open ' + PROGS[p].toLowerCase() + ' slots this week. Consider an extra session.',
+        list: offer.map(function (o) { var f = byIdIn(state.fu, o.f), x = byIdIn(state.sessions, o.s); return f.code + ' (due ' + ago(f.due) + ') → ' + sessName(x); }),
+        why: 'Overdue = follow-up date passed with no attendance and no new booking. Recall when ' + state.settings.recallAt + ' or more are overdue in a programme (an example setting, not a standard).',
+        acts: offer.length ? [{ label: 'Propose this recall list', primary: true, fn: function () { propose({ id: id, kind: 'recall', offer: offer, who: 'manager', text: 'Book ' + offer.length + ' ' + PROGS[p].toLowerCase() + ' recalls at ' + CENTRES[c] + ' into open slots and send reminders.' }); } }] : [] });
+    });
+    // 4. Stock below the example cover setting.
+    var low = state.stock[c].filter(function (x) { return daysLeft(x) < state.settings.stockDays && !x.req; });
+    if (low.length) {
+      var lid = 'stock-' + c + '-' + low.map(function (x) { return x.k; }).join('');
+      out.push({ id: lid, kind: 'ask', tag: 'Stock', title: low.length + ' key item' + (low.length > 1 ? 's' : '') + ' below ' + state.settings.stockDays + ' days of cover',
+        list: low.map(function (x) { return stockName(x.k) + ': ' + x.onHand + ' ' + stockUnit(x.k) + ', about ' + Math.floor(daysLeft(x)) + ' days at recent use'; }),
+        why: 'On hand divided by recent use per day. ' + state.settings.stockDays + ' days is an example setting, not a standard.',
+        acts: [{ label: 'Propose a top-up request', primary: true, fn: function () { propose({ id: lid, kind: 'stock', centre: c, ks: low.map(function (x) { return x.k; }), who: 'manager', text: 'Ask the stores team to top up ' + low.map(function (x) { return stockName(x.k).toLowerCase(); }).join(', ') + ' for ' + CENTRES[c] + '.' }); } }] });
+    }
+    // 5. Hospital referrals not yet accepted after the example setting.
+    var old = waitingRefs(c).filter(function (x) { return (now() - x.recv) / 60 >= state.settings.acceptHours; });
+    if (old.length) out.push({ id: 'refs-' + c + '-' + old.length, kind: 'time', tag: 'Referrals', title: old.length + ' hospital referral' + (old.length > 1 ? 's' : '') + ' waiting over ' + state.settings.acceptHours + ' h',
+      list: old.map(function (x) { return x.code + ', ' + x.service + ', received ' + fmtH((now() - x.recv) / 60) + ' ago'; }),
+      why: 'Time from received to accepted. ' + state.settings.acceptHours + ' h is an example setting, not a standard.', acts: [{ label: 'Show referrals', fn: function () { var e = document.getElementById('refs-h'); if (e) e.scrollIntoView({ block: 'start' }); } }] });
+  }
+  if (r === 'district') {
+    // 6. Patients waiting in hospital for a place while a place of that kind is free.
+    Object.keys(SERVICES).forEach(function (k) {
+      var wait = waitingPlaces().filter(function (h) { return h.svc === k && !h.place; }).sort(function (a, b) { return a.accepted - b.accepted; });
+      var free = state.places.filter(function (p) { return p.svc === k && p.state === 'free'; });
+      if (!wait.length || !free.length) return;
+      var n = Math.min(wait.length, free.length), pairs = [];
+      for (var i = 0; i < n; i++) pairs.push({ h: wait[i].id, p: free[i].id });
+      var id = 'match-' + pairs.map(function (x) { return x.h + x.p; }).join('');
+      out.push({ id: id, kind: 'ask', tag: 'Hospital exits', title: SERVICES[k] + ': ' + free.length + ' free, ' + wait.length + ' waiting in hospital',
+        list: pairs.map(function (x) { var h = byIdIn(state.placeRefs, x.h), p = byIdIn(state.places, x.p); return h.code + ' (accepted ' + fmtD((now() - h.accepted) / DAY) + ' ago) → place ' + p.n; }),
+        why: 'A referral accepted for this service has no place yet, and a place of the same kind shows free. It does not decide who is clinically suitable; the placement coordinator checks that.',
+        acts: [{ label: 'Propose holding the place' + (n > 1 ? 's' : ''), primary: true, fn: function () { propose({ id: id, kind: 'hold', pairs: pairs, who: 'district', text: 'Hold ' + pairs.map(function (x) { return SERVICES[k].toLowerCase().replace(/s$/, '') + ' ' + byIdIn(state.places, x.p).n + ' for ' + byIdIn(state.placeRefs, x.h).code; }).join(', ') + '.' }); } }] });
+    });
+    // 7. Overdue follow-ups by programme across centres.
+    var hot = [];
+    CIDS.forEach(function (c) { PIDS.forEach(function (p) { var st = fuStats(c, p); if (st.overdue >= state.settings.recallAt) hot.push({ c: c, p: p, n: st.overdue, pct: st.pct }); }); });
+    if (hot.length) out.push({ id: 'dist-fu-' + hot.map(function (h) { return h.c + h.p + h.n; }).join(''), kind: 'time', tag: 'Follow-ups', title: hot.length + ' programme' + (hot.length > 1 ? 's' : '') + ' with ' + state.settings.recallAt + '+ overdue follow-ups',
+      list: hot.map(function (h) { return CENTRES[h.c] + ', ' + PROGS[h.p] + ': ' + h.n + ' overdue (' + h.pct + '% missed in 4 weeks)'; }),
+      why: 'From each centre\'s follow-up register. The centre manager books recalls; the threshold is an example setting.',
+      acts: [{ label: 'Open ' + CENTRES[hot[0].c], fn: function () { state.role = 'manager'; state.centre = hot[0].c; render(); window.scrollTo(0, 0); } }] });
+  }
+  return out.filter(function (x) { return !state.dismissed[x.id]; });
+}
+var WHO = { front: 'community nurse', manager: 'centre manager', district: 'placement coordinator (district manager)' };
+function propose(p) {
+  if (state.pending.some(function (x) { return x.id === p.id; })) return;
+  state.pending.push(p);
+  addLog('Guide proposed: ' + p.text + ' Waiting for the ' + WHO[p.who] + '.');
+  render(); toast('Proposed. The ' + WHO[p.who] + ' decides.');
+}
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x.id !== p.id; });
+  var who = WHO[p.who].replace(/^./, function (m) { return m.toUpperCase(); });
+  if (!yes) { state.dismissed[p.id] = true; addLog(who + ' declined: ' + p.text); render(); toast('Declined. Nothing changed.'); return; }
+  if (p.kind === 'route') { var t = remaining().map(function (v) { return v.plan; }).sort(function (a, b) { return a - b; }), base = state.visits.length; p.ids.forEach(function (id, i) { var v = byIdIn(state.visits, id); if (v && (v.status === 'planned' || v.status === 'arrived')) { v.order = base + i + 1; if (t[i] != null) v.plan = t[i]; } }); }
+  else if (p.kind === 'tomorrow') p.ids.forEach(function (id) { var f = byIdIn(state.fu, id); if (f && f.status === 'due') { f.status = 'booked'; f.booked = TODAY + 1; f.round = true; } });
+  else if (p.kind === 'recall') { var n = 0; p.offer.forEach(function (o) { var f = byIdIn(state.fu, o.f), x = byIdIn(state.sessions, o.s); if (f && x && f.status === 'missed' && x.status === 'planned' && x.booked < x.cap) { f.status = 'rebooked'; f.booked = x.day; f.sess = x.id; x.booked++; n++; } }); p.text += ' (' + n + ' booked)'; }
+  else if (p.kind === 'stock') p.ks.forEach(function (k) { var x = state.stock[p.centre].filter(function (y) { return y.k === k; })[0]; x.req = true; });
+  else if (p.kind === 'hold') p.pairs.forEach(function (x) { holdPlace(x.h, x.p, true); });
+  addLog(who + ' confirmed: ' + p.text, p.who === 'front');
+  render(); toast('Confirmed. ' + (p.kind === 'route' ? 'The round has been reordered.' : p.kind === 'recall' ? 'Recalls booked and reminders queued.' : 'Updated.'));
+}
+
+// ---------- Helpers ----------
+function hhmm(t) { var m = ((t % DAY) + DAY) % DAY, h = Math.floor(m / 60), mm = m % 60; return (h < 10 ? '0' : '') + h + ':' + (mm < 10 ? '0' : '') + mm; }
+function dayName(d) { return d === TODAY ? 'today' : d === TODAY + 1 ? 'tomorrow' : DAYS[((d % 7) + 7) % 7]; }
+function ago(d) { var n = TODAY - d; return n <= 0 ? 'today' : n === 1 ? 'yesterday' : n + ' days ago'; }
+function fmt(m) { m = Math.round(+m || 0); if (m < 60) return m + ' min'; var h = Math.floor(m / 60), r = m % 60; return h + ' h ' + (r < 10 ? '0' : '') + r; }
+function fmtH(h) { h = Math.round(h); return h < 48 ? h + ' h' : Math.round(h / 24) + ' days'; }
+function fmtD(d) { return d < 1 ? fmtH(d * 24) : (Math.round(d * 10) / 10) + ' days'; }
+function sessName(x) { return DAYS[x.day] + ' ' + (x.part === 'am' ? 'morning' : 'afternoon'); }
+function stockName(k) { return STOCK.filter(function (x) { return x[0] === k; })[0][1]; }
+function stockUnit(k) { return STOCK.filter(function (x) { return x[0] === k; })[0][2]; }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+var lastLogT = -1;
+// Every change is logged with its time; changes from the phone are kept on the device while offline.
+function addLog(text, fromPhone) {
+  var e = { t: now(), text: text, q: !!(fromPhone && state.offline) };
+  lastLogT = e.t; state.log.unshift(e); state.log = state.log.slice(0, 60);
+  if (e.q) state.queue.push({ t: e.t, text: text });
+}
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+function saved() { return state.offline ? ' Saved on this phone.' : ''; }
+
+// ---------- Actions ----------
+function visitAct(v, what, when) {
+  var t = now();
+  if (what === 'arrive') { v.status = 'arrived'; v.arr = t; addLog('Community nurse arrived: ' + v.code + ', ' + AREAS[v.area], true); toast('Arrived at ' + hhmm(t) + '.' + saved()); }
+  else if (what === 'seen') { v.status = 'seen'; v.done = t; if (!v.arr) v.arr = t; linkFu(v, 'attended'); addLog('Visit done: ' + v.code + ' (' + PROGS[v.prog] + ')', true); toast('Visit done.' + saved()); }
+  else if (what === 'nothome') { v.status = 'nothome'; v.done = t; linkFu(v, 'missed'); addLog('Not home: ' + v.code + '. Follow-up recorded as missed; the centre can recall.', true); toast('Recorded as not home.' + saved()); }
+  else if (what === 'resched') { v.status = 'resched'; v.done = t; v.when = when; if (v.fu) { var f = byIdIn(state.fu, v.fu); f.due = when === 'tomorrow' ? TODAY + 1 : TODAY + 2; f.status = 'booked'; f.booked = f.due; } addLog('Visit rescheduled to ' + (when === 'tomorrow' ? 'tomorrow' : 'later this week') + ': ' + v.code, true); toast('Rescheduled.' + saved()); }
+  state.resched = null; render();
+  var n = document.querySelector('#round .go'); if (n && what !== 'arrive') n.focus({ preventScroll: true });
+  else { var b = document.getElementById('a-' + v.id); if (b) b.focus({ preventScroll: true }); }
+}
+function linkFu(v, st) { if (!v.fu) return; var f = byIdIn(state.fu, v.fu); if (f) f.status = st; }
+function clinicAct(c, what) {
+  var t = now();
+  if (what === 'arrive') { c.status = 'arrived'; c.arr = t; addLog('Checked in at North Health Centre: ' + c.code, true); toast('Checked in. The wait clock has started.' + saved()); }
+  else if (what === 'seen') { c.status = 'seen'; c.seen = t; addLog('Seen: ' + c.code + ' (waited ' + fmt(t - c.arr) + ')', true); toast('Seen after ' + fmt(t - c.arr) + '.' + saved()); }
+  else if (what === 'dna') { c.status = 'dna'; addLog('Did not attend: ' + c.code + '. Added to recalls.', true); toast('Recorded. Added to recalls.' + saved()); }
+  else if (what === 'resched') { c.status = 'resched'; addLog('Clinic appointment rescheduled: ' + c.code, true); toast('Rescheduled.' + saved()); }
+  render();
+}
+function holdPlace(hid, pid, quiet) {
+  var h = byIdIn(state.placeRefs, hid), p = byIdIn(state.places, pid); if (!h || !p || p.state !== 'free' || h.place) return;
+  p.state = 'held'; p.ref = h.id; h.place = p.id;
+  if (!quiet) { addLog('Placement coordinator held ' + SERVICES[h.svc].toLowerCase().replace(/s$/, '') + ' ' + p.n + ' for ' + h.code + '.'); render(); toast('Place held. The ward can see it.'); }
+}
+function startPlace(h) {
+  var p = byIdIn(state.places, h.place); if (!p) return;
+  var t = now(); h.started = t; p.state = 'occupied'; var d = (t - h.accepted) / DAY; state.waits.push(Math.round(d * 10) / 10);
+  addLog('Community place started: ' + h.code + ' left hospital for ' + SERVICES[h.svc].toLowerCase().replace(/s$/, '') + ' ' + p.n + '. Wait from accepted: ' + fmtD(d) + '.');
+  render(); toast('Place started. Wait recorded: ' + fmtD(d) + '.');
+}
+function releasePlace(h) { var p = byIdIn(state.places, h.place); if (p) { p.state = 'free'; p.ref = null; } h.place = null; addLog('Placement coordinator released the hold for ' + h.code + '.'); render(); toast('Hold released. The place shows free.'); }
+function setOffline(off) {
+  if (off === state.offline || state.syncing) return;
+  state.offline = off;
+  if (off) { state.log.unshift({ t: now(), text: 'Phone lost its signal. Working from the copy on this phone.', q: true }); lastLogT = now(); render(); toast('Network down. Keep working; changes stay on this phone.'); return; }
+  state.syncing = true; render();
+  setTimeout(function () {
+    var n = state.queue.length; state.log.forEach(function (l) { l.q = false; });
+    state.queue = []; state.syncing = false; state.lastSync = now();
+    addLog('Signal back. ' + n + ' change' + (n === 1 ? '' : 's') + ' sent from the phone, in order.');
+    render(); toast('Back online. ' + n + ' change' + (n === 1 ? '' : 's') + ' sent.');
+  }, 900);
+}
+
+// ---------- Render ----------
+var HINTS = {
+  front: 'A community nurse\'s or clinic worker\'s phone. Work down today\'s visits or the clinic list with one thumb. Try switching the network off: it keeps working and sends changes later.',
+  manager: 'A health centre manager\'s view. Referrals from the hospital, follow-ups overdue by programme, sessions this week, stock of key items and the readiness check.',
+  district: 'A district or area manager\'s view. Health centres compared as rates, not people, and community places free, held or occupied for patients ready to leave hospital.'
+};
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  ['front', 'manager', 'district'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('viewcard').classList.toggle('front', state.role === 'front');
+  document.getElementById('view-h').textContent = state.role === 'front' ? (state.mode === 'visits' ? 'Today\'s visits' : 'Today\'s clinic list') : state.role === 'manager' ? 'Health centre' : 'Community services: all centres';
+  document.getElementById('kpihint').textContent = state.role === 'front' ? 'This team at North Health Centre. Tap a tile for its definition.' : 'Tap a tile for its definition.';
+  renderClock();
+  renderKpis();
+  document.getElementById('headtools').textContent = '';
+  var v = document.getElementById('view'); v.textContent = '';
+  v.appendChild(state.role === 'front' ? frontView() : state.role === 'manager' ? managerView() : districtView());
+  renderGuide();
+  renderLog();
+  save();
+  if (aid) { var e = document.getElementById(aid); if (e) e.focus({ preventScroll: true }); }
+}
+function renderClock() { document.getElementById('clocknow').textContent = 'Demo clock Tue ' + hhmm(now()); }
+function tile(id, val, lbl, n, def, alert) {
+  var open = state.kpiOpen === id;
+  return el('button', { type: 'button', id: 'kpi-' + id, class: 'stat' + (alert ? ' alert' : ''), 'aria-expanded': String(open), title: def, onclick: function () { state.kpiOpen = open ? null : id; render(); } },
+    [el('b', { text: val }), el('span', { class: 'lbl', text: lbl }), el('span', { class: 'n', text: n }), el('span', { class: 'def', text: def })]);
+}
+function pctS(x) { return x == null ? '–' : x + '%'; }
+function renderKpis() {
+  var k = kpis(), box = document.getElementById('kpis'), r = state.role, ap = asPlanned('N'); box.textContent = '';
+  var t;
+  if (r === 'front') t = [
+    tile('done', k.visitsDoneToday + ' of ' + k.visitsToday, 'Visits done today', k.visitsLeftToday + ' still to do', 'Home visits marked done today out of the visits on today\'s round. Local definition.'),
+    tile('plan', pctS(k.visitsAsPlannedPct), 'Visits completed as planned', ap.done + ' of ' + ap.planned + ' this week', 'Visits completed on the planned day / visits planned, counting only visits with an outcome so far this week. Local definition.'),
+    tile('fu', String(k.followUpsDueThisWeek), 'Follow-ups due, not booked', 'next 3 days, this caseload', 'Follow-ups on this team\'s caseload due in the next 3 days with no visit or slot booked yet. Local definition.', k.followUpsDueThisWeek > 0),
+    tile('wait', k.clinicWaitMedianMin == null ? '–' : fmt(k.clinicWaitMedianMin), 'Clinic wait today', 'check-in to seen, median', 'Minutes from checking in at the health centre to being seen (median, today). Local definition.')];
+  else if (r === 'manager') { var fs = fuStats(state.centre); t = [
+    tile('missed', pctS(k.missedFollowUpPct), 'Missed follow-up rate', fs.missed + ' of ' + fs.due + ' due · last 4 weeks', 'Follow-ups missed / follow-ups due in the period (last 4 weeks, including today so far). Local definition.', k.missedFollowUpPct >= 15),
+    tile('wait', k.clinicWaitMedianMin == null ? '–' : fmt(k.clinicWaitMedianMin), 'Clinic wait today', 'check-in to seen, median', 'Minutes from checking in to being seen (median, today). Local definition.'),
+    tile('acc', k.referralAcceptMedianH == null ? '–' : fmtH(k.referralAcceptMedianH), 'Referral to accepted', k.referralsWaiting + ' waiting now', 'Hours from a hospital referral being received to the centre accepting it (median, last 14 days). Local definition.', k.referralsWaiting > 0 && waitingRefs(state.centre).some(function (x) { return (now() - x.recv) / 60 >= state.settings.acceptHours; })),
+    tile('ready', k.readinessPct + '%', 'Service readiness index', 'from today\'s readiness check', 'General service readiness index (WHO SARA approach): mean availability of tracer items across domains, for this centre. The items here are a short example list.', k.readinessPct < 85)]; }
+  else t = [
+    tile('plan', pctS(k.visitsAsPlannedAllPct), 'Visits completed as planned', 'all centres, this week', 'Visits completed on the planned day / visits planned, all four centres, this week so far. Local definition.'),
+    tile('missed', pctS(k.missedFollowUpAllPct), 'Missed follow-up rate', 'all centres · last 4 weeks', 'Follow-ups missed / follow-ups due in the last 4 weeks, all centres. Local definition.', k.missedFollowUpAllPct >= 15),
+    tile('place', k.placementWaitMedianDays == null ? '–' : k.placementWaitMedianDays + ' days', 'Step-down placement wait', 'median, last ' + state.waits.length + ' placements', 'Referral from hospital accepted → community place started (median, recent placements). Local definition.'),
+    tile('ready', k.readinessAllPct + '%', 'Service readiness index', 'mean of 4 centres', 'General service readiness index (WHO SARA approach): mean availability of tracer items across domains, averaged over the centres. Short example item list.', k.readinessAllPct < 85)];
+  t.forEach(function (x) { box.appendChild(x); });
+}
+function netbar() {
+  var f = document.createDocumentFragment();
+  var b = el('button', { type: 'button', class: 'nettoggle', id: 'net', 'aria-pressed': String(state.offline), onclick: function () { setOffline(!state.offline); } }, [el('span', { class: 'knob', 'aria-hidden': 'true' }), 'Simulate no signal']);
+  var p = el('span', { class: 'syncpill' + (state.offline ? ' off' : state.syncing ? ' busy' : ''), id: 'sync', role: 'status' }, [el('span', { class: 'dot', 'aria-hidden': 'true' }),
+    state.offline ? 'Offline · ' + queued() + ' waiting to send' : state.syncing ? 'Sending ' + queued() + '…' : 'Synced ' + hhmm(state.lastSync)]);
+  f.appendChild(el('div', { class: 'netbar', role: 'group', 'aria-label': 'Network' }, [b, p]));
+  if (state.offline) f.appendChild(el('div', { class: 'offbanner', role: 'note' }, [el('b', { text: 'No signal (simulated). ' }), 'Everything here still works. Changes are kept on this phone and sent in order when the signal is back.']));
+  return f;
+}
+function frontView() {
+  var f = document.createDocumentFragment();
+  f.appendChild(netbar());
+  f.appendChild(el('div', { class: 'seg', role: 'group', 'aria-label': 'List' }, [
+    el('button', { type: 'button', id: 'm-visits', 'aria-pressed': String(state.mode === 'visits'), onclick: function () { state.mode = 'visits'; render(); }, text: 'Home visits' }),
+    el('button', { type: 'button', id: 'm-clinic', 'aria-pressed': String(state.mode === 'clinic'), onclick: function () { state.mode = 'clinic'; render(); }, text: 'Clinic list' })]));
+  if (state.mode === 'visits') visitsView(f); else clinicView(f);
+  return f;
+}
+function visitsView(f) {
+  var rem = remaining(), here = lastArea();
+  f.appendChild(el('div', { class: 'summary' }, [el('span', { class: 'pill good', text: closed().filter(function (v) { return v.status === 'seen'; }).length + ' done' }), el('span', { class: 'pill', text: rem.length + ' to go' }), el('span', { class: 'pill', text: areaChanges(rem, here) + ' area changes left' })]));
+  if (!rem.length) f.appendChild(el('p', { class: 'empty', text: 'Round finished. Every visit has an outcome.' }));
+  var list = el('div', { class: 'jobs', id: 'round' });
+  rem.forEach(function (v, i) { list.appendChild(visitCard(v, i === 0)); });
+  f.appendChild(list);
+  var cl = closed();
+  if (cl.length) {
+    f.appendChild(el('h3', { class: 'sec', text: 'Done today · ' + cl.length }));
+    f.appendChild(el('ul', { class: 'donelist' }, cl.slice().reverse().map(function (v) { return el('li', {}, [el('span', { text: v.code + ' · ' + AREAS[v.area] + ' · ' + hhmm(v.done) }), el('span', { class: 'chip st-' + v.status, text: { seen: 'Done', nothome: 'Not home', resched: v.when === 'tomorrow' ? 'Tomorrow' : 'Later' }[v.status] })]); })));
+  }
+  var due = state.fu.filter(function (x) { return x.mine && x.due > TODAY && x.due <= TODAY + 3 && (x.status === 'due' || x.round); }).sort(function (a, b) { return a.due - b.due; });
+  f.appendChild(el('h3', { class: 'sec', text: 'Follow-ups due soon · your caseload' }));
+  if (!due.length) f.appendChild(el('p', { class: 'empty', text: 'Nothing due in the next 3 days.' }));
+  var fl = el('div', { class: 'jobs', id: 'fu-list' });
+  due.forEach(function (x) {
+    fl.appendChild(el('div', { class: 'fu' }, [el('div', {}, [el('b', { text: x.code + ' · ' + AREAS[x.area] }), el('span', { class: 'sub', text: PROGS[x.prog] + ' · due ' + dayName(x.due) })]),
+      x.status === 'due' ? el('button', { type: 'button', id: 'fu-' + x.id, 'aria-label': 'Add ' + x.code + ' to tomorrow\'s round', onclick: function () { x.status = 'booked'; x.booked = TODAY + 1; x.round = true; addLog('Follow-up ' + x.code + ' added to tomorrow\'s round.', true); render(); toast('Added to tomorrow\'s round.' + saved()); }, text: 'Add to tomorrow' }) : el('span', { class: 'chip st-arrived', text: 'Tomorrow' })]));
+  });
+  f.appendChild(fl);
+}
+function visitCard(v, next) {
+  var late = v.status === 'planned' && now() > v.plan + 30;
+  var chips = [el('span', { text: PROGS[v.prog] })];
+  if (next) chips.push(el('span', { class: 'chip next', text: 'Next' }));
+  if (v.status === 'arrived') chips.push(el('span', { class: 'chip st-arrived', text: 'Arrived ' + hhmm(v.arr) }));
+  if (v.fu) chips.push(el('span', { class: 'chip', text: 'Follow-up' }));
+  var acts;
+  if (state.resched === v.id) acts = el('div', { class: 'acts' }, [
+    el('button', { type: 'button', class: 'alt', id: 'rs-t-' + v.id, onclick: function () { visitAct(v, 'resched', 'tomorrow'); }, text: 'Tomorrow' }),
+    el('button', { type: 'button', class: 'alt', id: 'rs-l-' + v.id, onclick: function () { visitAct(v, 'resched', 'later'); }, text: 'Later this week' }),
+    el('button', { type: 'button', class: 'alt', onclick: function () { state.resched = null; render(); }, text: 'Back' })]);
+  else if (v.status === 'planned') acts = el('div', { class: 'acts' + (next ? '' : ' row3') }, [
+    el('button', { type: 'button', class: (next ? 'go' : 'alt go') + ' arrive', id: 'a-' + v.id, 'aria-label': 'Arrived: ' + v.code + ', ' + AREAS[v.area], onclick: function () { visitAct(v, 'arrive'); }, text: 'Arrived' }),
+    el('button', { type: 'button', class: 'alt', id: 'nh-' + v.id, 'aria-label': 'Not home: ' + v.code, onclick: function () { visitAct(v, 'nothome'); }, text: 'Not home' }),
+    el('button', { type: 'button', class: 'alt', id: 'rs-' + v.id, 'aria-label': 'Reschedule: ' + v.code, onclick: function () { state.resched = v.id; render(); var b = document.getElementById('rs-t-' + v.id); if (b) b.focus(); }, text: 'Reschedule' })]);
+  else acts = el('div', { class: 'acts' }, [
+    el('button', { type: 'button', class: 'go done', id: 'a-' + v.id, 'aria-label': 'Visit done: ' + v.code, onclick: function () { visitAct(v, 'seen'); }, text: 'Visit done' }),
+    el('button', { type: 'button', class: 'alt', id: 'nh-' + v.id, 'aria-label': 'Not home: ' + v.code, onclick: function () { visitAct(v, 'nothome'); }, text: 'Not home' })]);
+  return el('article', { class: 'job a-' + v.area + (next ? ' next' : '') + (next ? '' : ' compact'), 'aria-label': 'Visit ' + v.code + ', ' + AREAS[v.area] }, [
+    el('div', { class: 'top' }, [el('div', { class: 'kind' }, chips), el('div', { class: 'timebox' }, [hhmm(v.plan), el('small', { text: late ? 'running late' : 'planned' })])]),
+    el('p', { class: 'where', text: v.code + ' · ' + AREAS[v.area] }),
+    el('p', { class: 'meta', text: v.note }),
+    acts]);
+}
+function clinicView(f) {
+  var cs = state.clinic, k = { booked: 0, arrived: 0, seen: 0 };
+  cs.forEach(function (c) { if (k[c.status] != null) k[c.status]++; });
+  f.appendChild(el('div', { class: 'summary' }, [el('span', { class: 'pill good', text: k.seen + ' seen' }), el('span', { class: 'pill' + (k.arrived ? ' hot' : ''), text: k.arrived + ' waiting' }), el('span', { class: 'pill', text: k.booked + ' still to come' })]));
+  [['am', 'Long-term conditions clinic · Room 1 · 09:00–12:00'], ['pm', 'Child health clinic · Room 2 · 13:30–15:30']].forEach(function (s) {
+    f.appendChild(el('h3', { class: 'sec', text: s[1] }));
+    var list = el('div', { class: 'jobs', id: 'clinic-' + s[0] });
+    var nb = 0, mine = cs.filter(function (c) { return c.sess === s[0]; }), fin = mine.filter(function (c) { return /seen|dna|resched/.test(c.status); });
+    mine.filter(function (c) { return fin.indexOf(c) < 0; }).sort(function (a, b) { return ((b.status === 'arrived') - (a.status === 'arrived')) || (a.slot - b.slot); }).forEach(function (c) {
+      var st = c.status, acts = null, tb, big = st === 'booked' && nb++ === 0;
+      if (st === 'booked') acts = el('div', { class: 'acts' + (big ? '' : ' row3') }, [
+        el('button', { type: 'button', class: 'go arrive', id: 'ci-' + c.id, 'aria-label': 'Checked in: ' + c.code, onclick: function () { clinicAct(c, 'arrive'); }, text: 'Checked in' }),
+        el('button', { type: 'button', class: 'alt', 'aria-label': 'Did not attend: ' + c.code, onclick: function () { clinicAct(c, 'dna'); }, text: big ? 'Did not attend' : 'No-show' }),
+        el('button', { type: 'button', class: 'alt', 'aria-label': 'Reschedule: ' + c.code, onclick: function () { clinicAct(c, 'resched'); }, text: 'Reschedule' })]);
+      else if (st === 'arrived') acts = el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'go done', id: 'ci-' + c.id, 'aria-label': 'Seen: ' + c.code, onclick: function () { clinicAct(c, 'seen'); }, text: 'Seen' })]);
+      tb = st === 'arrived' ? el('div', { class: 'timebox' }, [fmt(now() - c.arr), el('small', { text: 'waiting' })]) : st === 'seen' ? el('div', { class: 'timebox' }, [fmt(c.seen - c.arr), el('small', { text: 'waited' })]) : el('div', { class: 'timebox' }, [hhmm(c.slot), el('small', { text: 'slot' })]);
+      var chip = { booked: null, arrived: ['arrived', 'Checked in ' + hhmm(c.arr || 0)], seen: ['seen', 'Seen ' + hhmm(c.seen || 0)], dna: ['dna', 'Did not attend'], resched: ['resched', 'Rescheduled'] }[st];
+      list.appendChild(el('article', { class: 'job compact' + (st === 'seen' || st === 'dna' || st === 'resched' ? '' : '') , style: st === 'seen' || st === 'dna' || st === 'resched' ? 'opacity:0.75' : null, 'aria-label': 'Clinic ' + c.code }, [
+        el('div', { class: 'top' }, [el('div', {}, [el('p', { class: 'where', text: c.code + ' · slot ' + hhmm(c.slot) }), chip ? el('span', { class: 'chip st-' + chip[0], text: chip[1] }) : el('span', { class: 'meta', text: 'Booked' })]), tb]),
+        acts]));
+    });
+    if (!list.childNodes.length) list.appendChild(el('p', { class: 'empty', text: 'Everyone on this list has been seen or has an outcome.' }));
+    f.appendChild(list);
+    if (fin.length) {
+      var d = el('details', { class: 'set' }, [el('summary', { text: 'Finished · ' + fin.length + (s[0] === 'am' ? ' · median wait ' + fmt(clinicWait('N') || 0) : '') })]);
+      d.appendChild(el('ul', { class: 'donelist' }, fin.sort(function (a, b) { return a.slot - b.slot; }).map(function (c) { return el('li', {}, [el('span', { text: c.code + ' · slot ' + hhmm(c.slot) + (c.seen ? ' · waited ' + fmt(c.seen - c.arr) : '') }), el('span', { class: 'chip st-' + c.status, text: { seen: 'Seen ' + hhmm(c.seen || 0), dna: 'Did not attend', resched: 'Rescheduled' }[c.status] })]); })));
+      f.appendChild(d);
+    }
+  });
+  f.appendChild(el('p', { class: 'fine', text: 'Times are recorded for flow only. Who is seen first stays a clinical decision for the clinic team.' }));
+}
+function managerView() {
+  var f = document.createDocumentFragment(), c = state.centre;
+  var sel = el('select', { id: 'centre-pick', onchange: function (e) { state.centre = e.target.value; render(); } });
+  CIDS.forEach(function (id) { sel.appendChild(el('option', { value: id, text: CENTRES[id] })); }); sel.value = c;
+  var ht = document.getElementById('headtools'); ht.appendChild(el('label', { for: 'centre-pick', class: 'sr' }, ['Health centre'])); ht.appendChild(sel);
+  if (queued() && c === 'N') f.appendChild(el('p', { class: 'syncnote', text: 'A community nurse\'s phone has ' + queued() + ' change' + (queued() > 1 ? 's' : '') + ' not sent yet (no signal). This view updates when they arrive.' }));
+  // Referrals
+  var wr = waitingRefs(c), recent = state.refs.filter(function (r) { return r.centre === c && r.acc && now() - r.acc < 2 * DAY; }).sort(function (a, b) { return b.acc - a.acc; }).slice(0, 3);
+  f.appendChild(el('h3', { class: 'sec', id: 'refs-h', text: 'Referrals from the hospital · ' + wr.length + ' waiting' }));
+  var rows = el('div', { class: 'rows', id: 'refs' });
+  if (!wr.length) rows.appendChild(el('p', { class: 'empty', text: 'No referrals waiting to be accepted.' }));
+  wr.forEach(function (r) {
+    var h = (now() - r.recv) / 60, old = h >= state.settings.acceptHours;
+    rows.appendChild(el('div', { class: 'row' + (old ? ' hot' : '') }, [el('div', {}, [el('b', { text: r.code + ' · ' + r.service }), el('span', { class: 'sub', text: 'From Example General Hospital · received ' + (Math.floor(r.recv / DAY) === TODAY ? hhmm(r.recv) : DAYS[Math.floor(r.recv / DAY)] + ' ' + hhmm(r.recv)) + ' · waiting ' + fmtH(h) + (r.status === 'info' ? ' · more information asked for' : '') })]),
+      el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'small primary', id: 'acc-' + r.id, 'aria-label': 'Accept referral ' + r.code, onclick: function () { r.acc = now(); r.status = 'accepted'; addLog('Centre manager accepted referral ' + r.code + ' (' + r.service + ') after ' + fmtH(h) + '.'); render(); toast('Accepted. The hospital ward can see it.'); }, text: 'Accept' }),
+        r.status === 'info' ? null : el('button', { type: 'button', class: 'small', 'aria-label': 'Ask for more information about ' + r.code, onclick: function () { r.status = 'info'; addLog('Centre manager asked the hospital for more information on ' + r.code + '.'); render(); toast('Request sent to the referring ward.'); }, text: 'Ask for info' })])]));
+  });
+  recent.forEach(function (r) { rows.appendChild(el('div', { class: 'row' }, [el('div', {}, [el('b', { text: r.code + ' · ' + r.service }), el('span', { class: 'sub', text: 'Accepted ' + hhmm(r.acc) + ' after ' + fmtH((r.acc - r.recv) / 60) })]), el('span', { class: 'chip st-seen', text: 'Accepted' })])); });
+  f.appendChild(rows);
+  // Follow-ups by programme
+  f.appendChild(el('h3', { class: 'sec', text: 'Follow-ups by programme · last 4 weeks' }));
+  var tb = el('tbody');
+  PIDS.forEach(function (p) { var s = fuStats(c, p), hot = s.overdue >= state.settings.recallAt;
+    tb.appendChild(el('tr', { class: hot ? 'hot' : '' }, [el('td', { text: PROGS[p] }), el('td', { class: 'r', text: String(s.due) }), el('td', { class: 'r', text: String(s.missed) }), el('td', { class: 'r' + (s.pct >= 20 ? ' hi' : ''), text: pctS(s.pct) }), el('td', { class: 'r' + (hot ? ' hi' : ''), text: String(s.overdue) }), el('td', { class: 'r', text: String(s.rebooked) })])); });
+  f.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 't', id: 'fu-table' }, [el('thead', {}, [el('tr', {}, ['Programme', 'Due', 'Missed', 'Rate', 'Overdue', 'Recalled'].map(function (h, i) { return el('th', { class: i ? 'r' : '', text: h }); }))]), tb])]));
+  f.appendChild(el('p', { class: 'fine', text: 'Overdue: the follow-up date has passed with no attendance and no new booking. Counts follow-ups, not staff.' }));
+  // Sessions this week
+  f.appendChild(el('h3', { class: 'sec', text: 'Clinic sessions this week' }));
+  var days = el('div', { class: 'days' });
+  for (var d = 0; d < 5; d++) {
+    var ss = state.sessions.filter(function (x) { return x.centre === c && x.day === d; }), box = el('div', { class: 'day' + (d === TODAY ? ' today' : '') });
+    var bk = ss.filter(function (x) { return x.status !== 'cancelled'; }).reduce(function (s, x) { return s + x.booked; }, 0), cp = ss.filter(function (x) { return x.status !== 'cancelled'; }).reduce(function (s, x) { return s + x.cap; }, 0);
+    box.appendChild(el('h4', {}, [DAYS[d] + (d === TODAY ? ' (today) ' : ' '), el('span', { text: bk + '/' + cp + ' booked' })]));
+    ss.forEach(function (x) { box.appendChild(sessCard(x)); });
+    days.appendChild(box);
+  }
+  f.appendChild(days);
+  // Stock
+  f.appendChild(el('h3', { class: 'sec', text: 'Stock of key items' }));
+  var sw = el('div', { id: 'stock' });
+  state.stock[c].forEach(function (x) {
+    var dl = daysLeft(x), low = dl < state.settings.stockDays, w = Math.min(100, Math.round(100 * dl / 30));
+    sw.appendChild(el('div', { class: 'stock' + (low ? ' low' : '') }, [
+      el('div', {}, [el('b', { text: stockName(x.k) }), el('span', { class: 'sub', text: x.onHand + ' ' + stockUnit(x.k) + ' on hand' + (x.req ? ' · top-up requested' : '') })]),
+      el('div', { class: 'meter' }, [el('div', { class: 'bar' + (low ? ' bad' : dl < 20 ? ' warn' : '') }, [el('i', { style: 'width:' + w + '%' })]), el('span', { class: 'dl', text: (dl >= 99 ? '–' : Math.floor(dl) + ' days') + ' cover' })]),
+      x.req ? el('button', { type: 'button', class: 'small', 'aria-label': 'Mark ' + stockName(x.k) + ' delivered', onclick: function () { var add = Math.round(x.perDay * 30); x.onHand += add; x.req = false; addLog('Top-up delivered to ' + CENTRES[c] + ': ' + add + ' ' + stockUnit(x.k) + ' of ' + stockName(x.k).toLowerCase() + '.'); render(); toast('Delivered. Stock updated.'); }, text: 'Delivered' })
+        : el('button', { type: 'button', class: 'small', 'aria-label': 'Ask for a top-up of ' + stockName(x.k), onclick: function () { x.req = true; addLog('Centre manager asked the stores team to top up ' + stockName(x.k).toLowerCase() + ' for ' + CENTRES[c] + '.'); render(); toast('Top-up requested.'); }, text: 'Ask for top-up' })]));
+  });
+  f.appendChild(sw);
+  f.appendChild(el('p', { class: 'fine', text: 'Days of cover = on hand ÷ recent use per day. Example figures.' }));
+  // Readiness
+  var rd = readiness(c);
+  f.appendChild(el('h3', { class: 'sec', text: 'Readiness check · index ' + rd.pct + '%' }));
+  var dg = el('div', { class: 'domains', id: 'ready' });
+  DOMAINS.forEach(function (d, di) {
+    var dd = rd.domains[di], box = el('div', { class: 'domain' }, [el('h4', {}, [d.name, el('span', { text: dd.ok + '/' + dd.of })])]);
+    d.items.forEach(function (it) {
+      var ok = readyItem(c, it), fromStock = !!it[2];
+      box.appendChild(el('button', { type: 'button', class: 'ritem', 'aria-pressed': String(ok), disabled: fromStock ? 'disabled' : false, title: fromStock ? 'Set from the stock list' : 'Tap to record the check', id: 'ri-' + it[0],
+        onclick: fromStock ? null : function () { state.ready[c][it[0]] = !ok; addLog('Readiness checked at ' + CENTRES[c] + ': ' + it[1].toLowerCase() + (ok ? ' not available' : ' available') + '.'); render(); toast('Readiness item recorded.'); } },
+        [el('span', { class: 'box', 'aria-hidden': 'true' }, ok ? [svgTick()] : []), it[1] + (fromStock ? ' (from stock)' : '')]));
+    });
+    dg.appendChild(box);
+  });
+  f.appendChild(dg);
+  f.appendChild(el('p', { class: 'fine', text: 'Domains follow the WHO SARA (Service Availability and Readiness Assessment) general readiness approach; the items are a short example list, not the full SARA set.' }));
+  // Settings
+  var det = el('details', { class: 'set', id: 'settings' }, [el('summary', { text: 'Guide settings (example settings, not a standard)' })]);
+  var tg = el('div', { class: 'targets' });
+  [['recallAt', 'Recall when overdue in a programme reaches', 1, 50], ['stockDays', 'Flag stock below (days of cover)', 1, 60], ['acceptHours', 'Flag referrals waiting over (hours)', 1, 168]].forEach(function (x) {
+    tg.appendChild(el('label', { for: 'set-' + x[0] }, [x[1], el('input', { type: 'number', id: 'set-' + x[0], min: String(x[2]), max: String(x[3]), step: '1', inputmode: 'numeric', value: String(state.settings[x[0]]), onchange: function (e) { var n = Math.max(x[2], Math.min(x[3], Math.round(+e.target.value) || DEFAULT_SET[x[0]])); state.settings[x[0]] = n; addLog('Centre manager changed a guide setting: ' + x[1].toLowerCase() + ' ' + n + '.'); settingsOpen = true; render(); } })]));
+  });
+  det.appendChild(tg);
+  if (settingsOpen) det.open = true;
+  det.addEventListener('toggle', function () { settingsOpen = det.open; });
+  f.appendChild(det);
+  return f;
+}
+var settingsOpen = false, cxOpen = null;
+function svgTick() { var ns = 'http://www.w3.org/2000/svg', s = document.createElementNS(ns, 'svg'); s.setAttribute('viewBox', '0 0 16 16'); s.setAttribute('width', '14'); s.setAttribute('height', '14'); var p = document.createElementNS(ns, 'path'); p.setAttribute('d', 'M3 8.5l3 3 7-7'); p.setAttribute('fill', 'none'); p.setAttribute('stroke', '#fff'); p.setAttribute('stroke-width', '2.4'); p.setAttribute('stroke-linecap', 'round'); p.setAttribute('stroke-linejoin', 'round'); s.appendChild(p); return s; }
+function sessCard(x) {
+  var future = x.status === 'planned' && sessStart(x) > now(), fill = Math.round(100 * x.booked / x.cap);
+  var kids = [el('b', { text: PROGS[x.prog] }), el('span', { class: 'sub', text: (x.part === 'am' ? 'Morning' : 'Afternoon') + ' · ' + x.room })];
+  if (x.status === 'cancelled') kids.push(el('span', { class: 'sub', text: 'Cancelled: ' + x.reason }));
+  else { kids.push(el('div', { class: 'bar' + (fill >= 100 ? ' warn' : '') }, [el('i', { style: 'width:' + fill + '%' })])); kids.push(el('span', { class: 'sub', text: x.booked + ' of ' + x.cap + ' booked · ' + (x.status === 'held' ? 'held' : x.cap - x.booked + ' open') })); }
+  if (future && cxOpen !== x.id) kids.push(el('div', { class: 'cx' }, [el('button', { type: 'button', class: 'small', id: 'cxo-' + x.id, 'aria-label': 'Cancel session ' + PROGS[x.prog] + ', ' + sessName(x) + '…', onclick: function () { cxOpen = x.id; render(); var e = document.getElementById('cx-' + x.id); if (e) e.focus(); }, text: 'Cancel…' })]));
+  if (future && cxOpen === x.id) {
+    var rs = el('select', { id: 'cx-' + x.id, 'aria-label': 'Reason to cancel ' + PROGS[x.prog] + ', ' + sessName(x) }, ['Staff absence', 'Room unavailable', 'Severe weather', 'Other'].map(function (r) { return el('option', { value: r, text: r }); }));
+    kids.push(el('div', { class: 'cx' }, [rs, el('button', { type: 'button', class: 'small', 'aria-label': 'Cancel session ' + PROGS[x.prog] + ', ' + sessName(x), onclick: function () { cxOpen = null; x.status = 'cancelled'; x.reason = rs.value; addLog('Centre manager cancelled ' + PROGS[x.prog].toLowerCase() + ', ' + sessName(x) + ' (' + x.reason + '). ' + x.booked + ' booked patients need a new slot.'); render(); toast('Session cancelled. ' + x.booked + ' bookings to move.'); }, text: 'Cancel it' }), el('button', { type: 'button', class: 'small', onclick: function () { cxOpen = null; render(); }, text: 'Keep' })]));
+  }
+  return el('div', { class: 'sess ' + x.status }, kids);
+}
+function districtView() {
+  var f = document.createDocumentFragment();
+  f.appendChild(el('h3', { class: 'sec', text: 'Health centres compared' }));
+  var data = CIDS.map(function (c) { return { c: c, plan: asPlanned(c).pct, missed: fuStats(c).pct, acc: acceptHours(c), ready: readiness(c).pct, held: sessHeld(c) }; });
+  var worst = function (k, hi) { var v = data.map(function (d) { return d[k]; }); return hi ? Math.max.apply(null, v) : Math.min.apply(null, v); };
+  var g = el('div', { class: 'centres', id: 'centres' });
+  data.forEach(function (d) {
+    var m = function (lbl, val, txt, k, hi, max) { var w = Math.round(100 * Math.min(val, max) / max), bad = val === worst(k, hi);
+      return el('div', { class: 'metric' + (bad ? ' worst' : '') }, [el('div', { class: 'mh' }, [lbl, el('b', { text: txt })]), el('div', { class: 'bar' + (bad ? ' bad' : '') }, [el('i', { style: 'width:' + w + '%' })])]); };
+    g.appendChild(el('div', { class: 'centre' }, [el('h4', { text: CENTRES[d.c] }),
+      m('Visits as planned', d.plan, pctS(d.plan), 'plan', false, 100), m('Missed follow-ups', d.missed, pctS(d.missed), 'missed', true, 50),
+      m('Time to accept', d.acc, fmtH(d.acc), 'acc', true, 48), m('Sessions held', d.held, pctS(d.held), 'held', false, 100), m('Readiness index', d.ready, d.ready + '%', 'ready', false, 100),
+      el('button', { type: 'button', class: 'small', 'aria-label': 'Open ' + CENTRES[d.c], onclick: function () { state.role = 'manager'; state.centre = d.c; render(); window.scrollTo(0, 0); }, text: 'Open centre' })]));
+  });
+  f.appendChild(g);
+  f.appendChild(el('p', { class: 'fine', text: 'Rates and medians for each centre, never individual staff. The lowest or slowest value on each line is marked.' }));
+  // Missed follow-up rate by programme and centre
+  f.appendChild(el('h3', { class: 'sec', text: 'Missed follow-up rate by programme · last 4 weeks' }));
+  var tb = el('tbody');
+  PIDS.forEach(function (p) { tb.appendChild(el('tr', {}, [el('td', { text: PROGS[p] })].concat(CIDS.map(function (c) { var s = fuStats(c, p); return el('td', { class: 'r' + (s.overdue >= state.settings.recallAt ? ' hi' : ''), title: s.overdue + ' overdue now', text: pctS(s.pct) + ' (' + s.overdue + ')' }); })))); });
+  f.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Programme' })].concat(CIDS.map(function (c) { return el('th', { class: 'r', text: CENTRES[c].replace(' Health Centre', '') }); })))]), tb])]));
+  f.appendChild(el('p', { class: 'fine', text: 'Missed rate, with follow-ups overdue now in brackets. Marked: ' + state.settings.recallAt + ' or more overdue (example setting).' }));
+  // Community places
+  f.appendChild(el('h3', { class: 'sec', text: 'Community places for hospital discharges' }));
+  f.appendChild(el('div', { class: 'legend' }, [el('span', {}, [el('i', { class: 'slot free' }), 'Free']), el('span', {}, [el('i', { class: 'slot held' }), 'Held']), el('span', {}, [el('i', { class: 'slot' }), 'Occupied'])]));
+  var pl = el('div', { class: 'places', id: 'places' });
+  Object.keys(SERVICES).forEach(function (k) {
+    var ps = state.places.filter(function (p) { return p.svc === k; }), cnt = { free: 0, held: 0, occupied: 0 };
+    ps.forEach(function (p) { cnt[p.state]++; });
+    var box = el('div', { class: 'svc', id: 'svc-' + k }, [el('h4', {}, [SERVICES[k], el('span', { text: cnt.free + ' free · ' + cnt.held + ' held · ' + cnt.occupied + ' occupied' })]),
+      el('div', { class: 'slots', role: 'img', 'aria-label': SERVICES[k] + ': ' + cnt.free + ' free, ' + cnt.held + ' held, ' + cnt.occupied + ' occupied' }, ps.map(function (p) { return el('i', { class: 'slot' + (p.state === 'occupied' ? '' : ' ' + p.state), title: 'Place ' + p.n + ': ' + p.state }); }))]);
+    var wr = el('div', { class: 'rows' });
+    waitingPlaces().filter(function (h) { return h.svc === k; }).forEach(function (h) {
+      var p = h.place ? byIdIn(state.places, h.place) : null, free = ps.filter(function (x) { return x.state === 'free'; })[0];
+      var acts = p ? [el('button', { type: 'button', class: 'small primary', id: 'start-' + h.id, 'aria-label': 'Place started for ' + h.code, onclick: function () { startPlace(h); }, text: 'Place started' }), el('button', { type: 'button', class: 'small', 'aria-label': 'Release hold for ' + h.code, onclick: function () { releasePlace(h); }, text: 'Release' })]
+        : free ? [el('button', { type: 'button', class: 'small', id: 'hold-' + h.id, 'aria-label': 'Hold place ' + free.n + ' for ' + h.code, onclick: function () { holdPlace(h.id, free.id); }, text: 'Hold place ' + free.n }) ] : [el('span', { class: 'chip st-nothome', text: 'No place free' })];
+      wr.appendChild(el('div', { class: 'row' + (!p && (now() - h.accepted) > 2 * DAY ? ' hot' : '') }, [el('div', {}, [el('b', { text: h.code + ' · ready to leave hospital' }), el('span', { class: 'sub', text: 'Accepted ' + fmtD((now() - h.accepted) / DAY) + ' ago' + (p ? ' · place ' + p.n + ' held' : ' · waiting for a place') })]), el('div', { class: 'acts' }, acts)]));
+    });
+    if (wr.childNodes.length) box.appendChild(wr);
+    pl.appendChild(box);
+  });
+  f.appendChild(pl);
+  f.appendChild(el('p', { class: 'fine', text: 'Wards at Example General Hospital see the same board. Who is clinically suitable for a place stays with the care team.' }));
+  return f;
+}
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Visit rounds, clinic lists, the register, sessions, stock and places all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag in this view right now.' }));
+  list.forEach(function (sg) {
+    var pend = state.pending.some(function (p) { return p.id === sg.id; });
+    var acts = sg.acts.filter(Boolean).map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend && a.primary ? 'disabled' : false, onclick: a.fn, text: pend && a.primary ? 'Proposed' : a.label }); });
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
+      el('span', { class: 'tag ' + (sg.kind === 'time' ? 'time' : sg.kind === 'ask' ? 'ask' : ''), text: sg.tag }),
+      el('h3', { text: sg.title }), sg.text ? el('p', { text: sg.text }) : null,
+      sg.list && sg.list.length ? el('ul', {}, sg.list.map(function (x) { return el('li', { text: x }); })) : null,
+      el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)]));
+  });
+  if (state.pending.length) {
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for a person to decide' })]);
+    state.pending.forEach(function (p) {
+      d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }),
+        state.role === p.who
+          ? el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, [el('button', { type: 'button', class: 'small primary', onclick: function () { decide(p, true); }, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])
+          : el('p', { class: 'who', style: 'margin:0', text: 'For the ' + WHO[p.who] + '. Switch to that view to confirm or decline.' })]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Proposals wait here for the right role.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 30).forEach(function (e) { ol.appendChild(el('li', { class: e.t === lastLogT ? 'new' : '' }, [el('time', { text: hhmm(e.t) }), el('span', {}, [e.text, e.q ? el('span', { class: 'qd', text: 'On phone' }) : null])])); });
+}
+
+// ---------- Wiring ----------
+['front', 'manager', 'district'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; state.kpiOpen = null; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-clock').addEventListener('click', function () {
+  if (now() + 30 > TODAY * DAY + 17 * 60) { toast('The example day ends at 17:00. Reset to start again.'); return; }
+  state.offset = (state.offset || 0) + 30; addLog('Demo: clock moved on 30 minutes.'); render(); toast('Clock moved on 30 minutes.');
+});
+document.getElementById('t-referral').addEventListener('click', function () {
+  var svc = ['Home nursing', 'Wound care', 'Long-term conditions review', 'Maternal and newborn visits'], c = state.role === 'manager' ? state.centre : 'N';
+  var r = { id: 'R' + (++state.seq), centre: c, code: 'P-' + (5100 + state.seq), service: svc[state.seq % 4], recv: now(), acc: null, status: 'received' };
+  state.refs.push(r); addLog('Referral received from Example General Hospital: ' + r.code + ', ' + r.service + ' (' + CENTRES[c] + ')');
+  if (state.seq % 2 === 0) { var h = { id: 'H' + state.seq, code: 'P-' + (6100 + state.seq), svc: 'step', accepted: now(), started: null, place: null }; state.placeRefs.push(h); addLog('Placement coordinator accepted ' + h.code + ' for a step-down bed.'); }
+  render(); toast('New referral for ' + CENTRES[c] + '.');
+});
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; settingsOpen = false; render(); toast('Example reset to 11:40.'); });
+window.addEventListener('offline', function () { setOffline(true); });
+window.addEventListener('online', function () { setOffline(false); });
+setInterval(function () { var a = document.activeElement; if (a && (a.tagName === 'SELECT' || a.tagName === 'INPUT')) { renderClock(); return; } render(); }, 30000);
+
+// Read-only view for software agents (no writes): window.ospeliCommunityDemo
+window.ospeliCommunityDemo = Object.freeze({
+  describe: function () { return 'Read-only primary and community care demo for the fictional community services of Example General Hospital (four health centres). get() returns today\'s visit round, clinic list, follow-ups overdue by programme and centre, sessions, stock, readiness, hospital referrals and community places; kpis() the headline measures; suggestions() the guide\'s current suggestions. Patients are codes only. Runs in the browser; nothing is sent anywhere.'; },
+  get: function () {
+    return clone({ role: state.role, demoClock: 'Tue ' + hhmm(now()), offline: state.offline, queuedChanges: queued(),
+      visitRound: state.visits.slice().sort(function (a, b) { return a.order - b.order; }).map(function (v) { return { id: v.id, code: v.code, area: AREAS[v.area], programme: PROGS[v.prog], planned: hhmm(v.plan), status: v.status }; }),
+      clinicList: state.clinic.map(function (c) { return { code: c.code, slot: hhmm(c.slot), status: c.status, waitMin: c.seen && c.arr ? c.seen - c.arr : null }; }),
+      followUps: CIDS.map(function (c) { return { centre: CENTRES[c], byProgramme: PIDS.map(function (p) { var s = fuStats(c, p); return { programme: PROGS[p], due: s.due, missed: s.missed, missedPct: s.pct, overdue: s.overdue, recallBooked: s.rebooked }; }) }; }),
+      sessions: state.sessions.map(function (x) { return { centre: CENTRES[x.centre], day: DAYS[x.day], part: x.part, programme: PROGS[x.prog], room: x.room, booked: x.booked, capacity: x.cap, status: x.status, reason: x.reason }; }),
+      stock: CIDS.map(function (c) { return { centre: CENTRES[c], items: state.stock[c].map(function (x) { return { item: stockName(x.k), onHand: x.onHand, daysCover: Math.floor(daysLeft(x)), topUpRequested: x.req }; }) }; }),
+      readiness: CIDS.map(function (c) { var r = readiness(c); return { centre: CENTRES[c], indexPct: r.pct, domains: r.domains }; }),
+      referralsWaiting: state.refs.filter(function (r) { return !r.acc; }).map(function (r) { return { centre: CENTRES[r.centre], code: r.code, service: r.service, waitingHours: Math.round((now() - r.recv) / 60) }; }),
+      communityPlaces: Object.keys(SERVICES).map(function (k) { var ps = state.places.filter(function (p) { return p.svc === k; }); return { service: SERVICES[k], free: ps.filter(function (p) { return p.state === 'free'; }).length, held: ps.filter(function (p) { return p.state === 'held'; }).length, occupied: ps.filter(function (p) { return p.state === 'occupied'; }).length }; }),
+      waitingForPlace: waitingPlaces().map(function (h) { return { code: h.code, service: SERVICES[h.svc], placeHeld: !!h.place, daysSinceAccepted: Math.round((now() - h.accepted) / DAY * 10) / 10 }; }),
+      pendingDecisions: state.pending.map(function (p) { return { text: p.text, decides: WHO[p.who] }; }) });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text || (s.list || []).join('; '), why: s.why }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>

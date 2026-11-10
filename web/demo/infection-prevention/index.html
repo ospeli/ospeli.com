@@ -1,0 +1,956 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Infection prevention operations demo · Ospeli</title>
+<meta name="description" content="Isolation rooms with live status, isolation requests, hand hygiene and cleaning audits on a phone, and a closure board for a ward in outbreak mode. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Infection prevention operations demo · Ospeli">
+<meta property="og:description" content="Isolation rooms with live status, isolation requests, hand hygiene and cleaning audits on a phone, and a closure board for a ward in outbreak mode. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/infection-prevention/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button { font: inherit; color: var(--ink); }
+select { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 520px) { .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 14px; width: 100%; } .roles button { padding: 6px 4px; line-height: 1.2; font-size: 0.95rem; } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.clocknow { font-weight: 800; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-variant-numeric: tabular-nums; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.9rem; font-weight: 700; display: block; line-height: 1.3; }
+.stat .n { color: var(--soft); font-size: 0.8rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.82rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stathint { color: var(--soft); font-size: 0.8rem; margin: 6px 0 0; }
+#kpibox.below { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line); }
+.chip { display: inline-block; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; background: var(--sand); white-space: nowrap; }
+.chip.s-ready { background: var(--sea); color: #fff; }
+.chip.s-cleaning { background: var(--mango); color: var(--navy); }
+.chip.s-occupied { background: var(--navy); color: #fff; }
+.chip.s-out { background: #D9D2C3; color: var(--navy); }
+.chip.hold { background: var(--warn); }
+.chip.late { background: var(--coral); color: #fff; }
+.chip.round { background: var(--wash); }
+.empty { text-align: center; color: var(--soft); padding: 16px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; margin: 0; }
+.fine { font-size: 0.85rem; color: var(--soft); margin: 8px 0 0; }
+/* ward nurse (phone) */
+.teambar { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; justify-content: space-between; }
+.teambar label { font-weight: 800; display: flex; flex-direction: column; gap: 4px; font-size: 0.95rem; }
+.teambar select { font-weight: 700; min-width: 200px; }
+.summary { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 0.95rem; font-weight: 700; background: var(--sand); }
+.pill.hot { background: var(--hot); color: #B23A22; }
+.rooms { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.room { border: 1px solid var(--line); border-left: 6px solid var(--navy); border-radius: 12px; padding: 12px; background: #fff; font-size: 1rem; }
+.room.st-ready { border-left-color: var(--sea); background: #F7FBFA; }
+.room.st-cleaning { border-left-color: var(--mango); }
+.room.st-out { border-left-color: #B9AF9C; background: #FBFAF7; }
+.room.over { box-shadow: 0 0 0 2px var(--coral) inset; }
+.room .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.room .nm { font-weight: 800; font-size: 1.12rem; line-height: 1.25; margin: 0; }
+.room .feat { font-size: 0.95rem; color: var(--soft); margin: 0; }
+.room .inst { text-align: right; font-weight: 800; font-size: 1.05rem; white-space: nowrap; line-height: 1.15; }
+.room .inst small { display: block; font-size: 0.8rem; font-weight: 700; color: var(--soft); }
+.room .line { margin: 8px 0 0; font-size: 0.98rem; }
+.room .note { font-size: 0.95rem; margin: 8px 0 0; background: var(--warn); border-radius: 8px; padding: 4px 8px; }
+.room .note.bad { background: var(--hot); color: #8E2C18; }
+.room .acts { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.room .go { flex: 1 1 auto; min-height: 52px; font-size: 1.02rem; }
+.go.clean { background: var(--mango); border-color: var(--mango); color: var(--navy); }
+.go.ready { background: var(--sea); border-color: var(--sea); color: #fff; }
+.go.move { background: var(--navy); color: #fff; }
+.panel { border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-top: 4px; }
+.stepq { font-weight: 800; font-size: 1rem; margin: 0 0 8px; }
+.choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.choice { border-radius: 12px; border: 1px solid #CFC5B2; min-height: 52px; text-align: left; padding: 8px 12px; font-size: 1rem; }
+.choice small { display: block; font-weight: 600; color: var(--soft); font-size: 0.88rem; }
+.choice[aria-pressed=true] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.choice[aria-pressed=true] small { color: #D6E2EC; }
+.code { font-weight: 800; font-variant-numeric: tabular-nums; background: var(--sand); border-radius: 8px; padding: 2px 8px; }
+.sendrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-top: 12px; }
+.sendrow .send { flex: 1 1 200px; min-height: 54px; font-size: 1.05rem; }
+.rq { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-top: 8px; font-size: 0.98rem; }
+.rq .top { display: flex; justify-content: space-between; gap: 8px; font-weight: 800; flex-wrap: wrap; }
+.rq p { margin: 2px 0 0; color: var(--soft); }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.tabs button { border-radius: 12px; border-color: #CFC5B2; min-height: 48px; }
+.tabs button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.yn { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.yn button { min-height: 64px; border-radius: 14px; font-size: 1.1rem; }
+.yn .yes { background: var(--sea); border-color: var(--sea); color: #fff; }
+.yn .no { background: #fff; border: 2px solid var(--coral); color: #8E2C18; }
+.tally { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin: 12px 0 0; font-size: 1rem; flex-wrap: wrap; }
+.tally b { font-size: 1.3rem; }
+.items { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.items li { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; font-size: 0.98rem; }
+.items .pair { display: flex; gap: 6px; }
+.items .pair button { min-width: 56px; min-height: 46px; border-radius: 10px; border-color: #CFC5B2; padding: 4px 10px; }
+.items .pair button.y[aria-pressed=true] { background: var(--sea); border-color: var(--sea); color: #fff; }
+.items .pair button.n[aria-pressed=true] { background: var(--coral); border-color: var(--coral); color: #fff; }
+/* IPC team and manager */
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.filters button { min-height: 38px; font-size: 0.88rem; border-color: #CFC5B2; }
+.filters button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.rrow { display: grid; grid-template-columns: minmax(0, 1.4fr) 130px 84px minmax(0, 1fr); gap: 10px; align-items: center; border: 1px solid var(--line); border-left: 5px solid var(--navy); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; font-size: 0.92rem; }
+.rrow.st-ready { border-left-color: var(--sea); } .rrow.st-cleaning { border-left-color: var(--mango); } .rrow.st-out { border-left-color: #B9AF9C; }
+.rrow.over { background: #FFF8F5; }
+.rrow b { display: block; }
+.rrow .sub { color: var(--soft); font-size: 0.84rem; }
+.rrow .w { font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rrow.over .w { color: #B23A22; }
+.rrow .act { text-align: right; }
+@media (max-width: 640px) { .rrow { grid-template-columns: minmax(0, 1fr) auto; } .rrow > :nth-child(2) { text-align: right; } .rrow .w { grid-column: 2; grid-row: 2; text-align: right; } .rrow .act { grid-column: 1; grid-row: 2; text-align: left; } .rrow .act:empty { display: none; } }
+.req { border: 1px solid var(--line); border-left: 5px solid var(--coral); border-radius: 10px; padding: 10px; margin-bottom: 8px; font-size: 0.92rem; }
+.req .top { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.req .assign { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-top: 8px; }
+.req .assign label { display: flex; flex-direction: column; gap: 3px; font-weight: 700; color: var(--soft); font-size: 0.82rem; min-width: 0; max-width: 100%; }
+.req .assign select { min-height: 40px; font-size: 0.9rem; }
+table.t { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+table.t th, table.t td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.t th { color: var(--soft); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+table.t td.r, table.t th.r { text-align: right; font-variant-numeric: tabular-nums; }
+table.t td.low { color: #B23A22; font-weight: 800; }
+.tablewrap { overflow-x: auto; }
+.meter { display: inline-block; width: 54px; height: 6px; border-radius: 3px; background: var(--line); vertical-align: middle; margin-left: 6px; overflow: hidden; }
+.meter i { display: block; height: 100%; background: var(--sea); border-radius: 3px; }
+.closure { border: 1px solid var(--coral); background: #FFF8F5; border-radius: 12px; padding: 14px; }
+.closure.reopen { border-color: var(--sea); background: #F7FBFA; }
+.closure h4 { margin: 0 0 2px; font-size: 1.02rem; }
+.closure .meta { color: var(--soft); font-size: 0.88rem; margin: 0 0 10px; }
+.stepper { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0 12px; }
+.stepper .num { font-size: 1.5rem; font-weight: 800; min-width: 2.4em; text-align: center; }
+.stepper button { min-width: 48px; font-size: 1.2rem; padding: 4px 12px; }
+.stepper .of { color: var(--soft); font-size: 0.9rem; }
+.check { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
+.check li label { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 8px; align-items: center; min-height: 44px; cursor: pointer; background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; font-size: 0.92rem; }
+.check input { width: 20px; height: 20px; margin: 0; }
+.check time { color: var(--soft); font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+.check li.done label { color: var(--soft); }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.row label { display: flex; flex-direction: column; gap: 3px; font-weight: 700; color: var(--soft); font-size: 0.85rem; }
+.acts-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.acts-list li { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-bottom: 1px dashed var(--line); padding: 4px 0; font-size: 0.9rem; }
+.big { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .big { grid-template-columns: minmax(0, 1fr); } }
+.bigc { border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.bigc b { display: block; font-size: 1.9rem; line-height: 1.1; font-weight: 800; }
+.bigc .lbl { font-weight: 800; display: block; }
+.bigc p { margin: 4px 0 0; color: var(--soft); font-size: 0.86rem; }
+.bars { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; align-items: end; height: 190px; padding: 0 2px; border-bottom: 1px solid #CFC5B2; position: relative; }
+.bar { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; position: relative; }
+.bar i { display: block; width: min(44px, 80%); background: var(--foam); border-radius: 4px 4px 0 0; }
+.bar.now i { background: var(--sea); }
+.bar span { font-size: 0.8rem; font-weight: 800; margin-bottom: 4px; font-variant-numeric: tabular-nums; }
+.bar:hover i, .bar:focus-visible i { outline: 2px solid var(--navy); outline-offset: 1px; }
+.barlbl { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; font-size: 0.78rem; color: var(--soft); text-align: center; margin-top: 4px; font-weight: 700; }
+.tline { position: absolute; left: 0; right: 0; border-top: 2px dashed var(--coral); pointer-events: none; }
+.tline span { position: absolute; right: 0; top: -20px; font-size: 0.74rem; font-weight: 800; color: #8E2C18; background: #fff; padding: 0 4px; }
+details.set { margin-top: 10px; }
+details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; font-size: 0.92rem; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.84rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg ul { margin: 0 0 8px; padding-left: 18px; font-size: 0.88rem; }
+.sugg .why { color: var(--soft); font-size: 0.84rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin: 4px 0 0; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Infection prevention operations: isolation rooms, audits and closures</h1>
+  <p class="lead">Wards see their isolation rooms live and ask for one in a few taps. Hand hygiene and cleaning audits go in on a phone and count the same day. The infection prevention and control (IPC) team runs one board for rooms, requests, audits and a ward in closure mode. The guide points out matches and gaps; a person decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-nurse" data-role="nurse" aria-pressed="false">Ward nurse</button>
+    <button type="button" id="r-ipc" data-role="ipc" aria-pressed="false">IPC team</button>
+    <button type="button" id="r-ops" data-role="ops" aria-pressed="false">Ops manager</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <span class="clocknow" id="clocknow" aria-live="off"></span>
+    <b>Demo tools:</b>
+    <button type="button" class="small" id="t-clock">Move clock on 15 min</button>
+    <button type="button" class="small" id="t-leave">A patient leaves a side room</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <h2 id="view-h">Isolation rooms</h2>
+        <div id="kpibox"><div class="stats" id="kpis"></div><p class="stathint">Tap a tile for its definition.</p></div>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened today</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads room status, waiting requests, audit dates and closures, and suggests where to look, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal. The IPC team decides.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its wards, rooms, codes and figures. It handles rooms, requests, audits and closures only. It does not diagnose infection, decide who needs isolation, or advise on treatment; clinicians decide. Audits count observations, never named staff. Coming next (Feb 2027): audit results by area and month with control limits and linked actions, a monthly audit round planner, enhanced and terminal clean requests sent straight to the cleaning team, and device-days counted per unit as the denominator for device infection rates. <a href="../../areas/infection-prevention-operations/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var M = 60000, DAY = 1440;
+var STORE = 'ospeli.infectionprevention.v1';
+
+// ---------- Fixed reference data (fictional) ----------
+var AREAS = {
+  W1: { name: 'Ward 1', bays: 4, beds: 6 }, W2: { name: 'Ward 2', bays: 4, beds: 6 }, W3: { name: 'Ward 3', bays: 4, beds: 6 },
+  W4: { name: 'Ward 4', bays: 4, beds: 6 }, W5: { name: 'Ward 5', bays: 4, beds: 6 }, W6: { name: 'Ward 6', bays: 4, beds: 6 },
+  CC: { name: 'Critical care' }, ED: { name: 'Emergency department' }
+};
+var ORDER = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'CC', 'ED'];
+var WARDS_WITH_BAYS = ['W1', 'W2', 'W3', 'W4', 'W5', 'W6'];
+var STATUS = { ready: 'Ready', cleaning: 'Cleaning', occupied: 'Occupied', out: 'Out of service' };
+var STATUS_ORDER = { ready: 0, cleaning: 1, out: 2, occupied: 3 };
+// Example settings for this demo only, not a standard: each organisation sets its own.
+var SETTINGS = { cleanMin: 60, auditDueDays: 14, lowPct: 80, minObs: 10 };
+var CLOSE_ITEMS = ['Closure signs on every entrance', 'Patient flow team told: no admissions or transfers into closed bays', 'Enhanced cleaning of closed bays requested, twice a day', 'Stock check: gloves, aprons, hand rub, cleaning products', 'Visitor notice at the ward door', 'Daily status note sent to leadership (today)'];
+var CLEAN_ITEMS = ['Bed frame and mattress clean', 'Commode or toilet clean', 'Hand rub at the point of care, not empty', 'Sharps bin below the fill line', 'High surfaces free of dust', 'Waste bin lid works'];
+// Earlier months, site hand hygiene compliance (fictional example figures).
+var TREND = [82, 85, 81, 86, 84];
+
+// ---------- State ----------
+function seed() {
+  var phone = window.matchMedia('(max-width: 640px)').matches;
+  var s = { v: 1, created: Date.now(), startMin: 620, offset: 0, role: phone ? 'nurse' : 'ipc', ward: 'W2', guide: true, kpiOpen: null,
+    filter: 'all', closeWard: 'W5', seq: 4500, pending: [], dismissed: {}, round: [], actions: [], log: [],
+    form: { needs: 'any', code: null }, audit: { tab: 'hh', taps: [], items: {} } };
+  function room(id, area, name, lobby, status, since, patient, note) { return { id: id, area: area, name: name, lobby: lobby, status: status, since: since, patient: patient || null, heldFor: null, note: note || '' }; }
+  s.rooms = [
+    room('W1-1', 'W1', 'Side room 1', false, 'occupied', -2100, 'P-1043'), room('W1-2', 'W1', 'Side room 2', false, 'ready', 595),
+    room('W2-1', 'W2', 'Side room 1', false, 'occupied', 520, 'P-2876'), room('W2-2', 'W2', 'Side room 2', true, 'cleaning', 580),
+    room('W3-1', 'W3', 'Side room 1', true, 'occupied', -400, 'P-0415'), room('W3-2', 'W3', 'Side room 2', false, 'out', 460, null, 'Door closer fault · work order raised'),
+    room('W4-1', 'W4', 'Side room 1', false, 'occupied', -1700, 'P-3390'), room('W4-2', 'W4', 'Side room 2', false, 'occupied', 552, 'P-1187'),
+    room('W5-1', 'W5', 'Side room 1', false, 'occupied', -900, 'P-2741'), room('W5-2', 'W5', 'Side room 2', false, 'cleaning', 600),
+    room('W6-1', 'W6', 'Side room 1', false, 'occupied', -300, 'P-0638'), room('W6-2', 'W6', 'Side room 2', false, 'cleaning', 525),
+    room('CC-1', 'CC', 'Isolation room 1', true, 'occupied', -2600, 'P-1922'), room('CC-2', 'CC', 'Isolation room 2', true, 'occupied', 475, 'P-0962'),
+    room('ED-1', 'ED', 'Isolation room', false, 'occupied', 562, 'P-4410')
+  ];
+  s.requests = [
+    { id: 'R1', area: 'CC', patient: 'P-0962', needs: 'lobby', at: 455, placed: 475, room: 'CC-2' },
+    { id: 'R2', area: 'ED', patient: 'P-2876', needs: 'any', at: 482, placed: 520, room: 'W2-1' },
+    { id: 'R3', area: 'W4', patient: 'P-1187', needs: 'any', at: 500, placed: 552, room: 'W4-2' },
+    { id: 'R4', area: 'ED', patient: 'P-2210', needs: 'any', at: 585, placed: null, room: null },
+    { id: 'R5', area: 'W4', patient: 'P-3054', needs: 'lobby', at: 608, placed: null, room: null }
+  ];
+  // This month so far: hand hygiene opportunities observed / done; cleaning audit items checked / passed; days since last audit.
+  s.audits = {
+    W1: { obs: 46, done: 41, items: 60, pass: 58, hhAgo: 3, clAgo: 5 }, W2: { obs: 38, done: 33, items: 60, pass: 55, hhAgo: 6, clAgo: 8 },
+    W3: { obs: 22, done: 19, items: 30, pass: 27, hhAgo: 19, clAgo: 21 }, W4: { obs: 52, done: 47, items: 60, pass: 57, hhAgo: 0, clAgo: 3 },
+    W5: { obs: 40, done: 37, items: 90, pass: 88, hhAgo: 1, clAgo: 1 }, W6: { obs: 34, done: 24, items: 60, pass: 50, hhAgo: 9, clAgo: 0 },
+    CC: { obs: 44, done: 41, items: 60, pass: 59, hhAgo: 4, clAgo: 6 }, ED: { obs: 30, done: 25, items: 60, pass: 52, hhAgo: 16, clAgo: 10 }
+  };
+  // Ward 5 in closure mode since yesterday 08:30: one bay first, a second bay from 15:00.
+  s.closures = { W5: { ward: 'W5', start: 510 - DAY, bays: 2, last: 900 - DAY, bedMin: 6 * 390, ended: null, maxBays: 2, items: [525 - DAY, 530 - DAY, 545 - DAY, 495, 560 - DAY, null].map(function (t, i) { return { text: CLOSE_ITEMS[i], at: t }; }), reopen: null } };
+  // Times are minutes of the day; negative means yesterday.
+  s.actions = [{ id: 'A1', area: 'W6', text: 'Sharps bin below the fill line: failed', at: 470, done: null }];
+  var ev = [
+    [455, 'Critical care asked for an isolation room with a lobby (P-0962).'],
+    [460, 'Ward 3 side room 2 out of service: door closer fault. Work order raised with facilities.'],
+    [470, 'Cleaning audit, Ward 6: 9 of 10 items passed. 1 action created.'],
+    [475, 'P-0962 moved into Critical care isolation room 2. Time to isolation room: 20 min.'],
+    [482, 'Emergency department asked for an isolation room (P-2876).'],
+    [495, 'Ward 5 closure: stock check done (action card).'],
+    [500, 'Ward 4 asked for an isolation room (P-1187).'],
+    [520, 'P-2876 moved into Ward 2 side room 1. Time to isolation room: 38 min.'],
+    [525, 'Ward 6 side room 2: patient left. Deep clean requested.'],
+    [545, 'Hand hygiene audit, Ward 4: 18 of 20 opportunities (90%).'],
+    [552, 'P-1187 moved into Ward 4 side room 2. Time to isolation room: 52 min.'],
+    [580, 'Ward 2 side room 2: patient left. Deep clean requested.'],
+    [585, 'Emergency department asked for an isolation room (P-2210).'],
+    [595, 'Ward 1 side room 2: deep clean done. Room ready.'],
+    [600, 'Ward 5 side room 2: patient left. Deep clean requested.'],
+    [608, 'Ward 4 asked for an isolation room with a lobby (P-3054).']
+  ];
+  s.log = ev.reverse().map(function (e) { return { t: e[0], text: e[1] }; });
+  return s;
+}
+
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE));
+    // An example day goes stale: start a fresh one after 8 hours.
+    if (!s || s.v !== 1 || !s.rooms || Date.now() - s.created > 8 * 60 * M) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function nowMin() { return Math.floor(state.startMin + (Date.now() - state.created) / M + (state.offset || 0)); }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+// ---------- Derived data (pure) ----------
+function roomById(id) { return state.rooms.filter(function (r) { return r.id === id; })[0]; }
+function reqById(id) { return state.requests.filter(function (r) { return r.id === id; })[0]; }
+function roomName(r) { return AREAS[r.area].name + ' ' + r.name.charAt(0).toLowerCase() + r.name.slice(1); }
+function inState(r) { return Math.max(0, nowMin() - r.since); }
+function cleanOver(r) { return r.status === 'cleaning' && inState(r) > SETTINGS.cleanMin; }
+function dueAt(r) { return r.since + SETTINGS.cleanMin; }
+function waiting() { return state.requests.filter(function (q) { return !q.placed; }).sort(function (a, b) { return a.at - b.at; }); }
+function fits(room, q) { return q.needs === 'any' || room.lobby; }
+function freeFor(q) { return state.rooms.filter(function (r) { return r.status === 'ready' && fits(r, q) && (!r.heldFor || r.heldFor === q.id); }); }
+function pct(a, b) { return b ? Math.round(100 * a / b) : null; }
+function bedsClosed(c) { return c.ended != null ? 0 : c.bays * AREAS[c.ward].beds; }
+function bedDays(c) { var end = c.ended != null ? c.ended : nowMin(); return (c.bedMin + (c.ended != null ? 0 : bedsClosed(c) * Math.max(0, end - c.last))) / DAY; }
+function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function siteHH() { var o = 0, d = 0; ORDER.forEach(function (a) { o += state.audits[a].obs; d += state.audits[a].done; }); return { obs: o, done: d, pct: pct(d, o) }; }
+function kpis() {
+  var inService = state.rooms.filter(function (r) { return r.status !== 'out'; });
+  var ready = state.rooms.filter(function (r) { return r.status === 'ready'; });
+  var placed = state.requests.filter(function (q) { return q.placed != null && q.placed >= 0; });
+  var hh = siteHH(), bd = 0, closedBeds = 0;
+  Object.keys(state.closures).forEach(function (k) { bd += bedDays(state.closures[k]); closedBeds += bedsClosed(state.closures[k]); });
+  var unusable = state.rooms.filter(function (r) { return r.status === 'cleaning' || r.status === 'out'; }).length;
+  var w = waiting();
+  return {
+    handHygienePct: hh.pct, handHygieneObs: hh.obs,
+    timeToIsolationMin: placed.length ? Math.round(median(placed.map(function (q) { return q.placed - q.at; }))) : null, placedToday: placed.length,
+    roomsReady: ready.length, roomsInService: inService.length, availabilityPct: pct(ready.length, inService.length),
+    bedDaysLost: Math.round(bd * 10) / 10, bedsClosedNow: closedBeds, isolationRoomsUnusable: unusable, bedsLostNow: closedBeds + unusable,
+    requestsWaiting: w.length, oldestWaitMin: w.length ? nowMin() - w[0].at : 0,
+    roomsCleaning: state.rooms.filter(function (r) { return r.status === 'cleaning'; }).length
+  };
+}
+function overdueAudits() {
+  var out = [];
+  ORDER.forEach(function (a) {
+    var x = state.audits[a], types = [];
+    if (x.hhAgo > SETTINGS.auditDueDays) types.push('hand hygiene ' + x.hhAgo + ' days ago');
+    if (x.clAgo > SETTINGS.auditDueDays) types.push('cleaning ' + x.clAgo + ' days ago');
+    if (types.length && !inRound(a)) out.push({ area: a, text: AREAS[a].name + ': last ' + types.join(', ') });
+  });
+  return out;
+}
+function inRound(a) { return state.round.some(function (r) { return r.area === a; }); }
+
+// ---------- The guide: plain, checkable rules ----------
+function suggest() {
+  var out = [], n = nowMin(), used = {};
+  // 0. A ward has been reopened and has no reopening checklist yet.
+  Object.keys(state.closures).forEach(function (k) {
+    var c = state.closures[k]; if (c.ended == null || c.reopen) return;
+    out.push({ id: 'reopen-' + k, kind: 'ask', title: AREAS[k].name + ' reopened: draft the clearing checklist?',
+      text: 'A draft list of cleans, restocking and notices to clear before the ward is back to normal.',
+      list: reopenItems(c),
+      why: 'The ward was set back from closure mode at ' + hhmm(c.ended) + '. The checklist is a draft; the IPC team edits and owns it.',
+      acts: [{ label: 'Propose this checklist', primary: true, fn: function () { propose({ id: 'reopen-' + k, kind: 'reopen', ward: k, text: 'Add the reopening checklist to ' + AREAS[k].name + ' (' + reopenItems(c).length + ' items).' }); } }] });
+  });
+  // 1. Match a waiting request to a room that is ready, or the cleaning room due soonest.
+  waiting().forEach(function (q) {
+    if (out.filter(function (s) { return s.kind === 'match'; }).length >= 2) return;
+    var ready = freeFor(q).filter(function (r) { return !used[r.id]; })[0];
+    if (ready) {
+      used[ready.id] = 1;
+      out.push({ id: 'place-' + q.id + '-' + ready.id, kind: 'match', title: 'Place ' + q.patient + ' in ' + roomName(ready) + '?',
+        text: AREAS[q.area].name + ' asked ' + fmt(n - q.at) + ' ago for ' + (q.needs === 'lobby' ? 'a room with a lobby' : 'any isolation room') + '. ' + roomName(ready) + ' has been ready for ' + fmt(inState(ready)) + '.',
+        why: 'Oldest waiting request matched to a ready room with the features the request asked for. The clinical team chose the room type; the guide only matches it.',
+        acts: [{ label: 'Propose this placement', primary: true, fn: function () { propose({ id: 'place-' + q.id + '-' + ready.id, kind: 'place', req: q.id, room: ready.id, text: 'Place ' + q.patient + ' (' + AREAS[q.area].name + ') in ' + roomName(ready) + '.' }); } }] });
+      return;
+    }
+    if (state.rooms.some(function (r) { return r.heldFor === q.id; })) return;
+    var soon = state.rooms.filter(function (r) { return r.status === 'cleaning' && fits(r, q) && !r.heldFor && !used[r.id] && dueAt(r) - n <= 30; }).sort(function (a, b) { return dueAt(a) - dueAt(b); })[0];
+    if (soon) {
+      used[soon.id] = 1;
+      var left = dueAt(soon) - n;
+      out.push({ id: 'hold-' + q.id + '-' + soon.id, kind: 'match', title: 'Hold ' + roomName(soon) + ' for ' + q.patient + '?',
+        text: 'No matching room is ready. ' + roomName(soon) + (soon.lobby ? ' (lobby)' : '') + ' is being cleaned and is ' + (left > 0 ? 'due ready in about ' + fmt(left) : 'past its expected clean time') + '. ' + AREAS[q.area].name + ' has waited ' + fmt(n - q.at) + '.',
+        why: 'Room in cleaning that fits the request and is expected ready within 30 minutes (clean time is an example setting of ' + SETTINGS.cleanMin + ' min, not a standard).',
+        acts: [{ label: 'Propose holding it', primary: true, fn: function () { propose({ id: 'hold-' + q.id + '-' + soon.id, kind: 'hold', req: q.id, room: soon.id, text: 'Hold ' + roomName(soon) + ' for ' + q.patient + ' (' + AREAS[q.area].name + ') once its clean is done.' }); } }] });
+    }
+  });
+  // 2. Every room is full or unusable and two or more requests wait.
+  var w = waiting(), anyReady = state.rooms.some(function (r) { return r.status === 'ready' && !r.heldFor; });
+  if (!anyReady && w.length >= 2) out.push({ id: 'full-' + w.map(function (q) { return q.id; }).join(''), kind: 'time', title: 'No isolation room free and ' + w.length + ' requests waiting',
+    text: 'Oldest: ' + AREAS[w[0].area].name + ', waiting ' + fmt(n - w[0].at) + '. ' + kpis().roomsCleaning + ' rooms are being cleaned.',
+    why: 'All in-service isolation rooms are occupied, cleaning or held. Room use is reviewed by the clinical and patient flow teams, not by Ospeli.',
+    acts: [{ label: 'Propose: ask patient flow to review', primary: true, fn: function () { propose({ id: 'full-' + w.map(function (q) { return q.id; }).join(''), kind: 'note', text: 'Ask the patient flow coordinator to review isolation room use with the wards (' + w.length + ' requests waiting).' }); } }] });
+  // 3. Areas overdue for an audit.
+  var od = overdueAudits();
+  if (od.length) out.push({ id: 'due-' + od.map(function (x) { return x.area; }).join(''), kind: 'ask', title: od.length + (od.length > 1 ? ' areas are' : ' area is') + ' overdue for an audit',
+    list: od.map(function (x) { return x.text; }),
+    why: 'Last audit more than ' + SETTINGS.auditDueDays + ' days ago. That interval is an example setting, not a standard.',
+    acts: [{ label: 'Propose: add to this week\'s round', primary: true, fn: function () { propose({ id: 'due-' + od.map(function (x) { return x.area; }).join(''), kind: 'round', areas: od.map(function (x) { return x.area; }), why: 'overdue', text: 'Add ' + od.map(function (x) { return AREAS[x.area].name; }).join(' and ') + ' to this week\'s audit round.' }); } }] });
+  // 4. An area's hand hygiene score is below the alert level this month.
+  ORDER.forEach(function (a) {
+    var x = state.audits[a], p = pct(x.done, x.obs);
+    if (x.obs < SETTINGS.minObs || p >= SETTINGS.lowPct || inRound(a)) return;
+    out.push({ id: 'low-' + a, kind: 'ask', title: AREAS[a].name + ': repeat audit and feedback session?',
+      text: 'Hand hygiene this month is ' + p + '% from ' + x.obs + ' observations, below the ' + SETTINGS.lowPct + '% alert level.',
+      why: 'Area score below the alert level (an example setting, not a standard) with at least ' + SETTINGS.minObs + ' observations. It looks at the area, never at a person.',
+      acts: [{ label: 'Propose a repeat audit', primary: true, fn: function () { propose({ id: 'low-' + a, kind: 'round', areas: [a], why: 'repeat audit and feedback session', text: 'Repeat hand hygiene audit on ' + AREAS[a].name + ' this week, with a feedback session for the ward team.' }); } }] });
+  });
+  return out.filter(function (x) { return !state.dismissed[x.id]; }).slice(0, 4);
+}
+function reopenItems(c) { return ['Deep clean of each bay that was closed (' + (c.maxBays || c.bays || 1) + ')', 'Curtains changed in those bays', 'Bays restocked to top-up levels', 'Closure signs and visitor notice taken down', 'Patient flow team told the beds are open', 'Final status note sent to leadership']; }
+function propose(p) {
+  if (state.pending.some(function (x) { return x.id === p.id; })) return;
+  p.at = nowMin(); state.pending.push(p);
+  addLog('Guide proposed: ' + p.text + ' Waiting for the IPC team.');
+  render(); toast('Proposed. The IPC team decides.');
+}
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x.id !== p.id; });
+  if (!yes) { state.dismissed[p.id] = true; addLog('IPC team declined: ' + p.text); render(); toast('Declined. Nothing changed.'); return; }
+  if (p.kind === 'place') {
+    var q = reqById(p.req), r = roomById(p.room);
+    if (!q || q.placed || !r || r.status !== 'ready') { render(); toast('That room or request has changed. Nothing done.'); return; }
+    place(q, r, 'IPC team confirmed'); return;
+  }
+  if (p.kind === 'hold') {
+    var rr = roomById(p.room); if (!rr || rr.heldFor || rr.status === 'occupied') { render(); toast('That room has changed. Nothing done.'); return; }
+    rr.heldFor = p.req;
+  } else if (p.kind === 'round') {
+    p.areas.forEach(function (a) { if (!inRound(a)) state.round.push({ area: a, why: p.why }); });
+  } else if (p.kind === 'reopen') {
+    var c = state.closures[p.ward]; if (c) c.reopen = reopenItems(c).map(function (t) { return { text: t, at: null }; });
+  }
+  addLog('IPC team confirmed: ' + p.text);
+  render(); toast('Confirmed.');
+}
+
+// ---------- Helpers ----------
+function fmt(m) { m = Math.max(0, Math.round(+m || 0)); if (m < 60) return m + ' min'; if (m < DAY) { var h = Math.floor(m / 60), r = m % 60; return h + ' h ' + (r < 10 ? '0' : '') + r; } var d = Math.floor(m / DAY); return d + ' d ' + Math.floor((m % DAY) / 60) + ' h'; }
+function hhmm(t) { var m = ((Math.floor(t) % DAY) + DAY) % DAY, h = Math.floor(m / 60), mm = m % 60; return (h < 10 ? '0' : '') + h + ':' + (mm < 10 ? '0' : '') + mm; }
+function when(t) { return (t < 0 ? 'Yesterday ' : '') + hhmm(t); }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+var lastLogT = null;
+function addLog(text) { lastLogT = Date.now(); state.log.unshift({ t: nowMin(), text: text, fresh: lastLogT }); state.log = state.log.slice(0, 50); }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+function yesCount(a) { return a.taps.filter(function (t) { return t === 'y'; }).length; }
+function newCode() { state.seq = (state.seq * 7 + 1371) % 9000; return 'P-' + String(1000 + state.seq); }
+
+// ---------- Actions ----------
+function place(q, r, who) {
+  var n = nowMin();
+  state.rooms.forEach(function (x) { if (x.heldFor === q.id) x.heldFor = null; });
+  r.status = 'occupied'; r.since = n; r.patient = q.patient; r.heldFor = null;
+  q.placed = n; q.room = r.id;
+  addLog((who ? who + ': ' : '') + q.patient + ' moved into ' + roomName(r) + '. Time to isolation room: ' + fmt(n - q.at) + '.');
+  render(); toast(q.patient + ' placed in ' + roomName(r) + '.');
+}
+function patientLeft(r) {
+  addLog(roomName(r) + ': patient left (' + r.patient + '). Deep clean requested.');
+  r.status = 'cleaning'; r.since = nowMin(); r.patient = null;
+  render(); toast('Deep clean requested. The room shows as cleaning.');
+}
+function cleanDone(r) {
+  r.status = 'ready'; r.since = nowMin();
+  var held = r.heldFor ? reqById(r.heldFor) : null;
+  addLog(roomName(r) + ': deep clean done. Room ready' + (held ? ', held for ' + held.patient + ' (' + AREAS[held.area].name + ').' : '.'));
+  render(); toast(held ? 'Ready and held for ' + held.patient + '.' : 'Room ready. It now counts as available.');
+}
+function backInService(r) {
+  addLog(roomName(r) + ': repair signed off. Back in service; deep clean requested before use.');
+  r.status = 'cleaning'; r.since = nowMin(); r.note = '';
+  render(); toast('Back in service. Cleaning before first use.');
+}
+function sendRequest() {
+  var f = state.form, w = state.ward;
+  var q = { id: 'R' + (state.requests.length + 1) + '-' + nowMin(), area: w, patient: f.code, needs: f.needs, at: nowMin(), placed: null, room: null };
+  state.requests.push(q);
+  addLog(AREAS[w].name + ' asked for ' + (f.needs === 'lobby' ? 'an isolation room with a lobby' : 'an isolation room') + ' (' + q.patient + ').');
+  state.form = { needs: 'any', code: null };
+  render(); toast('Request sent. The IPC team and patient flow can see it now.');
+}
+function saveAudit() {
+  var a = state.audit, w = state.ward, x = state.audits[w], text;
+  if (a.tab === 'hh') {
+    var n = a.taps.length, yes = yesCount(a); if (!n) return;
+    x.obs += n; x.done += yes; x.hhAgo = 0;
+    text = 'Hand hygiene audit, ' + AREAS[w].name + ': ' + yes + ' of ' + n + ' opportunities (' + pct(yes, n) + '%). Not linked to any person.';
+    state.audit = { tab: 'hh', taps: [], items: {} };
+    state.round = state.round.filter(function (r) { return r.area !== w; });
+    addLog(text);
+    render(); toast(AREAS[w].name + ' this month: ' + pct(x.done, x.obs) + '% from ' + x.obs + ' observations.');
+  } else {
+    var keys = Object.keys(a.items); if (keys.length < CLEAN_ITEMS.length) return;
+    var pass = keys.filter(function (k) { return a.items[k] === 'y'; }).length, fails = keys.filter(function (k) { return a.items[k] === 'n'; });
+    x.items += CLEAN_ITEMS.length; x.pass += pass; x.clAgo = 0;
+    fails.forEach(function (k) { state.actions.unshift({ id: 'A' + (state.actions.length + 1) + '-' + nowMin(), area: w, text: CLEAN_ITEMS[+k] + ': failed', at: nowMin(), done: null }); });
+    text = 'Cleaning audit, ' + AREAS[w].name + ': ' + pass + ' of ' + CLEAN_ITEMS.length + ' items passed.' + (fails.length ? ' ' + fails.length + (fails.length > 1 ? ' actions' : ' action') + ' created.' : '');
+    state.audit = { tab: 'clean', taps: [], items: {} };
+    state.round = state.round.filter(function (r) { return r.area !== w; });
+    addLog(text);
+    render(); toast('Saved: ' + pass + ' of ' + CLEAN_ITEMS.length + ' passed' + (fails.length ? '. Failed items became actions.' : '.'));
+  }
+}
+function setBays(c, n) {
+  var t = nowMin(), max = AREAS[c.ward].bays; n = Math.max(1, Math.min(max, n)); if (n === c.bays) return;
+  c.bedMin += bedsClosed(c) * Math.max(0, t - c.last); c.last = t;
+  addLog(AREAS[c.ward].name + ' closure: bays closed ' + c.bays + ' → ' + n + ' (' + n * AREAS[c.ward].beds + ' beds).');
+  c.bays = n; c.maxBays = Math.max(c.maxBays || 0, n);
+  render();
+}
+function startClosure(w) {
+  state.closures[w] = { ward: w, start: nowMin(), bays: 1, maxBays: 1, last: nowMin(), bedMin: 0, ended: null, items: CLOSE_ITEMS.map(function (t) { return { text: t, at: null }; }), reopen: null };
+  addLog(AREAS[w].name + ': closure mode started by the IPC team, 1 bay closed (' + AREAS[w].beds + ' beds).');
+  render(); toast('Closure mode on. Work through the action card.');
+}
+function reopenClosure(c) {
+  var t = nowMin(); c.maxBays = Math.max(c.maxBays || 0, c.bays);
+  c.bedMin += bedsClosed(c) * Math.max(0, t - c.last); c.last = t; c.ended = t;
+  addLog(AREAS[c.ward].name + ': IPC team reopened the closed bays. ' + (Math.round(c.bedMin / DAY * 10) / 10) + ' bed-days lost in this closure.');
+  render(); toast('Reopened. Beds returned to the bed count.');
+}
+
+// ---------- Render ----------
+var HINTS = {
+  nurse: 'A ward nurse\'s phone. See your side rooms, tell everyone when a room is free or cleaned, ask for an isolation room, and log a quick audit. One thumb, big buttons.',
+  ipc: 'The IPC team\'s board. Every isolation room by status and time in status, requests waiting, audit compliance by area this month, and closure mode for a ward.',
+  ops: 'The operations manager\'s view. Beds lost to closures and isolation today, rooms waiting for a deep clean, and the hand hygiene trend.'
+};
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  ['nurse', 'ipc', 'ops'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('clocknow').textContent = 'Demo clock ' + hhmm(nowMin());
+  document.getElementById('view-h').textContent = { nurse: 'My ward\'s isolation rooms', ipc: 'Isolation, audits and closures', ops: 'Capacity lost today' }[state.role];
+  renderKpis();
+  var v = document.getElementById('view'), kb = document.getElementById('kpibox'); v.textContent = '';
+  if (state.role === 'nurse') v.appendChild(nurseView()); else if (state.role === 'ipc') v.appendChild(ipcView()); else v.appendChild(opsView());
+  // Front-line view leads with its task; the measures go below.
+  if (state.role === 'nurse') { kb.classList.add('below'); v.parentNode.appendChild(kb); } else { kb.classList.remove('below'); v.parentNode.insertBefore(kb, v); }
+  renderGuide();
+  renderLog();
+  save();
+  if (aid) { var e = document.getElementById(aid); if (e) e.focus({ preventScroll: true }); }
+  sig = signature();
+}
+function renderKpis() {
+  var k = kpis(), box = document.getElementById('kpis'); box.textContent = '';
+  var tiles = [
+    ['hh', k.handHygienePct == null ? '–' : k.handHygienePct + '%', 'Hand hygiene compliance', 'this month · ' + k.handHygieneObs + ' observed', 'Hand hygiene actions performed ÷ opportunities observed, all areas, this month. Observation method: WHO 5 Moments for Hand Hygiene. Observations are never linked to a person.', false],
+    ['tti', k.timeToIsolationMin == null ? '–' : fmt(k.timeToIsolationMin), 'Time to isolation room', 'median of ' + k.placedToday + ' today', 'Isolation room requested → patient in the isolation room (median, today). Local definition.', false],
+    ['avail', k.roomsReady + ' of ' + k.roomsInService, 'Isolation room availability', (k.availabilityPct == null ? '' : k.availabilityPct + '% ') + 'free and clean now', 'Isolation rooms free and clean ÷ isolation rooms in service (rooms out of service are left out). Shown now; the daily figure averages the day. Local definition.', k.roomsReady === 0],
+    ['bd', String(k.bedDaysLost), 'Bed-days lost to closures', k.bedsClosedNow + ' beds closed now', 'Sum of beds closed × days closed, per closure, counted from when each bay closed. Local definition.', false]
+  ];
+  tiles.forEach(function (t) {
+    var open = state.kpiOpen === t[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat' + (t[5] ? ' alert' : ''), 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def', text: t[4] })]));
+  });
+}
+function statusChip(r) { return el('span', { class: 'chip s-' + r.status, text: STATUS[r.status] }); }
+function roomCard(r) {
+  var n = nowMin(), held = r.heldFor ? reqById(r.heldFor) : null, over = cleanOver(r);
+  var mine = waiting().filter(function (q) { return q.area === r.area && fits(r, q) && (!r.heldFor || r.heldFor === q.id); })[0];
+  var kids = [
+    el('div', { class: 'top' }, [
+      el('div', {}, [el('p', { class: 'nm', text: r.name }), el('p', { class: 'feat', text: r.lobby ? 'With lobby' : 'Standard side room' })]),
+      el('div', { class: 'inst' }, [statusChip(r), el('small', { 'data-since': r.id, text: 'for ' + fmt(inState(r)) })])
+    ])
+  ];
+  if (r.status === 'occupied') kids.push(el('p', { class: 'line' }, ['Patient ', el('span', { class: 'code', text: r.patient })]));
+  if (r.status === 'cleaning') kids.push(el('p', { class: over ? 'note bad' : 'note', text: over ? 'Deep clean past the expected ' + SETTINGS.cleanMin + ' min' : 'Deep clean in progress · expected ready ' + hhmm(dueAt(r)) }));
+  if (r.status === 'out') kids.push(el('p', { class: 'note', text: r.note || 'Out of service' }));
+  if (held) kids.push(el('p', { class: 'note', text: 'Held for ' + held.patient + ' (' + AREAS[held.area].name + ')' }));
+  var acts = [];
+  if (r.status === 'occupied') acts.push(el('button', { type: 'button', class: 'go clean', id: 'a-' + r.id, 'aria-label': 'Patient left ' + r.name + ', request deep clean', onclick: function () { patientLeft(r); }, text: 'Patient left · request clean' }));
+  if (r.status === 'cleaning') acts.push(el('button', { type: 'button', class: 'go ready', id: 'a-' + r.id, 'aria-label': 'Clean done, ' + r.name + ' ready', onclick: function () { cleanDone(r); }, text: 'Clean done · room ready' }));
+  if (r.status === 'out') acts.push(el('button', { type: 'button', class: 'go', id: 'a-' + r.id, onclick: function () { backInService(r); }, text: 'Repair done · back in service' }));
+  if (r.status === 'ready' && mine) acts.push(el('button', { type: 'button', class: 'go move', id: 'a-' + r.id, onclick: function () { place(mine, r, AREAS[r.area].name); }, text: 'Move ' + mine.patient + ' in' }));
+  if (r.status === 'ready' && !mine) kids.push(el('p', { class: 'line', text: held ? 'The receiving team will move the patient.' : 'Free and clean. It shows as available to the IPC and patient flow teams.' }));
+  if (acts.length) kids.push(el('div', { class: 'acts' }, acts));
+  return el('article', { class: 'room st-' + r.status + (over ? ' over' : ''), 'aria-label': r.name + ', ' + STATUS[r.status] }, kids);
+}
+function nurseView() {
+  var frag = document.createDocumentFragment(), w = state.ward;
+  var sel = el('select', { id: 'ward-pick', onchange: function (e) { state.ward = e.target.value; render(); } });
+  ORDER.forEach(function (id) { sel.appendChild(el('option', { value: id, text: AREAS[id].name })); });
+  sel.value = w;
+  frag.appendChild(el('div', { class: 'teambar' }, [el('label', { for: 'ward-pick' }, ['Your ward', sel])]));
+  var c = state.closures[w];
+  var pills = [];
+  if (c && c.ended == null) pills.push(el('span', { class: 'pill hot', text: 'Closure mode: ' + c.bays + ' of ' + AREAS[w].bays + ' bays closed' }));
+  var site = kpis();
+  pills.push(el('span', { class: 'pill', text: 'Site: ' + site.roomsReady + ' isolation room' + (site.roomsReady === 1 ? '' : 's') + ' ready' }));
+  if (inRound(w)) pills.push(el('span', { class: 'pill', text: 'Audit due this week' }));
+  frag.appendChild(el('div', { class: 'summary' }, pills));
+  frag.appendChild(el('h3', { class: 'sec', text: 'Side rooms on ' + AREAS[w].name }));
+  var list = el('div', { class: 'rooms', id: 'my-rooms' });
+  state.rooms.filter(function (r) { return r.area === w; }).forEach(function (r) { list.appendChild(roomCard(r)); });
+  frag.appendChild(list);
+  // Request an isolation room
+  var f = state.form; if (!f.code) f.code = newCode();
+  frag.appendChild(el('h3', { class: 'sec', text: 'Request an isolation room' }));
+  var p = el('div', { class: 'panel' });
+  p.appendChild(el('p', { class: 'stepq' }, ['Patient ', el('span', { class: 'code', id: 'q-code', text: f.code })]));
+  p.appendChild(el('p', { class: 'fine', style: 'margin:0 0 12px', text: 'An anonymous code from the ward list. No names, no reason recorded here.' }));
+  p.appendChild(el('p', { class: 'stepq', text: 'Room needed (as the clinical team decides)' }));
+  var ch = el('div', { class: 'choices', role: 'group', 'aria-label': 'Room needed' });
+  [['any', 'Any isolation room', 'standard side room is fine'], ['lobby', 'Room with a lobby', 'lobby or anteroom']].forEach(function (o) {
+    ch.appendChild(el('button', { type: 'button', class: 'choice', id: 'n-' + o[0], 'aria-pressed': String(f.needs === o[0]), onclick: function () { f.needs = o[0]; render(); } }, [o[1], el('small', { text: o[2] })]));
+  });
+  p.appendChild(ch);
+  p.appendChild(el('div', { class: 'sendrow' }, [el('button', { type: 'button', class: 'primary send', id: 'q-send', onclick: sendRequest, text: 'Send request' })]));
+  frag.appendChild(p);
+  var mine = state.requests.filter(function (q) { return q.area === w && (!q.placed || nowMin() - q.placed < 120); }).sort(function (a, b) { return b.at - a.at; });
+  if (mine.length) {
+    var box = el('div', { id: 'ward-requests' });
+    mine.forEach(function (q) {
+      var held = state.rooms.filter(function (r) { return r.heldFor === q.id; })[0];
+      var line = q.placed ? 'In ' + roomName(roomById(q.room)) + ' at ' + hhmm(q.placed) + ' · ' + fmt(q.placed - q.at) + ' from request' : held ? 'Held: ' + roomName(held) + (held.status === 'ready' ? ' is ready' : ' after its clean') : 'Waiting ' + fmt(nowMin() - q.at) + ' · ' + freeFor(q).length + ' matching room' + (freeFor(q).length === 1 ? '' : 's') + ' ready on site';
+      box.appendChild(el('div', { class: 'rq' }, [el('div', { class: 'top' }, [el('span', { text: q.patient + ' · ' + (q.needs === 'lobby' ? 'with lobby' : 'any room') }), el('span', { class: 'chip' + (q.placed ? ' s-ready' : held ? ' hold' : ''), text: q.placed ? 'Placed' : held ? 'Held' : 'Waiting' })]), el('p', { text: line })]));
+    });
+    frag.appendChild(box);
+  }
+  // Audit
+  frag.appendChild(el('h3', { class: 'sec', text: 'Log an audit on ' + AREAS[w].name }));
+  var a = state.audit, ap = el('div', { class: 'panel', id: 'audit' });
+  ap.appendChild(el('div', { class: 'tabs', role: 'group', 'aria-label': 'Audit type' }, [
+    el('button', { type: 'button', id: 'au-hh', 'aria-pressed': String(a.tab === 'hh'), onclick: function () { a.tab = 'hh'; render(); }, text: 'Hand hygiene' }),
+    el('button', { type: 'button', id: 'au-clean', 'aria-pressed': String(a.tab === 'clean'), onclick: function () { a.tab = 'clean'; render(); }, text: 'Cleaning' })
+  ]));
+  if (a.tab === 'hh') {
+    ap.appendChild(el('p', { class: 'stepq', text: 'At each opportunity you watch: was hand hygiene done?' }));
+    ap.appendChild(el('div', { class: 'yn' }, [
+      el('button', { type: 'button', class: 'yes', id: 'hh-yes', onclick: function () { a.taps.push('y'); render(); }, text: 'Yes, done' }),
+      el('button', { type: 'button', class: 'no', id: 'hh-no', onclick: function () { a.taps.push('n'); render(); }, text: 'No, missed' })
+    ]));
+    var n = a.taps.length, yes = yesCount(a);
+    ap.appendChild(el('div', { class: 'tally', id: 'hh-tally' }, [
+      el('span', {}, [el('b', { text: String(n) }), ' observed · ', el('b', { text: n ? pct(yes, n) + '%' : '–' }), ' done']),
+      el('button', { type: 'button', class: 'small', disabled: n ? false : 'disabled', id: 'hh-undo', onclick: function () { a.taps.pop(); render(); }, text: 'Undo last' })
+    ]));
+    ap.appendChild(el('p', { class: 'fine', text: 'Opportunities follow the WHO 5 Moments. Only counts are kept: no staff names or roles.' }));
+    ap.appendChild(el('div', { class: 'sendrow' }, [el('button', { type: 'button', class: 'primary send', id: 'au-save', disabled: n ? false : 'disabled', onclick: saveAudit, text: n ? 'Save audit (' + n + ' observed)' : 'Tap Yes or No to start' })]));
+  } else {
+    var ul = el('ul', { class: 'items' });
+    CLEAN_ITEMS.forEach(function (t, i) {
+      var v = a.items[i];
+      ul.appendChild(el('li', {}, [el('span', { id: 'ci-l-' + i, text: t }), el('div', { class: 'pair', role: 'group', 'aria-labelledby': 'ci-l-' + i }, [
+        el('button', { type: 'button', class: 'y', id: 'ci-' + i + '-y', 'aria-pressed': String(v === 'y'), onclick: function () { a.items[i] = 'y'; render(); }, text: 'Yes' }),
+        el('button', { type: 'button', class: 'n', id: 'ci-' + i + '-n', 'aria-pressed': String(v === 'n'), onclick: function () { a.items[i] = 'n'; render(); }, text: 'No' })
+      ])]));
+    });
+    ap.appendChild(ul);
+    var left = CLEAN_ITEMS.length - Object.keys(a.items).length;
+    ap.appendChild(el('div', { class: 'sendrow' }, [el('button', { type: 'button', class: 'primary send', id: 'au-save', disabled: left ? 'disabled' : false, onclick: saveAudit, text: left ? left + ' item' + (left > 1 ? 's' : '') + ' to check' : 'Save audit' })]));
+    ap.appendChild(el('p', { class: 'fine', text: 'A No becomes an action for the IPC team to follow up.' }));
+  }
+  var x = state.audits[w];
+  ap.appendChild(el('p', { class: 'fine', text: AREAS[w].name + ' this month: hand hygiene ' + pct(x.done, x.obs) + '% (' + x.obs + ' observed), cleaning ' + pct(x.pass, x.items) + '% of items passed.' }));
+  frag.appendChild(ap);
+  return frag;
+}
+function ipcView() {
+  var frag = document.createDocumentFragment(), n = nowMin();
+  // Requests waiting
+  var w = waiting();
+  frag.appendChild(el('h3', { class: 'sec', text: 'Requests waiting · ' + w.length }));
+  if (!w.length) frag.appendChild(el('p', { class: 'empty', text: 'No isolation requests waiting.' }));
+  var rb = el('div', { id: 'requests' });
+  w.forEach(function (q) {
+    var opts = freeFor(q), held = state.rooms.filter(function (r) { return r.heldFor === q.id; })[0];
+    var row = el('div', { class: 'req' }, [
+      el('div', { class: 'top' }, [el('b', {}, [q.patient + ' · ' + AREAS[q.area].name]), el('b', { 'data-wait': q.id, text: fmt(n - q.at) + ' waiting' })]),
+      el('div', { class: 'sub', style: 'color:var(--soft)', text: (q.needs === 'lobby' ? 'Needs a room with a lobby' : 'Any isolation room') + ' · asked ' + hhmm(q.at) + (held ? ' · holding ' + roomName(held) + ' (' + STATUS[held.status].toLowerCase() + ')' : '') })
+    ]);
+    if (opts.length) {
+      var sel = el('select', { id: 'as-' + q.id }); opts.forEach(function (r) { sel.appendChild(el('option', { value: r.id, text: roomName(r) + (r.lobby ? ' (lobby)' : '') })); });
+      row.appendChild(el('div', { class: 'assign' }, [el('label', { for: 'as-' + q.id }, ['Ready room', sel]), el('button', { type: 'button', class: 'small primary', id: 'go-' + q.id, onclick: function () { place(q, roomById(sel.value), 'IPC team'); }, text: 'Place patient' })]));
+    } else row.appendChild(el('p', { class: 'fine', text: 'No matching room ready yet.' }));
+    rb.appendChild(row);
+  });
+  frag.appendChild(rb);
+  // Rooms by status
+  frag.appendChild(el('h3', { class: 'sec', text: 'Isolation rooms across the site' }));
+  var f = el('div', { class: 'filters', role: 'group', 'aria-label': 'Show rooms' });
+  [['all', 'All'], ['ready', 'Ready'], ['cleaning', 'Cleaning'], ['occupied', 'Occupied'], ['out', 'Out of service']].forEach(function (x) {
+    var c = x[0] === 'all' ? state.rooms.length : state.rooms.filter(function (r) { return r.status === x[0]; }).length;
+    f.appendChild(el('button', { type: 'button', id: 'f-' + x[0], 'aria-pressed': String(state.filter === x[0]), onclick: function () { state.filter = x[0]; render(); }, text: x[1] + ' · ' + c }));
+  });
+  frag.appendChild(f);
+  var rooms = state.rooms.filter(function (r) { return state.filter === 'all' || r.status === state.filter; }).sort(function (a, b) { return (STATUS_ORDER[a.status] - STATUS_ORDER[b.status]) || (a.since - b.since); });
+  var rl = el('div', { id: 'room-board' });
+  rooms.forEach(function (r) {
+    var held = r.heldFor ? reqById(r.heldFor) : null, over = cleanOver(r);
+    var sub = (r.lobby ? 'With lobby' : 'Standard') + (r.patient ? ' · ' + r.patient : '') + (held ? ' · held for ' + held.patient : '') + (r.status === 'cleaning' ? (over ? ' · past expected clean time' : ' · due ' + hhmm(dueAt(r))) : '') + (r.status === 'out' && r.note ? ' · ' + r.note : '');
+    var act = r.status === 'cleaning' ? el('button', { type: 'button', class: 'small', id: 'cd-' + r.id, onclick: function () { cleanDone(r); }, text: 'Clean done' }) : null;
+    rl.appendChild(el('div', { class: 'rrow st-' + r.status + (over ? ' over' : '') }, [
+      el('div', {}, [el('b', { text: roomName(r) }), el('span', { class: 'sub', text: sub })]),
+      el('div', {}, [statusChip(r)]),
+      el('div', { class: 'w', 'data-since': r.id, title: 'Time in this status' }, [fmt(inState(r))]),
+      el('div', { class: 'act' }, [act])
+    ]));
+  });
+  frag.appendChild(rl);
+  frag.appendChild(el('p', { class: 'fine', text: 'Time in status. Expected deep clean time: ' + SETTINGS.cleanMin + ' min (example setting, not a standard).' }));
+  // Audit compliance
+  frag.appendChild(el('h3', { class: 'sec', text: 'Audit compliance by area, this month' }));
+  var tb = el('tbody');
+  ORDER.forEach(function (a) {
+    var x = state.audits[a], p = pct(x.done, x.obs), cp = pct(x.pass, x.items), due = x.hhAgo > SETTINGS.auditDueDays || x.clAgo > SETTINGS.auditDueDays;
+    var flag = inRound(a) ? el('span', { class: 'chip round', text: 'In round' }) : due ? el('span', { class: 'chip late', text: 'Overdue' }) : null;
+    tb.appendChild(el('tr', {}, [
+      el('td', {}, [AREAS[a].name, flag ? ' ' : null, flag]),
+      el('td', { class: 'r' + (p < SETTINGS.lowPct ? ' low' : ''), title: x.done + ' of ' + x.obs + ' opportunities' }, [p + '%', el('span', { class: 'meter', 'aria-hidden': 'true' }, [el('i', { style: 'width:' + p + '%' })])]),
+      el('td', { class: 'r', text: String(x.obs) }),
+      el('td', { class: 'r', text: cp + '%' }),
+      el('td', { class: 'r', text: (x.hhAgo === 0 ? 'today' : x.hhAgo + ' d') + ' / ' + (x.clAgo === 0 ? 'today' : x.clAgo + ' d') })
+    ]));
+  });
+  var hh = siteHH();
+  tb.appendChild(el('tr', {}, [el('td', {}, [el('b', { text: 'All areas' })]), el('td', { class: 'r' }, [el('b', { text: hh.pct + '%' })]), el('td', { class: 'r', text: String(hh.obs) }), el('td', { class: 'r', text: '' }), el('td', { class: 'r', text: '' })]));
+  frag.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 't', id: 'compliance' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Area' }), el('th', { class: 'r', text: 'Hand hygiene' }), el('th', { class: 'r', text: 'Observed' }), el('th', { class: 'r', text: 'Cleaning' }), el('th', { class: 'r', text: 'Last audit (hh / clean)' })])]), tb])]));
+  frag.appendChild(el('p', { class: 'fine', text: 'Counts from audits entered on phones. Alert level ' + SETTINGS.lowPct + '% and audit interval ' + SETTINGS.auditDueDays + ' days are example settings, not standards.' }));
+  var open = state.actions.filter(function (x) { return !x.done; });
+  if (open.length) {
+    frag.appendChild(el('h3', { class: 'sec', text: 'Open audit actions · ' + open.length }));
+    var al = el('ul', { class: 'acts-list', id: 'actions' });
+    open.forEach(function (x) { al.appendChild(el('li', {}, [el('span', { text: AREAS[x.area].name + ': ' + x.text + ' (' + hhmm(x.at) + ')' }), el('button', { type: 'button', class: 'small', onclick: function () { x.done = nowMin(); addLog('Action closed, ' + AREAS[x.area].name + ': ' + x.text.replace(': failed', '') + ' put right.'); render(); toast('Action closed.'); }, text: 'Put right' })])); });
+    frag.appendChild(al);
+  }
+  // Closure mode
+  frag.appendChild(el('h3', { class: 'sec', text: 'Outbreak or closure mode' }));
+  var csel = el('select', { id: 'close-pick', onchange: function (e) { state.closeWard = e.target.value; render(); } });
+  WARDS_WITH_BAYS.forEach(function (id) { var c = state.closures[id]; csel.appendChild(el('option', { value: id, text: AREAS[id].name + (c ? (c.ended == null ? ' · closure on' : ' · reopening') : '') })); });
+  csel.value = state.closeWard;
+  frag.appendChild(el('div', { class: 'row', style: 'margin-bottom:10px' }, [el('label', { for: 'close-pick' }, ['Ward', csel])]));
+  frag.appendChild(closureCard(state.closeWard));
+  return frag;
+}
+function closureCard(w) {
+  var c = state.closures[w], A = AREAS[w], n = nowMin();
+  if (!c) return el('div', { class: 'panel' }, [el('p', { style: 'margin:0 0 10px', text: A.name + ' is open as normal (' + A.bays + ' bays of ' + A.beds + ' beds).' }), el('button', { type: 'button', class: 'primary', id: 'cl-start', onclick: function () { startClosure(w); }, text: 'Start closure mode for ' + A.name }), el('p', { class: 'fine', text: 'The IPC team decides to close. Ospeli keeps the action card, the counts and the timeline.' })]);
+  var box;
+  if (c.ended == null) {
+    var done = c.items.filter(function (i) { return i.at != null; }).length;
+    box = el('div', { class: 'closure', id: 'closure' }, [
+      el('h4', { text: A.name + ': closure mode' }),
+      el('p', { class: 'meta', text: 'Since ' + when(c.start) + ' (' + fmt(n - c.start) + ') · ' + (Math.round(bedDays(c) * 10) / 10) + ' bed-days lost so far · action card ' + done + ' of ' + c.items.length }),
+      el('div', { class: 'stepper' }, [
+        el('span', { style: 'font-weight:800', text: 'Bays closed' }),
+        el('button', { type: 'button', id: 'bay-minus', 'aria-label': 'One fewer bay closed', disabled: c.bays <= 1 ? 'disabled' : false, onclick: function () { setBays(c, c.bays - 1); }, text: '−' }),
+        el('span', { class: 'num', id: 'bays', 'aria-live': 'polite', text: String(c.bays) }),
+        el('button', { type: 'button', id: 'bay-plus', 'aria-label': 'One more bay closed', disabled: c.bays >= A.bays ? 'disabled' : false, onclick: function () { setBays(c, c.bays + 1); }, text: '+' }),
+        el('span', { class: 'of', text: 'of ' + A.bays + ' · ' + bedsClosed(c) + ' beds closed' })
+      ]),
+      checklist(c.items, 'cl', function (it) { addLog(A.name + ' closure action card: ' + it.text.replace(' (today)', '') + (it.at != null ? ' done.' : ' unticked.')); }),
+      el('button', { type: 'button', id: 'cl-reopen', onclick: function () { reopenClosure(c); }, text: 'Reopen the closed bays' }),
+      el('p', { class: 'fine', text: 'Counts only: no patient lists here. Admissions and transfers follow your local rules.' })
+    ]);
+  } else {
+    box = el('div', { class: 'closure reopen', id: 'closure' }, [
+      el('h4', { text: A.name + ': reopened ' + hhmm(c.ended) }),
+      el('p', { class: 'meta', text: 'Closed ' + fmt(c.ended - c.start) + ' · ' + (Math.round(bedDays(c) * 10) / 10) + ' bed-days lost' }),
+      c.reopen ? checklist(c.reopen, 'ro', function (it) { addLog(A.name + ' reopening: ' + it.text + (it.at != null ? ' done.' : ' unticked.')); }) : el('p', { class: 'fine', text: 'The guide can draft a checklist of cleans, restocking and notices to clear.' }),
+      c.reopen && c.reopen.every(function (i) { return i.at != null; }) ? el('button', { type: 'button', class: 'primary', id: 'cl-finish', onclick: function () { delete state.closures[w]; addLog(A.name + ': reopening checklist cleared. Closure closed out.'); render(); toast('Closure closed out.'); }, text: 'Close out this closure' }) : null
+    ]);
+  }
+  return box;
+}
+function checklist(items, prefix, onlog) {
+  var ul = el('ul', { class: 'check' });
+  items.forEach(function (it, i) {
+    var cb = el('input', { type: 'checkbox', id: prefix + '-' + i, onchange: function (e) { it.at = e.target.checked ? nowMin() : null; onlog(it); render(); } }); cb.checked = it.at != null;
+    ul.appendChild(el('li', { class: it.at != null ? 'done' : '' }, [el('label', { for: prefix + '-' + i }, [cb, el('span', { text: it.text }), el('time', { text: it.at != null ? when(it.at) : '' })])]));
+  });
+  return ul;
+}
+function opsView() {
+  var frag = document.createDocumentFragment(), k = kpis(), n = nowMin();
+  var cl = Object.keys(state.closures).map(function (x) { return state.closures[x]; });
+  var active = cl.filter(function (c) { return c.ended == null; });
+  var out = state.rooms.filter(function (r) { return r.status === 'out'; }).length;
+  frag.appendChild(el('div', { class: 'big', id: 'ops-big' }, [
+    el('div', { class: 'bigc' }, [el('span', { class: 'lbl', text: 'Beds lost now' }), el('b', { id: 'beds-lost', text: String(k.bedsLostNow) }), el('p', { text: k.bedsClosedNow + ' in closed bays · ' + k.isolationRoomsUnusable + ' isolation rooms not usable (' + k.roomsCleaning + ' cleaning, ' + out + ' out of service)' })]),
+    el('div', { class: 'bigc' }, [el('span', { class: 'lbl', text: 'Isolation requests waiting' }), el('b', { text: String(k.requestsWaiting) }), el('p', { text: k.requestsWaiting ? 'Oldest ' + fmt(k.oldestWaitMin) + ' · ' + k.roomsReady + ' room' + (k.roomsReady === 1 ? '' : 's') + ' ready' : 'None waiting' })]),
+    el('div', { class: 'bigc' }, [el('span', { class: 'lbl', text: 'Bed-days lost to closures' }), el('b', { text: String(k.bedDaysLost) }), el('p', { text: active.length ? active.map(function (c) { return AREAS[c.ward].name + ': ' + c.bays + ' bays since ' + when(c.start); }).join('; ') : 'No ward in closure mode' })])
+  ]));
+  frag.appendChild(el('h3', { class: 'sec', text: 'Rooms waiting for a deep clean' }));
+  var cleaning = state.rooms.filter(function (r) { return r.status === 'cleaning'; }).sort(function (a, b) { return a.since - b.since; });
+  var reopenCleans = cl.filter(function (c) { return c.reopen && c.reopen[0].at == null; });
+  if (!cleaning.length && !reopenCleans.length) frag.appendChild(el('p', { class: 'empty', text: 'No deep cleans waiting.' }));
+  var cb = el('div', { id: 'clean-list' });
+  cleaning.forEach(function (r) {
+    var over = cleanOver(r);
+    cb.appendChild(el('div', { class: 'rrow st-cleaning' + (over ? ' over' : '') }, [
+      el('div', {}, [el('b', { text: roomName(r) }), el('span', { class: 'sub', text: 'Isolation room' + (r.lobby ? ' with lobby' : '') + (r.heldFor ? ' · held for a waiting request' : '') })]),
+      el('div', {}, [over ? el('span', { class: 'chip late', text: 'Past expected' }) : el('span', { class: 'chip s-cleaning', text: 'Due ' + hhmm(dueAt(r)) })]),
+      el('div', { class: 'w', 'data-since': r.id }, [fmt(inState(r))]),
+      el('div', { class: 'act' })
+    ]));
+  });
+  reopenCleans.forEach(function (c) { cb.appendChild(el('div', { class: 'rrow st-cleaning' }, [el('div', {}, [el('b', { text: AREAS[c.ward].name + ': reopened bays' }), el('span', { class: 'sub', text: 'Deep clean of ' + (c.maxBays || 1) + ' bays before normal use' })]), el('div', {}, [el('span', { class: 'chip s-cleaning', text: 'Reopening' })]), el('div', { class: 'w' }, [fmt(n - c.ended)]), el('div', { class: 'act' })])); });
+  frag.appendChild(cb);
+  frag.appendChild(el('p', { class: 'fine', text: 'Expected deep clean time ' + SETTINGS.cleanMin + ' min is an example setting. The cleaning team marks each one done.' }));
+  // Trend
+  frag.appendChild(el('h3', { class: 'sec', text: 'Hand hygiene compliance, all areas, by month' }));
+  var months = [], d = new Date(); d.setDate(1);
+  for (var i = 5; i >= 0; i--) { var m = new Date(d.getFullYear(), d.getMonth() - i, 1); months.push(m.toLocaleString('en', { month: 'short' })); }
+  var vals = TREND.concat([siteHH().pct]), lo = 60, hi = 100;
+  var bars = el('div', { class: 'bars', id: 'trend', role: 'img', 'aria-label': 'Hand hygiene compliance by month: ' + vals.map(function (v, i) { return months[i] + ' ' + v + '%'; }).join(', ') });
+  vals.forEach(function (v, i) {
+    bars.appendChild(el('div', { class: 'bar' + (i === 5 ? ' now' : ''), tabindex: '0', title: months[i] + (i === 5 ? ' (so far)' : '') + ': ' + v + '%' }, [el('span', { text: v + '%' }), el('i', { style: 'height:' + Math.max(2, (v - lo) / (hi - lo) * 82) + '%' })]));
+  });
+  bars.appendChild(el('div', { class: 'tline', style: 'bottom:' + ((SETTINGS.lowPct - lo) / (hi - lo) * 82) + '%' }, []));
+  frag.appendChild(bars);
+  frag.appendChild(el('div', { class: 'barlbl', 'aria-hidden': 'true' }, months.map(function (m, i) { return el('span', { text: i === 5 ? m + ' (now)' : m }); })));
+  var det = el('details', { class: 'set' }, [el('summary', { text: 'Show as a table' })]);
+  var tb = el('tbody'); vals.forEach(function (v, i) { tb.appendChild(el('tr', {}, [el('td', { text: months[i] + (i === 5 ? ' (so far)' : '') }), el('td', { class: 'r', text: v + '%' })])); });
+  det.appendChild(el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Month' }), el('th', { class: 'r', text: 'Compliance' })])]), tb]));
+  frag.appendChild(det);
+  frag.appendChild(el('p', { class: 'fine', text: 'Dashed line: alert level ' + SETTINGS.lowPct + '%. Fictional example figures for earlier months; this month updates as audits are saved. Axis starts at 60%. The alert level is an example setting, not a standard.' }));
+  return frag;
+}
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Rooms, requests, audits, closures and the measures all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag: requests are matched, audits are up to date and no ward needs a checklist.' }));
+  var TAGS = { match: 'Match a room', time: 'Rooms full', ask: 'Audits and closures' };
+  list.forEach(function (sg) {
+    var pend = state.pending.some(function (p) { return p.id === sg.id; });
+    var acts = sg.acts.map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend ? 'disabled' : false, onclick: a.fn, text: pend ? 'Proposed' : a.label }); });
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
+      el('span', { class: 'tag ' + (sg.kind === 'time' ? 'time' : sg.kind === 'ask' ? 'ask' : ''), text: TAGS[sg.kind] }),
+      el('h3', { text: sg.title }), sg.text ? el('p', { text: sg.text }) : null,
+      sg.list ? el('ul', {}, sg.list.map(function (x) { return el('li', { text: x }); })) : null,
+      el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  if (state.pending.length) {
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for the IPC team to decide' })]);
+    state.pending.forEach(function (p) {
+      d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }),
+        state.role === 'ipc'
+          ? el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, [el('button', { type: 'button', class: 'small primary', onclick: function () { decide(p, true); }, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])
+          : el('p', { class: 'why', style: 'margin:0;color:var(--soft);font-size:0.85rem', text: 'Switch to the IPC team view to confirm or decline.' })]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Proposals wait here for the IPC team.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 30).forEach(function (e) { ol.appendChild(el('li', { class: e.fresh && Date.now() - e.fresh < 5000 ? 'new' : '' }, [el('time', { text: hhmm(e.t) }), el('span', { text: e.text })])); });
+}
+
+// Live clock: redraw when the minute or the guide's view changes, but never while someone is typing or choosing.
+var sig = '';
+function signature() { return nowMin() + '|' + suggest().map(function (s) { return s.id; }).join(','); }
+function tick() {
+  var a = document.activeElement;
+  if (a && (a.tagName === 'SELECT' || a.tagName === 'INPUT')) { document.getElementById('clocknow').textContent = 'Demo clock ' + hhmm(nowMin()); return; }
+  if (signature() !== sig) render();
+}
+setInterval(tick, 15000);
+
+// ---------- Wiring ----------
+['nurse', 'ipc', 'ops'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-clock').addEventListener('click', function () { state.offset = (state.offset || 0) + 15; addLog('Demo: clock moved on 15 minutes.'); render(); toast('Clock moved on 15 minutes. Waits and cleans have moved on.'); });
+document.getElementById('t-leave').addEventListener('click', function () {
+  var occ = state.rooms.filter(function (r) { return r.status === 'occupied'; });
+  if (!occ.length) return toast('No side room is occupied.');
+  patientLeft(occ[(state.seq + state.log.length) % occ.length]);
+});
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; render(); toast('Example reset to the start of the demo.'); });
+
+// Read-only view for software agents (no writes): window.ospeliInfectionPreventionDemo
+window.ospeliInfectionPreventionDemo = Object.freeze({
+  describe: function () { return 'Read-only infection prevention operations demo for a fictional hospital: isolation rooms by status, isolation requests, audit compliance by area and ward closures. get() returns the data; kpis() the measures; suggestions() the guide\'s current suggestions. Operational only: no diagnoses or treatment; patients are anonymous codes. Runs in the browser; nothing is sent anywhere.'; },
+  get: function () {
+    var n = nowMin();
+    return clone({ role: state.role, clock: hhmm(n), settings: SETTINGS,
+      rooms: state.rooms.map(function (r) { return { id: r.id, area: AREAS[r.area].name, room: r.name, lobby: r.lobby, status: r.status, minutesInStatus: inState(r), patientCode: r.patient, heldFor: r.heldFor ? reqById(r.heldFor).patient : null }; }),
+      requestsWaiting: waiting().map(function (q) { return { id: q.id, area: AREAS[q.area].name, patientCode: q.patient, needs: q.needs, waitMin: n - q.at }; }),
+      compliance: ORDER.map(function (a) { var x = state.audits[a]; return { area: AREAS[a].name, handHygienePct: pct(x.done, x.obs), observed: x.obs, cleaningPct: pct(x.pass, x.items), daysSinceHandHygieneAudit: x.hhAgo, daysSinceCleaningAudit: x.clAgo, inAuditRound: inRound(a) }; }),
+      closures: Object.keys(state.closures).map(function (k) { var c = state.closures[k]; return { area: AREAS[k].name, baysClosed: c.ended == null ? c.bays : 0, bedsClosed: bedsClosed(c), bedDaysLost: Math.round(bedDays(c) * 10) / 10, reopened: c.ended != null, actionCardDone: c.items.filter(function (i) { return i.at != null; }).length, actionCardItems: c.items.length }; }),
+      openActions: state.actions.filter(function (x) { return !x.done; }).map(function (x) { return { area: AREAS[x.area].name, text: x.text }; }),
+      pendingDecisions: state.pending.map(function (p) { return p.text; }) });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text || (s.list || []).join('; '), why: s.why }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>

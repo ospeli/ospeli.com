@@ -1,0 +1,935 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Governance and policies demo · Ospeli</title>
+<meta name="description" content="Find the current approved policy from a phone, acknowledge changes, keep documents in date, link accreditation evidence to standards and run committee packs into one action list. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Governance and policies demo · Ospeli">
+<meta property="og:description" content="Find the current approved policy from a phone, acknowledge changes, keep documents in date, link accreditation evidence to standards and run committee packs into one action list. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/governance/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; }
+h3.sec:first-child { margin-top: 4px; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button, textarea { font: inherit; color: var(--ink); }
+select, input[type=search], input[type=text], textarea { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+textarea { width: 100%; min-height: 72px; resize: vertical; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.sea { background: var(--sea); border-color: var(--sea); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 520px) { .roles { display: grid; grid-template-columns: 1fr; border-radius: 14px; width: 100%; } .roles button { padding: 8px 6px; } .roles button + button { border-left: 0; border-top: 1px solid var(--line); } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.clocknow { font-weight: 800; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.88rem; font-weight: 700; display: block; }
+.stat .n { color: var(--soft); font-size: 0.78rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.8rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stathint { color: var(--soft); font-size: 0.78rem; margin: 6px 0 0; }
+.kpiblock { margin-top: 22px; padding-top: 14px; border-top: 1px solid var(--line); }
+.kpiblock.top { margin: 0 0 6px; padding: 0; border: 0; }
+/* chips and pills */
+.chip { display: inline-block; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; background: var(--sand); white-space: nowrap; }
+.chip.ok { background: var(--wash); } .chip.soon { background: var(--warn); } .chip.past { background: var(--coral); color: #fff; }
+.chip.draft { background: #E8EEF4; } .chip.wait { background: var(--navy); color: #fff; } .chip.fresh { background: var(--mango); color: var(--navy); }
+.pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 0.92rem; font-weight: 700; background: var(--sand); }
+.pill.hot { background: var(--hot); color: #8E2C18; }
+/* staff phone */
+.persona { display: flex; flex-wrap: wrap; gap: 10px; }
+.persona label { font-weight: 800; display: flex; flex-direction: column; gap: 4px; font-size: 0.92rem; flex: 1 1 140px; min-width: 0; }
+.persona select { width: 100%; font-weight: 700; }
+.searchbox { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); }
+.searchbox label { font-weight: 800; display: block; margin-bottom: 6px; font-size: 1.02rem; }
+.searchbox input { width: 100%; font-size: 1.05rem; min-height: 52px; border-radius: 14px; }
+.quick { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.quick button { min-height: 44px; font-size: 0.95rem; border-color: #CFC5B2; padding: 6px 14px; }
+.docs { display: grid; gap: 10px; }
+.doc { border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 12px; padding: 12px; background: #fff; font-size: 1rem; }
+.doc.todo { border-left-color: var(--mango); background: #FFFCF5; }
+.doc.pastrev { border-left-color: var(--coral); }
+.doc .t { font-weight: 800; font-size: 1.06rem; line-height: 1.3; margin: 0 0 4px; }
+.doc .meta { color: var(--soft); font-size: 0.95rem; margin: 0; }
+.doc .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 6px; }
+.doc .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.doc .acts .go { flex: 1 1 120px; min-height: 52px; font-size: 1.02rem; padding: 8px 10px; white-space: nowrap; }
+.doc .acts .go.ack { background: var(--sea); border-color: var(--sea); color: #fff; }
+.onepage { background: var(--sand); border-radius: 10px; padding: 12px 14px; margin-top: 10px; font-size: 0.98rem; }
+.onepage h4 { margin: 0 0 6px; font-size: 0.82rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--soft); }
+.onepage ul { margin: 0 0 8px; padding-left: 20px; }
+.onepage li { margin-bottom: 4px; }
+.onepage dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 10px; margin: 0; font-size: 0.92rem; }
+.onepage dt { font-weight: 800; } .onepage dd { margin: 0; }
+.onepage .fine { margin-top: 8px; }
+.note { font-size: 0.95rem; margin: 6px 0 0; background: var(--warn); border-radius: 8px; padding: 4px 8px; }
+.note.hot { background: var(--hot); color: #8E2C18; }
+.empty { text-align: center; color: var(--soft); padding: 18px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; }
+.myarea { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; font-size: 0.95rem; }
+/* owner */
+.ownerbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; justify-content: space-between; }
+.ownerbar label { font-weight: 800; display: flex; flex-direction: column; gap: 4px; font-size: 0.92rem; min-width: 0; max-width: 100%; }
+.form { margin-top: 10px; background: var(--sand); border-radius: 10px; padding: 12px; }
+.form label { font-weight: 800; font-size: 0.92rem; display: block; margin-bottom: 4px; }
+.form .row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; align-items: center; }
+.form .row label { display: flex; flex-direction: column; gap: 3px; margin: 0; font-size: 0.85rem; color: var(--soft); min-width: 0; max-width: 100%; flex: 0 1 auto; }
+.form .row select { width: 100%; }
+.form input[type=text] { width: 100%; }
+.form .row label.grow { flex: 1 1 220px; }
+details.hist { margin-top: 8px; font-size: 0.92rem; }
+details.hist summary { cursor: pointer; font-weight: 800; min-height: 40px; display: flex; align-items: center; }
+ol.vers { list-style: none; margin: 0; padding: 0; }
+ol.vers li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; border-bottom: 1px dashed var(--line); padding: 5px 0; }
+ol.vers b { font-variant-numeric: tabular-nums; }
+.bar { height: 8px; border-radius: 99px; background: #EEE7DA; overflow: hidden; flex: 1 1 80px; min-width: 60px; }
+.bar i { display: block; height: 100%; background: var(--sea); border-radius: 99px; }
+.bar.low i { background: var(--mango); }
+/* lead */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.tabs button { min-height: 44px; font-size: 0.92rem; border-color: #CFC5B2; }
+.tabs button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.grp { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; }
+.grp h4 { margin: 0 0 6px; font-size: 0.98rem; display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.grp h4 span { color: var(--soft); font-weight: 700; font-size: 0.85rem; }
+.line { display: flex; flex-wrap: wrap; gap: 4px 10px; justify-content: space-between; align-items: center; padding: 6px 0; border-top: 1px dashed var(--line); font-size: 0.93rem; }
+.line .nm { min-width: 0; flex: 1 1 220px; }
+.line .nm small { display: block; color: var(--soft); font-size: 0.82rem; }
+.covrow { display: grid; grid-template-columns: 170px minmax(0, 1fr) 52px; gap: 10px; align-items: center; padding: 6px 0; font-size: 0.95rem; border-bottom: 1px dashed var(--line); }
+.covrow b.pc { text-align: right; font-variant-numeric: tabular-nums; }
+.covrow .bar { height: 14px; position: relative; }
+.covrow .mark { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--navy); opacity: 0.5; }
+@media (max-width: 520px) { .covrow { grid-template-columns: minmax(0, 1fr) 52px; } .covrow .bar { grid-column: 1 / -1; grid-row: 2; } }
+.chap { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); align-items: start; }
+.chap h4 { margin: 0; font-size: 0.95rem; line-height: 1.3; }
+.chap h4 small { display: block; color: var(--soft); font-weight: 700; font-size: 0.8rem; }
+@media (max-width: 640px) { .chap { grid-template-columns: minmax(0, 1fr); } }
+.cells { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.cell { border-radius: 10px; border: 1px solid #CFC5B2; background: #fff; text-align: left; padding: 6px 10px; min-height: 58px; font-weight: 700; font-size: 0.85rem; line-height: 1.25; }
+.cell b { display: block; font-size: 0.98rem; }
+.cell small { display: block; font-weight: 700; color: var(--soft); font-size: 0.78rem; }
+.cell.s-met { background: var(--wash); border-color: var(--sea); }
+.cell.s-partial { background: var(--warn); border-color: var(--mango); }
+.cell.s-not { background: var(--hot); border-color: var(--coral); }
+.cell.s-none { border-style: dashed; }
+.cell.noev small.ev { color: #B23A22; }
+.cell[aria-pressed=true] { box-shadow: 0 0 0 3px var(--navy); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.82rem; color: var(--soft); margin: 0 0 6px; }
+.legend span::before { content: ''; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; border: 1px solid #CFC5B2; }
+.legend .l-met::before { background: var(--wash); border-color: var(--sea); } .legend .l-partial::before { background: var(--warn); border-color: var(--mango); } .legend .l-not::before { background: var(--hot); border-color: var(--coral); } .legend .l-none::before { border-style: dashed; }
+.detail { border: 2px solid var(--navy); border-radius: 12px; padding: 12px 14px; margin-top: 12px; }
+.detail h4 { margin: 0 0 6px; font-size: 1rem; }
+.evlist { list-style: none; margin: 6px 0; padding: 0; }
+.evlist li { display: flex; justify-content: space-between; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; flex-wrap: wrap; }
+.meet { border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.meet .item { border-top: 1px dashed var(--line); padding: 10px 0; }
+.meet .item:first-of-type { border-top: 0; }
+.meet .item h4 { margin: 0 0 4px; font-size: 0.98rem; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.meet .item h4 i { font-style: normal; color: var(--soft); font-weight: 800; }
+.meet .item p { margin: 0 0 6px; font-size: 0.92rem; color: var(--soft); }
+.appr { background: var(--sand); border-radius: 10px; padding: 10px; margin-top: 6px; font-size: 0.92rem; }
+.appr .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.decs { list-style: none; margin: 4px 0 0; padding: 0; font-size: 0.9rem; }
+.decs li { padding: 4px 0 4px 10px; border-left: 3px solid var(--sea); margin-bottom: 4px; }
+.act { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; font-size: 0.93rem; }
+.act.late { border-color: var(--coral); background: #FFF8F5; }
+.act small { display: block; color: var(--soft); font-size: 0.82rem; }
+.fine { font-size: 0.82rem; color: var(--soft); margin: 8px 0 0; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.82rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg ul { margin: 0 0 8px; padding-left: 18px; font-size: 0.88rem; }
+.sugg .why { color: var(--soft); font-size: 0.82rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; line-height: 1.25; }
+ol.log time small { display: block; font-weight: 700; font-size: 0.75rem; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Governance: policies, accreditation and committees</h1>
+  <p class="lead">Every policy has an owner, a version and a review date. Staff find the current one from a phone and tick when they have read a change. Standards link to their evidence, so readiness shows all year. Committee decisions become one action list. The guide points to what needs attention; a person decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-staff" aria-pressed="false">Any staff (phone)</button>
+    <button type="button" id="r-owner" aria-pressed="false">Document owner</button>
+    <button type="button" id="r-lead" aria-pressed="false">Governance lead</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <b>Demo tools:</b>
+    <span class="clocknow" id="clocknow" aria-live="polite"></span>
+    <button type="button" class="small" id="t-week">Move on 1 week</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <h2 id="view-h">Policies</h2>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads review dates, drafts, read-and-understood counts and the self-assessment, and suggests where to look, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal. The governance lead decides.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its areas, documents, standards, meetings and counts. Document titles and summaries are made-up examples, not guidance to follow, and the standard chapters are generic, not any accreditor's text. Ospeli does not write or approve clinical guideline content; people approve every document. It counts acknowledgements by area and role, never by named person. Coming next (Feb 2027): an audit calendar with re-audit dates, a mock-survey tracer checklist, and committee actions feeding the shared action tracker. <a href="../../areas/governance-and-accreditation/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var STORE = 'ospeli.governance.v1';
+var DAY = 1440;                         // minutes in a day
+var BASE = Date.UTC(2026, 10, 10);      // demo day 0 (fictional example day)
+var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'], WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+var START = 10 * 60 + 40;               // demo clock starts at 10:40 on day 0
+// Example settings for this demo only, not a standard: each organisation sets its own.
+var SET = { reviewYears: 3, nearDays: 90, coverageLow: 60, coverageTarget: 80, freshDays: 60 };
+
+// ---------- Fixed reference data (fictional) ----------
+var AREAS = [
+  { id: 'W1', name: 'Ward 1' }, { id: 'W2', name: 'Ward 2' }, { id: 'W3', name: 'Ward 3' }, { id: 'W4', name: 'Ward 4' },
+  { id: 'ED', name: 'Emergency department' }, { id: 'TH', name: 'Theatres' }, { id: 'OP', name: 'Outpatients' }, { id: 'FM', name: 'Facilities' }
+];
+var ROLES = { nurse: 'Nurse', hca: 'Healthcare assistant', doctor: 'Doctor', clerk: 'Ward clerk', porter: 'Porter', cleaner: 'Cleaner', tech: 'Technician' };
+var ALL = Object.keys(ROLES);
+// Staff on each area's list, by role (fictional).
+var STAFF = {
+  W1: { nurse: 18, hca: 10, doctor: 6, clerk: 2 }, W2: { nurse: 16, hca: 9, doctor: 5, clerk: 2 },
+  W3: { nurse: 20, hca: 11, doctor: 6, clerk: 2 }, W4: { nurse: 17, hca: 10, doctor: 5, clerk: 2 },
+  ED: { nurse: 28, hca: 12, doctor: 14, clerk: 4 }, TH: { nurse: 22, hca: 6, doctor: 12, clerk: 1 },
+  OP: { nurse: 9, hca: 5, doctor: 7, clerk: 5 }, FM: { porter: 14, cleaner: 22, tech: 6 }
+};
+// How far each area had got with acknowledgements before the demo starts (fictional).
+var AREA_RATE = { W1: 0.93, W2: 0.86, W3: 0.78, W4: 0.9, ED: 0.66, TH: 0.82, OP: 0.91, FM: 0.7 };
+var CLIN = ['nurse', 'hca', 'doctor'];
+var COMMITTEES = { qs: 'Quality and safety committee', hs: 'Health and safety committee' };
+// [id, title, type, topic, owner role, committee, version, approved (day), review (day), roles, keywords, summary lines]
+var DOCS = [
+  ['D01', 'Fire safety and evacuation procedure', 'Procedure', 'fire', 'Head of facilities', 'hs', 4, -21, null, ALL, 'fire alarm evacuate evacuation extinguisher drill smoke assembly',
+    ['What to do when the fire alarm sounds in your area.', 'Who leads the evacuation on each shift, and where the assembly points are.', 'How fire drills are booked and recorded.', 'Changed in v4: new assembly point for the east block; drill record now kept in Ospeli.']],
+  ['D02', 'Keys, access cards and ID badges procedure', 'Procedure', 'access', 'Security manager', 'hs', 3, -620, null, ALL, 'key keys access card badge id lost door lock',
+    ['How to get, renew and return an access card or ID badge.', 'Who to tell when a card or key is lost, and how fast.', 'Which doors stay locked, and who holds the master keys.']],
+  ['D03', 'Waste segregation and disposal procedure', 'Procedure', 'waste', 'Head of facilities', 'hs', 2, -1130, -35, ALL, 'waste bin bag bags rubbish disposal segregation recycling collection',
+    ['Which bin or bag each kind of waste goes in, by colour.', 'When bins are collected and who to call when one is full.', 'How waste areas are checked and the checks recorded.']],
+  ['D04', 'Spill clean-up procedure', 'Procedure', 'spill', 'Head of facilities', 'hs', 2, -400, null, ['cleaner', 'porter', 'nurse', 'hca'], 'spill spills spillage clean leak wet floor kit',
+    ['How to make a spill area safe and who to call.', 'Where spill kits are kept and how they are restocked.', 'How the clean-up is logged as a support task.']],
+  ['D05', 'Spills on wards: local procedure', 'Procedure', 'spill', 'Head of nursing operations', 'qs', 1, -1300, -210, ['nurse', 'hca', 'cleaner'], 'spill spills spillage ward clean kit',
+    ['An older ward-level version of spill handling.', 'Lists the ward spill kit contents and who checks them.', 'Covers the same topic as the Spill clean-up procedure.']],
+  ['D06', 'Reporting an incident procedure', 'Procedure', 'incident', 'Quality manager', 'qs', 5, -12, null, ALL, 'incident report reporting near miss accident hazard event',
+    ['What counts as an incident or near miss.', 'How to report one from a phone in under two minutes.', 'What happens next, and how you hear the outcome.', 'Changed in v5: a shorter form and feedback to the reporter.']],
+  ['D07', 'Lone working policy', 'Policy', 'lone', 'Health and safety adviser', 'hs', 2, -1080, 15, ['porter', 'cleaner', 'tech', 'nurse'], 'lone working alone night safety check-in',
+    ['Which jobs count as lone working.', 'How to check in and out, and who checks on you.', 'What to do if you feel unsafe.']],
+  ['D08', 'Information governance and confidentiality policy', 'Policy', 'records', 'Information governance lead', 'qs', 3, -1050, 45, ALL, 'records privacy confidential confidentiality password data information screen',
+    ['Who can see which records, and why.', 'Passwords, locked screens and shared devices.', 'How to report a possible data breach.']],
+  ['D09', 'Visitors and visiting arrangements policy', 'Policy', 'visitors', 'Head of patient experience', 'qs', 2, -600, null, ['nurse', 'hca', 'clerk'], 'visitor visitors visiting hours family',
+    ['Visiting times and how wards can change them locally.', 'How visitors sign in and where they wait.', 'Who to ask when a visitor needs help.']],
+  ['D10', 'Uniform and dress code policy', 'Policy', 'uniform', 'Head of workforce', 'qs', 1, -1200, -105, ALL, 'uniform dress code clothes shoes jewellery',
+    ['What to wear in each type of area.', 'How to order and launder uniforms.', 'Who to ask about exceptions.']],
+  ['D11', 'Equipment pre-use checks procedure', 'Procedure', 'equipment', 'Medical equipment manager', 'hs', 3, -300, null, ['nurse', 'tech', 'doctor'], 'equipment device check checks faulty broken label',
+    ['Which items need a check before use, and where the check is recorded.', 'How to label and report faulty equipment.', 'How to get a replacement from the equipment library.']],
+  ['D12', 'Major incident plan: staff summary', 'Plan', 'major', 'Emergency planning lead', 'qs', 6, -1035, 60, ALL, 'major incident plan emergency call-in surge',
+    ['How you will be told a major incident has been declared.', 'Where to report and who coordinates your area.', 'How staff call-in and stand-down work.']],
+  ['D13', 'Bed cleaning standard operating procedure', 'Procedure', 'cleaning', 'Head of facilities', 'hs', 2, -500, null, ['cleaner', 'hca'], 'bed clean cleaning turnaround room discharge',
+    ['How a bed clean is requested and accepted.', 'The order of steps and the materials to use.', 'How the bed is marked ready on the bed board.']],
+  ['D14', 'Sharps handling and disposal procedure', 'Procedure', 'sharps', 'Infection prevention lead', 'qs', 3, -1110, -15, ['nurse', 'doctor', 'hca', 'cleaner', 'porter'], 'sharps needle needles bin container disposal',
+    ['Where sharps containers go and when they are closed.', 'How full containers are collected.', 'Who to tell after a sharps injury, and how fast.']],
+  ['D15', 'Moving and handling loads policy', 'Policy', 'handling', 'Health and safety adviser', 'hs', 2, -950, null, ['porter', 'cleaner', 'hca', 'nurse', 'tech'], 'moving handling lifting loads trolley heavy',
+    ['How to plan a move of a heavy load.', 'Which aids to use and where they are kept.', 'How to report a handling injury.']],
+  ['D16', 'Speaking up: raising a concern policy', 'Policy', 'concern', 'Head of workforce', 'qs', 2, -200, null, ALL, 'concern speaking up speak raise whistle worry',
+    ['Ways to raise a concern, including without your name.', 'Who the speaking-up contacts are.', 'What happens after you raise it.']],
+  ['D17', 'Severe weather plan', 'Plan', 'weather', 'Emergency planning lead', 'qs', 2, -1150, -60, ALL, 'severe weather storm flood heat snow plan',
+    ['How severe weather warnings reach each area.', 'Which services change first, and who decides.', 'How staff travel and rest arrangements work.']],
+  ['D18', 'Document control policy', 'Policy', 'documents', 'Quality manager', 'qs', 2, -800, null, ['clerk'], 'document control policy policies version review approval template',
+    ['Every document has an owner, a version and a review date.', 'How drafts are consulted on, approved and published.', 'How changes are acknowledged by the staff they affect.']]
+];
+var OWNERS = [];
+DOCS.forEach(function (d) { if (OWNERS.indexOf(d[4]) < 0) OWNERS.push(d[4]); });
+var CHAPTERS = [
+  ['c1', 'Governance and leadership', [['1.1', 'Documents are controlled: each has an owner, a version and a review date', 'met', ['D18']], ['1.2', 'Committees keep minutes and follow actions to completion', 'partial', ['R:Committee action list (this view)']], ['1.3', 'Leaders review quality measures on a set cycle', 'met', ['R:Quarterly quality report (example)']]]],
+  ['c2', 'Access and continuity of care', [['2.1', 'Admission and transfer steps are written down and known', 'partial', []], ['2.2', 'Handover between teams follows an agreed format', 'met', ['R:Handover audit, Ward 1 and Ward 4 (example)']], ['2.3', 'Discharge planning steps are documented', 'none', []]]],
+  ['c3', 'Facility management and safety', [['3.1', 'A fire safety plan is in place and drills are held', 'met', ['D01', 'R:Fire drill record, Ward 2 (example)']], ['3.2', 'Waste is separated and removed safely', 'partial', ['D03']], ['3.3', 'Equipment is checked and maintained on schedule', 'met', ['D11']], ['3.4', 'Severe weather and utility failure plans exist and are tested', 'not', ['D17']]]],
+  ['c4', 'Infection prevention operations', [['4.1', 'Cleaning schedules are set and checked', 'met', ['D13']], ['4.2', 'Sharps and spills are handled by a written procedure', 'partial', ['D04', 'D14']]]],
+  ['c5', 'Information management', [['5.1', 'Records are kept confidential and access is controlled', 'met', ['D08', 'D02']], ['5.2', 'Current policies are available to staff where they work', 'met', ['R:Policy finder on staff phones (this view)']]]],
+  ['c6', 'Staff education and induction', [['6.1', 'New staff are inducted on safety procedures', 'none', []], ['6.2', 'Staff acknowledge changed policies that affect their role', 'partial', ['R:Read-and-understood report (this view)']]]],
+  ['c7', 'Patient rights and experience', [['7.1', 'Visitors are told the visiting arrangements', 'met', ['D09']], ['7.2', 'Staff can raise concerns safely', 'met', ['D16']]]]
+];
+var SCORE = { met: 'Met', partial: 'Partly met', not: 'Not met', none: 'Not assessed' };
+
+// ---------- State ----------
+function hash(s) { var h = 7; for (var i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) % 1000003; return h; }
+function seed() {
+  var s = { v: 1, t: START, role: window.matchMedia('(max-width: 640px)').matches ? 'staff' : 'lead', guide: true, kpiOpen: null,
+    persona: { area: 'W3', role: 'nurse' }, q: '', open: null, owner: 'Head of facilities', editing: null, tab: 'review', covDoc: 'all', cell: '3.4', meeting: 'qs',
+    docs: [], acks: {}, meAck: {}, standards: [], actions: [], meetings: {}, pending: [], dismissed: {}, reminded: {}, log: [], seq: 10 };
+  DOCS.forEach(function (r) {
+    var review = r[8] != null ? r[8] : r[7] + SET.reviewYears * 365;
+    var hist = [];
+    for (var v = 1; v <= r[6]; v++) hist.push({ v: v, day: r[7] - (r[6] - v) * SET.reviewYears * 365, note: v === 1 ? 'First issue.' : v === r[6] && r[11].length > 3 ? r[11][3].replace(/^Changed in v\d+: /, '') : ['Reviewed; contacts updated.', 'Reviewed; steps reordered after an audit.', 'Reviewed; no change to content.'][(v + r[0].length) % 3] });
+    hist.reverse();
+    s.docs.push({ id: r[0], title: r[1], type: r[2], topic: r[3], owner: r[4], committee: r[5], version: r[6], approved: r[7], review: review, roles: r[9], kw: r[10], summary: r[11].slice(0, 3), change: r[11][3] || null, history: hist, draft: null, fresh: r[7] > -30 });
+    var a = s.acks[r[0]] = {};
+    AREAS.forEach(function (ar) {
+      a[ar.id] = {};
+      r[9].forEach(function (role) {
+        var n = (STAFF[ar.id] || {})[role] || 0; if (!n) return;
+        var rate = AREA_RATE[ar.id] * (r[7] > -30 ? 0.42 + (hash(r[0] + ar.id) % 20) / 100 : 0.9 + (hash(r[0] + ar.id + role) % 10) / 100);
+        a[ar.id][role] = Math.min(n - (ar.id === 'W3' && role === 'nurse' ? 1 : 0), Math.floor(n * Math.min(1, rate)));
+      });
+    });
+  });
+  // A draft already in progress (so the guide does not nag its owner).
+  doc(s, 'D14').draft = { v: 4, note: 'Container collection times updated; contacts checked.', status: 'draft', day: 0 };
+  // One revision already sent for approval, so the committee pack has a paper.
+  doc(s, 'D08').draft = { v: 4, note: 'Shared device rules added; breach reporting contacts updated.', status: 'awaiting', day: -3, sent: -3 };
+  CHAPTERS.forEach(function (c) { c[2].forEach(function (st) { s.standards.push({ code: st[0], chapter: c[0], text: st[1], score: st[2], evidence: st[3].slice() }); }); });
+  // Committee actions so far: [text, owner role, due day, committee]
+  [['Update the fire drill schedule for Theatres', 'Head of facilities', -9, 'hs'], ['Share incident reporting changes at team briefings', 'Quality manager', 5, 'qs'],
+   ['Replace missing spill kits on Ward 2 and Ward 4', 'Head of facilities', -3, 'hs'], ['Check visitor signs match the visiting policy', 'Head of patient experience', 12, 'qs'],
+   ['Report read-and-understood for the changed fire procedure', 'Quality manager', 2, 'hs'], ['Book a severe weather tabletop exercise', 'Emergency planning lead', 20, 'qs'],
+   ['Confirm who will review the uniform policy', 'Head of workforce', -1, 'qs']
+  ].forEach(function (r) { s.actions.push({ id: 'A' + (++s.seq), text: r[0], owner: r[1], due: r[2], from: COMMITTEES[r[3]], status: 'open', closed: null }); });
+  [['Re-label waste bins in Outpatients', 'Head of facilities', -4, 'hs'], ['Publish the new incident form to staff phones', 'Quality manager', -2, 'qs']]
+    .forEach(function (r) { s.actions.push({ id: 'A' + (++s.seq), text: r[0], owner: r[1], due: r[2], from: COMMITTEES[r[3]], status: 'closed', closed: -1 }); });
+  s.meetings = {
+    qs: { id: 'qs', name: COMMITTEES.qs, day: 2, time: '14:00', items: [['actions', 'Actions from the last meeting'], ['approvals', 'Documents for approval'], ['gaps', 'Accreditation self-assessment: gaps'], ['coverage', 'Read-and-understood report'], ['text', 'Any other business']].map(itemOf), decisions: [] },
+    hs: { id: 'hs', name: COMMITTEES.hs, day: 7, time: '10:00', items: [['actions', 'Actions from the last meeting'], ['approvals', 'Documents for approval'], ['gaps', 'Facility safety standards: gaps'], ['text', 'Any other business']].map(itemOf), decisions: [] }
+  };
+  // Today so far (in time order, all before the demo clock).
+  s.log = [
+    [8 * 60 + 12, 'Ward 1: 6 staff ticked “I have read this” for Reporting an incident procedure v5.'],
+    [8 * 60 + 47, 'Evidence linked to standard 3.1: Fire drill record, Ward 2 (example).'],
+    [9 * 60 + 5, 'Infection prevention lead saved a draft: Sharps handling and disposal procedure v4.'],
+    [9 * 60 + 18, 'Quality manager added Information governance and confidentiality policy v4 to the Quality and safety committee pack for approval.'],
+    [9 * 60 + 30, 'Action closed: Publish the new incident form to staff phones (Quality and safety committee).'],
+    [10 * 60 + 2, 'Emergency department: 4 staff ticked “I have read this” for Fire safety and evacuation procedure v4.'],
+    [10 * 60 + 31, 'Quality manager published the pack for the Quality and safety committee, ' + dstr(2) + '.']
+  ].map(function (x) { return { t: x[0], text: x[1] }; }).reverse();
+  return s;
+}
+function itemOf(x, i) { return { id: 'i' + i, kind: x[0], title: x[1] }; }
+function doc(s, id) { return s.docs.filter(function (d) { return d.id === id; })[0]; }
+
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() { try { var s = JSON.parse(localStorage.getItem(STORE)); return s && s.v === 1 && s.docs ? s : null; } catch (e) { return null; } }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+// ---------- Time helpers (demo clock) ----------
+function today() { return Math.floor(state.t / DAY); }
+function dobj(day) { return new Date(BASE + day * 864e5); }
+function dstr(day, noYear) { var d = dobj(day); return WD[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MON[d.getUTCMonth()] + (noYear ? '' : ' ' + d.getUTCFullYear()); }
+function dshort(day) { var d = dobj(day); return d.getUTCDate() + ' ' + MON[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); }
+function hhmm(t) { var m = ((t % DAY) + DAY) % DAY, h = Math.floor(m / 60), n = m % 60; return (h < 10 ? '0' : '') + h + ':' + (n < 10 ? '0' : '') + n; }
+function tick() { state.t += 1; }  // every action moves the demo clock on one minute, so the log stays in order
+function rel(days) { return days === 0 ? 'today' : days > 0 ? 'in ' + days + (days === 1 ? ' day' : ' days') : Math.abs(days) + (days === -1 ? ' day' : ' days') + ' ago'; }
+
+// ---------- Derived data (pure) ----------
+function getDoc(id) { return doc(state, id); }
+function daysToReview(d) { return d.review - today(); }
+function reviewState(d) { var n = daysToReview(d); return n < 0 ? 'past' : n <= SET.nearDays ? 'soon' : 'ok'; }
+function required(d, areaId) { var n = 0; d.roles.forEach(function (r) { n += (STAFF[areaId] || {})[r] || 0; }); return n; }
+function acked(d, areaId) { var a = state.acks[d.id][areaId] || {}, n = 0; for (var r in a) n += a[r]; return n; }
+function coverage(docs, areaId) {
+  var need = 0, got = 0;
+  docs.forEach(function (d) { (areaId ? [areaId] : AREAS.map(function (a) { return a.id; })).forEach(function (a) { need += required(d, a); got += acked(d, a); }); });
+  return { need: need, got: got, pc: need ? Math.round(100 * got / need) : null };
+}
+function meKey(d) { return d.id + '|' + state.persona.area + '|' + state.persona.role; }
+function assignedToMe(d) { return d.roles.indexOf(state.persona.role) >= 0 && ((STAFF[state.persona.area] || {})[state.persona.role] || 0) > 0; }
+function meAcked(d) { var k = meKey(d); return k in state.meAck ? state.meAck[k] : !d.fresh; }
+function toRead() { return state.docs.filter(function (d) { return assignedToMe(d) && !meAcked(d); }).sort(function (a, b) { return b.approved - a.approved; }); }
+function isMet(s) { return s.score === 'met'; }
+function gaps() { return state.standards.filter(function (s) { return !s.evidence.length; }); }
+function openActions() { return state.actions.filter(function (a) { return a.status === 'open'; }); }
+function pastDue(a) { return a.status === 'open' && a.due < today(); }
+function awaiting(committee) { return state.docs.filter(function (d) { return d.draft && d.draft.status === 'awaiting' && (!committee || d.committee === committee); }); }
+function kpis() {
+  var docs = state.docs, inDate = docs.filter(function (d) { return daysToReview(d) >= 0; }).length;
+  var cov = coverage(docs), open = openActions(), late = open.filter(pastDue).length;
+  var assessed = state.standards.filter(function (s) { return s.score !== 'none'; }), met = assessed.filter(isMet).length;
+  return { policiesInDatePc: Math.round(100 * inDate / docs.length), inDate: inDate, approvedDocs: docs.length, pastReview: docs.length - inDate,
+    readPc: cov.pc, readAcks: cov.got, readRequired: cov.need,
+    openActions: open.length, actionsPastDue: late, actionsPastDuePc: open.length ? Math.round(100 * late / open.length) : 0,
+    selfAssessmentPc: assessed.length ? Math.round(100 * met / assessed.length) : null, standardsMet: met, standardsAssessed: assessed.length, standardsNoEvidence: gaps().length,
+    awaitingApproval: awaiting().length };
+}
+
+// ---------- The guide: plain, checkable rules ----------
+function reviewFirst() {
+  return state.docs.filter(function (d) { return reviewState(d) !== 'ok' && !d.draft && !state.reminded[d.id]; })
+    .sort(function (a, b) { return (daysToReview(a) - daysToReview(b)) || (coverage([b]).need - coverage([a]).need); });
+}
+function suggest() {
+  var out = [];
+  // 1. Past or near review date, no draft started: notify the owner role.
+  var due = reviewFirst();
+  if (due.length) {
+    var top = due.slice(0, 3);
+    out.push({ id: 'review-' + top.map(function (d) { return d.id; }).join(''), kind: 'time', tag: 'Review first',
+      title: due.length + (due.length > 1 ? ' documents need' : ' document needs') + ' a review started',
+      list: top.map(function (d) { return d.title + ' (' + d.owner + '): review ' + (daysToReview(d) < 0 ? Math.abs(daysToReview(d)) + ' days past' : 'due ' + rel(daysToReview(d))); }),
+      why: 'Past or within ' + SET.nearDays + ' days of the review date, with no draft started. Ranked by days past review, then by how many staff it applies to. ' + SET.nearDays + ' days is an example setting, not a standard.',
+      acts: [{ label: 'Propose: notify ' + (top.length > 1 ? 'the owners' : 'the owner'), primary: true, fn: function (sg) { propose({ id: sg.id, kind: 'remind', ids: top.map(function (d) { return d.id; }), text: 'Send a review reminder to ' + uniq(top.map(function (d) { return d.owner; })).join(', ') + ' for: ' + top.map(function (d) { return d.title; }).join('; ') + '.' }); } },
+        { label: 'Show review dates', fn: function () { goLead('review'); } }] });
+  }
+  // 2. Two current documents on the same topic: ask the quality manager to check for conflict.
+  var topics = {};
+  state.docs.forEach(function (d) { (topics[d.topic] = topics[d.topic] || []).push(d); });
+  Object.keys(topics).forEach(function (k) {
+    var ds = topics[k]; if (ds.length < 2) return;
+    var id = 'dup-' + k;
+    out.push({ id: id, kind: 'ask', tag: 'Possible overlap',
+      title: ds.length + ' current documents cover the same topic',
+      list: ds.map(function (d) { return d.title + ' v' + d.version + ' (' + d.owner + ')'; }),
+      why: 'Both are tagged with the same topic. Two current versions can give staff different steps. The guide cannot judge content; the quality manager checks.',
+      acts: [{ label: 'Propose: add to the next agenda', primary: true, fn: function () { propose({ id: id, kind: 'agenda', meeting: 'qs', title: 'Check for conflict: ' + ds.map(function (d) { return d.title; }).join(' and '), text: 'Add an item to the ' + COMMITTEES.qs + ' agenda: the quality manager checks ' + ds.map(function (d) { return d.title; }).join(' and ') + ' for conflict.' }); } }] });
+  });
+  // 3. Standards with no evidence linked: list them as gaps before the next self-assessment.
+  var g = gaps();
+  if (g.length) {
+    var gid = 'gaps-' + g.map(function (s) { return s.code; }).join('');
+    out.push({ id: gid, kind: 'time', tag: 'Evidence gap',
+      title: g.length + (g.length > 1 ? ' standards have' : ' standard has') + ' no evidence linked',
+      list: g.map(function (s) { return s.code + ' ' + s.text; }),
+      why: 'No document or record is linked to these standards in the self-assessment. Listed as gaps before the next self-assessment.',
+      acts: [{ label: 'Propose: an action for each gap', primary: true, fn: function () { propose({ id: gid, kind: 'gapactions', codes: g.map(function (s) { return s.code; }), text: 'Create ' + g.length + ' actions for the Quality manager, due in 4 weeks: find and link evidence for ' + g.map(function (s) { return s.code; }).join(', ') + '.' }); } },
+        { label: 'Show the grid', fn: function () { state.cell = g[0].code; goLead('grid'); } }] });
+  }
+  // 4. A recently changed document that one area has barely read.
+  var fresh = state.docs.filter(function (d) { return today() - d.approved <= SET.freshDays; });
+  var worst = null;
+  fresh.forEach(function (d) { AREAS.forEach(function (a) { var c = coverage([d], a.id); if (c.need && c.pc < SET.coverageLow && (!worst || c.pc < worst.pc)) worst = { d: d, a: a, pc: c.pc, got: c.got, need: c.need }; }); });
+  if (worst) {
+    var wid = 'cov-' + worst.d.id + '-' + worst.a.id + '-' + worst.d.version;
+    out.push({ id: wid, kind: 'ask', tag: 'Change not reaching people',
+      title: worst.a.name + ': ' + worst.pc + '% have read the changed ' + worst.d.title,
+      text: worst.got + ' of ' + worst.need + ' staff it applies to there have ticked “I have read this” since v' + worst.d.version + ' was approved ' + rel(worst.d.approved - today()) + '.',
+      why: 'Changed in the last ' + SET.freshDays + ' days and below ' + SET.coverageLow + '% read in one area (example settings, not a standard). Counts by area and role, never by named person.',
+      acts: [{ label: 'Propose: ask the area manager to remind the team', primary: true, fn: function () { propose({ id: wid, kind: 'note', text: 'Ask the ' + worst.a.name + ' manager to remind their team to read ' + worst.d.title + ' v' + worst.d.version + '.' }); } }] });
+  }
+  return out.filter(function (x) { return !state.dismissed[x.id]; }).slice(0, 4);
+}
+function uniq(a) { return a.filter(function (x, i) { return a.indexOf(x) === i; }); }
+function propose(p) {
+  if (state.pending.some(function (x) { return x.id === p.id; })) return;
+  tick(); p.at = state.t; state.pending.push(p);
+  addLog('Guide proposed: ' + p.text + ' Waiting for the governance lead.');
+  render(); toast('Proposed. The governance lead decides.');
+}
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x.id !== p.id; });
+  state.dismissed[p.id] = true; tick();
+  if (!yes) { addLog('Governance lead declined: ' + p.text); render(); toast('Declined. Nothing changed.'); return; }
+  if (p.kind === 'remind') p.ids.forEach(function (id) { state.reminded[id] = today(); });
+  else if (p.kind === 'agenda') { var m = state.meetings[p.meeting]; m.items.splice(m.items.length - 1, 0, { id: 'i' + (++state.seq), kind: 'text', title: p.title }); }
+  else if (p.kind === 'gapactions') p.codes.forEach(function (c) { var s = std(c); addAction('Find and link evidence for standard ' + c + ': ' + s.text, 'Quality manager', today() + 28, 'Self-assessment'); });
+  addLog('Governance lead confirmed: ' + p.text + (p.kind === 'remind' || p.kind === 'note' ? ' (In this preview nothing is sent.)' : ''));
+  render(); toast(p.kind === 'gapactions' ? 'Done. The actions are on the action list.' : p.kind === 'agenda' ? 'Done. Added to the agenda.' : 'Done. Logged; in this preview nothing is sent.');
+}
+function std(code) { return state.standards.filter(function (s) { return s.code === code; })[0]; }
+function addAction(text, owner, due, from) { var a = { id: 'A' + (++state.seq), text: text, owner: owner, due: due, from: from, status: 'open', closed: null }; state.actions.push(a); addLog('Action added (' + from + '): ' + text + '. Owner: ' + owner + ', due ' + dshort(due) + '.'); return a; }
+
+// ---------- Helpers ----------
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+var lastLogT = -1;
+function addLog(text) { lastLogT = state.t; state.log.unshift({ t: state.t, text: text }); state.log = state.log.slice(0, 50); }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+function revChip(d) {
+  var st = reviewState(d), n = daysToReview(d);
+  return el('span', { class: 'chip ' + st, text: st === 'past' ? 'Past review' : st === 'soon' ? 'Review ' + rel(n) : 'In date' });
+}
+function areaName(id) { return AREAS.filter(function (a) { return a.id === id; })[0].name; }
+
+// ---------- Actions ----------
+function acknowledge(d) {
+  if (meAcked(d)) return;
+  tick(); state.meAck[meKey(d)] = true;
+  var a = state.acks[d.id][state.persona.area], r = state.persona.role, cap = (STAFF[state.persona.area] || {})[r] || 0;
+  a[r] = Math.min(cap, (a[r] || 0) + 1);
+  addLog(areaName(state.persona.area) + ': a ' + ROLES[r].toLowerCase() + ' ticked “I have read this” for ' + d.title + ' v' + d.version + '.');
+  render(); toast('Thank you. Recorded for ' + areaName(state.persona.area) + '.');
+}
+function saveDraft(d, note) {
+  tick();
+  if (!d.draft) d.draft = { v: d.version + 1, note: note, status: 'draft', day: today() };
+  else { d.draft.note = note; d.draft.status = 'draft'; }
+  state.editing = null;
+  addLog(d.owner + ' saved a draft: ' + d.title + ' v' + d.draft.v + '. “' + note + '”');
+  render(); toast('Draft v' + d.draft.v + ' saved. Staff still see v' + d.version + ' until it is approved.');
+}
+function sendForApproval(d) {
+  tick(); d.draft.status = 'awaiting'; d.draft.sent = today();
+  addLog(d.owner + ' sent ' + d.title + ' v' + d.draft.v + ' for approval by the ' + COMMITTEES[d.committee] + '.');
+  render(); toast('Sent. It is on the ' + COMMITTEES[d.committee] + ' pack.');
+}
+function withdraw(d) { tick(); d.draft.status = 'draft'; addLog(d.owner + ' withdrew ' + d.title + ' v' + d.draft.v + ' from approval.'); render(); toast('Withdrawn. Back to draft.'); }
+function approve(d, yes) {
+  var m = state.meetings[d.committee]; tick();
+  if (!yes) {
+    d.draft.status = 'draft';
+    m.decisions.push({ t: state.t, text: 'Returned to owner: ' + d.title + ' v' + d.draft.v + '.' });
+    addLog(m.name + ' returned ' + d.title + ' v' + d.draft.v + ' to the ' + d.owner + ' for changes.');
+    render(); toast('Returned to the owner.'); return;
+  }
+  var v = d.draft.v;
+  d.history.unshift({ v: v, day: today(), note: d.draft.note });
+  d.version = v; d.approved = today(); d.review = today() + SET.reviewYears * 365; d.change = 'Changed in v' + v + ': ' + d.draft.note; d.draft = null; d.fresh = true;
+  delete state.reminded[d.id];
+  AREAS.forEach(function (a) { var x = state.acks[d.id][a.id]; for (var r in x) x[r] = 0; });
+  Object.keys(state.meAck).forEach(function (k) { if (k.indexOf(d.id + '|') === 0) delete state.meAck[k]; });
+  m.decisions.push({ t: state.t, text: 'Approved: ' + d.title + ' v' + v + '. Next review ' + dshort(d.review) + '.' });
+  addLog(m.name + ' approved ' + d.title + ' v' + v + '. It is now the current version; staff it applies to are asked to read it.');
+  render(); toast('Approved. v' + v + ' is now current and in date.');
+}
+function closeAction(a) { tick(); a.status = 'closed'; a.closed = today(); addLog('Action closed: ' + a.text + ' (' + a.from + ').'); render(); toast('Action closed.'); }
+function goLead(tab) { state.role = 'lead'; state.tab = tab; render(); var h = document.getElementById('view-h'); if (h) h.scrollIntoView({ block: 'start' }); }
+
+// ---------- Render ----------
+var HINTS = {
+  staff: 'Any member of staff on a phone. Search “how do I…” to find the current approved document, read its one-page summary, and tick when you have read a change that applies to your role.',
+  owner: 'A document owner. Your documents by review date: draft a revision, send it for approval, and see each version. Staff keep seeing the approved version until the new one is approved.',
+  lead: 'The governance or accreditation lead. Review dates by owner role, read-and-understood by area, the self-assessment grid, and committee packs feeding one action list.'
+};
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  ['staff', 'owner', 'lead'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('clocknow').textContent = 'Demo clock ' + dstr(today(), true) + ', ' + hhmm(state.t);
+  document.getElementById('view-h').textContent = { staff: 'Find a policy', owner: 'My documents', lead: 'Governance overview' }[state.role];
+  var v = document.getElementById('view'); v.textContent = '';
+  var kb = kpiBlock(state.role === 'staff');
+  if (state.role !== 'staff') v.appendChild(kb);
+  v.appendChild(state.role === 'staff' ? staffView() : state.role === 'owner' ? ownerView() : leadView());
+  if (state.role === 'staff') v.appendChild(kb);
+  renderGuide();
+  renderLog();
+  save();
+  if (aid) { var e = document.getElementById(aid); if (e) e.focus({ preventScroll: true }); }
+}
+function kpiBlock(below) {
+  var k = kpis(), box = el('div', { class: 'stats', id: 'kpis' });
+  var tiles = [
+    ['date', k.policiesInDatePc + '%', 'Policies in date', k.inDate + ' of ' + k.approvedDocs + ' documents', 'Approved documents within their review date ÷ all approved documents. Local definition.', k.pastReview > 0 && k.policiesInDatePc < 80],
+    ['read', k.readPc + '%', 'Read and understood', k.readAcks.toLocaleString('en') + ' of ' + k.readRequired.toLocaleString('en') + ' ticks', 'Staff who ticked “I have read this” for the current version ÷ staff each document applies to, all areas. Counted by area and role, never by person. Local definition.', false],
+    ['late', k.actionsPastDue + ' of ' + k.openActions, 'Open actions past due', k.actionsPastDuePc + '% of open governance actions', 'Governance actions past their due date ÷ all open governance actions. Local definition.', k.actionsPastDue > 0],
+    ['self', (k.selfAssessmentPc == null ? '–' : k.selfAssessmentPc + '%'), 'Self-assessment', k.standardsMet + ' of ' + k.standardsAssessed + ' standards met', 'Standards scored “met” ÷ standards assessed (all chapters). Your own self-assessment, not an accreditor\'s finding. Local definition.', false]
+  ];
+  tiles.forEach(function (t) {
+    var open = state.kpiOpen === t[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat' + (t[5] ? ' alert' : ''), 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def', text: t[4] })]));
+  });
+  return el('div', { class: 'kpiblock' + (below ? '' : ' top') }, [below ? el('h3', { class: 'sec', text: 'How the organisation is doing' }) : null, box, el('p', { class: 'stathint', text: 'All documents and areas. Tap a tile for its definition.' })]);
+}
+
+// --- Any staff (phone) ---
+function onePage(d) {
+  return el('div', { class: 'onepage', id: 'sum-' + d.id }, [
+    el('h4', { text: 'One-page summary · v' + d.version }),
+    el('ul', {}, d.summary.map(function (x) { return el('li', { text: x }); })),
+    d.change && d.fresh ? el('p', { class: 'note', text: d.change }) : null,
+    el('dl', {}, [el('dt', { text: 'Applies to' }), el('dd', { text: d.roles.length === ALL.length ? 'All staff' : d.roles.map(function (r) { return ROLES[r]; }).join(', ') }),
+      el('dt', { text: 'Owner' }), el('dd', { text: d.owner }), el('dt', { text: 'Approved' }), el('dd', { text: dshort(d.approved) + ' by the ' + COMMITTEES[d.committee] }),
+      el('dt', { text: 'Next review' }), el('dd', { text: dshort(d.review) })]),
+    el('p', { class: 'fine', text: 'Invented example text for this demo, not guidance to follow. The full document opens from here in the product.' })
+  ]);
+}
+function staffDoc(d, ctx) {
+  var mine = assignedToMe(d), done = meAcked(d), open = state.open === d.id + ctx, past = reviewState(d) === 'past';
+  var chips = [el('span', { class: 'chip', text: d.type }), el('span', { class: 'chip ok', text: 'Current · v' + d.version })];
+  if (mine && !done) chips.push(el('span', { class: 'chip fresh', text: d.fresh ? 'Changed · please read' : 'Please read' }));
+  else if (mine && done) chips.push(el('span', { class: 'chip', text: 'Read' }));
+  return el('article', { class: 'doc' + (mine && !done ? ' todo' : '') + (past ? ' pastrev' : ''), 'aria-label': d.title }, [
+    el('div', { class: 'chips' }, chips),
+    el('p', { class: 't', text: d.title }),
+    el('p', { class: 'meta', text: 'Approved ' + dshort(d.approved) + ' · owner: ' + d.owner }),
+    past ? el('p', { class: 'note hot', text: 'Past its review date. Still the current version until a new one is approved' + (d.draft ? '; a revision is in progress.' : state.reminded[d.id] != null ? '; the owner has been reminded.' : '; the owner is responsible for the review.') }) : null,
+    open ? onePage(d) : null,
+    el('div', { class: 'acts' }, [
+      el('button', { type: 'button', class: 'go', id: 'open-' + ctx + d.id, 'aria-expanded': String(open), 'aria-controls': 'sum-' + d.id, onclick: function () { state.open = open ? null : d.id + ctx; render(); }, text: open ? 'Close summary' : 'Read summary' }),
+      mine && !done ? el('button', { type: 'button', class: 'go ack', id: 'ack-' + ctx + d.id, onclick: function () { acknowledge(d); }, text: 'I have read this' }) : null
+    ])
+  ]);
+}
+var QUICK = [['fire', 'Fire alarm'], ['spill', 'A spill'], ['incident', 'Report an incident'], ['lost card', 'Lost my badge'], ['waste', 'Waste bins'], ['concern', 'Raise a concern']];
+function search(q) {
+  var words = q.toLowerCase().replace(/^how do i\s*/, '').split(/[^a-z]+/).filter(function (w) { return w.length > 2 && ['the', 'and', 'what', 'how', 'for', 'when', 'who', 'with', 'about', 'can', 'should', 'into', 'from', 'out'].indexOf(w) < 0; });
+  if (!words.length) return [];
+  var scored = state.docs.map(function (d) {
+    var hay = (d.title + ' ' + d.kw + ' ' + d.type).toLowerCase(), score = 0;
+    words.forEach(function (w) { var stem = w.replace(/(ing|es|s)$/, ''); if (hay.indexOf(w) >= 0) score += 2; else if (stem.length > 2 && hay.indexOf(stem) >= 0) score += 1; });
+    return { d: d, score: score };
+  }).filter(function (x) { return x.score > 0; });
+  var top = scored.reduce(function (m, x) { return Math.max(m, x.score); }, 0);
+  return scored.filter(function (x) { return x.score >= top * 0.6; }).sort(function (a, b) { return b.score - a.score || a.d.title.localeCompare(b.d.title); }).map(function (x) { return x.d; });
+}
+function staffView() {
+  var frag = document.createDocumentFragment(), p = state.persona;
+  // Who am I (the demo stands in for sign-in).
+  var as = el('select', { id: 'p-area', onchange: function (e) { p.area = e.target.value; if (!(STAFF[p.area] || {})[p.role]) p.role = Object.keys(STAFF[p.area])[0]; render(); } });
+  AREAS.forEach(function (a) { as.appendChild(el('option', { value: a.id, text: a.name })); }); as.value = p.area;
+  var rs = el('select', { id: 'p-role', onchange: function (e) { p.role = e.target.value; render(); } });
+  Object.keys(STAFF[p.area]).forEach(function (r) { rs.appendChild(el('option', { value: r, text: ROLES[r] })); }); rs.value = p.role;
+  frag.appendChild(el('div', { class: 'persona' }, [el('label', { for: 'p-area' }, ['Your area', as]), el('label', { for: 'p-role' }, ['Your role', rs])]));
+  // To read.
+  var list = toRead();
+  frag.appendChild(el('h3', { class: 'sec', text: 'To read for your role · ' + list.length }));
+  if (list.length) { var box = el('div', { class: 'docs', id: 'toread' }); list.forEach(function (d) { box.appendChild(staffDoc(d, 't')); }); frag.appendChild(box); }
+  else frag.appendChild(el('p', { class: 'empty', id: 'toread-empty', text: 'All read. When a document that applies to you changes, it appears here.' }));
+  // Search.
+  var input = el('input', { type: 'search', id: 'q', placeholder: 'How do I… e.g. report a spill', autocomplete: 'off', enterkeyhint: 'search', value: state.q,
+    oninput: function (e) { state.q = e.target.value; state.open = null; renderResults(); save(); } });
+  frag.appendChild(el('div', { class: 'searchbox', role: 'search' }, [el('label', { for: 'q', text: 'How do I…?' }), input,
+    el('div', { class: 'quick', role: 'group', 'aria-label': 'Common questions' }, QUICK.map(function (x, i) { return el('button', { type: 'button', id: 'qk-' + i, onclick: function () { state.q = x[0]; state.open = null; render(); }, text: x[1] }); }))]));
+  var res = el('div', { id: 'results', 'aria-live': 'polite' }); frag.appendChild(res); renderResults(res);
+  var c = coverage(state.docs.filter(function (d) { return d.roles.indexOf(p.role) >= 0; }), p.area);
+  frag.appendChild(el('div', { class: 'myarea' }, [el('span', { text: areaName(p.area) + ', ' + ROLES[p.role].toLowerCase() + 's: ' }), el('b', { text: c.pc + '% read and understood' }), el('div', { class: 'bar' + (c.pc < SET.coverageTarget ? ' low' : ''), 'aria-hidden': 'true' }, [el('i', { style: 'width:' + c.pc + '%' })])]));
+  return frag;
+}
+function renderResults(into) {
+  var box = into || document.getElementById('results'); if (!box) return; box.textContent = '';
+  if (!state.q.trim()) return;
+  var r = search(state.q);
+  box.appendChild(el('h3', { class: 'sec', text: r.length ? 'Current approved documents · ' + r.length : 'No match' }));
+  if (!r.length) { box.appendChild(el('p', { class: 'empty', text: 'Nothing matches “' + state.q + '”. Try one word, like fire, spill or badge.' })); return; }
+  var l = el('div', { class: 'docs' }); r.slice(0, 5).forEach(function (d) { l.appendChild(staffDoc(d, 's')); }); box.appendChild(l);
+  box.appendChild(el('p', { class: 'fine', text: 'Only current approved versions show. Drafts and old versions never appear here.' }));
+}
+
+// --- Document owner ---
+function ownerView() {
+  var frag = document.createDocumentFragment();
+  var sel = el('select', { id: 'owner-pick', onchange: function (e) { state.owner = e.target.value; state.editing = null; render(); } });
+  OWNERS.forEach(function (o) { sel.appendChild(el('option', { value: o, text: o })); }); sel.value = state.owner;
+  var mine = state.docs.filter(function (d) { return d.owner === state.owner; }).sort(function (a, b) { return a.review - b.review; });
+  frag.appendChild(el('div', { class: 'ownerbar' }, [el('label', { for: 'owner-pick' }, ['You are the owner role', sel]),
+    el('span', { class: 'pill' + (mine.some(function (d) { return reviewState(d) === 'past'; }) ? ' hot' : ''), text: mine.length + ' documents · ' + mine.filter(function (d) { return reviewState(d) !== 'ok'; }).length + ' past or near review' })]));
+  frag.appendChild(el('h3', { class: 'sec', text: 'By review date, soonest first' }));
+  var box = el('div', { class: 'docs', id: 'mydocs' });
+  mine.forEach(function (d) {
+    var st = reviewState(d), c = coverage([d]), dr = d.draft;
+    var chips = [revChip(d), el('span', { class: 'chip', text: 'v' + d.version + ' current' })];
+    if (dr) chips.push(el('span', { class: 'chip ' + (dr.status === 'awaiting' ? 'wait' : 'draft'), text: dr.status === 'awaiting' ? 'v' + dr.v + ' awaiting approval' : 'v' + dr.v + ' draft' }));
+    var acts = [];
+    if (!dr || dr.status === 'draft') acts.push(el('button', { type: 'button', class: 'small' + (dr ? '' : ' primary'), id: 'rev-' + d.id, 'aria-expanded': String(state.editing === d.id), onclick: function () { state.editing = state.editing === d.id ? null : d.id; render(); var t = document.getElementById('note-' + d.id); if (t) t.focus(); }, text: dr ? 'Edit draft' : 'Draft a revision' }));
+    if (dr && dr.status === 'draft') acts.push(el('button', { type: 'button', class: 'small primary', id: 'send-' + d.id, onclick: function () { sendForApproval(d); }, text: 'Send for approval' }));
+    if (dr && dr.status === 'awaiting') acts.push(el('button', { type: 'button', class: 'small', id: 'wd-' + d.id, onclick: function () { withdraw(d); }, text: 'Withdraw' }));
+    var form = null;
+    if (state.editing === d.id) {
+      var ta = el('textarea', { id: 'note-' + d.id, placeholder: 'e.g. Reviewed; contacts updated; collection times changed.' }); ta.value = dr ? dr.note : '';
+      form = el('div', { class: 'form' }, [el('label', { for: 'note-' + d.id, text: 'What changes in v' + (dr ? dr.v : d.version + 1) + '?' }), ta,
+        el('div', { class: 'row' }, [
+          el('button', { type: 'button', class: 'small primary', id: 'save-' + d.id, onclick: function () { var n = ta.value.trim() || 'Reviewed; no change to content.'; saveDraft(d, n); }, text: 'Save draft' }),
+          el('button', { type: 'button', class: 'small', onclick: function () { state.editing = null; render(); }, text: 'Cancel' })]),
+        el('p', { class: 'fine', text: 'In the product you edit the document itself. Approval goes to the ' + COMMITTEES[d.committee] + '. Ospeli does not write or approve clinical content.' })]);
+    }
+    box.appendChild(el('article', { class: 'doc' + (st === 'past' ? ' pastrev' : st === 'soon' ? ' todo' : ''), 'aria-label': d.title }, [
+      el('div', { class: 'chips' }, chips),
+      el('p', { class: 't', text: d.title }),
+      el('p', { class: 'meta', text: 'Review date ' + dshort(d.review) + ' (' + rel(daysToReview(d)) + ') · approver: ' + COMMITTEES[d.committee] }),
+      el('div', { class: 'myarea' }, [el('span', { text: 'Read and understood, v' + d.version + ':' }), el('b', { text: c.pc + '%' }), el('div', { class: 'bar' + (c.pc < SET.coverageTarget ? ' low' : ''), 'aria-hidden': 'true' }, [el('i', { style: 'width:' + c.pc + '%' })])]),
+      dr ? el('p', { class: 'note', text: 'Draft v' + dr.v + ': ' + dr.note }) : null,
+      state.reminded[d.id] != null ? el('p', { class: 'note hot', text: 'Review reminder from the governance lead, ' + dshort(state.reminded[d.id]) + '.' }) : null,
+      el('div', { class: 'acts' }, acts), form,
+      el('details', { class: 'hist' }, [el('summary', { text: 'Version history (' + d.history.length + ')' }),
+        el('ol', { class: 'vers' }, d.history.map(function (h) { return el('li', {}, [el('b', { text: 'v' + h.v }), el('span', { text: dshort(h.day) + ' · ' + h.note })]); }))])
+    ]));
+  });
+  frag.appendChild(box);
+  return frag;
+}
+
+// --- Governance lead ---
+var TABS = [['review', 'Review dates'], ['coverage', 'Read coverage'], ['grid', 'Self-assessment'], ['meeting', 'Meeting pack']];
+function leadView() {
+  var frag = document.createDocumentFragment();
+  frag.appendChild(el('div', { class: 'tabs', role: 'group', 'aria-label': 'Section' }, TABS.map(function (t) { return el('button', { type: 'button', id: 'tab-' + t[0], 'aria-pressed': String(state.tab === t[0]), onclick: function () { state.tab = t[0]; render(); }, text: t[1] }); })));
+  frag.appendChild(state.tab === 'review' ? leadReview() : state.tab === 'coverage' ? leadCoverage() : state.tab === 'grid' ? leadGrid() : leadMeeting());
+  return frag;
+}
+function leadReview() {
+  var frag = document.createDocumentFragment();
+  frag.appendChild(el('h3', { class: 'sec', text: 'Documents past or near review, by owner role' }));
+  var groups = OWNERS.map(function (o) {
+    var ds = state.docs.filter(function (d) { return d.owner === o; });
+    return { o: o, ds: ds, past: ds.filter(function (d) { return reviewState(d) === 'past'; }).length, soon: ds.filter(function (d) { return reviewState(d) === 'soon'; }).length, drafts: ds.filter(function (d) { return d.draft; }).length };
+  }).sort(function (a, b) { return (b.past - a.past) || (b.soon - a.soon) || a.o.localeCompare(b.o); });
+  var wrap = el('div', { id: 'review' });
+  groups.forEach(function (g) {
+    var due = g.ds.filter(function (d) { return reviewState(d) !== 'ok' || d.draft; }).sort(function (a, b) { return a.review - b.review; });
+    var box = el('div', { class: 'grp' }, [el('h4', {}, [g.o, el('span', { text: g.ds.length + ' documents · ' + g.past + ' past review · ' + g.soon + ' due within ' + SET.nearDays + ' days' + (g.drafts ? ' · ' + g.drafts + ' draft' + (g.drafts > 1 ? 's' : '') : '') })])]);
+    due.forEach(function (d) {
+      box.appendChild(el('div', { class: 'line' }, [el('div', { class: 'nm' }, [d.title + ' v' + d.version, el('small', { text: 'Review ' + dshort(d.review) + ' · ' + rel(daysToReview(d)) + (d.draft ? ' · v' + d.draft.v + (d.draft.status === 'awaiting' ? ' awaiting approval' : ' in draft') : state.reminded[d.id] != null ? ' · owner reminded' : ' · no draft yet') })]), revChip(d)]));
+    });
+    if (!due.length) box.appendChild(el('p', { class: 'fine', style: 'margin:0', text: 'All in date.' }));
+    wrap.appendChild(box);
+  });
+  frag.appendChild(wrap);
+  frag.appendChild(el('p', { class: 'fine', text: 'Review cycle ' + SET.reviewYears + ' years and “near” = ' + SET.nearDays + ' days: example settings, not a standard.' }));
+  return frag;
+}
+function leadCoverage() {
+  var frag = document.createDocumentFragment();
+  var sel = el('select', { id: 'cov-doc', onchange: function (e) { state.covDoc = e.target.value; render(); } });
+  sel.appendChild(el('option', { value: 'all', text: 'All current documents' }));
+  state.docs.slice().sort(function (a, b) { return b.approved - a.approved; }).forEach(function (d) { sel.appendChild(el('option', { value: d.id, text: d.title + ' v' + d.version + (d.fresh ? ' (changed)' : '') })); });
+  sel.value = state.covDoc;
+  frag.appendChild(el('div', { class: 'ownerbar' }, [el('label', { for: 'cov-doc' }, ['Read and understood for', sel])]));
+  var docs = state.covDoc === 'all' ? state.docs : [getDoc(state.covDoc)];
+  frag.appendChild(el('h3', { class: 'sec', text: 'By area, lowest first' }));
+  var rows = AREAS.map(function (a) { return { a: a, c: coverage(docs, a.id) }; }).filter(function (x) { return x.c.need; }).sort(function (x, y) { return x.c.pc - y.c.pc; });
+  var box = el('div', { id: 'coverage' });
+  rows.forEach(function (x) {
+    box.appendChild(el('div', { class: 'covrow' }, [el('span', {}, [x.a.name, el('small', { style: 'display:block;color:var(--soft);font-size:0.8rem', text: x.c.got + ' of ' + x.c.need })]),
+      el('div', { class: 'bar' + (x.c.pc < SET.coverageTarget ? ' low' : ''), role: 'img', 'aria-label': x.c.pc + '% read' }, [el('i', { style: 'width:' + x.c.pc + '%' }), el('span', { class: 'mark', style: 'left:' + SET.coverageTarget + '%' })]),
+      el('b', { class: 'pc', text: x.c.pc + '%' })]));
+  });
+  frag.appendChild(box);
+  frag.appendChild(el('p', { class: 'fine', text: 'Ticks for the current version ÷ staff each document applies to, by area. The line marks ' + SET.coverageTarget + '%, an example setting, not a standard. Counted by area and role, never by named person.' }));
+  return frag;
+}
+function leadGrid() {
+  var frag = document.createDocumentFragment();
+  frag.appendChild(el('h3', { class: 'sec', text: 'Self-assessment by chapter' }));
+  frag.appendChild(el('div', { class: 'legend' }, [el('span', { class: 'l-met', text: 'Met' }), el('span', { class: 'l-partial', text: 'Partly met' }), el('span', { class: 'l-not', text: 'Not met' }), el('span', { class: 'l-none', text: 'Not assessed' })]));
+  var grid = el('div', { id: 'grid' });
+  CHAPTERS.forEach(function (c, i) {
+    var ss = state.standards.filter(function (s) { return s.chapter === c[0]; }), as = ss.filter(function (s) { return s.score !== 'none'; }), met = as.filter(isMet).length;
+    grid.appendChild(el('div', { class: 'chap' }, [
+      el('h4', {}, ['Chapter ' + (i + 1) + ': ' + c[1], el('small', { text: as.length ? met + ' of ' + as.length + ' met · ' + Math.round(100 * met / as.length) + '%' : 'Not assessed yet' })]),
+      el('div', { class: 'cells' }, ss.map(function (s) {
+        return el('button', { type: 'button', id: 'cell-' + s.code.replace('.', '-'), class: 'cell s-' + s.score + (s.evidence.length ? '' : ' noev'), 'aria-pressed': String(state.cell === s.code), 'aria-label': 'Standard ' + s.code + ': ' + SCORE[s.score] + ', ' + (s.evidence.length ? s.evidence.length + ' evidence linked' : 'no evidence linked'), onclick: function () { state.cell = state.cell === s.code ? null : s.code; render(); } },
+          [el('b', { text: s.code }), SCORE[s.score], el('small', { class: 'ev', text: s.evidence.length ? s.evidence.length + ' evidence' : 'No evidence' })]);
+      }))
+    ]));
+  });
+  frag.appendChild(grid);
+  var s = state.cell && std(state.cell);
+  if (s) frag.appendChild(cellDetail(s));
+  frag.appendChild(el('p', { class: 'fine', text: 'Chapters and standards are generic examples written for this demo, not any accreditor\'s text. Scores are your own self-assessment.' }));
+  return frag;
+}
+function evName(e) { if (e.slice(0, 2) === 'R:') return e.slice(2); var d = getDoc(e); return d.title + ' v' + d.version; }
+function cellDetail(s) {
+  var sc = el('select', { id: 'score', onchange: function (e) { tick(); var was = s.score; s.score = e.target.value; addLog('Self-assessment: standard ' + s.code + ' changed from ' + SCORE[was] + ' to ' + SCORE[s.score] + '.'); render(); toast('Score saved.'); } });
+  Object.keys(SCORE).forEach(function (k) { sc.appendChild(el('option', { value: k, text: SCORE[k] })); }); sc.value = s.score;
+  var pick = el('select', { id: 'ev-pick' });
+  pick.appendChild(el('option', { value: '', text: 'Choose a document…' }));
+  state.docs.filter(function (d) { return s.evidence.indexOf(d.id) < 0; }).forEach(function (d) { pick.appendChild(el('option', { value: d.id, text: d.title })); });
+  var ul = el('ul', { class: 'evlist', id: 'evlist' });
+  s.evidence.forEach(function (e) {
+    var d = e.slice(0, 2) === 'R:' ? null : getDoc(e);
+    ul.appendChild(el('li', {}, [el('span', {}, [evName(e), d && reviewState(d) === 'past' ? el('span', { class: 'chip past', style: 'margin-left:6px', text: 'Past review' }) : null]),
+      el('button', { type: 'button', class: 'small', 'aria-label': 'Unlink ' + evName(e), onclick: function () { tick(); s.evidence.splice(s.evidence.indexOf(e), 1); addLog('Evidence unlinked from standard ' + s.code + ': ' + evName(e) + '.'); render(); }, text: 'Unlink' })]));
+  });
+  if (!s.evidence.length) ul.appendChild(el('li', {}, [el('span', { class: 'note hot', style: 'margin:0', text: 'No evidence linked. This is a gap before the next self-assessment.' })]));
+  return el('div', { class: 'detail', id: 'cell-detail' }, [
+    el('h4', { text: 'Standard ' + s.code + ': ' + s.text }),
+    el('div', { class: 'form', style: 'background:none;padding:0' }, [el('div', { class: 'row' }, [el('label', { for: 'score' }, ['Self-assessment', sc])])]),
+    el('h3', { class: 'sec', text: 'Evidence linked' }), ul,
+    el('div', { class: 'form', style: 'background:none;padding:0' }, [el('div', { class: 'row' }, [el('label', { for: 'ev-pick', class: 'grow' }, ['Link a current document', pick]),
+      el('button', { type: 'button', class: 'small primary', id: 'ev-link', onclick: function () { if (!pick.value) return toast('Choose a document first.'); tick(); s.evidence.push(pick.value); addLog('Evidence linked to standard ' + s.code + ': ' + evName(pick.value) + '.'); render(); toast('Linked. Ready for inspection any day.'); }, text: 'Link' })])])
+  ]);
+}
+function leadMeeting() {
+  var frag = document.createDocumentFragment();
+  var sel = el('select', { id: 'meet-pick', onchange: function (e) { state.meeting = e.target.value; render(); } });
+  Object.keys(state.meetings).forEach(function (k) { var m = state.meetings[k]; sel.appendChild(el('option', { value: k, text: m.name })); }); sel.value = state.meeting;
+  var m = state.meetings[state.meeting], k = kpis();
+  frag.appendChild(el('div', { class: 'ownerbar' }, [el('label', { for: 'meet-pick' }, ['Meeting', sel]), el('span', { class: 'pill', text: (m.day < today() ? 'Was ' : 'Next: ') + dstr(m.day) + ', ' + m.time })]));
+  var box = el('div', { class: 'meet', id: 'meeting', style: 'margin-top:12px' }, [el('h3', { class: 'sec', text: 'Agenda and papers' })]);
+  m.items.forEach(function (it, i) {
+    var body = [];
+    if (it.kind === 'actions') { var mine = openActions().filter(function (a) { return a.from === m.name; }); body.push(el('p', { text: 'Paper: action list. ' + mine.length + ' open from this committee, ' + mine.filter(pastDue).length + ' past due. See the action list below.' })); }
+    if (it.kind === 'approvals') {
+      var aw = awaiting(m.id);
+      body.push(el('p', { text: aw.length ? 'Papers: ' + aw.length + (aw.length > 1 ? ' documents sent by their owners.' : ' document sent by its owner.') : 'No documents sent for approval yet. Owners send drafts from the Document owner view.' }));
+      aw.forEach(function (d) {
+        body.push(el('div', { class: 'appr' }, [el('b', { text: d.title + ': v' + d.version + ' → v' + d.draft.v }), el('div', { class: 'fine', style: 'margin:2px 0 0', text: 'From the ' + d.owner + ' · ' + d.draft.note }),
+          el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'small sea', id: 'appr-' + d.id, onclick: function () { approve(d, true); }, text: 'Record decision: approve' }), el('button', { type: 'button', class: 'small', id: 'ret-' + d.id, onclick: function () { approve(d, false); }, text: 'Return to owner' })])]));
+      });
+    }
+    if (it.kind === 'gaps') { var ch = it.title.indexOf('Facility') === 0 ? 'c3' : null, g = gaps().filter(function (s) { return !ch || s.chapter === ch; }), nm = state.standards.filter(function (s) { return s.score === 'not' && (!ch || s.chapter === ch); }); body.push(el('p', { text: 'Paper: self-assessment grid. ' + g.length + ' with no evidence, ' + nm.length + ' not met' + (g.concat(nm).length ? ': ' + uniq(g.concat(nm).map(function (s) { return s.code; })).join(', ') : '') + '. Self-assessment ' + k.selfAssessmentPc + '% met.' })); }
+    if (it.kind === 'coverage') { var low = AREAS.map(function (a) { return { a: a, c: coverage(state.docs, a.id) }; }).sort(function (x, y) { return x.c.pc - y.c.pc; })[0]; body.push(el('p', { text: 'Paper: read-and-understood report. ' + k.readPc + '% overall; lowest ' + low.a.name + ' at ' + low.c.pc + '%.' })); }
+    body.push(decisionForm(m, it));
+    box.appendChild(el('div', { class: 'item' }, [el('h4', {}, [el('i', { text: (i + 1) + '.' }), it.title])].concat(body)));
+  });
+  if (m.decisions.length) { box.appendChild(el('h3', { class: 'sec', text: 'Decisions recorded' })); box.appendChild(el('ul', { class: 'decs', id: 'decisions' }, m.decisions.map(function (d) { return el('li', { text: d.text }); }))); }
+  frag.appendChild(box);
+  // One action list across meetings.
+  var open = openActions().sort(function (a, b) { return a.due - b.due; }), closed = state.actions.filter(function (a) { return a.status === 'closed'; });
+  frag.appendChild(el('h3', { class: 'sec', text: 'Action list, all committees · ' + open.length + ' open, ' + open.filter(pastDue).length + ' past due' }));
+  var al = el('div', { id: 'actions' });
+  open.forEach(function (a) {
+    al.appendChild(el('div', { class: 'act' + (pastDue(a) ? ' late' : '') }, [el('div', {}, [a.text, el('small', { text: a.owner + ' · from ' + a.from + ' · due ' + dshort(a.due) + ' (' + rel(a.due - today()) + ')' })]),
+      el('button', { type: 'button', class: 'small', id: 'close-' + a.id, 'aria-label': 'Close action: ' + a.text, onclick: function () { closeAction(a); }, text: 'Close' })]));
+  });
+  if (!open.length) al.appendChild(el('p', { class: 'empty', text: 'No open actions.' }));
+  frag.appendChild(al);
+  frag.appendChild(el('p', { class: 'fine', text: closed.length + ' closed. Decisions that create an action land here, with an owner role and a due date.' }));
+  return frag;
+}
+var formOpen = null;
+function decisionForm(m, it) {
+  var key = m.id + it.id, open = formOpen === key;
+  if (!open) return el('button', { type: 'button', class: 'small', id: 'dec-' + key, 'aria-expanded': 'false', onclick: function () { formOpen = key; render(); var t = document.getElementById('dtext-' + key); if (t) t.focus(); }, text: 'Record a decision' });
+  var txt = el('input', { type: 'text', id: 'dtext-' + key, placeholder: 'e.g. Fire warden rota to be refreshed' });
+  var mk = el('input', { type: 'checkbox', id: 'dact-' + key }); mk.checked = true;
+  var ow = el('select', { id: 'down-' + key }); OWNERS.forEach(function (o) { ow.appendChild(el('option', { value: o, text: o })); });
+  var du = el('select', { id: 'ddue-' + key }); [[14, 'In 2 weeks'], [28, 'In 4 weeks'], [56, 'In 8 weeks']].forEach(function (x) { du.appendChild(el('option', { value: String(x[0]), text: x[1] })); });
+  return el('div', { class: 'form' }, [el('label', { for: 'dtext-' + key, text: 'Decision' }), txt,
+    el('div', { class: 'row' }, [el('label', { for: 'dact-' + key, style: 'flex-direction:row;align-items:center;gap:8px;font-weight:800;color:var(--ink);min-height:44px' }, [mk, 'Creates an action']),
+      el('label', { for: 'down-' + key }, ['Owner role', ow]), el('label', { for: 'ddue-' + key }, ['Due', du])]),
+    el('div', { class: 'row' }, [el('button', { type: 'button', class: 'small primary', id: 'dsave-' + key, onclick: function () {
+      var t = txt.value.trim(); if (!t) return toast('Write the decision first.');
+      tick(); m.decisions.push({ t: state.t, text: it.title + ': ' + t + '.' });
+      addLog(m.name + ' decision (' + it.title + '): ' + t + '.');
+      if (mk.checked) addAction(t, ow.value, today() + (+du.value), m.name);
+      formOpen = null; render(); toast(mk.checked ? 'Decision recorded; the action is on the list.' : 'Decision recorded.');
+    }, text: 'Save decision' }), el('button', { type: 'button', class: 'small', onclick: function () { formOpen = null; render(); }, text: 'Cancel' })])]);
+}
+
+// --- Guide panel and log ---
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Search, documents, approvals, the grid, meetings and the measures all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag: documents are in date or in review, standards have evidence, and changes are being read.' }));
+  list.forEach(function (sg) {
+    var pend = state.pending.some(function (p) { return p.id === sg.id; });
+    var acts = sg.acts.map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend && a.primary ? 'disabled' : false, onclick: function () { a.fn(sg); }, text: pend && a.primary ? 'Proposed' : a.label }); });
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
+      el('span', { class: 'tag ' + sg.kind, text: sg.tag }),
+      el('h3', { text: sg.title }), sg.text ? el('p', { text: sg.text }) : null,
+      sg.list ? el('ul', {}, sg.list.map(function (x) { return el('li', { text: x }); })) : null,
+      el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  if (state.pending.length) {
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for the governance lead to decide' })]);
+    state.pending.forEach(function (p) {
+      d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }),
+        state.role === 'lead'
+          ? el('div', { class: 'acts', style: 'display:flex;gap:8px;flex-wrap:wrap' }, [el('button', { type: 'button', class: 'small primary', id: 'confirm-' + p.id, onclick: function () { decide(p, true); }, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])
+          : el('p', { class: 'why', style: 'margin:0;color:var(--soft);font-size:0.85rem', text: 'Switch to the Governance lead view to confirm or decline.' })]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Proposals wait here for the governance lead.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 30).forEach(function (e) {
+    var d = Math.floor(e.t / DAY);
+    ol.appendChild(el('li', { class: e.t === lastLogT ? 'new' : '' }, [el('time', {}, [hhmm(e.t), d !== today() ? el('small', { text: dstr(d, true) }) : null]), el('span', { text: e.text })]));
+  });
+}
+
+// ---------- Wiring ----------
+['staff', 'owner', 'lead'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-week').addEventListener('click', function () {
+  state.t += 7 * DAY; addLog('Demo: clock moved on 1 week to ' + dstr(today()) + '.');
+  render(); toast('It is now ' + dstr(today(), true) + '. Review and due dates are closer.');
+});
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; formOpen = null; render(); toast('Example reset to the start of the demo.'); });
+
+// Read-only view for software agents (no writes): window.ospeliGovernanceDemo
+window.ospeliGovernanceDemo = Object.freeze({
+  describe: function () { return 'Read-only governance demo (policies, read-and-understood, accreditation self-assessment, committee actions) for a fictional hospital. get() returns documents, standards, meetings and actions; kpis() the measures; suggestions() the guide\'s current suggestions. Runs in the browser; nothing is sent anywhere.'; },
+  get: function () {
+    return clone({ role: state.role, demoDate: dobj(today()).toISOString().slice(0, 10), demoClock: hhmm(state.t), persona: { area: areaName(state.persona.area), role: ROLES[state.persona.role] },
+      documents: state.docs.map(function (d) { return { id: d.id, title: d.title, type: d.type, owner: d.owner, approver: COMMITTEES[d.committee], version: d.version, approved: dobj(d.approved).toISOString().slice(0, 10), reviewDate: dobj(d.review).toISOString().slice(0, 10), reviewState: reviewState(d), draft: d.draft ? { version: d.draft.v, status: d.draft.status, note: d.draft.note } : null, readPc: coverage([d]).pc }; }),
+      toReadForPersona: toRead().map(function (d) { return d.title; }),
+      standards: state.standards.map(function (s) { return { code: s.code, chapter: CHAPTERS.filter(function (c) { return c[0] === s.chapter; })[0][1], text: s.text, score: SCORE[s.score], evidence: s.evidence.map(evName) }; }),
+      openActions: openActions().map(function (a) { return { id: a.id, text: a.text, owner: a.owner, from: a.from, due: dobj(a.due).toISOString().slice(0, 10), pastDue: pastDue(a) }; }),
+      meetings: Object.keys(state.meetings).map(function (k) { var m = state.meetings[k]; return { name: m.name, date: dobj(m.day).toISOString().slice(0, 10), agenda: m.items.map(function (i) { return i.title; }), decisions: m.decisions.map(function (d) { return d.text; }) }; }),
+      pendingDecisions: state.pending.map(function (p) { return p.text; }) });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text || (s.list || []).join('; '), why: s.why }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>

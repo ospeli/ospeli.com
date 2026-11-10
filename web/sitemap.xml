@@ -24,6 +24,11 @@
   <url><loc>https://ospeli.com/demo/feedback/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://ospeli.com/demo/it-digital/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://ospeli.com/demo/finance/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/infection-prevention/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/governance/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/critical-care/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/community/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/projects/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://ospeli.com/areas/</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://ospeli.com/areas/outpatients-and-clinics/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://ospeli.com/areas/emergency-department-flow/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>

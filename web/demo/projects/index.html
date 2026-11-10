@@ -1,0 +1,909 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Planning and capital projects demo · Ospeli</title>
+<meta name="description" content="Track capital projects from idea to benefits: milestones, risks, spend against budget, decisions and before-and-after KPIs, with a business case builder. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Planning and capital projects demo · Ospeli">
+<meta property="og:description" content="Track capital projects from idea to benefits: milestones, risks, spend against budget, decisions and before-and-after KPIs, with a business case builder. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/projects/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button, textarea { font: inherit; color: var(--ink); }
+select, input[type=text], input[type=number], textarea { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; width: 100%; }
+textarea { resize: vertical; min-height: 70px; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; max-width: 100%; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 620px) { .roles { display: grid; grid-template-columns: 1fr 1fr; border-radius: 14px; width: 100%; } .roles button { padding: 8px 6px; line-height: 1.2; } .roles button:nth-child(3) { border-left: 0; } .roles button:nth-child(n+3) { border-top: 1px solid var(--line); } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; max-width: 52em; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.clocknow { font-weight: 800; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+/* KPI tiles */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.88rem; font-weight: 700; display: block; line-height: 1.25; }
+.stat .n { color: var(--soft); font-size: 0.8rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.8rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stathint { color: var(--soft); font-size: 0.8rem; margin: 6px 0 0; }
+/* chips */
+.chip { display: inline-block; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 2px 9px; background: var(--sand); white-space: nowrap; }
+.rag-red { background: var(--coral); color: #fff; }
+.rag-amber { background: var(--mango); color: var(--navy); }
+.rag-green { background: var(--sea); color: #fff; }
+.rag-none { background: var(--sand); color: var(--soft); }
+.chip.ok { background: var(--wash); color: #07676A; }
+.chip.late { background: var(--hot); color: #9C3019; }
+.chip.due { background: var(--warn); color: #7A4F00; }
+.chip.agenda { background: var(--navy); color: #fff; }
+/* project lead (phone first) */
+.picker label { display: block; font-weight: 800; font-size: 0.95rem; margin-bottom: 4px; }
+.task { border: 1px solid var(--line); border-left: 6px solid var(--mango); border-radius: 12px; padding: 12px; margin-top: 12px; background: #FFFCF6; }
+.task.overdue { border-left-color: var(--coral); background: #FFF8F5; }
+.task .nm { font-size: 1.08rem; font-weight: 800; line-height: 1.3; margin: 4px 0 2px; }
+.task .meta, .ms .meta, .risk .meta { color: var(--soft); font-size: 0.95rem; margin: 0; }
+.bigacts { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.bigacts button { min-height: 52px; font-size: 1rem; flex: 1 1 140px; }
+.bigacts .go { background: var(--sea); border-color: var(--sea); color: #fff; }
+ul.plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ms { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; border-bottom: 1px dashed var(--line); padding: 6px 0; font-size: 1rem; }
+.ms b { display: block; line-height: 1.3; }
+.risk { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; }
+.risk.high { border-left: 5px solid var(--coral); } .risk.medium { border-left: 5px solid var(--mango); } .risk.low { border-left: 5px solid var(--foam); }
+.risk b { display: block; font-size: 1rem; line-height: 1.3; }
+.formgrid { display: grid; grid-template-columns: minmax(0, 1fr) 140px 120px; gap: 8px; align-items: end; margin-top: 10px; }
+@media (max-width: 640px) { .formgrid { grid-template-columns: 1fr 1fr; } .formgrid .full { grid-column: 1 / -1; } }
+.formgrid label, .fld { display: flex; flex-direction: column; gap: 4px; font-weight: 700; font-size: 0.95rem; min-width: 0; }
+.fld { margin-top: 10px; }
+.fld small { font-weight: 600; color: var(--soft); font-size: 0.85rem; }
+.wide { width: 100%; min-height: 52px; font-size: 1.02rem; margin-top: 12px; }
+.spendbar { height: 12px; border-radius: 6px; background: var(--sand); overflow: hidden; margin: 6px 0 4px; position: relative; }
+.spendbar i { display: block; height: 100%; background: var(--sea); border-radius: 6px; }
+.spendbar.over i { background: var(--coral); }
+.spendtxt { font-size: 0.9rem; color: var(--soft); }
+.lastup { font-size: 0.95rem; color: var(--soft); margin: 0 0 4px; }
+.prevup { font-size: 0.92rem; background: var(--sand); border-radius: 10px; padding: 8px 10px; margin-top: 8px; }
+.prevup p { margin: 2px 0; }
+/* programme office */
+.stages { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.stages button { min-height: 40px; font-size: 0.88rem; border-color: #CFC5B2; padding: 4px 12px; }
+.stages button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.stages button span { font-weight: 700; opacity: 0.8; margin-left: 4px; }
+.pipe { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin-bottom: 14px; }
+.pipe div { background: var(--sand); border-radius: 10px; padding: 8px 6px; text-align: center; font-size: 0.78rem; font-weight: 700; color: var(--soft); line-height: 1.2; position: relative; }
+.pipe div b { display: block; font-size: 1.3rem; color: var(--ink); }
+@media (max-width: 420px) { .pipe div { font-size: 0.7rem; padding: 6px 2px; } }
+.prow { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+.prow.red { border-left: 6px solid var(--coral); } .prow.amber { border-left: 6px solid var(--mango); } .prow.green { border-left: 6px solid var(--sea); } .prow.none { border-left: 6px solid var(--line); }
+.prow .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.prow h4 { margin: 0; font-size: 1rem; line-height: 1.3; }
+.prow .sub { color: var(--soft); font-size: 0.85rem; }
+.prow .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; margin-top: 8px; font-size: 0.88rem; }
+@media (max-width: 560px) { .prow .grid2 { grid-template-columns: minmax(0, 1fr); gap: 6px; } }
+.reasons { margin: 8px 0 0; padding: 8px 10px; background: #FBF8F2; border-radius: 8px; font-size: 0.85rem; list-style: none; }
+.reasons li { padding: 1px 0; }
+.reasons li::before { content: "Rule: "; font-weight: 800; color: var(--soft); }
+.reasons li.okline::before { content: ""; }
+.prow .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+table.t { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+table.t th, table.t td { text-align: left; padding: 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.t th { color: var(--soft); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.tablewrap { overflow-x: auto; }
+details.set { margin-top: 14px; }
+details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.targets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+@media (max-width: 640px) { .targets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.targets label { display: flex; flex-direction: column; gap: 4px; font-size: 0.82rem; font-weight: 700; color: var(--soft); }
+.fine { font-size: 0.82rem; color: var(--soft); margin: 8px 0 0; }
+/* executive */
+.port { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .port { grid-template-columns: minmax(0, 1fr); } }
+.pbox { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.pbox h4 { margin: 0 0 6px; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--soft); }
+.pbox .big { font-size: 1.3rem; font-weight: 800; line-height: 1.2; }
+.pbox p { margin: 2px 0; font-size: 0.88rem; }
+.ragrow { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+.dec { border: 1px solid var(--line); border-left: 6px solid var(--navy); border-radius: 12px; padding: 12px; margin-bottom: 10px; }
+.dec h4 { margin: 0 0 2px; font-size: 1rem; }
+.dec p { margin: 2px 0; font-size: 0.9rem; }
+.dec .acts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.ben { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+@media (max-width: 640px) { .ben { grid-template-columns: minmax(0, 1fr); } }
+.ben b { display: block; line-height: 1.3; }
+.ben .sub { color: var(--soft); font-size: 0.85rem; }
+.ben .vals { font-size: 0.9rem; }
+.ben .vals strong { font-size: 1.05rem; }
+.bmeter { display: flex; gap: 4px; align-items: center; font-size: 0.8rem; color: var(--soft); }
+/* business case builder */
+.opt, .brow, .rrow { border: 1px solid var(--line); border-radius: 12px; padding: 10px; margin-bottom: 8px; display: grid; gap: 8px; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; align-items: end; }
+.brow { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) auto; }
+.rrow { grid-template-columns: minmax(0, 3fr) minmax(0, 1fr) auto; }
+.brow.typed { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1.2fr) minmax(0, 0.8fr) minmax(0, 0.8fr) auto; }
+@media (max-width: 640px) { .brow.typed { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+@media (max-width: 640px) { .opt, .brow, .rrow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .opt > :first-child, .brow > :first-child, .rrow > :first-child { grid-column: 1 / -1; } }
+.opt label, .brow label, .rrow label { display: flex; flex-direction: column; gap: 3px; font-size: 0.85rem; font-weight: 700; color: var(--soft); min-width: 0; }
+.opt .pref { flex-direction: row; align-items: center; gap: 6px; min-height: 44px; color: var(--ink); }
+.opt .pref input { width: 22px; height: 22px; }
+.basenote { grid-column: 1 / -1; font-size: 0.85rem; color: var(--soft); margin: -2px 0 0; }
+.basenote.nodata { color: #9C3019; font-weight: 700; }
+.addrow { margin-top: 2px; }
+.summary { border: 2px solid var(--navy); border-radius: 12px; padding: 16px; margin-top: 14px; background: #fff; }
+.summary h3 { margin: 0 0 2px; font-size: 1.15rem; }
+.summary h5 { margin: 12px 0 4px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--soft); }
+.summary p, .summary li, .summary td, .summary th { font-size: 0.9rem; }
+.summary ul { margin: 0; padding-left: 18px; }
+.summary .meta { color: var(--soft); font-size: 0.82rem; margin: 0; }
+.caseacts { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.82rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg .why { color: var(--soft); font-size: 0.82rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.decide p { margin: 0 0 8px; }
+.decide ul { margin: 0 0 8px; padding-left: 18px; }
+.decide .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; font-size: 0.85rem; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.empty { text-align: center; color: var(--soft); padding: 18px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (max-width: 640px) {
+  .lv .spendtxt, .lv .stat .n, .lv .stat .lbl, .lv .stat .def, .lv .stathint, .lv .fld small, .rolehint, .tools, .lv .chip { font-size: 15px; }
+  .lv .chip { letter-spacing: 0.02em; }
+}
+@media print {
+  @page { margin: 14mm; }
+  body { background: #fff; }
+  body * { visibility: hidden; }
+  #summary, #summary * { visibility: visible; }
+  #summary { position: absolute; left: 0; top: 0; width: 100%; border: 0; padding: 0; margin: 0; }
+  #summary .noprint { display: none; }
+}
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Planning and capital projects</h1>
+  <p class="lead">From idea to benefits in one place. Project leads update milestones, risks and spend from a phone. The programme office sees every project by stage, with its status explained. Leadership sees the portfolio, the decisions waiting, and whether promised benefits came. The guide points out what needs attention; people decide.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-lead" aria-pressed="false">Project lead</button>
+    <button type="button" id="r-case" aria-pressed="false">Business case</button>
+    <button type="button" id="r-office" aria-pressed="false">Programme office</button>
+    <button type="button" id="r-exec" aria-pressed="false">Executive</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <b>Demo tools:</b>
+    <span class="clocknow" id="clocknow" aria-live="polite"></span>
+    <button type="button" class="small" id="t-week">Move on one week</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h" id="viewcard">
+        <h2 id="view-h">Projects</h2>
+        <div id="kpitop"></div>
+        <div id="view"></div>
+        <div id="kpibottom"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads milestones, decisions, benefits and the draft business case, and suggests where to look, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal. A person confirms it, and leadership makes every investment decision.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its projects, amounts, dates and measures. Amounts are in thousands of currency units (k) and no currency is assumed. Status colours and thresholds are example settings, not a standard. It tracks projects and measures, never individual staff, and it does not make investment decisions or rank services by clinical value; leadership decides. Coming next (Feb 2027): business cases that draw on the site's own time stamps, process maps and costs; a redesign workspace with current and future maps, layout options and capacity checks; photo notes from site walks; and benefits reviews at set points after go-live. <a href="../../areas/planning-and-capital-projects/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+// ---------- Time: a fixed example day. Day 0 is Tue 10 Nov 2026; the demo clock starts at 10:30. ----------
+var D0 = Date.UTC(2026, 10, 10), DAY = 864e5, START_MIN = 10 * 60 + 30;
+var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function dstr(d, year) { var x = new Date(D0 + d * DAY); return WD[x.getUTCDay()] + ' ' + x.getUTCDate() + ' ' + MO[x.getUTCMonth()] + (year ? ' ' + x.getUTCFullYear() : ''); }
+function dshort(d) { var x = new Date(D0 + d * DAY); return x.getUTCDate() + ' ' + MO[x.getUTCMonth()] + (x.getUTCFullYear() !== 2026 ? ' ' + x.getUTCFullYear() : ''); }
+function hm(m) { var h = Math.floor(m / 60), r = m % 60; return (h < 10 ? '0' : '') + h + ':' + (r < 10 ? '0' : '') + r; }
+function ago(n) { return n === 0 ? 'today' : n === 1 ? 'yesterday' : n + ' days ago'; }
+function inDays(n) { return n === 0 ? 'today' : n === 1 ? 'tomorrow' : 'in ' + n + ' days'; }
+function k(v) { return (Math.round(v * 10) / 10).toLocaleString('en') + 'k'; }
+function pct(x, dp) { return x == null ? '–' : (Math.round(x * 100 * Math.pow(10, dp || 0)) / Math.pow(10, dp || 0)) + '%'; }
+function signed(x) { if (x == null) return '–'; var v = Math.round(x * 1000) / 10; return (v > 0 ? '+' : '') + v + '%'; }
+
+// ---------- KPI library: operational measures from other Ospeli modules (fictional values) ----------
+var LIB = {
+  dbn: { name: 'Discharges before noon', unit: '%', up: true, source: 'Bed board', def: 'Share of discharges where the patient leaves the ward before 12:00. Local definition.' },
+  edwait: { name: 'Emergency department arrival to first assessment', unit: 'min', up: false, source: 'Emergency department flow', def: 'Median minutes from booking in to first assessment. Local definition.' },
+  eqdown: { name: 'Equipment downtime', unit: 'h per month', up: false, source: 'Facilities', def: 'Hours per month that tracked equipment is out of service. Local definition.' },
+  findpump: { name: 'Time to find an infusion pump', unit: 'min', up: false, source: 'Facilities spot checks', def: 'Minutes from a ward asking to a pump being found, from spot checks. Local definition.' },
+  recov: { name: 'Recovery to ward handover wait', unit: 'min', up: false, source: 'Theatres', def: 'Median minutes a patient ready to leave recovery waits for the ward handover. Local definition.' },
+  checkin: { name: 'Outpatient check-in queue time', unit: 'min', up: false, source: 'Clinics', def: 'Median minutes from arrival to checked in at outpatient clinics. Local definition.' },
+  sterile: { name: 'Instrument sets returned late', unit: 'per week', up: false, source: 'Sterile services', def: 'Instrument sets returned to theatres after the agreed time, per week. Local definition.' },
+  dispense: { name: 'Take-home medicines turnaround', unit: 'min', up: false, source: 'Pharmacy', def: 'Median minutes from prescription received to medicines ready. Local definition.' },
+  bedclean: { name: 'Bed clean turnaround', unit: 'min', up: false, source: 'Support tasks', def: 'Median minutes from bed clean requested to bed ready. Local definition.' }
+};
+// What each measure reads today in the example hospital (what "pull latest" fetches), and its baseline over the last 12 weeks.
+var LATEST = { dbn: 19, edwait: 44, eqdown: 96, findpump: 9, recov: 24, checkin: 15, sterile: 8, dispense: 92, bedclean: 74 };
+
+var STAGES = [['idea', 'Idea'], ['case', 'Business case'], ['approved', 'Approved'], ['delivery', 'In delivery'], ['closed', 'Closed']];
+var STAGE_NAME = {}; STAGES.forEach(function (s) { STAGE_NAME[s[0]] = s[1]; });
+var DEFAULT_RULES = { redOver: 10, lateDays: 28, staleDays: 14, decisionDays: 30 };
+var STORE = 'ospeli.projects.v1';
+
+function ms(id, name, base, done, plan, slips, golive) { return { id: id, name: name, base: base, plan: plan == null ? base : plan, done: done == null ? null : done, slips: slips || 0, golive: !!golive }; }
+function seed() {
+  var P = [
+    { id: 'p1', name: 'Discharge lounge refit', stage: 'delivery', owner: 'Facilities project lead', sponsor: 'Operations lead', budget: 480, spend: 352, submitted: -205, decision: { d: -175, by: 'Executive team', what: 'approved' }, goLive: null, lastUpdate: -6,
+      milestones: [ms('p1m1', 'Design signed off', -100, -98), ms('p1m2', 'Works start on site', -60, -60), ms('p1m3', 'Lounge fit-out complete', 14), ms('p1m4', 'Lounge opens (go-live)', 35, null, null, 0, true)],
+      risks: [{ id: 'p1r1', kind: 'risk', level: 'medium', text: 'Furniture delivery could arrive after fit-out', open: true }],
+      benefits: [{ kpi: 'dbn', baseline: 18, target: 30, current: null, measured: null }],
+      updates: [{ d: -6, done: 'Flooring finished; electrics first fix done.', next: 'Ceiling and lighting.', help: 'None this week.' }] },
+    { id: 'p2', name: 'Emergency department waiting area expansion', stage: 'delivery', owner: 'Capital project lead', sponsor: 'Operations lead', budget: 1250, spend: 1310, submitted: -330, decision: { d: -292, by: 'Executive team', what: 'approved' }, goLive: null, lastUpdate: -8,
+      milestones: [ms('p2m1', 'Enabling works complete', -80, -82), ms('p2m2', 'Phase 1 handover: new seating area', 0), ms('p2m3', 'Phase 2 build complete', 21, null, 49, 2), ms('p2m4', 'Full area opens (go-live)', 59, null, 87, 2, true)],
+      risks: [{ id: 'p2r1', kind: 'issue', level: 'high', text: 'Contractor short of fitters for phase 2', open: true }, { id: 'p2r2', kind: 'risk', level: 'medium', text: 'Temporary waiting space has fewer seats during works', open: true }],
+      benefits: [{ kpi: 'edwait', baseline: 42, target: 30, current: null, measured: null }],
+      updates: [{ d: -8, done: 'Phase 1 snagging list cleared.', next: 'Phase 1 handover walk-round.', help: 'Decision on extra fitters for phase 2.' }] },
+    { id: 'p3', name: 'Infusion pump tracking tags', stage: 'closed', owner: 'Medical equipment lead', sponsor: 'Operations lead', budget: 210, spend: 198, submitted: -440, decision: { d: -415, by: 'Executive team', what: 'approved' }, goLive: -215, lastUpdate: -215,
+      milestones: [ms('p3m1', 'Tags fitted to all pumps', -240, -236), ms('p3m2', 'Tracking live on all wards (go-live)', -215, -215, null, 0, true)],
+      risks: [], updates: [],
+      benefits: [{ kpi: 'eqdown', baseline: 140, target: 100, current: 96, measured: -30 }, { kpi: 'findpump', baseline: 22, target: 10, current: null, measured: null }] },
+    { id: 'p4', name: 'Theatre recovery bay reconfiguration', stage: 'closed', owner: 'Theatres project lead', sponsor: 'Operations lead', budget: 340, spend: 362, submitted: -560, decision: { d: -520, by: 'Executive team', what: 'approved' }, goLive: -300, lastUpdate: -300,
+      milestones: [ms('p4m1', 'Bays rebuilt', -320, -318), ms('p4m2', 'New layout in use (go-live)', -300, -300, null, 0, true)],
+      risks: [], updates: [],
+      benefits: [{ kpi: 'recov', baseline: 35, target: 20, current: 24, measured: -20 }] },
+    { id: 'p5', name: 'Sterile services washer replacement', stage: 'approved', owner: 'Sterile services lead', sponsor: 'Operations lead', budget: 620, spend: 0, submitted: -68, decision: { d: -21, by: 'Executive team', what: 'approved' }, goLive: null, lastUpdate: -15,
+      milestones: [ms('p5m1', 'Order placed through the purchasing process', 7), ms('p5m2', 'Washers installed', 70), ms('p5m3', 'Tested and in use (go-live)', 98, null, null, 0, true)],
+      risks: [{ id: 'p5r1', kind: 'risk', level: 'medium', text: 'Old washers must keep running during installation', open: true }],
+      benefits: [{ kpi: 'sterile', baseline: 9, target: 3, current: null, measured: null }],
+      updates: [{ d: -15, done: 'Specification agreed with the theatres team.', next: 'Quotes back from suppliers.', help: 'None.' }] },
+    { id: 'p6', name: 'Outpatient check-in kiosks', stage: 'case', owner: 'Outpatients manager', sponsor: 'Operations lead', budget: 160, spend: 0, submitted: -41, decision: null, goLive: null, lastUpdate: -41,
+      milestones: [], risks: [{ id: 'p6r1', kind: 'risk', level: 'low', text: 'Some patients will still need the desk', open: true }], updates: [],
+      benefits: [{ kpi: 'checkin', baseline: 14, target: 6, current: null, measured: null }] },
+    { id: 'p7', name: 'Pharmacy dispensing robot', stage: 'case', owner: 'Pharmacy manager', sponsor: 'Operations lead', budget: 900, spend: 0, submitted: -12, decision: null, goLive: null, lastUpdate: -12,
+      milestones: [], risks: [{ id: 'p7r1', kind: 'risk', level: 'high', text: 'Floor may need strengthening; facilities survey not done', open: true }], updates: [],
+      benefits: [{ kpi: 'dispense', baseline: 95, target: 60, current: null, measured: null }] },
+    { id: 'p8', name: 'Ward bathroom upgrades', stage: 'idea', owner: 'Facilities lead', sponsor: '', budget: 0, spend: 0, submitted: null, decision: null, goLive: null, lastUpdate: -5, milestones: [], risks: [], updates: [], benefits: [] },
+    { id: 'p9', name: 'Linen store move closer to the wards', stage: 'idea', owner: 'Support services manager', sponsor: '', budget: 0, spend: 0, submitted: null, decision: null, goLive: null, lastUpdate: -18, milestones: [], risks: [], updates: [], benefits: [] }
+  ];
+  return {
+    v: 1, day: 0, min: START_MIN, role: window.matchMedia('(max-width: 640px)').matches ? 'lead' : 'office',
+    my: 'p2', filter: 'all', guide: true, rules: Object.assign({}, DEFAULT_RULES), projects: P, proposal: null, dismissed: {}, flags: {},
+    draft: {
+      title: 'Bed clean requests from ward tablets', dept: 'Support services', problem: 'Beds wait to be cleaned after a patient goes home because requests are made by phone and get missed at busy times.',
+      options: [
+        { name: 'Do nothing', capital: 0, running: 0, note: 'Phone requests continue.' },
+        { name: 'Tablet on each ward sends the request', capital: 45, running: 8, note: 'Uses the support tasks module.' },
+        { name: 'Extra cleaner on the late shift', capital: 0, running: 60, note: 'Does not fix missed requests.' }
+      ], preferred: 1,
+      benefits: [{ kpi: '', typed: 'Bed turnaround', baseline: 90, target: 50 }],
+      risks: [{ text: 'Wi-fi is weak on two wards', level: 'medium' }]
+    },
+    log: [
+      { d: -8, m: 16 * 60 + 5, text: 'Weekly update received: Emergency department waiting area expansion.' },
+      { d: -6, m: 15 * 60 + 40, text: 'Weekly update received: Discharge lounge refit.' },
+      { d: -1, m: 11 * 60 + 20, text: 'Programme office: Phase 2 build (Emergency department waiting area) moved to ' + dshort(49) + ', second move.' },
+      { d: -1, m: 14 * 60 + 50, text: 'Spend recorded: Emergency department waiting area expansion now ' + k(1310) + ' against ' + k(1250) + ' budget.' },
+      { d: 0, m: 8 * 60 + 45, text: 'Business case draft started: Bed clean requests from ward tablets.' },
+      { d: 0, m: 9 * 60 + 55, text: 'Phase 1 handover walk-round booked for today (Emergency department waiting area).' }
+    ]
+  };
+}
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() { try { var s = JSON.parse(localStorage.getItem(STORE)); return s && s.v === 1 && s.projects ? s : null; } catch (e) { return null; } }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+function today() { return state.day; }
+function proj(id) { return state.projects.filter(function (p) { return p.id === id; })[0]; }
+var lastLogAt = null;
+function addLog(text) { state.min = Math.min(state.min + 2, 17 * 60 + 59); state.log.push({ d: state.day, m: state.min, text: text }); lastLogAt = state.log.length - 1; }
+
+// ---------- Rules (pure, explainable) ----------
+function variance(p) { return p.budget ? (p.spend - p.budget) / p.budget : null; }
+function overdue(m) { return m.done == null && m.plan < today() ? today() - m.plan : 0; }
+function rag(p) {
+  var r = state.rules, reasons = [], level = 'green';
+  if (p.stage === 'idea' || p.stage === 'case') return { level: 'none', label: 'Not rated', reasons: [p.stage === 'idea' ? 'Ideas are not rated until a business case is approved.' : 'Waiting for an investment decision; rated once approved.'] };
+  if (p.stage === 'closed') return { level: 'none', label: p.declined ? 'Not approved' : 'Closed', reasons: [p.declined ? 'Leadership declined the case.' : 'Delivered. Benefits are tracked in the benefits review.'] };
+  function hit(l, why) { reasons.push(why); if (l === 'red' || (l === 'amber' && level === 'green')) level = l; }
+  var v = variance(p);
+  if (v != null && v * 100 > r.redOver) hit('red', 'Spend is ' + signed(v) + ' against budget, more than ' + r.redOver + '% over.');
+  else if (v != null && v > 0) hit('amber', 'Spend is ' + signed(v) + ' against budget.');
+  p.milestones.forEach(function (m) {
+    if (m.done != null) return;
+    if (m.slips >= 2) hit('red', '“' + m.name + '” has moved ' + m.slips + ' times.');
+    var o = overdue(m);
+    if (o > r.lateDays) hit('red', '“' + m.name + '” is ' + o + ' days late, more than ' + r.lateDays + '.');
+    else if (o > 0) hit('amber', '“' + m.name + '” is ' + o + ' day' + (o > 1 ? 's' : '') + ' late.');
+  });
+  var high = p.risks.filter(function (x) { return x.open && x.level === 'high'; });
+  if (high.length) hit('amber', high.length + ' open high ' + (high.length > 1 ? 'risks or issues' : high[0].kind) + '.');
+  var stale = today() - p.lastUpdate;
+  if (stale > r.staleDays) hit('amber', 'No weekly update for ' + stale + ' days, more than ' + r.staleDays + '.');
+  if (!reasons.length) reasons.push('No rule triggered: on budget, no late or twice-moved milestones, no open high risks, updated in the last ' + r.staleDays + ' days.');
+  return { level: level, label: level === 'red' ? 'Red' : level === 'amber' ? 'Amber' : 'Green', reasons: reasons, clean: level === 'green' };
+}
+function benefitStatus(p, b) {
+  if (b.current == null || b.measured == null || (p.goLive != null && b.measured < p.goLive)) return 'unmeasured';
+  var lib = LIB[b.kpi]; return (lib.up ? b.current >= b.target : b.current <= b.target) ? 'achieved' : 'notyet';
+}
+function live(p) { return p.goLive != null && p.goLive <= today(); }
+function computeKpis() {
+  var due = 0, ok = 0;
+  state.projects.forEach(function (p) { p.milestones.forEach(function (m) { if (m.base <= today()) { due++; if (m.done != null && m.done <= m.base) ok++; } }); });
+  var spendP = state.projects.filter(function (p) { return (p.stage === 'delivery' || p.stage === 'closed' || p.stage === 'approved') && !p.declined && p.spend > 0; });
+  var over = spendP.filter(function (p) { return p.spend > p.budget; });
+  var sb = spendP.reduce(function (n, p) { return n + p.budget; }, 0), ss = spendP.reduce(function (n, p) { return n + p.spend; }, 0);
+  var promised = 0, got = 0, unmeasured = 0;
+  state.projects.forEach(function (p) { if (!live(p)) return; p.benefits.forEach(function (b) { promised++; var s = benefitStatus(p, b); if (s === 'achieved') got++; if (s === 'unmeasured') unmeasured++; }); });
+  var waits = state.projects.filter(function (p) { return p.submitted != null && p.decision; }).map(function (p) { return p.decision.d - p.submitted; }).sort(function (a, b) { return a - b; });
+  var med = waits.length ? (waits.length % 2 ? waits[(waits.length - 1) / 2] : Math.round((waits[waits.length / 2 - 1] + waits[waits.length / 2]) / 2)) : null;
+  var waiting = state.projects.filter(function (p) { return p.stage === 'case' && p.submitted != null && !p.decision; });
+  var oldest = waiting.reduce(function (n, p) { return Math.max(n, today() - p.submitted); }, 0);
+  return {
+    delivery: { achieved: ok, due: due, rate: due ? ok / due : null },
+    budget: { over: over.length, of: spendP.length, portfolio: sb ? (ss - sb) / sb : null, overNames: over.map(function (p) { return p.name; }) },
+    benefits: { realised: got, promised: promised, rate: promised ? got / promised : null, unmeasured: unmeasured },
+    decision: { medianDays: med, decided: waits.length, waiting: waiting.length, oldestWaitDays: oldest }
+  };
+}
+
+// ---------- The guide: rule-based suggestions; every action becomes a proposal a person confirms ----------
+function suggest() {
+  var out = [], r = state.rules, role = state.role;
+  // Twice-moved milestones
+  state.projects.forEach(function (p) {
+    if (p.stage !== 'delivery' && p.stage !== 'approved') return;
+    var m = p.milestones.filter(function (x) { return x.done == null && x.slips >= 2; })[0];
+    if (!m || state.flags['review:' + p.id]) return;
+    out.push({ id: 'review-' + p.id, roles: ['office', 'lead'], kind: 'time', tag: 'Schedule', title: 'Book a risk review: “' + m.name + '” has moved ' + m.slips + ' times',
+      text: p.name + ' now plans this for ' + dstr(m.plan) + ', ' + (m.plan - m.base) + ' days after the original date. A short review with the project lead can check what is driving the delay.',
+      why: 'Example rule: a milestone moved twice or more suggests a risk review.', label: 'Propose a risk review',
+      proposal: { type: 'review', ref: p.id, title: 'Risk review for ' + p.name, lines: ['Hold a 30-minute risk review with the project lead this week.', 'Add it to the project\'s issues so it is tracked.'], who: 'The programme office confirms.' } });
+  });
+  // Decisions waiting
+  state.projects.forEach(function (p) {
+    if (p.stage !== 'case' || p.submitted == null || p.decision) return;
+    var w = today() - p.submitted;
+    if (w <= r.decisionDays || p.agenda) return;
+    out.push({ id: 'decide-' + p.id, roles: ['exec', 'office'], kind: 'ask', tag: 'Decision needed', title: p.name + ' has waited ' + w + ' days for a decision',
+      text: 'The case was submitted on ' + dstr(p.submitted) + ' and asks for ' + k(p.budget) + '. Put it on the next executive meeting agenda so it gets a decision, either way.',
+      why: 'Example setting: cases waiting more than ' + r.decisionDays + ' days are flagged. Submitted ' + dstr(p.submitted) + '.', label: 'Propose for the agenda',
+      proposal: { type: 'agenda', ref: p.id, title: 'Add ' + p.name + ' to the next executive meeting', lines: ['Mark the case “On agenda”.', 'Leadership still makes the investment decision.'], who: 'The executive team confirms.' } });
+  });
+  // Benefits not measured since go-live
+  state.projects.forEach(function (p) {
+    if (!live(p)) return;
+    var since = today() - p.goLive;
+    var um = p.benefits.filter(function (b) { return benefitStatus(p, b) === 'unmeasured'; });
+    if (!um.length || since < 182) return;
+    out.push({ id: 'benefits-' + p.id, roles: ['exec', 'office'], kind: 'time', tag: 'Benefits', title: 'Draft a benefits review: ' + p.name,
+      text: 'It went live ' + since + ' days ago (' + dstr(p.goLive) + '), but “' + LIB[um[0].kpi].name + '” has not been measured since. A draft review would pull the current value from ' + LIB[um[0].kpi].source + ' and set it beside the baseline.',
+      why: 'Example rule: about six months after go-live, every promised KPI should have a measurement after go-live.', label: 'Draft the review',
+      proposal: { type: 'benefits', ref: p.id, title: 'Draft benefits review: ' + p.name, lines: um.map(function (b) { var L = LIB[b.kpi]; return L.name + ': baseline ' + b.baseline + ' ' + L.unit + ', promised ' + b.target + ', ' + L.source + ' reads ' + LATEST[b.kpi] + ' today.'; }).concat(['Record these as the review values dated ' + dstr(today()) + '.']), who: 'The executive team confirms.' } });
+  });
+  // Business case: baseline without data
+  state.draft.benefits.forEach(function (b, i) {
+    if (b.kpi) return;
+    var match = matchKpi(b.typed);
+    out.push({ id: 'attach-' + i, roles: ['case'], kind: 'ask', tag: 'Business case', title: 'Attach data for the “' + (b.typed || 'unnamed') + '” baseline',
+      text: 'The draft quotes a baseline of ' + b.baseline + ' typed by hand. ' + (match ? 'The library has “' + LIB[match].name + '” from ' + LIB[match].source + ', which reads ' + LATEST[match] + ' ' + LIB[match].unit + ' over the last 12 weeks.' : 'Pick the matching measure from the library so the benefit can be checked after go-live.'),
+      why: 'A baseline with no data behind it cannot be compared after go-live.', label: match ? 'Propose this KPI' : 'Show me',
+      proposal: match ? { type: 'attach', ref: i, kpi: match, title: 'Attach “' + LIB[match].name + '” to the business case', lines: ['Replace the typed baseline (' + b.baseline + ') with the measured one (' + LATEST[match] + ' ' + LIB[match].unit + ').', 'Keep the target you set; check it still makes sense.'], who: 'The department manager confirms.' } : null });
+  });
+  // Stale weekly updates
+  state.projects.forEach(function (p) {
+    if (p.stage !== 'delivery' && p.stage !== 'approved') return;
+    var s = today() - p.lastUpdate;
+    if (s <= r.staleDays || state.flags['asked:' + p.id + ':' + p.lastUpdate]) return;
+    out.push({ id: 'stale-' + p.id, roles: ['office', 'lead'], kind: 'ask', tag: 'Updates', title: 'No weekly update for ' + s + ' days: ' + p.name,
+      text: 'The last update was on ' + dstr(p.lastUpdate) + '. A reminder to the project lead keeps the status fair: without an update it shows amber.',
+      why: 'Example setting: updates are expected at least every ' + r.staleDays + ' days.', label: 'Propose a reminder',
+      proposal: { type: 'remind', ref: p.id, title: 'Remind the project lead: ' + p.name, lines: ['Send a reminder for this week\'s three-line update.'], who: 'The programme office confirms.' } });
+  });
+  out = out.filter(function (s) { return !state.dismissed[s.id]; });
+  out.sort(function (a, b) { return (b.roles.indexOf(role) >= 0) - (a.roles.indexOf(role) >= 0); });
+  return out.slice(0, 4);
+}
+function matchKpi(typed) {
+  var words = String(typed || '').toLowerCase().split(/[^a-z]+/).filter(function (w) { return w.length >= 3; });
+  var best = null, score = 0;
+  Object.keys(LIB).forEach(function (id) { var n = LIB[id].name.toLowerCase(), s = 0; words.forEach(function (w) { if (n.indexOf(w) >= 0) s++; }); if (s > score) { score = s; best = id; } });
+  return best;
+}
+function confirmProposal() {
+  var pr = state.proposal; if (!pr) return;
+  var p = typeof pr.ref === 'string' ? proj(pr.ref) : null;
+  if (pr.type === 'review') { state.flags['review:' + p.id] = true; p.risks.push({ id: 'r' + Date.now().toString(36), kind: 'issue', level: 'medium', text: 'Risk review booked this week (proposed by the guide, confirmed by the programme office)', open: true }); addLog('Programme office confirmed a risk review for ' + p.name + '.'); toast('Risk review added to the project\'s issues.'); }
+  if (pr.type === 'agenda') { p.agenda = true; addLog('Executive team put ' + p.name + ' on the next meeting agenda.'); toast('On the agenda. Leadership still decides.'); }
+  if (pr.type === 'benefits') { p.benefits.forEach(function (b) { if (benefitStatus(p, b) === 'unmeasured') { b.current = LATEST[b.kpi]; b.measured = today(); } }); addLog('Benefits review drafted and confirmed for ' + p.name + '.'); toast('Benefits review values recorded.'); }
+  if (pr.type === 'attach') { var b = state.draft.benefits[pr.ref]; if (b) { b.kpi = pr.kpi; b.baseline = LATEST[pr.kpi]; } addLog('Business case: baseline for “' + LIB[pr.kpi].name + '” attached from ' + LIB[pr.kpi].source + '.'); toast('Measured baseline attached.'); }
+  if (pr.type === 'remind') { state.flags['asked:' + p.id + ':' + p.lastUpdate] = true; addLog('Programme office sent an update reminder for ' + p.name + '.'); toast('Reminder sent (in this demo, logged only).'); }
+  state.proposal = null; render();
+}
+
+// ---------- Helpers ----------
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var a in attrs) { if (a === 'text') e.textContent = attrs[a]; else if (a === 'class') e.className = attrs[a]; else if (a.slice(0, 2) === 'on') e.addEventListener(a.slice(2), attrs[a]); else if (attrs[a] !== false && attrs[a] != null) e.setAttribute(a, attrs[a]); } (kids || []).forEach(function (c) { if (c != null && c !== false) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2400); }
+function ragChip(p) { var r = rag(p); return el('span', { class: 'chip rag-' + r.level, text: r.label }); }
+function spendBar(p) {
+  var v = p.budget ? p.spend / p.budget : 0, over = p.spend > p.budget;
+  return el('div', {}, [
+    el('div', { class: 'spendbar' + (over ? ' over' : ''), role: 'img', 'aria-label': 'Spent ' + k(p.spend) + ' of ' + k(p.budget) }, [el('i', { style: 'width:' + Math.min(100, Math.round(v * 100)) + '%' })]),
+    el('div', { class: 'spendtxt', text: 'Spent ' + k(p.spend) + ' of ' + k(p.budget) + ' budget' + (p.budget ? ' (' + Math.round(v * 100) + '%' + (over ? ', ' + signed(variance(p)) + ' over' : '') + ')' : '') })
+  ]);
+}
+var HINTS = {
+  lead: 'Project lead, on a phone after a site walk: what is due on my project, my risks and issues, and this week\'s update in three fields.',
+  case: 'Department manager: build a business case from a problem, with options, costs, risks and benefits linked to measured KPIs. Print a one-page summary.',
+  office: 'Programme office: every project by stage, with its status colour explained by rules you can see and change, slipped milestones and spend against budget.',
+  exec: 'Executive team: the whole portfolio on one screen, the decisions waiting, and whether promised benefits came after go-live.'
+};
+
+// ---------- Render ----------
+function render() {
+  ['lead', 'case', 'office', 'exec'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('clocknow').textContent = 'Demo clock ' + hm(state.min) + ' · ' + dstr(state.day, true);
+  document.getElementById('view-h').textContent = { lead: 'My project', case: 'Business case builder', office: 'Capital programme', exec: 'Portfolio' }[state.role];
+  var card = document.getElementById('viewcard'); card.className = 'card' + (state.role === 'lead' ? ' lv' : '');
+  var top = document.getElementById('kpitop'), bot = document.getElementById('kpibottom'); top.textContent = ''; bot.textContent = '';
+  var v = document.getElementById('view'); v.textContent = '';
+  if (state.role === 'lead') { v.appendChild(leadView()); bot.appendChild(el('h3', { class: 'sec', text: 'Programme measures' })); bot.appendChild(kpiTiles()); }
+  else { top.appendChild(kpiTiles()); top.appendChild(el('div', { style: 'height:12px' })); v.appendChild(state.role === 'case' ? caseView() : state.role === 'office' ? officeView() : execView()); }
+  renderLog(); renderGuide(); save();
+}
+var openDef = {};
+function kpiTiles() {
+  var K = computeKpis(), wrap = el('div', {});
+  var st = el('div', { class: 'stats', id: 'kpis' });
+  function tile(id, val, lbl, n, def, alert) {
+    st.appendChild(el('button', { type: 'button', class: 'stat' + (alert ? ' alert' : ''), id: 'k-' + id, 'aria-expanded': String(!!openDef[id]), onclick: function () { openDef[id] = !openDef[id]; this.setAttribute('aria-expanded', String(openDef[id])); } },
+      [el('b', { text: val }), el('span', { class: 'lbl', text: lbl }), el('span', { class: 'n', text: n }), el('span', { class: 'def', text: def })]));
+  }
+  tile('delivery', pct(K.delivery.rate), 'Capital programme delivery', K.delivery.achieved + ' of ' + K.delivery.due + ' milestones on time', 'Milestones achieved by their original planned date ÷ milestones due so far. Moving a date does not reset it. Local definition.', false);
+  tile('budget', signed(K.budget.portfolio), 'Budget variance', 'overall · ' + K.budget.over + ' of ' + K.budget.of + ' projects over', '(Actual spend − approved budget) ÷ approved budget, per project; the tile adds them up across projects with spend. Local definition.', K.budget.over > 0);
+  tile('benefits', pct(K.benefits.rate), 'Benefits realised', K.benefits.realised + ' of ' + K.benefits.promised + ' promised changes' + (K.benefits.unmeasured ? ' · ' + K.benefits.unmeasured + ' not measured' : ''), 'Promised KPI changes achieved at review ÷ promised KPI changes, for projects past go-live. Not measured counts as not achieved. Local definition.', K.benefits.unmeasured > 0);
+  tile('decision', K.decision.medianDays == null ? '–' : K.decision.medianDays + ' days', 'Time to decision', 'median of ' + K.decision.decided + ' · ' + K.decision.waiting + ' waiting' + (K.decision.waiting ? ', oldest ' + K.decision.oldestWaitDays + ' days' : ''), 'Days from business case submitted to investment decision recorded (median). Local definition.', K.decision.oldestWaitDays > state.rules.decisionDays);
+  wrap.appendChild(st);
+  wrap.appendChild(el('p', { class: 'stathint', text: 'All projects, as of the demo date. Tap a tile for its definition.' }));
+  return wrap;
+}
+
+// Project lead (phone first: the task leads)
+function leadView() {
+  var mine = state.projects.filter(function (p) { return p.stage === 'delivery' || p.stage === 'approved'; });
+  if (!proj(state.my) || mine.indexOf(proj(state.my)) < 0) state.my = mine[0] && mine[0].id;
+  var p = proj(state.my), box = el('div', {});
+  var sel = el('select', { id: 'my-project', onchange: function () { state.my = this.value; render(); } });
+  mine.forEach(function (x) { sel.appendChild(el('option', { value: x.id, text: x.name })); });
+  sel.value = state.my;
+  box.appendChild(el('div', { class: 'picker' }, [el('label', { for: 'my-project', text: 'Project' }), sel]));
+  if (!p) return box;
+  var r = rag(p);
+  box.appendChild(el('p', { class: 'lastup', style: 'margin-top:8px' }, [ragChip(p), ' ', r.reasons[0]]));
+  // Due now
+  var open = p.milestones.filter(function (m) { return m.done == null; }).sort(function (a, b) { return a.plan - b.plan; });
+  var dueNow = open.filter(function (m) { return m.plan <= today() + 7; });
+  box.appendChild(el('h3', { class: 'sec', text: 'Due now' }));
+  var dn = el('div', { id: 'duenow' });
+  if (!dueNow.length) dn.appendChild(el('div', { class: 'empty', text: open.length ? 'Nothing due this week. Next: ' + open[0].name + ', ' + dstr(open[0].plan) + '.' : 'All milestones done.' }));
+  dueNow.forEach(function (m) {
+    var o = overdue(m);
+    dn.appendChild(el('div', { class: 'task' + (o ? ' overdue' : '') }, [
+      el('span', { class: 'chip ' + (o ? 'late' : 'due'), text: o ? o + ' days late' : m.plan === today() ? 'Due today' : 'Due ' + inDays(m.plan - today()) }),
+      el('div', { class: 'nm', text: m.name }),
+      el('p', { class: 'meta', text: 'Planned ' + dstr(m.plan) + (m.slips ? ' · moved ' + m.slips + ' time' + (m.slips > 1 ? 's' : '') + ' (first planned ' + dstr(m.base) + ')' : '') }),
+      el('div', { class: 'bigacts' }, [
+        el('button', { type: 'button', class: 'go', id: 'done-' + m.id, onclick: function () { markDone(p, m); }, text: 'Mark done today' }),
+        el('button', { type: 'button', id: 'move-' + m.id, onclick: function () { moveMs(p, m); }, text: 'Move 2 weeks later' })
+      ])
+    ]));
+  });
+  box.appendChild(dn);
+  // All milestones
+  box.appendChild(el('h3', { class: 'sec', text: 'Milestones' }));
+  var ul = el('ul', { class: 'plain' });
+  p.milestones.slice().sort(function (a, b) { return a.plan - b.plan; }).forEach(function (m) {
+    var chip = m.done != null ? el('span', { class: 'chip ' + (m.done <= m.base ? 'ok' : 'late'), text: m.done <= m.base ? 'On time' : 'Done late' }) : overdue(m) ? el('span', { class: 'chip late', text: 'Late' }) : el('span', { class: 'chip' + (m.plan <= today() + 7 ? ' due' : ''), text: m.slips ? 'Moved ×' + m.slips : m.plan === today() ? 'Due today' : m.plan <= today() + 7 ? 'This week' : 'Planned' });
+    ul.appendChild(el('li', { class: 'ms' }, [el('div', {}, [el('b', { text: m.name }), el('p', { class: 'meta', text: m.done != null ? 'Done ' + dstr(m.done) : 'Planned ' + dstr(m.plan) + (m.plan !== m.base ? ' (was ' + dshort(m.base) + ')' : '') })]), chip]));
+  });
+  box.appendChild(ul);
+  // Risks and issues
+  box.appendChild(el('h3', { class: 'sec', text: 'Risks and issues' }));
+  var rl = el('ul', { class: 'plain', id: 'risks' });
+  var openR = p.risks.filter(function (x) { return x.open; });
+  if (!openR.length) rl.appendChild(el('li', { class: 'empty', text: 'No open risks or issues.' }));
+  openR.forEach(function (x) {
+    rl.appendChild(el('li', { class: 'risk ' + x.level }, [el('div', {}, [el('b', { text: x.text }), el('p', { class: 'meta', text: (x.kind === 'issue' ? 'Issue' : 'Risk') + ' · ' + x.level })]),
+      el('button', { type: 'button', 'aria-label': 'Close: ' + x.text, onclick: function () { x.open = false; addLog('Project lead closed a ' + x.kind + ' on ' + p.name + ': ' + x.text + '.'); render(); toast('Closed.'); }, text: 'Close' })]));
+  });
+  box.appendChild(rl);
+  var rf = el('form', { class: 'formgrid', id: 'risk-form', autocomplete: 'off', onsubmit: function (e) { e.preventDefault(); var t = document.getElementById('nr-text').value.trim(); if (!t) { document.getElementById('nr-text').focus(); return; } var kind = document.getElementById('nr-kind').value, lvl = document.getElementById('nr-level').value; p.risks.push({ id: 'r' + Date.now().toString(36), kind: kind, level: lvl, text: t.slice(0, 120), open: true }); addLog('Project lead added a ' + lvl + ' ' + kind + ' on ' + p.name + ': ' + t.slice(0, 120) + '.'); render(); toast('Added.'); } }, [
+    el('label', { class: 'full' }, ['New risk or issue', el('input', { type: 'text', id: 'nr-text', maxlength: '120', placeholder: 'e.g. Lift out of action during works' })]),
+    el('label', {}, ['Type', selectOf('nr-kind', [['risk', 'Risk (might happen)'], ['issue', 'Issue (happening now)']])]),
+    el('label', {}, ['Level', selectOf('nr-level', [['high', 'High'], ['medium', 'Medium'], ['low', 'Low']], 'medium')]),
+    el('button', { type: 'submit', class: 'full', text: 'Add' })
+  ]);
+  box.appendChild(rf);
+  // Spend
+  box.appendChild(el('h3', { class: 'sec', text: 'Spend' }));
+  box.appendChild(spendBar(p));
+  box.appendChild(el('form', { class: 'formgrid', autocomplete: 'off', onsubmit: function (e) { e.preventDefault(); var a = +document.getElementById('sp-amt').value; if (!(a > 0) || a > 100000) { toast('Enter an amount paid, in thousands.'); return; } p.spend = Math.round((p.spend + a) * 10) / 10; addLog('Spend recorded on ' + p.name + ': ' + k(a) + ' paid; now ' + k(p.spend) + ' of ' + k(p.budget) + '.'); render(); toast('Spend recorded.'); } }, [
+    el('label', { class: 'full' }, ['Paid this week (thousands of currency units)', el('input', { type: 'number', id: 'sp-amt', min: '0', step: '0.5', inputmode: 'decimal', placeholder: 'e.g. 12' })]),
+    el('button', { type: 'submit', class: 'full', id: 'sp-save', text: 'Record spend' })
+  ]));
+  // Weekly update
+  box.appendChild(el('h3', { class: 'sec', text: 'Weekly update' }));
+  box.appendChild(el('p', { class: 'lastup', text: 'Last update: ' + dstr(p.lastUpdate) + ' (' + ago(today() - p.lastUpdate) + ').' }));
+  var wf = el('form', { id: 'update-form', autocomplete: 'off', onsubmit: function (e) {
+    e.preventDefault();
+    var u = { d: today(), done: document.getElementById('u-done').value.trim(), next: document.getElementById('u-next').value.trim(), help: document.getElementById('u-help').value.trim() };
+    if (!u.done && !u.next && !u.help) { toast('Write at least one line.'); document.getElementById('u-done').focus(); return; }
+    p.updates.unshift(u); p.lastUpdate = today(); addLog('Weekly update received: ' + p.name + (u.help ? ' (help asked: ' + u.help.slice(0, 80) + ')' : '') + '.'); render(); toast('Update sent to the programme office.');
+  } }, [
+    el('label', { class: 'fld' }, ['What got done', el('small', { text: 'One or two lines.' }), el('textarea', { id: 'u-done', rows: '2', maxlength: '300' })]),
+    el('label', { class: 'fld' }, ['What is next', el('textarea', { id: 'u-next', rows: '2', maxlength: '300' })]),
+    el('label', { class: 'fld' }, ['Help needed', el('small', { text: 'A blocker, or a decision you need.' }), el('textarea', { id: 'u-help', rows: '2', maxlength: '300' })]),
+    el('button', { type: 'submit', class: 'primary wide', id: 'u-send', text: 'Send update' })
+  ]);
+  box.appendChild(wf);
+  if (p.updates[0]) { var u0 = p.updates[0]; box.appendChild(el('div', { class: 'prevup' }, [el('p', {}, [el('b', { text: 'Previous update, ' + dstr(u0.d) })]), el('p', { text: 'Done: ' + (u0.done || '–') }), el('p', { text: 'Next: ' + (u0.next || '–') }), el('p', { text: 'Help: ' + (u0.help || '–') })])); }
+  return box;
+}
+function selectOf(id, opts, val) { var s = el('select', { id: id }); opts.forEach(function (o) { s.appendChild(el('option', { value: o[0], text: o[1] })); }); if (val) s.value = val; return s; }
+function markDone(p, m) {
+  m.done = today();
+  if (m.golive) { p.goLive = today(); p.stage = 'delivery'; }
+  if (p.stage === 'approved') p.stage = 'delivery';
+  addLog('Project lead marked “' + m.name + '” done on ' + p.name + (m.done <= m.base ? ', on time.' : ', ' + (m.done - m.base) + ' days after the original date.'));
+  render(); toast(m.done <= m.base ? 'Done on time. Programme delivery updated.' : 'Done. Recorded as late against the original date.');
+}
+function moveMs(p, m) {
+  m.plan = Math.max(m.plan, today()) + 14; m.slips++;
+  addLog('Project lead moved “' + m.name + '” on ' + p.name + ' to ' + dstr(m.plan) + ' (moved ' + m.slips + ' time' + (m.slips > 1 ? 's' : '') + ').');
+  render(); toast('Moved. The original date still counts for delivery.');
+}
+
+// Programme office
+function officeView() {
+  var box = el('div', {});
+  var pipe = el('div', { class: 'pipe', role: 'img', 'aria-label': 'Projects by stage' });
+  STAGES.forEach(function (s) { pipe.appendChild(el('div', {}, [el('b', { text: String(state.projects.filter(function (p) { return p.stage === s[0]; }).length) }), s[1]])); });
+  box.appendChild(pipe);
+  var f = el('div', { class: 'stages', role: 'group', 'aria-label': 'Show stage' });
+  [['all', 'All']].concat(STAGES).concat([['flag', 'Red or amber']]).forEach(function (s) {
+    f.appendChild(el('button', { type: 'button', id: 'f-' + s[0], 'aria-pressed': String(state.filter === s[0]), onclick: function () { state.filter = s[0]; render(); }, text: s[1] }));
+  });
+  box.appendChild(f);
+  var list = state.projects.filter(function (p) { var r = rag(p).level; return state.filter === 'all' || p.stage === state.filter || (state.filter === 'flag' && (r === 'red' || r === 'amber')); });
+  var order = { red: 0, amber: 1, green: 2, none: 3 }, sorder = { delivery: 0, approved: 1, case: 2, idea: 3, closed: 4 };
+  list.sort(function (a, b) { return (sorder[a.stage] - sorder[b.stage]) || (order[rag(a).level] - order[rag(b).level]); });
+  if (!list.length) box.appendChild(el('div', { class: 'empty', text: 'No projects here.' }));
+  list.forEach(function (p) {
+    var r = rag(p);
+    var open = p.milestones.filter(function (m) { return m.done == null; }).sort(function (a, b) { return a.plan - b.plan; })[0];
+    var slipped = p.milestones.filter(function (m) { return m.slips > 0 || overdue(m) || (m.done != null && m.done > m.base); }).length;
+    var row = el('div', { class: 'prow ' + r.level, id: 'row-' + p.id }, [
+      el('div', { class: 'top' }, [el('div', {}, [el('h4', { text: p.name }), el('span', { class: 'sub', text: STAGE_NAME[p.stage] + ' · ' + p.owner })]), el('div', {}, [ragChip(p), p.agenda ? ' ' : null, p.agenda ? el('span', { class: 'chip agenda', text: 'On agenda' }) : null])]),
+      p.stage === 'idea' ? el('p', { class: 'sub', style: 'margin:6px 0 0', text: 'Raised ' + ago(today() - p.lastUpdate) + '. Needs a business case before it can be considered.' }) :
+      el('div', { class: 'grid2' }, [
+        p.stage === 'case' ? el('div', {}, [el('b', { text: 'Asks for ' + k(p.budget) }), el('div', { class: 'sub', text: 'Approval records the date and who decided.' })]) : p.budget ? spendBar(p) : el('div', {}),
+        el('div', {}, [
+          el('div', { text: p.stage === 'case' ? 'Submitted ' + dstr(p.submitted) + ' · waiting ' + (today() - p.submitted) + ' days' : open ? 'Next: ' + open.name + ', ' + dstr(open.plan) : p.goLive != null ? 'Went live ' + dstr(p.goLive) : 'No open milestones' }),
+          el('div', { class: 'sub', text: p.stage === 'case' ? (p.benefits.length ? 'Promises: ' + LIB[p.benefits[0].kpi].name.toLowerCase() : 'No measured benefit') : p.milestones.length ? slipped + ' of ' + p.milestones.length + ' milestones moved or late · last update ' + ago(today() - p.lastUpdate) : 'Asks for ' + k(p.budget) })
+        ])
+      ]),
+      el('ul', { class: 'reasons', 'aria-label': 'Why this status' }, r.reasons.map(function (x) { return el('li', { class: r.clean || r.level === 'none' ? 'okline' : '', text: x }); }))
+    ]);
+    if (p.stage === 'delivery' && live(p)) row.appendChild(el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'small', onclick: function () { p.stage = 'closed'; addLog('Programme office closed ' + p.name + '; benefits tracking continues.'); render(); }, text: 'Close project and track benefits' })]));
+    box.appendChild(row);
+  });
+  // Slipped milestones
+  box.appendChild(el('h3', { class: 'sec', text: 'Slipped milestones' }));
+  var rows = [];
+  state.projects.forEach(function (p) { p.milestones.forEach(function (m) { if (m.done == null && (m.slips || overdue(m))) rows.push([p, m]); }); });
+  if (!rows.length) box.appendChild(el('div', { class: 'empty', text: 'No open milestones have moved or run late.' }));
+  else {
+    var t = el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Milestone' }), el('th', { text: 'First planned' }), el('th', { text: 'Now' }), el('th', { text: 'Moved' })])])]);
+    var tb = el('tbody'); rows.forEach(function (x) { tb.appendChild(el('tr', {}, [el('td', {}, [el('b', { text: x[1].name }), el('br'), el('span', { class: 'sub', text: x[0].name })]), el('td', { text: dshort(x[1].base) }), el('td', { text: overdue(x[1]) ? overdue(x[1]) + ' days late' : dshort(x[1].plan) }), el('td', { text: x[1].slips + '×' })])); });
+    t.appendChild(tb); box.appendChild(el('div', { class: 'tablewrap' }, [t]));
+  }
+  // Rule settings
+  var d = el('details', { class: 'set' }, [el('summary', { text: 'Status rules (example settings, not a standard)' })]);
+  var g = el('div', { class: 'targets' });
+  [['redOver', 'Red if over budget by more than (%)'], ['lateDays', 'Red if a milestone is late by more than (days)'], ['staleDays', 'Amber if no update for more than (days)'], ['decisionDays', 'Flag a decision waiting more than (days)']].forEach(function (x) {
+    g.appendChild(el('label', {}, [x[1], el('input', { type: 'number', id: 'rule-' + x[0], min: '0', max: '365', value: String(state.rules[x[0]]), inputmode: 'numeric', onchange: function () { var n = Math.max(0, Math.min(365, Math.round(+this.value || 0))); state.rules[x[0]] = n; addLog('Programme office changed a status rule: ' + x[1].toLowerCase() + ' = ' + n + '.'); render(); } })]));
+  });
+  d.appendChild(g);
+  d.appendChild(el('p', { class: 'fine', text: 'Always: red if a milestone has moved twice or more; amber if over budget at all, any milestone is late, or a high risk or issue is open. Ideas and cases waiting for a decision are not rated.' }));
+  box.appendChild(d);
+  return box;
+}
+
+// Executive
+function execView() {
+  var box = el('div', {}), K = computeKpis();
+  var active = state.projects.filter(function (p) { return p.stage === 'approved' || p.stage === 'delivery'; });
+  var counts = { red: [], amber: [], green: [] }; active.forEach(function (p) { counts[rag(p).level].push(p.name); });
+  var bud = active.reduce(function (n, p) { return n + p.budget; }, 0), sp = active.reduce(function (n, p) { return n + p.spend; }, 0);
+  var port = el('div', { class: 'port' }, [
+    el('div', { class: 'pbox' }, [el('h4', { text: 'By stage' })].concat(STAGES.map(function (s) { return el('p', {}, [el('b', { text: String(state.projects.filter(function (p) { return p.stage === s[0]; }).length) }), ' ' + s[1].toLowerCase()]); }))),
+    el('div', { class: 'pbox' }, [el('h4', { text: 'Active projects' }), el('div', { class: 'ragrow' }, [el('span', { class: 'chip rag-red', text: counts.red.length + ' red' }), el('span', { class: 'chip rag-amber', text: counts.amber.length + ' amber' }), el('span', { class: 'chip rag-green', text: counts.green.length + ' green' })]),
+      counts.red.length ? el('p', { text: 'Red: ' + counts.red.join(', ') }) : null, counts.amber.length ? el('p', { text: 'Amber: ' + counts.amber.join(', ') }) : null]),
+    el('div', { class: 'pbox' }, [el('h4', { text: 'Approved budget, active' }), el('div', { class: 'big', text: k(sp) + ' of ' + k(bud) }), el('p', { text: 'spent so far (' + (bud ? Math.round(100 * sp / bud) : 0) + '%)' }), el('p', { class: 'sub', text: K.budget.over ? 'Over budget: ' + K.budget.overNames.join(', ') : 'No project over budget' })])
+  ]);
+  box.appendChild(port);
+  // Decisions needed
+  box.appendChild(el('h3', { class: 'sec', text: 'Decisions needed' }));
+  var cases = state.projects.filter(function (p) { return p.stage === 'case' && !p.decision; }).sort(function (a, b) { return a.submitted - b.submitted; });
+  if (!cases.length) box.appendChild(el('div', { class: 'empty', text: 'No business cases waiting.' }));
+  cases.forEach(function (p) {
+    var w = today() - p.submitted, deferred = p.deferredTo != null && p.deferredTo > today();
+    box.appendChild(el('div', { class: 'dec', id: 'dec-' + p.id }, [
+      el('div', { style: 'display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap' }, [el('h4', { text: p.name }), el('span', {}, [p.agenda ? el('span', { class: 'chip agenda', text: 'On agenda' }) : null, deferred ? el('span', { class: 'chip', text: 'Deferred to ' + dshort(p.deferredTo) }) : null])]),
+      el('p', { text: 'Asks for ' + k(p.budget) + ' · from ' + p.owner + ' · waiting ' + w + ' days' }),
+      el('p', { class: 'sub', text: 'Promises: ' + (p.benefits.map(function (b) { var L = LIB[b.kpi]; return L ? L.name.toLowerCase() + ' from ' + b.baseline + ' to ' + b.target + ' ' + L.unit : ''; }).join('; ') || 'no measured benefit') + '. Top risk: ' + ((p.risks.filter(function (x) { return x.open; })[0] || {}).text || 'none listed') + '.' }),
+      el('div', { class: 'acts' }, [
+        el('button', { type: 'button', class: 'small primary', id: 'approve-' + p.id, onclick: function () { decide(p, 'approved'); }, text: 'Approve' }),
+        el('button', { type: 'button', class: 'small', onclick: function () { p.deferredTo = today() + 28; addLog('Executive team deferred ' + p.name + ' to ' + dstr(p.deferredTo) + '.'); render(); toast('Deferred four weeks. The wait keeps counting.'); }, text: 'Defer 4 weeks' }),
+        el('button', { type: 'button', class: 'small', onclick: function () { decide(p, 'declined'); }, text: 'Decline' })
+      ])
+    ]));
+  });
+  // Benefits review
+  box.appendChild(el('h3', { class: 'sec', text: 'Benefits review: baseline against current' }));
+  var any = false;
+  state.projects.forEach(function (p) {
+    if (!live(p) || !p.benefits.length) return; any = true;
+    p.benefits.forEach(function (b, i) {
+      var L = LIB[b.kpi], s = benefitStatus(p, b);
+      var chip = s === 'achieved' ? el('span', { class: 'chip ok', text: 'Achieved' }) : s === 'notyet' ? el('span', { class: 'chip due', text: 'Not yet' }) : el('span', { class: 'chip late', text: 'Not measured since go-live' });
+      box.appendChild(el('div', { class: 'ben', id: 'ben-' + p.id + '-' + i }, [
+        el('div', {}, [el('b', { text: L.name }), el('span', { class: 'sub', text: p.name + ' · live since ' + dstr(p.goLive) + ' · from ' + L.source })]),
+        el('div', { class: 'vals' }, [el('div', {}, ['Baseline ', el('strong', { text: String(b.baseline) }), ' → promised ', el('strong', { text: String(b.target) }), ' ' + L.unit]),
+          el('div', {}, ['Current ', el('strong', { text: s === 'unmeasured' ? '–' : String(b.current) }), s === 'unmeasured' ? '' : ' (' + dshort(b.measured) + ')'])]),
+        el('div', { style: 'display:flex;flex-direction:column;gap:6px;align-items:flex-start' }, [chip, el('button', { type: 'button', class: 'small', id: 'pull-' + p.id + '-' + i, onclick: function () { b.current = LATEST[b.kpi]; b.measured = today(); addLog('Executive team pulled the latest “' + L.name + '” from ' + L.source + ' for ' + p.name + ': ' + b.current + ' ' + L.unit + '.'); render(); toast('Latest value pulled from ' + L.source + '.'); }, text: 'Pull latest' })])
+      ]));
+    });
+  });
+  if (!any) box.appendChild(el('div', { class: 'empty', text: 'No project is past go-live yet.' }));
+  var upcoming = state.projects.filter(function (p) { return !live(p) && p.benefits.length && (p.stage === 'delivery' || p.stage === 'approved'); });
+  if (upcoming.length) box.appendChild(el('p', { class: 'fine', text: 'Tracked from go-live: ' + upcoming.map(function (p) { var g = p.milestones.filter(function (m) { return m.golive; })[0]; return p.name + (g ? ' (planned ' + dshort(g.plan) + ')' : ''); }).join('; ') + '. Baselines were captured when each case started.' }));
+  return box;
+}
+function decide(p, what) {
+  p.decision = { d: today(), by: 'Executive team', what: what }; p.agenda = false;
+  if (what === 'approved') { p.stage = 'approved'; p.lastUpdate = today(); p.milestones = [ms(p.id + 'm1', 'Detailed plan agreed', today() + 21), ms(p.id + 'm2', 'Go-live', today() + 120, null, null, 0, true)]; }
+  else { p.stage = 'closed'; p.declined = true; }
+  addLog('Investment decision recorded: ' + p.name + ' ' + what + ' by the executive team, ' + (today() - p.submitted) + ' days after submission.');
+  render(); toast(what === 'approved' ? 'Approved. It moves to the programme with two starter milestones.' : 'Declined and recorded.');
+}
+
+// Business case builder
+function caseView() {
+  var d = state.draft, box = el('form', { id: 'case-form', autocomplete: 'off', onsubmit: function (e) { e.preventDefault(); } });
+  function field(label, id, val, area, hint) {
+    var inp = el(area ? 'textarea' : 'input', area ? { id: id, rows: '3', maxlength: '500' } : { type: 'text', id: id, maxlength: '90' });
+    inp.value = val || '';
+    inp.addEventListener('input', function () { d[id.slice(2)] = this.value; soft(); });
+    return el('label', { class: 'fld' }, [label, hint ? el('small', { text: hint }) : null, inp]);
+  }
+  box.appendChild(field('Case title', 'c-title', d.title));
+  box.appendChild(field('Department', 'c-dept', d.dept));
+  box.appendChild(field('Problem', 'c-problem', d.problem, true, 'What happens today, and who it affects. Attach measures below rather than guessing.'));
+  // Options
+  box.appendChild(el('h3', { class: 'sec', text: 'Options and costs (thousands of currency units)' }));
+  d.options.forEach(function (o, i) {
+    var radio = el('input', { type: 'radio', name: 'pref', id: 'o-pref-' + i, value: String(i) }); radio.checked = d.preferred === i;
+    radio.addEventListener('change', function () { d.preferred = i; soft(); });
+    box.appendChild(el('div', { class: 'opt' }, [
+      numOrText('Option ' + (i + 1), 'o-name-' + i, o, 'name', 'text'),
+      numOrText('One-off cost', 'o-cap-' + i, o, 'capital', 'number'),
+      numOrText('Running cost per year', 'o-run-' + i, o, 'running', 'number'),
+      el('label', { class: 'pref', for: 'o-pref-' + i }, [radio, 'Preferred'])
+    ]));
+  });
+  if (d.options.length < 4) box.appendChild(el('button', { type: 'button', class: 'small addrow', onclick: function () { d.options.push({ name: '', capital: 0, running: 0, note: '' }); render(); }, text: 'Add an option' }));
+  // Benefits
+  box.appendChild(el('h3', { class: 'sec', text: 'Benefits linked to KPIs' }));
+  d.benefits.forEach(function (b, i) {
+    var sel = el('select', { id: 'b-kpi-' + i });
+    sel.appendChild(el('option', { value: '', text: 'Typed by hand (no data)' }));
+    Object.keys(LIB).forEach(function (id) { sel.appendChild(el('option', { value: id, text: LIB[id].name })); });
+    sel.value = b.kpi || '';
+    sel.addEventListener('change', function () { b.kpi = this.value; if (b.kpi) b.baseline = LATEST[b.kpi]; render(); });
+    var base = el('input', { type: 'number', id: 'b-base-' + i, value: String(b.baseline), step: 'any', inputmode: 'decimal' });
+    if (b.kpi) base.setAttribute('readonly', 'readonly');
+    base.addEventListener('input', function () { b.baseline = +this.value || 0; soft(); });
+    var tgt = el('input', { type: 'number', id: 'b-target-' + i, value: String(b.target), step: 'any', inputmode: 'decimal' });
+    tgt.addEventListener('input', function () { b.target = +this.value || 0; soft(); });
+    var kids = [el('label', {}, ['KPI', sel]), el('label', {}, ['Baseline', base]), el('label', {}, ['Promised', tgt]),
+      el('button', { type: 'button', class: 'small', 'aria-label': 'Remove benefit ' + (i + 1), onclick: function () { d.benefits.splice(i, 1); render(); }, text: 'Remove' })];
+    if (!b.kpi) {
+      var typed = el('input', { type: 'text', id: 'b-typed-' + i, value: b.typed || '', maxlength: '60' });
+      typed.addEventListener('input', function () { b.typed = this.value; soft(); });
+      kids.splice(1, 0, el('label', {}, ['Name as typed', typed]));
+      kids.push(el('p', { class: 'basenote nodata', text: 'Baseline typed by hand, with no data behind it. Pick a KPI from the library to attach a measured baseline.' }));
+    } else kids.push(el('p', { class: 'basenote', text: 'Baseline from ' + LIB[b.kpi].source + ', last 12 weeks (example data), in ' + LIB[b.kpi].unit + '. ' + (LIB[b.kpi].up ? 'Higher is better.' : 'Lower is better.') }));
+    box.appendChild(el('div', { class: 'brow' + (b.kpi ? '' : ' typed') }, kids));
+  });
+  box.appendChild(el('button', { type: 'button', class: 'small addrow', onclick: function () { d.benefits.push({ kpi: 'bedclean', typed: '', baseline: LATEST.bedclean, target: LATEST.bedclean }); render(); }, text: 'Add a benefit' }));
+  // Risks
+  box.appendChild(el('h3', { class: 'sec', text: 'Risks' }));
+  d.risks.forEach(function (r, i) {
+    var t = el('input', { type: 'text', id: 'cr-text-' + i, value: r.text, maxlength: '120' }); t.addEventListener('input', function () { r.text = this.value; soft(); });
+    var l = selectOf('cr-level-' + i, [['high', 'High'], ['medium', 'Medium'], ['low', 'Low']], r.level); l.addEventListener('change', function () { r.level = this.value; soft(); });
+    box.appendChild(el('div', { class: 'rrow' }, [el('label', {}, ['Risk ' + (i + 1), t]), el('label', {}, ['Level', l]), el('button', { type: 'button', class: 'small', 'aria-label': 'Remove risk ' + (i + 1), onclick: function () { d.risks.splice(i, 1); render(); }, text: 'Remove' })]));
+  });
+  box.appendChild(el('button', { type: 'button', class: 'small addrow', onclick: function () { d.risks.push({ text: '', level: 'medium' }); render(); }, text: 'Add a risk' }));
+  // Summary
+  var sum = el('div', { class: 'summary', id: 'summary', 'aria-live': 'polite' });
+  box.appendChild(sum);
+  box.appendChild(el('div', { class: 'caseacts' }, [
+    el('button', { type: 'button', class: 'primary', id: 'c-submit', onclick: submitCase, text: 'Submit for decision' }),
+    el('button', { type: 'button', id: 'c-print', onclick: function () { addLog('One-page summary printed: ' + (d.title || 'untitled case') + '.'); save(); renderLog(); window.print(); }, text: 'Print one-page summary' }),
+    el('button', { type: 'button', onclick: function () { state.draft = seed().draft; render(); toast('Draft reset to the example.'); }, text: 'Reset draft' })
+  ]));
+  setTimeout(renderSummary, 0);
+  return box;
+}
+function numOrText(label, id, obj, key, type) {
+  var inp = el('input', { type: type, id: id, value: String(obj[key] == null ? '' : obj[key]), maxlength: type === 'text' ? '80' : null, min: type === 'number' ? '0' : null, step: type === 'number' ? 'any' : null, inputmode: type === 'number' ? 'decimal' : null });
+  inp.addEventListener('input', function () { obj[key] = type === 'number' ? Math.max(0, +this.value || 0) : this.value; soft(); });
+  return el('label', {}, [label, inp]);
+}
+var softT;
+function soft() { renderSummary(); clearTimeout(softT); softT = setTimeout(function () { renderGuide(); save(); }, 250); }
+function renderSummary() {
+  var s = document.getElementById('summary'); if (!s) return; s.textContent = '';
+  var d = state.draft, pref = d.options[d.preferred] || d.options[0] || { name: '–', capital: 0, running: 0 };
+  s.appendChild(el('p', { class: 'meta', text: 'Business case · one-page summary · Example General Hospital · ' + dstr(today(), true) + ' · fictional example' }));
+  s.appendChild(el('h3', { text: d.title || 'Untitled case' }));
+  s.appendChild(el('p', { class: 'meta', text: 'From: ' + (d.dept || '–') + ' · Decision by: executive team' }));
+  s.appendChild(el('h5', { text: 'Problem' })); s.appendChild(el('p', { text: d.problem || '–' }));
+  s.appendChild(el('h5', { text: 'Options (thousands of currency units)' }));
+  var t = el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Option' }), el('th', { text: 'One-off' }), el('th', { text: 'Per year' }), el('th', { text: '3-year total' })])])]);
+  var tb = el('tbody'); d.options.forEach(function (o, i) { tb.appendChild(el('tr', {}, [el('td', {}, [o.name || '–', i === d.preferred ? el('b', { text: ' (preferred)' }) : null]), el('td', { text: k(o.capital) }), el('td', { text: k(o.running) }), el('td', { text: k(o.capital + 3 * o.running) })])); });
+  t.appendChild(tb); s.appendChild(el('div', { class: 'tablewrap' }, [t]));
+  s.appendChild(el('p', { class: 'meta', text: '3-year total = one-off cost + 3 × running cost, before any savings. A simple sum, not a full financial appraisal.' }));
+  s.appendChild(el('h5', { text: 'Benefits promised' }));
+  var ul = el('ul'); if (!d.benefits.length) ul.appendChild(el('li', { text: 'None listed.' }));
+  d.benefits.forEach(function (b) { var L = LIB[b.kpi]; ul.appendChild(el('li', { text: (L ? L.name : (b.typed || 'Unnamed') ) + ': from ' + b.baseline + ' to ' + b.target + (L ? ' ' + L.unit + ' (baseline from ' + L.source + ')' : ' (baseline typed by hand, no data)') })); });
+  s.appendChild(ul);
+  s.appendChild(el('h5', { text: 'Risks' }));
+  var rl = el('ul'); if (!d.risks.length) rl.appendChild(el('li', { text: 'None listed.' })); d.risks.forEach(function (r) { rl.appendChild(el('li', { text: (r.text || '–') + ' (' + r.level + ')' })); }); s.appendChild(rl);
+  s.appendChild(el('p', { class: 'meta', style: 'margin-top:10px', text: 'Preferred: ' + (pref.name || '–') + ', ' + k(pref.capital) + ' one-off and ' + k(pref.running) + ' a year. Ospeli does not make investment decisions; leadership decides.' }));
+}
+function submitCase() {
+  var d = state.draft, pref = d.options[d.preferred] || d.options[0];
+  if (!d.title.trim()) { toast('Give the case a title first.'); document.getElementById('c-title').focus(); return; }
+  var id = 'c' + Date.now().toString(36);
+  state.projects.push({ id: id, name: d.title.trim().slice(0, 90), stage: 'case', owner: (d.dept || 'Department') + ' manager', sponsor: 'Operations lead', budget: pref ? pref.capital : 0, spend: 0, submitted: today(), decision: null, goLive: null, lastUpdate: today(), milestones: [],
+    risks: d.risks.filter(function (r) { return r.text; }).map(function (r, i) { return { id: id + 'r' + i, kind: 'risk', level: r.level, text: r.text, open: true }; }),
+    benefits: d.benefits.filter(function (b) { return b.kpi; }).map(function (b) { return { kpi: b.kpi, baseline: b.baseline, target: b.target, current: null, measured: null }; }), updates: [] });
+  var typed = d.benefits.filter(function (b) { return !b.kpi; }).length;
+  addLog('Business case submitted for decision: ' + d.title.trim() + (typed ? ' (' + typed + ' benefit' + (typed > 1 ? 's' : '') + ' without measured baseline left out of tracking)' : '') + '.');
+  state.draft = { title: '', dept: d.dept, problem: '', options: [{ name: 'Do nothing', capital: 0, running: 0, note: '' }, { name: '', capital: 0, running: 0, note: '' }], preferred: 1, benefits: [], risks: [] };
+  render(); toast('Submitted. It now waits in the executive view for a decision.');
+}
+
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice().reverse().slice(0, 40).forEach(function (x, i) {
+    ol.appendChild(el('li', { class: lastLogAt === state.log.length - 1 && i === 0 ? 'new' : '' }, [el('time', { text: dshort(x.d) + ' ' + hm(x.m) }), el('span', { text: x.text })]));
+  });
+}
+function renderGuide() {
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  document.getElementById('guide-on').checked = state.guide;
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Updates, status rules, decisions, benefits and the business case all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('div', { class: 'empty', text: 'Nothing to flag right now.' }));
+  list.forEach(function (sg) {
+    var acts = [];
+    if (sg.proposal) acts.push(el('button', { type: 'button', class: 'small primary', onclick: function () { state.proposal = sg.proposal; renderGuide(); save(); var c = document.getElementById('p-confirm'); if (c) c.focus(); }, text: sg.label }));
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; if (state.proposal && sg.proposal && state.proposal.ref === sg.proposal.ref && state.proposal.type === sg.proposal.type) state.proposal = null; renderGuide(); save(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg' }, [el('span', { class: 'tag ' + sg.kind, text: sg.tag }), el('h3', { text: sg.title }), el('p', { text: sg.text }), el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)]));
+  });
+  var pr = state.proposal;
+  if (pr) {
+    dec.appendChild(el('div', { class: 'decide' }, [el('h3', { text: 'Proposal: ' + pr.title }), el('ul', {}, pr.lines.map(function (l) { return el('li', { text: l }); })), el('p', { class: 'why', text: 'Nothing changes until a person confirms. ' + pr.who }),
+      el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'small primary', id: 'p-confirm', onclick: confirmProposal, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { state.proposal = null; renderGuide(); save(); }, text: 'Not now' })])]));
+  }
+}
+
+// ---------- Wiring ----------
+['lead', 'case', 'office', 'exec'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-week').addEventListener('click', function () { state.day += 7; state.min = START_MIN; addLog('Demo: moved on one week to ' + dstr(state.day) + '.'); render(); toast('It is now ' + dstr(state.day) + '. Dates have moved closer.'); });
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; lastLogAt = null; render(); toast('Example reset.'); });
+
+// Read-only view for software agents (no writes): window.ospeliProjectsDemo
+function summaryOf(p) { var r = rag(p); return { id: p.id, name: p.name, stage: STAGE_NAME[p.stage], status: r.label, reasons: r.reasons.slice(), budgetK: p.budget, spendK: p.spend, varianceRatio: variance(p) }; }
+window.ospeliProjectsDemo = Object.freeze({
+  describe: function () { return 'Read-only planning and capital projects demo (Ospeli area C6). get() returns projects and the draft business case; kpis() the four programme measures; suggestions() the guide; listAtRisk() projects with red or amber status and reasons; benefitsReview(id) baseline against current for a project\'s promised KPIs. Amounts are thousands of currency units. Fictional data; runs in the browser; nothing is sent anywhere.'; },
+  get: function () { return clone({ role: state.role, demoDate: dstr(state.day, true), demoClock: hm(state.min), projects: state.projects.map(function (p) { return Object.assign(clone(p), { status: rag(p).label }); }), draftCase: state.draft, rules: state.rules }); },
+  kpis: function () { return clone(computeKpis()); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text, why: s.why, proposes: s.proposal ? s.proposal.title : null }; }) : []; },
+  listAtRisk: function () { return state.projects.filter(function (p) { var l = rag(p).level; return l === 'red' || l === 'amber'; }).map(summaryOf); },
+  benefitsReview: function (id) { var p = proj(id); if (!p) return null; return { project: p.name, goLive: p.goLive == null ? null : dstr(p.goLive, true), benefits: p.benefits.map(function (b) { var L = LIB[b.kpi]; return { kpi: L.name, unit: L.unit, source: L.source, baseline: b.baseline, promised: b.target, current: b.current, measured: b.measured == null ? null : dstr(b.measured, true), status: benefitStatus(p, b) }; }) }; }
+});
+render();
+})();
+</script>
+</body>
+</html>
