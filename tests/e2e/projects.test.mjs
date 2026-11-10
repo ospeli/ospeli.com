@@ -101,9 +101,11 @@ test('a guide suggestion only proposes; a person confirms', async () => {
 test('business case builder attaches a measured baseline and submits for decision', async () => {
   const { context, page, errors } = await open(390);
   await page.click('#r-case');
+  await page.waitForFunction(() => /typed by hand/.test(document.querySelector('#summary')?.textContent || ''), null, { timeout: 5000 });
   assert.match(await page.locator('#summary').textContent(), /typed by hand/);
   await page.locator('.sugg', { hasText: 'Attach data' }).locator('button.primary').click();
   await page.click('#p-confirm');
+  await page.waitForFunction(() => !/typed by hand/.test(document.querySelector('#summary')?.textContent || ''), null, { timeout: 5000 });
   const draft = (await api(page, 'get')).draftCase;
   assert.equal(draft.benefits[0].kpi, 'bedclean');
   assert.doesNotMatch(await page.locator('#summary').textContent(), /typed by hand/);
