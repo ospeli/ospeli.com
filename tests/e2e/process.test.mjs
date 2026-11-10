@@ -17,6 +17,7 @@ for (const width of [390, 1280]) {
     const { context, page, errors } = await openPage(env, { width, path: '#/process', clock: CLOCK });
     await page.waitForSelector('[data-test="map-chooser"]');
     assert.match(await page.textContent('[data-test="map-chooser"]'), /No maps yet/);
+    assert.doesNotMatch(await page.textContent('[data-test="process-body"]'), /null|undefined/);
     assert.equal(await page.getAttribute('[data-test="guide-switch"]', 'aria-pressed'), 'true');
     await page.click('[data-from="discharge"]');
     await page.waitForSelector('[data-test="pm-stats"]');
@@ -34,6 +35,8 @@ for (const width of [390, 1280]) {
     await page.waitForSelector('[data-test="bar-proposed"]');
     assert.match(await page.textContent('[data-test="map-title"]'), /Proposed/);
     assert.match(await page.textContent('[data-test="whatif-note"]'), /not a prediction/);
+    assert.match(await page.textContent('.bars'), /Proposed [0-9 hmin]+ · [0-9 hmin]+ shorter/);
+    assert.match(await page.textContent('[data-test="process-body"]'), /Changed in Proposed: wait /);
     const proposed = await statText(page);
     assert.notEqual(proposed, today, 'Proposed is shorter');
     await page.click('[data-test="v-today"]');

@@ -37,7 +37,7 @@ export async function render(el, ctx) {
       h('div', {},
         h('p', { class: 'eyebrow' }, 'Process maps'),
         h('h1', {}, 'See where time goes, and try a change safely'),
-        h('p', {}, 'Map how work flows, step by step and role by role. See where the time goes, then try a change in a Proposed version before anything changes for real.')),
+        h('p', {}, 'Map how work flows, step by step and role by role. Changes you try go into a Proposed version; Today stays as it is.')),
       h('div', { class: 'guide-head' }, guideBtn, h('span', { class: 'meta' }, 'People decide; Ospeli suggests.'))),
     props.el, body);
 
@@ -75,13 +75,13 @@ export async function render(el, ctx) {
     guideBtn.textContent = `Guide: ${list.guideOn ? 'On' : 'Off'}`;
     if (ui.mapId && !list.maps.some((m) => m.id === ui.mapId)) ui.mapId = null;
     if (!ui.mapId) {
-      body.replaceChildren(
+      body.replaceChildren(...[
         list.maps.length ? h('section', { class: 'section', 'aria-labelledby': 'maps-h' },
           h('h2', { id: 'maps-h' }, 'Your maps'),
           h('ul', { class: 'map-list' }, list.maps.map((m) => h('li', {},
             h('a', { href: `#/process/${m.id}`, 'data-test': 'map-link' }, h('b', {}, m.title),
               h('span', { class: 'meta' }, `${m.steps} steps · ${fmtMinutes(m.elapsedToday)} start to finish${m.elapsedProposed !== m.elapsedToday ? ` · Proposed ${fmtMinutes(m.elapsedProposed)}` : ''}`)))))) : null,
-        chooser(list.maps.length ? 'Start another map' : 'No maps yet'));
+        chooser(list.maps.length ? 'Start another map' : 'No maps yet')].filter(Boolean));
       return;
     }
     await drawMap();
@@ -104,7 +104,7 @@ export async function render(el, ctx) {
         m.start ? h('p', { class: 'meta' }, `Starts when: ${m.start}`) : null),
       h('div', { class: 'chips', role: 'group', 'aria-label': 'Version' },
         seg('v-today', 'Today', !isP, () => { ui.version = 'today'; ui.editing = null; drawMap(); }),
-        seg('v-proposed', m.changed ? 'Proposed •' : 'Proposed', isP, () => { ui.version = 'proposed'; ui.editing = null; drawMap(); })));
+        seg('v-proposed', m.changed ? 'Proposed (changed)' : 'Proposed', isP, () => { ui.version = 'proposed'; ui.editing = null; drawMap(); })));
 
     const stat = (val, label, was, better) => h('div', { class: 'pm-stat' }, h('b', {}, val), h('span', {}, label),
       isP && was != null && was !== val ? h('span', { class: `was${better ? ' better' : ''}` }, `today: ${was}`) : null);
@@ -121,7 +121,8 @@ export async function render(el, ctx) {
         'aria-label': `${label}: of ${fmtMinutes(s.work + s.wait)} of step time, ${fmtMinutes(s.wait)} is waiting and ${fmtMinutes(s.work)} is hands-on work.` });
       if (s.wait) b.append(h('i', { class: 'w', style: `width:${(100 * s.wait) / total}%` }));
       if (s.work) b.append(h('i', { class: 'k', style: `width:${(100 * s.work) / total}%` }));
-      return h('div', { class: 'bar-row' }, h('span', { class: 'bar-label' }, `${label} ${fmtMinutes(s.elapsed)}`), b);
+      const diff = label === 'Proposed' ? m.today.stats.elapsed - s.elapsed : 0;
+      return h('div', { class: 'bar-row' }, h('span', { class: 'bar-label' }, `${label} ${fmtMinutes(s.elapsed)}${diff > 0 ? ` · ${fmtMinutes(diff)} shorter` : diff < 0 ? ` · ${fmtMinutes(-diff)} longer` : ''}`), b);
     };
     const scale = Math.max(m.today.stats.work + m.today.stats.wait, m.proposed.stats.work + m.proposed.stats.wait) || 1;
     const bars = h('section', { class: 'card bars', 'aria-labelledby': 'bars-h' },
@@ -166,7 +167,7 @@ export async function render(el, ctx) {
           seg('view-list', 'List', ui.view === 'list', () => { ui.view = 'list'; drawMap(); }),
           seg('view-map', 'Swimlanes', ui.view === 'map', () => { ui.view = 'map'; drawMap(); }))),
       !steps.length ? h('p', { class: 'card empty', 'data-test': 'steps-empty' }, 'Add the first step: what happens, and who does it. Rough times are fine; the guide points out missing ones.')
-        : ui.view === 'map' ? lanes(steps, a, colour) : stepList(steps, a, colour, m));
+        : ui.view === 'map' ? lanes(steps, a, colour, m) : stepList(steps, a, colour, m));
 
     const editor = stepEditor(m, steps);
     const layout = h('div', { class: 'pm-layout' },
@@ -174,14 +175,14 @@ export async function render(el, ctx) {
     body.replaceChildren(head, layout);
   }
 
-  function lanes(steps, a, colour) {
+  function lanes(steps, a, colour, m) {
     const roles = [...new Set(steps.map((s) => s.role))];
     const grid = h('div', { class: 'lanegrid', style: `grid-template-columns: 120px repeat(${steps.length}, 172px)` });
     roles.forEach((r, ri) => {
       grid.append(h('div', { class: 'lanename', style: `grid-row:${ri + 1};grid-column:1` }, h('span', { class: 'role-dot', style: `background:${colour(r)}` }), r));
       steps.forEach((s, i) => {
         const cell = h('div', { class: 'cell', style: `grid-row:${ri + 1};grid-column:${i + 2}` });
-        if (s.role === r) cell.append(stepCard(s, i, a, colour));
+        if (s.role === r) cell.append(stepCard(s, i, a, colour, m));
         grid.append(cell);
       });
     });
@@ -189,11 +190,11 @@ export async function render(el, ctx) {
       h('p', { class: 'meta scroll-hint' }, 'Scroll sideways for later steps. Tap a step to change it.'),
       h('div', { class: 'lanes', tabindex: '0', role: 'region', 'aria-label': 'Swimlane map, scroll sideways for later steps' }, grid));
   }
-  function stepCard(s, i, a, colour) {
-    const hot = a.biggestWaitStepId === s.id;
-    return h('button', { type: 'button', class: `pm-step${hot ? ' hot' : ''}${s.par ? ' par' : ''}`, style: `border-left-color:${colour(s.role)}`, 'data-step': s.id,
+  function stepCard(s, i, a, colour, m) {
+    const hot = a.biggestWaitStepId === s.id; const note = changedNote(s, m);
+    return h('button', { type: 'button', class: `pm-step${hot ? ' hot' : ''}${s.par ? ' par' : ''}${note ? ' changed' : ''}`, style: `border-left-color:${colour(s.role)}`, 'data-step': s.id,
       'aria-label': `Step ${i + 1}: ${s.name}, ${s.role}, waits ${fmtMinutes(s.wait)}, work ${fmtMinutes(s.work)}. Change it.`, onclick: () => edit(s.id) },
-      h('span', { class: 'n' }, `Step ${i + 1}`), s.name,
+      h('span', { class: 'n' }, `Step ${i + 1}`), s.name, note,
       h('span', { class: 't' }, s.wait ? h('span', { class: 'wt' }, `waits ${fmtMinutes(s.wait)}`) : null, h('span', {}, `work ${fmtMinutes(s.work)}`)));
   }
   function stepList(steps, a, colour, m) {
@@ -202,7 +203,8 @@ export async function render(el, ctx) {
       const mv = (dir) => async () => { if (await run('map.step.move', { mapId: m.id, version: ui.version, stepId: s.id, direction: dir, expectedRevision: m.revision })) drawMap(); };
       return h('li', { 'data-step': s.id },
         s.wait || s.par ? h('div', { class: `wait${hot ? ' hot' : ''}` }, s.par ? `Starts alongside the step before${s.wait ? `, after ${fmtMinutes(s.wait)}` : ''}` : `Waits ${fmtMinutes(s.wait)}${hot ? ' · the biggest wait' : ''}`) : null,
-        h('div', { class: 'row' },
+        changedNote(s, m),
+        h('div', { class: `row${changedNote(s, m) ? ' changed' : ''}` },
           h('span', { class: 'num' }, String(i + 1)),
           h('div', { class: 'what' }, h('b', {}, s.name),
             h('span', {}, h('span', { class: 'role-dot', style: `background:${colour(s.role)}` }), `${s.role} · work ${fmtMinutes(s.work)}${s.msg ? ' · passes on information' : ''}`)),
@@ -212,11 +214,23 @@ export async function render(el, ctx) {
             h('button', { type: 'button', class: 'icon', 'aria-label': `Change step ${i + 1}`, onclick: () => edit(s.id) }, '✎'))));
     }));
   }
+  // In Proposed, say what differs from Today for a step (same step id), in plain words.
+  function changedNote(s, m) {
+    if (ui.version !== 'proposed') return null;
+    const was = m.today.steps.find((x) => x.id === s.id);
+    if (!was) return h('div', { class: 'changed-note' }, 'New in Proposed');
+    const bits = [];
+    if (was.wait !== s.wait) bits.push(`wait ${fmtMinutes(was.wait)} → ${fmtMinutes(s.wait)}`);
+    if (was.work !== s.work) bits.push(`work ${fmtMinutes(was.work)} → ${fmtMinutes(s.work)}`);
+    if (!was.par && s.par) bits.push('now starts alongside the step before');
+    if (was.name !== s.name || was.role !== s.role) bits.push('wording or role changed');
+    return bits.length ? h('div', { class: 'changed-note' }, `Changed in Proposed: ${bits.join(', ')}`) : null;
+  }
   function edit(stepId) { ui.editing = stepId; drawMap().then(() => { const f = document.getElementById('st-name'); if (f) { f.focus(); f.scrollIntoView({ block: 'center' }); } }); }
 
   function stepEditor(m, steps) {
     const s = steps.find((x) => x.id === ui.editing) || null;
-    const num = (id, label, val, help) => h('div', { class: 'field' }, h('label', { for: id }, label), h('input', { id, type: 'number', min: '0', max: '10080', step: '1', inputmode: 'numeric', value: String(val ?? 0) }), help ? h('span', { class: 'meta' }, help) : null);
+    const num = (id, label, val) => h('div', { class: 'field' }, h('label', { for: id }, label), h('input', { id, type: 'number', min: '0', max: '10080', step: '1', inputmode: 'numeric', placeholder: 'e.g. 15', value: val ? String(val) : null }));
     const roles = [...new Set([...m.today.steps, ...m.proposed.steps].map((x) => x.role))];
     const form = h('form', { class: 'card step-form', 'data-test': 'step-form', 'aria-labelledby': 'st-h' },
       h('h3', { id: 'st-h' }, s ? `Change step ${steps.indexOf(s) + 1}` : `Add a step to ${ui.version === 'proposed' ? 'Proposed' : 'Today'}`),
