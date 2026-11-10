@@ -7,7 +7,7 @@ export const MODULES = [
   { id: 'beds', name: 'Bed board', week: 1, summary: 'Live bed state by ward, with flow KPIs.', load: () => import('./beds.js') },
   { id: 'engineering', name: 'Engineering', week: 2, summary: 'Report faults and run the work-order queue.', load: () => import('./engineering.js') },
   { id: 'ae', name: 'A&E flow', week: 2, summary: 'Arrival to decision timeline and pressure level.', soon: 'Follow each attendance from arrival to triage, seen, decision and bed, with the department pressure level and action cards.' },
-  { id: 'process', name: 'Process maps', week: 3, summary: 'Walk a process and get a timed map.', soon: 'Walk a process on your phone, tap each step, and get a swimlane map with real waits. Compare current and future states.' },
+  { id: 'process', name: 'Process maps', week: 3, summary: 'See where time goes, and try a change safely.', load: () => import('./process.js') },
   { id: 'dashboard', name: 'Operations dashboard', week: 3, summary: 'Top KPIs, flow today and run charts.', soon: 'Top-row KPIs, flow today, discharges by hour and run charts with control limits.' },
   { id: 'incidents', name: 'Incidents and actions', week: 3, summary: 'Report, triage and track actions.', soon: 'Report an incident, triage it, and track actions with owners and due dates.' },
   { id: 'sops', name: 'SOP library', week: 3, summary: 'Procedures with review dates.', soon: 'Standard operating procedures with versions, owners, review dates and staff acknowledgement.' },

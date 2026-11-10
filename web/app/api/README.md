@@ -18,7 +18,7 @@ Every action in the app is a named command. The screens call these commands, and
 - An agent's write returns `{ status: "proposed", proposal: { id } }`. A person accepts or declines it on the bed board (`proposal.accept`, `proposal.decline`); the agent reads the outcome with `proposals.list` (accepted, declined, or expired if the bed changed first).
 - More for agents: [/agents.md](../../agents.md) and [/llms.txt](../../llms.txt).
 
-## Commands (24)
+## Commands (36)
 | Command | Kind | Roles | Needs a person | What it does |
 |---|---|---|---|---|
 | `beds.board` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | no | Live bed state for every ward (or one ward), the waiting-for-a-bed list and any conflicting events, derived from the event log. |
@@ -45,3 +45,15 @@ Every action in the app is a named command. The screens call these commands, and
 | `fault.report` | write | ward-nurse, bed-manager, ae-nic, estates-tech, ops-manager | yes (agents propose) | Report a fault on an asset. Opens a work order with a priority and an SLA due time, and says if it is a repeat fault. |
 | `workorder.assign` | write | estates-tech, ops-manager | yes (agents propose) | Assign (or re-assign) an open work order to a team. Teams, not named people. |
 | `workorder.complete` | write | estates-tech | yes (agents propose) | Close a work order with its outcome: fixed, escalated or no fault found. |
+| `maps.list` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | no | The process maps on this device, with steps and start-to-finish time for Today and Proposed, plus the example processes a new map can start from. Read-only. |
+| `map.get` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | no | One process map: its steps (Today and Proposed) and the numbers for each: start to finish, hands-on time, waiting, handoffs and the biggest wait. Use "short" for the numbers only. Read-only. |
+| `map.suggest` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | no | The guide's suggestions for one version of a map: biggest waits, steps that only pass on information, handoffs, steps that could run alongside, missing times and walk questions. Each says why. Rule-based; empty when the guide is switched off. Suggests only; changes nothing. |
+| `map.create` | write | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | yes (agents propose) | Start a new process map, from one of the example processes (see maps.list) or blank. Proposed starts as a copy of Today. |
+| `map.step.add` | write | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | yes (agents propose) | Add a step to one version of a map: what happens, who does it, minutes waiting before it and hands-on minutes. Added at the end unless a position is given. |
+| `map.step.update` | write | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | yes (agents propose) | Change a step in one version of a map: its wording, who does it, its times or its flags. Only the fields given change. |
+| `map.step.move` | write | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | yes (agents propose) | Move a step one place up or down in one version of a map. |
+| `map.step.remove` | write | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | yes (agents propose) | Remove a step from one version of a map. |
+| `map.try-suggestion` | write | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | yes (agents propose) | Apply one of the guide's suggestions (from map.suggest on the proposed version, where tryable is true) to the Proposed version only. Today never changes. A what-if, not a prediction. |
+| `map.hide-suggestion` | write | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | yes (agents propose) | Hide one guide suggestion on this map (not useful here). Changes no steps. |
+| `map.reset-proposed` | write | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | yes (agents propose) | Throw away every change in the Proposed version: it becomes a copy of Today again, and hidden suggestions come back. |
+| `map.guide.set` | write | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | yes (agents propose) | Switch the process-map guide on or off on this device. With it off, maps, times and editing all still work. People only. |

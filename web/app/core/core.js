@@ -301,6 +301,16 @@ export class Core {
   // ---- settings (not audited: device preferences such as the chosen role) ----
   async getMeta(id, fallback = null) { const r = await this.db.get('meta', id); return r ? r.value : fallback; }
   async setMeta(id, value) { await this.db.put('meta', { id, value }); }
+  // Read-modify-write a setting inside the write queue, so two quick writes never lose one.
+  updateMeta(id, fn, fallback = null) {
+    return this._serial(async () => {
+      const r = await this.db.get('meta', id);
+      const next = await fn(r ? r.value : fallback);
+      await this.db.put('meta', { id, value: next });
+      this._emit('meta', { id });
+      return next;
+    });
+  }
 
   // ---- export and import ----
   async exportData() {
@@ -374,7 +384,7 @@ export class Core {
     return this._serial(async () => {
       for (const s of ['entities', 'events', 'audit']) await this.db.clear(s);
       // Nothing is loaded now, so nothing is claimed about it (issue #5 badge, issue #7).
-      for (const id of ['synthetic', 'generator', 'agent-proposals']) await this.db.put('meta', { id, value: null });
+      for (const id of ['synthetic', 'generator', 'agent-proposals', 'process-maps']) await this.db.put('meta', { id, value: null });
       this.lastEvent = null;
       this.lastAudit = null;
       this._emit('reset', null);

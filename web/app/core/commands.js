@@ -17,6 +17,9 @@ import { KPIS, kpiById, computeKpi } from './kpi.js';
 import {
   PRIORITIES, TEAMS, OUTCOMES, WO_STATES, ALL_FAULTS, faultsFor, teamFor, deriveWorkOrders, nextWorkOrderId,
 } from './workorders.js';
+import {
+  EXAMPLES as MAP_EXAMPLES, VERSIONS as MAP_VERSIONS, MAX_STEPS, MAX_MINUTES, newMap, analyse, suggest, applyChange, personalDetailIn,
+} from './processmap.js';
 
 export class CommandError extends Error {
   constructor(code, message, detail = null) {
@@ -302,6 +305,7 @@ COMMAND_LIST.push(
       await core.decideProposal(p.id, actor, { status: 'accepting' });
       const args = { ...p.input };
       if (p.seenState && commandByName(p.command).input.properties.expectedState && !args.expectedState) args.expectedState = p.seenState;
+      if (p.seenRevision && commandByName(p.command).input.properties.expectedRevision && !args.expectedRevision) args.expectedRevision = p.seenRevision;
       try {
         const result = await runCommand(core, p.command, args, actor);
         const proposal = await core.decideProposal(p.id, actor, { status: 'accepted', events: result.events || [] });
@@ -496,6 +500,310 @@ COMMAND_LIST.push(
   },
 );
 
+// Process maps (backlog PM1): map a process step by step, see where the time goes, and try a
+// change in a Proposed version beside Today. Nothing here changes how the hospital runs, but an
+// agent still only proposes; a person accepts. The guide is rule-based, explainable, and has an
+// off switch (map.guide.set, people only). Maps are kept on this device (setting "process-maps").
+const MAP_ID = { type: 'string', pattern: '^map-[0-9]{3,}$', description: 'A map id from maps.list, e.g. map-001.' };
+const STEP_ID = { type: 'string', pattern: '^map-[0-9]{3,}-s[0-9]+$', description: 'A step id from map.get, e.g. map-001-s3.' };
+const VERSION = { type: 'string', enum: MAP_VERSIONS, description: '"today" is the process as it runs now; "proposed" is the what-if. Defaults to today.' };
+const MINUTES = { type: 'integer', minimum: 0, maximum: MAX_MINUTES };
+const STEP_TEXT = { type: 'string', minLength: 1, maxLength: 140 };
+const REVISION = { type: 'integer', minimum: 1, description: 'The map revision the caller last saw (from map.get). If the map changed since, the command is refused (conflict).' };
+const MAP_STEP = {
+  type: 'object', required: ['id', 'name', 'role', 'wait', 'work', 'msg', 'par'],
+  properties: {
+    id: STEP_ID, name: { type: 'string', description: 'What happens, in the site\'s own words.' },
+    role: { type: 'string', description: 'Who does it, in the site\'s own words (a role, never a named person).' },
+    wait: { ...MINUTES, description: 'Minutes waiting before this step starts.' }, work: { ...MINUTES, description: 'Hands-on minutes.' },
+    msg: { type: 'boolean', description: 'The step only passes on information (a call, message or form).' },
+    par: { type: 'boolean', description: 'Starts alongside the step before instead of after it.' },
+  },
+};
+const MAP_STATS = {
+  type: 'object', required: ['steps', 'elapsed', 'work', 'wait', 'handoffs'],
+  properties: {
+    steps: { type: 'integer' }, elapsed: { type: 'integer', description: 'Minutes from start to finish (steps that run alongside overlap).' },
+    work: { type: 'integer', description: 'Hands-on minutes, summed.' }, wait: { type: 'integer', description: 'Waiting minutes, summed.' },
+    handoffs: { type: 'integer', description: 'Times the role changes from one step to the next.' }, infoSteps: { type: 'integer' },
+    workShare: { type: ['integer', 'null'], description: 'Hands-on time as a % of start to finish.' },
+    biggestWaitStepId: { type: ['string', 'null'] }, roles: { type: 'array', items: { type: 'string' } },
+  },
+};
+const SUGGESTION = {
+  type: 'object', required: ['id', 'kind', 'title', 'text', 'why'],
+  properties: {
+    id: { type: 'string' }, kind: { type: 'string', enum: ['time', 'ask'] }, title: { type: 'string' }, text: { type: 'string' },
+    why: { type: 'string', description: 'The rule or data behind it, so a person can check it.' }, stepId: STEP_ID,
+    tryLabel: { type: 'string' }, tryable: { type: 'boolean', description: 'map.try-suggestion can apply it to the Proposed version.' },
+    tried: { type: 'boolean' },
+  },
+};
+const MAP_WRITE_OUTPUT = {
+  type: 'object', required: ['status'],
+  properties: {
+    status: { type: 'string', enum: ['done', 'proposed'] }, mapId: MAP_ID, revision: { type: 'integer' }, stepId: STEP_ID,
+    proposal: { type: 'object', description: 'When an agent asked: the proposal waiting for a person.' },
+  },
+};
+const MAP_SOURCES = [...Object.keys(MAP_EXAMPLES), 'blank'];
+const MAPS_KEY = 'process-maps';
+const mapStore = (v) => v || { maps: [], guideOn: true, nextId: 1 };
+
+async function loadMap(core, mapId) {
+  const store = mapStore(await core.getMeta(MAPS_KEY, null));
+  const map = store.maps.find((m) => m.id === mapId);
+  if (!map) {
+    throw new CommandError('not-found', `No map ${mapId}. Use maps.list to see the maps on this device${store.maps.length ? ` (for example ${store.maps[0].id})` : ''}, or map.create to start one.`);
+  }
+  return { store, map };
+}
+
+function checkText(input) {
+  for (const k of ['name', 'role', 'title']) {
+    if (input[k] == null) continue;
+    const what = personalDetailIn(input[k]);
+    if (what) throw new CommandError('invalid-input', `${k} looks like it holds ${what}. Describe the step and the role only; never personal details.`);
+    if (!String(input[k]).trim()) throw new CommandError('invalid-input', `${k} cannot be empty.`);
+  }
+}
+
+// One shape for every map write: check, change the map inside the write queue, audit (ids only,
+// no free text), and bump the revision.
+function mapWrite({ name, summary, required = [], props, example, mutate, audit }) {
+  return {
+    name, summary, kind: 'write', roles: ALL_ROLES, approval: true,
+    input: { type: 'object', additionalProperties: false, required: ['mapId', ...required], properties: { mapId: MAP_ID, ...props, expectedRevision: REVISION } },
+    output: MAP_WRITE_OUTPUT,
+    async snapshot(core, input) {
+      const store = mapStore(await core.getMeta(MAPS_KEY, null));
+      const m = store.maps.find((x) => x.id === input.mapId);
+      return { seenRevision: input.expectedRevision ?? m?.revision ?? null };
+    },
+    async run(core, input, { actor }) {
+      checkText(input);
+      let out = {};
+      await core.updateMeta(MAPS_KEY, async (raw) => {
+        const store = mapStore(raw);
+        const i = store.maps.findIndex((m) => m.id === input.mapId);
+        if (i < 0) throw new CommandError('not-found', `No map ${input.mapId}. Use maps.list to see the maps on this device.`);
+        const map = JSON.parse(JSON.stringify(store.maps[i]));
+        if (input.expectedRevision && map.revision !== input.expectedRevision) {
+          throw new CommandError('conflict', 'This map changed since you opened it. Open it again (map.get) and retry.', { revision: map.revision });
+        }
+        out = mutate(map, input, core) || {};
+        map.revision += 1; map.updatedAt = core.now();
+        store.maps[i] = map;
+        out.revision = map.revision;
+        return store;
+      });
+      await core.recordAs(actor, audit, input.mapId, { ...(out.stepId ? { stepId: out.stepId } : {}), ...(input.version ? { version: input.version } : {}), ...(input.suggestionId ? { suggestion: input.suggestionId } : {}) });
+      return { status: 'done', mapId: input.mapId, ...out };
+    },
+    example: { input: { mapId: 'map-001', ...example } },
+  };
+}
+
+function stepIndex(map, version, stepId) {
+  const list = map[version];
+  const i = list.findIndex((s) => s.id === stepId);
+  if (i < 0) throw new CommandError('not-found', `No step ${stepId} in the ${version} version of this map. Step ids come from map.get.`);
+  return i;
+}
+
+const mapSummary = (m) => {
+  const t = analyse(m.today); const p = analyse(m.proposed);
+  return { id: m.id, title: m.title, from: m.from, steps: m.today.length, elapsedToday: t.elapsed, elapsedProposed: p.elapsed, revision: m.revision, updatedAt: m.updatedAt };
+};
+const visibleSuggestions = (map, list) => suggest(list)
+  .filter((sg) => !map.hidden.includes(sg.id))
+  .map(({ change, ...sg }) => ({ ...sg, tryable: !!change, tried: map.tried.includes(sg.id) }));
+
+COMMAND_LIST.push(
+  {
+    name: 'maps.list',
+    summary: 'The process maps on this device, with steps and start-to-finish time for Today and Proposed, plus the example processes a new map can start from. Read-only.',
+    kind: 'read', roles: ALL_ROLES, approval: false,
+    input: { type: 'object', additionalProperties: false, properties: {} },
+    output: { type: 'object', required: ['guideOn', 'maps', 'examples'], properties: {
+      guideOn: { type: 'boolean' },
+      maps: { type: 'array', items: { type: 'object', required: ['id', 'title', 'steps'], properties: {
+        id: MAP_ID, title: { type: 'string' }, from: { type: 'string' }, steps: { type: 'integer' },
+        elapsedToday: { type: 'integer' }, elapsedProposed: { type: 'integer' }, revision: { type: 'integer' }, updatedAt: TIME } } },
+      examples: { type: 'array', items: { type: 'object', required: ['from', 'title'], properties: { from: { type: 'string' }, title: { type: 'string' } } } } } },
+    async run(core) {
+      const store = mapStore(await core.getMeta(MAPS_KEY, null));
+      return { guideOn: store.guideOn !== false, maps: store.maps.map(mapSummary), examples: Object.entries(MAP_EXAMPLES).map(([from, e]) => ({ from, title: e.title })) };
+    },
+    example: { input: {} },
+  },
+  {
+    name: 'map.get',
+    summary: 'One process map: its steps (Today and Proposed) and the numbers for each: start to finish, hands-on time, waiting, handoffs and the biggest wait. Use "short" for the numbers only. Read-only.',
+    kind: 'read', roles: ALL_ROLES, approval: false,
+    input: { type: 'object', additionalProperties: false, required: ['mapId'], properties: {
+      mapId: MAP_ID, format: { type: 'string', enum: ['short', 'detailed'], description: 'short: numbers only; detailed (default): steps too.' } } },
+    output: { type: 'object', required: ['id', 'title', 'revision', 'today', 'proposed', 'changed'], properties: {
+      id: MAP_ID, title: { type: 'string' }, start: { type: 'string' }, revision: { type: 'integer' }, changed: { type: 'boolean', description: 'Proposed differs from Today.' },
+      tried: { type: 'array', items: { type: 'string' } },
+      today: { type: 'object', required: ['stats'], properties: { stats: MAP_STATS, steps: { type: 'array', items: MAP_STEP } } },
+      proposed: { type: 'object', required: ['stats'], properties: { stats: MAP_STATS, steps: { type: 'array', items: MAP_STEP } } } } },
+    async run(core, input) {
+      const { map } = await loadMap(core, input.mapId);
+      const part = (list) => {
+        const { timed, ...stats } = analyse(list);
+        return input.format === 'short' ? { stats } : { stats, steps: list };
+      };
+      return { id: map.id, title: map.title, start: map.start, revision: map.revision,
+        changed: JSON.stringify(map.today) !== JSON.stringify(map.proposed), tried: [...map.tried],
+        today: part(map.today), proposed: part(map.proposed) };
+    },
+    example: { input: { mapId: 'map-001', format: 'short' } },
+  },
+  {
+    name: 'map.suggest',
+    summary: 'The guide\'s suggestions for one version of a map: biggest waits, steps that only pass on information, handoffs, steps that could run alongside, missing times and walk questions. Each says why. Rule-based; empty when the guide is switched off. Suggests only; changes nothing.',
+    kind: 'read', roles: ALL_ROLES, approval: false,
+    input: { type: 'object', additionalProperties: false, required: ['mapId'], properties: { mapId: MAP_ID, version: VERSION } },
+    output: { type: 'object', required: ['guideOn', 'suggestions'], properties: {
+      guideOn: { type: 'boolean' }, hidden: { type: 'integer' }, suggestions: { type: 'array', items: SUGGESTION } } },
+    async run(core, input) {
+      const { store, map } = await loadMap(core, input.mapId);
+      if (store.guideOn === false) return { guideOn: false, hidden: map.hidden.length, suggestions: [] };
+      return { guideOn: true, hidden: map.hidden.length, suggestions: visibleSuggestions(map, map[input.version || 'today']) };
+    },
+    example: { input: { mapId: 'map-001', version: 'today' } },
+  },
+  {
+    name: 'map.create',
+    summary: 'Start a new process map, from one of the example processes (see maps.list) or blank. Proposed starts as a copy of Today.',
+    kind: 'write', roles: ALL_ROLES, approval: true,
+    input: { type: 'object', additionalProperties: false, required: ['from'], properties: {
+      from: { type: 'string', enum: MAP_SOURCES, description: 'An example process to start from, or "blank".' },
+      title: { ...STEP_TEXT, description: 'The map\'s name, e.g. "Discharge from ward 3". Defaults to the example\'s title.' } } },
+    output: MAP_WRITE_OUTPUT,
+    async run(core, input, { actor }) {
+      checkText(input);
+      let id = null; let revision = 1;
+      await core.updateMeta(MAPS_KEY, (raw) => {
+        const store = mapStore(raw);
+        id = `map-${String(store.nextId).padStart(3, '0')}`;
+        store.nextId += 1;
+        const m = newMap({ id, from: input.from, title: input.title, at: core.now(), role: actor.role });
+        revision = m.revision;
+        store.maps.push(m);
+        return store;
+      });
+      await core.recordAs(actor, 'map.created', id, { from: input.from });
+      return { status: 'done', mapId: id, revision };
+    },
+    example: { input: { from: 'discharge' } },
+  },
+  mapWrite({
+    name: 'map.step.add', audit: 'map.step-added',
+    summary: 'Add a step to one version of a map: what happens, who does it, minutes waiting before it and hands-on minutes. Added at the end unless a position is given.',
+    required: ['name', 'role'],
+    props: { version: VERSION, name: { ...STEP_TEXT, description: 'What happens, e.g. "Bed cleaned". No personal details.' },
+      role: { ...STEP_TEXT, description: 'Who does it, e.g. "Housekeeping". A role, never a person\'s name.' },
+      wait: { ...MINUTES, description: 'Minutes waiting before this step starts. Default 0.' }, work: { ...MINUTES, description: 'Hands-on minutes. Default 0.' },
+      msg: { type: 'boolean', description: 'True if the step only passes on information.' }, par: { type: 'boolean', description: 'True if it starts alongside the step before.' },
+      position: { type: 'integer', minimum: 1, description: '1 = first. Default: last.' } },
+    example: { version: 'today', name: 'Bed cleaned', role: 'Housekeeping', wait: 30, work: 20 },
+    mutate(map, input) {
+      const v = input.version || 'today'; const list = map[v];
+      if (list.length >= MAX_STEPS) throw new CommandError('invalid-input', `A map holds up to ${MAX_STEPS} steps. Split the process into two maps.`);
+      const step = { id: `${map.id}-s${map.nextStep}`, name: input.name.trim(), role: input.role.trim(), wait: input.wait || 0, work: input.work || 0, msg: !!input.msg, par: !!input.par };
+      map.nextStep += 1;
+      const at = input.position ? Math.min(input.position - 1, list.length) : list.length;
+      list.splice(at, 0, step);
+      return { stepId: step.id };
+    },
+  }),
+  mapWrite({
+    name: 'map.step.update', audit: 'map.step-updated',
+    summary: 'Change a step in one version of a map: its wording, who does it, its times or its flags. Only the fields given change.',
+    required: ['stepId'],
+    props: { version: VERSION, stepId: STEP_ID, name: STEP_TEXT, role: STEP_TEXT, wait: MINUTES, work: MINUTES, msg: { type: 'boolean' }, par: { type: 'boolean' } },
+    example: { version: 'proposed', stepId: 'map-001-s3', wait: 60 },
+    mutate(map, input) {
+      const v = input.version || 'today'; const s = map[v][stepIndex(map, v, input.stepId)];
+      for (const k of ['name', 'role']) if (input[k] != null) s[k] = input[k].trim();
+      for (const k of ['wait', 'work', 'msg', 'par']) if (input[k] != null) s[k] = input[k];
+      return { stepId: s.id };
+    },
+  }),
+  mapWrite({
+    name: 'map.step.move', audit: 'map.step-moved',
+    summary: 'Move a step one place up or down in one version of a map.',
+    required: ['stepId', 'direction'],
+    props: { version: VERSION, stepId: STEP_ID, direction: { type: 'string', enum: ['up', 'down'] } },
+    example: { version: 'proposed', stepId: 'map-001-s3', direction: 'up' },
+    mutate(map, input) {
+      const v = input.version || 'today'; const list = map[v]; const i = stepIndex(map, v, input.stepId);
+      const j = input.direction === 'up' ? i - 1 : i + 1;
+      if (j < 0 || j >= list.length) throw new CommandError('invalid-input', `Step ${input.stepId} is already ${input.direction === 'up' ? 'first' : 'last'}.`);
+      [list[i], list[j]] = [list[j], list[i]];
+      return { stepId: input.stepId };
+    },
+  }),
+  mapWrite({
+    name: 'map.step.remove', audit: 'map.step-removed',
+    summary: 'Remove a step from one version of a map.',
+    required: ['stepId'],
+    props: { version: VERSION, stepId: STEP_ID },
+    example: { version: 'proposed', stepId: 'map-001-s3' },
+    mutate(map, input) {
+      const v = input.version || 'today'; map[v].splice(stepIndex(map, v, input.stepId), 1);
+      return { stepId: input.stepId };
+    },
+  }),
+  mapWrite({
+    name: 'map.try-suggestion', audit: 'map.suggestion-tried',
+    summary: 'Apply one of the guide\'s suggestions (from map.suggest on the proposed version, where tryable is true) to the Proposed version only. Today never changes. A what-if, not a prediction.',
+    required: ['suggestionId'],
+    props: { suggestionId: { type: 'string', minLength: 1, maxLength: 80, description: 'The id of a tryable suggestion from map.suggest (version "proposed").' } },
+    example: { suggestionId: 'msgs' },
+    mutate(map, input, core) {
+      const sg = suggest(map.proposed).find((x) => x.id === input.suggestionId);
+      if (!sg || !sg.change) {
+        const ids = suggest(map.proposed).filter((x) => x.change).map((x) => x.id);
+        throw new CommandError('invalid-input', `"${input.suggestionId}" is not a suggestion that can be tried on this map now. Try one of: ${ids.join(', ') || 'none'}.`, { tryable: ids });
+      }
+      map.proposed = applyChange(map.proposed, sg.change);
+      if (!map.tried.includes(sg.id)) map.tried.push(sg.id);
+      return {};
+    },
+  }),
+  mapWrite({
+    name: 'map.hide-suggestion', audit: 'map.suggestion-hidden',
+    summary: 'Hide one guide suggestion on this map (not useful here). Changes no steps.',
+    required: ['suggestionId'],
+    props: { suggestionId: { type: 'string', minLength: 1, maxLength: 80 } },
+    example: { suggestionId: 'questions' },
+    mutate(map, input) { if (!map.hidden.includes(input.suggestionId)) map.hidden.push(input.suggestionId); return {}; },
+  }),
+  mapWrite({
+    name: 'map.reset-proposed', audit: 'map.proposed-reset',
+    summary: 'Throw away every change in the Proposed version: it becomes a copy of Today again, and hidden suggestions come back.',
+    props: {},
+    example: {},
+    mutate(map) { map.proposed = JSON.parse(JSON.stringify(map.today)); map.tried = []; map.hidden = []; return {}; },
+  }),
+  {
+    name: 'map.guide.set',
+    summary: 'Switch the process-map guide on or off on this device. With it off, maps, times and editing all still work. People only.',
+    kind: 'write', roles: ALL_ROLES, approval: true, agents: false,
+    input: { type: 'object', additionalProperties: false, required: ['on'], properties: { on: { type: 'boolean' } } },
+    output: { type: 'object', required: ['status', 'guideOn'], properties: { status: { type: 'string', enum: ['done'] }, guideOn: { type: 'boolean' } } },
+    async run(core, input, { actor }) {
+      await core.updateMeta(MAPS_KEY, (raw) => ({ ...mapStore(raw), guideOn: input.on }));
+      await core.recordAs(actor, input.on ? 'map.guide-on' : 'map.guide-off', null, null);
+      return { status: 'done', guideOn: input.on };
+    },
+    example: { input: { on: false } },
+  },
+);
+
 const EXAMPLE_BED = { 'bed.allocate': { encounter: 'enc-000123' }, 'bed.take-out-of-service': { reason: 'Electrical' }, 'bed.flag-expected-discharge': { expectedAt: '2026-11-08T15:00:00.000Z' } };
 for (const c of COMMAND_LIST) {
   if (!c.example) c.example = { input: { bedId: 'ward-a1-bed-01', ...(EXAMPLE_BED[c.name] || {}) } };
@@ -564,5 +872,5 @@ export async function runCommand(core, name, input = {}, actor) {
   }
   const extra = cmd.snapshot ? await cmd.snapshot(core, input) : {};
   const proposal = await core.propose(who, name, input, { wardId: ward, ...extra });
-  return { status: 'proposed', ...(input.bedId ? { bedId: input.bedId } : {}), ...(input.workOrderId ? { workOrderId: input.workOrderId } : {}), proposal };
+  return { status: 'proposed', ...(input.bedId ? { bedId: input.bedId } : {}), ...(input.workOrderId ? { workOrderId: input.workOrderId } : {}), ...(input.mapId ? { mapId: input.mapId } : {}), proposal };
 }

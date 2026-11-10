@@ -2406,6 +2406,1297 @@
           "outcome": "fixed"
         }
       }
+    },
+    {
+      "name": "maps.list",
+      "summary": "The process maps on this device, with steps and start-to-finish time for Today and Proposed, plus the example processes a new map can start from. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "guideOn",
+          "maps",
+          "examples"
+        ],
+        "properties": {
+          "guideOn": {
+            "type": "boolean"
+          },
+          "maps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "title",
+                "steps"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^map-[0-9]{3,}$",
+                  "description": "A map id from maps.list, e.g. map-001."
+                },
+                "title": {
+                  "type": "string"
+                },
+                "from": {
+                  "type": "string"
+                },
+                "steps": {
+                  "type": "integer"
+                },
+                "elapsedToday": {
+                  "type": "integer"
+                },
+                "elapsedProposed": {
+                  "type": "integer"
+                },
+                "revision": {
+                  "type": "integer"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "examples": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "from",
+                "title"
+              ],
+              "properties": {
+                "from": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
+      "name": "map.get",
+      "summary": "One process map: its steps (Today and Proposed) and the numbers for each: start to finish, hands-on time, waiting, handoffs and the biggest wait. Use \"short\" for the numbers only. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mapId"
+        ],
+        "properties": {
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: numbers only; detailed (default): steps too."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "revision",
+          "today",
+          "proposed",
+          "changed"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "title": {
+            "type": "string"
+          },
+          "start": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "changed": {
+            "type": "boolean",
+            "description": "Proposed differs from Today."
+          },
+          "tried": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "today": {
+            "type": "object",
+            "required": [
+              "stats"
+            ],
+            "properties": {
+              "stats": {
+                "type": "object",
+                "required": [
+                  "steps",
+                  "elapsed",
+                  "work",
+                  "wait",
+                  "handoffs"
+                ],
+                "properties": {
+                  "steps": {
+                    "type": "integer"
+                  },
+                  "elapsed": {
+                    "type": "integer",
+                    "description": "Minutes from start to finish (steps that run alongside overlap)."
+                  },
+                  "work": {
+                    "type": "integer",
+                    "description": "Hands-on minutes, summed."
+                  },
+                  "wait": {
+                    "type": "integer",
+                    "description": "Waiting minutes, summed."
+                  },
+                  "handoffs": {
+                    "type": "integer",
+                    "description": "Times the role changes from one step to the next."
+                  },
+                  "infoSteps": {
+                    "type": "integer"
+                  },
+                  "workShare": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "Hands-on time as a % of start to finish."
+                  },
+                  "biggestWaitStepId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "roles": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name",
+                    "role",
+                    "wait",
+                    "work",
+                    "msg",
+                    "par"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+                      "description": "A step id from map.get, e.g. map-001-s3."
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "What happens, in the site's own words."
+                    },
+                    "role": {
+                      "type": "string",
+                      "description": "Who does it, in the site's own words (a role, never a named person)."
+                    },
+                    "wait": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10080,
+                      "description": "Minutes waiting before this step starts."
+                    },
+                    "work": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10080,
+                      "description": "Hands-on minutes."
+                    },
+                    "msg": {
+                      "type": "boolean",
+                      "description": "The step only passes on information (a call, message or form)."
+                    },
+                    "par": {
+                      "type": "boolean",
+                      "description": "Starts alongside the step before instead of after it."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "proposed": {
+            "type": "object",
+            "required": [
+              "stats"
+            ],
+            "properties": {
+              "stats": {
+                "type": "object",
+                "required": [
+                  "steps",
+                  "elapsed",
+                  "work",
+                  "wait",
+                  "handoffs"
+                ],
+                "properties": {
+                  "steps": {
+                    "type": "integer"
+                  },
+                  "elapsed": {
+                    "type": "integer",
+                    "description": "Minutes from start to finish (steps that run alongside overlap)."
+                  },
+                  "work": {
+                    "type": "integer",
+                    "description": "Hands-on minutes, summed."
+                  },
+                  "wait": {
+                    "type": "integer",
+                    "description": "Waiting minutes, summed."
+                  },
+                  "handoffs": {
+                    "type": "integer",
+                    "description": "Times the role changes from one step to the next."
+                  },
+                  "infoSteps": {
+                    "type": "integer"
+                  },
+                  "workShare": {
+                    "type": [
+                      "integer",
+                      "null"
+                    ],
+                    "description": "Hands-on time as a % of start to finish."
+                  },
+                  "biggestWaitStepId": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "roles": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "name",
+                    "role",
+                    "wait",
+                    "work",
+                    "msg",
+                    "par"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+                      "description": "A step id from map.get, e.g. map-001-s3."
+                    },
+                    "name": {
+                      "type": "string",
+                      "description": "What happens, in the site's own words."
+                    },
+                    "role": {
+                      "type": "string",
+                      "description": "Who does it, in the site's own words (a role, never a named person)."
+                    },
+                    "wait": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10080,
+                      "description": "Minutes waiting before this step starts."
+                    },
+                    "work": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 10080,
+                      "description": "Hands-on minutes."
+                    },
+                    "msg": {
+                      "type": "boolean",
+                      "description": "The step only passes on information (a call, message or form)."
+                    },
+                    "par": {
+                      "type": "boolean",
+                      "description": "Starts alongside the step before instead of after it."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "mapId": "map-001",
+          "format": "short"
+        }
+      }
+    },
+    {
+      "name": "map.suggest",
+      "summary": "The guide's suggestions for one version of a map: biggest waits, steps that only pass on information, handoffs, steps that could run alongside, missing times and walk questions. Each says why. Rule-based; empty when the guide is switched off. Suggests only; changes nothing.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mapId"
+        ],
+        "properties": {
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "version": {
+            "type": "string",
+            "enum": [
+              "today",
+              "proposed"
+            ],
+            "description": "\"today\" is the process as it runs now; \"proposed\" is the what-if. Defaults to today."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "guideOn",
+          "suggestions"
+        ],
+        "properties": {
+          "guideOn": {
+            "type": "boolean"
+          },
+          "hidden": {
+            "type": "integer"
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "kind",
+                "title",
+                "text",
+                "why"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "time",
+                    "ask"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "why": {
+                  "type": "string",
+                  "description": "The rule or data behind it, so a person can check it."
+                },
+                "stepId": {
+                  "type": "string",
+                  "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+                  "description": "A step id from map.get, e.g. map-001-s3."
+                },
+                "tryLabel": {
+                  "type": "string"
+                },
+                "tryable": {
+                  "type": "boolean",
+                  "description": "map.try-suggestion can apply it to the Proposed version."
+                },
+                "tried": {
+                  "type": "boolean"
+                }
+              }
+            }
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "mapId": "map-001",
+          "version": "today"
+        }
+      }
+    },
+    {
+      "name": "map.create",
+      "summary": "Start a new process map, from one of the example processes (see maps.list) or blank. Proposed starts as a copy of Today.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "from"
+        ],
+        "properties": {
+          "from": {
+            "type": "string",
+            "enum": [
+              "discharge",
+              "fault",
+              "ed",
+              "blank"
+            ],
+            "description": "An example process to start from, or \"blank\"."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 140,
+            "description": "The map's name, e.g. \"Discharge from ward 3\". Defaults to the example's title."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "stepId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "description": "A step id from map.get, e.g. map-001-s3."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "from": "discharge"
+        }
+      }
+    },
+    {
+      "name": "map.step.add",
+      "summary": "Add a step to one version of a map: what happens, who does it, minutes waiting before it and hands-on minutes. Added at the end unless a position is given.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mapId",
+          "name",
+          "role"
+        ],
+        "properties": {
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "version": {
+            "type": "string",
+            "enum": [
+              "today",
+              "proposed"
+            ],
+            "description": "\"today\" is the process as it runs now; \"proposed\" is the what-if. Defaults to today."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 140,
+            "description": "What happens, e.g. \"Bed cleaned\". No personal details."
+          },
+          "role": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 140,
+            "description": "Who does it, e.g. \"Housekeeping\". A role, never a person's name."
+          },
+          "wait": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10080,
+            "description": "Minutes waiting before this step starts. Default 0."
+          },
+          "work": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10080,
+            "description": "Hands-on minutes. Default 0."
+          },
+          "msg": {
+            "type": "boolean",
+            "description": "True if the step only passes on information."
+          },
+          "par": {
+            "type": "boolean",
+            "description": "True if it starts alongside the step before."
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "1 = first. Default: last."
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The map revision the caller last saw (from map.get). If the map changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "stepId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "description": "A step id from map.get, e.g. map-001-s3."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "mapId": "map-001",
+          "version": "today",
+          "name": "Bed cleaned",
+          "role": "Housekeeping",
+          "wait": 30,
+          "work": 20
+        }
+      }
+    },
+    {
+      "name": "map.step.update",
+      "summary": "Change a step in one version of a map: its wording, who does it, its times or its flags. Only the fields given change.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mapId",
+          "stepId"
+        ],
+        "properties": {
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "version": {
+            "type": "string",
+            "enum": [
+              "today",
+              "proposed"
+            ],
+            "description": "\"today\" is the process as it runs now; \"proposed\" is the what-if. Defaults to today."
+          },
+          "stepId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "description": "A step id from map.get, e.g. map-001-s3."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 140
+          },
+          "role": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 140
+          },
+          "wait": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10080
+          },
+          "work": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10080
+          },
+          "msg": {
+            "type": "boolean"
+          },
+          "par": {
+            "type": "boolean"
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The map revision the caller last saw (from map.get). If the map changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "stepId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "description": "A step id from map.get, e.g. map-001-s3."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "mapId": "map-001",
+          "version": "proposed",
+          "stepId": "map-001-s3",
+          "wait": 60
+        }
+      }
+    },
+    {
+      "name": "map.step.move",
+      "summary": "Move a step one place up or down in one version of a map.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mapId",
+          "stepId",
+          "direction"
+        ],
+        "properties": {
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "version": {
+            "type": "string",
+            "enum": [
+              "today",
+              "proposed"
+            ],
+            "description": "\"today\" is the process as it runs now; \"proposed\" is the what-if. Defaults to today."
+          },
+          "stepId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "description": "A step id from map.get, e.g. map-001-s3."
+          },
+          "direction": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down"
+            ]
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The map revision the caller last saw (from map.get). If the map changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "stepId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "description": "A step id from map.get, e.g. map-001-s3."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "mapId": "map-001",
+          "version": "proposed",
+          "stepId": "map-001-s3",
+          "direction": "up"
+        }
+      }
+    },
+    {
+      "name": "map.step.remove",
+      "summary": "Remove a step from one version of a map.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mapId",
+          "stepId"
+        ],
+        "properties": {
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "version": {
+            "type": "string",
+            "enum": [
+              "today",
+              "proposed"
+            ],
+            "description": "\"today\" is the process as it runs now; \"proposed\" is the what-if. Defaults to today."
+          },
+          "stepId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "description": "A step id from map.get, e.g. map-001-s3."
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The map revision the caller last saw (from map.get). If the map changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "stepId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "description": "A step id from map.get, e.g. map-001-s3."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "mapId": "map-001",
+          "version": "proposed",
+          "stepId": "map-001-s3"
+        }
+      }
+    },
+    {
+      "name": "map.try-suggestion",
+      "summary": "Apply one of the guide's suggestions (from map.suggest on the proposed version, where tryable is true) to the Proposed version only. Today never changes. A what-if, not a prediction.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mapId",
+          "suggestionId"
+        ],
+        "properties": {
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "suggestionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "The id of a tryable suggestion from map.suggest (version \"proposed\")."
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The map revision the caller last saw (from map.get). If the map changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "stepId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "description": "A step id from map.get, e.g. map-001-s3."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "mapId": "map-001",
+          "suggestionId": "msgs"
+        }
+      }
+    },
+    {
+      "name": "map.hide-suggestion",
+      "summary": "Hide one guide suggestion on this map (not useful here). Changes no steps.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mapId",
+          "suggestionId"
+        ],
+        "properties": {
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "suggestionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The map revision the caller last saw (from map.get). If the map changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "stepId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "description": "A step id from map.get, e.g. map-001-s3."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "mapId": "map-001",
+          "suggestionId": "questions"
+        }
+      }
+    },
+    {
+      "name": "map.reset-proposed",
+      "summary": "Throw away every change in the Proposed version: it becomes a copy of Today again, and hidden suggestions come back.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mapId"
+        ],
+        "properties": {
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "expectedRevision": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The map revision the caller last saw (from map.get). If the map changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from maps.list, e.g. map-001."
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "stepId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "description": "A step id from map.get, e.g. map-001-s3."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "mapId": "map-001"
+        }
+      }
+    },
+    {
+      "name": "map.guide.set",
+      "summary": "Switch the process-map guide on or off on this device. With it off, maps, times and editing all still work. People only.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "on"
+        ],
+        "properties": {
+          "on": {
+            "type": "boolean"
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "guideOn"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done"
+            ]
+          },
+          "guideOn": {
+            "type": "boolean"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "on": false
+        }
+      }
     }
   ]
 }
