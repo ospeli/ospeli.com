@@ -46,6 +46,11 @@ LIVE = {
     "A8": ("Open the critical care preview", "../../demo/critical-care/"),
     "E2": ("Open the community care preview", "../../demo/community/"),
     "C6": ("Open the projects preview", "../../demo/projects/"),
+    "A7": ("Open the maternity and children preview", "../../demo/maternity/"),
+    "A9": ("Open the long-stay beds preview", "../../demo/long-stay/"),
+    "C5": ("Open the health records preview", "../../demo/records/"),
+    "D2": ("Open the revenue cycle preview", "../../demo/revenue/"),
+    "E3": ("Open the public health preview", "../../demo/public-health/"),
     "A2": ("Open the emergency department preview", "../../demo/ed-flow/"),
 }
 

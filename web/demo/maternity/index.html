@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Maternity and children's flow demo · Ospeli</title>
+<meta name="description" content="Labour rooms, postnatal beds, neonatal cots and children's beds on one live board, with admissions, transfers and unit closures logged with reasons and times. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Maternity and children's flow demo · Ospeli">
+<meta property="og:description" content="Labour rooms, postnatal beds, neonatal cots and children's beds on one live board, with admissions, transfers and unit closures logged with reasons and times. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/maternity/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; --grey:#9AA7B4; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; }
+h3.sec:first-child { margin-top: 4px; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button { font: inherit; color: var(--ink); }
+select, input[type=number] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; max-width: 100%; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 640px) { .roles { display: grid; grid-template-columns: minmax(0, 1fr); border-radius: 14px; width: 100%; } .roles button + button { border-left: 0; border-top: 1px solid var(--line); } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.clocknow { font-weight: 800; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+/* unit picker */
+.units { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0 0 12px; }
+@media (max-width: 640px) { .units { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.units button { border-radius: 12px; border-color: #CFC5B2; min-height: 56px; padding: 6px 10px; text-align: left; line-height: 1.2; display: grid; gap: 2px; }
+.units button small { font-weight: 700; color: var(--soft); font-size: 0.8rem; }
+.units button[aria-pressed=true] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.units button[aria-pressed=true] small { color: #D6E2EC; }
+.units button.shut { border-style: dashed; border-color: var(--coral); }
+/* KPI tiles */
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stat .lbl { color: var(--ink); font-size: 0.9rem; font-weight: 700; display: block; line-height: 1.3; }
+.stat .n { color: var(--soft); font-size: 0.8rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.82rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stathint { color: var(--soft); font-size: 0.8rem; margin: 6px 0 0; }
+.kpiblock.below { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 4px; }
+/* banner */
+.banner { border-radius: 12px; padding: 12px; display: grid; gap: 8px; margin-bottom: 4px; }
+.banner.shut { background: var(--hot); border: 1px solid #F1C3B5; }
+.banner.open { background: var(--wash); }
+.banner p { margin: 0; font-size: 0.95rem; }
+.banner b { font-weight: 800; }
+/* place states */
+.states { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 8px; }
+.states button { min-height: 44px; font-size: 0.95rem; border-color: #CFC5B2; padding: 6px 12px; display: inline-flex; align-items: center; gap: 6px; }
+.states button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.states button i, .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; flex: none; }
+.dot-occ { background: var(--navy); } .dot-ready { background: var(--sea); } .dot-clean { background: var(--mango); } .dot-closed { background: var(--grey); } .dot-all { background: var(--foam); }
+.places { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+@media (max-width: 420px) { .places { grid-template-columns: minmax(0, 1fr); } }
+.place { border: 1px solid var(--line); border-left: 6px solid var(--navy); border-radius: 12px; padding: 12px; background: #fff; min-width: 0; }
+.place.s-ready { border-left-color: var(--sea); background: #F5FBF9; }
+.place.s-clean { border-left-color: var(--mango); background: #FFFBF3; }
+.place.s-closed { border-left-color: var(--grey); background: #F7F7F5; }
+.place.first { box-shadow: 0 0 0 2px var(--mango) inset; }
+.place .top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.place .num { font-weight: 800; font-size: 1.15rem; }
+.chip { display: inline-block; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; background: var(--sand); white-space: nowrap; }
+.chip.c-occ { background: #E3EAF1; } .chip.c-ready { background: var(--sea); color: #fff; } .chip.c-clean { background: var(--mango); color: var(--navy); } .chip.c-closed { background: #E6E6E2; }
+.chip.over { background: var(--coral); color: #fff; } .chip.raised { background: var(--navy); color: #fff; } .chip.soft { background: var(--wash); } .chip.first { background: var(--warn); color: #7A4E00; }
+.chip.wrap { white-space: normal; text-transform: none; letter-spacing: 0; font-size: 0.85rem; }
+.code { font-weight: 800; font-size: 1.05rem; margin: 6px 0 0; font-variant-numeric: tabular-nums; }
+.meta { color: var(--soft); font-size: 0.95rem; margin: 2px 0 0; }
+.wait { font-weight: 800; color: var(--ink); }
+.acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.acts .go { flex: 1 1 auto; min-height: 50px; font-size: 1rem; }
+.go.sea { background: var(--sea); border-color: var(--sea); color: #fff; }
+.go.mango { background: var(--mango); border-color: var(--mango); color: var(--navy); }
+.go.navy { background: var(--navy); color: #fff; }
+.acts .go.quiet { flex: 0 0 auto; border-color: #CFC5B2; }
+.inline { margin-top: 10px; background: var(--sand); border-radius: 10px; padding: 10px; display: grid; gap: 8px; }
+.inline label { font-weight: 800; font-size: 0.95rem; display: grid; gap: 4px; }
+.inline select { width: 100%; }
+.inline .fine { margin: 0; }
+.exp { display: grid; gap: 10px; }
+.erow { border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 12px; padding: 12px; }
+.erow .top { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.erow .from { font-weight: 800; font-size: 1.05rem; }
+.staffrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: var(--sand); border-radius: 12px; padding: 8px 12px; }
+.staffrow b { font-size: 1.05rem; }
+.stepper { display: inline-flex; gap: 6px; }
+.stepper button { min-width: 48px; min-height: 48px; padding: 0; font-size: 1.2rem; }
+.empty { text-align: center; color: var(--soft); padding: 16px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; margin: 0; }
+.fine { font-size: 0.85rem; color: var(--soft); margin: 8px 0 0; }
+/* coordinator */
+.ugrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 760px) { .ugrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.utile { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; min-width: 0; }
+.utile.shut { background: #FFF8F5; border-color: #F1C3B5; }
+.utile .nm { font-weight: 800; display: block; line-height: 1.25; }
+.utile .big { font-size: 1.5rem; font-weight: 800; line-height: 1.1; font-variant-numeric: tabular-nums; display: block; margin-top: 4px; }
+.utile .meta { font-size: 0.85rem; }
+.stage { display: grid; gap: 8px; }
+.trow { display: grid; grid-template-columns: 92px minmax(0, 1fr) auto; gap: 12px; align-items: center; border: 1px solid var(--line); border-left: 6px solid var(--navy); border-radius: 12px; padding: 10px 12px; }
+.trow.in { border-left-color: var(--sea); }
+.trow.over { background: #FFF8F5; }
+.trow .hrs { font-weight: 800; font-size: 1.25rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.trow .hrs small { display: block; font-size: 0.75rem; color: var(--soft); font-weight: 700; }
+.trow .who b { font-size: 1.05rem; }
+.trow .who .meta { font-size: 0.9rem; }
+.trow .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.trow .do { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.trow.over .hrs { color: #B23A22; }
+@media (max-width: 700px) { .trow { grid-template-columns: 76px minmax(0, 1fr); } .trow .do { grid-column: 1 / -1; justify-content: flex-start; } }
+.closures { display: grid; gap: 8px; }
+.crow { border: 1px solid #F1C3B5; background: #FFF8F5; border-radius: 12px; padding: 10px 12px; display: flex; gap: 10px; justify-content: space-between; align-items: center; flex-wrap: wrap; }
+.crow .meta { font-size: 0.9rem; }
+.form2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+@media (max-width: 520px) { .form2 { grid-template-columns: minmax(0, 1fr); } }
+.form2 label { display: grid; gap: 4px; font-size: 0.85rem; font-weight: 800; color: var(--soft); }
+.form2 select { width: 100%; }
+details.set { margin-top: 16px; }
+details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+/* manager */
+.nums2 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.nums2 div { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.nums2 b { display: block; font-size: 1.4rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.nums2 span { font-size: 0.8rem; color: var(--soft); font-weight: 700; }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: 0.88rem; color: var(--soft); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.mbar { display: flex; height: 12px; border-radius: 6px; overflow: hidden; background: var(--sand); min-width: 80px; }
+.mbar i { display: block; height: 100%; }
+table.t { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+table.t th, table.t td { text-align: left; padding: 6px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.t th { color: var(--soft); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+table.t td.n { font-variant-numeric: tabular-nums; white-space: nowrap; }
+table.t td .meta { font-size: 0.82rem; }
+.tablewrap { overflow-x: auto; }
+.targets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+.targets label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 700; color: var(--soft); }
+.targets input { width: 100%; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.85rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 1rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.92rem; }
+.sugg .why { color: var(--soft); font-size: 0.85rem; }
+.sugg .acts { margin-top: 0; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin: 4px 0 0; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 360px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.95rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Maternity and children's flow: rooms, cots, beds and transfers</h1>
+  <p class="lead">One live board for labour rooms, postnatal beds, neonatal cots and children's beds. Each shows whether it is occupied, ready, being cleaned or closed. Admissions, discharges, transfers and unit closures are logged with times and reasons, so nobody has to phone round. Clinical teams make every clinical decision; Ospeli records what was decided and shows the flow.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-nic" aria-pressed="false">Midwife or nurse in charge (phone)</button>
+    <button type="button" id="r-flow" aria-pressed="false">Flow coordinator</button>
+    <button type="button" id="r-ops" aria-pressed="false">Operations manager</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <b>Demo tools:</b>
+    <span class="clocknow" id="clocknow" aria-live="polite"></span>
+    <button type="button" class="small" id="t-clock">Move clock on 30 min</button>
+    <button type="button" class="small" id="t-exp">An admission is expected</button>
+    <button type="button" class="small" id="t-in">Another site asks to transfer in</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <h2 id="view-h">My unit</h2>
+        <div id="kpi-top"></div>
+        <div id="view"></div>
+        <div id="kpi-bottom"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened today</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads place states, expected admissions, transfer waits, closures and your settings, and suggests where to look, with its reasons. It never uses anything about a woman's, baby's or child's condition. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal; a person decides.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its units, partner sites, codes and times. Women, babies and children appear only as anonymous codes; a baby's code is linked to the mother's so they move together. Ospeli does not assess labour, decide transfers on clinical grounds or prioritise women, babies or children, and never scores midwives or nurses. Coming next (Jan 2027): the full maternity and children's board across sites, mother and baby codes linked across every move, and the capacity review and transfer walk playbooks. <a href="../../areas/maternity-and-children-flow/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var M = 60000, H = 3600000;
+var STORE = 'ospeli.maternity.v1';
+
+// ---------- Fixed reference data (fictional) ----------
+var UNITS = [
+  { id: 'lab', name: 'Labour ward', word: 'Room', words: 'labour rooms', pre: 'L', n: 8, lead: 'Midwife in charge' },
+  { id: 'pn', name: 'Postnatal ward', word: 'Bed', words: 'postnatal beds', pre: 'PN', n: 16, lead: 'Midwife in charge' },
+  { id: 'neo', name: 'Neonatal unit', word: 'Cot', words: 'neonatal cots', pre: 'C', n: 12, lead: 'Neonatal nurse in charge' },
+  { id: 'ch', name: 'Children\'s ward', word: 'Bed', words: 'children\'s beds', pre: 'CH', n: 14, lead: 'Children\'s ward charge nurse' }
+];
+var STATES = { occ: 'Occupied', ready: 'Ready', clean: 'Cleaning', closed: 'Closed' };
+var SITES = ['Partner site A', 'Partner site B'];
+var T_REASONS = { cap: 'No bed or cot free here (capacity)', svc: 'Service not offered on this site', home: 'Return to home hospital', other: 'Other non-clinical reason' };
+var C_REASONS = ['All staffed places full', 'Staffing short', 'Cleaning or infection control', 'Equipment or building issue', 'Other'];
+var DECIDERS = ['Midwife in charge', 'Neonatal nurse in charge', 'Children\'s ward charge nurse', 'Site manager on call', 'Clinical lead on call'];
+var FROM = ['Front desk arrival', 'Planned admission', 'From the emergency department', 'From the antenatal clinic'];
+var ROLE_NAME = { nic: 'Midwife or nurse in charge', flow: 'Flow coordinator', ops: 'Operations manager' };
+// Example settings for this demo only, not a standard: each organisation sets its own.
+var DEFAULTS = { reviewH: 4, transferLimitH: 2 };
+
+// ---------- State ----------
+function seed() {
+  var day = new Date(); day.setHours(0, 0, 0, 0);
+  var D = day.getTime(), t = function (hm) { var p = hm.split(':'); return D + (+p[0]) * H + (+p[1]) * M; };
+  var ago = function (d, hm) { return t(hm) - d * 24 * H; };
+  var s = { v: 1, created: Date.now(), clock: t('11:30'), role: window.matchMedia('(max-width: 640px)').matches ? 'nic' : 'flow', unit: 'lab',
+    guide: true, kpiOpen: null, filter: 'all', ui: {}, settings: Object.assign({}, DEFAULTS), pending: [], dismissed: {}, log: [], seq: 4800,
+    staffed: { lab: 8, pn: 15, neo: 10, ch: 14 }, places: [], expected: [], transfers: [], closures: [], discharges: [] };
+  // Places: [state, code, since or note]. Mothers M-, babies B- (linked to the mother's number), children P-.
+  var P = {
+    lab: [['occ', 'M-4410'], ['occ', 'M-4523'], ['clean', null, '09:20'], ['occ', 'M-4387'], ['ready'], ['clean', null, '11:00'], ['occ', 'M-4602'], ['occ', 'M-4655']],
+    pn: [['occ', 'M-4318'], ['occ', 'M-4335'], ['occ', 'M-4352'], ['occ', 'M-4417'], ['ready'], ['occ', 'M-4371'], ['occ', 'M-4396'], ['clean', null, '09:40'],
+         ['occ', 'M-4402'], ['occ', 'M-4428'], ['closed', null, 'Equipment repair'], ['occ', 'M-4436'], ['occ', 'M-4449'], ['occ', 'M-4461'], ['occ', 'M-4490'], ['occ', 'M-4579']],
+    neo: [['occ', 'B-4206'], ['occ', 'B-4233'], ['occ', 'B-4417'], ['occ', 'B-4251'], ['occ', 'B-4268'], ['occ', 'B-4277'], ['occ', 'B-4290'], ['occ', 'B-4305'],
+          ['occ', 'B-4352'], ['occ', 'B-4311'], ['closed', null, 'Not staffed'], ['closed', null, 'Not staffed']],
+    ch: [['occ', 'P-5730'], ['occ', 'P-5748'], ['ready'], ['occ', 'P-5981'], ['occ', 'P-5802'], ['occ', 'P-5815'], ['ready'], ['occ', 'P-5833'],
+         ['ready', null, '10:20'], ['occ', 'P-5851'], ['occ', 'P-5866'], ['clean', null, '10:50'], ['occ', 'P-5890'], ['occ', 'P-5902']]
+  };
+  UNITS.forEach(function (u) {
+    P[u.id].forEach(function (x, i) {
+      var p = { id: u.pre + (i + 1), unit: u.id, st: x[0], code: x[1] || null, link: null, why: null, since: null, first: false };
+      if (x[0] === 'closed') p.why = x[2];
+      if (x[0] === 'clean' || (x[0] === 'ready' && x[2])) p.since = t(x[2]);
+      if (p.code) p.link = linkFor(u.id, p.code);
+      s.places.push(p);
+    });
+  });
+  // Expected admissions (not yet arrived).
+  s.expected = [
+    { id: 'E1', unit: 'pn', code: 'M-4561', from: 'Planned admission', at: t('10:45') },
+    { id: 'E2', unit: 'lab', code: 'M-4710', from: 'Front desk arrival', at: t('11:05') },
+    { id: 'E3', unit: 'ch', code: 'P-6120', from: 'From the emergency department', at: t('11:10') },
+    { id: 'E4', unit: 'lab', code: 'M-4733', from: 'Planned admission', at: t('11:20') }
+  ];
+  // Transfers: today and earlier this month.
+  s.transfers = [
+    { id: 'T1', code: 'M-4268', dir: 'out', unit: 'lab', place: 'L3', site: 'Partner site B', reason: 'svc', req: t('07:35'), acc: t('08:05'), dep: t('09:20') },
+    { id: 'T2', code: 'B-4290', dir: 'out', unit: 'neo', place: 'C7', site: 'Partner site A', reason: 'cap', req: t('08:50'), acc: t('10:05'), dep: null },
+    { id: 'T3', code: 'P-5981', dir: 'out', unit: 'ch', place: 'CH4', site: 'Partner site A', reason: 'svc', req: t('09:05'), acc: null, dep: null },
+    { id: 'T4', code: 'M-3390', dir: 'in', unit: 'pn', place: null, site: 'Partner site B', reason: 'home', req: t('10:40'), acc: null, dep: null }
+  ];
+  [[1, '13:20', '16:05', 'out', 'neo', 'cap', 'B-4122'], [3, '10:00', '11:40', 'out', 'lab', 'cap', 'M-4019'], [4, '11:00', '13:30', 'in', 'pn', 'home', 'M-3302'],
+   [6, '09:10', '12:30', 'out', 'ch', 'svc', 'P-5577'], [9, '14:00', '17:15', 'out', 'neo', 'cap', 'B-3988']].forEach(function (x, i) {
+    var req = ago(x[0], x[1]);
+    if (sameMonth(req, s.clock)) s.transfers.push({ id: 'H' + (i + 1), code: x[6], dir: x[3], unit: x[4], place: null, site: SITES[i % 2], reason: x[5], req: req, acc: req + 40 * M, dep: ago(x[0], x[2]), old: true });
+  });
+  // Closures and diverts: one open now, others earlier this month.
+  s.closures.push({ id: 'K1', unit: 'neo', kind: 'closed', start: t('07:10'), end: null, reason: 'All staffed places full', by: 'Neonatal nurse in charge', reviewedAt: null });
+  [[2, '14:10', 5.5, 'neo', 'closed', 'All staffed places full', 'Neonatal nurse in charge'], [4, '16:00', 2, 'lab', 'divert', 'Staffing short', 'Site manager on call'],
+   [5, '09:30', 3, 'neo', 'closed', 'All staffed places full', 'Site manager on call'], [8, '08:15', 6, 'pn', 'closed', 'Staffing short', 'Midwife in charge']].forEach(function (x, i) {
+    var st = ago(x[0], x[1]);
+    if (sameMonth(st, s.clock)) s.closures.push({ id: 'K' + (i + 2), unit: x[3], kind: x[4], start: st, end: st + x[2] * H, reason: x[5], by: x[6], reviewedAt: null });
+  });
+  s.discharges = [{ unit: 'pn', code: 'M-4120', at: t('09:40') }, { unit: 'ch', code: 'P-5874', at: t('10:20') }, { unit: 'pn', code: 'M-4188', at: t('10:55') }];
+  var ev = [
+    ['07:05', 'Day shift handover: place states checked on all four units.'],
+    ['07:10', 'Neonatal unit closed to admissions: all staffed places full. Decided by the neonatal nurse in charge.'],
+    ['07:35', 'Transfer out requested: M-4268 from labour room L3 to Partner site B (service not offered on this site).'],
+    ['08:05', 'Partner site B accepted M-4268.'],
+    ['08:50', 'Transfer out requested: B-4290 from neonatal cot C7 to Partner site A (no bed or cot free here). Linked to mother M-4290.'],
+    ['09:05', 'Transfer out requested: P-5981 from children\'s bed CH4 to Partner site A (service not offered on this site).'],
+    ['09:20', 'M-4268 departed for Partner site B. Request to departure 1 h 45. Room L3 to cleaning.'],
+    ['09:40', 'M-4120 and baby B-4120 discharged from postnatal bed PN8. Bed to cleaning.'],
+    ['10:05', 'Partner site A accepted B-4290.'],
+    ['10:20', 'P-5874 discharged from children\'s bed CH9. Bed cleaned and ready.'],
+    ['10:40', 'Transfer in requested: M-3390 from Partner site B to the postnatal ward (return to home hospital).'],
+    ['10:45', 'Expected admission: M-4561 to the postnatal ward (planned admission).'],
+    ['10:50', 'Children\'s bed CH12 to cleaning.'],
+    ['10:55', 'M-4188 and baby B-4188 discharged from postnatal bed PN5. Bed to cleaning.'],
+    ['11:00', 'M-4579 moved from labour room L6 to postnatal bed PN16, with baby B-4579. Room L6 to cleaning.'],
+    ['11:05', 'Expected admission: M-4710 to the labour ward (front desk arrival).'],
+    ['11:10', 'Expected admission: P-6120 to the children\'s ward (from the emergency department).'],
+    ['11:15', 'Postnatal bed PN5 cleaned and ready.'],
+    ['11:20', 'Expected admission: M-4733 to the labour ward (planned admission).']
+  ];
+  s.log = ev.map(function (e) { return { t: t(e[0]), text: e[1] }; }).sort(function (a, b) { return b.t - a.t; });
+  return s;
+}
+function linkFor(unit, code) {
+  if (!code) return null;
+  var n = code.slice(2);
+  if (unit === 'pn' && code[0] === 'M') return 'B-' + n;
+  if (unit === 'neo' && code[0] === 'B') return 'M-' + n;
+  return null;
+}
+function sameMonth(a, b) { a = new Date(a); b = new Date(b); return a.getMonth() === b.getMonth() && a.getFullYear() === b.getFullYear(); }
+
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE));
+    // An example day goes stale: start a fresh one after 8 hours.
+    if (!s || s.v !== 1 || !s.places || Date.now() - s.created > 8 * H) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function now() { return state.clock; }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+
+// ---------- Derived data (pure) ----------
+function unitOf(id) { return UNITS.filter(function (u) { return u.id === id; })[0]; }
+function placesOf(u) { return state.places.filter(function (p) { return p.unit === u; }); }
+function placeById(id) { return state.places.filter(function (p) { return p.id === id; })[0]; }
+function firstReady(u) { return placesOf(u).filter(function (p) { return p.st === 'ready'; })[0] || null; }
+function expectedOf(u) { return state.expected.filter(function (e) { return e.unit === u; }); }
+function openClosure(u) { return state.closures.filter(function (c) { return c.unit === u && !c.end; })[0] || null; }
+function transferFor(p) { return state.transfers.filter(function (x) { return x.dir === 'out' && x.place === p.id && !x.dep && x.code === p.code; })[0] || null; }
+function count(u) {
+  var c = { occ: 0, ready: 0, clean: 0, closed: 0 };
+  placesOf(u).forEach(function (p) { c[p.st]++; });
+  c.total = placesOf(u).length; c.open = c.total - c.closed; c.staffed = Math.min(state.staffed[u], c.open);
+  return c;
+}
+function tWait(x) { var end = x.dir === 'in' ? (x.acc || now()) : (x.acc || now()); return Math.max(0, Math.round((end - x.req) / M)); }
+function sinceReq(x) { return Math.max(0, Math.round(((x.dep || now()) - x.req) / M)); }
+function tOver(x) { return !x.acc && !x.dep && (now() - x.req) > state.settings.transferLimitH * H; }
+function closedFor(c) { return Math.max(0, (c.end || now()) - c.start); }
+function needsReview(c) { return !c.end && now() - (c.reviewedAt || c.start) > state.settings.reviewH * H; }
+function inMonth(x) { return sameMonth(x, now()); }
+function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function kpis() {
+  var neo = count('neo');
+  var monthC = state.closures.filter(function (c) { return inMonth(c.start); });
+  var closedH = monthC.reduce(function (n, c) { return n + closedFor(c) / H; }, 0);
+  var outs = state.transfers.filter(function (x) { return x.dir === 'out' && inMonth(x.req); });
+  var outsCap = outs.filter(function (x) { return x.reason === 'cap'; });
+  var departed = state.transfers.filter(function (x) { return x.dep && inMonth(x.req); });
+  var med = median(departed.map(function (x) { return (x.dep - x.req) / M; }));
+  var today = new Date(now()); today.setHours(0, 0, 0, 0);
+  var noon = today.getTime() + 12 * H;
+  var pnToday = state.discharges.filter(function (d) { return d.unit === 'pn' && d.at >= today.getTime(); });
+  var byUnit = {};
+  UNITS.forEach(function (u) { var c = count(u.id), k = openClosure(u.id); byUnit[u.id] = { name: u.name, places: c.total, occupied: c.occ, ready: c.ready, cleaning: c.clean, closed: c.closed, staffed: c.staffed, expected: expectedOf(u.id).length, status: k ? (k.kind === 'divert' ? 'divert' : 'closed to admissions') : 'open' }; });
+  return {
+    cotsOccupied: neo.occ, cotsStaffed: neo.staffed, cots: neo.total,
+    cotOccupancyPct: neo.staffed ? Math.round(neo.occ / neo.staffed * 100) : null,
+    closureHoursThisMonth: Math.round(closedH * 10) / 10, closuresThisMonth: monthC.length,
+    unitsClosedNow: UNITS.filter(function (u) { return openClosure(u.id); }).length,
+    transfersOutThisMonth: outs.length, transfersOutForCapacityThisMonth: outsCap.length,
+    transfersOutForCapacityPct: outs.length ? Math.round(outsCap.length / outs.length * 100) : null,
+    transferRequestToDepartureMedianMin: med == null ? null : Math.round(med), transfersDepartedThisMonth: departed.length,
+    transfersWaiting: state.transfers.filter(function (x) { return !x.dep && !(x.dir === 'in' && x.arrived); }).length,
+    postnatalDischargesToday: pnToday.length, postnatalDischargesBeforeNoon: pnToday.filter(function (d) { return d.at < noon; }).length,
+    placesReadyNow: state.places.filter(function (p) { return p.st === 'ready'; }).length,
+    expectedAdmissions: state.expected.length,
+    byUnit: byUnit, settings: clone(state.settings)
+  };
+}
+
+// ---------- The guide: plain, checkable rules ----------
+function suggest() {
+  var out = [], S = state.settings;
+  // 1. A unit is near full: fewer ready places than expected admissions. Clean first, or warn the coordinator early.
+  UNITS.forEach(function (u) {
+    var c = count(u.id), exp = expectedOf(u.id).length;
+    if (openClosure(u.id) || !(c.ready < exp || (c.ready === 0 && exp > 0))) return;
+    var cleaning = placesOf(u.id).filter(function (p) { return p.st === 'clean' && !p.first; });
+    if (cleaning.length) {
+      var ids = cleaning.map(function (p) { return p.id; }), id1 = 'clean-' + u.id + '-' + ids.join('.');
+      out.push({ id: id1, kind: 'time', owner: 'nic', unit: u.id,
+        title: u.name + ': clean ' + list(ids) + ' first',
+        text: c.ready + ' ' + (c.ready === 1 ? u.word.toLowerCase() : u.words) + ' ready, ' + exp + ' admission' + (exp === 1 ? '' : 's') + ' expected. ' + list(ids) + (ids.length === 1 ? ' is' : ' are') + ' waiting to be cleaned. Cleaning ' + (ids.length === 1 ? 'it' : 'them') + ' first frees space soonest.',
+        why: 'Ready places counted on the board now, against expected admissions for this unit. It uses no clinical information.',
+        acts: [{ label: 'Propose: clean these first', primary: true, fn: function () { propose({ id: id1, owner: 'nic', kind: 'clean', ids: ids, unit: u.id, text: 'Ask housekeeping to clean ' + list(ids) + ' on the ' + u.name.toLowerCase() + ' first.' }); } }] });
+    } else {
+      out.push({ id: 'short-' + u.id + '-' + c.ready + '-' + exp, kind: 'move', owner: 'flow',
+        title: u.name + ' will run short: ' + c.ready + ' ready, ' + exp + ' expected',
+        text: 'Nothing is being cleaned, so no place frees up soon. The flow coordinator can see capacity on the other units and partner sites.',
+        why: 'Ready places counted on the board now, against expected admissions for this unit.',
+        acts: [{ label: 'Show capacity across units', fn: function () { state.role = 'flow'; render(); document.getElementById('view-h').scrollIntoView({ block: 'start' }); } }] });
+    }
+  });
+  // 2. A closure or divert has lasted longer than the set review time.
+  state.closures.filter(needsReview).forEach(function (k) {
+    var u = unitOf(k.unit), id2 = 'review-' + k.id + '-' + (k.reviewedAt || k.start);
+    out.push({ id: id2, kind: 'ask', owner: 'ops',
+      title: u.name + ' ' + (k.kind === 'divert' ? 'on divert' : 'closed') + ' for ' + fmt(closedFor(k) / M) + ': time to review',
+      text: 'Closed to admissions since ' + hhmm(k.start) + ' (' + k.reason.toLowerCase() + '), decided by the ' + k.by.toLowerCase() + '. The set review time is ' + S.reviewH + ' h' + (k.reviewedAt ? ' since the last review at ' + hhmm(k.reviewedAt) : '') + '.',
+      why: 'Time since the closure was logged' + (k.reviewedAt ? ' or last reviewed' : '') + ', against the review time in Settings. The review time is an example setting, not a standard. Reopening stays with the decision maker.',
+      acts: [{ label: 'Propose: hold a closure review', primary: true, fn: function () { propose({ id: id2, owner: 'ops', kind: 'review', closure: k.id, text: 'Hold a review of the ' + u.name.toLowerCase() + ' closure with the ' + k.by.toLowerCase() + ' and the flow coordinator.' }); } }] });
+  });
+  // 3. A transfer request has waited past the set time with no acceptance.
+  state.transfers.filter(function (x) { return tOver(x) && !x.escalated; }).sort(function (a, b) { return a.req - b.req; }).slice(0, 1).forEach(function (x) {
+    var id3 = 'esc-' + x.id;
+    out.push({ id: id3, kind: 'time', owner: 'flow',
+      title: 'Transfer of ' + x.code + ' waiting ' + fmt(tWait(x)) + ' with no acceptance',
+      text: (x.dir === 'out' ? unitOf(x.unit).name + ' to ' + x.site : x.site + ' to the ' + unitOf(x.unit).name.toLowerCase()) + ', requested ' + hhmm(x.req) + ' (' + T_REASONS[x.reason].toLowerCase() + '). The set time is ' + S.transferLimitH + ' h.',
+      why: 'Time since the request was logged, and nothing else. The limit is an example setting, not a standard.',
+      acts: [{ label: 'Propose: escalate to the site manager on call', primary: true, fn: function () { propose({ id: id3, owner: 'flow', kind: 'esc', transfer: x.id, text: 'Escalate the transfer of ' + x.code + ' (waiting ' + fmt(tWait(x)) + ') to the site manager on call.' }); } }] });
+  });
+  // 4. The same unit has closed three or more times this month for the same reason.
+  var seen = {};
+  state.closures.filter(function (k) { return inMonth(k.start); }).forEach(function (k) { var key = k.unit + '|' + k.reason; seen[key] = (seen[key] || 0) + 1; });
+  Object.keys(seen).forEach(function (key) {
+    if (seen[key] < 3) return;
+    var p = key.split('|'), u = unitOf(p[0]), id4 = 'cause-' + p[0] + '-' + seen[key];
+    out.push({ id: id4, kind: 'ask', owner: 'ops',
+      title: u.name + ' closed ' + seen[key] + ' times this month: ' + p[1].toLowerCase(),
+      text: 'The same reason keeps coming up. A capacity review of this cause with the unit lead could show what would stop it recurring.',
+      why: 'Closures and diverts logged this calendar month, grouped by unit and reason.',
+      acts: [{ label: 'Propose: review this cause', primary: true, fn: function () { propose({ id: id4, owner: 'ops', kind: 'cause', text: 'Add "' + u.name.toLowerCase() + ': ' + p[1].toLowerCase() + '" to the next capacity review, with the ' + u.lead.toLowerCase() + '.' }); } }] });
+  });
+  return out.filter(function (x) { return !state.dismissed[x.id]; }).slice(0, 4);
+}
+function propose(p) {
+  if (state.pending.some(function (x) { return x.id === p.id; })) return;
+  p.at = now(); state.pending.push(p);
+  addLog('Guide proposed: ' + p.text + ' Waiting for the ' + ROLE_NAME[p.owner].toLowerCase() + '.');
+  render(); toast('Proposed. The ' + ROLE_NAME[p.owner].toLowerCase() + ' decides.');
+}
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x.id !== p.id; });
+  if (!yes) { state.dismissed[p.id] = true; addLog(ROLE_NAME[p.owner] + ' declined: ' + p.text); render(); toast('Declined. Nothing changed.'); return; }
+  if (p.kind === 'clean') p.ids.forEach(function (id) { var x = placeById(id); if (x && x.st === 'clean') x.first = true; });
+  if (p.kind === 'review') { var k = state.closures.filter(function (c) { return c.id === p.closure; })[0]; if (k) k.reviewedAt = now(); }
+  if (p.kind === 'esc') { var x = state.transfers.filter(function (t) { return t.id === p.transfer; })[0]; if (x) x.escalated = true; }
+  addLog(ROLE_NAME[p.owner] + ' confirmed: ' + p.text);
+  render(); toast({ clean: 'Confirmed. Marked "clean first" on the board.', review: 'Confirmed. Review logged; the review clock restarts.', esc: 'Confirmed. Escalation logged.', cause: 'Confirmed. Added to the capacity review.' }[p.kind]);
+}
+
+// ---------- Helpers ----------
+function fmt(m) { m = Math.round(+m || 0); if (m < 60) return m + ' min'; var h = Math.floor(m / 60), r = m % 60; return h + ' h ' + (r < 10 ? '0' : '') + r; }
+function hrs(ms) { return (Math.round(ms / H * 10) / 10) + ' h'; }
+function hhmm(t) { var d = new Date(t); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+function pad(n) { return (n < 10 ? '0' : '') + n; }
+function dday(t) { return new Date(t).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }); }
+function list(a) { return a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1]; }
+function where(p) { var u = unitOf(p.unit); return ({ lab: 'labour room ', pn: 'postnatal bed ', neo: 'neonatal cot ', ch: 'children\'s bed ' })[u.id] + p.id; }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+function sel(id, opts, value) { var s = el('select', { id: id }); opts.forEach(function (o) { var v = Array.isArray(o) ? o[0] : o, l = Array.isArray(o) ? o[1] : o; s.appendChild(el('option', { value: v, text: l })); }); if (value != null) s.value = value; return s; }
+var lastLogT = null;
+function addLog(text) { lastLogT = now(); state.log.unshift({ t: lastLogT, text: text, fresh: true }); state.log = state.log.slice(0, 60); }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+function withBaby(p) { return p.code + (p.link && p.unit === 'pn' && !locate(p.link) ? ' and baby ' + p.link : ''); }
+
+// ---------- Actions (each records what a person did or decided) ----------
+function toCleaning(p) { p.st = 'clean'; p.code = null; p.link = null; p.since = now(); p.first = false; }
+function discharge(p) {
+  var who = withBaby(p);
+  state.discharges.push({ unit: p.unit, code: p.code, at: now() });
+  toCleaning(p); state.ui = {};
+  addLog(who + ' discharged from ' + where(p) + '. ' + unitOf(p.unit).word + ' to cleaning.');
+  render(); toast('Discharge recorded. ' + p.id + ' is waiting to be cleaned.');
+}
+function moveToPostnatal(p) {
+  var to = firstReady('pn'); if (!to) return toast('No postnatal bed is ready.');
+  to.st = 'occ'; to.code = p.code; to.link = linkFor('pn', p.code); to.since = now(); to.first = false;
+  var from = p.id; toCleaning(p); state.ui = {};
+  state.expected = state.expected.filter(function (e) { return !(e.unit === 'pn' && e.code === to.code); });
+  addLog(to.code + ' moved from labour room ' + from + ' to postnatal bed ' + to.id + ', with baby ' + to.link + '. Room ' + from + ' to cleaning.');
+  render(); toast(to.code + ' is in postnatal bed ' + to.id + '. Codes stay linked.');
+}
+function cleaned(p) {
+  var waited = fmt((now() - (p.since || now())) / M);
+  p.st = 'ready'; p.first = false; p.since = now();
+  addLog(unitOf(p.unit).word + ' ' + p.id + ' cleaned and ready (waited ' + waited + ' for cleaning).');
+  render(); toast(p.id + ' is ready.');
+}
+function admit(e, p) {
+  p = p || firstReady(e.unit); if (!p) return toast('No ' + unitOf(e.unit).word.toLowerCase() + ' is ready on this unit.');
+  var k = openClosure(e.unit);
+  p.st = 'occ'; p.code = e.code; p.link = linkFor(e.unit, e.code); p.since = now();
+  state.expected = state.expected.filter(function (x) { return x.id !== e.id; }); state.ui = {};
+  addLog(e.code + ' admitted to ' + where(p) + ' (' + e.from.toLowerCase() + ').' + (k ? ' Unit is closed to admissions; admitted as decided by the team.' : ''));
+  render(); toast(e.code + ' admitted to ' + p.id + '.');
+}
+function newArrival(p) {
+  var pre = { lab: 'M-', pn: 'M-', neo: 'B-', ch: 'P-' }[p.unit];
+  admit({ id: 'X' + (++state.seq), unit: p.unit, code: pre + state.seq, from: 'Front desk arrival' }, p);
+}
+function closePlace(p, on) {
+  if (on) { p.st = 'closed'; p.why = 'Closed by the person in charge'; } else { p.st = 'ready'; p.why = null; p.since = now(); }
+  addLog(unitOf(p.unit).word + ' ' + p.id + (on ? ' closed.' : ' reopened and ready.'));
+  render(); toast(p.id + (on ? ' closed.' : ' reopened.'));
+}
+function setStaffed(u, d) {
+  var c = count(u), n = Math.max(0, Math.min(c.open, state.staffed[u] + d));
+  if (n === state.staffed[u]) return toast(d > 0 ? 'Every open place is already staffed.' : 'No staffed places left to remove.');
+  state.staffed[u] = n;
+  addLog(unitOf(u).name + ': staffed places set to ' + n + ' of ' + c.open + ' open.');
+  render(); toast('Staffed places: ' + n + '.');
+}
+function requestOut(p, site, reason) {
+  var id = 'T' + (++state.seq);
+  state.transfers.push({ id: id, code: p.code, dir: 'out', unit: p.unit, place: p.id, site: site, reason: reason, req: now(), acc: null, dep: null });
+  state.ui = {};
+  addLog('Transfer out requested: ' + p.code + ' from ' + where(p) + ' to ' + site + ' (' + T_REASONS[reason].toLowerCase() + ').' + (p.link && p.unit === 'neo' ? ' Linked to mother ' + p.link + '.' : ''));
+  render(); toast('Transfer requested. The flow coordinator can see it.');
+}
+function accept(x) {
+  x.acc = now();
+  addLog((x.dir === 'out' ? x.site + ' accepted ' : 'Transfer in accepted by the ' + unitOf(x.unit).name.toLowerCase() + ': ') + x.code + '. Request to acceptance ' + fmt((x.acc - x.req) / M) + '.');
+  render(); toast('Accepted. Wait recorded.');
+}
+function depart(x) {
+  x.dep = now(); var p = placeById(x.place);
+  if (p && p.code === x.code) toCleaning(p);
+  addLog(x.code + ' departed for ' + x.site + '. Request to departure ' + fmt((x.dep - x.req) / M) + '.' + (p ? ' ' + unitOf(p.unit).word + ' ' + p.id + ' to cleaning.' : ''));
+  render(); toast('Departure recorded. ' + (p ? p.id + ' is waiting to be cleaned.' : ''));
+}
+function arrive(x) {
+  var p = firstReady(x.unit); if (!p) return toast('No place is ready on the ' + unitOf(x.unit).name.toLowerCase() + '.');
+  x.dep = now(); x.arrived = true; x.place = p.id;
+  p.st = 'occ'; p.code = x.code; p.link = linkFor(x.unit, x.code); p.since = now();
+  addLog(x.code + ' arrived from ' + x.site + ' to ' + where(p) + '. Request to arrival ' + fmt((x.dep - x.req) / M) + '.');
+  render(); toast(x.code + ' is in ' + p.id + '.');
+}
+function logClosure(u, kind, reason, by) {
+  if (openClosure(u)) return toast('That unit is already closed or on divert.');
+  state.closures.push({ id: 'K' + (++state.seq), unit: u, kind: kind, start: now(), end: null, reason: reason, by: by, reviewedAt: null });
+  state.ui = {};
+  addLog(unitOf(u).name + (kind === 'divert' ? ' on divert to another site' : ' closed to admissions') + ': ' + reason.toLowerCase() + '. Decided by the ' + by.toLowerCase() + '.');
+  render(); toast('Closure logged with reason and decision maker.');
+}
+function endClosure(k) {
+  k.end = now();
+  addLog(unitOf(k.unit).name + ' reopened to admissions after ' + fmt(closedFor(k) / M) + '.');
+  render(); toast('Reopened. Closed hours recorded.');
+}
+
+// ---------- Render ----------
+var HINTS = {
+  nic: 'The midwife or nurse in charge\'s phone. Pick your unit. Admit expected arrivals, record discharges and moves by code, and keep every room, bed or cot state true. A few taps each.',
+  flow: 'The flow coordinator\'s view. Capacity across the four units, every transfer request by stage and wait, and unit closures and diverts with the reason and who decided.',
+  ops: 'The operations manager\'s view: capacity by unit, closures and diverts this month with hours, postnatal discharges before noon, and cots occupied against staffed.'
+};
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  ['nic', 'flow', 'ops'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('clocknow').textContent = 'Demo clock ' + hhmm(now());
+  document.getElementById('view-h').textContent = { nic: 'My unit', flow: 'Capacity and transfers', ops: 'Maternity and children\'s capacity' }[state.role];
+  var top = document.getElementById('kpi-top'), bottom = document.getElementById('kpi-bottom'); top.textContent = ''; bottom.textContent = '';
+  (state.role === 'nic' ? bottom : top).appendChild(kpiBlock(state.role === 'nic'));
+  var v = document.getElementById('view'); v.textContent = '';
+  v.appendChild(state.role === 'nic' ? nicView() : state.role === 'flow' ? flowView() : opsView());
+  renderGuide();
+  renderLog();
+  save();
+  if (aid) { var e = document.getElementById(aid); if (e) e.focus({ preventScroll: true }); }
+}
+function kpiBlock(below) {
+  var k = kpis(), wrap = el('div', { class: 'kpiblock' + (below ? ' below' : '') });
+  if (below) wrap.appendChild(el('h3', { class: 'sec', text: 'Numbers across all units' }));
+  var box = el('div', { class: 'stats', id: 'kpis' });
+  var tiles = [
+    ['cot', k.cotOccupancyPct == null ? '–' : k.cotOccupancyPct + '%', 'Cot occupancy', k.cotsOccupied + ' occupied of ' + k.cotsStaffed + ' staffed · ' + k.cots + ' cots', 'Right now: occupied cots / staffed cots. Over a period: occupied cot-days / available cot-days. Local definition.', k.cotsOccupied >= k.cotsStaffed],
+    ['closed', hrs(k.closureHoursThisMonth * H), 'Unit closure hours', k.closuresThisMonth + ' closures and diverts this month · ' + k.unitsClosedNow + ' now', 'Hours closed to admissions or on divert this calendar month, all units. Per unit: hours closed / hours in the period. Local definition.', k.unitsClosedNow > 0],
+    ['cap', k.transfersOutForCapacityPct == null ? '–' : k.transfersOutForCapacityPct + '%', 'Transfers out for capacity', k.transfersOutForCapacityThisMonth + ' of ' + k.transfersOutThisMonth + ' transfers out this month', 'Transfers out for lack of a cot or bed / all transfers out, this calendar month. Local definition.', false],
+    ['med', k.transferRequestToDepartureMedianMin == null ? '–' : fmt(k.transferRequestToDepartureMedianMin), 'Transfer request to departure', 'median of ' + k.transfersDepartedThisMonth + ' this month', 'Transfer requested → patient departed (or arrived, for transfers in), median, this calendar month. Local definition.', false],
+    ['noon', k.postnatalDischargesBeforeNoon + ' of ' + k.postnatalDischargesToday, 'Postnatal discharges before noon', 'today', 'Postnatal discharges recorded before 12:00 / all postnatal discharges today. Local definition.', false],
+    ['ready', String(k.placesReadyNow), 'Places ready now', k.expectedAdmissions + ' admissions expected', 'Rooms, beds and cots marked ready (cleaned, open, empty) across the four units, against admissions expected but not yet arrived. Local definition.', k.placesReadyNow < k.expectedAdmissions]
+  ];
+  tiles.forEach(function (t) {
+    var open = state.kpiOpen === t[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat' + (t[5] ? ' alert' : ''), 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def', text: t[4] })]));
+  });
+  wrap.appendChild(box);
+  wrap.appendChild(el('p', { class: 'stathint', text: 'Tap a tile for its definition.' }));
+  return wrap;
+}
+
+// --- Midwife or nurse in charge (phone first) ---
+function nicView() {
+  var frag = document.createDocumentFragment(), u = unitOf(state.unit), c = count(u.id), k = openClosure(u.id);
+  var pick = el('div', { class: 'units', role: 'group', 'aria-label': 'Which unit' });
+  UNITS.forEach(function (x) {
+    var cx = count(x.id), shut = openClosure(x.id);
+    pick.appendChild(el('button', { type: 'button', id: 'u-' + x.id, class: shut ? 'shut' : '', 'aria-pressed': String(state.unit === x.id), onclick: function () { state.unit = x.id; state.filter = 'all'; state.ui = {}; render(); } },
+      [x.name, el('small', { text: shut ? 'Closed to admissions' : cx.ready + ' ready · ' + cx.clean + ' cleaning' })]));
+  });
+  frag.appendChild(pick);
+  // Unit status: closed banner or close control.
+  if (k) {
+    frag.appendChild(el('div', { class: 'banner shut', id: 'unit-status' }, [
+      el('p', {}, [el('b', { text: (k.kind === 'divert' ? 'On divert' : 'Closed to admissions') + ' since ' + hhmm(k.start) + ' · ' + fmt(closedFor(k) / M) }), '. ' + k.reason + '. Decided by the ' + k.by.toLowerCase() + '.']),
+      el('div', { class: 'acts', style: 'margin:0' }, [el('button', { type: 'button', class: 'go', id: 'reopen-unit', onclick: function () { endClosure(k); }, text: 'Reopen to admissions' })])]));
+  } else if (state.ui.closeUnit) {
+    frag.appendChild(closureForm('cl', u.id));
+  } else {
+    frag.appendChild(el('div', { class: 'banner open', id: 'unit-status' }, [
+      el('p', {}, [el('b', { text: 'Open to admissions' }), ' · ' + c.ready + ' ready, ' + c.clean + ' cleaning, ' + c.occ + ' occupied of ' + c.total + '.']),
+      el('div', { class: 'acts', style: 'margin:0' }, [el('button', { type: 'button', class: 'go quiet', id: 'close-unit', onclick: function () { state.ui = { closeUnit: true }; render(); var s = document.getElementById('cl-reason'); if (s) s.focus(); }, text: 'Close unit to admissions…' })])]));
+  }
+  // Task first: expected admissions.
+  var exp = expectedOf(u.id).sort(function (a, b) { return a.at - b.at; });
+  frag.appendChild(el('h3', { class: 'sec', text: 'Expected admissions · ' + exp.length }));
+  if (!exp.length) frag.appendChild(el('p', { class: 'empty', text: 'No admissions expected on this unit.' }));
+  else {
+    var box = el('div', { class: 'exp', id: 'expected' }), fr = firstReady(u.id);
+    exp.forEach(function (e) {
+      box.appendChild(el('article', { class: 'erow', 'aria-label': 'Expected ' + e.code }, [
+        el('div', { class: 'top' }, [el('span', { class: 'from', text: e.code }), el('span', { class: 'wait', text: fmt((now() - e.at) / M) })]),
+        el('p', { class: 'meta', text: e.from + ' · told ' + hhmm(e.at) }),
+        el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'go sea', id: 'adm-' + e.id, disabled: fr ? false : 'disabled', onclick: function () { admit(e); }, text: fr ? 'Admit to ' + fr.id : 'No ' + u.word.toLowerCase() + ' ready' })])]));
+    });
+    frag.appendChild(box);
+  }
+  // Staffing for this unit.
+  frag.appendChild(el('h3', { class: 'sec', text: 'Staffed ' + u.words }));
+  frag.appendChild(el('div', { class: 'staffrow' }, [
+    el('span', {}, [el('b', { id: 'staffed-n', text: c.staffed + ' of ' + c.open }), ' open ' + (c.open === 1 ? u.word.toLowerCase() : u.words) + ' staffed · ' + c.occ + ' occupied']),
+    el('span', { class: 'stepper' }, [
+      el('button', { type: 'button', id: 'staff-minus', 'aria-label': 'One fewer staffed ' + u.word.toLowerCase(), onclick: function () { setStaffed(u.id, -1); }, text: '−' }),
+      el('button', { type: 'button', id: 'staff-plus', 'aria-label': 'One more staffed ' + u.word.toLowerCase(), onclick: function () { setStaffed(u.id, 1); }, text: '+' })])]));
+  // Places by state.
+  frag.appendChild(el('h3', { class: 'sec', text: u.words.charAt(0).toUpperCase() + u.words.slice(1) + ' by state · ' + c.total }));
+  var f = el('div', { class: 'states', role: 'group', 'aria-label': 'Show ' + u.words });
+  [['all', 'All', c.total], ['occ', 'Occupied', c.occ], ['ready', 'Ready', c.ready], ['clean', 'Cleaning', c.clean], ['closed', 'Closed', c.closed]].forEach(function (x) {
+    f.appendChild(el('button', { type: 'button', id: 'f-' + x[0], 'aria-pressed': String(state.filter === x[0]), onclick: function () { state.filter = x[0]; render(); } }, [el('i', { class: 'dot-' + x[0], 'aria-hidden': 'true' }), x[1] + ' ', el('b', { text: String(x[2]) })]));
+  });
+  frag.appendChild(f);
+  var ps = placesOf(u.id).filter(function (p) { return state.filter === 'all' || p.st === state.filter; });
+  if (!ps.length) frag.appendChild(el('p', { class: 'empty', text: 'None in this state.' }));
+  var g = el('div', { class: 'places', id: 'places' });
+  ps.forEach(function (p) { g.appendChild(placeCard(p, u)); });
+  frag.appendChild(g);
+  frag.appendChild(el('p', { class: 'fine', text: 'Codes only, no names. The clinical team decides admissions, discharges and transfers; these buttons record what was decided and when.' }));
+  return frag;
+}
+function placeCard(p, u) {
+  var kids = [], acts = [], ui = state.ui, tr = p.st === 'occ' ? transferFor(p) : null;
+  kids.push(el('div', { class: 'top' }, [el('span', { class: 'num', text: u.word + ' ' + p.id }), el('span', { class: 'chip c-' + p.st, text: STATES[p.st] })]));
+  if (p.st === 'occ') {
+    kids.push(el('p', { class: 'code', text: p.code }));
+    if (p.link) kids.push(el('p', { class: 'meta', text: (p.unit === 'pn' ? 'With baby ' : 'Linked to mother ') + p.link + locate(p.link) }));
+    if (tr) kids.push(el('div', { class: 'acts', style: 'margin-top:6px;gap:6px' }, [el('span', { class: 'chip soft wrap', text: 'Transfer to ' + tr.site + (tr.acc ? ': accepted' : ': requested ' + hhmm(tr.req)) })]));
+    if (ui.tr === p.id) {
+      var s1 = sel('tr-site', SITES), s2 = sel('tr-reason', Object.keys(T_REASONS).map(function (k) { return [k, T_REASONS[k]]; }));
+      kids.push(el('div', { class: 'inline' }, [
+        el('label', { for: 'tr-site' }, ['Transfer to', s1]), el('label', { for: 'tr-reason' }, ['Reason category', s2]),
+        el('p', { class: 'fine', text: 'Record this only when the team has decided on a transfer. Reasons are operational categories, not clinical notes.' }),
+        el('div', { class: 'acts', style: 'margin:0' }, [
+          el('button', { type: 'button', class: 'go navy', id: 'tr-ok', onclick: function () { requestOut(p, s1.value, s2.value); }, text: 'Request transfer' }),
+          el('button', { type: 'button', class: 'go', onclick: function () { state.ui = {}; render(); }, text: 'Cancel' })])]));
+    } else {
+      if (p.unit === 'lab') { var pr = firstReady('pn'); acts.push(el('button', { type: 'button', class: 'go navy', id: 'mv-' + p.id, disabled: pr ? false : 'disabled', onclick: function () { moveToPostnatal(p); }, text: pr ? 'Moved to postnatal ' + pr.id : 'No postnatal bed ready' })); }
+      else acts.push(el('button', { type: 'button', class: 'go sea', id: 'dis-' + p.id, 'aria-label': 'Discharged: ' + p.code + ' from ' + p.id, onclick: function () { discharge(p); }, text: 'Discharged' }));
+      if (!tr) acts.push(el('button', { type: 'button', class: 'go quiet', id: 'tr-' + p.id, 'aria-label': 'Transfer out: ' + p.code, onclick: function () { state.ui = { tr: p.id }; render(); var s = document.getElementById('tr-site'); if (s) s.focus(); }, text: 'Transfer out…' }));
+    }
+  } else if (p.st === 'clean') {
+    kids.push(el('p', { class: 'meta' }, ['Waiting for cleaning ', el('span', { class: 'wait', text: fmt((now() - (p.since || now())) / M) })]));
+    if (p.first) kids.push(el('div', { class: 'acts', style: 'margin-top:6px' }, [el('span', { class: 'chip first', text: 'Clean first' })]));
+    acts.push(el('button', { type: 'button', class: 'go mango', id: 'rd-' + p.id, onclick: function () { cleaned(p); }, text: 'Cleaned, ready' }));
+  } else if (p.st === 'ready') {
+    kids.push(el('p', { class: 'meta', text: 'Clean, open and empty' + (p.since ? ' since ' + hhmm(p.since) : '') + '.' }));
+    acts.push(el('button', { type: 'button', class: 'go', id: 'new-' + p.id, onclick: function () { newArrival(p); }, text: 'Admit new arrival' }));
+    acts.push(el('button', { type: 'button', class: 'go quiet', id: 'cls-' + p.id, onclick: function () { closePlace(p, true); }, text: 'Close' }));
+  } else {
+    kids.push(el('p', { class: 'meta', text: p.why || 'Closed' }));
+    acts.push(el('button', { type: 'button', class: 'go', id: 'open-' + p.id, onclick: function () { closePlace(p, false); }, text: 'Reopen' }));
+  }
+  if (acts.length) kids.push(el('div', { class: 'acts' }, acts));
+  return el('article', { class: 'place s-' + p.st + (p.first ? ' first' : ''), id: 'p-' + p.id, 'aria-label': u.word + ' ' + p.id + ', ' + STATES[p.st] + (p.code ? ', ' + p.code : '') }, kids);
+}
+function locate(code) { var m = state.places.filter(function (x) { return x.code === code; })[0]; return m ? ' (' + where(m) + ')' : ''; }
+function closureForm(px, fixedUnit) {
+  var kind = sel(px + '-kind', [['closed', 'Closed to admissions'], ['divert', 'Divert to another site']]);
+  var unitSel = fixedUnit ? null : sel(px + '-unit', UNITS.filter(function (u) { return !openClosure(u.id); }).map(function (u) { return [u.id, u.name]; }));
+  var reason = sel(px + '-reason', C_REASONS), by = sel(px + '-by', DECIDERS, fixedUnit ? unitOf(fixedUnit).lead : 'Site manager on call');
+  var fields = [el('label', { for: px + '-kind' }, ['What', kind])];
+  if (unitSel) fields.push(el('label', { for: px + '-unit' }, ['Unit', unitSel]));
+  fields.push(el('label', { for: px + '-reason' }, ['Reason', reason]), el('label', { for: px + '-by' }, ['Decided by (role)', by]));
+  var btns = [el('button', { type: 'button', class: 'go navy', id: px + '-ok', disabled: unitSel && !unitSel.options.length ? 'disabled' : false, onclick: function () { logClosure(fixedUnit || unitSel.value, kind.value, reason.value, by.value); }, text: 'Log closure' })];
+  if (fixedUnit) btns.push(el('button', { type: 'button', class: 'go', onclick: function () { state.ui = {}; render(); }, text: 'Cancel' }));
+  return el('div', { class: 'inline', id: px + '-form' }, [el('div', { class: 'form2' }, fields),
+    el('p', { class: 'fine', text: 'The person in charge decides. Ospeli logs the start, reason and role, and counts the hours until it reopens.' }),
+    el('div', { class: 'acts', style: 'margin:0' }, btns)]);
+}
+
+// --- Flow coordinator ---
+function flowView() {
+  var frag = document.createDocumentFragment(), S = state.settings;
+  frag.appendChild(el('h3', { class: 'sec', text: 'Capacity across units now' }));
+  var g = el('div', { class: 'ugrid', id: 'unitgrid' });
+  UNITS.forEach(function (u) {
+    var c = count(u.id), k = openClosure(u.id), e = expectedOf(u.id).length;
+    g.appendChild(el('div', { class: 'utile' + (k ? ' shut' : '') }, [el('span', { class: 'nm', text: u.name }),
+      el('span', { class: 'big', text: c.ready + ' ready' }),
+      el('p', { class: 'meta', text: c.clean + ' cleaning · ' + c.occ + ' of ' + c.total + ' occupied' }),
+      el('p', { class: 'meta', text: e + ' expected · ' + c.staffed + ' staffed' }),
+      k ? el('span', { class: 'chip over', text: (k.kind === 'divert' ? 'Divert ' : 'Closed ') + fmt(closedFor(k) / M) }) : el('span', { class: 'chip soft', text: 'Open' })]));
+  });
+  frag.appendChild(g);
+  // Transfers by stage.
+  var live = state.transfers.filter(function (x) { return !x.old; });
+  var stages = [
+    ['Requested', live.filter(function (x) { return !x.acc && !x.dep; })],
+    ['Accepted, not yet departed', live.filter(function (x) { return x.acc && !x.dep; })],
+    ['Departed or arrived today', live.filter(function (x) { return x.dep; })]
+  ];
+  stages.forEach(function (sg, si) {
+    frag.appendChild(el('h3', { class: 'sec', text: sg[0] + ' · ' + sg[1].length }));
+    if (!sg[1].length) { frag.appendChild(el('p', { class: 'empty', text: si === 2 ? 'None yet today.' : 'None at this stage.' })); return; }
+    var box = el('div', { class: 'stage', id: 'stage-' + si });
+    sg[1].sort(function (a, b) { return a.req - b.req; }).forEach(function (x) { box.appendChild(transferRow(x, si)); });
+    frag.appendChild(box);
+  });
+  frag.appendChild(el('p', { class: 'fine', text: 'Sorted by time since the request only. Ospeli does not rank women, babies or children, or decide where they go; the receiving team and the clinicians decide.' }));
+  // Closures and diverts.
+  var open = state.closures.filter(function (k) { return !k.end; });
+  frag.appendChild(el('h3', { class: 'sec', text: 'Closures and diverts now · ' + open.length }));
+  if (!open.length) frag.appendChild(el('p', { class: 'empty', text: 'All units open to admissions.' }));
+  else frag.appendChild(el('div', { class: 'closures', id: 'closures' }, open.map(function (k) {
+    return el('div', { class: 'crow' }, [el('div', {}, [el('b', { text: unitOf(k.unit).name + ' · ' + (k.kind === 'divert' ? 'on divert' : 'closed') + ' ' + fmt(closedFor(k) / M) }),
+      el('p', { class: 'meta', text: 'Since ' + hhmm(k.start) + ' · ' + k.reason + ' · decided by the ' + k.by.toLowerCase() + (needsReview(k) ? ' · past the ' + S.reviewH + ' h review time' : '') })]),
+      el('button', { type: 'button', class: 'small', id: 'end-' + k.id, onclick: function () { endClosure(k); }, text: 'Reopen' })]);
+  })));
+  var d = el('details', { class: 'set', id: 'logclose' }, [el('summary', { text: 'Log a closure or divert' }), closureForm('cf', null)]);
+  if (logOpen) d.open = true;
+  d.addEventListener('toggle', function () { logOpen = d.open; });
+  frag.appendChild(d);
+  return frag;
+}
+var logOpen = false;
+function transferRow(x, si) {
+  var u = unitOf(x.unit), tags = [], doEl = el('div', { class: 'do' });
+  tags.push(el('span', { class: 'chip soft', text: x.dir === 'out' ? 'Out' : 'In' }));
+  if (x.reason === 'cap') tags.push(el('span', { class: 'chip', text: 'Capacity' }));
+  if (tOver(x)) tags.push(el('span', { class: 'chip over', text: 'Over ' + state.settings.transferLimitH + ' h' }));
+  if (x.escalated) tags.push(el('span', { class: 'chip raised', text: 'Escalated' }));
+  if (si === 0) doEl.appendChild(el('button', { type: 'button', class: 'small primary', id: 'acc-' + x.id, onclick: function () { accept(x); }, text: x.dir === 'out' ? 'Receiving site accepted' : 'We accept' }));
+  if (si === 1) {
+    if (x.dir === 'out') doEl.appendChild(el('button', { type: 'button', class: 'small primary', id: 'dep-' + x.id, onclick: function () { depart(x); }, text: 'Departed' }));
+    else { var r = firstReady(x.unit); doEl.appendChild(el('button', { type: 'button', class: 'small primary', id: 'arr-' + x.id, disabled: r ? false : 'disabled', onclick: function () { arrive(x); }, text: r ? 'Arrived: to ' + r.id : 'No place ready' })); }
+  }
+  var route = x.dir === 'out' ? (x.place ? x.place + ', ' : '') + u.name + ' → ' + x.site : x.site + ' → ' + u.name + (x.place ? ', ' + x.place : '');
+  var big = si === 2 ? sinceReq(x) : (x.acc ? Math.round((now() - x.req) / M) : tWait(x));
+  return el('div', { class: 'trow' + (x.dir === 'in' ? ' in' : '') + (tOver(x) ? ' over' : ''), id: 'tr-row-' + x.id, 'aria-label': 'Transfer ' + x.code + ', ' + fmt(big) }, [
+    el('div', { class: 'hrs' }, [fmt(big), el('small', { text: si === 2 ? 'request to ' + (x.dir === 'in' ? 'arrival' : 'departure') : 'since ' + hhmm(x.req) })]),
+    el('div', { class: 'who' }, [el('b', { text: x.code }), el('p', { class: 'meta', text: route }), el('p', { class: 'meta', text: T_REASONS[x.reason] + (x.acc ? ' · accepted ' + hhmm(x.acc) : '') }), el('div', { class: 'tags' }, tags)]),
+    doEl]);
+}
+
+// --- Operations manager ---
+function opsView() {
+  var frag = document.createDocumentFragment(), k = kpis(), S = state.settings;
+  frag.appendChild(el('h3', { class: 'sec', text: 'Capacity by unit now' }));
+  frag.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 't', id: 'capacity' }, [
+    el('thead', {}, [el('tr', {}, ['Unit', 'Places', 'Occupied', 'Ready', 'Cleaning', 'Closed', 'Staffed', 'Status'].map(function (h) { return el('th', { text: h }); }))]),
+    el('tbody', {}, UNITS.map(function (u) { var b = k.byUnit[u.id];
+      return el('tr', {}, [el('td', { text: u.name }), el('td', { class: 'n', text: String(b.places) }), el('td', { class: 'n', text: String(b.occupied) }), el('td', { class: 'n', text: String(b.ready) }), el('td', { class: 'n', text: String(b.cleaning) }), el('td', { class: 'n', text: String(b.closed) }), el('td', { class: 'n', text: String(b.staffed) }), el('td', { text: b.status.charAt(0).toUpperCase() + b.status.slice(1) })]); }))])]));
+  frag.appendChild(el('div', { class: 'legend' }, ['occ', 'ready', 'clean', 'closed'].map(function (s) { return el('span', {}, [el('i', { class: 'dot-' + s }), STATES[s]]); })));
+  frag.appendChild(el('h3', { class: 'sec', text: 'Neonatal cots: occupied against staffed' }));
+  frag.appendChild(el('div', { class: 'nums2', id: 'cots' }, [
+    el('div', {}, [el('b', { text: String(k.cotsOccupied) }), el('span', { text: 'cots occupied' })]),
+    el('div', {}, [el('b', { text: String(k.cotsStaffed) }), el('span', { text: 'cots staffed' })]),
+    el('div', {}, [el('b', { text: String(k.cots) }), el('span', { text: 'cots in total' })])]));
+  frag.appendChild(el('h3', { class: 'sec', text: 'Postnatal discharges today' }));
+  var today = new Date(now()); today.setHours(0, 0, 0, 0);
+  var pn = state.discharges.filter(function (d) { return d.unit === 'pn' && d.at >= today.getTime(); }).sort(function (a, b) { return a.at - b.at; });
+  frag.appendChild(el('div', { class: 'nums2', id: 'noon' }, [
+    el('div', {}, [el('b', { text: String(k.postnatalDischargesBeforeNoon) }), el('span', { text: 'before noon' })]),
+    el('div', {}, [el('b', { text: String(k.postnatalDischargesToday - k.postnatalDischargesBeforeNoon) }), el('span', { text: 'after noon' })]),
+    el('div', {}, [el('b', { text: String(count('pn').occ) }), el('span', { text: 'postnatal beds occupied' })])]));
+  if (pn.length) frag.appendChild(el('p', { class: 'fine', text: 'Discharged at ' + pn.map(function (d) { return hhmm(d.at); }).join(', ') + '.' }));
+  var monthC = state.closures.filter(function (c) { return inMonth(c.start); }).sort(function (a, b) { return b.start - a.start; });
+  frag.appendChild(el('h3', { class: 'sec', text: 'Closures and diverts this month · ' + monthC.length }));
+  var per = UNITS.map(function (u) { var h = monthC.filter(function (c) { return c.unit === u.id; }).reduce(function (n, c) { return n + closedFor(c); }, 0); return u.name + ' ' + hrs(h); });
+  frag.appendChild(el('p', { class: 'meta', style: 'margin:0 0 6px', text: 'Hours closed or on divert: ' + per.join(' · ') + '.' }));
+  if (!monthC.length) frag.appendChild(el('p', { class: 'empty', text: 'None recorded this month.' }));
+  else frag.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 't', id: 'closelog' }, [
+    el('thead', {}, [el('tr', {}, ['When', 'Unit', 'Hours', 'Reason and who decided'].map(function (h) { return el('th', { text: h }); }))]),
+    el('tbody', {}, monthC.map(function (c) { return el('tr', {}, [el('td', { text: dday(c.start) + ' ' + hhmm(c.start) }), el('td', {}, [unitOf(c.unit).name, el('br'), el('span', { class: 'meta', text: (c.kind === 'divert' ? 'Divert' : 'Closed') + (c.end ? '' : ', still') })]), el('td', { class: 'n', text: hrs(closedFor(c)) }), el('td', {}, [c.reason, el('br'), el('span', { class: 'meta', text: c.by })])]); }))])]));
+  var d = el('details', { class: 'set', id: 'settings' }, [el('summary', { text: 'Settings (your site\'s own)' })]);
+  var tg = el('div', { class: 'targets' });
+  [['reviewH', 'Closure review time (hours)', 1, 24], ['transferLimitH', 'Transfer wait before escalation (hours)', 1, 24]].forEach(function (f) {
+    tg.appendChild(el('label', { for: 'set-' + f[0] }, [f[1], el('input', { type: 'number', id: 'set-' + f[0], min: String(f[2]), max: String(f[3]), step: '1', inputmode: 'numeric', value: String(S[f[0]]), onchange: function (e) {
+      var n = Math.max(f[2], Math.min(f[3], Math.round(+e.target.value) || DEFAULTS[f[0]])); S[f[0]] = n; addLog('Operations manager set the ' + f[1].toLowerCase().replace(/ \(hours\)/, '') + ' to ' + n + ' h.'); settingsOpen = true; render(); } })]));
+  });
+  d.appendChild(tg);
+  d.appendChild(el('p', { class: 'fine', text: 'Example settings for this demo, not a standard. Your organisation sets its own; Ospeli flags against them.' }));
+  if (settingsOpen) d.open = true;
+  d.addEventListener('toggle', function () { settingsOpen = d.open; });
+  frag.appendChild(d);
+  return frag;
+}
+var settingsOpen = false;
+
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. The board, admissions, transfers, closures and the numbers all work without it.' })); return; }
+  var items = suggest();
+  if (!items.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag: units have places ready for expected admissions, closures are within the review time and no transfer is waiting too long.' }));
+  items.forEach(function (sg) {
+    var pend = state.pending.some(function (p) { return p.id === sg.id; });
+    var acts = sg.acts.map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend && a.primary ? 'disabled' : false, onclick: a.fn, text: pend && a.primary ? 'Proposed' : a.label }); });
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
+      el('span', { class: 'tag ' + (sg.kind === 'time' ? 'time' : sg.kind === 'ask' ? 'ask' : ''), text: { time: 'Act soon', ask: 'Review', move: 'Capacity' }[sg.kind] }),
+      el('h3', { text: sg.title }), el('p', { text: sg.text }),
+      el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  if (state.pending.length) {
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for a person to decide' })]);
+    state.pending.forEach(function (p) {
+      d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }),
+        state.role === p.owner
+          ? el('div', { class: 'acts', style: 'margin:0' }, [el('button', { type: 'button', class: 'small primary', onclick: function () { decide(p, true); }, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])
+          : el('p', { class: 'why', style: 'margin:0;color:var(--soft);font-size:0.85rem' }, ['For the ' + ROLE_NAME[p.owner].toLowerCase() + '. ', el('button', { type: 'button', class: 'small', onclick: function () { state.role = p.owner; if (p.unit) state.unit = p.unit; render(); }, text: 'Switch to that view' })])]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Proposals wait here for the role named on them.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 30).forEach(function (e, i) { ol.appendChild(el('li', { class: i === 0 && e.fresh && e.t === lastLogT ? 'new' : '' }, [el('time', { text: hhmm(e.t) }), el('span', { text: e.text })])); });
+}
+
+// ---------- Wiring ----------
+['nic', 'flow', 'ops'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; state.ui = {}; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-clock').addEventListener('click', function () { state.clock += 30 * M; addLog('Demo: clock moved on 30 minutes.'); render(); toast('Clock moved on 30 minutes. Waits have grown.'); });
+document.getElementById('t-exp').addEventListener('click', function () {
+  var u = state.role === 'nic' ? unitOf(state.unit) : UNITS[state.seq % UNITS.length];
+  var pre = { lab: 'M-', pn: 'M-', neo: 'B-', ch: 'P-' }[u.id], code = pre + (++state.seq), from = FROM[state.seq % FROM.length];
+  state.expected.push({ id: 'E' + state.seq, unit: u.id, code: code, from: from, at: now() });
+  addLog('Expected admission: ' + code + ' to the ' + u.name.toLowerCase() + ' (' + from.toLowerCase() + ').');
+  render(); toast(code + ' expected on the ' + u.name.toLowerCase() + '.');
+});
+document.getElementById('t-in').addEventListener('click', function () {
+  var u = ['pn', 'ch', 'neo'][state.seq % 3], code = ({ pn: 'M-', ch: 'P-', neo: 'B-' })[u] + (++state.seq), site = SITES[state.seq % 2];
+  state.transfers.push({ id: 'T' + state.seq, code: code, dir: 'in', unit: u, place: null, site: site, reason: 'home', req: now(), acc: null, dep: null });
+  addLog('Transfer in requested: ' + code + ' from ' + site + ' to the ' + unitOf(u).name.toLowerCase() + ' (return to home hospital).');
+  render(); toast('Transfer-in request from ' + site + ' is waiting for the flow coordinator.');
+});
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; settingsOpen = false; logOpen = false; render(); toast('Example reset to the start of the demo.'); });
+
+// Read-only view for software agents (no writes): window.ospeliMaternityDemo
+window.ospeliMaternityDemo = Object.freeze({
+  describe: function () { return 'Read-only maternity and children\'s flow demo for a fictional hospital. get() returns labour rooms, postnatal beds, neonatal cots and children\'s beds by state and unit, expected admissions, transfer requests by stage and wait, and closures and diverts with reason and decision maker role; kpis() the capacity numbers; suggestions() the guide\'s current suggestions. Women, babies and children are anonymous codes. It does not assess labour, decide transfers or prioritise anyone. Runs in the browser; nothing is sent anywhere.'; },
+  get: function () {
+    return clone({ role: state.role, unit: state.unit, now: new Date(now()).toISOString(), settings: state.settings,
+      units: UNITS.map(function (u) { var c = count(u.id), k = openClosure(u.id); return { id: u.id, name: u.name, places: c.total, occupied: c.occ, ready: c.ready, cleaning: c.clean, closed: c.closed, staffed: c.staffed, closedToAdmissions: !!k }; }),
+      places: state.places.map(function (p) { return { id: p.id, unit: p.unit, state: p.st, label: STATES[p.st], code: p.code, linkedCode: p.link, cleanFirst: p.first }; }),
+      expected: state.expected.map(function (e) { return { code: e.code, unit: e.unit, from: e.from, at: hhmm(e.at) }; }),
+      transfers: state.transfers.filter(function (x) { return !x.old; }).map(function (x) { return { id: x.id, code: x.code, direction: x.dir, unit: x.unit, place: x.place, site: x.site, reason: T_REASONS[x.reason], stage: x.dep ? (x.dir === 'in' ? 'arrived' : 'departed') : x.acc ? 'accepted' : 'requested', requestedAt: hhmm(x.req), waitMin: x.dep ? sinceReq(x) : Math.round((now() - x.req) / M), overLimit: tOver(x), escalated: !!x.escalated }; }),
+      closures: state.closures.map(function (c) { return { unit: c.unit, kind: c.kind, start: new Date(c.start).toISOString(), open: !c.end, hours: Math.round(closedFor(c) / H * 10) / 10, reason: c.reason, decidedBy: c.by }; }),
+      pendingDecisions: state.pending.map(function (p) { return { text: p.text, decidedBy: ROLE_NAME[p.owner] }; }) });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text, why: s.why, decidedBy: ROLE_NAME[s.owner] }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>

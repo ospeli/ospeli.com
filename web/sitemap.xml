@@ -29,6 +29,11 @@
   <url><loc>https://ospeli.com/demo/critical-care/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://ospeli.com/demo/community/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://ospeli.com/demo/projects/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/maternity/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/long-stay/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/records/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/revenue/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://ospeli.com/demo/public-health/</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
   <url><loc>https://ospeli.com/areas/</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
   <url><loc>https://ospeli.com/areas/outpatients-and-clinics/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
   <url><loc>https://ospeli.com/areas/emergency-department-flow/</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>

@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Health records demo · Ospeli</title>
+<meta name="description" content="Paper charts tracked like work orders: a phone pull list for records clerks with chart locations and one-tap moves, a coding queue by age, and a records manager view of charts out too long, pull list completion, coding backlog and record requests by due date. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Health records demo · Ospeli">
+<meta property="og:description" content="Paper charts tracked like work orders: a phone pull list for records clerks with chart locations and one-tap moves, a coding queue by age, and a records manager view of charts out too long, pull list completion, coding backlog and record requests by due date. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/records/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button { font: inherit; color: var(--ink); }
+select, input[type=number], input[type=text] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 560px) { .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 14px; width: 100%; } .roles button { padding: 6px 4px; line-height: 1.2; font-size: 0.95rem; } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; max-width: 52em; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.tools .clocknow { font-weight: 800; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-variant-numeric: tabular-nums; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.88rem; font-weight: 700; display: block; }
+.stat .n { color: var(--soft); font-size: 0.78rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.8rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stathint { color: var(--soft); font-size: 0.78rem; margin: 6px 0 0; }
+.kpibelow { margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--line); }
+.empty { text-align: center; color: var(--soft); padding: 16px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; margin: 0; }
+.fine { font-size: 0.82rem; color: var(--soft); margin: 8px 0 0; }
+.chip { display: inline-block; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.03em; border-radius: 999px; padding: 1px 9px; background: var(--sand); white-space: nowrap; }
+.chip.hot { background: var(--hot); color: #8E2C18; } .chip.warn { background: var(--warn); } .chip.ok { background: var(--wash); } .chip.dark { background: var(--navy); color: #fff; } .chip.done { background: var(--sea); color: #fff; }
+/* records clerk (phone) */
+#view.v-clerk, #view.v-clerk .chip, #view.v-clerk h3.sec { font-size: 0.95rem; }
+#view.v-clerk h3.sec { letter-spacing: 0.06em; }
+.scanbox { background: var(--wash); border-radius: 14px; padding: 14px; margin-top: 4px; }
+.scanbox h3 { margin: 0 0 8px; font-size: 1.05rem; }
+.coderow { display: flex; gap: 8px; align-items: flex-end; }
+.coderow label { flex: 1; display: flex; flex-direction: column; gap: 4px; font-weight: 800; min-width: 0; }
+.coderow input { width: 100%; font-size: 1.15rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; min-height: 52px; }
+.coderow .scan { min-height: 52px; display: inline-flex; align-items: center; gap: 6px; background: var(--navy); color: #fff; }
+.coderow .scan svg { width: 20px; height: 20px; }
+.found { margin: 10px 0 0; font-size: 0.95rem; background: #fff; border-radius: 10px; padding: 8px 10px; }
+.found b { font-size: 1.05rem; }
+.moves { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+@media (max-width: 640px) { .moves { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.moves button { border-radius: 12px; min-height: 56px; font-size: 1rem; line-height: 1.2; background: #fff; border-color: #CFC5B2; }
+.moves button small { display: block; font-weight: 600; color: var(--soft); font-size: 0.95rem; }
+.moves button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.moves button[aria-pressed=true] small { color: #D6E2EC; }
+.whererow { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-top: 10px; }
+.whererow label { display: flex; flex-direction: column; gap: 4px; font-weight: 800; flex: 1 1 180px; min-width: 0; }
+.whererow select { width: 100%; }
+.whererow .save { flex: 1 1 160px; min-height: 54px; font-size: 1.05rem; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.filters button { min-height: 44px; font-size: 0.95rem; border-color: #CFC5B2; padding: 6px 14px; }
+.filters button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.charts { display: grid; gap: 10px; }
+.chart { border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 12px; padding: 12px; background: #fff; }
+.chart.s-out { border-left-color: var(--mango); } .chart.s-missing { border-left-color: var(--coral); } .chart.s-prep { border-left-color: var(--foam); background: #FAFDFC; }
+.chart .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.chart .code { font-weight: 800; font-size: 1.2rem; letter-spacing: 0.04em; font-variant-numeric: tabular-nums; }
+.chips { display: inline-flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
+.chart .loc { font-size: 1.05rem; font-weight: 800; margin: 4px 0 0; line-height: 1.3; }
+.chart .meta { color: var(--soft); margin: 2px 0 0; font-size: 0.95rem; }
+.chart .acts { display: flex; gap: 8px; margin-top: 10px; }
+.chart .acts .go { flex: 1; min-height: 52px; font-size: 1.05rem; background: var(--sea); border-color: var(--sea); color: #fff; }
+.chart .acts .go.fetch { background: var(--mango); border-color: var(--mango); color: var(--navy); }
+.chart .acts .alt { min-height: 52px; }
+.round { border: 2px solid var(--mango); border-radius: 14px; padding: 12px; background: #FFFBF3; margin-bottom: 10px; }
+.round h4 { margin: 0 0 6px; font-size: 1.05rem; }
+.mini { display: flex; justify-content: space-between; align-items: center; gap: 8px; border-top: 1px dashed var(--line); padding: 8px 0 0; margin-top: 8px; }
+.mini b { font-size: 1.05rem; letter-spacing: 0.03em; }
+.mini span { color: var(--soft); }
+.mini button { min-height: 48px; }
+/* coder and manager */
+.bands { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 16px 0 12px; }
+@media (max-width: 520px) { .bands { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.band { border: 1px solid #CFC5B2; border-radius: 12px; min-height: 64px; text-align: left; padding: 8px 12px; display: flex; flex-direction: column; align-items: flex-start; }
+.band b { font-size: 1.3rem; line-height: 1.1; }
+.band span { font-size: 0.82rem; color: var(--soft); font-weight: 700; }
+.band.old b { color: #B23A22; }
+.band[aria-pressed=true] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.band[aria-pressed=true] span, .band[aria-pressed=true] b { color: #fff; }
+.pickbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; margin: 6px 0 10px; }
+.pickbar label { font-weight: 800; display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; }
+.erow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; border: 1px solid var(--line); border-left: 5px solid var(--sea); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+.erow.old { border-left-color: var(--coral); } .erow.mid { border-left-color: var(--mango); }
+.erow b { font-size: 1.02rem; letter-spacing: 0.03em; }
+.erow .sub { color: var(--soft); font-size: 0.88rem; display: block; }
+.erow .flags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.erow .flags .chip, .req .chip { white-space: normal; }
+.erow .eacts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 640px) { .erow { grid-template-columns: minmax(0, 1fr); } .erow .eacts { justify-content: flex-start; } }
+table.t { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+table.t th, table.t td { text-align: left; padding: 7px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.t th { color: var(--soft); font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em; }
+table.t td.r, table.t th.r { text-align: right; font-variant-numeric: tabular-nums; }
+table.t tr.hot td { background: #FFF8F5; }
+.tablewrap { overflow-x: auto; }
+.bar { height: 10px; background: var(--sand); border-radius: 999px; overflow: hidden; min-width: 60px; }
+.bar i { display: block; height: 100%; background: var(--sea); border-radius: 999px; }
+.mgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: 16px; }
+@media (max-width: 760px) { .mgrid { grid-template-columns: minmax(0, 1fr); } }
+.panel { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; min-width: 0; }
+.panel h3.sec { margin-top: 0; }
+.req { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+.req.soon { border-color: var(--mango); background: #FFFBF3; } .req.over { border-color: var(--coral); background: #FFF8F5; }
+.req b { letter-spacing: 0.03em; }
+.req .sub { color: var(--soft); font-size: 0.86rem; display: block; }
+.stages { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; margin-top: 6px; }
+.stages span { height: 6px; border-radius: 999px; background: var(--line); }
+.stages span.on { background: var(--sea); }
+@media (max-width: 640px) { .req { grid-template-columns: minmax(0, 1fr); } }
+details.set { margin-top: 16px; }
+details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.targets { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; margin-top: 6px; }
+.targets label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 700; color: var(--soft); }
+.targets input { width: 100%; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.82rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg ul { margin: 0 0 8px; padding-left: 18px; font-size: 0.88rem; }
+.sugg .why { color: var(--soft); font-size: 0.82rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.95rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Health records: charts, coding and requests</h1>
+  <p class="lead">For hospitals that still run paper charts alongside their systems. Every chart movement is recorded with a tap, so tomorrow's clinic charts are found today. Coders see uncoded discharges by age. The records manager sees charts out too long, the coding backlog and record requests against their due dates. Patients appear only as anonymous record codes; nothing clinical is shown. The guide suggests; a person decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-clerk" aria-pressed="false">Records clerk</button>
+    <button type="button" id="r-coder" aria-pressed="false">Coder</button>
+    <button type="button" id="r-manager" aria-pressed="false">Records manager</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <b>Demo tools:</b>
+    <span class="clocknow" id="clocknow"></span>
+    <button type="button" class="small" id="t-clock">Move clock on 15 min</button>
+    <button type="button" class="small" id="t-ask">A ward asks for a chart</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <h2 id="view-h">Records</h2>
+        <div id="kpiwrap"><div class="stats" id="kpis"></div><p class="stathint" id="stathint">Tap a tile for its definition.</p></div>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads chart locations, tomorrow's pull list, the coding queue and request due dates, and suggests where to look, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal; the records manager confirms it. It never reads clinical content and never suggests codes.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its wards, clinics, shelf bays, record codes, dates and times. Patients appear only as anonymous record codes, and no clinical content is shown. Periods and due dates are example settings, not standards; the legal period for answering record requests depends on where you are. It measures charts, queues and requests, never individual clerks or coders, and it does not code anything or give coding advice. Coming next (Feb 2027): duplicate record review for a person to confirm or reject, an access audit trail, breach reports that start a response clock, and retention schedules for approval. <a href="../../areas/health-records/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var M = 60000, DAY = 1440;
+var STORE = 'ospeli.records.v1';
+var START = 14 * 60 + 10;      // the demo clock starts at 14:10 on a fictional Monday
+var LIST_AT = 11 * 60 + 30;    // tomorrow's pull list was printed at 11:30
+
+// ---------- Fixed reference data (fictional) ----------
+var CLINICS = [
+  { id: 'card', name: 'Cardiology', t: 540, mix: { prep: 5, shelf: 3, out: 1, missing: 1 } },
+  { id: 'orth', name: 'Orthopaedics', t: 540, mix: { prep: 4, shelf: 5, out: 2, missing: 1 } },
+  { id: 'diab', name: 'Diabetes', t: 810, mix: { prep: 3, shelf: 3, out: 2, missing: 0 } },
+  { id: 'ent', name: 'Ear, nose and throat', t: 840, mix: { prep: 2, shelf: 5, out: 1, missing: 1 } }
+];
+var WARDS = ['Ward 1', 'Ward 2', 'Ward 3', 'Ward 4', 'Ward 5', 'Ward 6'];
+var UNITS = ['Outpatient clinics', 'Emergency department', 'Day surgery unit'];
+var OFFICES = ['Coding office', 'Scanning room'];
+var SPECS = ['General medicine', 'General surgery', 'Orthopaedics', 'Obstetrics', 'Paediatrics', 'Cardiology'];
+var BANDS = [{ id: 'b1', lo: 0, hi: 7, name: '0–7 days' }, { id: 'b2', lo: 8, hi: 14, name: '8–14 days' }, { id: 'b3', lo: 15, hi: 30, name: '15–30 days' }, { id: 'b4', lo: 31, hi: 99999, name: 'Over 30 days' }];
+var STAGES = ['Received', 'Identity and consent checked', 'Records gathered', 'Reviewed for release', 'Released'];
+var FROM = ['Patient', 'Patient\'s representative', 'Another care provider', 'Insurer, with consent', 'Legal representative'];
+var QUERY_WHY = ['Discharge summary not received', 'Chart incomplete', 'Other information needed'];
+// Example settings for this demo only, not a standard: each organisation sets its own.
+var DEFAULTS = { outDays: 14, cutoff: 15 * 60, dueSoonDays: 5, responseDays: 30, queryDays: 5 };
+var WHO = 'records manager';
+
+function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+// ---------- State ----------
+function seed() {
+  var R = rng(20270201), used = {};
+  var between = function (a, b) { return a + Math.floor(R() * (b - a + 1)); };
+  var pick = function (a) { return a[Math.floor(R() * a.length)]; };
+  function code() { var A = 'ACDEFHJKLMNPRTVWXY34679', c; do { c = 'R-'; for (var i = 0; i < 4; i++) c += A[Math.floor(R() * A.length)]; } while (used[c]); used[c] = 1; return c; }
+  function bay() { return 'ABCDEFGH'[between(0, 7)] + '-' + String(between(1, 24)).padStart(2, '0'); }
+  var phone = window.matchMedia('(max-width: 640px)').matches;
+  var s = { v: 1, created: Date.now(), offset: 0, role: phone ? 'clerk' : 'manager', guide: true, kpiOpen: null,
+    filter: 'fetch', band: 'all', spec: 'all', settings: Object.assign({}, DEFAULTS), pending: [], dismissed: {}, log: [], seq: 0,
+    scan: { code: '', move: null, where: '' }, charts: [], pull: [], wanted: [], retrievals: [], rounds: [], search: {},
+    episodes: [], coded: [], requests: [], closed: [] };
+  var ev = [];
+  function chart(loc, where, since, extra) { var c = { code: code(), bay: bay(), loc: loc, where: where, since: since, last: null }; if (extra) Object.assign(c, extra); s.charts.push(c); return c; }
+  // Tomorrow's pull list.
+  var outPlaces = [['Ward 3', 12], ['Ward 2', 4], ['Coding office', 9], ['Ward 3', 21], ['Outpatient clinics', 3], ['Day surgery unit', 6]], oi = 0;
+  var missLast = [['Ward 5', 26], ['Outpatient clinics', 41], ['Ward 1', 33]], mi = 0;
+  var pullT = LIST_AT + 12;
+  CLINICS.forEach(function (cl) {
+    var order = [];
+    Object.keys(cl.mix).forEach(function (k) { for (var i = 0; i < cl.mix[k]; i++) order.push(k); });
+    order.sort(function () { return R() - 0.5; });
+    order.forEach(function (k, i) {
+      var c;
+      if (k === 'prep') { pullT += between(5, 9); c = chart('prep', 'Clinic box · ' + cl.name, pullT); ev.push({ t: pullT, text: c.code + ' pulled from bay ' + c.bay + ' for tomorrow\'s ' + cl.name + ' clinic' }); }
+      else if (k === 'shelf') c = chart('shelf', 'Library', -between(20, 300) * DAY);
+      else if (k === 'out') { var o = outPlaces[oi++]; c = chart(WARDS.indexOf(o[0]) >= 0 ? 'ward' : OFFICES.indexOf(o[0]) >= 0 ? 'office' : 'unit', o[0], -o[1] * DAY + between(480, 960)); }
+      else { var m = missLast[mi++]; c = chart('missing', 'Not found', 13 * 60 + 5 + mi * 7, { last: m[0] + ', ' + m[1] + ' days ago' }); ev.push({ t: c.since, text: c.code + ' not found at bay ' + c.bay + ' (last recorded at ' + m[0] + '). Added to charts not found.' }); }
+      s.pull.push({ code: c.code, clinic: cl.id, slot: cl.t + i * 15 });
+    });
+  });
+  // Other charts out of the library now: location → days out.
+  var OUT = { 'Ward 1': [2, 5, 16], 'Ward 2': [1, 3, 9, 22], 'Ward 3': [4, 15, 18, 19, 27, 31, 38], 'Ward 4': [2, 6, 11], 'Ward 5': [1, 17], 'Ward 6': [3, 8],
+    'Emergency department': [1, 2, 15], 'Day surgery unit': [5, 20], 'Outpatient clinics': [1, 2, 14, 30], 'Coding office': [3, 4, 6, 12, 16, 21], 'Scanning room': [1, 2, 25] };
+  Object.keys(OUT).forEach(function (w) { OUT[w].forEach(function (d) { chart(WARDS.indexOf(w) >= 0 ? 'ward' : OFFICES.indexOf(w) >= 0 ? 'office' : 'unit', w, -d * DAY + between(480, 960)); }); });
+  // Charts sent today on request from wards and clinics (requested → delivered, minutes).
+  [[8 * 60 + 20, 21, 'Ward 2'], [8 * 60 + 55, 35, 'Emergency department'], [9 * 60 + 40, 18, 'Ward 6'], [10 * 60 + 15, 37, 'Ward 1'], [11 * 60 + 5, 19, 'Outpatient clinics'], [12 * 60 + 30, 32, 'Ward 4'], [13 * 60 + 10, 21, 'Day surgery unit']].forEach(function (r) {
+    var c = chart(WARDS.indexOf(r[2]) >= 0 ? 'ward' : 'unit', r[2], r[0] + r[1]);
+    s.retrievals.push({ code: c.code, to: r[2], req: r[0], del: r[0] + r[1] });
+    ev.push({ t: r[0], text: r[2] + ' asked for ' + c.code });
+    ev.push({ t: r[0] + r[1], text: c.code + ' sent to ' + r[2] + ', ' + r[1] + ' min after the request' });
+  });
+  // One request waiting now.
+  var w1 = chart('shelf', 'Library', -between(30, 200) * DAY);
+  s.wanted.push({ id: 'W' + (++s.seq), code: w1.code, to: 'Ward 4', req: 13 * 60 + 58 });
+  ev.push({ t: 13 * 60 + 58, text: 'Ward 4 asked for ' + w1.code });
+  ev.push({ t: LIST_AT, text: 'Tomorrow\'s pull list printed: ' + s.pull.length + ' charts for ' + CLINICS.length + ' clinics' });
+  // Coding queue: uncoded discharges (days since discharge).
+  [1, 1, 2, 2, 3, 3, 4, 5, 5, 6, 7, 8, 9, 9, 10, 11, 12, 13, 14, 16, 17, 19, 21, 23, 26, 28, 33, 35, 38, 41, 44, 52].forEach(function (d) {
+    var e = { id: 'E' + (++s.seq), code: code(), spec: pick(SPECS), days: d, status: 'uncoded', flags: [], queryDays: null, why: null };
+    var r = R();
+    if (r < 0.14) e.flags.push('Discharge summary not received'); else if (r < 0.26) e.flags.push('Chart not in coding office');
+    s.episodes.push(e);
+  });
+  [[9, 7, 0], [12, 2, 1], [16, 9, 0], [23, 6, 2], [30, 12, 0]].forEach(function (q, i) {
+    var e = s.episodes.filter(function (x) { return x.days === q[0]; })[0]; if (!e) return;
+    e.status = 'queried'; e.queryDays = q[1]; e.why = QUERY_WHY[q[2]]; e.flags = [];
+  });
+  for (var i = 0; i < 40; i++) s.coded.push({ code: code(), spec: pick(SPECS), days: between(2, 26) });
+  ev.push({ t: 9 * 60 + 2, text: 'Coding queue: ' + s.episodes.length + ' discharges waiting, ' + s.episodes.filter(function (e) { return e.status === 'queried'; }).length + ' with a query to the clinical team' });
+  // Record requests from patients and third parties: [from, received days ago, stage].
+  [[0, 27, 2], [2, 3, 0], [4, 25, 3], [1, 12, 1], [0, 8, 2], [3, 19, 2], [0, 1, 0], [2, 15, 3], [0, 29, 1], [1, 5, 1]].forEach(function (q, i) {
+    s.requests.push({ id: 'RR-' + (1041 + i * 3), from: FROM[q[0]], rcv: q[1], stage: q[2], flagged: false, outcome: null });
+  });
+  [9, 14, 21, 26, 12, 30, 18, 7, 24, 16, 28, 11].forEach(function (d) { s.closed.push(d); });
+  ev.push({ t: 10 * 60 + 40, text: 'Record request ' + s.requests[1].id + ' (' + s.requests[1].from.toLowerCase() + '): identity and consent check started' });
+  ev.sort(function (a, b) { return b.t - a.t; });
+  s.log = ev.filter(function (e) { return e.t <= START; }).slice(0, 40);
+  return s;
+}
+
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() {
+  try {
+    var s = JSON.parse(localStorage.getItem(STORE));
+    // An example day goes stale: start a fresh one after 8 hours.
+    if (!s || s.v !== 1 || !s.charts || Date.now() - s.created > 8 * 60 * M) return null;
+    return s;
+  } catch (e) { return null; }
+}
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+// The demo clock: starts at 14:10 and runs in real time, plus any minutes moved on.
+function nowMin() { return Math.min(23 * 60 + 59, Math.floor(START + (Date.now() - state.created) / M + (state.offset || 0))); }
+
+// ---------- Derived data (pure) ----------
+function chartOf(code) { return state.charts.filter(function (c) { return c.code === code; })[0]; }
+function pullOf(code) { return state.pull.filter(function (p) { return p.code === code; })[0]; }
+function clinicOf(id) { return CLINICS.filter(function (c) { return c.id === id; })[0]; }
+function isOut(c) { return c.loc === 'ward' || c.loc === 'unit' || c.loc === 'office'; }
+function inLibrary(c) { return c.loc === 'shelf' || c.loc === 'prep' || c.loc === 'desk'; }
+function daysOut(c) { return Math.max(0, Math.floor((nowMin() - c.since) / DAY)); }
+function pastPeriod(c) { return isOut(c) && daysOut(c) > (+state.settings.outDays || 0); }
+function pullStatus(p) { var c = chartOf(p.code); return c.loc === 'prep' ? 'prep' : c.loc === 'missing' ? 'missing' : isOut(c) ? 'out' : 'shelf'; }
+function bandOf(d) { return BANDS.filter(function (b) { return d >= b.lo && d <= b.hi; })[0]; }
+function openEpisodes() { return state.episodes.filter(function (e) { return e.status !== 'coded'; }); }
+function daysLeft(r) { return (+state.settings.responseDays || 0) - r.rcv; }
+function openRequests() { return state.requests.filter(function (r) { return !r.outcome; }); }
+function dueSoon(r) { return !r.outcome && daysLeft(r) <= (+state.settings.dueSoonDays || 0); }
+function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function outByLocation() {
+  var g = {};
+  state.charts.filter(isOut).forEach(function (c) { var x = g[c.where] = g[c.where] || { where: c.where, out: 0, past: 0, longest: 0, codes: [] }; x.out++; if (pastPeriod(c)) { x.past++; x.codes.push(c.code); } x.longest = Math.max(x.longest, daysOut(c)); });
+  return Object.keys(g).map(function (k) { var x = g[k]; x.codes.sort(function (a, b) { return daysOut(chartOf(b)) - daysOut(chartOf(a)); }); return x; }).sort(function (a, b) { return (b.past - a.past) || (b.longest - a.longest); });
+}
+function pullByClinic() {
+  return CLINICS.map(function (cl) {
+    var ps = state.pull.filter(function (p) { return p.clinic === cl.id; }), n = { prep: 0, shelf: 0, out: 0, missing: 0 };
+    ps.forEach(function (p) { n[pullStatus(p)]++; });
+    return { id: cl.id, name: cl.name, time: hhmm(cl.t), requested: ps.length, pulled: n.prep, onShelf: n.shelf, out: n.out, notFound: n.missing, readyPct: ps.length ? Math.round(100 * n.prep / ps.length) : null };
+  });
+}
+function kpis() {
+  var pulled = state.pull.filter(function (p) { return pullStatus(p) === 'prep'; }).length;
+  var notLocated = state.pull.filter(function (p) { var s = pullStatus(p); return s === 'out' || s === 'missing'; }).length;
+  var open = openEpisodes(), outs = state.charts.filter(isOut);
+  var r = function (x) { return x == null ? null : Math.round(x); };
+  return {
+    pullRequested: state.pull.length, pullReady: pulled, pullReadyPct: state.pull.length ? Math.round(100 * pulled / state.pull.length) : null,
+    notLocated: notLocated, notFound: state.charts.filter(function (c) { return c.loc === 'missing'; }).length,
+    retrievalMedianMin: r(median(state.retrievals.map(function (x) { return x.del - x.req; }))), retrievalsToday: state.retrievals.length, waitingToSend: state.wanted.length,
+    uncoded: open.length, queried: open.filter(function (e) { return e.status === 'queried'; }).length, over30Days: open.filter(function (e) { return e.days > 30; }).length,
+    codingMedianDays: r(median(state.coded.map(function (x) { return x.days; }))), codedRecently: state.coded.length,
+    chartsOut: outs.length, chartsOutPastPeriod: outs.filter(pastPeriod).length,
+    requestsOpen: openRequests().length, requestsDueSoon: openRequests().filter(dueSoon).length, requestsOverdue: openRequests().filter(function (x) { return daysLeft(x) < 0; }).length,
+    releaseMedianDays: r(median(state.closed.slice()))
+  };
+}
+
+// ---------- The guide: plain, checkable rules ----------
+function suggest() {
+  var out = [], n = nowMin(), st = state.settings;
+  // 1. Tomorrow's charts that are not in the library near the pull list cut-off.
+  var unl = state.pull.filter(function (p) { var s = pullStatus(p); return (s === 'out' || s === 'missing') && !state.search[p.code]; });
+  if (unl.length && n >= st.cutoff - 90) {
+    var mins = st.cutoff - n, id = 'search-' + unl.map(function (p) { return p.code; }).join('');
+    out.push({ id: id, kind: 'time',
+      title: unl.length + (unl.length > 1 ? ' charts' : ' chart') + ' for tomorrow ' + (unl.length > 1 ? 'are' : 'is') + ' not in the library yet',
+      list: unl.slice(0, 5).map(function (p) { var c = chartOf(p.code); return c.code + ' (' + clinicOf(p.clinic).name + '): ' + (c.loc === 'missing' ? 'not found, last at ' + c.last : 'at ' + c.where + ', ' + daysOut(c) + ' days'); }),
+      why: (mins > 0 ? 'The pull list cut-off is ' + hhmm(st.cutoff) + ', in ' + fmt(mins) + '.' : 'The pull list cut-off (' + hhmm(st.cutoff) + ') has passed.') + ' Starting the search early leaves time to collect them. The cut-off is an example setting.',
+      acts: [{ label: 'Propose: start an early search', primary: true, fn: function () { propose({ id: id, kind: 'search', codes: unl.map(function (p) { return p.code; }), text: 'Start an early search now for ' + unl.length + ' of tomorrow\'s charts that are out or not found, before the ' + hhmm(st.cutoff) + ' cut-off.' }); } }] });
+  }
+  // 2. Charts out longest at one location: chase them in one round.
+  var busy = outByLocation().filter(function (x) { return x.past >= 3 && !state.rounds.some(function (r) { return r.where === x.where && !r.done; }); })[0];
+  if (busy) {
+    var rid = 'round-' + busy.where + '-' + busy.past;
+    out.push({ id: rid, kind: 'move',
+      title: 'Chase the ' + busy.past + ' charts out longest at ' + busy.where + ' in one round',
+      text: busy.where + ' has ' + busy.out + ' charts out; ' + busy.past + ' longer than ' + st.outDays + ' days, the oldest ' + busy.longest + ' days. One visit can bring them all back.',
+      why: 'Counted from recorded chart movements. The ' + st.outDays + '-day period is an example setting, not a standard.',
+      acts: [{ label: 'Propose a chase round', primary: true, fn: function () { propose({ id: rid, kind: 'round', where: busy.where, codes: busy.codes.slice(), text: 'One chase round to ' + busy.where + ' for ' + busy.past + ' charts out longer than ' + st.outDays + ' days.' }); } }] });
+  }
+  // 3. Record requests near their due date.
+  var soon = openRequests().filter(function (r) { return dueSoon(r) && !r.flagged; }).sort(function (a, b) { return daysLeft(a) - daysLeft(b); });
+  if (soon.length) {
+    var did = 'due-' + soon.map(function (r) { return r.id; }).join('');
+    out.push({ id: did, kind: 'time',
+      title: soon.length + (soon.length > 1 ? ' record requests are' : ' record request is') + ' due within ' + st.dueSoonDays + ' days',
+      list: soon.map(function (r) { return r.id + ' · ' + r.from + ' · ' + dueWord(r) + ' · at "' + STAGES[r.stage] + '"'; }),
+      why: 'Due date = received + ' + st.responseDays + ' days. That period is an example setting; the legal period depends on where you are.',
+      acts: [{ label: 'Propose: flag to the information governance lead', primary: true, fn: function () { propose({ id: did, kind: 'flag', ids: soon.map(function (r) { return r.id; }), text: 'Flag ' + soon.map(function (r) { return r.id; }).join(', ') + ' to the information governance lead, as due within ' + st.dueSoonDays + ' days.' }); } }] });
+  }
+  // 4. Coding queries with no answer.
+  var stale = openEpisodes().filter(function (e) { return e.status === 'queried' && e.queryDays > st.queryDays && !e.reminded; });
+  if (stale.length) {
+    var teams = {}; stale.forEach(function (e) { teams[e.spec] = (teams[e.spec] || 0) + 1; });
+    var qid = 'query-' + stale.map(function (e) { return e.id; }).join('');
+    out.push({ id: qid, kind: 'ask',
+      title: stale.length + (stale.length > 1 ? ' coding queries have' : ' coding query has') + ' waited more than ' + st.queryDays + ' days for an answer',
+      list: Object.keys(teams).map(function (t) { return t + ' team: ' + teams[t]; }),
+      why: 'Queries sent from the coding queue with no answer recorded. The ' + st.queryDays + '-day wait is an example setting.',
+      acts: [{ label: 'Propose: one reminder per team', primary: true, fn: function () { propose({ id: qid, kind: 'remind', ids: stale.map(function (e) { return e.id; }), text: 'Send one reminder to each team with an unanswered coding query (' + Object.keys(teams).join(', ') + ').' }); } }] });
+  }
+  return out.filter(function (x) { return !state.dismissed[x.id]; });
+}
+function propose(p) {
+  if (state.pending.some(function (x) { return x.id === p.id; })) return;
+  p.at = nowMin(); state.pending.push(p);
+  addLog('Guide proposed: ' + p.text + ' Waiting for the ' + WHO + '.');
+  render(); toast('Proposed. The ' + WHO + ' decides.');
+}
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x.id !== p.id; });
+  if (!yes) { state.dismissed[p.id] = true; addLog('Records manager declined: ' + p.text); render(); toast('Declined. Nothing changed.'); return; }
+  if (p.kind === 'search') p.codes.forEach(function (c) { state.search[c] = nowMin(); });
+  else if (p.kind === 'round') state.rounds.push({ id: 'C' + (++state.seq), where: p.where, codes: p.codes, at: nowMin(), done: false });
+  else if (p.kind === 'flag') state.requests.forEach(function (r) { if (p.ids.indexOf(r.id) >= 0) r.flagged = true; });
+  else if (p.kind === 'remind') state.episodes.forEach(function (e) { if (p.ids.indexOf(e.id) >= 0) e.reminded = true; });
+  addLog('Records manager confirmed: ' + p.text);
+  render(); toast({ search: 'Confirmed. The clerk\'s list shows these first.', round: 'Confirmed. The chase round is on the clerk\'s phone.', flag: 'Confirmed. Flagged to the information governance lead.', remind: 'Confirmed. Reminders sent.' }[p.kind]);
+}
+
+// ---------- Helpers ----------
+function fmt(m) { m = Math.round(+m || 0); if (m < 60) return m + ' min'; var h = Math.floor(m / 60), r = m % 60; return h + ' h ' + (r < 10 ? '0' : '') + r; }
+function hhmm(t) { t = ((Math.round(t) % DAY) + DAY) % DAY; var h = Math.floor(t / 60), m = t % 60; return (h < 10 ? '0' : '') + h + ':' + (m < 10 ? '0' : '') + m; }
+function days(n) { return n + (n === 1 ? ' day' : ' days'); }
+function dueWord(r) { var d = daysLeft(r); return d < 0 ? days(-d) + ' overdue' : d === 0 ? 'due today' : 'due in ' + days(d); }
+function sinceWord(c) { var d = daysOut(c); return d < 1 ? 'since ' + hhmm(c.since) : days(d); }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+var lastLogT = null;
+function addLog(text) { lastLogT = nowMin(); state.log.unshift({ t: lastLogT, text: text, fresh: Date.now() }); state.log = state.log.slice(0, 40); }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+function svgScan() { var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('aria-hidden', 'true'); s.innerHTML = '<path d="M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 8v8M10 8v8M13 8v8M16 8v8" stroke="currentColor" stroke-width="1.6"/>'; return s; }
+
+// ---------- Actions (each one is a recorded chart movement or queue change) ----------
+function moveChart(c, loc, where, why) {
+  var from = c.loc === 'shelf' ? 'bay ' + c.bay : c.where;
+  c.loc = loc; c.where = where; c.since = nowMin();
+  if (loc !== 'missing') c.last = null;
+  addLog(c.code + ': ' + from + ' → ' + (loc === 'shelf' ? 'back on bay ' + c.bay : where) + (why ? ' (' + why + ')' : ''));
+  // A chart on a chase round counts as collected once it is back in the library.
+  state.rounds.forEach(function (r) { if (!r.done && r.codes.indexOf(c.code) >= 0 && r.codes.every(function (x) { return !isOut(chartOf(x)); })) { r.done = true; addLog('Chase round to ' + r.where + ' complete: ' + r.codes.length + ' charts back.'); } });
+}
+function pullChart(code) {
+  var c = chartOf(code), p = pullOf(code); if (!c || !p) return;
+  var cl = clinicOf(p.clinic), was = pullStatus(p);
+  moveChart(c, 'prep', 'Clinic box · ' + cl.name, was === 'out' ? 'collected for tomorrow\'s ' + cl.name + ' clinic' : was === 'missing' ? 'found, for tomorrow\'s ' + cl.name + ' clinic' : 'pulled for tomorrow\'s ' + cl.name + ' clinic');
+  delete state.search[code];
+  render(); toast(was === 'shelf' ? code + ' pulled. ' + readyLine() : code + ' is in the ' + cl.name + ' box. ' + readyLine());
+}
+function readyLine() { var k = kpis(); return k.pullReady + ' of ' + k.pullRequested + ' ready for tomorrow.'; }
+function notFound(code) {
+  var c = chartOf(code); if (!c) return;
+  var last = isOut(c) ? c.where + ', ' + sinceWord(c) + ' ago' : 'bay ' + c.bay;
+  c.last = last; c.loc = 'missing'; c.where = 'Not found'; c.since = nowMin();
+  addLog(code + ' not found (last recorded at ' + last + '). Added to charts not found.');
+  render(); toast(code + ' added to charts not found. The guide will flag it.');
+}
+function sendWanted(w) {
+  var c = chartOf(w.code);
+  if (c.loc === 'missing') { toast('That chart is on the not-found list.'); return; }
+  moveChart(c, WARDS.indexOf(w.to) >= 0 ? 'ward' : 'unit', w.to, 'requested at ' + hhmm(w.req));
+  state.retrievals.push({ code: w.code, to: w.to, req: w.req, del: nowMin() });
+  state.wanted = state.wanted.filter(function (x) { return x.id !== w.id; });
+  render(); toast('Sent ' + fmt(nowMin() - w.req) + ' after the request. Retrieval time updated.');
+}
+function collectRound(r, code) {
+  var c = chartOf(code); if (!c || !isOut(c)) return;
+  if (pullOf(code)) { pullChart(code); return; }
+  moveChart(c, 'shelf', 'Library', 'chase round to ' + r.where);
+  render(); toast(code + ' back in the library.');
+}
+function recordScan() {
+  var sc = state.scan, code = (sc.code || '').trim().toUpperCase(), c = chartOf(code);
+  if (!c) { toast('No chart with that code in this example.'); return; }
+  if (!sc.move) { toast('Choose where the chart is going.'); return; }
+  var p = pullOf(code);
+  if (sc.move === 'shelf') {
+    if (p) { state.scan = { code: '', move: null, where: '' }; pullChart(code); return; }
+    moveChart(c, 'desk', 'Records desk', 'taken off the shelf');
+  } else if (sc.move === 'clinic') moveChart(c, 'unit', sc.where || UNITS[0]);
+  else if (sc.move === 'ward') moveChart(c, 'ward', sc.where || WARDS[0]);
+  else moveChart(c, 'shelf', 'Library', 'returned');
+  var w = state.wanted.filter(function (x) { return x.code === code; })[0];
+  if (w && (sc.move === 'ward' || sc.move === 'clinic') && c.where === w.to) { state.retrievals.push({ code: code, to: w.to, req: w.req, del: nowMin() }); state.wanted = state.wanted.filter(function (x) { return x !== w; }); }
+  state.scan = { code: '', move: null, where: '' };
+  render(); toast('Move recorded for ' + code + '.');
+}
+function codeEpisode(e) { e.status = 'coded'; state.coded.push({ code: e.code, spec: e.spec, days: e.days }); addLog('Coded: ' + e.code + ' · ' + e.spec + ', ' + days(e.days) + ' after discharge'); render(); toast('Marked coded. Backlog and coding time updated.'); }
+function queryEpisode(e, why) { e.status = 'queried'; e.queryDays = 0; e.why = why; e.reminded = false; addLog('Query sent to the ' + e.spec + ' team for ' + e.code + ': ' + why.toLowerCase()); render(); toast('Query sent. It stays in the backlog until answered.'); }
+function answerEpisode(e) { e.status = 'uncoded'; e.why = null; e.queryDays = null; e.flags = []; addLog('Query answered for ' + e.code + ' (' + e.spec + '). Back in the coding queue.'); render(); toast('Back in the queue, ready to code.'); }
+function nextStage(r) {
+  if (r.outcome) return;
+  r.stage = Math.min(4, r.stage + 1);
+  if (r.stage === 4) { r.outcome = 'released'; state.closed.push(r.rcv); addLog('Record request ' + r.id + ' (' + r.from.toLowerCase() + '): information released, ' + days(r.rcv) + ' after it was received'); toast('Released. Response time updated.'); }
+  else { addLog('Record request ' + r.id + ' (' + r.from.toLowerCase() + '): ' + STAGES[r.stage].toLowerCase()); toast('Moved to "' + STAGES[r.stage] + '".'); }
+  render();
+}
+
+// ---------- Render ----------
+var HINTS = {
+  clerk: 'A records clerk\'s phone. Work tomorrow\'s pull list, sorted by shelf bay so you walk the library once. Scan or type a record code and tap where the chart is going. One thumb, big buttons.',
+  coder: 'A coder\'s view. Uncoded discharges by age and specialty. Mark each one coded, or send a query when something is missing. Ospeli does not suggest codes or read clinical content.',
+  manager: 'The records manager\'s view. Charts out longer than your set period by location, tomorrow\'s pull list by clinic, the coding backlog by age band, and record requests by stage and due date.'
+};
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  ['clerk', 'coder', 'manager'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('view-h').textContent = { clerk: 'Tomorrow\'s pull list', coder: 'Coding queue', manager: 'Records overview' }[state.role];
+  document.getElementById('clocknow').textContent = 'Demo clock ' + hhmm(nowMin()) + ' · Monday';
+  renderKpis();
+  var v = document.getElementById('view'); v.textContent = ''; v.className = 'v-' + state.role;
+  v.appendChild(state.role === 'clerk' ? clerk() : state.role === 'coder' ? coder() : manager());
+  // Front-line view leads with the task; the measures go below it.
+  var kw = document.getElementById('kpiwrap');
+  if (state.role === 'clerk') { v.parentNode.appendChild(kw); kw.className = 'kpibelow'; }
+  else { v.parentNode.insertBefore(kw, v); kw.className = ''; }
+  renderGuide();
+  renderLog();
+  save();
+  if (aid) { var e = document.getElementById(aid); if (e) { e.focus({ preventScroll: true }); if (e.type === 'text') e.setSelectionRange(e.value.length, e.value.length); } }
+  sig = signature();
+}
+function renderKpis() {
+  var k = kpis(), box = document.getElementById('kpis'); box.textContent = '';
+  var tiles = [
+    ['ready', k.pullReadyPct == null ? '–' : k.pullReadyPct + '%', 'Tomorrow\'s charts ready', k.pullReady + ' of ' + k.pullRequested + ' pulled · ' + k.notLocated + ' not in the library', 'Charts pulled into clinic boxes / charts requested for tomorrow\'s clinics. At clinic start this becomes "record available at clinic start": records present at session start / records requested for the session. Local definition.'],
+    ['retr', k.retrievalMedianMin == null ? '–' : fmt(k.retrievalMedianMin), 'Record retrieval time', 'median of ' + k.retrievalsToday + ' today · ' + k.waitingToSend + ' waiting', 'Record requested → record delivered, for charts asked for by wards and clinics today (median). Local definition.'],
+    ['code', String(k.uncoded), 'Uncoded discharges', 'coded in a median ' + days(k.codingMedianDays) + ' · ' + k.over30Days + ' over 30 days', 'Coding timeliness: discharge → episode coded. The number is discharges not yet coded, queries included. The line below is the median for the last ' + k.codedRecently + ' episodes coded. Local definition.'],
+    ['rel', k.releaseMedianDays == null ? '–' : days(k.releaseMedianDays), 'Request response time', k.requestsOpen + ' open · ' + k.requestsDueSoon + ' due within ' + state.settings.dueSoonDays + ' days', 'Release request response time: request received → information released or refused (median of requests closed in the last 90 days). Local definition.']
+  ];
+  tiles.forEach(function (t) {
+    var open = state.kpiOpen === t[0], alert = (t[0] === 'rel' && k.requestsDueSoon > 0) || (t[0] === 'ready' && nowMin() >= state.settings.cutoff && k.notLocated > 0);
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat' + (alert ? ' alert' : ''), 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def', text: t[4] })]));
+  });
+  document.getElementById('stathint').textContent = state.role === 'clerk' ? 'How the records team is doing today. Tap a tile for its definition.' : 'Today and now. Tap a tile for its definition.';
+}
+
+var MOVES = [['shelf', 'Off the shelf', 'pulled'], ['clinic', 'To clinic', 'or unit'], ['ward', 'To ward', 'pick ward'], ['return', 'Returned', 'back on shelf']];
+function clerk() {
+  var frag = document.createDocumentFragment(), sc = state.scan;
+  // Record a move
+  var input = el('input', { type: 'text', id: 'scan-code', autocomplete: 'off', autocapitalize: 'characters', spellcheck: 'false', placeholder: 'R-____', list: 'codes', value: sc.code,
+    oninput: function (e) { sc.code = e.target.value.toUpperCase(); var c = chartOf(sc.code.trim()); if (c || !sc.code) render(); else save(); } });
+  var dl = el('datalist', { id: 'codes' }); state.charts.forEach(function (c) { dl.appendChild(el('option', { value: c.code })); });
+  var box = el('div', { class: 'scanbox', id: 'scanbox' }, [el('h3', { text: 'Record a chart move' }),
+    el('div', { class: 'coderow' }, [el('label', { for: 'scan-code' }, ['Record code', input]),
+      el('button', { type: 'button', class: 'scan', id: 'scan-btn', 'aria-label': 'Scan the next chart on your list', onclick: function () {
+        var next = fetchList().filter(function (p) { return pullStatus(p) === 'shelf'; })[0];
+        if (!next) { toast('Nothing left on the shelf for tomorrow.'); return; }
+        state.scan = { code: next.code, move: 'shelf', where: '' }; render(); toast('Scanned ' + next.code + '. Tap Save move.');
+      } }, [svgScan(), 'Scan'])]), dl, el('p', { class: 'fine', style: 'font-size:0.95rem;margin-top:6px', text: 'In this demo, Scan picks the next chart on your list. Or type a code.' })]);
+  var c = chartOf((sc.code || '').trim());
+  if (c) {
+    var p = pullOf(c.code);
+    box.appendChild(el('p', { class: 'found', id: 'scan-found' }, [el('b', { text: c.code }), ' · now: ' + (c.loc === 'shelf' ? 'Library, bay ' + c.bay : c.loc === 'missing' ? 'not found (last at ' + c.last + ')' : c.where + ', ' + sinceWord(c)) + (p ? ' · on tomorrow\'s ' + clinicOf(p.clinic).name + ' list' : '')]));
+  }
+  var mv = el('div', { class: 'moves', role: 'group', 'aria-label': 'Where is the chart going?' });
+  MOVES.forEach(function (m) { mv.appendChild(el('button', { type: 'button', id: 'mv-' + m[0], 'aria-pressed': String(sc.move === m[0]), onclick: function () { sc.move = m[0]; sc.where = m[0] === 'ward' ? (WARDS.indexOf(sc.where) >= 0 ? sc.where : WARDS[0]) : m[0] === 'clinic' ? (UNITS.indexOf(sc.where) >= 0 ? sc.where : UNITS[0]) : ''; render(); } }, [m[1], el('small', { text: m[2] })])); });
+  box.appendChild(mv);
+  var row = el('div', { class: 'whererow' });
+  if (sc.move === 'ward' || sc.move === 'clinic') {
+    var opts = sc.move === 'ward' ? WARDS : UNITS, s = el('select', { id: 'scan-where', onchange: function (e) { sc.where = e.target.value; save(); } });
+    opts.forEach(function (o) { s.appendChild(el('option', { value: o, text: o })); }); s.value = sc.where || opts[0];
+    row.appendChild(el('label', { for: 'scan-where' }, [sc.move === 'ward' ? 'Which ward' : 'Which clinic or unit', s]));
+  }
+  row.appendChild(el('button', { type: 'button', class: 'primary save', id: 'scan-save', disabled: c && sc.move ? false : 'disabled', onclick: recordScan, text: c ? (sc.move ? 'Save move' : 'Choose where') : 'Scan or type a code' }));
+  box.appendChild(row);
+  frag.appendChild(box);
+  // Wanted now
+  if (state.wanted.length) {
+    frag.appendChild(el('h3', { class: 'sec', text: 'Asked for now · ' + state.wanted.length }));
+    var wl = el('div', { class: 'charts', id: 'wanted' });
+    state.wanted.forEach(function (w) {
+      var wc = chartOf(w.code);
+      wl.appendChild(el('article', { class: 'chart s-out', 'aria-label': 'Wanted: ' + w.code }, [
+        el('div', { class: 'top' }, [el('span', { class: 'code', text: w.code }), el('span', { class: 'chip warn', 'data-wait': w.id, text: 'asked ' + fmt(nowMin() - w.req) + ' ago' })]),
+        el('p', { class: 'loc', text: (wc.loc === 'shelf' ? 'Library, bay ' + wc.bay : wc.where) + ' → ' + w.to }),
+        el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'go fetch', id: 'send-' + w.id, onclick: function () { sendWanted(w); }, text: 'Sent to ' + w.to }) ])
+      ]));
+    });
+    frag.appendChild(wl);
+  }
+  // Chase rounds the records manager confirmed
+  state.rounds.filter(function (r) { return !r.done; }).forEach(function (r) {
+    var left = r.codes.filter(function (x) { return isOut(chartOf(x)); });
+    var rb = el('div', { class: 'round', id: 'round-' + r.id }, [el('h4', { text: 'Chase round: ' + r.where + ' · ' + left.length + ' to collect' }), el('p', { class: 'meta', style: 'margin:0;color:var(--soft)', text: 'Confirmed by the records manager at ' + hhmm(r.at) + '. Oldest first.' })]);
+    left.forEach(function (x) { var cc = chartOf(x); rb.appendChild(el('div', { class: 'mini' }, [el('div', {}, [el('b', { text: x }), ' ', el('span', { text: days(daysOut(cc)) + ' out' + (pullOf(x) ? ' · on tomorrow\'s list' : '') })]), el('button', { type: 'button', id: 'col-' + x, onclick: function () { collectRound(r, x); }, text: 'Collected' })])); });
+    frag.appendChild(rb);
+  });
+  // Pull list
+  var counts = { fetch: 0, prep: 0, missing: 0 };
+  state.pull.forEach(function (p) { var s = pullStatus(p); if (s === 'prep') counts.prep++; else if (s === 'missing') counts.missing++; else counts.fetch++; });
+  frag.appendChild(el('h3', { class: 'sec', text: 'Tomorrow\'s clinics · ' + state.pull.length + ' charts' }));
+  var f = el('div', { class: 'filters', role: 'group', 'aria-label': 'Show' });
+  [['fetch', 'To get · ' + counts.fetch], ['missing', 'Not found · ' + counts.missing], ['prep', 'Ready · ' + counts.prep]].forEach(function (x) {
+    f.appendChild(el('button', { type: 'button', id: 'f-' + x[0], 'aria-pressed': String(state.filter === x[0]), onclick: function () { state.filter = x[0]; render(); }, text: x[1] }));
+  });
+  frag.appendChild(f);
+  var items = state.filter === 'fetch' ? fetchList() : state.pull.filter(function (p) { return pullStatus(p) === state.filter; });
+  if (!items.length) frag.appendChild(el('p', { class: 'empty', text: state.filter === 'fetch' ? 'Everything for tomorrow is pulled or on the not-found list.' : state.filter === 'missing' ? 'No charts on the not-found list.' : 'Nothing pulled yet.' }));
+  var list = el('div', { class: 'charts', id: 'pull' });
+  items.forEach(function (p) { list.appendChild(pullCard(p)); });
+  frag.appendChild(list);
+  return frag;
+}
+function fetchList() {
+  // Searched-first, then charts out (go and collect), then on the shelf in bay order: one walk through the library.
+  return state.pull.filter(function (p) { var s = pullStatus(p); return s === 'shelf' || s === 'out' || (s === 'missing' && state.search[p.code]); }).sort(function (a, b) {
+    var ca = chartOf(a.code), cb = chartOf(b.code), ra = state.search[a.code] != null ? 0 : isOut(ca) ? 1 : 2, rb = state.search[b.code] != null ? 0 : isOut(cb) ? 1 : 2;
+    return (ra - rb) || (ra === 1 ? (ca.where > cb.where ? 1 : ca.where < cb.where ? -1 : 0) : (ca.bay > cb.bay ? 1 : ca.bay < cb.bay ? -1 : 0));
+  });
+}
+function pullCard(p) {
+  var c = chartOf(p.code), s = pullStatus(p), cl = clinicOf(p.clinic);
+  var chips = [el('span', { class: 'chip', text: cl.name + ' · Tue ' + hhmm(p.slot) })];
+  if (state.search[p.code] != null && s !== 'prep') chips.push(el('span', { class: 'chip hot', text: 'Search first' }));
+  if (s === 'prep') chips.push(el('span', { class: 'chip done', text: 'Ready' }));
+  var loc = s === 'shelf' ? 'Library · bay ' + c.bay : s === 'out' ? 'Out: ' + c.where : s === 'missing' ? 'Not found' : c.where;
+  var meta = s === 'out' ? 'Out ' + sinceWord(c) + '. Collect it from ' + c.where + '.' : s === 'missing' ? 'Last recorded at ' + c.last + '. Searched at ' + hhmm(c.since) + '.' : s === 'prep' ? 'Pulled at ' + hhmm(c.since) + '.' : '';
+  var acts = null;
+  if (s === 'shelf') acts = [el('button', { type: 'button', class: 'go', id: 'p-' + c.code, 'aria-label': 'Pulled: ' + c.code, onclick: function () { pullChart(c.code); }, text: 'Pulled' }), el('button', { type: 'button', class: 'alt', id: 'nf-' + c.code, 'aria-label': 'Not found: ' + c.code, onclick: function () { notFound(c.code); }, text: 'Not found' })];
+  else if (s === 'out') acts = [el('button', { type: 'button', class: 'go fetch', id: 'p-' + c.code, 'aria-label': 'Collected: ' + c.code, onclick: function () { pullChart(c.code); }, text: 'Collected' }), el('button', { type: 'button', class: 'alt', id: 'nf-' + c.code, 'aria-label': 'Not there: ' + c.code, onclick: function () { notFound(c.code); }, text: 'Not there' })];
+  else if (s === 'missing') acts = [el('button', { type: 'button', class: 'go', id: 'p-' + c.code, 'aria-label': 'Found it: ' + c.code, onclick: function () { pullChart(c.code); }, text: 'Found it' })];
+  return el('article', { class: 'chart s-' + s, 'aria-label': c.code + ', ' + loc },
+    [el('div', { class: 'top' }, [el('span', { class: 'code', text: c.code }), el('span', { class: 'chips' }, chips)]), el('p', { class: 'loc', text: loc }), meta ? el('p', { class: 'meta', text: meta }) : null, acts ? el('div', { class: 'acts' }, acts) : null]);
+}
+
+function coder() {
+  var frag = document.createDocumentFragment(), open = openEpisodes();
+  var bands = el('div', { class: 'bands', role: 'group', 'aria-label': 'Days since discharge' });
+  BANDS.forEach(function (b) {
+    var n = open.filter(function (e) { return bandOf(e.days) === b; }).length;
+    bands.appendChild(el('button', { type: 'button', id: 'band-' + b.id, class: 'band' + (b.id === 'b4' ? ' old' : ''), 'aria-pressed': String(state.band === b.id), onclick: function () { state.band = state.band === b.id ? 'all' : b.id; render(); } }, [el('b', { text: String(n) }), el('span', { text: b.name + ' since discharge' })]));
+  });
+  frag.appendChild(bands);
+  var sp = el('select', { id: 'spec-pick', onchange: function (e) { state.spec = e.target.value; render(); } });
+  sp.appendChild(el('option', { value: 'all', text: 'All specialties' }));
+  SPECS.forEach(function (x) { sp.appendChild(el('option', { value: x, text: x + ' · ' + open.filter(function (e) { return e.spec === x; }).length })); });
+  sp.value = state.spec;
+  frag.appendChild(el('div', { class: 'pickbar' }, [el('label', { for: 'spec-pick' }, ['Specialty', sp]), state.band !== 'all' ? el('button', { type: 'button', class: 'small', id: 'band-clear', onclick: function () { state.band = 'all'; render(); }, text: 'Show all ages' }) : null]));
+  var list = open.filter(function (e) { return (state.spec === 'all' || e.spec === state.spec) && (state.band === 'all' || bandOf(e.days).id === state.band); }).sort(function (a, b) { return b.days - a.days; });
+  frag.appendChild(el('h3', { class: 'sec', text: 'Oldest first · ' + list.length + ' shown' }));
+  if (!list.length) frag.appendChild(el('p', { class: 'empty', text: 'Nothing waiting in this view.' }));
+  var wrap = el('div', { id: 'episodes' });
+  list.forEach(function (e) {
+    var flags = e.flags.map(function (f) { return el('span', { class: 'chip warn', text: f }); });
+    if (e.status === 'queried') flags.unshift(el('span', { class: 'chip dark', text: 'Query sent ' + (e.queryDays ? days(e.queryDays) + ' ago' : 'today') + ': ' + e.why.toLowerCase() }));
+    if (e.reminded) flags.push(el('span', { class: 'chip ok', text: 'Reminder sent' }));
+    var acts;
+    if (e.status === 'queried') acts = [el('button', { type: 'button', class: 'small primary', id: 'ans-' + e.id, onclick: function () { answerEpisode(e); }, text: 'Answer received' })];
+    else {
+      var qs = el('select', { id: 'qwhy-' + e.id, 'aria-label': 'Query reason for ' + e.code, style: 'min-height:36px;padding:4px 8px;font-size:0.85rem' });
+      QUERY_WHY.forEach(function (q) { qs.appendChild(el('option', { value: q, text: q })); });
+      if (e.flags[0] === 'Discharge summary not received') qs.value = QUERY_WHY[0];
+      acts = [el('button', { type: 'button', class: 'small primary', id: 'code-' + e.id, 'aria-label': 'Mark coded: ' + e.code, onclick: function () { codeEpisode(e); }, text: 'Mark coded' }), qs, el('button', { type: 'button', class: 'small', id: 'q-' + e.id, 'aria-label': 'Send query: ' + e.code, onclick: function () { queryEpisode(e, qs.value); }, text: 'Query sent' })];
+    }
+    wrap.appendChild(el('div', { class: 'erow' + (e.days > 30 ? ' old' : e.days > 14 ? ' mid' : '') }, [
+      el('div', {}, [el('b', { text: e.code }), el('span', { class: 'sub', text: e.spec + ' · discharged ' + days(e.days) + ' ago' }), flags.length ? el('div', { class: 'flags' }, flags) : null]),
+      el('div', { class: 'eacts' }, acts)
+    ]));
+  });
+  frag.appendChild(wrap);
+  frag.appendChild(el('p', { class: 'fine', text: 'Coding is done by the coder in your coding system. Ospeli records that it was done and when, to show the backlog and its age. It never suggests codes. Flags show what is missing, not what is in the record.' }));
+  return frag;
+}
+
+function manager() {
+  var frag = document.createDocumentFragment(), st = state.settings, k = kpis();
+  var grid = el('div', { class: 'mgrid' });
+  // Charts out past the period
+  var outs = outByLocation();
+  var tb = el('tbody');
+  outs.forEach(function (x) {
+    var round = state.rounds.filter(function (r) { return r.where === x.where && !r.done; })[0];
+    tb.appendChild(el('tr', { class: x.past >= 3 ? 'hot' : '' }, [el('td', { text: x.where }), el('td', { class: 'r', text: String(x.out) }), el('td', { class: 'r', text: String(x.past) }), el('td', { class: 'r', text: days(x.longest) }), el('td', {}, [round ? el('span', { class: 'chip ok', text: 'Round on' }) : null])]));
+  });
+  grid.appendChild(el('div', { class: 'panel', id: 'p-out' }, [el('h3', { class: 'sec', text: 'Charts out · ' + k.chartsOut + ' · ' + k.chartsOutPastPeriod + ' over ' + st.outDays + ' days' }),
+    el('div', { class: 'tablewrap' }, [el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Location' }), el('th', { class: 'r', text: 'Out' }), el('th', { class: 'r', text: 'Over ' + st.outDays + 'd' }), el('th', { class: 'r', text: 'Longest' }), el('th', { text: '' })])]), tb])])]));
+  // Pull list completion
+  var pb = el('tbody');
+  pullByClinic().forEach(function (x) {
+    pb.appendChild(el('tr', {}, [el('td', {}, [el('b', { text: x.name }), el('span', { class: 'sub', style: 'display:block;color:var(--soft);font-size:0.8rem', text: 'Tue ' + x.time + ' · ' + x.requested + ' charts' })]),
+      el('td', {}, [el('div', { class: 'bar', role: 'img', 'aria-label': x.readyPct + '% ready' }, [el('i', { style: 'width:' + x.readyPct + '%' })])]),
+      el('td', { class: 'r', text: x.pulled + '/' + x.requested }), el('td', { class: 'r', text: x.out ? String(x.out) : '–' }), el('td', { class: 'r', text: x.notFound ? String(x.notFound) : '–' })]));
+  });
+  grid.appendChild(el('div', { class: 'panel', id: 'p-pull' }, [el('h3', { class: 'sec', text: 'Tomorrow\'s pull list · ' + k.pullReadyPct + '% ready · cut-off ' + hhmm(st.cutoff) }),
+    el('div', { class: 'tablewrap' }, [el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Clinic' }), el('th', { text: 'Ready' }), el('th', { class: 'r', text: 'Pulled' }), el('th', { class: 'r', text: 'Out' }), el('th', { class: 'r', text: 'Not found' })])]), pb])])]));
+  // Coding backlog by age band and specialty
+  var open = openEpisodes(), cb = el('tbody');
+  SPECS.forEach(function (sp) {
+    var es = open.filter(function (e) { return e.spec === sp; }); if (!es.length) return;
+    cb.appendChild(el('tr', {}, [el('td', { text: sp })].concat(BANDS.map(function (b) { var n = es.filter(function (e) { return bandOf(e.days) === b; }).length; return el('td', { class: 'r', style: b.id === 'b4' && n ? 'color:#B23A22;font-weight:800' : '', text: n ? String(n) : '–' }); })).concat([el('td', { class: 'r', text: String(es.length) })])));
+  });
+  cb.appendChild(el('tr', {}, [el('td', {}, [el('b', { text: 'All' })])].concat(BANDS.map(function (b) { return el('td', { class: 'r' }, [el('b', { text: String(open.filter(function (e) { return bandOf(e.days) === b; }).length) })]); })).concat([el('td', { class: 'r' }, [el('b', { text: String(open.length) })])])));
+  grid.appendChild(el('div', { class: 'panel', id: 'p-coding', style: 'grid-column:1/-1' }, [el('h3', { class: 'sec', text: 'Coding backlog · ' + open.length + ' · ' + k.queried + ' queried' }),
+    el('div', { class: 'tablewrap' }, [el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Specialty' }), el('th', { class: 'r', text: '0–7d' }), el('th', { class: 'r', text: '8–14d' }), el('th', { class: 'r', text: '15–30d' }), el('th', { class: 'r', text: '30d+' }), el('th', { class: 'r', text: 'All' })])]), cb])]),
+    el('p', { class: 'fine', text: 'Days since discharge. Coding timeliness last ' + k.codedRecently + ' coded: median ' + days(k.codingMedianDays) + '.' })]));
+  // Record requests by stage and due date
+  var rq = el('div', { id: 'requests' });
+  openRequests().sort(function (a, b) { return daysLeft(a) - daysLeft(b); }).forEach(function (r) {
+    var d = daysLeft(r), stages = el('div', { class: 'stages', 'aria-hidden': 'true' }, STAGES.map(function (x, i) { return el('span', { class: i <= r.stage ? 'on' : '' }); }));
+    rq.appendChild(el('div', { class: 'req' + (d < 0 ? ' over' : dueSoon(r) ? ' soon' : '') }, [
+      el('div', {}, [el('b', { text: r.id }), ' ', dueSoon(r) ? el('span', { class: 'chip ' + (d < 0 ? 'hot' : 'warn'), text: dueWord(r) }) : null, r.flagged ? el('span', { class: 'chip dark', text: 'Flagged to IG lead' }) : null,
+        el('span', { class: 'sub', text: r.from + ' · received ' + days(r.rcv) + ' ago · ' + (dueSoon(r) ? '' : dueWord(r) + ' · ') + 'stage ' + (r.stage + 1) + ' of 5: ' + STAGES[r.stage] }), stages]),
+      el('button', { type: 'button', class: 'small', id: 'next-' + r.id, 'aria-label': 'Next stage for ' + r.id + ': ' + STAGES[r.stage + 1], onclick: function () { nextStage(r); }, text: ['Mark ID checked', 'Mark gathered', 'Mark reviewed', 'Mark released'][r.stage] })
+    ]));
+  });
+  var released = state.requests.filter(function (r) { return r.outcome; }).length;
+  frag.appendChild(grid);
+  frag.appendChild(el('div', { class: 'panel', id: 'p-req', style: 'margin-top:16px' }, [el('h3', { class: 'sec', text: 'Record requests · ' + k.requestsOpen + ' open · soonest due first' }), rq,
+    el('p', { class: 'fine', text: 'From patients and third parties, with consent where needed. IG = information governance. Response time: median ' + days(k.releaseMedianDays) + ' over requests closed in the last 90 days' + (released ? ', including ' + released + ' released today' : '') + '.' })]));
+  // Settings
+  var d = el('details', { class: 'set', id: 'settings' }, [el('summary', { text: 'Periods and cut-offs (your settings)' })]);
+  var tg = el('div', { class: 'targets' });
+  [['outDays', 'Chart out period (days)', 1, 120], ['responseDays', 'Request response period (days)', 1, 120], ['dueSoonDays', 'Warn before due (days)', 0, 30], ['queryDays', 'Query reminder after (days)', 1, 60]].forEach(function (x) {
+    tg.appendChild(el('label', { for: 'set-' + x[0] }, [x[1], el('input', { type: 'number', id: 'set-' + x[0], min: String(x[2]), max: String(x[3]), step: '1', inputmode: 'numeric', value: String(st[x[0]]), onchange: function (e) { var v = Math.max(x[2], Math.min(x[3], Math.round(+e.target.value))); if (isNaN(v)) v = DEFAULTS[x[0]]; st[x[0]] = v; addLog('Records manager set "' + x[1].toLowerCase() + '" to ' + v + '.'); render(); document.getElementById('settings').open = true; } })]));
+  });
+  var co = el('select', { id: 'set-cutoff', onchange: function (e) { st.cutoff = +e.target.value; addLog('Records manager set the pull list cut-off to ' + hhmm(st.cutoff) + '.'); render(); document.getElementById('settings').open = true; } });
+  [14 * 60, 15 * 60, 16 * 60, 17 * 60].forEach(function (t) { co.appendChild(el('option', { value: String(t), text: hhmm(t) })); }); co.value = String(st.cutoff);
+  tg.appendChild(el('label', { for: 'set-cutoff' }, ['Pull list cut-off', co]));
+  d.appendChild(tg);
+  d.appendChild(el('p', { class: 'fine', text: 'Example settings for this demo, not a standard. Your organisation sets its own; the legal period for record requests depends on where you are.' }));
+  if (settingsOpen) d.open = true;
+  d.addEventListener('toggle', function () { settingsOpen = d.open; });
+  frag.appendChild(d);
+  return frag;
+}
+var settingsOpen = false;
+
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. The pull list, chart moves, the coding queue, requests and the measures all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag right now.' }));
+  list.forEach(function (sg) {
+    var pend = state.pending.some(function (p) { return p.id === sg.id; });
+    var acts = sg.acts.map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend && a.primary ? 'disabled' : false, onclick: a.fn, text: pend && a.primary ? 'Proposed' : a.label }); });
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
+      el('span', { class: 'tag ' + (sg.kind === 'time' ? 'time' : sg.kind === 'ask' ? 'ask' : ''), text: sg.kind === 'time' ? 'Time running out' : sg.kind === 'move' ? 'Save a trip' : 'Follow up' }),
+      el('h3', { text: sg.title }), sg.text ? el('p', { text: sg.text }) : null,
+      sg.list ? el('ul', {}, sg.list.map(function (x) { return el('li', { text: x }); })) : null,
+      el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  if (state.pending.length) {
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for the records manager to decide' })]);
+    state.pending.forEach(function (p) {
+      d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }),
+        state.role === 'manager'
+          ? el('div', { class: 'acts', style: 'display:flex;gap:8px;flex-wrap:wrap' }, [el('button', { type: 'button', class: 'small primary', onclick: function () { decide(p, true); }, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])
+          : el('button', { type: 'button', class: 'small', onclick: function () { state.role = 'manager'; render(); document.getElementById('pending').scrollIntoView({ block: 'nearest' }); }, text: 'Switch to Records manager' })]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Proposals wait here for the records manager.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 25).forEach(function (e) { ol.appendChild(el('li', { class: e.fresh && Date.now() - e.fresh < 5000 ? 'new' : '' }, [el('time', { text: hhmm(e.t) }), el('span', { text: e.text })])); });
+}
+
+// Live clock: redraw when the minute changes, unless someone is typing or choosing.
+var sig = '', lastMin = null;
+function signature() { return nowMin() + '|' + suggest().map(function (s) { return s.id; }).join(','); }
+function tick() {
+  var n = nowMin(); if (n === lastMin) return; lastMin = n;
+  var a = document.activeElement;
+  document.getElementById('clocknow').textContent = 'Demo clock ' + hhmm(n) + ' · Monday';
+  if (a && (a.tagName === 'SELECT' || a.tagName === 'INPUT')) return;
+  if (signature() !== sig) render();
+}
+setInterval(tick, 5000);
+
+// ---------- Wiring ----------
+['clerk', 'coder', 'manager'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-clock').addEventListener('click', function () {
+  if (nowMin() + 15 > 23 * 60 + 59) { toast('The example day is over. Reset to start again.'); return; }
+  state.offset = (state.offset || 0) + 15; addLog('Demo: clock moved on 15 minutes.'); render(); toast('Clock moved on 15 minutes. Now ' + hhmm(nowMin()) + '.');
+});
+document.getElementById('t-ask').addEventListener('click', function () {
+  var places = ['Ward 2', 'Emergency department', 'Ward 5', 'Day surgery unit', 'Ward 1', 'Ward 6'], to = places[state.seq % places.length];
+  var R = rng(state.seq * 31 + 7), A = 'ACDEFHJKLMNPRTVWXY34679', code;
+  do { code = 'R-'; for (var i = 0; i < 4; i++) code += A[Math.floor(R() * A.length)]; } while (chartOf(code));
+  state.charts.push({ code: code, bay: 'ABCDEFGH'[Math.floor(R() * 8)] + '-' + String(1 + Math.floor(R() * 24)).padStart(2, '0'), loc: 'shelf', where: 'Library', since: -90 * DAY, last: null });
+  state.wanted.push({ id: 'W' + (++state.seq), code: code, to: to, req: nowMin() });
+  addLog(to + ' asked for ' + code);
+  if (state.role !== 'clerk') state.role = 'clerk';
+  render(); toast(to + ' asked for ' + code + '. It is at the top of the clerk\'s phone.');
+});
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; render(); toast('Example reset to the start of the demo.'); });
+
+// Read-only view for software agents (no writes): window.ospeliRecordsDemo
+window.ospeliRecordsDemo = Object.freeze({
+  describe: function () { return 'Read-only health records demo for a fictional hospital that still uses paper charts. get() returns tomorrow\'s pull list with chart locations, charts out by location, the coding backlog and record requests; kpis() the measures; suggestions() the guide\'s current suggestions. Patients appear only as anonymous record codes; no clinical content. Runs in the browser; nothing is sent anywhere. Changes are made by people in the page, never through this object.'; },
+  get: function () {
+    return clone({ role: state.role, clock: hhmm(nowMin()), settings: state.settings,
+      pullList: state.pull.map(function (p) { var c = chartOf(p.code); return { code: p.code, clinic: clinicOf(p.clinic).name, slot: 'Tue ' + hhmm(p.slot), status: pullStatus(p), location: c.loc === 'shelf' ? 'Library bay ' + c.bay : c.where, searchStarted: state.search[p.code] != null }; }),
+      pullByClinic: pullByClinic(), chartsOutByLocation: outByLocation(),
+      askedForNow: state.wanted.map(function (w) { return { code: w.code, to: w.to, asked: hhmm(w.req) }; }),
+      chaseRounds: state.rounds.map(function (r) { return { where: r.where, charts: r.codes, done: r.done }; }),
+      codingBacklog: openEpisodes().map(function (e) { return { code: e.code, specialty: e.spec, daysSinceDischarge: e.days, band: bandOf(e.days).name, status: e.status, flags: e.flags, query: e.why }; }),
+      requests: state.requests.map(function (r) { return { id: r.id, from: r.from, receivedDaysAgo: r.rcv, stage: STAGES[r.stage], daysLeft: daysLeft(r), dueSoon: dueSoon(r), flagged: r.flagged, outcome: r.outcome }; }),
+      pendingDecisions: state.pending.map(function (p) { return { text: p.text, decidedBy: WHO }; }) });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text || (s.list || []).join('; '), why: s.why, decidedBy: WHO }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>

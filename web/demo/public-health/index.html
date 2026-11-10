@@ -1,0 +1,1031 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Public health operations demo · Ospeli</title>
+<meta name="description" content="Vaccination outreach and screening days run from one log: a phone check-in for outreach teams that works offline, a coordinator view of session gaps, stock, expiry and cold chain alarms, and a programme view of sessions held, people reached and wastage. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Public health operations demo · Ospeli">
+<meta property="og:description" content="Vaccination outreach and screening days run from one log: a phone check-in for outreach teams that works offline, a coordinator view of session gaps, stock, expiry and cold chain alarms, and a programme view of sessions held, people reached and wastage. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/public-health/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 28px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button { font: inherit; color: var(--ink); }
+select, input[type=number] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 38px; padding: 4px 12px; font-size: 0.88rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 560px) { .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 14px; width: 100%; } .roles button { padding: 6px 4px; font-size: 0.95rem; line-height: 1.2; } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 12px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.88rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.clocknow { font-weight: 800; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-variant-numeric: tabular-nums; font-size: 0.95rem; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.viewcard { display: flex; flex-direction: column; }
+.viewcard > * { min-width: 0; }
+.cardhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; order: 0; }
+.kpiwrap { order: 1; margin-bottom: 6px; }
+#view { order: 2; }
+.viewcard.front .kpiwrap { order: 3; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); margin-bottom: 0; }
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.stats.six { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 640px) { .stats, .stats.six { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stat .lbl { color: var(--ink); font-size: 0.9rem; font-weight: 700; display: block; line-height: 1.3; }
+.stat .n { color: var(--soft); font-size: 0.8rem; display: block; line-height: 1.3; margin-top: 2px; }
+.stat .def { display: none; color: var(--soft); font-size: 0.82rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stat.good b { color: #077275; }
+.stathint { color: var(--soft); font-size: 0.82rem; margin: 6px 0 0; }
+.chip { display: inline-block; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; background: var(--sand); white-space: nowrap; }
+.chip.ok { background: var(--wash); color: #075F61; }
+.chip.bad { background: var(--hot); color: #8E2C18; }
+.chip.amber { background: var(--warn); color: #7A4B00; }
+.chip.navy { background: var(--navy); color: #fff; }
+.chip.q { background: var(--warn); color: #7A4B00; }
+.empty { text-align: center; color: var(--soft); padding: 18px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; }
+/* network / sync */
+.nettoggle { display: inline-flex; align-items: center; gap: 10px; border-color: #CFC5B2; padding: 8px 14px 8px 10px; font-size: 0.95rem; }
+.nettoggle .knob { width: 40px; height: 24px; border-radius: 999px; background: #D9D1C2; position: relative; flex: none; transition: background 0.15s; }
+.nettoggle .knob::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #fff; transition: left 0.15s; }
+.nettoggle[aria-pressed=true] { border-color: var(--coral); }
+.nettoggle[aria-pressed=true] .knob { background: var(--coral); }
+.nettoggle[aria-pressed=true] .knob::after { left: 19px; }
+.syncpill { display: inline-flex; align-items: center; gap: 8px; border-radius: 999px; padding: 6px 12px; font-weight: 800; font-size: 0.95rem; background: var(--wash); }
+.syncpill .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--sea); flex: none; }
+.syncpill.off { background: var(--hot); color: #8E2C18; }
+.syncpill.off .dot { background: var(--coral); }
+.syncpill.busy .dot { background: var(--mango); animation: pulse 0.8s infinite alternate; }
+@keyframes pulse { from { opacity: 1; } to { opacity: 0.3; } }
+@media (prefers-reduced-motion: reduce) { .syncpill.busy .dot { animation: none; } }
+.netrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin: 0 0 12px; }
+.offbanner { background: var(--navy); color: #fff; border-radius: 12px; padding: 10px 14px; margin: 0 0 12px; font-size: 0.95rem; }
+.offbanner b { color: #FFD38A; }
+.syncnote { background: var(--warn); border-radius: 10px; padding: 8px 12px; font-size: 0.9rem; margin: 0 0 12px; }
+/* outreach worker (phone) */
+.front, .front button, .front select, .front input { font-size: 1rem; }
+.sesshead { border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; background: #F7FBFA; }
+.sesshead.closed { border-left-color: var(--soft); background: #FBF8F2; }
+.sesshead .kind { font-weight: 800; font-size: 0.95rem; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; color: var(--soft); }
+.sesshead .kind .chip { font-size: 0.95rem; text-transform: none; letter-spacing: 0; }
+.sesshead .venue { font-size: 1.3rem; font-weight: 800; line-height: 1.25; margin: 4px 0 2px; }
+.sesshead p { margin: 0; color: var(--soft); font-size: 0.95rem; }
+.block { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; }
+.block h3 { margin: 0 0 8px; font-size: 1.05rem; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.block h3 span { font-weight: 700; font-size: 0.95rem; color: var(--soft); }
+.band { display: grid; grid-template-columns: minmax(0, 1fr) 56px 52px 72px; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.band:last-of-type { border-bottom: 0; }
+.band .bl { font-weight: 800; font-size: 1rem; line-height: 1.25; }
+.band .bc { font-weight: 800; font-size: 1.4rem; text-align: center; font-variant-numeric: tabular-nums; }
+.band button { min-height: 52px; padding: 0; font-size: 1.4rem; line-height: 1; }
+.band button.plus { background: var(--sea); border-color: var(--sea); color: #fff; }
+.progress { height: 12px; background: var(--sand); border-radius: 6px; overflow: hidden; margin: 8px 0 4px; position: relative; }
+.progress i { display: block; height: 100%; background: var(--sea); border-radius: 6px; }
+.progress em { position: absolute; top: -3px; bottom: -3px; width: 3px; background: var(--navy); }
+.fine { font-size: 0.95rem; color: var(--soft); margin: 4px 0 0; }
+.vials { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; text-align: center; margin: 4px 0 10px; }
+.vials div { background: var(--sand); border-radius: 10px; padding: 6px 4px; }
+.vials b { display: block; font-size: 1.35rem; line-height: 1.15; }
+.vials span { font-size: 0.95rem; color: var(--soft); font-weight: 700; }
+.acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.acts .go { flex: 1 1 160px; min-height: 52px; font-size: 1.05rem; }
+.go.sea { background: var(--sea); border-color: var(--sea); color: #fff; }
+.go.mango { background: var(--mango); border-color: var(--mango); color: var(--navy); }
+.cbrow { display: grid; grid-template-columns: 52px minmax(0, 1fr) 52px; gap: 8px; align-items: end; margin-bottom: 10px; }
+.cbrow label { display: flex; flex-direction: column; gap: 4px; font-weight: 800; font-size: 0.95rem; }
+.cbrow input { width: 100%; text-align: center; font-size: 1.3rem; font-weight: 800; min-height: 52px; }
+.cbrow button { min-height: 52px; padding: 0; font-size: 1.4rem; }
+.readings { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; }
+.readings li { display: flex; justify-content: space-between; gap: 8px; font-size: 0.95rem; border-bottom: 1px dashed var(--line); padding: 4px 0; }
+.closebox { background: var(--warn); border-radius: 12px; padding: 12px 14px; margin-top: 10px; font-size: 1rem; }
+.closebox p { margin: 0 0 8px; }
+/* coordinator */
+.filters { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.filters button { min-height: 38px; font-size: 0.88rem; border-color: #CFC5B2; }
+.filters button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.dayh { font-weight: 800; font-size: 0.95rem; margin: 12px 0 6px; color: var(--soft); }
+.srow { display: grid; grid-template-columns: minmax(0, 1fr) 180px 180px; gap: 10px; align-items: center; border: 1px solid var(--line); border-left: 5px solid var(--sea); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; font-size: 0.92rem; }
+.srow.t-screen { border-left-color: var(--mango); }
+.srow.gap { background: #FFF8F5; }
+.srow.flash { box-shadow: 0 0 0 3px var(--coral); }
+.srow b { display: block; font-size: 0.98rem; line-height: 1.3; }
+.srow .sub { color: var(--soft); font-size: 0.85rem; display: block; }
+.srow .gaps { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+.srow label { display: flex; flex-direction: column; gap: 2px; font-size: 0.75rem; font-weight: 800; color: var(--soft); text-transform: uppercase; letter-spacing: 0.04em; }
+.srow select { width: 100%; min-height: 40px; font-size: 0.88rem; padding: 4px 8px; text-transform: none; letter-spacing: 0; }
+.srow .onsite { font-size: 0.85rem; color: var(--soft); font-weight: 700; }
+@media (max-width: 760px) { .srow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .srow > div:first-child { grid-column: 1 / -1; } }
+.sites { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .sites { grid-template-columns: minmax(0, 1fr); } }
+.site { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.site h4 { margin: 0 0 6px; font-size: 0.95rem; display: flex; justify-content: space-between; gap: 8px; }
+.site h4 span { color: var(--soft); font-weight: 700; font-size: 0.8rem; }
+.irow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 8px; padding: 5px 0; border-top: 1px dashed var(--line); font-size: 0.88rem; align-items: center; }
+.irow b { font-size: 0.92rem; }
+.irow .sub { color: var(--soft); font-size: 0.8rem; grid-column: 1 / -1; }
+.dev { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 8px 0; border-top: 1px dashed var(--line); font-size: 0.9rem; }
+.dev:first-child { border-top: 0; }
+.dev b { display: block; }
+.dev .sub { color: var(--soft); font-size: 0.82rem; }
+.dev .rd { font-weight: 800; font-variant-numeric: tabular-nums; text-align: right; }
+.exc { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; font-size: 0.9rem; }
+.exc.open { border-color: var(--coral); background: #FFF8F5; }
+.exc.flash { box-shadow: 0 0 0 3px var(--coral); }
+.exc .top { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-weight: 800; }
+.exc ul { margin: 6px 0 0; padding-left: 18px; color: var(--soft); }
+.exc .actform { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; margin-top: 8px; }
+.exc .actform label { display: flex; flex-direction: column; gap: 3px; font-size: 0.8rem; font-weight: 800; color: var(--soft); min-width: 0; max-width: 100%; flex: 1 1 220px; }
+.exc .actform select { width: 100%; }
+/* manager */
+table.t { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+table.t th, table.t td { text-align: left; padding: 6px 6px; border-bottom: 1px solid var(--line); }
+table.t th { color: var(--soft); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+table.t td.r, table.t th.r { text-align: right; font-variant-numeric: tabular-nums; }
+.tablewrap { overflow-x: auto; }
+.two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 640px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.bars { display: grid; gap: 6px; }
+.bars div { display: grid; grid-template-columns: 150px minmax(0, 1fr) 34px; gap: 8px; align-items: center; font-size: 0.88rem; }
+.bars i { display: block; height: 12px; border-radius: 6px; background: var(--coral); min-width: 4px; }
+.bars b { text-align: right; }
+@media (max-width: 420px) { .bars div { grid-template-columns: 120px minmax(0, 1fr) 28px; } }
+ul.plain { list-style: none; margin: 0; padding: 0; font-size: 0.9rem; }
+ul.plain li { padding: 5px 0; border-bottom: 1px dashed var(--line); display: flex; justify-content: space-between; gap: 8px; }
+ul.plain li span { color: var(--soft); }
+details.set { margin-top: 16px; }
+details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.targets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 6px; }
+@media (max-width: 640px) { .targets { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.targets label { display: flex; flex-direction: column; gap: 4px; font-size: 0.85rem; font-weight: 700; color: var(--soft); }
+.targets input { width: 100%; }
+.small-note { font-size: 0.82rem; color: var(--soft); margin: 8px 0 0; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.95rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.85rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg .why { color: var(--soft); font-size: 0.85rem; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.decide > p { margin: 0; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+.prop .who { color: var(--soft); font-size: 0.85rem; }
+body.r-worker .how, body.r-worker .sugg p, body.r-worker .sugg .why, body.r-worker .decide, body.r-worker .stathint, body.r-worker .stat .n, body.r-worker .stat .def, body.r-worker ol.log li, body.r-worker .tag { font-size: 0.95rem; }
+body.r-worker .sugg h3 { font-size: 1.02rem; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 360px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+ol.log .chip { margin-left: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Public health operations: outreach sessions, stock and cold chain</h1>
+  <p class="lead">Vaccination outreach and screening days run from one log. Outreach teams check people in, count stock used and log cold box readings on a phone that keeps working without a signal. The coordinator sees which sessions lack a team, transport or stock, what each site holds and when it expires, and cold chain alarms as they happen. The programme manager sees sessions held, people reached and wastage. The guide points things out; a person decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-worker" aria-pressed="false">Outreach worker</button>
+    <button type="button" id="r-coordinator" aria-pressed="false">Campaign coordinator</button>
+    <button type="button" id="r-manager" aria-pressed="false">Programme manager</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <span class="clocknow" id="clocknow"></span>
+    <b>Demo tools:</b>
+    <button type="button" class="small" id="t-clock">Move clock on 30 min</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card viewcard" id="viewcard" aria-labelledby="view-h">
+        <div class="cardhead"><h2 id="view-h">Today</h2><div id="headtools"></div></div>
+        <div class="kpiwrap"><div class="stats" id="kpis"></div><p class="stathint" id="kpihint">Tap a tile for its definition.</p></div>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h" style="margin-bottom:10px">What happened today</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads sessions, stock, expiry dates and cold chain readings, and suggests where to look, with its reasons. In this preview it uses clear rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal. The campaign coordinator confirms or declines it.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: the outreach programme of Example General Hospital, its health centres, venues, teams, vehicles, stock and readings. It counts sessions, people checked in, stock and temperatures, never individual staff. It does not track cases or contacts, decide who should be vaccinated or screened, or judge whether stock is safe to use after an excursion; those decisions stay with the responsible people. Coming in Mar 2027: campaign plans, session check-ins, stock by site and cold chain readings sharing one log, with transfers between sites and work orders for faulty fridges. <a href="../../areas/public-health-operations/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var STORE = 'ospeli.publichealth.v1';
+var DAY = 1440;
+var START = 10 * 60 + 20;            // demo clock starts at 10:20 on Tuesday (day 0)
+var END = 17 * 60 + 30;              // the example day ends at 17:30
+var TODAY_DOM = 17, MONTH_DAYS = 30; // today is day 17 of a 30-day month
+var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function dow(d) { return ((2 + d) % 7 + 7) % 7; }
+
+// ---------- Fixed reference data (fictional) ----------
+var SITES = { C: 'Central store', N: 'Northside Health Centre', E: 'Eastfield Health Centre', H: 'Hill Road Clinic' };
+var SIDS = ['C', 'N', 'E', 'H'];
+var ITEMS = {
+  VA: { name: 'Vaccine A', unit: 'vials', pack: '10-dose vials', doses: 10 },
+  VB: { name: 'Vaccine B', unit: 'vials', pack: 'single-dose vials', doses: 1 },
+  SK: { name: 'Screening test kits', unit: 'kits', pack: 'kits', doses: 1 }
+};
+var IIDS = ['VA', 'VB', 'SK'];
+var TYPES = { vax: 'Vaccination outreach', screen: 'Screening day' };
+var TEAMS = { T1: 'Outreach team 1', T2: 'Outreach team 2', T3: 'Outreach team 3', T4: 'Outreach team 4' };
+var VEHICLES = { V1: 'Van 1', V2: 'Van 2', V3: 'Minibus' };
+var DEVICES = [
+  { id: 'CR-C', site: 'C', name: 'Central store cold room' },
+  { id: 'F-N', site: 'N', name: 'Northside fridge' },
+  { id: 'F-E', site: 'E', name: 'Eastfield fridge' },
+  { id: 'F-H', site: 'H', name: 'Hill Road fridge' },
+  { id: 'CB-T2', site: null, name: 'Cold box · Outreach team 2', box: true }
+];
+var BANDS = [['u5', 'Under 5'], ['c', '5 to 17'], ['a', '18 to 64'], ['o', '65 and over']];
+var ACTIONS = ['Stock moved to a backup fridge', 'Technician called; work order raised', 'Door found open and closed', 'Stock kept aside for review by the responsible person', 'Power supply checked'];
+// Example settings for this demo only, not a standard: each organisation sets its own.
+var DEFAULT_SET = { monthTarget: 3000, nearExpiry: 14, gapDays: 3, checkEvery: 60, lo: 2, hi: 8, alarmMin: 30, minMove: 5 };
+// Past sessions this month rotate through these: [type, venue, site, expected, item]
+var TEMPL = [
+  ['vax', 'Market square shelter', 'N', 120, 'VA'], ['vax', 'Riverside flats community room', 'E', 90, 'VA'],
+  ['screen', 'Eastfield Health Centre', 'E', 40, 'SK'], ['vax', 'Old Mill estate hall', 'H', 70, 'VB'],
+  ['screen', 'Hill Road community hall', 'H', 60, 'SK'], ['vax', 'Bus station concourse', 'N', 100, 'VA'],
+  ['vax', 'Eastfield School hall', 'N', 160, 'VA']
+];
+var CANCEL = { 3: 'No transport booked', 8: 'No team available', 13: 'No transport booked', 17: 'Severe weather', 20: 'Stock not available' };
+var TURNOUT = [0.82, 0.95, 0.74, 1.02, 0.88, 0.91, 0.79];
+
+// ---------- State ----------
+function seed() {
+  var s = { v: 1, offset: 0, role: window.matchMedia('(max-width: 640px)').matches ? 'worker' : 'coordinator', guide: true, kpiOpen: null,
+    offline: false, queue: [], syncing: false, lastSync: START - 4, settings: Object.assign({}, DEFAULT_SET), pending: [], dismissed: {}, done: {},
+    log: [], seq: 100, gapsOnly: false, closing: false, actSel: {}, exActions: {}, flash: null };
+  // Sessions earlier this month (weekdays, two a day).
+  s.history = []; var k = 0;
+  for (var d = -(TODAY_DOM - 1); d < 0; d++) {
+    if (dow(d) === 0 || dow(d) === 6) continue;
+    for (var j = 0; j < 2; j++, k++) {
+      var tp = TEMPL[k % TEMPL.length], h = { d: d, type: tp[0], venue: tp[1], site: tp[2], expected: tp[3], item: tp[4] };
+      if (CANCEL[k]) { h.status = 'cancelled'; h.reason = CANCEL[k]; }
+      else {
+        h.status = 'held'; h.reached = Math.round(tp[3] * TURNOUT[k % TURNOUT.length]);
+        if (tp[0] === 'vax') { var dp = ITEMS[tp[4]].doses, vials = Math.ceil(h.reached / dp) + (dp > 1 && k % 3 === 0 ? 1 : 0) + (dp === 1 && k % 4 === 0 ? 2 : 0); h.issued = vials * dp; h.given = h.reached; }
+      }
+      s.history.push(h);
+    }
+  }
+  // Today and the next seven days.
+  s.sessions = [
+    ses('S1', 0, 9 * 60, 13 * 60, 'vax', 'Market square shelter', 'N', 140, 'VA', 12, 'T2', 'V1', { issued: true }),
+    ses('S2', 0, 13 * 60, 16 * 60, 'screen', 'Eastfield Health Centre', 'E', 40, 'SK', 40, 'T3', null, { onsite: true }),
+    ses('S3', 1, 9 * 60, 13 * 60, 'vax', 'Riverside flats community room', 'E', 90, 'VA', 10, 'T1', 'V2'),
+    ses('S4', 2, 9 * 60, 13 * 60, 'vax', 'Eastfield School hall', 'N', 160, 'VA', 18, 'T2', 'V1'),
+    ses('S5', 2, 10 * 60, 14 * 60, 'screen', 'Hill Road community hall', 'H', 60, 'SK', 60, 'T4', null),
+    ses('S6', 3, 9 * 60, 13 * 60, 'vax', 'Old Mill estate hall', 'H', 70, 'VB', 70, null, 'V2'),
+    ses('S7', 6, 9 * 60, 13 * 60, 'vax', 'Bus station concourse', 'N', 100, 'VA', 12, 'T1', 'V1'),
+    ses('S8', 7, 13 * 60, 16 * 60, 'screen', 'Northside Health Centre', 'N', 50, 'SK', 50, 'T3', null, { onsite: true })
+  ];
+  // Stock lots on hand: [site, item, quantity, expires in N days]
+  s.lots = [];
+  [['C', 'VA', 120, 90], ['C', 'VA', 40, 35], ['C', 'VB', 200, 120], ['C', 'SK', 300, 200],
+   ['N', 'VA', 32, 60], ['N', 'SK', 60, 150], ['N', 'VB', 10, 40],
+   ['E', 'VA', 30, 6], ['E', 'SK', 45, 150], ['E', 'VB', 20, 80],
+   ['H', 'SK', 70, 100], ['H', 'VB', 80, 45]].forEach(function (r) { s.lots.push({ id: 'L' + (++s.seq), site: r[0], item: r[1], qty: r[2], exp: r[3] }); });
+  s.stockouts = [{ site: 'H', item: 'VB', d: -7 }, { site: 'H', item: 'VB', d: -6 }, { site: 'E', item: 'SK', d: -4 }];
+  // The outreach phone's copy of today's session, and what the server has received.
+  s.phone = { sid: 'S1', carried: 12, started: 9 * 60 + 5, closed: null, returned: false, bands: { u5: 18, c: 9, a: 22, o: 7 }, opened: 6,
+    readings: [{ t: 8 * 60 + 40, v: 4.6 }, { t: 9 * 60 + 40, v: 5.1 }] };
+  s.server = clone(s.phone);
+  s.devices = { 'CR-C': { t: 10 * 60 + 15, v: 4.1 }, 'F-N': { t: 10 * 60 + 10, v: 5.0 }, 'F-E': { t: 10 * 60 + 5, v: 4.4 }, 'F-H': { t: 10 * 60 + 15, v: 9.1 } };
+  s.excursions = [
+    { id: 'X1', dev: 'F-E', start: -12 * DAY + 8 * 60 + 10, end: -12 * DAY + 8 * 60 + 55, max: 9.8 },
+    { id: 'X2', dev: 'F-N', start: -5 * DAY + 14 * 60 + 2, end: -5 * DAY + 14 * 60 + 24, max: 8.9 },
+    { id: 'X3', dev: 'CB-T1', start: -3 * DAY + 11 * 60 + 15, end: -3 * DAY + 11 * 60 + 45, max: 8.4 },
+    { id: 'X4', dev: 'F-H', start: 9 * 60 + 40, end: null, max: 9.1 }
+  ];
+  s.exActions = {
+    X1: [{ t: -12 * DAY + 8 * 60 + 20, text: 'Door found open and closed' }, { t: -12 * DAY + 8 * 60 + 30, text: 'Stock kept aside for review by the responsible person' }],
+    X2: [{ t: -5 * DAY + 14 * 60 + 10, text: 'Power supply checked' }],
+    X3: [{ t: -3 * DAY + 11 * 60 + 25, text: 'Cold packs swapped for spares' }]
+  };
+  s.log = [
+    { t: 7 * 60 + 35, text: 'Northside Health Centre issued 12 vials of Vaccine A to Outreach team 2 for Market square shelter.' },
+    { t: 7 * 60 + 50, text: 'Van 1 left Northside with Outreach team 2.' },
+    { t: 8 * 60 + 40, text: 'Cold box reading 4.6 °C logged by Outreach team 2 (in range).' },
+    { t: 9 * 60 + 5, text: 'Vaccination outreach at Market square shelter started.' },
+    { t: 9 * 60 + 40, text: 'Cold box reading 5.1 °C logged by Outreach team 2 (in range).' },
+    { t: 9 * 60 + 40, text: 'Hill Road fridge alarm: 8.6 °C, above the safe range. Excursion started.' },
+    { t: 10 * 60 + 15, text: 'Hill Road fridge reading 9.1 °C. Alarm still open.' },
+    { t: 10 * 60 + 16, text: '9 check-ins and 1 opened vial received from Outreach team 2.' }
+  ].reverse();
+  return s;
+}
+function ses(id, d, start, end, type, venue, site, expected, item, need, team, vehicle, more) {
+  return Object.assign({ id: id, d: d, start: start, end: end, type: type, venue: venue, site: site, expected: expected, item: item, need: need, team: team, vehicle: vehicle, onsite: false, issued: false }, more || {});
+}
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+function load() { try { var s = JSON.parse(localStorage.getItem(STORE)); return s && s.v === 1 && s.sessions ? s : null; } catch (e) { return null; } }
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+var state = load() || seed();
+state.syncing = false;
+
+// ---------- Helpers ----------
+function now() { return START + state.offset; }
+function pad(n) { return (n < 10 ? '0' : '') + n; }
+function hhmm(t) { var m = ((t % DAY) + DAY) % DAY; return pad(Math.floor(m / 60)) + ':' + pad(m % 60); }
+function dayOf(t) { return Math.floor(t / DAY); }
+function dayLabel(d) { return d === 0 ? 'Today' : d === 1 ? 'Tomorrow (' + DOW[dow(d)] + ')' : DOW[dow(d)] + ' ' + (TODAY_DOM + d); }
+function dayLower(d) { return d === 0 ? 'today' : d === 1 ? 'tomorrow' : DOW[dow(d)] + ' ' + (TODAY_DOM + d); }
+function whenLabel(t) { var d = dayOf(t); return (d === 0 ? '' : DOW[dow(d)] + ' ' + (TODAY_DOM + d) + ', ') + hhmm(t); }
+function fmtm(m) { m = Math.max(0, Math.round(m)); if (m < 60) return m + ' min'; var h = Math.floor(m / 60), r = m % 60; return h + ' h' + (r ? ' ' + pad(r) : ''); }
+function pct(a, b) { return b ? Math.round(1000 * a / b) / 10 : 0; }
+function plural(n, one, many) { return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+function sess(id) { return state.sessions.filter(function (x) { return x.id === id; })[0]; }
+function upcoming() { return state.sessions.filter(function (x) { return x.d >= 0 && x.d <= 7; }).sort(function (a, b) { return a.d - b.d || a.start - b.start; }); }
+function total(b) { return BANDS.reduce(function (n, x) { return n + (b[x[0]] || 0); }, 0); }
+function inRange(v) { return v >= state.settings.lo && v <= state.settings.hi; }
+function devName(id) { var d = DEVICES.filter(function (x) { return x.id === id; })[0]; return d ? d.name : id === 'CB-T1' ? 'Cold box · Outreach team 1' : id; }
+
+// ---------- Stock (pure) ----------
+// First-expiry-first-out: which booked sessions each site can cover from its own usable stock.
+function plan() {
+  var out = {};
+  SIDS.forEach(function (site) { IIDS.forEach(function (item) {
+    var lots = state.lots.filter(function (l) { return l.site === site && l.item === item && l.qty > 0; }).map(function (l) { return { id: l.id, exp: l.exp, qty: l.qty, moved: l.moved }; }).sort(function (a, b) { return a.exp - b.exp; });
+    var onHand = lots.reduce(function (n, l) { return n + l.qty; }, 0);
+    var need = 0, short = {};
+    state.sessions.filter(function (x) { return x.site === site && x.item === item && !x.issued && x.d >= 0; }).sort(function (a, b) { return a.d - b.d || a.start - b.start; }).forEach(function (x) {
+      var want = x.need; need += want;
+      lots.forEach(function (l) { if (want > 0 && l.exp > x.d && l.qty > 0) { var take = Math.min(l.qty, want); l.qty -= take; want -= take; } });
+      if (want > 0) short[x.id] = want;
+    });
+    var near = lots.filter(function (l) { return l.qty > 0 && l.exp <= state.settings.nearExpiry; });
+    out[site + item] = { site: site, item: item, onHand: onHand, need: need, short: short, left: lots, nearLeft: near, nearest: state.lots.filter(function (l) { return l.site === site && l.item === item && l.qty > 0; }).sort(function (a, b) { return a.exp - b.exp; })[0] || null };
+  }); });
+  return out;
+}
+function shortFor(x, p) { var r = (p || plan())[x.site + x.item]; return r && r.short[x.id] || 0; }
+function gapsOf(x, p) { return { team: !x.team, transport: !x.onsite && !x.vehicle, stock: x.issued ? 0 : shortFor(x, p) }; }
+function hasGap(x, p) { var g = gapsOf(x, p); return g.team || g.transport || g.stock > 0; }
+function busy(kind, d, except) { var u = {}; state.sessions.forEach(function (x) { if (x.d === d && x.id !== except && x[kind]) u[x[kind]] = true; }); return u; }
+function moveStock(from, to, item, qty, minExp) {
+  var lots = state.lots.filter(function (l) { return l.site === from && l.item === item && l.qty > 0 && l.exp > (minExp == null ? -1 : minExp); }).sort(function (a, b) { return a.exp - b.exp; });
+  var left = qty;
+  lots.forEach(function (l) { if (left <= 0) return; var take = Math.min(l.qty, left); l.qty -= take; left -= take; addLot(to, item, take, l.exp, true); });
+  return qty - left;
+}
+function addLot(site, item, qty, exp, moved) {
+  var same = state.lots.filter(function (l) { return l.site === site && l.item === item && l.exp === exp; })[0];
+  if (same) { same.qty += qty; if (moved) same.moved = true; } else state.lots.push({ id: 'L' + (++state.seq), site: site, item: item, qty: qty, exp: exp, moved: !!moved });
+}
+
+// ---------- Cold chain (pure) ----------
+function boxExcursions(readings) {
+  var out = [], open = null;
+  readings.slice().sort(function (a, b) { return a.t - b.t; }).forEach(function (r) {
+    if (!inRange(r.v)) { if (!open) { open = { id: 'CB' + r.t, dev: 'CB-T2', start: r.t, end: null, max: r.v, box: true }; out.push(open); } else open.max = Math.max(open.max, r.v); }
+    else if (open) { open.end = r.t; open = null; }
+  });
+  return out;
+}
+function excursions() { return state.excursions.concat(boxExcursions(state.server.readings)).sort(function (a, b) { return b.start - a.start; }); }
+function exMinutes(x) { return (x.end == null ? now() : x.end) - x.start; }
+function actionsOf(x) { return state.exActions[x.id] || []; }
+
+// ---------- Measures (pure) ----------
+function kpis() {
+  var S = state.settings, ph = state.phone, sv = state.server, p = plan(), t = now();
+  var up = upcoming(), gaps = up.filter(function (x) { return hasGap(x, p); });
+  var near = 0; Object.keys(p).forEach(function (k) { p[k].nearLeft.forEach(function (l) { near += l.qty; }); });
+  var ex = excursions(), month = ex.filter(function (x) { return x.start >= -(TODAY_DOM - 1) * DAY; });
+  var openEx = ex.filter(function (x) { return x.end == null; });
+  var past = state.history, held = past.filter(function (h) { return h.status === 'held'; }).length + (sv.started ? 1 : 0);
+  var planned = past.length + (sv.started ? 1 : 0);
+  var reachedPast = past.reduce(function (n, h) { return n + (h.reached || 0); }, 0), todayIn = total(sv.bands);
+  var issued = 0, given = 0;
+  past.forEach(function (h) { if (h.issued) { issued += h.issued; given += h.given; } });
+  if (sv.closed) { issued += sv.opened * ITEMS.VA.doses; given += todayIn; }
+  var soToday = {}; SIDS.forEach(function (site) { IIDS.forEach(function (item) { var r = p[site + item]; if (r.need > 0 && r.onHand === 0) soToday[site] = true; }); });
+  var soDays = {}; state.stockouts.forEach(function (o) { soDays[o.site + o.d] = true; }); Object.keys(soToday).forEach(function (s) { soDays[s + '0'] = true; });
+  var last = ph.readings[ph.readings.length - 1];
+  return {
+    demoClock: 'Tue ' + hhmm(t),
+    checkedInToday: total(ph.bands), expectedToday: sess('S1').expected,
+    openedNotGiven: Math.max(0, ph.opened * ITEMS.VA.doses - total(ph.bands)), vialsUnopened: ph.carried - ph.opened,
+    coldBoxLastC: last ? last.v : null, coldBoxLastAt: last ? hhmm(last.t) : null, coldBoxInRange: last ? inRange(last.v) : true,
+    queuedChanges: state.queue.length,
+    sessionsNext7Days: up.length, sessionsWithGaps: gaps.length, nearExpiryUnits: near, openAlarms: openEx.length,
+    excursionsMonth: month.length, excursionMinutesMonth: month.reduce(function (n, x) { return n + exMinutes(x); }, 0),
+    sessionsPlanned: planned, sessionsHeld: held, heldAsPlannedPct: pct(held, planned),
+    peopleReachedMonth: reachedPast + todayIn, monthTarget: S.monthTarget, proRataTarget: Math.round(S.monthTarget * TODAY_DOM / MONTH_DAYS),
+    dosesIssuedMonth: issued, dosesGivenMonth: given, doseWastagePct: pct(issued - given, issued),
+    stockOutSiteDays: Object.keys(soDays).length, siteDaysInPeriod: SIDS.length * TODAY_DOM
+  };
+}
+
+// ---------- The guide: plain, explainable rules ----------
+function suggest() {
+  var S = state.settings, t = now(), p = plan(), out = [], ph = state.phone, up = upcoming();
+  // Outreach worker: cold box check due; stock may run short at today's session.
+  if (!ph.closed) {
+    var last = ph.readings[ph.readings.length - 1], due = (last ? last.t : ph.started) + S.checkEvery, mins = due - t;
+    if (mins <= 30) out.push({ id: 'check-' + due, roles: ['worker'], kind: mins < 0 ? 'time' : 'ask', tagText: 'Cold box check',
+      title: mins < 0 ? 'Cold box check overdue by ' + fmtm(-mins) : 'Next cold box check due in ' + fmtm(mins),
+      text: 'Read the cold box display and log it below. A reading outside ' + S.lo + '–' + S.hi + ' °C opens an excursion the coordinator sees as soon as the phone has signal.',
+      why: 'Last reading at ' + (last ? hhmm(last.t) : '–') + '. Checks every ' + S.checkEvery + ' min (example setting, not a standard).',
+      showLabel: 'Go to the cold box check', show: function () { var i = document.getElementById('cb-v'); if (i) { i.scrollIntoView({ block: 'center' }); i.focus(); } } });
+    var x1 = sess('S1'), seen = total(ph.bands), remaining = Math.max(0, x1.expected - seen);
+    var dosesLeft = (ph.carried - ph.opened) * ITEMS.VA.doses + Math.max(0, ph.opened * ITEMS.VA.doses - seen);
+    if (remaining > dosesLeft) {
+      var vials = Math.ceil((remaining - dosesLeft) / ITEMS.VA.doses);
+      out.push({ id: 'topup-' + ph.carried, roles: ['worker', 'coordinator'], kind: 'ask', tagText: 'Stock for today',
+        title: 'Stock may run short at Market square shelter',
+        text: 'About ' + remaining + ' more people are expected and the team has ' + dosesLeft + ' doses left. Ask Northside to send ' + plural(vials, 'more vial') + ' of Vaccine A.',
+        why: 'Expected ' + x1.expected + ' (set when the session was planned), ' + seen + ' checked in, ' + (ph.carried - ph.opened) + ' unopened vials of ' + ITEMS.VA.doses + ' doses.',
+        propose: { kind: 'topup', qty: vials, text: 'Northside Health Centre sends ' + plural(vials, 'vial') + ' of Vaccine A to Outreach team 2 at Market square shelter.' } });
+    }
+  }
+  if (state.offline && state.queue.length) out.push({ id: 'offline-' + state.queue.length, roles: ['worker'], kind: 'ask', tagText: 'Working offline',
+    title: plural(state.queue.length, 'change is', 'changes are') + ' kept on this phone',
+    text: 'Keep working. Check-ins, vials and readings are sent in order when the signal is back. Until then the coordinator sees the last figures received.',
+    why: 'No signal (simulated). Last sent at ' + hhmm(state.lastSync) + '.' });
+  // Coordinator: an open cold chain alarm with no action logged.
+  excursions().filter(function (x) { return x.end == null && !actionsOf(x).length && exMinutes(x) >= S.alarmMin; }).slice(0, 1).forEach(function (x) {
+    out.push({ id: 'alarm-' + x.id, roles: ['coordinator', 'manager'], kind: 'time', tagText: 'Cold chain',
+      title: devName(x.dev) + ': out of range for ' + fmtm(exMinutes(x)) + ', no action logged',
+      text: 'Log what was done, for example stock moved to a backup fridge or a technician called. Whether the stock can still be used is for the responsible person to decide.',
+      why: 'Highest reading ' + x.max.toFixed(1) + ' °C; safe range ' + S.lo + '–' + S.hi + ' °C and act within ' + S.alarmMin + ' min (example settings, not a standard).',
+      showLabel: 'Show the excursion', show: function () { goTo('coordinator', 'ex-' + x.id); } });
+  });
+  // Near-expiry stock at a low-use site: move it to the next busiest session before it expires.
+  Object.keys(p).forEach(function (k) {
+    var r = p[k];
+    r.nearLeft.filter(function (l) { return !l.moved && l.qty >= S.minMove; }).forEach(function (l) {
+      var cands = state.sessions.filter(function (x) { return x.site !== r.site && x.item === r.item && !x.issued && x.d >= 0 && x.d < l.exp; }).sort(function (a, b) { return b.expected - a.expected || a.d - b.d; });
+      var c = cands[0]; if (!c) return;
+      var qty = Math.min(l.qty, c.need);
+      out.push({ id: 'expiry-' + l.id + '-' + c.id, roles: ['coordinator', 'manager'], kind: 'time', tagText: 'Near expiry',
+        title: l.qty + ' ' + ITEMS[r.item].unit + ' of ' + ITEMS[r.item].name + ' at ' + SITES[r.site] + ' expire in ' + plural(l.exp, 'day') + ' unused',
+        text: 'Move ' + qty + ' to ' + SITES[c.site] + ' for the next busiest session before they expire: ' + c.venue + ', ' + dayLower(c.d) + ', about ' + c.expected + ' expected. ' + SITES[c.site] + ' would use them first.',
+        why: 'No session booked at ' + SITES[r.site] + ' needs them before the expiry date. Near expiry means within ' + S.nearExpiry + ' days (example setting, not a standard).',
+        propose: { kind: 'transfer', from: r.site, to: c.site, item: r.item, qty: qty, lot: l.id, text: 'Move ' + qty + ' ' + ITEMS[r.item].unit + ' of ' + ITEMS[r.item].name + ' (expires in ' + plural(l.exp, 'day') + ') from ' + SITES[r.site] + ' to ' + SITES[c.site] + ' for ' + c.venue + '.' } });
+    });
+  });
+  // Sessions with no transport or no team booked within the next few days.
+  up.filter(function (x) { return x.d <= S.gapDays && x.d >= 0 && !x.onsite && !x.vehicle; }).forEach(function (x) {
+    var used = busy('vehicle', x.d, x.id), free = Object.keys(VEHICLES).filter(function (v) { return !used[v]; })[0];
+    out.push({ id: 'transport-' + x.id, roles: ['coordinator'], kind: 'ask', tagText: 'Session gap',
+      title: 'No transport booked: ' + x.venue + ', ' + dayLower(x.d),
+      text: free ? VEHICLES[free] + ' is free that day. Book it so the team and stock can reach the venue.' : 'No vehicle is free that day. Consider moving the session or borrowing a vehicle.',
+      why: 'Sessions less than ' + (S.gapDays + 1) + ' days away with no vehicle are flagged (example setting). ' + gapReasonCount('No transport booked') + ' this month were cancelled for no transport.',
+      propose: free ? { kind: 'vehicle', sid: x.id, vehicle: free, text: 'Book ' + VEHICLES[free] + ' for ' + TYPES[x.type].toLowerCase() + ' at ' + x.venue + ', ' + dayLower(x.d) + '.' } : null,
+      showLabel: free ? null : 'Show the session', show: function () { goTo('coordinator', 'sr-' + x.id); } });
+  });
+  up.filter(function (x) { return x.d <= S.gapDays && x.d >= 0 && !x.team; }).forEach(function (x) {
+    var used = busy('team', x.d, x.id), free = Object.keys(TEAMS).filter(function (v) { return !used[v]; })[0];
+    out.push({ id: 'team-' + x.id, roles: ['coordinator'], kind: 'ask', tagText: 'Session gap',
+      title: 'No team assigned: ' + x.venue + ', ' + dayLower(x.d),
+      text: free ? TEAMS[free] + ' has no other session that day.' : 'Every team already has a session that day.',
+      why: 'Sessions less than ' + (S.gapDays + 1) + ' days away with no team are flagged (example setting).',
+      propose: free ? { kind: 'team', sid: x.id, team: free, text: 'Assign ' + TEAMS[free] + ' to ' + x.venue + ', ' + dayLower(x.d) + '.' } : null });
+  });
+  // Short stock for a booked session: suggest a transfer from the site with the most to spare.
+  up.forEach(function (x) {
+    var sh = x.issued ? 0 : shortFor(x, p); if (!sh) return;
+    var best = null;
+    SIDS.forEach(function (site) { if (site === x.site) return; var spare = p[site + x.item].left.filter(function (l) { return l.exp > x.d; }).reduce(function (n, l) { return n + l.qty; }, 0); if (spare >= sh && (!best || spare > best.spare)) best = { site: site, spare: spare }; });
+    out.push({ id: 'short-' + x.id + '-' + sh, roles: ['coordinator'], kind: 'ask', tagText: 'Stock gap',
+      title: SITES[x.site] + ' is ' + sh + ' ' + ITEMS[x.item].unit + ' short for ' + x.venue,
+      text: best ? SITES[best.site] + ' has ' + best.spare + ' to spare after its own booked sessions.' : 'No site has enough to spare. Consider a smaller session or a new delivery.',
+      why: 'Booked need ' + x.need + ' against usable stock at ' + SITES[x.site] + ', using the earliest expiry first.',
+      propose: best ? { kind: 'transfer', from: best.site, to: x.site, item: x.item, qty: sh, minExp: x.d, text: 'Move ' + sh + ' ' + ITEMS[x.item].unit + ' of ' + ITEMS[x.item].name + ' from ' + SITES[best.site] + ' to ' + SITES[x.site] + ' for ' + x.venue + '.' } : null });
+  });
+  // Programme manager: the most common cancellation reason this month.
+  var reasons = cancelReasons(), top = reasons[0];
+  if (top && top[1] >= 2) {
+    var still = up.filter(function (x) { return top[0] === 'No transport booked' ? (!x.onsite && !x.vehicle) : top[0] === 'No team available' ? !x.team : false; }).length;
+    out.push({ id: 'pattern-' + top[0] + '-' + still, roles: ['manager'], kind: 'ask', tagText: 'Pattern',
+      title: top[1] + ' of ' + state.history.filter(function (h) { return h.status === 'cancelled'; }).length + ' cancelled sessions this month: ' + top[0].toLowerCase(),
+      text: still ? plural(still, 'upcoming session still has', 'upcoming sessions still have') + ' the same gap. A readiness check three days ahead could catch these earlier.' : 'No upcoming session has this gap right now.',
+      why: 'Counted from the cancellation reasons logged this month.',
+      showLabel: still ? 'Show sessions with gaps' : null, show: function () { state.gapsOnly = true; goTo('coordinator'); } });
+  }
+  var rank = { 'Cold box check': 0, 'Working offline': 1, 'Cold chain': 2, 'Near expiry': 3, 'Session gap': 4, 'Stock gap': 5, 'Pattern': 6, 'Stock for today': state.role === 'worker' ? 1 : 7 };
+  return out.filter(function (x) { return x.roles.indexOf(state.role) >= 0 && !state.dismissed[x.id] && !state.done[x.id]; })
+    .map(function (x, i) { return { x: x, i: i }; }).sort(function (a, b) { return (rank[a.x.tagText] - rank[b.x.tagText]) || a.i - b.i; }).map(function (o) { return o.x; }).slice(0, 4);
+}
+function cancelReasons() { var c = {}; state.history.forEach(function (h) { if (h.reason) c[h.reason] = (c[h.reason] || 0) + 1; }); return Object.keys(c).map(function (k) { return [k, c[k]]; }).sort(function (a, b) { return b[1] - a[1]; }); }
+function gapReasonCount(r) { var n = 0; state.history.forEach(function (h) { if (h.reason === r) n++; }); return plural(n, 'session'); }
+
+// ---------- Changes ----------
+function log(text, fromPhone) {
+  var e = { t: now(), text: text, q: !!(fromPhone && state.offline), fresh: true };
+  state.log.unshift(e); state.log = state.log.slice(0, 80);
+  if (fromPhone) { if (state.offline) state.queue.push({ t: e.t, text: text }); else pushToServer(); }
+}
+function pushToServer() {
+  var was = state.server.closed;
+  state.server = clone(state.phone);
+  if (!was && state.server.closed && !state.phone.returned) {
+    var back = state.phone.carried - state.phone.opened;
+    if (back > 0) addLot('N', 'VA', back, 60);
+    state.phone.returned = true; state.server.returned = true;
+    sess('S1').closedAt = state.server.closed;
+  }
+  state.lastSync = now();
+}
+function setOffline(off) {
+  if (off === state.offline || state.syncing) return;
+  state.offline = off;
+  if (off) { render(); toast('No signal (simulated). Keep working; changes stay on this phone.'); return; }
+  if (!state.queue.length) { state.lastSync = now(); render(); toast('Signal back. Nothing waiting to send.'); return; }
+  state.syncing = true; render();
+  setTimeout(function () {
+    var n = state.queue.length; state.log.forEach(function (l) { l.q = false; });
+    state.queue = []; state.syncing = false; pushToServer();
+    state.log.unshift({ t: now(), text: plural(n, 'change') + ' sent from the outreach phone, in the order they were made.', fresh: true });
+    render(); toast('Signal back. ' + plural(n, 'change') + ' sent.');
+  }, 900);
+}
+function saved() { return state.offline ? ' Saved on this phone.' : ''; }
+function bandChange(b, d) {
+  var ph = state.phone; if (ph.closed) return;
+  if (d < 0 && !ph.bands[b]) return;
+  ph.bands[b] += d;
+  var name = BANDS.filter(function (x) { return x[0] === b; })[0][1];
+  log((d > 0 ? 'Check-in: ' : 'Check-in removed: ') + name + ' at Market square shelter (' + total(ph.bands) + ' today).', true);
+  render(); toast((d > 0 ? 'Checked in: ' : 'Removed: ') + name + '. ' + total(ph.bands) + ' today.' + saved());
+}
+function vial(d) {
+  var ph = state.phone; if (ph.closed) return;
+  if (d > 0 && ph.opened >= ph.carried) { toast('No unopened vials left.'); return; }
+  if (d < 0 && ph.opened <= 0) return;
+  ph.opened += d;
+  log(d > 0 ? 'Vial of Vaccine A opened (' + ph.opened + ' of ' + ph.carried + ').' : 'Vial count corrected (' + ph.opened + ' of ' + ph.carried + ' opened).', true);
+  render(); toast((d > 0 ? 'Vial opened. ' : 'Corrected. ') + (ph.carried - ph.opened) + ' unopened left.' + saved());
+}
+function logReading() {
+  var i = document.getElementById('cb-v'), v = Math.round(parseFloat(i.value) * 10) / 10;
+  if (isNaN(v) || v < -30 || v > 50) { toast('Enter the reading from the cold box display.'); i.focus(); return; }
+  var ph = state.phone, last = ph.readings[ph.readings.length - 1];
+  if (last && last.t === now()) { last.v = v; } else ph.readings.push({ t: now(), v: v });
+  var ok = inRange(v);
+  log('Cold box reading ' + v.toFixed(1) + ' °C logged by Outreach team 2 (' + (ok ? 'in range' : 'outside ' + state.settings.lo + '–' + state.settings.hi + ' °C; excursion') + ').', true);
+  render(); toast(ok ? 'Reading logged: in range.' + saved() : 'Reading outside the safe range. The coordinator is alerted' + (state.offline ? ' when the signal is back.' : '.'));
+}
+function closeSession() {
+  var ph = state.phone; if (ph.closed) return;
+  ph.closed = now(); state.closing = false;
+  var waste = Math.max(0, ph.opened * ITEMS.VA.doses - total(ph.bands));
+  log('Session at Market square shelter closed: ' + total(ph.bands) + ' checked in, ' + ph.opened + ' vials opened, ' + (ph.carried - ph.opened) + ' unopened returned to Northside, ' + waste + ' doses opened and not given.', true);
+  render(); toast('Session closed.' + saved());
+}
+function assign(kind, sid, val) {
+  var x = sess(sid); x[kind] = val || null;
+  var what = kind === 'team' ? (val ? TEAMS[val] + ' assigned' : 'Team removed') : (val ? VEHICLES[val] + ' booked' : 'Transport cancelled');
+  log(what + ' for ' + x.venue + ', ' + dayLower(x.d) + ' (campaign coordinator).');
+  render(); toast(what + '.');
+}
+function logAction(id) {
+  var a = state.actSel[id] || ACTIONS[0];
+  (state.exActions[id] = state.exActions[id] || []).push({ t: now(), text: a });
+  var x = excursions().filter(function (e) { return e.id === id; })[0];
+  log('Action logged for ' + devName(x.dev) + ' excursion: ' + a.toLowerCase() + '.');
+  render(); toast('Action logged.');
+}
+function backInRange(id) {
+  var x = state.excursions.filter(function (e) { return e.id === id; })[0]; if (!x || x.end != null) return;
+  x.end = now(); state.devices[x.dev] = { t: now(), v: 5.6 };
+  log(devName(x.dev) + ' back in range (5.6 °C). Excursion closed after ' + fmtm(x.end - x.start) + '.');
+  render(); toast('Excursion closed after ' + fmtm(x.end - x.start) + '.');
+}
+function propose(sg) {
+  if (state.pending.some(function (p) { return p.id === sg.id; })) return;
+  state.pending.push({ id: sg.id, at: now(), p: sg.propose });
+  log('Guide proposal: ' + sg.propose.text + ' Waiting for the campaign coordinator.');
+  render(); toast('Proposed. The campaign coordinator confirms or declines.');
+}
+function decide(id, yes) {
+  var i = state.pending.findIndex(function (p) { return p.id === id; }); if (i < 0) return;
+  var pr = state.pending.splice(i, 1)[0], p = pr.p;
+  if (!yes) { state.dismissed[id] = true; log('Campaign coordinator declined: ' + p.text); render(); toast('Declined. Nothing changed.'); return; }
+  state.done[id] = true;
+  if (p.kind === 'transfer') {
+    var moved;
+    if (p.lot) { var l = state.lots.filter(function (z) { return z.id === p.lot; })[0]; moved = l ? Math.min(l.qty, p.qty) : 0; if (moved) { l.qty -= moved; addLot(p.to, p.item, moved, l.exp, true); } }
+    else moved = moveStock(p.from, p.to, p.item, p.qty, p.minExp);
+    log('Campaign coordinator confirmed: ' + moved + ' ' + ITEMS[p.item].unit + ' of ' + ITEMS[p.item].name + ' moved from ' + SITES[p.from] + ' to ' + SITES[p.to] + '.');
+  } else if (p.kind === 'vehicle') { var x = sess(p.sid); x.vehicle = p.vehicle; log('Campaign coordinator confirmed: ' + VEHICLES[p.vehicle] + ' booked for ' + x.venue + ', ' + dayLower(x.d) + '.'); }
+  else if (p.kind === 'team') { var y = sess(p.sid); y.team = p.team; log('Campaign coordinator confirmed: ' + TEAMS[p.team] + ' assigned to ' + y.venue + ', ' + dayLower(y.d) + '.'); }
+  else if (p.kind === 'topup') {
+    var got = 0; state.lots.filter(function (z) { return z.site === 'N' && z.item === 'VA' && z.qty > 0; }).sort(function (a, b) { return a.exp - b.exp; }).forEach(function (z) { var take = Math.min(z.qty, p.qty - got); z.qty -= take; got += take; });
+    state.phone.carried += got; state.server.carried += got;
+    log('Campaign coordinator confirmed: Northside sends ' + plural(got, 'vial') + ' of Vaccine A to Market square shelter (' + state.phone.carried + ' carried now).');
+  }
+  render(); toast('Confirmed and logged.');
+}
+function goTo(role, flashId) {
+  state.role = role; state.flash = flashId || null; render();
+  if (flashId) { var e = document.getElementById(flashId); if (e) e.scrollIntoView({ block: 'center' }); setTimeout(function () { state.flash = null; var f = document.querySelector('.flash'); if (f) f.classList.remove('flash'); }, 2400); }
+  else document.getElementById('viewcard').scrollIntoView({ block: 'start' });
+}
+
+// ---------- Render ----------
+var ROLEHINT = {
+  worker: 'Outreach worker, on a phone: today\'s session, check-ins by age band, stock used and cold box checks. Works with no signal.',
+  coordinator: 'Campaign coordinator: upcoming sessions missing a team, transport or stock; stock and expiry by site; cold chain alarms and excursions.',
+  manager: 'Programme manager: this month\'s sessions held against planned, people reached against the local target, wastage, stock-outs and cold chain excursions.'
+};
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  if (now() > END) state.offset = END - START;
+  document.body.className = 'r-' + state.role;
+  ['worker', 'coordinator', 'manager'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = ROLEHINT[state.role];
+  document.getElementById('clocknow').textContent = 'Demo clock Tue ' + hhmm(now());
+  document.getElementById('t-clock').disabled = now() >= END;
+  var vc = document.getElementById('viewcard');
+  vc.classList.toggle('front', state.role === 'worker');
+  document.getElementById('view-h').textContent = state.role === 'worker' ? 'Today\'s session' : state.role === 'coordinator' ? 'Next 7 days: sessions, stock and cold chain' : 'This month so far (day ' + TODAY_DOM + ' of ' + MONTH_DAYS + ')';
+  renderKpis();
+  var v = document.getElementById('view'), ht = document.getElementById('headtools'); v.textContent = ''; ht.textContent = '';
+  if (state.role === 'worker') renderWorker(v, ht); else if (state.role === 'coordinator') renderCoordinator(v, ht); else renderManager(v, ht);
+  renderLog(); renderGuide(); save();
+  state.log.forEach(function (l) { l.fresh = false; });
+  if (aid) { var a = document.getElementById(aid); if (a && a !== document.activeElement) a.focus({ preventScroll: true }); }
+}
+function tiles(list) {
+  var box = document.getElementById('kpis'); box.textContent = '';
+  box.className = 'stats' + (list.length > 4 ? ' six' : '');
+  list.forEach(function (t) {
+    var open = state.kpiOpen === t.id;
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t.id, class: 'stat' + (t.alert ? ' alert' : t.good ? ' good' : ''), 'aria-expanded': String(open), title: t.def, onclick: function () { state.kpiOpen = open ? null : t.id; render(); } },
+      [el('b', { text: t.v }), el('span', { class: 'lbl', text: t.label }), t.n ? el('span', { class: 'n', text: t.n }) : null, el('span', { class: 'def', text: t.def + (t.src ? ' Source: ' + t.src + '.' : '') })]));
+  });
+}
+function renderKpis() {
+  var k = kpis(), S = state.settings;
+  document.getElementById('kpihint').textContent = state.role === 'worker' ? 'Today at this session. Tap a tile for its definition.' : state.role === 'coordinator' ? 'Next 7 days and this month. Tap a tile for its definition.' : 'Month to date. Tap a tile for its definition.';
+  if (state.role === 'worker') tiles([
+    { id: 'in', v: String(k.checkedInToday), label: 'Checked in today', n: 'of about ' + k.expectedToday + ' expected', def: 'People checked in at this session, counted by age band on the phone. The expected number is set by the coordinator when the session is planned.', src: 'local definition' },
+    { id: 'open', v: String(k.openedNotGiven), label: 'Doses opened, not given', n: k.vialsUnopened + ' unopened vials left', def: 'Doses in opened vials not yet given. At close they count as wastage: (doses issued − doses given) / doses issued.', src: 'local definition' },
+    { id: 'cb', v: k.coldBoxLastC == null ? '–' : k.coldBoxLastC.toFixed(1) + ' °C', label: 'Cold box', n: k.coldBoxLastAt ? (k.coldBoxInRange ? 'In range · ' : 'Out of range · ') + k.coldBoxLastAt : '', alert: !k.coldBoxInRange, def: 'Last logged cold box temperature. Safe range in this demo ' + S.lo + '–' + S.hi + ' °C (example setting; follow the range on the product label).', src: 'local definition' },
+    { id: 'q', v: String(k.queuedChanges), label: 'Waiting to send', n: state.offline ? 'No signal' : 'Sent ' + hhmm(state.lastSync), alert: k.queuedChanges > 0, def: 'Changes kept on this phone while there is no signal. They are sent in the order they were made when the signal is back.' }
+  ]);
+  else if (state.role === 'coordinator') tiles([
+    { id: 'gaps', v: String(k.sessionsWithGaps), label: 'Sessions with gaps', n: 'of ' + k.sessionsNext7Days + ' in the next 7 days', alert: k.sessionsWithGaps > 0, good: !k.sessionsWithGaps, def: 'Upcoming sessions missing a team, transport (if off site) or enough usable stock at their base site.', src: 'local definition' },
+    { id: 'exp', v: String(k.nearExpiryUnits), label: 'Near-expiry stock', n: 'vials or kits, no session booked', alert: k.nearExpiryUnits > 0, def: 'Stock expiring within ' + S.nearExpiry + ' days (example setting) that no session booked at its site will use first.', src: 'local definition' },
+    { id: 'alarm', v: String(k.openAlarms), label: 'Open cold chain alarms', n: 'devices out of range now', alert: k.openAlarms > 0, good: !k.openAlarms, def: 'Fridges, cold rooms or cold boxes whose last reading is outside the safe range, with the excursion still open.', src: 'local definition' },
+    { id: 'xt', v: fmtm(k.excursionMinutesMonth), label: 'Excursion time', n: plural(k.excursionsMonth, 'excursion') + ' this month', def: 'Cold chain excursion time: excursion start → back in range, per device, added up for the month. Open excursions count up to now.', src: 'local definition' }
+  ]);
+  else tiles([
+    { id: 'held', v: k.heldAsPlannedPct + '%', label: 'Sessions held as planned', n: k.sessionsHeld + ' of ' + k.sessionsPlanned + ' planned', def: 'Outreach or campaign sessions held / sessions planned, month to date. Cancelled sessions keep their reason.', src: 'local definition' },
+    { id: 'reach', v: k.peopleReachedMonth.toLocaleString('en'), label: 'People reached', n: 'of ' + k.monthTarget.toLocaleString('en') + ' local target', def: 'People checked in at held sessions this month, against the monthly target the programme set (example setting, not a standard).', src: 'local definition' },
+    { id: 'waste', v: k.doseWastagePct + '%', label: 'Dose wastage', n: (k.dosesIssuedMonth - k.dosesGivenMonth) + ' of ' + k.dosesIssuedMonth.toLocaleString('en') + ' doses', def: '(Doses issued − doses given) / doses issued, for closed vaccination sessions. Here, issued means opened at the session; unopened vials returned to stock are not counted.', src: 'local definition' },
+    { id: 'so', v: String(k.stockOutSiteDays), label: 'Stock-out days', n: 'of ' + k.siteDaysInPeriod + ' site-days', alert: k.stockOutSiteDays > 0, def: 'Site-days with zero usable stock of an item that site has sessions booked for / site-days in the period.', src: 'local definition' },
+    { id: 'xn', v: String(k.excursionsMonth), label: 'Cold chain excursions', n: k.openAlarms ? k.openAlarms + ' still open' : 'none open', alert: k.openAlarms > 0, def: 'Readings outside the safe range on any fridge, cold room or cold box, counted once per excursion.', src: 'local definition' },
+    { id: 'xt', v: fmtm(k.excursionMinutesMonth), label: 'Excursion time', n: 'all devices, this month', def: 'Excursion start → back in range, per device, added up. Open excursions count up to now.', src: 'local definition' }
+  ]);
+}
+
+function netBits(host) {
+  var b = el('button', { type: 'button', class: 'nettoggle', id: 'net', 'aria-pressed': String(state.offline), onclick: function () { setOffline(!state.offline); } }, [el('span', { class: 'knob', 'aria-hidden': 'true' }), 'Simulate no signal']);
+  var p = el('span', { class: 'syncpill' + (state.offline ? ' off' : state.syncing ? ' busy' : ''), id: 'sync', role: 'status' }, [el('span', { class: 'dot', 'aria-hidden': 'true' }),
+    state.offline ? 'Offline · ' + state.queue.length + ' waiting to send' : state.syncing ? 'Sending ' + state.queue.length + '…' : 'Synced ' + hhmm(state.lastSync)]);
+  host.appendChild(el('div', { class: 'netrow' }, [p, b]));
+}
+function renderWorker(v) {
+  var ph = state.phone, x = sess('S1'), seen = total(ph.bands), S = state.settings;
+  netBits(v);
+  if (state.offline) v.appendChild(el('div', { class: 'offbanner', role: 'note' }, [el('b', { text: 'No signal (simulated). ' }), 'Everything here still works. Changes are kept on this phone and sent in order when the signal is back.']));
+  v.appendChild(el('div', { class: 'sesshead' + (ph.closed ? ' closed' : '') }, [
+    el('div', { class: 'kind' }, [el('span', { class: 'chip ' + (ph.closed ? '' : 'ok'), text: ph.closed ? 'Closed ' + hhmm(ph.closed) : 'Started ' + hhmm(ph.started) }), TYPES[x.type]]),
+    el('div', { class: 'venue', text: x.venue }),
+    el('p', { text: hhmm(x.start) + '–' + hhmm(x.end) + ' · ' + TEAMS[x.team] + ' · ' + VEHICLES[x.vehicle] + ' · stock from Northside' })
+  ]));
+  // Check-ins by age band
+  var cb = el('div', { class: 'block', id: 'checkin' }, [el('h3', {}, ['Check-ins by age band', el('span', { text: seen + ' of about ' + x.expected })])]);
+  BANDS.forEach(function (b) {
+    cb.appendChild(el('div', { class: 'band' }, [
+      el('span', { class: 'bl', text: b[1] }),
+      el('span', { class: 'bc', 'aria-live': 'polite', id: 'cnt-' + b[0], text: String(ph.bands[b[0]]) }),
+      el('button', { type: 'button', id: 'minus-' + b[0], 'aria-label': 'Remove one check-in, ' + b[1], disabled: ph.closed || !ph.bands[b[0]] ? 'disabled' : false, onclick: function () { bandChange(b[0], -1); }, text: '−' }),
+      el('button', { type: 'button', class: 'plus', id: 'plus-' + b[0], 'aria-label': 'Check in one person, ' + b[1], disabled: ph.closed ? 'disabled' : false, onclick: function () { bandChange(b[0], 1); }, text: '+' })
+    ]));
+  });
+  var prog = el('div', { class: 'progress', role: 'img', 'aria-label': seen + ' checked in of about ' + x.expected + ' expected' }, [el('i', { style: 'width:' + Math.min(100, 100 * seen / x.expected) + '%' })]);
+  cb.appendChild(prog);
+  cb.appendChild(el('p', { class: 'fine', text: 'Counts only, no names. In this example each vaccination check-in is one dose given.' }));
+  v.appendChild(cb);
+  // Stock used
+  var notGiven = Math.max(0, ph.opened * ITEMS.VA.doses - seen);
+  v.appendChild(el('div', { class: 'block', id: 'stock' }, [
+    el('h3', {}, ['Stock used', el('span', { text: 'Vaccine A · ' + ITEMS.VA.pack })]),
+    el('div', { class: 'vials' }, [
+      el('div', {}, [el('b', { text: String(ph.carried) }), el('span', { text: 'carried' })]),
+      el('div', {}, [el('b', { text: String(ph.opened) }), el('span', { text: 'opened' })]),
+      el('div', {}, [el('b', { text: String(ph.carried - ph.opened) }), el('span', { text: 'unopened' })])
+    ]),
+    el('p', { class: 'fine', style: 'margin:0 0 10px', text: notGiven ? notGiven + ' doses in opened vials not given yet.' : 'No opened doses waiting.' }),
+    el('div', { class: 'acts' }, [
+      el('button', { type: 'button', class: 'go mango', id: 'vial-open', disabled: ph.closed || ph.opened >= ph.carried ? 'disabled' : false, onclick: function () { vial(1); }, text: 'Open a vial' }),
+      el('button', { type: 'button', id: 'vial-undo', disabled: ph.closed || !ph.opened ? 'disabled' : false, onclick: function () { vial(-1); }, text: 'Undo', 'aria-label': 'Undo last vial opened' })
+    ])
+  ]));
+  // Cold box checks
+  var last = ph.readings[ph.readings.length - 1], due = (last ? last.t : ph.started) + S.checkEvery;
+  var cold = el('div', { class: 'block', id: 'coldbox' }, [el('h3', {}, ['Cold box temperature', el('span', { text: ph.closed ? 'Session closed' : (due < now() ? 'Check overdue (due ' + hhmm(due) + ')' : 'Next check ' + hhmm(due)) })])]);
+  if (!ph.closed) {
+    var input = el('input', { type: 'number', id: 'cb-v', step: '0.1', min: '-30', max: '50', inputmode: 'decimal', value: last ? last.v.toFixed(1) : '5.0' });
+    var nudge = function (d) { var i = document.getElementById('cb-v'); i.value = (Math.round((parseFloat(i.value || '5') + d) * 10) / 10).toFixed(1); };
+    cold.appendChild(el('div', { class: 'cbrow' }, [
+      el('button', { type: 'button', 'aria-label': 'Lower the reading by 0.1 degrees', onclick: function () { nudge(-0.1); }, text: '−' }),
+      el('label', { for: 'cb-v' }, ['Reading on the display (°C)', input]),
+      el('button', { type: 'button', 'aria-label': 'Raise the reading by 0.1 degrees', onclick: function () { nudge(0.1); }, text: '+' })
+    ]));
+    cold.appendChild(el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'go sea', id: 'cb-log', onclick: logReading, text: 'Log reading' })]));
+  }
+  var ul = el('ul', { class: 'readings', 'aria-label': 'Readings today' });
+  ph.readings.slice().reverse().forEach(function (r) { var ok = inRange(r.v); ul.appendChild(el('li', {}, [el('span', { text: hhmm(r.t) + ' · ' + r.v.toFixed(1) + ' °C' }), el('span', { class: 'chip ' + (ok ? 'ok' : 'bad'), text: ok ? 'In range' : 'Out of range' })])); });
+  cold.appendChild(ul);
+  cold.appendChild(el('p', { class: 'fine', text: 'Safe range in this demo: ' + S.lo + '–' + S.hi + ' °C (example setting; use the range on the product label).' }));
+  v.appendChild(cold);
+  // Close session
+  if (!ph.closed) {
+    var back = ph.carried - ph.opened;
+    var cl = el('div', { class: 'block' }, [el('h3', { text: 'End of session' })]);
+    if (!state.closing) cl.appendChild(el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'go primary', id: 'close-start', onclick: function () { state.closing = true; render(); var c = document.getElementById('close-confirm'); if (c) c.focus(); }, text: 'Close session and return stock' })]));
+    else cl.appendChild(el('div', { class: 'closebox' }, [
+      el('p', {}, [el('b', { text: 'Check before closing: ' }), seen + ' checked in · ' + ph.opened + ' vials opened · ' + back + ' unopened go back to Northside · ' + notGiven + ' opened doses not given (counted as wastage).']),
+      el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'go primary', id: 'close-confirm', onclick: closeSession, text: 'Confirm and close' }), el('button', { type: 'button', class: 'go', onclick: function () { state.closing = false; render(); }, text: 'Not yet' })])
+    ]));
+    v.appendChild(cl);
+  } else v.appendChild(el('div', { class: 'block' }, [el('h3', { text: 'Session closed' }), el('p', { class: 'fine', style: 'margin:0', text: seen + ' checked in. ' + (ph.carried - ph.opened) + ' unopened vials ' + (ph.returned ? 'returned to Northside stock.' : 'to return when the phone has signal.') })]));
+}
+
+function sessionRow(x, p) {
+  var g = gapsOf(x, p), any = g.team || g.transport || g.stock > 0;
+  var chips = [];
+  if (g.team) chips.push(el('span', { class: 'chip bad', text: 'No team' }));
+  if (g.transport) chips.push(el('span', { class: 'chip bad', text: 'No transport' }));
+  if (g.stock) chips.push(el('span', { class: 'chip bad', text: 'Short ' + g.stock + ' ' + ITEMS[x.item].unit }));
+  if (!any) chips.push(el('span', { class: 'chip ok', text: 'Ready' }));
+  if (x.id === 'S1') chips.push(el('span', { class: 'chip navy', text: state.server.closed ? 'Closed' : 'Under way · ' + total(state.server.bands) + ' in' }));
+  var usedT = busy('team', x.d, x.id), usedV = busy('vehicle', x.d, x.id);
+  var tSel = el('select', { id: 'team-' + x.id, onchange: function (e) { assign('team', x.id, e.target.value); } }, [el('option', { value: '', text: 'No team yet' })].concat(Object.keys(TEAMS).filter(function (k) { return !usedT[k] || x.team === k; }).map(function (k) { return el('option', { value: k, text: TEAMS[k] }); })));
+  tSel.value = x.team || '';
+  var vBox;
+  if (x.onsite) vBox = el('span', { class: 'onsite', text: 'On site: no transport needed' });
+  else { vBox = el('select', { id: 'veh-' + x.id, onchange: function (e) { assign('vehicle', x.id, e.target.value); } }, [el('option', { value: '', text: 'Not booked' })].concat(Object.keys(VEHICLES).filter(function (k) { return !usedV[k] || x.vehicle === k; }).map(function (k) { return el('option', { value: k, text: VEHICLES[k] }); }))); vBox.value = x.vehicle || ''; }
+  var locked = x.d === 0 && x.start <= now();
+  if (locked) { tSel.disabled = true; if (vBox.tagName === 'SELECT') vBox.disabled = true; }
+  return el('div', { class: 'srow t-' + x.type + (any ? ' gap' : '') + (state.flash === 'sr-' + x.id ? ' flash' : ''), id: 'sr-' + x.id }, [
+    el('div', {}, [el('b', { text: hhmm(x.start) + ' · ' + x.venue }), el('span', { class: 'sub', text: TYPES[x.type] + ' · from ' + SITES[x.site] + ' · about ' + x.expected + ' expected · needs ' + x.need + ' ' + ITEMS[x.item].unit + ' of ' + ITEMS[x.item].name }), el('div', { class: 'gaps' }, chips)]),
+    el('label', { for: 'team-' + x.id }, ['Team', tSel]),
+    x.onsite ? el('div', {}, [vBox]) : el('label', { for: 'veh-' + x.id }, ['Transport', vBox])
+  ]);
+}
+function renderCoordinator(v, ht) {
+  var p = plan(), S = state.settings, up = upcoming();
+  ht.appendChild(el('div', { class: 'filters', role: 'group', 'aria-label': 'Which sessions' }, [
+    el('button', { type: 'button', id: 'f-all', 'aria-pressed': String(!state.gapsOnly), onclick: function () { state.gapsOnly = false; render(); }, text: 'All sessions' }),
+    el('button', { type: 'button', id: 'f-gaps', 'aria-pressed': String(state.gapsOnly), onclick: function () { state.gapsOnly = true; render(); }, text: 'Only with gaps' })
+  ]));
+  if (state.queue.length || state.offline) v.appendChild(el('p', { class: 'syncnote', text: 'Outreach team 2\'s phone has no signal' + (state.queue.length ? ' and ' + plural(state.queue.length, 'change') + ' not sent yet' : '') + '. Figures from Market square shelter are as of ' + hhmm(state.lastSync) + '.' }));
+  v.appendChild(el('h3', { class: 'sec', text: 'Upcoming sessions' }));
+  var list = up.filter(function (x) { return !state.gapsOnly || hasGap(x, p); }), lastD = null;
+  if (!list.length) v.appendChild(el('div', { class: 'empty', text: 'No upcoming session has a gap. Every one has a team, transport and stock.' }));
+  list.forEach(function (x) { if (x.d !== lastD) { v.appendChild(el('div', { class: 'dayh', text: dayLabel(x.d) })); lastD = x.d; } v.appendChild(sessionRow(x, p)); });
+  // Stock and expiry by site
+  v.appendChild(el('h3', { class: 'sec', text: 'Stock and expiry by site' }));
+  var grid = el('div', { class: 'sites' });
+  SIDS.forEach(function (site) {
+    var box = el('div', { class: 'site' }, [el('h4', {}, [SITES[site], el('span', { text: site === 'C' ? 'issues to centres' : 'base for sessions' })])]);
+    IIDS.forEach(function (item) {
+      var r = p[site + item]; if (!r.onHand && !r.need) return;
+      var near = r.nearLeft.reduce(function (n, l) { return n + l.qty; }, 0), sh = Object.keys(r.short).reduce(function (n, k) { return n + r.short[k]; }, 0);
+      var chip = sh ? el('span', { class: 'chip bad', text: 'Short ' + sh }) : near ? el('span', { class: 'chip amber', text: near + ' near expiry' }) : el('span', { class: 'chip ok', text: 'Covered' });
+      box.appendChild(el('div', { class: 'irow' }, [
+        el('b', { text: ITEMS[item].name + ' · ' + r.onHand + ' ' + ITEMS[item].unit }), chip,
+        el('span', { class: 'sub', text: (r.nearest ? 'Next expiry in ' + plural(r.nearest.exp, 'day') + ' (' + r.nearest.qty + ')' : 'None on hand') + ' · booked need ' + r.need })
+      ]));
+    });
+    grid.appendChild(box);
+  });
+  v.appendChild(grid);
+  v.appendChild(el('p', { class: 'small-note', text: 'Booked need is matched to stock earliest expiry first. Near expiry: within ' + S.nearExpiry + ' days (example setting, not a standard).' }));
+  // Cold chain
+  v.appendChild(el('h3', { class: 'sec', text: 'Cold chain devices' }));
+  var devs = el('div', { class: 'site' });
+  var ex = excursions();
+  DEVICES.forEach(function (d) {
+    var r = d.box ? (state.server.readings[state.server.readings.length - 1] || null) : state.devices[d.id];
+    var open = ex.filter(function (x) { return x.dev === d.id && x.end == null; })[0];
+    devs.appendChild(el('div', { class: 'dev' }, [
+      el('div', {}, [el('b', { text: d.name }), el('span', { class: 'sub', text: d.box ? 'Market square shelter · from the team\'s phone' : SITES[d.site] })]),
+      el('div', { class: 'rd' }, [r ? r.v.toFixed(1) + ' °C · ' + hhmm(r.t) + ' ' : '– ', el('span', { class: 'chip ' + (open ? 'bad' : 'ok'), text: open ? 'Alarm' : 'In range' })])
+    ]));
+  });
+  v.appendChild(devs);
+  v.appendChild(el('h3', { class: 'sec', text: 'Excursions this month' }));
+  ex.filter(function (x) { return x.start >= -(TODAY_DOM - 1) * DAY; }).forEach(function (x) {
+    var acts = actionsOf(x), open = x.end == null;
+    var kids = [el('div', { class: 'top' }, [el('span', { text: devName(x.dev) }), el('span', { class: 'chip ' + (open ? 'bad' : 'ok'), text: open ? 'Open · ' + fmtm(exMinutes(x)) : 'Closed · ' + fmtm(exMinutes(x)) })]),
+      el('div', { class: 'sub', style: 'color:var(--soft)', text: 'Started ' + whenLabel(x.start) + (open ? '' : ', back in range ' + hhmm(x.end)) + ' · highest ' + x.max.toFixed(1) + ' °C' })];
+    kids.push(acts.length ? el('ul', {}, acts.map(function (a) { return el('li', { text: hhmm(a.t) + ' ' + a.text }); })) : el('p', { style: 'margin:6px 0 0;color:#8E2C18;font-weight:700', text: 'No action logged yet.' }));
+    if (open) {
+      var sel = el('select', { id: 'act-' + x.id, onchange: function (e) { state.actSel[x.id] = e.target.value; } }, ACTIONS.map(function (a) { return el('option', { value: a, text: a }); }));
+      sel.value = state.actSel[x.id] || ACTIONS[0];
+      var fk = [el('label', { for: 'act-' + x.id }, ['Action taken', sel]), el('button', { type: 'button', class: 'small primary', id: 'actlog-' + x.id, onclick: function () { logAction(x.id); }, text: 'Log action' })];
+      if (!x.box) fk.push(el('button', { type: 'button', class: 'small', id: 'inrange-' + x.id, onclick: function () { backInRange(x.id); }, text: 'Back in range' }));
+      kids.push(el('div', { class: 'actform' }, fk));
+      if (x.box) kids.push(el('p', { class: 'small-note', text: 'Closes when the team logs a reading back in range.' }));
+    }
+    v.appendChild(el('div', { class: 'exc' + (open ? ' open' : '') + (state.flash === 'ex-' + x.id ? ' flash' : ''), id: 'ex-' + x.id }, kids));
+  });
+}
+function renderManager(v) {
+  var k = kpis(), S = state.settings;
+  if (state.queue.length || state.offline) v.appendChild(el('p', { class: 'syncnote', text: 'One outreach phone has no signal; today\'s figures are as of ' + hhmm(state.lastSync) + ' and update when its changes arrive.' }));
+  v.appendChild(el('h3', { class: 'sec', text: 'People reached against the local target' }));
+  var w = Math.min(100, 100 * k.peopleReachedMonth / S.monthTarget), pr = Math.min(100, 100 * k.proRataTarget / S.monthTarget);
+  v.appendChild(el('div', { class: 'progress', style: 'height:18px;border-radius:9px', role: 'img', 'aria-label': k.peopleReachedMonth + ' reached of a target of ' + S.monthTarget + '; pro rata to day ' + TODAY_DOM + ' is ' + k.proRataTarget }, [el('i', { style: 'width:' + w + '%;border-radius:9px' }), el('em', { style: 'left:' + pr + '%' })]));
+  v.appendChild(el('p', { class: 'small-note', style: 'margin-top:4px', text: k.peopleReachedMonth.toLocaleString('en') + ' reached of ' + S.monthTarget.toLocaleString('en') + ' (example setting). The dark mark is the target pro rata to day ' + TODAY_DOM + ': ' + k.proRataTarget.toLocaleString('en') + '. Includes ' + total(state.server.bands) + ' checked in today so far.' }));
+  // By site
+  v.appendChild(el('h3', { class: 'sec', text: 'Sessions planned and held, by base site' }));
+  var rows = {}; ['N', 'E', 'H'].forEach(function (s) { rows[s] = { planned: 0, held: 0, cancelled: 0, reached: 0 }; });
+  state.history.forEach(function (h) { var r = rows[h.site]; r.planned++; if (h.status === 'held') { r.held++; r.reached += h.reached; } else r.cancelled++; });
+  if (state.server.started) { rows.N.planned++; rows.N.held++; rows.N.reached += total(state.server.bands); }
+  var tb = el('tbody');
+  Object.keys(rows).forEach(function (s) { var r = rows[s]; tb.appendChild(el('tr', {}, [el('td', { text: SITES[s] }), el('td', { class: 'r', text: String(r.planned) }), el('td', { class: 'r', text: String(r.held) }), el('td', { class: 'r', text: String(r.cancelled) }), el('td', { class: 'r', text: r.reached.toLocaleString('en') })])); });
+  tb.appendChild(el('tr', { style: 'font-weight:800' }, [el('td', { text: 'All sites' }), el('td', { class: 'r', text: String(k.sessionsPlanned) }), el('td', { class: 'r', text: String(k.sessionsHeld) }), el('td', { class: 'r', text: String(k.sessionsPlanned - k.sessionsHeld) }), el('td', { class: 'r', text: k.peopleReachedMonth.toLocaleString('en') })]));
+  v.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Site' }), el('th', { class: 'r', text: 'Planned' }), el('th', { class: 'r', text: 'Held' }), el('th', { class: 'r', text: 'Cancelled' }), el('th', { class: 'r', text: 'Reached' })])]), tb])]));
+  // Cancellations and wastage side by side
+  var two = el('div', { class: 'two' });
+  var reasons = cancelReasons(), maxR = reasons.length ? reasons[0][1] : 1, bars = el('div', { class: 'bars' });
+  reasons.forEach(function (r) { bars.appendChild(el('div', {}, [el('span', { text: r[0] }), el('i', { style: 'width:' + (100 * r[1] / maxR) + '%' }), el('b', { text: String(r[1]) })])); });
+  two.appendChild(el('div', {}, [el('h3', { class: 'sec', text: 'Why sessions were cancelled' }), bars]));
+  var wl = el('ul', { class: 'plain' });
+  ['VA', 'VB'].forEach(function (item) {
+    var iss = 0, giv = 0; state.history.forEach(function (h) { if (h.item === item && h.issued) { iss += h.issued; giv += h.given; } });
+    if (item === 'VA' && state.server.closed) { iss += state.server.opened * ITEMS.VA.doses; giv += total(state.server.bands); }
+    wl.appendChild(el('li', {}, [el('b', { text: ITEMS[item].name + ' (' + ITEMS[item].pack + ')' }), el('span', { text: pct(iss - giv, iss) + '% · ' + (iss - giv) + ' of ' + iss.toLocaleString('en') })]));
+  });
+  two.appendChild(el('div', {}, [el('h3', { class: 'sec', text: 'Dose wastage by vaccine' }), wl, el('p', { class: 'small-note', text: state.server.closed ? 'Includes today\'s closed session.' : 'Today\'s session counts once it is closed.' })]));
+  v.appendChild(two);
+  // Stock-outs and excursions
+  var two2 = el('div', { class: 'two' });
+  var so = el('ul', { class: 'plain' });
+  var grouped = {}; state.stockouts.forEach(function (o) { var key = o.site + o.item; (grouped[key] = grouped[key] || { site: o.site, item: o.item, days: [] }).days.push(o.d); });
+  Object.keys(grouped).forEach(function (key) { var gp = grouped[key]; so.appendChild(el('li', {}, [el('b', { text: SITES[gp.site] + ' · ' + ITEMS[gp.item].name }), el('span', { text: gp.days.map(function (d) { return DOW[dow(d)] + ' ' + (TODAY_DOM + d); }).join(', ') })])); });
+  two2.appendChild(el('div', {}, [el('h3', { class: 'sec', text: 'Stock-out days' }), so]));
+  var xl = el('ul', { class: 'plain' });
+  excursions().filter(function (x) { return x.start >= -(TODAY_DOM - 1) * DAY; }).forEach(function (x) { xl.appendChild(el('li', {}, [el('b', { text: devName(x.dev) }), el('span', { text: whenLabel(x.start) + ' · ' + fmtm(exMinutes(x)) + (x.end == null ? ' (open)' : '') })])); });
+  two2.appendChild(el('div', {}, [el('h3', { class: 'sec', text: 'Cold chain excursions' }), xl]));
+  v.appendChild(two2);
+  // Settings
+  var det = el('details', { class: 'set', id: 'settings' }, [el('summary', { text: 'Example settings (not a standard)' })]);
+  if (state.setOpen) det.open = true;
+  det.addEventListener('toggle', function () { state.setOpen = det.open; save(); });
+  var grid = el('div', { class: 'targets' });
+  [['monthTarget', 'People to reach this month', 100, 100000, 100], ['nearExpiry', 'Near expiry within (days)', 1, 90, 1], ['gapDays', 'Flag gaps up to (days ahead)', 0, 7, 1], ['checkEvery', 'Cold box check every (min)', 15, 240, 15], ['lo', 'Safe range low (°C)', -30, 20, 1], ['hi', 'Safe range high (°C)', -20, 30, 1]].forEach(function (f) {
+    var inp = el('input', { type: 'number', id: 'set-' + f[0], min: String(f[2]), max: String(f[3]), step: String(f[4]), value: String(S[f[0]]), inputmode: 'numeric' });
+    inp.addEventListener('change', function () { var n = Math.max(f[2], Math.min(f[3], Math.round(+inp.value || DEFAULT_SET[f[0]]))); if (f[0] === 'hi' && n <= S.lo) n = S.lo + 1; if (f[0] === 'lo' && n >= S.hi) n = S.hi - 1; S[f[0]] = n; log('Programme manager changed an example setting: ' + f[1].toLowerCase() + ' = ' + n + '.'); render(); toast('Setting saved.'); });
+    grid.appendChild(el('label', { for: 'set-' + f[0] }, [f[1], inp]));
+  });
+  det.appendChild(grid);
+  det.appendChild(el('p', { class: 'small-note', text: 'Each programme sets its own targets and ranges. These are example settings for this demo only; temperature ranges come from the product label.' }));
+  v.appendChild(det);
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 40).forEach(function (l) {
+    ol.appendChild(el('li', { class: l.fresh ? 'new' : '' }, [el('time', { text: hhmm(l.t) }), el('span', {}, [l.text, l.q ? el('span', { class: 'chip q', text: 'On phone' }) : null])]));
+  });
+}
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Check-ins, stock, sessions, readings and every measure work without it.' })); }
+  else {
+    var list = suggest();
+    if (!list.length) box.appendChild(el('p', { class: 'how', text: 'Nothing to point out for this view right now.' }));
+    list.forEach(function (sg) {
+      var pend = state.pending.some(function (p) { return p.id === sg.id; }), acts = [];
+      if (sg.propose) acts.push(el('button', { type: 'button', class: 'small primary', disabled: pend ? 'disabled' : false, onclick: function () { propose(sg); }, text: pend ? 'Proposed' : 'Propose' }));
+      if (sg.showLabel) acts.push(el('button', { type: 'button', class: 'small', onclick: sg.show, text: sg.showLabel }));
+      acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not now' }));
+      box.appendChild(el('div', { class: 'sugg' }, [el('span', { class: 'tag ' + sg.kind, text: sg.tagText }), el('h3', { text: sg.title }), el('p', { text: sg.text }), el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)]));
+    });
+  }
+  // Proposals wait for a person, whether or not the guide is on.
+  var wrap = el('div', { class: 'decide' });
+  if (!state.pending.length) wrap.appendChild(el('p', { text: 'Proposals from the guide wait here for the campaign coordinator. Nothing changes until a person confirms.' }));
+  else {
+    wrap.appendChild(el('h3', { text: 'Waiting for the campaign coordinator (' + state.pending.length + ')' }));
+    state.pending.forEach(function (pr) {
+      var me = state.role === 'coordinator';
+      wrap.appendChild(el('div', { class: 'prop' }, [el('p', { text: pr.p.text }), el('p', { class: 'who', text: 'Proposed at ' + hhmm(pr.at) + ' by the guide.' }),
+        el('div', { class: 'acts' }, me ? [el('button', { type: 'button', class: 'small primary confirm', onclick: function () { decide(pr.id, true); }, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(pr.id, false); }, text: 'Decline' })]
+          : [el('button', { type: 'button', class: 'small', onclick: function () { goTo('coordinator'); }, text: 'Switch to the coordinator to decide' })])]));
+    });
+  }
+  dec.appendChild(wrap);
+}
+
+// ---------- Wiring ----------
+['worker', 'coordinator', 'manager'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; state.kpiOpen = null; state.closing = false; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('t-clock').addEventListener('click', function () { state.offset = Math.min(END - START, state.offset + 30); render(); toast('Demo clock now ' + hhmm(now()) + '.'); });
+document.getElementById('t-reset').addEventListener('click', function () { var r = state.role; state = seed(); state.role = r; render(); toast('Example reset.'); });
+window.addEventListener('offline', function () { setOffline(true); });
+window.addEventListener('online', function () { setOffline(false); });
+
+// Read-only view for software agents (no writes): window.ospeliPublicHealthDemo
+window.ospeliPublicHealthDemo = Object.freeze({
+  describe: function () { return 'Read-only public health operations demo (outreach sessions, stock by site, cold chain). get() returns sessions, stock, devices and excursions; kpis() the measures; suggestions() the guide\'s current suggestions for the selected role. Fictional data; runs in the browser; nothing is sent anywhere.'; },
+  get: function () {
+    var p = plan();
+    return clone({ role: state.role, demoClock: 'Tue ' + hhmm(now()), offline: state.offline, queuedChanges: state.queue.length,
+      todaySession: { venue: sess('S1').venue, bands: state.phone.bands, checkedIn: total(state.phone.bands), carried: state.phone.carried, opened: state.phone.opened, readings: state.phone.readings, closed: state.phone.closed ? hhmm(state.phone.closed) : null },
+      upcomingSessions: upcoming().map(function (x) { var g = gapsOf(x, p); return { id: x.id, day: dayLabel(x.d), start: hhmm(x.start), type: TYPES[x.type], venue: x.venue, site: SITES[x.site], expected: x.expected, item: ITEMS[x.item].name, need: x.need, team: x.team ? TEAMS[x.team] : null, transport: x.onsite ? 'on site' : x.vehicle ? VEHICLES[x.vehicle] : null, gaps: g }; }),
+      stock: Object.keys(p).filter(function (k) { return p[k].onHand || p[k].need; }).map(function (k) { var r = p[k]; return { site: SITES[r.site], item: ITEMS[r.item].name, onHand: r.onHand, bookedNeed: r.need, nextExpiryDays: r.nearest ? r.nearest.exp : null, nearExpiryUnused: r.nearLeft.reduce(function (n, l) { return n + l.qty; }, 0) }; }),
+      excursions: excursions().map(function (x) { return { device: devName(x.dev), start: whenLabel(x.start), end: x.end == null ? null : whenLabel(x.end), minutes: exMinutes(x), maxC: x.max, actions: actionsOf(x).map(function (a) { return a.text; }) }; }),
+      pendingProposals: state.pending.map(function (p) { return p.p.text; }), settings: state.settings });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text, why: s.why, proposes: s.propose ? s.propose.text : null }; }); }
+});
+render();
+})();
+</script>
+</body>
+</html>

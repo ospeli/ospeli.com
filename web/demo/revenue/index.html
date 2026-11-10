@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Revenue cycle demo · Ospeli</title>
+<meta name="description" content="An optional module for organisations that bill: coverage and authorisation checks at the front desk, a billing queue that shows what is missing before submission, denials grouped by reason, and receivables by age. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Revenue cycle demo · Ospeli">
+<meta property="og:description" content="An optional module for organisations that bill: coverage and authorisation checks at the front desk, a billing queue that shows what is missing before submission, denials grouped by reason, and receivables by age. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/revenue/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; margin-top: 22px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 10px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+h3.sec span { letter-spacing: 0; text-transform: none; font-weight: 700; font-size: 0.85rem; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+.optional { max-width: 52em; margin: 0 0 4px; background: #fff; border: 1px solid var(--line); border-left: 5px solid var(--mango); border-radius: 12px; padding: 10px 14px; font-size: 0.95rem; }
+select, input, button { font: inherit; color: var(--ink); }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 520px) { .roles { display: grid; grid-template-columns: 1fr 1fr 1fr; border-radius: 14px; width: 100%; } .roles button { padding: 8px 4px; font-size: 0.95rem; line-height: 1.2; } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 12px; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.clocknow { font-weight: 800; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-variant-numeric: tabular-nums; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.layout[hidden] { display: none; }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+.offcard { margin-bottom: 28px; border-left: 5px solid var(--mango); }
+.offcard p { margin: 0; max-width: 46em; }
+/* KPI tiles */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 4px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; }
+.stat .lbl { color: var(--ink); font-size: 0.95rem; font-weight: 700; display: block; line-height: 1.3; }
+.stat .n { color: var(--soft); font-size: 0.85rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.85rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat .def i { font-style: normal; font-weight: 800; display: block; margin-top: 2px; }
+.stat[aria-expanded=true] .def { display: block; }
+.stat.alert { background: var(--hot); }
+.stat.alert b { color: #B23A22; }
+.stathint { color: var(--soft); font-size: 0.85rem; margin: 6px 0 0; }
+#kpibottom .stats { margin-top: 6px; }
+/* front desk */
+.seg { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; margin: 4px 0 12px; }
+.seg button { border: 0; border-radius: 0; min-height: 44px; font-size: 0.95rem; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed=true] { background: var(--navy); color: #fff; }
+.carenote { font-size: 0.95rem; background: var(--wash); border-radius: 10px; padding: 8px 12px; margin: 0 0 12px; }
+.arrs { display: grid; gap: 10px; }
+.arr { border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 12px; padding: 12px; font-size: 1rem; }
+.arr.todo { border-left-color: var(--mango); }
+.arr .top { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+.arr .who { font-weight: 800; font-size: 1.12rem; line-height: 1.3; }
+.arr .who .tm { font-variant-numeric: tabular-nums; margin-right: 6px; }
+.arr .meta { color: var(--soft); font-size: 0.95rem; margin: 0 0 8px; }
+.chip { display: inline-block; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 2px 9px; background: var(--sand); white-space: nowrap; }
+.chip.here { background: var(--wash); }
+.chk { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 8px; align-items: center; padding: 6px 0; border-top: 1px dashed var(--line); font-size: 1rem; }
+.chk svg { width: 22px; height: 22px; display: block; }
+.chk b { font-weight: 800; }
+.chk .q { color: var(--soft); font-weight: 700; display: block; font-size: 0.95rem; line-height: 1.2; }
+.arr .acts { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.go { flex: 1 1 140px; min-height: 52px; font-size: 1.02rem; }
+.go.cov { background: var(--navy); color: #fff; }
+.go.auth { background: var(--mango); border-color: var(--mango); color: var(--navy); }
+.go.recv { background: var(--sea); border-color: var(--sea); color: #fff; }
+.payers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+.payers p { grid-column: 1 / -1; margin: 0; font-weight: 800; font-size: 0.95rem; }
+.payers button { border-radius: 12px; min-height: 52px; border-color: #CFC5B2; font-size: 1rem; }
+.empty { text-align: center; color: var(--soft); padding: 18px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; }
+/* billing */
+.pipe { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+@media (max-width: 640px) { .pipe { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.pipe div { background: var(--sand); border-radius: 10px; padding: 8px 10px; border-top: 4px solid var(--line); }
+.pipe div.s-ready { border-top-color: var(--sea); } .pipe div.s-denied { border-top-color: var(--coral); } .pipe div.s-paid { border-top-color: var(--foam); } .pipe div.s-submitted { border-top-color: var(--navy); } .pipe div.s-open, .pipe div.s-coding { border-top-color: var(--mango); }
+.pipe b { display: block; font-size: 1.2rem; line-height: 1.1; }
+.pipe span { font-size: 0.8rem; font-weight: 700; color: var(--soft); display: block; line-height: 1.25; }
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+.filters button { min-height: 38px; font-size: 0.88rem; border-color: #CFC5B2; padding: 4px 12px; }
+.filters button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.brow { display: grid; grid-template-columns: minmax(0, 1fr) 80px minmax(0, 330px); gap: 10px; align-items: center; border: 1px solid var(--line); border-left: 5px solid var(--sea); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; font-size: 0.92rem; }
+.brow.miss { border-left-color: var(--mango); } .brow.den { border-left-color: var(--coral); } .brow.soon { background: #FFF8F5; }
+.brow b { display: block; }
+.brow .sub { color: var(--soft); font-size: 0.84rem; display: block; }
+.brow .amt { font-weight: 800; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.brow .acts { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.brow .acts .lbl { font-size: 0.8rem; color: var(--soft); font-weight: 700; width: 100%; text-align: right; }
+.brow .left { font-weight: 800; color: #B23A22; }
+@media (max-width: 640px) { .brow { grid-template-columns: minmax(0, 1fr) auto; } .brow .acts { grid-column: 1 / -1; justify-content: flex-start; } .brow .acts .lbl { text-align: left; } }
+.grp { margin-bottom: 14px; }
+.grp h4 { margin: 0 0 6px; font-size: 0.95rem; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.grp h4 span { color: var(--soft); font-weight: 700; font-size: 0.82rem; }
+.bulk { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 8px; font-size: 0.88rem; color: var(--soft); }
+/* finance */
+.tablewrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+table.t { width: 100%; border-collapse: collapse; font-size: 0.88rem; font-variant-numeric: tabular-nums; }
+table.t th, table.t td { text-align: left; padding: 6px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.t th { color: var(--soft); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; }
+table.t td.r, table.t th.r { text-align: right; }
+table.t tr.tot td { font-weight: 800; border-top: 2px solid var(--line); }
+table.t td.wrap { white-space: normal; min-width: 150px; }
+td.heat { position: relative; }
+.share { display: inline-block; height: 8px; border-radius: 4px; background: var(--coral); vertical-align: middle; margin-right: 6px; }
+.two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 760px) { .two { grid-template-columns: minmax(0, 1fr); } }
+.fine { font-size: 0.82rem; color: var(--soft); margin: 8px 0 0; }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; color: var(--ink); }
+.switch input { width: 22px; height: 22px; }
+.modsw { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 0 12px; min-height: 36px; }
+.modsw input { width: 18px; height: 18px; }
+.how { font-size: 0.82rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.9rem; }
+.sugg ul { margin: 0 0 8px; padding-left: 18px; font-size: 0.88rem; }
+.sugg .why { color: var(--soft); font-size: 0.82rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+.prop .by { color: var(--soft); font-size: 0.82rem; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.95rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Revenue cycle: from registration to payment</h1>
+  <p class="lead">For organisations that bill insurers, other payers or patients. The front desk checks coverage and authorisation for today's arrivals. The billing officer sees what is ready to bill, what is missing, and why claims were denied. The finance lead sees how long claims take and what is still owed. The guide suggests; a person decides.</p>
+  <p class="optional" id="optional"><b>Optional module, switched off by default.</b> Only organisations that bill turn it on. Everyone else never sees billing screens or coverage questions, and the rest of Ospeli works the same. It never ranks, delays or changes care by coverage or ability to pay, and it does not assign clinical codes.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-registration" aria-pressed="false">Front desk</button>
+    <button type="button" id="r-billing" aria-pressed="false">Billing officer</button>
+    <button type="button" id="r-finance" aria-pressed="false">Finance lead</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <b>Demo tools:</b>
+    <span class="clocknow" id="clocknow"></span>
+    <button type="button" class="small" id="t-resp">Payer responses arrive</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+    <label class="switch modsw"><input type="checkbox" id="mod-on" checked> Module on</label>
+  </div>
+
+  <div class="card offcard" id="offcard" hidden>
+    <h2>The revenue cycle module is switched off</h2>
+    <p>This is how most organisations that do not bill will run Ospeli: no coverage or authorisation questions at the front desk, no claims, no billing screens. Bed board, tasks and every other module work the same. Tick <b>Module on</b> above to try the demo.</p>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <h2 id="view-h">Revenue cycle</h2>
+        <div id="kpitop"></div>
+        <div id="view"></div>
+        <div id="kpibottom"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened today</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads the encounters, claims and denials and suggests where to look, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. A suggestion only becomes a proposal. A person confirms it.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its patients (shown only as anonymous codes), payer groups, claims and amounts (in currency units). Rules such as "appeal within 7 days" are example settings, not a standard. It measures claims and steps, never individual staff. Coming next (Feb 2027): one timeline per claim from registration to payment, denials routed to the right queue with appeal deadlines, and a month-end receivables pack. <a href="../../areas/revenue-cycle/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var STORE = 'ospeli.revenue.v1';
+var START_CLOCK = 10 * 60 + 20; // Demo clock 10:20 on the example day
+
+// ---------- Fixed reference data (fictional) ----------
+var KINDS = {
+  op: { label: 'Outpatient visit', lo: 80, hi: 260 },
+  ed: { label: 'Emergency department visit', lo: 150, hi: 620 },
+  dp: { label: 'Day procedure', lo: 600, hi: 1800, auth: true },
+  ad: { label: 'Planned admission', lo: 1500, hi: 6200, auth: true }
+};
+var PAYERS = { A: 'Payer group A', B: 'Payer group B', C: 'Payer group C', S: 'Self-pay' };
+var PAYER_KEYS = ['A', 'B', 'C', 'S'];
+// Missing items that stop an encounter being billed.
+var ITEMS = {
+  coverage: { label: 'Coverage', btn: 'Coverage confirmed', done: 'coverage confirmed', team: 'registration team' },
+  auth: { label: 'Authorisation', btn: 'Authorisation added', done: 'authorisation reference added', team: 'registration team' },
+  charges: { label: 'Charges', btn: 'Charges captured', done: 'charges captured', team: 'departments that gave the service' },
+  coding: { label: 'Coding', btn: 'Coding complete', done: 'coding marked complete by the coding team', team: 'coding team' }
+};
+var ITEM_KEYS = ['coverage', 'auth', 'charges', 'coding'];
+// Fixed list of denial reasons, with the step where each one usually starts.
+var REASONS = {
+  cov: { label: 'Coverage not active on the date of service', step: 'the coverage and eligibility check at registration', role: 'Front desk lead' },
+  auth: { label: 'Authorisation missing or expired', step: 'requesting authorisation before planned care', role: 'Front desk lead' },
+  code: { label: 'Coding does not match the service billed', step: 'coding review before submission', role: 'Coding team lead' },
+  info: { label: 'Missing or incorrect claim details', step: 'billing checks before submission', role: 'Billing officer' },
+  dup: { label: 'Duplicate claim', step: 'billing checks before submission', role: 'Billing officer' },
+  late: { label: "Sent after the payer's time limit", step: 'getting claims out sooner after discharge', role: 'Billing officer' }
+};
+var REASON_KEYS = ['cov', 'auth', 'code', 'info', 'dup', 'late'];
+var STAGES = [['open', 'Charges open'], ['coding', 'Coding'], ['ready', 'Ready'], ['submitted', 'Submitted'], ['paid', 'Paid'], ['denied', 'Denied']];
+var BANDS = [[0, 30, '0–30 days'], [31, 60, '31–60'], [61, 90, '61–90'], [91, 9999, 'Over 90']];
+// Example settings for this demo only, not a standard: each organisation sets its own.
+var SET = { appealWindowDays: 30, appealSoonDays: 7, authLeadDays: 3 };
+
+// ---------- Helpers ----------
+function rng(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function pick(r, w) { var tot = 0, i; for (i = 0; i < w.length; i++) tot += w[i][1]; var x = r() * tot; for (i = 0; i < w.length; i++) { x -= w[i][1]; if (x < 0) return w[i][0]; } return w[w.length - 1][0]; }
+function money(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+function hhmm(m) { m = Math.round(m); return (m / 60 < 10 ? '0' : '') + Math.floor(m / 60) + ':' + (m % 60 < 10 ? '0' : '') + (m % 60); }
+function ago(d) { d = -d; return d === 0 ? 'today' : d === 1 ? 'yesterday' : d + ' days ago'; }
+function ahead(d) { return d === 0 ? 'today' : d === 1 ? 'tomorrow' : 'in ' + d + ' days'; }
+function pct(a, b) { return b ? Math.round(1000 * a / b) / 10 : 0; }
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k === 'html') e.innerHTML = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+var ICON = {
+  ok: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#0A9396"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  no: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="#EE9B00"/><path d="M12 6.5v7" stroke="#0B2F4E" stroke-width="2.6" stroke-linecap="round"/><circle cx="12" cy="17.3" r="1.6" fill="#0B2F4E"/></svg>',
+  wait: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#fff" stroke="#44607A" stroke-width="2"/><path d="M12 7v5l3 2" fill="none" stroke="#44607A" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  na: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="#fff" stroke="#CFC5B2" stroke-width="2"/><path d="M8 12h8" stroke="#44607A" stroke-width="2.4" stroke-linecap="round"/></svg>'
+};
+
+// ---------- State ----------
+function seed() {
+  var r = rng(20261110);
+  var s = { v: 1, role: window.matchMedia('(max-width: 640px)').matches ? 'registration' : 'billing', module: true, guide: true,
+    clock: START_CLOCK, regFilter: 'todo', miss: 'all', den: 'all', kpiOpen: null, picking: null, pending: [], dismissed: {}, log: [], rs: 7, enc: [], arr: [], up: [] };
+  var n = 0;
+  function enc(age, kind, payer) {
+    var k = KINDS[kind];
+    var e = { id: 'E-' + (3101 + n), pt: 'P-' + (4000 + Math.floor(r() * 5900)), kind: kind, payer: payer, end: -age,
+      amount: Math.round((k.lo + r() * (k.hi - k.lo)) / 10) * 10, miss: { coverage: false, auth: false, charges: false, coding: false },
+      clean: true, st: 'unbilled', sub1: null, sub: null, resp: [], resub: 0, paid: null, subAt: null };
+    n++; s.enc.push(e); return e;
+  }
+  for (var i = 0; i < 74; i++) {
+    var age = Math.floor(Math.pow(r(), 1.25) * 120);
+    var kind = pick(r, [['op', 45], ['ed', 25], ['dp', 20], ['ad', 10]]);
+    var payer = pick(r, [['A', 40], ['B', 30], ['C', 15], ['S', 15]]);
+    var e = enc(age, kind, payer), needsAuth = KINDS[kind].auth && payer !== 'S';
+    if (age <= 5 || (age <= 12 && r() < 0.25)) {
+      e.miss.coverage = r() < 0.12; e.miss.auth = needsAuth && r() < 0.35; e.miss.charges = r() < 0.25;
+      e.miss.coding = r() < (kind === 'op' ? 0.25 : 0.55); e.clean = !missingOf(e).length;
+      continue;
+    }
+    var lag = r() < 0.15 ? 10 + Math.floor(r() * 12) : 2 + Math.floor(r() * 6);
+    var sub = Math.min(-1, e.end + lag);
+    e.clean = r() < 0.78; e.st = 'submitted'; e.sub1 = e.sub = sub;
+    var rd = sub + 8 + Math.floor(r() * 16);
+    if (rd > 0) continue;
+    if (payer === 'S' || r() < (e.clean ? 0.86 : 0.7)) { e.resp.push({ day: rd, ok: true }); e.st = 'paid'; e.paid = rd; continue; }
+    var reason = rd >= -6 ? pick(r, [['cov', 50], ['auth', 15], ['code', 15], ['info', 10], ['dup', 5], ['late', 5]]) : pick(r, [['cov', 18], ['auth', 20], ['code', 25], ['info', 22], ['dup', 8], ['late', 7]]);
+    e.resp.push({ day: rd, ok: false, reason: reason }); e.st = 'denied';
+    if (rd < -SET.appealWindowDays + 1 || (rd < -10 && r() < 0.6)) {
+      e.resub = 1; e.sub = rd + 3; e.st = 'submitted';
+      var r2 = e.sub + 8 + Math.floor(r() * 10);
+      if (r2 <= 0) { e.resp.push({ day: r2, ok: true }); e.st = 'paid'; e.paid = r2; }
+    }
+  }
+  // A few fixed cases so every view has something to show.
+  [[52, 'dp', 'B', -27, 'code'], [49, 'op', 'A', -25, 'cov'], [47, 'ed', 'C', -24, 'cov'], [16, 'op', 'A', -4, 'cov'], [13, 'ed', 'B', -2, 'cov'], [10, 'op', 'C', -1, 'auth']].forEach(function (c) {
+    var e = enc(c[0], c[1], c[2]); e.st = 'denied'; e.sub1 = e.sub = Math.min(-1, -c[0] + 4); e.clean = c[4] !== 'cov'; e.resp.push({ day: c[3], ok: false, reason: c[4] });
+  });
+  [[0, 'dp', 'A', ['coding']], [1, 'op', 'B', ['charges']], [2, 'ed', 'A', ['coverage', 'coding']], [2, 'ad', 'A', ['auth', 'charges']], [4, 'op', 'B', ['coverage']], [1, 'op', 'A', []], [3, 'op', 'C', []], [0, 'op', 'A', []], [1, 'ed', 'C', []], [2, 'dp', 'B', []], [4, 'op', 'S', []]].forEach(function (c) {
+    var e = enc(c[0], c[1], c[2]); c[3].forEach(function (k) { e.miss[k] = true; }); e.clean = !c[3].length;
+  });
+  // Claims sent today (logged below).
+  var todaySent = [], sentAt = [8 * 60 + 2, 8 * 60 + 37, 9 * 60 + 11, 9 * 60 + 48];
+  s.enc.filter(function (e) { return e.st === 'unbilled' && !missingOf(e).length && e.end <= -2; }).slice(0, 4).forEach(function (e, k) {
+    e.st = 'submitted'; e.sub1 = e.sub = 0; e.subAt = sentAt[k]; todaySent.push(e);
+  });
+  s.enc.sort(function (a, b) { return a.end - b.end; });
+
+  // Today's arrivals: [time, kind, payer recorded or null, auth state for planned care]
+  [[7 * 60 + 40, 'op', 'A', null], [7 * 60 + 55, 'dp', 'B', 'held'], [8 * 60 + 10, 'ed', null, null], [8 * 60 + 30, 'op', 'S', null],
+   [8 * 60 + 50, 'ad', 'A', 'held'], [9 * 60 + 15, 'op', null, null], [9 * 60 + 40, 'dp', 'A', 'requested'], [10 * 60 + 5, 'ed', 'B', null],
+   [10 * 60 + 30, 'op', null, null], [11 * 60, 'dp', 'C', 'none'], [13 * 60 + 30, 'ad', 'B', 'held'], [14 * 60 + 15, 'op', 'A', null], [15 * 60, 'dp', 'A', 'none']
+  ].forEach(function (a, k) {
+    s.arr.push({ id: 'P-' + [5208, 6631, 4417, 7790, 5562, 8124, 4983, 7046, 6359, 5871, 9012, 4675, 8340][k], t: a[0], kind: a[1], payer: a[2], checkedAt: a[2] && a[0] <= START_CLOCK ? a[0] + 4 : null, auth: KINDS[a[1]].auth ? a[3] : null, authAt: a[3] === 'requested' ? 9 * 60 + 2 : null });
+  });
+  // Planned care in the next few days: [days ahead, time, kind, payer, auth]
+  [[1, 8 * 60, 'dp', 'A', 'held'], [1, 9 * 60 + 30, 'ad', 'B', 'none'], [2, 8 * 60 + 30, 'dp', 'C', 'requested'], [2, 11 * 60, 'dp', 'A', 'none'], [3, 8 * 60, 'ad', 'A', 'held'], [3, 10 * 60, 'dp', 'B', 'none']
+  ].forEach(function (u, k) { s.up.push({ id: 'P-' + [6012, 7354, 4829, 5596, 8873, 6740][k], day: u[0], t: u[1], kind: u[2], payer: u[3], auth: u[4] }); });
+
+  // Log of today so far, built from the events above (all before the demo clock).
+  var ev = [{ t: 7 * 60 + 31, text: 'Front desk opened; 13 arrivals expected today' }];
+  s.arr.forEach(function (a) { if (a.checkedAt) ev.push({ t: a.checkedAt, text: 'Coverage recorded for ' + a.id + ': ' + PAYERS[a.payer] + (a.payer === 'S' ? '' : ', eligibility active') }); });
+  ev.push({ t: 9 * 60 + 2, text: 'Authorisation requested for ' + s.arr[6].id + ' (day procedure today)' });
+  todaySent.forEach(function (e) { ev.push({ t: e.subAt, text: (e.payer === 'S' ? 'Bill sent to patient for ' : 'Claim submitted for ') + e.id + ' (' + PAYERS[e.payer] + ', ' + money(e.amount) + ')' }); });
+  var paid0 = 0, den0 = 0; s.enc.forEach(function (e) { e.resp.forEach(function (x) { if (x.day === 0) { if (x.ok) paid0++; else den0++; } }); });
+  if (paid0 + den0) ev.push({ t: 8 * 60 + 15, text: 'Payer responses received: ' + paid0 + ' paid, ' + den0 + ' denied' });
+  ev.sort(function (a, b) { return b.t - a.t; });
+  s.log = ev;
+  return s;
+}
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() { try { var s = JSON.parse(localStorage.getItem(STORE)); return s && s.v === 1 && s.enc ? s : null; } catch (e) { return null; } }
+function tick(min) { state.clock = Math.min(state.clock + (min || 1), 18 * 60); }
+function log(text) { tick(1); state.log.unshift({ t: state.clock, text: text, fresh: true }); state.log = state.log.slice(0, 80); }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2400); }
+
+// ---------- Derived data (pure) ----------
+function missingOf(e) { return ITEM_KEYS.filter(function (k) { return e.miss[k]; }); }
+function stageOf(e) { if (e.st !== 'unbilled') return e.st; var m = missingOf(e); return !m.length ? 'ready' : (m.length === 1 && m[0] === 'coding') ? 'coding' : 'open'; }
+function byStage(st) { return state.enc.filter(function (e) { return stageOf(e) === st; }); }
+function unbilled() { return state.enc.filter(function (e) { return e.st === 'unbilled'; }); }
+function lastResp(e) { return e.resp[e.resp.length - 1]; }
+function daysLeft(e) { return lastResp(e).day + SET.appealWindowDays; }
+function arrNeedsAuth(a) { return !!KINDS[a.kind].auth && a.payer !== 'S' && a.payer !== null; }
+function arrTodo(a) { return !a.payer || (arrNeedsAuth(a) && a.auth !== 'held'); }
+function upNoAuth() { return state.up.filter(function (u) { return u.payer !== 'S' && u.auth === 'none' && u.day <= SET.authLeadDays; }); }
+function bandOf(age) { for (var i = 0; i < BANDS.length; i++) if (age >= BANDS[i][0] && age <= BANDS[i][1]) return i; return BANDS.length - 1; }
+function median(a) { if (!a.length) return 0; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function denialsIn(from, to) { var c = {}; state.enc.forEach(function (e) { e.resp.forEach(function (x) { if (!x.ok && x.day >= from && x.day <= to) c[x.reason] = (c[x.reason] || 0) + 1; }); }); return c; }
+
+function kpis() {
+  var remitted = 0, denied = 0, byReason = {}, byPayer = {};
+  PAYER_KEYS.forEach(function (p) { byPayer[p] = { remitted: 0, denied: 0 }; });
+  state.enc.forEach(function (e) { e.resp.forEach(function (x) { remitted++; byPayer[e.payer].remitted++; if (!x.ok) { denied++; byPayer[e.payer].denied++; byReason[x.reason] = (byReason[x.reason] || 0) + 1; } }); });
+  var subd = state.enc.filter(function (e) { return e.sub1 != null; });
+  var clean = subd.filter(function (e) { return e.clean; }).length;
+  var ar = 0; state.enc.forEach(function (e) { if (e.st === 'submitted' || e.st === 'denied') ar += e.amount; });
+  var rev90 = 0; state.enc.forEach(function (e) { if (e.end >= -89) rev90 += e.amount; });
+  var daily = rev90 / 90;
+  var d2s = median(subd.filter(function (e) { return e.sub1 >= -89; }).map(function (e) { return e.sub1 - e.end; }));
+  var ready = byStage('ready'), missing = unbilled().filter(function (e) { return missingOf(e).length; });
+  var today = state.arr, covered = today.filter(function (a) { return a.payer; }).length;
+  var authMissing = today.filter(function (a) { return arrNeedsAuth(a) && a.auth !== 'held'; }).length + state.up.filter(function (u) { return u.payer !== 'S' && u.auth !== 'held'; }).length;
+  var wk = denialsIn(-6, 0);
+  return {
+    netDaysInAR: daily ? Math.round(10 * ar / daily) / 10 : 0, accountsReceivable: ar, averageDailyRevenue: Math.round(daily),
+    cleanClaimRatePct: pct(clean, subd.length), claimsSubmitted: subd.length,
+    denialRatePct: pct(denied, remitted), remitted: remitted, denied: denied, deniedByReason: byReason, byPayer: byPayer,
+    dischargeToSubmitMedianDays: d2s, readyCount: ready.length, readyAmount: ready.reduce(function (t, e) { return t + e.amount; }, 0),
+    missingCount: missing.length, openDenials: byStage('denied').length,
+    arrivalsToday: today.length, coverageRecorded: covered, authorisationsStillNeeded: authMissing, coverageDenialsThisWeek: wk.cov || 0
+  };
+}
+
+// ---------- The guide: plain, explainable rules ----------
+function suggest() {
+  var out = [];
+  // 1. Planned care soon with no authorisation recorded.
+  var na = upNoAuth();
+  if (na.length) out.push({ id: 'auth', kind: 'time', title: na.length + ' planned visit' + (na.length > 1 ? 's' : '') + ' in the next ' + SET.authLeadDays + ' days ha' + (na.length > 1 ? 've' : 's') + ' no authorisation recorded',
+    list: na.map(function (u) { return u.id + ' · ' + KINDS[u.kind].label + ' ' + ahead(u.day) + ' ' + hhmm(u.t) + ' · ' + PAYERS[u.payer]; }),
+    text: 'Suggest the registration team requests them now. Care goes ahead as planned either way.',
+    why: 'Planned care within ' + SET.authLeadDays + ' days and no authorisation requested (an example setting, not a standard).',
+    propose: { kind: 'auth', ids: na.map(function (u) { return u.id; }), text: 'Registration team requests authorisation for ' + na.map(function (u) { return u.id; }).join(', ') + '.', by: 'Front desk lead' }, proposeLabel: 'Propose: request them' });
+  // 2. Most common missing item first.
+  var c = {}, miss = unbilled().filter(function (e) { return missingOf(e).length; });
+  miss.forEach(function (e) { missingOf(e).forEach(function (k) { c[k] = (c[k] || 0) + 1; }); });
+  var top = ITEM_KEYS.slice().sort(function (a, b) { return (c[b] || 0) - (c[a] || 0); })[0];
+  if (miss.length && c[top]) out.push({ id: 'miss-' + top, kind: 'ask', title: 'Fix the most common missing item first: ' + ITEMS[top].label.toLowerCase(),
+    text: c[top] + ' of ' + miss.length + ' encounters waiting to bill are missing ' + ITEMS[top].label.toLowerCase() + '. Clearing these first releases the most claims.',
+    why: 'Counted from encounters that ended but cannot be billed yet.',
+    show: function () { state.role = 'billing'; state.miss = top; },
+    showLabel: 'Show these',
+    propose: { kind: 'note', text: 'Ask the ' + ITEMS[top].team + ' to clear the ' + c[top] + ' encounters missing ' + ITEMS[top].label.toLowerCase() + ' first.', by: 'Billing officer' }, proposeLabel: 'Propose: clear these first' });
+  // 3. Group denials by reason; flag a reason growing week on week.
+  var wk = denialsIn(-6, 0), prev = denialsIn(-13, -7), open = byStage('denied');
+  var grow = REASON_KEYS.filter(function (k) { return (wk[k] || 0) >= 2 && (wk[k] || 0) > (prev[k] || 0); }).sort(function (a, b) { return (wk[b] - (prev[b] || 0)) - (wk[a] - (prev[a] || 0)); })[0];
+  var oc = {}; open.forEach(function (e) { var k = lastResp(e).reason; oc[k] = (oc[k] || 0) + 1; });
+  var rk = grow || REASON_KEYS.slice().sort(function (a, b) { return (oc[b] || 0) - (oc[a] || 0); })[0];
+  if (open.length && (grow || oc[rk])) out.push({ id: 'den-' + rk, kind: 'time', title: (grow ? 'Growing denial reason: ' : 'Most common denial reason: ') + REASONS[rk].label.toLowerCase(),
+    text: (oc[rk] || 0) + ' open denials share this reason. Group them, work them together, and fix the step that causes them: ' + REASONS[rk].step + '.',
+    why: grow ? (wk[rk] + ' denials for this reason in the last 7 days, against ' + (prev[rk] || 0) + ' the week before.') : 'Counted from open denials.',
+    show: function () { state.role = 'billing'; state.den = rk; }, showLabel: 'Group in denials queue',
+    propose: { kind: 'note', text: 'Review ' + REASONS[rk].step + ' to cut "' + REASONS[rk].label.toLowerCase() + '" denials.', by: REASONS[rk].role }, proposeLabel: 'Propose a fix at that step' });
+  // 4. Denials close to the appeal deadline.
+  var soon = open.filter(function (e) { return daysLeft(e) <= SET.appealSoonDays; }).sort(function (a, b) { return daysLeft(a) - daysLeft(b); });
+  if (soon.length) out.push({ id: 'soon', kind: 'ask', title: soon.length + ' denied claim' + (soon.length > 1 ? 's' : '') + ' within ' + SET.appealSoonDays + ' days of the appeal deadline',
+    list: soon.map(function (e) { return e.id + ' · ' + daysLeft(e) + ' day' + (daysLeft(e) === 1 ? '' : 's') + ' left · ' + REASONS[lastResp(e).reason].label; }),
+    why: 'Appeal window of ' + SET.appealWindowDays + ' days from the denial, flagged at ' + SET.appealSoonDays + ' days left (example settings, not a standard).',
+    show: function () { state.role = 'billing'; state.den = 'soon'; }, showLabel: 'Show in denials queue' });
+  return out.filter(function (x) { return !state.dismissed[x.id]; }).slice(0, 4);
+}
+
+// ---------- Render ----------
+var HINTS = {
+  registration: 'Front desk, on a phone or tablet: for each of today\'s arrivals, check coverage is recorded and whether an authorisation is needed. Care never waits for this.',
+  billing: 'Billing officer: encounters ready to bill or missing something, claims by stage, and denials to fix and resubmit.',
+  finance: 'Finance lead: days from discharge to claim, claims by stage and age, denial rate by reason and payer group, and money still owed by age.'
+};
+function render() {
+  var on = state.module;
+  document.getElementById('mod-on').checked = on;
+  document.getElementById('layout').hidden = !on;
+  document.getElementById('offcard').hidden = on;
+  document.getElementById('clocknow').textContent = 'Demo clock ' + hhmm(state.clock);
+  ['registration', 'billing', 'finance'].forEach(function (r) { var b = document.getElementById('r-' + r); b.setAttribute('aria-pressed', String(state.role === r)); b.disabled = !on; });
+  document.getElementById('t-resp').disabled = !on;
+  document.getElementById('rolehint').textContent = on ? HINTS[state.role] : 'Module off: no revenue cycle views.';
+  document.getElementById('view-h').textContent = { registration: 'Today\'s arrivals', billing: 'Billing queue', finance: 'Claims and money owed' }[state.role];
+  var v = document.getElementById('view'); v.textContent = '';
+  var front = state.role === 'registration';
+  document.getElementById('kpitop').textContent = ''; document.getElementById('kpibottom').textContent = '';
+  document.getElementById(front ? 'kpibottom' : 'kpitop').appendChild(tiles());
+  if (front) v.appendChild(frontDesk()); else if (state.role === 'billing') v.appendChild(billing()); else v.appendChild(finance());
+  renderLog(); renderGuide(); save();
+}
+function tiles() {
+  var k = kpis(), defs;
+  if (state.role === 'registration') defs = [
+    ['cov', k.coverageRecorded + ' of ' + k.arrivalsToday, 'Coverage recorded', 'today\'s arrivals', 'today\'s arrivals with payer group and eligibility check recorded ÷ today\'s arrivals', 'local definition', k.coverageRecorded < k.arrivalsToday],
+    ['auth', String(k.authorisationsStillNeeded), 'Authorisations still needed', 'today and next 3 days', 'planned care needing authorisation where none is held yet, today and the next 3 days', 'local definition', k.authorisationsStillNeeded > 0],
+    ['covden', String(k.coverageDenialsThisWeek), 'Coverage denials', 'last 7 days', 'claims denied as "coverage not active on the date of service" in the last 7 days', 'local definition', false],
+    ['den', k.denialRatePct + '%', 'Remittance denial rate', 'all payer responses', 'claims denied by payers ÷ claims remitted', 'standard revenue cycle measure (local definition)', false]];
+  else if (state.role === 'billing') defs = [
+    ['ready', String(k.readyCount), 'Ready to bill', money(k.readyAmount) + ' currency units', 'encounters with coverage, authorisation, charges and coding all recorded, not yet submitted', 'local definition', false],
+    ['miss', String(k.missingCount), 'Missing something', 'cannot be billed yet', 'ended encounters with coverage, authorisation, charges or coding still missing', 'local definition', k.missingCount > 0],
+    ['clean', k.cleanClaimRatePct + '%', 'Clean claim rate', k.claimsSubmitted + ' claims submitted', 'claims passing billing edits with no manual intervention ÷ claims processed through edits. In this demo: nothing had to be fixed by hand before submission', 'standard revenue cycle measure (local definition)', false],
+    ['den', k.denialRatePct + '%', 'Remittance denial rate', k.denied + ' of ' + k.remitted + ' responses', 'claims denied by payers ÷ claims remitted', 'standard revenue cycle measure (local definition)', false]];
+  else defs = [
+    ['ar', String(k.netDaysInAR), 'Net days in accounts receivable', money(k.accountsReceivable) + ' owed', 'net accounts receivable ÷ average daily net patient service revenue. In this demo: amounts on submitted and denied claims not yet paid ÷ (last 90 days of billed services ÷ 90)', 'standard revenue cycle measure (local definition)', false],
+    ['clean', k.cleanClaimRatePct + '%', 'Clean claim rate', k.claimsSubmitted + ' claims submitted', 'claims passing billing edits with no manual intervention ÷ claims processed through edits', 'standard revenue cycle measure (local definition)', false],
+    ['den', k.denialRatePct + '%', 'Remittance denial rate', k.denied + ' of ' + k.remitted + ' responses', 'claims denied by payers ÷ claims remitted', 'standard revenue cycle measure (local definition)', false],
+    ['d2s', k.dischargeToSubmitMedianDays + ' days', 'Discharge to claim submitted', 'median, last 90 days', 'discharge or visit end event → claim submitted event', 'local definition', false]];
+  var box = el('div', { class: 'stats', id: 'kpis' });
+  defs.forEach(function (t) {
+    var open = state.kpiOpen === t[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat' + (t[6] ? ' alert' : ''), 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def' }, [t[4], el('i', { text: 'Source: ' + t[5] })])]));
+  });
+  var wrap = el('div', {}, [state.role === 'registration' ? el('h3', { class: 'sec', text: 'Measures' }) : null, box, el('p', { class: 'stathint', text: 'Tap a tile for its definition. Amounts are in currency units.' })]);
+  return wrap;
+}
+
+// Front desk (phone first)
+function frontDesk() {
+  var d = el('div');
+  var todo = state.arr.filter(arrTodo);
+  d.appendChild(el('p', { class: 'carenote', text: 'Care goes ahead whatever is recorded here. These are billing details only.' }));
+  d.appendChild(el('div', { class: 'seg', role: 'group', 'aria-label': 'Which arrivals' }, [
+    el('button', { type: 'button', id: 'f-todo', 'aria-pressed': String(state.regFilter === 'todo'), onclick: function () { state.regFilter = 'todo'; render(); }, text: 'Still to do (' + todo.length + ')' }),
+    el('button', { type: 'button', id: 'f-all', 'aria-pressed': String(state.regFilter === 'all'), onclick: function () { state.regFilter = 'all'; render(); }, text: 'All today (' + state.arr.length + ')' })]));
+  var list = state.regFilter === 'todo' ? todo : state.arr;
+  var box = el('div', { class: 'arrs', id: 'arrivals' });
+  if (!list.length) box.appendChild(el('div', { class: 'empty', text: 'Nothing left to check for today\'s arrivals.' }));
+  list.forEach(function (a) { box.appendChild(arrCard(a, false)); });
+  d.appendChild(box);
+  d.appendChild(el('h3', { class: 'sec' }, ['Planned care, next ' + SET.authLeadDays + ' days', el('span', { text: 'authorisation only' })]));
+  var ub = el('div', { class: 'arrs', id: 'upcoming' });
+  state.up.forEach(function (u) { ub.appendChild(arrCard(u, true)); });
+  d.appendChild(ub);
+  return d;
+}
+function chk(icon, q, a) { return el('div', { class: 'chk' }, [el('span', { html: ICON[icon] }), el('span', {}, [el('span', { class: 'q', text: q }), el('b', { text: a })])]); }
+function arrCard(a, upcoming) {
+  var here = !upcoming && a.t <= state.clock, needs = upcoming ? a.payer !== 'S' : arrNeedsAuth(a);
+  var todo = upcoming ? (needs && a.auth !== 'held') : arrTodo(a);
+  var sid = a.id.replace('P-', '');
+  var card = el('article', { class: 'arr' + (todo ? ' todo' : ''), id: 'a-' + sid, 'aria-label': a.id + ' ' + KINDS[a.kind].label });
+  card.appendChild(el('div', { class: 'top' }, [el('div', { class: 'who' }, [el('span', { class: 'tm', text: upcoming ? ahead(a.day).replace(/^./, function (c) { return c.toUpperCase(); }) + ' ' + hhmm(a.t) : hhmm(a.t) }), a.id]),
+    upcoming ? null : el('span', { class: 'chip' + (here ? ' here' : ''), text: here ? 'Arrived' : 'Expected' })]));
+  card.appendChild(el('p', { class: 'meta', text: KINDS[a.kind].label + (upcoming ? ' · ' + PAYERS[a.payer] : '') }));
+  if (!upcoming) card.appendChild(a.payer ? chk('ok', 'Coverage recorded', 'Yes · ' + PAYERS[a.payer] + (a.payer === 'S' ? '' : ', eligibility active')) : chk('no', 'Coverage recorded', 'No, not yet'));
+  var authLine;
+  if (!KINDS[a.kind].auth) authLine = chk('na', 'Authorisation needed', 'No');
+  else if (!upcoming && !a.payer) authLine = chk('wait', 'Authorisation needed', 'Known once coverage is recorded');
+  else if (!needs) authLine = chk('na', 'Authorisation needed', 'No (self-pay)');
+  else if (a.auth === 'held') authLine = chk('ok', 'Authorisation needed', 'Yes · held');
+  else if (a.auth === 'requested') authLine = chk('wait', 'Authorisation needed', 'Yes · requested' + (a.authAt ? ' at ' + hhmm(a.authAt) : '') + ', not received');
+  else authLine = chk('no', 'Authorisation needed', 'Yes · not requested yet');
+  card.appendChild(authLine);
+  var acts = el('div', { class: 'acts' });
+  if (!upcoming && !a.payer) acts.appendChild(el('button', { type: 'button', class: 'go cov', id: 'cov-' + sid, 'aria-expanded': String(state.picking === a.id), onclick: function () { state.picking = state.picking === a.id ? null : a.id; render(); var f = document.querySelector('#a-' + sid + ' .payers button'); if (f) f.focus(); }, text: state.picking === a.id ? 'Cancel' : 'Record coverage' }));
+  if (needs && (upcoming || a.payer) && a.auth === 'none') acts.appendChild(el('button', { type: 'button', class: 'go auth', id: 'req-' + sid, onclick: function () { setAuth(a, 'requested'); }, text: 'Authorisation requested' }));
+  if (needs && (upcoming || a.payer) && a.auth === 'requested') acts.appendChild(el('button', { type: 'button', class: 'go recv', id: 'recv-' + sid, onclick: function () { setAuth(a, 'held'); }, text: 'Authorisation received' }));
+  if (acts.childNodes.length) card.appendChild(acts);
+  if (state.picking === a.id) {
+    var p = el('div', { class: 'payers', role: 'group', 'aria-label': 'Payer group for ' + a.id }, [el('p', { text: 'Payer group (eligibility is checked as you record it)' })]);
+    PAYER_KEYS.forEach(function (k) { p.appendChild(el('button', { type: 'button', id: 'pay-' + sid + '-' + k, onclick: function () { recordCoverage(a, k); }, text: PAYERS[k] })); });
+    card.appendChild(p);
+  }
+  return card;
+}
+function recordCoverage(a, k) {
+  a.payer = k; a.checkedAt = state.clock + 1; state.picking = null;
+  if (KINDS[a.kind].auth && k !== 'S' && !a.auth) a.auth = 'none';
+  log('Coverage recorded for ' + a.id + ': ' + PAYERS[k] + (k === 'S' ? '' : ', eligibility active'));
+  toast('Coverage recorded for ' + a.id + '.'); render();
+}
+function setAuth(a, st) {
+  a.auth = st; if (st === 'requested') a.authAt = state.clock + 1;
+  log((st === 'held' ? 'Authorisation received for ' : 'Authorisation requested for ') + a.id + ' (' + KINDS[a.kind].label.toLowerCase() + ')');
+  toast(st === 'held' ? 'Authorisation marked as received.' : 'Authorisation marked as requested.'); render();
+}
+
+// Billing officer
+function billing() {
+  var d = el('div'), counts = {};
+  STAGES.forEach(function (s) { counts[s[0]] = byStage(s[0]); });
+  d.appendChild(el('h3', { class: 'sec', text: 'Claims by stage' }));
+  var pipe = el('div', { class: 'pipe', id: 'pipe' });
+  STAGES.forEach(function (s) { var l = counts[s[0]]; pipe.appendChild(el('div', { class: 's-' + s[0], id: 'st-' + s[0] }, [el('b', { text: String(l.length) }), el('span', { text: s[1] }), el('span', { text: money(l.reduce(function (t, e) { return t + e.amount; }, 0)) })])); });
+  d.appendChild(pipe);
+  d.appendChild(el('p', { class: 'fine', text: 'Charges open: coverage, authorisation or charges still missing. Coding: only coding is missing. Self-pay "submitted" means a bill sent to the patient.' }));
+  // Ready
+  var ready = counts.ready;
+  d.appendChild(el('h3', { class: 'sec' }, ['Ready to bill', el('span', { text: ready.length + ' encounters' })]));
+  if (ready.length) d.appendChild(el('div', { class: 'bulk' }, [el('button', { type: 'button', class: 'small primary', id: 'sub-all', onclick: function () { ready.forEach(function (e) { submit(e, true); }); log(ready.length + ' ready claims submitted together'); toast(ready.length + ' claims submitted.'); render(); }, text: 'Submit all ready (' + ready.length + ')' }), 'Each one has passed the checks for coverage, authorisation, charges and coding.']));
+  var rb = el('div', { id: 'ready' });
+  if (!ready.length) rb.appendChild(el('div', { class: 'empty', text: 'Nothing ready. Fix a missing item below to release a claim.' }));
+  ready.forEach(function (e) { rb.appendChild(row(e, 'ready', [el('button', { type: 'button', class: 'small primary', id: 'sub-' + e.id, onclick: function () { submit(e); render(); }, text: e.payer === 'S' ? 'Send bill' : 'Submit claim' })])); });
+  d.appendChild(rb);
+  // Missing
+  var miss = unbilled().filter(function (e) { return missingOf(e).length; });
+  d.appendChild(el('h3', { class: 'sec' }, ['Missing something', el('span', { text: miss.length + ' encounters' })]));
+  var f = el('div', { class: 'filters', role: 'group', 'aria-label': 'Filter by missing item' });
+  [['all', 'All']].concat(ITEM_KEYS.map(function (k) { return [k, ITEMS[k].label + ' (' + miss.filter(function (e) { return e.miss[k]; }).length + ')']; })).forEach(function (o) {
+    f.appendChild(el('button', { type: 'button', id: 'm-' + o[0], 'aria-pressed': String(state.miss === o[0]), onclick: function () { state.miss = o[0]; render(); }, text: o[1] }));
+  });
+  d.appendChild(f);
+  var mb = el('div', { id: 'missing' }), shown = miss.filter(function (e) { return state.miss === 'all' || e.miss[state.miss]; });
+  if (!shown.length) mb.appendChild(el('div', { class: 'empty', text: 'Nothing missing here.' }));
+  shown.forEach(function (e) {
+    var acts = [el('span', { class: 'lbl', text: 'Missing: ' + missingOf(e).map(function (k) { return ITEMS[k].label.toLowerCase(); }).join(', ') })];
+    missingOf(e).forEach(function (k) { acts.push(el('button', { type: 'button', class: 'small', id: 'fix-' + e.id + '-' + k, onclick: function () { fix(e, k); }, text: ITEMS[k].btn })); });
+    mb.appendChild(row(e, 'miss', acts));
+  });
+  d.appendChild(mb);
+  // Denials
+  var den = counts.denied;
+  d.appendChild(el('h3', { class: 'sec' }, ['Denials queue', el('span', { text: den.length + ' open, grouped by reason' })]));
+  var df = el('div', { class: 'filters', role: 'group', 'aria-label': 'Filter denials' });
+  [['all', 'All reasons'], ['soon', 'Appeal due within ' + SET.appealSoonDays + ' days']].concat(REASON_KEYS.filter(function (k) { return den.some(function (e) { return lastResp(e).reason === k; }); }).map(function (k) { return [k, REASONS[k].label]; })).forEach(function (o) {
+    df.appendChild(el('button', { type: 'button', id: 'd-' + o[0], 'aria-pressed': String(state.den === o[0]), onclick: function () { state.den = o[0]; render(); }, text: o[1] }));
+  });
+  d.appendChild(df);
+  var db = el('div', { id: 'denials' }), list = den.filter(function (e) { return state.den === 'all' || (state.den === 'soon' ? daysLeft(e) <= SET.appealSoonDays : lastResp(e).reason === state.den); });
+  if (!list.length) db.appendChild(el('div', { class: 'empty', text: 'No open denials here.' }));
+  REASON_KEYS.forEach(function (k) {
+    var g = list.filter(function (e) { return lastResp(e).reason === k; }).sort(function (a, b) { return daysLeft(a) - daysLeft(b); });
+    if (!g.length) return;
+    var grp = el('div', { class: 'grp' }, [el('h4', {}, [REASONS[k].label, el('span', { text: g.length + ' · fix at: ' + REASONS[k].step })])]);
+    g.forEach(function (e) {
+      var left = daysLeft(e);
+      grp.appendChild(row(e, 'den' + (left <= SET.appealSoonDays ? ' soon' : ''), [el('span', { class: 'lbl' }, ['Denied ' + ago(lastResp(e).day) + ' · ', el('span', { class: left <= SET.appealSoonDays ? 'left' : '', text: left + ' day' + (left === 1 ? '' : 's') + ' left to appeal' })]),
+        el('button', { type: 'button', class: 'small primary', id: 'rs-' + e.id, onclick: function () { resubmit(e); }, text: 'Fixed, resubmit' })]));
+    });
+    db.appendChild(grp);
+  });
+  d.appendChild(db);
+  return d;
+}
+function row(e, cls, acts) {
+  return el('div', { class: 'brow ' + cls, id: 'row-' + e.id }, [
+    el('div', {}, [el('b', { text: e.id + ' · ' + KINDS[e.kind].label }), el('span', { class: 'sub', text: 'Patient ' + e.pt + ' · ' + PAYERS[e.payer] + ' · ended ' + ago(e.end) + (e.resub ? ' · resubmitted ' + e.resub + '×' : '') })]),
+    el('div', { class: 'amt', text: money(e.amount) }),
+    el('div', { class: 'acts' }, acts)]);
+}
+function submit(e, quiet) {
+  e.st = 'submitted'; if (e.sub1 == null) e.sub1 = 0; e.sub = 0;
+  if (!quiet) { log((e.payer === 'S' ? 'Bill sent to patient for ' : 'Claim submitted for ') + e.id + ' (' + PAYERS[e.payer] + ', ' + money(e.amount) + ')'); toast((e.payer === 'S' ? 'Bill sent for ' : 'Claim submitted for ') + e.id + '.'); }
+}
+function fix(e, k) {
+  e.miss[k] = false; e.clean = false;
+  log(e.id + ': ' + ITEMS[k].done + (missingOf(e).length ? '' : '; ready to bill'));
+  toast(missingOf(e).length ? ITEMS[k].label + ' recorded.' : e.id + ' is ready to bill.'); render();
+}
+function resubmit(e) {
+  var why = REASONS[lastResp(e).reason].label.toLowerCase();
+  e.resub++; e.sub = 0; e.st = 'submitted';
+  log('Claim ' + e.id + ' fixed and resubmitted (was denied: ' + why + ')');
+  toast(e.id + ' resubmitted.'); render();
+}
+
+// Finance lead
+function finance() {
+  var d = el('div'), k = kpis();
+  // Claims by stage and age band
+  d.appendChild(el('h3', { class: 'sec' }, ['Claims by stage and age', el('span', { text: 'days since discharge or visit end; count' })]));
+  var t = el('table', { class: 't', id: 'stage-age' }), hr = el('tr', {}, [el('th', { text: 'Stage' })]);
+  BANDS.forEach(function (b) { hr.appendChild(el('th', { class: 'r', text: b[2] })); }); hr.appendChild(el('th', { class: 'r', text: 'All' }));
+  t.appendChild(el('thead', {}, [hr])); var tb = el('tbody');
+  STAGES.filter(function (s) { return s[0] !== 'paid'; }).forEach(function (s) {
+    var l = byStage(s[0]), c = [0, 0, 0, 0]; l.forEach(function (e) { c[bandOf(-e.end)]++; });
+    var tr = el('tr', {}, [el('td', { text: s[1] })]); c.forEach(function (n) { tr.appendChild(el('td', { class: 'r', text: n ? String(n) : '–' })); }); tr.appendChild(el('td', { class: 'r', text: String(l.length) })); tb.appendChild(tr);
+  });
+  t.appendChild(tb); d.appendChild(el('div', { class: 'tablewrap' }, [t]));
+  // AR ageing
+  d.appendChild(el('h3', { class: 'sec' }, ['Accounts receivable ageing', el('span', { text: 'owed on submitted and denied claims, currency units' })]));
+  var a = el('table', { class: 't', id: 'ageing' }), ah = el('tr', {}, [el('th', { text: 'Payer group' })]);
+  BANDS.forEach(function (b) { ah.appendChild(el('th', { class: 'r', text: b[2] })); }); ah.appendChild(el('th', { class: 'r', text: 'Total' }));
+  a.appendChild(el('thead', {}, [ah])); var ab = el('tbody'), col = [0, 0, 0, 0];
+  PAYER_KEYS.forEach(function (p) {
+    var c = [0, 0, 0, 0]; state.enc.forEach(function (e) { if (e.payer === p && (e.st === 'submitted' || e.st === 'denied')) c[bandOf(-e.end)] += e.amount; });
+    var tr = el('tr', {}, [el('td', { text: PAYERS[p] })]); c.forEach(function (n, i) { col[i] += n; tr.appendChild(el('td', { class: 'r', text: n ? money(n) : '–' })); });
+    tr.appendChild(el('td', { class: 'r', text: money(c[0] + c[1] + c[2] + c[3]) })); ab.appendChild(tr);
+  });
+  var tot = el('tr', { class: 'tot' }, [el('td', { text: 'All' })]); col.forEach(function (n) { tot.appendChild(el('td', { class: 'r', text: money(n) })); }); tot.appendChild(el('td', { class: 'r', text: money(k.accountsReceivable) }));
+  ab.appendChild(tot); a.appendChild(ab); d.appendChild(el('div', { class: 'tablewrap' }, [a]));
+  // Denials by reason and payer group
+  var two = el('div', { class: 'two' });
+  var r = el('table', { class: 't', id: 'den-reason' }); r.appendChild(el('thead', {}, [el('tr', {}, [el('th', { text: 'Reason' }), el('th', { class: 'r', text: 'Denied' }), el('th', { class: 'r', text: 'Share' })])]));
+  var rb = el('tbody'), maxR = Math.max.apply(null, REASON_KEYS.map(function (x) { return k.deniedByReason[x] || 0; }).concat([1]));
+  REASON_KEYS.forEach(function (x) { var n = k.deniedByReason[x] || 0; rb.appendChild(el('tr', {}, [el('td', { class: 'wrap', text: REASONS[x].label }), el('td', { class: 'r', text: String(n) }), el('td', { class: 'r' }, [el('span', { class: 'share', style: 'width:' + Math.round(40 * n / maxR) + 'px' }), pct(n, k.denied) + '%'])])); });
+  r.appendChild(rb);
+  var p = el('table', { class: 't', id: 'den-payer' }); p.appendChild(el('thead', {}, [el('tr', {}, [el('th', { text: 'Payer group' }), el('th', { class: 'r', text: 'Responses' }), el('th', { class: 'r', text: 'Denied' }), el('th', { class: 'r', text: 'Rate' })])]));
+  var pb = el('tbody'); PAYER_KEYS.forEach(function (x) { var b = k.byPayer[x]; pb.appendChild(el('tr', {}, [el('td', { text: PAYERS[x] }), el('td', { class: 'r', text: String(b.remitted) }), el('td', { class: 'r', text: String(b.denied) }), el('td', { class: 'r', text: pct(b.denied, b.remitted) + '%' })])); });
+  p.appendChild(pb);
+  two.appendChild(el('div', {}, [el('h3', { class: 'sec', text: 'Denials by reason' }), el('div', { class: 'tablewrap' }, [r])]));
+  two.appendChild(el('div', {}, [el('h3', { class: 'sec', text: 'Denial rate by payer group' }), el('div', { class: 'tablewrap' }, [p]), el('p', { class: 'fine', text: 'Self-pay bills go to patients, so payers do not deny them.' })]));
+  d.appendChild(two);
+  return d;
+}
+
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 40).forEach(function (x, i) { ol.appendChild(el('li', { class: x.fresh && i === 0 ? 'new' : '' }, [el('time', { text: hhmm(x.t) }), el('span', { text: x.text })])); });
+}
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  var box = document.getElementById('sugg'); box.textContent = '';
+  var dec = document.getElementById('decide'); dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Every view, action and measure works without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'how', text: 'Nothing to suggest right now.' }));
+  list.forEach(function (sg) {
+    var proposed = state.pending.some(function (p) { return p.sid === sg.id; });
+    var acts = [];
+    if (sg.show) acts.push(el('button', { type: 'button', class: 'small', onclick: function () { sg.show(); render(); document.getElementById('view-h').scrollIntoView({ block: 'start' }); }, text: sg.showLabel }));
+    if (sg.propose) acts.push(el('button', { type: 'button', class: 'small primary', disabled: proposed ? 'disabled' : false, onclick: function () { state.pending.push(Object.assign({ sid: sg.id, pid: 'p' + Date.now().toString(36) }, sg.propose)); render(); toast('Proposed. A person confirms it below.'); }, text: proposed ? 'Proposed' : sg.proposeLabel }));
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', id: 'g-' + sg.id }, [
+      el('span', { class: 'tag ' + sg.kind, text: sg.kind === 'time' ? 'Act soon' : 'Where to start' }),
+      el('h3', { text: sg.title }), sg.list ? el('ul', {}, sg.list.map(function (x) { return el('li', { text: x }); })) : null,
+      sg.text ? el('p', { text: sg.text }) : null, el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)]));
+  });
+  var d = el('div', { class: 'decide' }, [el('h3', { text: 'Waiting for a person to decide' })]);
+  if (!state.pending.length) d.appendChild(el('p', { style: 'margin:0', text: 'Nothing proposed. Proposals from the guide wait here; nothing changes until a person confirms.' }));
+  state.pending.forEach(function (p) {
+    d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }), el('p', { class: 'by', text: 'Decided by: ' + p.by }), el('div', { class: 'acts', style: 'display:flex;gap:8px;flex-wrap:wrap' }, [
+      el('button', { type: 'button', class: 'small primary', onclick: function () { decide(p, true); }, text: 'Confirm' }),
+      el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Not now' })])]));
+  });
+  dec.appendChild(d);
+}
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x.pid !== p.pid; });
+  if (yes && p.kind === 'auth') { state.up.forEach(function (u) { if (p.ids.indexOf(u.id) >= 0 && u.auth === 'none') u.auth = 'requested'; }); }
+  log((yes ? 'Agreed by ' : 'Set aside by ') + p.by.toLowerCase() + ': ' + p.text);
+  toast(yes ? 'Confirmed and logged.' : 'Set aside.'); render();
+}
+
+// Demo tool: payer responses arrive for the oldest submitted claims.
+function responses() {
+  var r = rng(state.rs++ * 7919), list = state.enc.filter(function (e) { return e.st === 'submitted' && e.sub <= -3; }).sort(function (a, b) { return a.sub - b.sub; }).slice(0, 5);
+  if (!list.length) list = state.enc.filter(function (e) { return e.st === 'submitted'; }).slice(0, 3);
+  var paid = 0, den = 0;
+  list.forEach(function (e) {
+    if (e.payer === 'S' || r() < (e.resub ? 0.9 : 0.75)) { e.resp.push({ day: 0, ok: true }); e.st = 'paid'; e.paid = 0; paid++; }
+    else { e.resp.push({ day: 0, ok: false, reason: pick(r, [['cov', 40], ['auth', 15], ['code', 20], ['info', 15], ['dup', 5], ['late', 5]]) }); e.st = 'denied'; den++; }
+  });
+  tick(4);
+  log('Payer responses received: ' + paid + ' paid, ' + den + ' denied');
+  toast(paid + ' paid, ' + den + ' denied.'); render();
+}
+
+['registration', 'billing', 'finance'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; state.kpiOpen = null; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+document.getElementById('mod-on').addEventListener('change', function (e) { state.module = e.target.checked; render(); toast(state.module ? 'Module on.' : 'Module off: no billing screens.'); });
+document.getElementById('t-resp').addEventListener('click', responses);
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; render(); toast('Example reset to the start of the demo.'); });
+
+// Read-only view for software agents (no writes): window.ospeliRevenueDemo
+window.ospeliRevenueDemo = Object.freeze({
+  describe: function () { return 'Read-only revenue cycle demo (optional module, off by default) for a fictional hospital. get() returns today\'s arrivals, encounters and claims; kpis() the measures; suggestions() the guide\'s current suggestions. Patients are anonymous codes; amounts are currency units. Runs in the browser; nothing is sent anywhere.'; },
+  get: function () {
+    return clone({ role: state.role, moduleOn: state.module, demoClock: hhmm(state.clock), settings: SET,
+      arrivalsToday: state.arr.map(function (a) { return { patient: a.id, time: hhmm(a.t), kind: KINDS[a.kind].label, coverageRecorded: !!a.payer, payerGroup: a.payer ? PAYERS[a.payer] : null, authorisationNeeded: KINDS[a.kind].auth ? (a.payer ? arrNeedsAuth(a) : 'unknown') : false, authorisation: a.auth }; }),
+      plannedNext3Days: state.up.map(function (u) { return { patient: u.id, inDays: u.day, time: hhmm(u.t), kind: KINDS[u.kind].label, payerGroup: PAYERS[u.payer], authorisation: u.payer === 'S' ? 'not needed' : u.auth }; }),
+      encounters: state.enc.map(function (e) { return { id: e.id, patient: e.pt, kind: KINDS[e.kind].label, payerGroup: PAYERS[e.payer], endedDaysAgo: -e.end, amount: e.amount, stage: stageOf(e), missing: missingOf(e), resubmissions: e.resub, denialReason: e.st === 'denied' ? REASONS[lastResp(e).reason].label : null, appealDaysLeft: e.st === 'denied' ? daysLeft(e) : null }; }),
+      pendingDecisions: state.pending.map(function (p) { return { text: p.text, decidedBy: p.by }; }) });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide && state.module ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text || (s.list || []).join('; '), why: s.why }; }) : []; }
+});
+render();
+})();
+</script>
+</body>
+</html>

@@ -26,6 +26,11 @@
 - [Critical care capacity preview](https://ospeli.com/demo/critical-care/): Beds by state, step-downs waiting for a ward bed, and capacity refusals and transfers out. The clinical team decides; Ospeli records the flow. Fictional data.
 - [Primary and community care preview](https://ospeli.com/demo/community/): Home visit rounds and clinic lists that work without signal, follow-ups by programme, centre stock, and community places for hospital discharges. Fictional data.
 - [Planning, business cases and capital projects preview](https://ospeli.com/demo/projects/): Milestones and weekly updates, a portfolio with the reason behind every status, a business case builder and benefits measured from live data. Fictional data.
+- [Maternity and children's services flow preview](https://ospeli.com/demo/maternity/): Labour rooms, postnatal beds, cots and children's beds by state, transfers between units and sites, and closures logged with reason and role. Fictional data.
+- [Mental health and long-stay beds preview](https://ospeli.com/demo/long-stay/): Patients ready to leave with days waiting and the reason, placement requests by stage, and bed days lost and out-of-area placements as counts. Fictional data.
+- [Health records and information preview](https://ospeli.com/demo/records/): Tomorrow's clinic pull list on a phone, chart moves by scan or tap, the coding backlog, and record requests by due date. Fictional data.
+- [Revenue cycle (optional) preview](https://ospeli.com/demo/revenue/): For organisations that bill payers: coverage at the front desk, claims ready or missing something, and denials by reason. Off by default; never affects care. Fictional data.
+- [Public health operations preview](https://ospeli.com/demo/public-health/): Outreach sessions that work without signal, stock and expiry by site, cold chain readings and alarms, and people reached against the local target. Fictional data.
 - [All 30 areas](https://ospeli.com/areas/): what each area of hospital operations will do, who uses it, what it records, its measures and its AI assistant commands; spec in https://ospeli.com/areas/areas.json.
 - [Front page](https://ospeli.com/): what Ospeli is, its modules, how a pilot runs, and its governance rules.
 

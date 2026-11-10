@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Long-stay beds demo · Ospeli</title>
+<meta name="description" content="Mental health, rehabilitation and long-stay beds: patients ready to leave, days waiting and the reason, placement requests by stage, out-of-area placements and bed-days lost. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Long-stay beds demo · Ospeli">
+<meta property="og:description" content="Mental health, rehabilitation and long-stay beds: patients ready to leave, days waiting and the reason, placement requests by stage, out-of-area placements and bed-days lost. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/long-stay/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#0B2F4E">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<link rel="alternate icon" href="../../favicon.ico">
+<link rel="stylesheet" href="../../fonts/nunito.css">
+<style>
+:root { --navy:#0B2F4E; --sea:#0A9396; --mango:#EE9B00; --coral:#E0583E; --foam:#94D2BD; --sand:#F6F1E7; --ink:#0B2F4E; --soft:#44607A; --line:#E2DACB; --wash:#E6F3EF; --warn:#FDF1DC; --hot:#FCE9E3; --closed:#B8AE9C; }
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--sand); color: var(--ink); font: 16px/1.5 'Nunito', 'Segoe UI', system-ui, sans-serif; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 max(16px, env(safe-area-inset-left, 0px)); }
+header { background: #fff; border-bottom: 1px solid var(--line); }
+header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-block: 8px; }
+.logo { height: 44px; width: auto; display: block; }
+header nav { display: flex; gap: 16px; align-items: center; }
+header nav a { color: var(--ink); font-weight: 700; text-decoration: none; border-bottom: 2px solid var(--coral); }
+.badge { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; border: 1px dashed #CFC5B2; color: var(--soft); padding: 3px 10px; border-radius: 999px; margin-top: 18px; }
+h1 { font-size: clamp(1.7rem, 3.6vw, 2.5rem); font-weight: 800; line-height: 1.12; margin: 12px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 1.15rem; margin: 0 0 10px; }
+h3.sec { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--soft); margin: 20px 0 8px; font-weight: 800; }
+.lead { color: var(--soft); max-width: 46em; margin: 0 0 10px; }
+select, input, button { font: inherit; color: var(--ink); }
+select, input[type=number] { border: 1px solid #CFC5B2; border-radius: 10px; padding: 8px 10px; background: #fff; min-height: 44px; max-width: 100%; }
+button { cursor: pointer; border-radius: 999px; border: 1px solid var(--navy); background: #fff; padding: 8px 16px; font-weight: 800; min-height: 44px; }
+button:disabled { cursor: default; opacity: 0.55; }
+button.primary { background: var(--navy); color: #fff; }
+button.small { min-height: 36px; padding: 4px 12px; font-size: 0.85rem; }
+button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.roles { display: inline-flex; border: 1px solid var(--navy); border-radius: 999px; overflow: hidden; background: #fff; margin: 14px 0 6px; }
+.roles button { border: 0; border-radius: 0; min-height: 46px; padding: 8px 18px; }
+.roles button + button { border-left: 1px solid var(--line); }
+.roles button[aria-pressed=true] { background: var(--navy); color: #fff; }
+@media (max-width: 560px) { .roles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-radius: 14px; width: 100%; } .roles button { padding: 6px 4px; font-size: 0.92rem; line-height: 1.2; } }
+.rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 12px; max-width: 52em; }
+.tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
+.tools b { font-weight: 800; margin-right: 2px; }
+.clocknow { font-weight: 800; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; font-variant-numeric: tabular-nums; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.col { display: grid; gap: 18px; min-width: 0; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 420px) { .card { padding: 14px; } }
+/* KPI tiles */
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--sand); border: 0; border-radius: 12px; padding: 10px 12px; text-align: left; font-weight: 600; display: block; width: 100%; min-height: 0; }
+.stat b { display: block; font-size: 1.35rem; line-height: 1.2; font-weight: 800; font-variant-numeric: tabular-nums; }
+.stat .lbl { color: var(--ink); font-size: 0.9rem; font-weight: 700; display: block; line-height: 1.3; }
+.stat .n { color: var(--soft); font-size: 0.8rem; display: block; }
+.stat .def { display: none; color: var(--soft); font-size: 0.82rem; margin-top: 6px; border-top: 1px dashed #CFC5B2; padding-top: 6px; font-weight: 600; }
+.stat[aria-expanded=true] .def { display: block; }
+.stathint { color: var(--soft); font-size: 0.8rem; margin: 6px 0 0; }
+.kpiblock { margin-top: 4px; }
+.kpiblock.below { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 4px; }
+/* ward manager */
+.bar1 { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; justify-content: space-between; }
+.bar1 label { font-weight: 800; display: flex; flex-direction: column; gap: 4px; font-size: 0.95rem; min-width: 0; max-width: 100%; }
+.summary { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 0.95rem; font-weight: 700; background: var(--sand); }
+.pill.ready { background: var(--warn); } .pill.free { background: var(--wash); } .pill.closed { background: #EFEBE3; }
+.pts { display: grid; gap: 10px; }
+.pt { border: 1px solid var(--line); border-left: 6px solid var(--mango); border-radius: 12px; padding: 12px; font-size: 1rem; background: #fff; }
+.pt.long { box-shadow: 0 0 0 2px var(--coral) inset; }
+.pt .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.pt .code { font-size: 1.2rem; font-weight: 800; line-height: 1.2; margin: 0; letter-spacing: 0.02em; }
+.pt .code small { display: block; font-size: 0.95rem; color: var(--soft); font-weight: 700; letter-spacing: 0; }
+.days { text-align: right; font-weight: 800; font-size: 1.5rem; line-height: 1; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.days small { display: block; font-size: 0.8rem; font-weight: 700; color: var(--soft); margin-top: 3px; }
+.pt.long .days { color: #B23A22; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.chip { display: inline-block; font-size: 0.8rem; font-weight: 800; border-radius: 999px; padding: 2px 10px; background: var(--sand); }
+.chip.rev { background: var(--navy); color: #fff; }
+.chip.none { background: var(--hot); color: #8E2C18; }
+.pt .chip { font-size: 0.95rem; }
+.reasonrow { display: flex; gap: 8px; align-items: center; margin-top: 10px; font-weight: 700; font-size: 0.95rem; flex-wrap: wrap; }
+.reasonrow select { flex: 1 1 160px; min-width: 0; }
+.prog { margin-top: 10px; }
+.prog .lbl { font-size: 0.95rem; font-weight: 700; margin: 0 0 6px; }
+.prog .lbl span { color: var(--soft); font-weight: 600; }
+.segs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 3px; }
+.segs i { display: block; height: 8px; border-radius: 4px; background: var(--line); }
+.segs i.on { background: var(--sea); }
+.pt .acts { display: flex; gap: 8px; margin-top: 10px; }
+.pt .acts .go { flex: 1; min-height: 52px; font-size: 1.05rem; background: var(--sea); border-color: var(--sea); color: #fff; }
+.pt .acts .go.start { background: var(--navy); border-color: var(--navy); }
+.pt .acts .go.moved { background: var(--mango); border-color: var(--mango); color: var(--navy); }
+.empty { text-align: center; color: var(--soft); padding: 18px 10px; border: 1px dashed var(--line); border-radius: 12px; font-size: 0.95rem; margin: 0; }
+.record { border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: #FFFDF9; display: grid; gap: 10px; }
+.record label { display: flex; flex-direction: column; gap: 4px; font-weight: 800; font-size: 0.95rem; }
+.record select { width: 100%; }
+.record .go { min-height: 52px; font-size: 1.05rem; }
+.fine { font-size: 0.85rem; color: var(--soft); margin: 8px 0 0; }
+.beds { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; }
+.bed { border-radius: 10px; padding: 6px 4px; text-align: center; font-weight: 800; font-size: 0.95rem; border: 1px solid var(--line); line-height: 1.15; }
+.bed small { display: block; font-size: 0.72rem; font-weight: 700; }
+.bed.s-occ { background: var(--navy); color: #fff; border-color: var(--navy); }
+.bed.s-ready { background: var(--mango); color: var(--navy); border-color: var(--mango); }
+.bed.s-free { background: var(--wash); border-color: var(--sea); }
+.bed.s-closed { background: repeating-linear-gradient(45deg, #EFEBE3 0 6px, #E2DACB 6px 8px); color: var(--soft); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.85rem; color: var(--soft); margin: 8px 0 0; font-weight: 700; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.k-occ { background: var(--navy); } .k-ready { background: var(--mango); } .k-free { background: var(--foam); } .k-closed { background: var(--closed); }
+/* coordinator */
+.filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.filters button { min-height: 38px; font-size: 0.88rem; border-color: #CFC5B2; padding: 4px 12px; }
+.filters button[aria-pressed=true] { background: var(--navy); color: #fff; border-color: var(--navy); }
+.drow { display: grid; grid-template-columns: 120px minmax(0, 1fr) minmax(0, 1.2fr) 70px; gap: 10px; align-items: center; border: 1px solid var(--line); border-left: 5px solid var(--mango); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; font-size: 0.92rem; }
+.drow.long { background: #FFF8F5; }
+.drow b { display: block; }
+.drow .sub { color: var(--soft); font-size: 0.82rem; display: block; }
+.drow .d { font-weight: 800; text-align: right; font-size: 1.1rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.drow.long .d { color: #B23A22; }
+.drow .d small { display: block; font-size: 0.72rem; color: var(--soft); font-weight: 700; }
+@media (max-width: 640px) { .drow { grid-template-columns: minmax(0, 1fr) auto; } .drow .c2, .drow .c3 { grid-column: 1 / -1; } .drow .d { grid-row: 1; grid-column: 2; } }
+.stages { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 640px) { .stages { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stage { border: 1px solid var(--line); border-top: 4px solid var(--sea); border-radius: 10px; padding: 8px 10px; }
+.stage.s0 { border-top-color: var(--coral); }
+.stage b { display: block; font-size: 1.4rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stage .t { font-weight: 800; font-size: 0.88rem; }
+.stage .sub { color: var(--soft); font-size: 0.78rem; display: block; }
+.ooa { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 640px) { .ooa { grid-template-columns: minmax(0, 1fr); } }
+.ooa > div { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.ooa h4 { margin: 0 0 4px; font-size: 0.92rem; }
+.ooa .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; text-align: center; }
+.ooa .nums b { display: block; font-size: 1.2rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.ooa .nums span { font-size: 0.7rem; color: var(--soft); font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; }
+/* operations */
+.hero { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: baseline; background: var(--sand); border-radius: 12px; padding: 14px 16px; }
+.hero b { font-size: 2.4rem; line-height: 1; font-weight: 800; font-variant-numeric: tabular-nums; }
+.hero span { color: var(--soft); font-weight: 700; }
+.hbars { display: grid; gap: 6px; margin-top: 12px; }
+.hbar { display: grid; grid-template-columns: 110px minmax(0, 1fr) 52px; gap: 10px; align-items: center; font-size: 0.9rem; }
+.hbar .track { background: var(--sand); border-radius: 4px; height: 14px; position: relative; }
+.hbar .fill { background: var(--sea); height: 100%; border-radius: 0 4px 4px 0; min-width: 2px; }
+.hbar .v { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+.tablewrap { overflow-x: auto; }
+table.grid { width: 100%; border-collapse: separate; border-spacing: 2px; font-size: 0.88rem; }
+table.grid th, table.grid td { text-align: center; padding: 6px 4px; border-radius: 6px; }
+table.grid th { color: var(--soft); font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 800; }
+table.grid th.rl, table.grid td.rl { text-align: left; font-weight: 700; font-size: 0.88rem; color: var(--ink); text-transform: none; letter-spacing: 0; }
+table.grid td { font-weight: 800; font-variant-numeric: tabular-nums; }
+table.grid tr.grow td.rl { color: #B23A22; }
+table.grid tr.grow td.rl::after { content: " ▲ growing"; font-size: 0.72rem; font-weight: 800; }
+.units { display: grid; gap: 8px; }
+.unit { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 10px; align-items: center; font-size: 0.9rem; }
+@media (max-width: 640px) { .unit { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+.unit .nm b { display: block; } .unit .nm span { color: var(--soft); font-size: 0.8rem; }
+.stack { display: flex; gap: 2px; height: 22px; }
+.stack i { display: block; height: 100%; }
+.stack i:first-child { border-radius: 4px 0 0 4px; } .stack i:last-child { border-radius: 0 4px 4px 0; }
+.stack i.k-closed { background: repeating-linear-gradient(45deg, #CFC5B2 0 5px, #B8AE9C 5px 7px); }
+/* guide */
+.guide { position: sticky; top: 12px; }
+@media (max-width: 980px) { .guide { position: static; } }
+.guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.switch { display: inline-flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.9rem; cursor: pointer; min-height: 44px; }
+.switch input { width: 22px; height: 22px; }
+.how { font-size: 0.85rem; color: var(--soft); margin: 0 0 12px; }
+.sugg { border: 1px solid var(--line); border-radius: 12px; padding: 12px; margin-bottom: 10px; background: #FFFDF9; }
+.sugg h3 { font-size: 0.98rem; margin: 0 0 4px; line-height: 1.3; }
+.sugg p { margin: 0 0 8px; font-size: 0.92rem; }
+.sugg ul { margin: 0 0 8px; padding-left: 18px; font-size: 0.9rem; }
+.sugg .why { color: var(--soft); font-size: 0.85rem; }
+.sugg .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.tag { display: inline-block; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; border-radius: 999px; padding: 2px 8px; margin-bottom: 6px; background: var(--wash); }
+.tag.time { background: var(--hot); } .tag.ask { background: var(--warn); }
+.decide { background: var(--wash); border-radius: 12px; padding: 12px; margin-top: 4px; font-size: 0.9rem; }
+.decide h3 { font-size: 0.9rem; margin: 0 0 6px; }
+.prop { background: #fff; border-radius: 10px; padding: 10px; margin-bottom: 8px; }
+.prop p { margin: 0 0 8px; }
+.prop .who { color: var(--soft); font-size: 0.82rem; margin: 0 0 8px; font-weight: 700; }
+details.set { margin-top: 12px; font-size: 0.88rem; }
+details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; display: flex; align-items: center; }
+.targets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.targets label { display: flex; flex-direction: column; gap: 4px; font-weight: 700; color: var(--soft); font-size: 0.85rem; }
+.targets input { width: 100%; }
+/* log */
+ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
+ol.log li { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; white-space: nowrap; }
+ol.log li.new { background: var(--wash); border-radius: 6px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
+.toast.on { opacity: 1; }
+.foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
+.foot a { color: var(--ink); font-weight: 700; }
+</style>
+</head>
+<body>
+<header><div class="wrap"><a href="../../" aria-label="Ospeli home"><svg class="logo" xmlns="http://www.w3.org/2000/svg" viewBox="0 21 466 152" role="img" aria-label="Ospeli"><g transform="translate(4.96 32.35) scale(0.7200)"><rect x="80" y="124" width="40" height="30" rx="8" fill="#EE9B00"/><rect x="32" y="80" width="44" height="40" rx="8" fill="#0B2F4E"/><rect x="80" y="18" width="40" height="58" rx="8" fill="#0A9396"/><rect x="80" y="80" width="40" height="40" rx="6" fill="#94D2BD"/><path d="M130 86 H161 V74 L188 100 L161 126 V114 H130 Z" fill="#E0583E" stroke="#E0583E" stroke-width="12" stroke-linejoin="round"/></g><g transform="translate(162.20 129.35)"><path d="M29.400000000000002 1.1Q21.5 1.1 15.65 -2.0Q9.8 -5.1000000000000005 6.6000000000000005 -10.9Q3.4000000000000004 -16.7 3.4000000000000004 -24.6Q3.4000000000000004 -30.5 5.2 -35.2Q7.0 -39.900000000000006 10.45 -43.25Q13.9 -46.6 18.7 -48.35Q23.5 -50.1 29.400000000000002 -50.1Q37.300000000000004 -50.1 43.150000000000006 -47.0Q49.0 -43.900000000000006 52.25 -38.2Q55.5 -32.5 55.5 -24.6Q55.5 -18.6 53.650000000000006 -13.900000000000002Q51.800000000000004 -9.200000000000001 48.400000000000006 -5.800000000000001Q45.0 -2.4000000000000004 40.150000000000006 -0.6500000000000001Q35.300000000000004 1.1 29.400000000000002 1.1ZM29.400000000000002 -10.200000000000001Q32.7 -10.200000000000001 35.1 -11.8Q37.5 -13.4 38.900000000000006 -16.55Q40.300000000000004 -19.700000000000003 40.300000000000004 -24.6Q40.300000000000004 -31.900000000000002 37.300000000000004 -35.35Q34.300000000000004 -38.800000000000004 29.400000000000002 -38.800000000000004Q26.200000000000003 -38.800000000000004 23.75 -37.300000000000004Q21.3 -35.800000000000004 19.950000000000003 -32.650000000000006Q18.6 -29.5 18.6 -24.6Q18.6 -17.3 21.6 -13.75Q24.6 -10.200000000000001 29.400000000000002 -10.200000000000001ZM82.5 1.1Q78.10000000000001 1.1 73.45000000000002 0.30000000000000004Q68.80000000000001 -0.5 65.0 -2.4000000000000004Q63.00000000000001 -3.4000000000000004 62.150000000000006 -4.95Q61.300000000000004 -6.5 61.400000000000006 -8.100000000000001Q61.50000000000001 -9.700000000000001 62.45 -11.0Q63.400000000000006 -12.3 64.95 -12.75Q66.5 -13.200000000000001 68.4 -12.4Q72.5 -10.700000000000001 75.9 -10.0Q79.30000000000001 -9.3 82.60000000000001 -9.3Q86.9 -9.3 88.85000000000001 -10.65Q90.80000000000001 -12.0 90.80000000000001 -14.200000000000001Q90.80000000000001 -16.2 89.5 -17.2Q88.2 -18.2 85.7 -18.6L75.2 -20.5Q69.0 -21.6 65.65 -25.05Q62.300000000000004 -28.5 62.300000000000004 -33.9Q62.300000000000004 -38.900000000000006 65.10000000000001 -42.550000000000004Q67.9 -46.2 72.85000000000001 -48.150000000000006Q77.80000000000001 -50.1 84.10000000000001 -50.1Q88.60000000000001 -50.1 92.4 -49.3Q96.20000000000002 -48.5 99.70000000000002 -46.7Q101.5 -45.800000000000004 102.25 -44.300000000000004Q103.0 -42.800000000000004 102.75 -41.2Q102.5 -39.6 101.5 -38.3Q100.5 -37.0 98.95 -36.6Q97.4 -36.2 95.4 -37.0Q92.20000000000002 -38.5 89.50000000000001 -39.150000000000006Q86.80000000000001 -39.800000000000004 84.30000000000001 -39.800000000000004Q79.80000000000001 -39.800000000000004 77.80000000000001 -38.35Q75.80000000000001 -36.9 75.80000000000001 -34.7Q75.80000000000001 -33.0 76.95000000000002 -31.85Q78.10000000000001 -30.700000000000003 80.5 -30.3L91.0 -28.400000000000002Q97.5 -27.3 100.9 -24.05Q104.30000000000001 -20.8 104.30000000000001 -15.200000000000001Q104.30000000000001 -7.6000000000000005 98.35000000000001 -3.25Q92.4 1.1 82.5 1.1ZM119.50000000000001 18.900000000000002Q115.80000000000001 18.900000000000002 113.85000000000001 16.950000000000003Q111.9 15.0 111.9 11.200000000000001V-42.300000000000004Q111.9 -46.0 113.85000000000001 -47.95Q115.80000000000001 -49.900000000000006 119.30000000000001 -49.900000000000006Q123.00000000000001 -49.900000000000006 124.9 -47.95Q126.80000000000001 -46.0 126.80000000000001 -42.300000000000004V-35.5L125.70000000000002 -39.400000000000006Q127.20000000000002 -44.2 131.75 -47.150000000000006Q136.3 -50.1 142.20000000000002 -50.1Q148.60000000000002 -50.1 153.45000000000002 -47.0Q158.3 -43.900000000000006 161.0 -38.2Q163.70000000000002 -32.5 163.70000000000002 -24.6Q163.70000000000002 -16.7 161.0 -10.9Q158.3 -5.1000000000000005 153.5 -2.0Q148.70000000000002 1.1 142.20000000000002 1.1Q136.4 1.1 131.9 -1.7500000000000002Q127.4 -4.6000000000000005 125.80000000000001 -9.200000000000001H127.00000000000001V11.200000000000001Q127.00000000000001 15.0 125.05000000000001 16.950000000000003Q123.10000000000001 18.900000000000002 119.50000000000001 18.900000000000002ZM137.70000000000002 -10.200000000000001Q140.9 -10.200000000000001 143.35000000000002 -11.8Q145.8 -13.4 147.15 -16.55Q148.5 -19.700000000000003 148.5 -24.6Q148.5 -31.900000000000002 145.5 -35.35Q142.5 -38.800000000000004 137.70000000000002 -38.800000000000004Q134.5 -38.800000000000004 132.05 -37.300000000000004Q129.60000000000002 -35.800000000000004 128.20000000000002 -32.650000000000006Q126.80000000000001 -29.5 126.80000000000001 -24.6Q126.80000000000001 -17.3 129.8 -13.75Q132.8 -10.200000000000001 137.70000000000002 -10.200000000000001ZM197.40000000000003 1.1Q188.70000000000002 1.1 182.45000000000002 -2.05Q176.20000000000002 -5.2 172.85000000000002 -10.95Q169.50000000000003 -16.7 169.50000000000003 -24.5Q169.50000000000003 -32.1 172.70000000000005 -37.85Q175.90000000000003 -43.6 181.65000000000003 -46.85Q187.40000000000003 -50.1 194.70000000000002 -50.1Q200.00000000000003 -50.1 204.3 -48.35Q208.60000000000002 -46.6 211.70000000000002 -43.35Q214.8 -40.1 216.40000000000003 -35.45Q218.00000000000003 -30.8 218.00000000000003 -25.1Q218.00000000000003 -23.200000000000003 216.8 -22.25Q215.60000000000002 -21.3 213.3 -21.3H181.90000000000003V-29.1H207.10000000000002L205.50000000000003 -27.700000000000003Q205.50000000000003 -31.8 204.3 -34.550000000000004Q203.10000000000002 -37.300000000000004 200.85000000000002 -38.7Q198.60000000000002 -40.1 195.3 -40.1Q191.60000000000002 -40.1 189.00000000000003 -38.400000000000006Q186.40000000000003 -36.7 185.00000000000003 -33.5Q183.60000000000002 -30.3 183.60000000000002 -25.8V-25.0Q183.60000000000002 -17.400000000000002 187.15000000000003 -13.8Q190.70000000000002 -10.200000000000001 197.70000000000002 -10.200000000000001Q200.10000000000002 -10.200000000000001 203.20000000000002 -10.8Q206.3 -11.4 209.00000000000003 -12.700000000000001Q211.3 -13.8 213.10000000000002 -13.450000000000001Q214.90000000000003 -13.100000000000001 215.90000000000003 -11.8Q216.90000000000003 -10.5 217.05 -8.8Q217.20000000000002 -7.1000000000000005 216.3 -5.45Q215.40000000000003 -3.8000000000000003 213.3 -2.7Q209.90000000000003 -0.8 205.65000000000003 0.15000000000000002Q201.40000000000003 1.1 197.40000000000003 1.1ZM243.5 1.1Q234.6 1.1 230.2 -3.8500000000000005Q225.8 -8.8 225.8 -18.6V-63.7Q225.8 -67.5 227.75 -69.45Q229.7 -71.4 233.4 -71.4Q237.0 -71.4 238.95 -69.45Q240.9 -67.5 240.9 -63.7V-19.200000000000003Q240.9 -15.100000000000001 242.65 -13.150000000000002Q244.4 -11.200000000000001 247.3 -11.200000000000001Q248.1 -11.200000000000001 248.8 -11.3Q249.5 -11.4 250.3 -11.4Q251.9 -11.600000000000001 252.55 -10.450000000000001Q253.2 -9.3 253.2 -5.9Q253.2 -2.9000000000000004 252.0 -1.35Q250.8 0.2 248.3 0.7000000000000001Q247.3 0.8 246.0 0.9500000000000001Q244.7 1.1 243.5 1.1ZM265.7 0.8Q262.0 0.8 260.05 -1.35Q258.1 -3.5 258.1 -7.4V-41.6Q258.1 -45.6 260.05 -47.75Q262.0 -49.900000000000006 265.7 -49.900000000000006Q269.3 -49.900000000000006 271.25 -47.75Q273.2 -45.6 273.2 -41.6V-7.4Q273.2 -3.5 271.3 -1.35Q269.40000000000003 0.8 265.7 0.8Z" fill="#0B2F4E"/><circle cx="265.65" cy="-64.55" r="9.69" fill="#E0583E"/></g></svg></a><nav><a href="../">All demos</a></nav></div></header>
+<main class="wrap">
+  <span class="badge">Preview · fictional example data</span>
+  <h1>Mental health and long-stay beds: delayed transfers and placements</h1>
+  <p class="lead">Patients can stay for weeks after they are ready to leave, while a placement, housing or funding is arranged. Here each ward records the ready-to-leave date and the reason in a few taps. The coordinator sees every delay and where placement requests wait. Operations sees the bed-days lost and which causes are growing. The guide points at the longest waits; a person decides.</p>
+
+  <div class="roles" role="group" aria-label="Whose view">
+    <button type="button" id="r-ward" data-role="ward" aria-pressed="false">Ward manager</button>
+    <button type="button" id="r-coord" data-role="coord" aria-pressed="false">Coordinator</button>
+    <button type="button" id="r-ops" data-role="ops" aria-pressed="false">Operations</button>
+  </div>
+  <p class="rolehint" id="rolehint"></p>
+  <div class="tools" role="group" aria-label="Demo tools">
+    <span class="clocknow" id="clocknow"></span>
+    <b>Demo tools:</b>
+    <button type="button" class="small" id="t-day">Move on 1 day</button>
+    <button type="button" class="small" id="t-reset">Reset example</button>
+  </div>
+
+  <div class="layout" id="layout">
+    <div class="col">
+      <section class="card" aria-labelledby="view-h">
+        <h2 id="view-h">Ready to leave</h2>
+        <div id="view"></div>
+      </section>
+      <section class="card" aria-labelledby="log-h">
+        <h2 id="log-h">What happened</h2>
+        <ol class="log" id="log" aria-live="polite"></ol>
+      </section>
+    </div>
+
+    <aside class="card guide" id="guide" aria-labelledby="guide-h">
+      <div class="guide-head">
+        <h2 id="guide-h" style="margin:0">Guide</h2>
+        <label class="switch"><input type="checkbox" id="guide-on" checked> On</label>
+      </div>
+      <p class="how">The guide reads the delays, placement stages, free beds and out-of-area counts, and suggests where to look, with its reasons. In this preview it uses clear, checkable rules that run in your browser; nothing is sent anywhere. It does not judge readiness to leave, risk or treatment. A suggestion only becomes a proposal; the named role decides.</p>
+      <div id="sugg"></div>
+      <div id="decide"></div>
+      <details class="set" id="settings"><summary>Guide settings (example settings)</summary>
+        <div class="targets">
+          <label for="set-review">Review delays from (days)<input type="number" id="set-review" min="1" max="120" step="1" inputmode="numeric"></label>
+          <label for="set-noreq">Flag no request after (days)<input type="number" id="set-noreq" min="1" max="60" step="1" inputmode="numeric"></label>
+        </div>
+        <p class="fine">Example settings, not a standard. Each organisation sets its own.</p>
+      </details>
+    </aside>
+  </div>
+  <p class="foot">Everything here is invented: Example General Hospital, its wards, patient codes, days and counts. Patients appear only as anonymous codes. It records operational dates and reasons; it does not decide detention, risk, treatment or readiness to leave, and it never scores staff or wards. Coming next (Jan 2027): the live bed board for mental health, rehabilitation and long-stay beds, ready-to-leave dates recorded by the team, placement and support requests tracked by stage, and out-of-area placements with start and end dates. <a href="../../areas/mental-health-and-community-beds/">About this area</a> · <a href="../">All demos</a></p>
+</main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+'use strict';
+var STORE = 'ospeli.longstay.v1';
+var DAY = 1440;
+var MONTH_START = -10; // the example month began 10 days before the demo's first day
+
+// ---------- Fixed reference data (fictional) ----------
+var REASONS = ['placement', 'funding', 'housing', 'family', 'equipment', 'paperwork'];
+var REASON_WORD = { placement: 'Placement', funding: 'Funding', housing: 'Housing', family: 'Family', equipment: 'Equipment', paperwork: 'Paperwork' };
+var STAGES = ['No request yet', 'Requested', 'Assessed', 'Funded', 'Accepted', 'Moved'];
+var NEXT_VERB = ['Start request', 'Mark assessed', 'Mark funded', 'Mark accepted', 'Moved: bed now free'];
+var TYPES = { mh: 'Mental health', rehab: 'Rehabilitation', long: 'Long-stay' };
+var UNITS = {
+  W11: { name: 'Ward 11', type: 'mh', beds: 18 },
+  W12: { name: 'Ward 12', type: 'mh', beds: 16 },
+  W14: { name: 'Ward 14', type: 'rehab', beds: 14 },
+  W15: { name: 'Ward 15', type: 'long', beds: 12 }
+};
+var UNIT_IDS = Object.keys(UNITS);
+var WEEKS = ['5 wk', '4 wk', '3 wk', '2 wk', 'Last wk', 'Now'];
+var DEFAULT_SET = { review: 14, noreq: 3 };
+
+// ---------- State ----------
+function seed() {
+  var s = { v: 1, day: 0, min: 10 * 60 + 40, role: 'ward', ward: 'W11', guide: true, filter: 'all', kpiOpen: null,
+    set: Object.assign({}, DEFAULT_SET), pending: [], dismissed: {}, reviewList: [], log: [], seq: 7400, used: { 'P-2041': 1, 'P-1187': 1, 'P-3302': 1, 'P-0915': 1, 'P-4470': 1, 'P-2268': 1, 'P-5013': 1, 'P-1739': 1, 'P-3846': 1, 'P-6120': 1, 'P-0582': 1, 'P-2994': 1, 'P-7351': 1, 'P-4408': 1 }, beds: {}, pts: {}, history: [], ooa: [] };
+  // Every bed starts occupied by a fictional patient code, then free and closed beds are set.
+  UNIT_IDS.forEach(function (u) {
+    for (var b = 1; b <= UNITS[u].beds; b++) {
+      var code = uniqueCode(s);
+      s.beds[u + '-' + b] = { unit: u, bed: b, state: 'occ', code: code, reason: null };
+    }
+  });
+  [['W12', 14], ['W14', 13], ['W15', 11]].forEach(function (x) { var k = x[0] + '-' + x[1]; s.beds[k].state = 'free'; s.beds[k].code = null; });
+  [['W12', 7, 'repairs'], ['W14', 3, 'repairs']].forEach(function (x) { var k = x[0] + '-' + x[1]; s.beds[k].state = 'closed'; s.beds[k].code = null; s.beds[k].reason = x[2]; });
+  // Ready to leave now: [code, unit, bed, days waiting, reason, stage days-ago list (requested, assessed, funded, accepted)]
+  [['P-2041', 'W15', 2, 41, 'housing', [36, 28, 12]],
+   ['P-1187', 'W11', 5, 33, 'placement', [30, 18]],
+   ['P-3302', 'W14', 9, 27, 'funding', [25, 14]],
+   ['P-0915', 'W12', 3, 24, 'housing', [20]],
+   ['P-4470', 'W15', 8, 19, 'housing', [17, 12, 6, 2]],
+   ['P-2268', 'W11', 12, 16, 'placement', [13]],
+   ['P-5013', 'W14', 4, 12, 'equipment', [11, 8, 5]],
+   ['P-1739', 'W12', 10, 10, 'housing', [8]],
+   ['P-3846', 'W11', 1, 8, 'funding', []],
+   ['P-6120', 'W15', 5, 7, 'family', [5]],
+   ['P-0582', 'W14', 12, 6, 'housing', []],
+   ['P-2994', 'W11', 16, 4, 'paperwork', [3, 1]],
+   ['P-7351', 'W12', 6, 3, 'placement', []],
+   ['P-4408', 'W11', 9, 2, 'housing', []]
+  ].forEach(function (r) {
+    var b = s.beds[r[1] + '-' + r[2]]; b.code = r[0]; b.state = 'ready'; s.used[r[0]] = 1;
+    s.pts[r[0]] = { code: r[0], unit: r[1], bed: r[2], ready: -r[3], reason: r[4], st: r[5].map(function (d) { return -d; }) };
+  });
+  // Delays that ended this month: [ready days ago, left days ago, requested days ago or null, reason]
+  s.history = [[40, 9, 35, 'placement'], [30, 8, 26, 'placement'], [22, 6, 19, 'funding'], [15, 4, 12, 'housing'], [12, 3, null, 'family'], [9, 1, 7, 'equipment']]
+    .map(function (h) { return { ready: -h[0], left: -h[1], req: h[2] == null ? null : -h[2], reason: h[3] }; });
+  // Patients placed outside the usual area (counts only): [type, started days ago, ended days ago or null]
+  s.ooa = [['mh', 38, null], ['mh', 21, null], ['mh', 9, null], ['rehab', 15, null], ['mh', 30, 5]]
+    .map(function (o, i) { return { id: 'O' + (i + 1), type: o[0], start: -o[1], end: o[2] == null ? null : -o[2] }; });
+  // Open delays by reason at the start of each earlier week (this week is counted live).
+  s.trend = { placement: [4, 3, 4, 3, 3], funding: [2, 3, 2, 2, 2], housing: [2, 2, 3, 4, 5], family: [1, 1, 2, 1, 1], equipment: [1, 0, 1, 1, 1], paperwork: [2, 1, 1, 1, 1] };
+  // Earlier events, oldest first (all before the demo clock).
+  [[-5, 16 * 60 + 40, 'Coordinator: out-of-area return completed (1 mental health patient)'],
+   [-3, 12 * 60 + 15, 'Ward 12 recorded ready to leave: P-7351 · placement'],
+   [-2, 10 * 60 + 30, 'Ward 11 recorded ready to leave: P-4408 · housing'],
+   [-2, 15 * 60 + 20, 'Ward 15: placement accepted for P-4470'],
+   [-1, 11 * 60 + 5, 'Ward 11: P-2994 assessed'],
+   [0, 8 * 60 + 35, 'Bed board: Ward 12 bed 14 is free'],
+   [0, 9 * 60 + 50, 'Ward 14 bed 3 still closed: repairs'],
+   [0, 10 * 60 + 25, 'Ward 15: P-2041 funded']
+  ].forEach(function (e) { s.log.unshift({ t: e[0] * DAY + e[1], text: e[2] }); });
+  return s;
+}
+
+var state = load() || seed();
+function save() { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch (e) { /* storage unavailable: keep working in memory */ } }
+function load() {
+  try { var s = JSON.parse(localStorage.getItem(STORE)); if (!s || s.v !== 1 || !s.beds || !s.pts) return null; return s; } catch (e) { return null; }
+}
+function clone(x) { return JSON.parse(JSON.stringify(x)); }
+function nowT() { return state.day * DAY + state.min; }
+function tickClock() { state.min = Math.min(state.min + 2, 18 * 60); }
+
+// ---------- Derived data (pure) ----------
+function delayed() { return Object.keys(state.pts).map(function (k) { return state.pts[k]; }); }
+function waiting(p) { return state.day - p.ready; }
+function stage(p) { return p.st.length; }
+function inMonth(from, to) { return Math.max(0, to - Math.max(from, MONTH_START)); }
+function bedList(u) { return Object.keys(state.beds).map(function (k) { return state.beds[k]; }).filter(function (b) { return !u || b.unit === u; }).sort(function (a, b) { return a.bed - b.bed; }); }
+function bedCounts(u) {
+  var c = { occ: 0, ready: 0, free: 0, closed: 0, total: 0 };
+  bedList(u).forEach(function (b) { c[b.state]++; c.total++; });
+  return c;
+}
+function freeByType(t) { return bedList().filter(function (b) { return b.state === 'free' && UNITS[b.unit].type === t; }); }
+function ooaOpen() { return state.ooa.filter(function (o) { return o.end == null; }); }
+function median(a) { if (!a.length) return null; a = a.slice().sort(function (x, y) { return x - y; }); var m = a.length >> 1; return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2; }
+function countBy(list) { var c = {}; REASONS.forEach(function (r) { c[r] = 0; }); list.forEach(function (p) { c[p.reason]++; }); return c; }
+function lostByReason() {
+  var c = {}; REASONS.forEach(function (r) { c[r] = 0; });
+  delayed().forEach(function (p) { c[p.reason] += inMonth(p.ready, state.day); });
+  state.history.forEach(function (h) { c[h.reason] += inMonth(h.ready, h.left); });
+  return c;
+}
+function trendRows() {
+  var now = countBy(delayed()), out = {};
+  REASONS.forEach(function (r) { out[r] = state.trend[r].concat([now[r]]); });
+  return out;
+}
+function growing(row) { // up by 2 or more over the last 3 weeks and never falling in between
+  var n = row.length, a = row.slice(n - 4);
+  return a[3] - a[0] >= 2 && a[1] >= a[0] && a[2] >= a[1] && a[3] >= a[2];
+}
+function kpis() {
+  var all = bedCounts(), inpatients = all.occ + all.ready, ds = delayed();
+  var lost = lostByReason(), lostTotal = REASONS.reduce(function (s, r) { return s + lost[r]; }, 0);
+  var moves = state.history.filter(function (h) { return h.req != null && h.left >= MONTH_START; }).map(function (h) { return h.left - h.req; });
+  var ooaDays = state.ooa.reduce(function (s, o) { return s + inMonth(o.start, o.end == null ? state.day : o.end); }, 0);
+  return {
+    delayedTransferDaysThisMonth: lostTotal,
+    patientsDelayed: ds.length, inpatients: inpatients, patientsDelayedPct: inpatients ? Math.round(100 * ds.length / inpatients) : 0,
+    requestToMoveMedianDays: median(moves), movesThisMonth: moves.length,
+    outOfAreaNow: ooaOpen().length, outOfAreaDaysThisMonth: ooaDays,
+    occupancyPct: Math.round(100 * inpatients / (all.total - all.closed)), availableBeds: all.total - all.closed, freeBeds: all.free, closedBeds: all.closed
+  };
+}
+
+// ---------- The guide: plain, checkable rules ----------
+function suggest() {
+  var out = [], ds = delayed();
+  // 1. Which delays to review first: the longest waits past the review setting.
+  var longest = ds.filter(function (p) { return waiting(p) >= state.set.review; }).sort(function (a, b) { return waiting(b) - waiting(a); }).slice(0, 3);
+  var notListed = longest.filter(function (p) { return state.reviewList.indexOf(p.code) < 0; });
+  if (notListed.length) {
+    var id1 = 'review-' + longest.map(function (p) { return p.code; }).join('');
+    out.push({ id: id1, kind: 'time', tag: 'Review first', who: 'coord',
+      title: 'Review these ' + longest.length + ' delays first',
+      list: longest.map(function (p) { return p.code + ', ' + UNITS[p.unit].name + ': ' + days(waiting(p)) + ' waiting · ' + REASON_WORD[p.reason] + ' · ' + STAGES[stage(p)]; }),
+      why: 'The longest waits past ready to leave, ordered by days waiting only (setting: ' + state.set.review + ' days or more). It uses nothing about any patient\'s condition.',
+      acts: [{ label: 'Propose for today\'s delays review', primary: true, fn: function () { propose({ id: id1, who: 'coord', kind: 'review', codes: longest.map(function (p) { return p.code; }), text: 'Put ' + longest.map(function (p) { return p.code; }).join(', ') + ' first on today\'s delayed transfers review.' }); } }] });
+  }
+  // 2. Ready to leave with no placement or support request after the set days.
+  var noReq = ds.filter(function (p) { return stage(p) === 0 && waiting(p) >= state.set.noreq; }).sort(function (a, b) { return waiting(b) - waiting(a); });
+  if (noReq.length) {
+    var id2 = 'noreq-' + noReq.map(function (p) { return p.code; }).join('');
+    out.push({ id: id2, kind: 'ask', tag: 'No request yet', who: 'coord',
+      title: noReq.length + (noReq.length > 1 ? ' patients have' : ' patient has') + ' no request after ' + state.set.noreq + ' days',
+      list: noReq.map(function (p) { return p.code + ', ' + UNITS[p.unit].name + ': ' + days(waiting(p)) + ' · ' + REASON_WORD[p.reason]; }),
+      why: 'Ready to leave for ' + state.set.noreq + ' days or more with no placement or support request logged. Setting: ' + state.set.noreq + ' days.',
+      acts: [{ label: 'Propose: start ' + (noReq.length > 1 ? 'these requests' : 'this request'), primary: true, fn: function () { propose({ id: id2, who: 'coord', kind: 'start', codes: noReq.map(function (p) { return p.code; }), text: 'Start a placement or support request for ' + noReq.map(function (p) { return p.code; }).join(', ') + '.' }); } }] });
+  }
+  // 3. A delay reason that has grown over the last weeks.
+  var rows = trendRows();
+  REASONS.filter(function (r) { return growing(rows[r]); }).forEach(function (r) {
+    var row = rows[r], id3 = 'grow-' + r + '-' + row.join('');
+    out.push({ id: id3, kind: 'ask', tag: 'Growing cause', who: 'ops',
+      title: REASON_WORD[r] + ' delays have grown: ' + row.slice(2).join(' → '),
+      text: 'Open ' + REASON_WORD[r].toLowerCase() + ' delays at the start of each of the last weeks: ' + row.slice(2, 5).join(', ') + ', and ' + row[5] + ' now, across ' + unitsWith(r) + '.',
+      why: 'Up by ' + (row[5] - row[2]) + ' over three weeks and not falling in between. Counts only; it says nothing about why.',
+      acts: [{ label: 'Propose: raise with partner services', primary: true, fn: function () { propose({ id: id3, who: 'ops', kind: 'raise', reason: r, text: 'Raise ' + REASON_WORD[r].toLowerCase() + ' delays with partner services at the next joint meeting, citing the counts ' + row.slice(2).join(', ') + '.' }); } }] });
+  });
+  // 4. A local bed is free while patients of that bed type are placed out of area (longest placement first, one at a time).
+  Object.keys(TYPES).sort(function (a, b) { return oldestAway(a) - oldestAway(b); }).filter(function (t) { return freeByType(t).length && oldestAway(t) < Infinity; }).slice(0, 1).forEach(function (t) {
+    var free = freeByType(t), away = ooaOpen().filter(function (o) { return o.type === t; }).sort(function (a, b) { return a.start - b.start; });
+    if (!free.length || !away.length) return;
+    var o = away[0], b = free[0], id4 = 'return-' + o.id + '-' + b.unit + b.bed;
+    out.push({ id: id4, kind: 'move', tag: 'Bed free locally', who: 'coord',
+      title: TYPES[t] + ': a local bed is free, ' + away.length + ' placed out of area',
+      text: UNITS[b.unit].name + ' bed ' + b.bed + ' is free. The longest out-of-area ' + TYPES[t].toLowerCase() + ' placement has lasted ' + (state.day - o.start) + ' days.',
+      why: 'Free ' + TYPES[t].toLowerCase() + ' beds and open out-of-area placements of the same bed type, counted now. Whether a return is right is for the team to decide.',
+      acts: [{ label: 'Propose: consider a return', primary: true, fn: function () { propose({ id: id4, who: 'coord', kind: 'return', ooa: o.id, bed: b.unit + '-' + b.bed, text: 'Consider returning the longest out-of-area ' + TYPES[t].toLowerCase() + ' placement (' + (state.day - o.start) + ' days) to ' + UNITS[b.unit].name + ' bed ' + b.bed + '.' }); } }] });
+  });
+  return out.filter(function (x) { return !state.dismissed[x.id]; });
+}
+function oldestAway(t) { return ooaOpen().filter(function (o) { return o.type === t; }).reduce(function (m, o) { return Math.min(m, o.start); }, Infinity); }
+function days(n) { return n + (n === 1 ? ' day' : ' days'); }
+function unitsWith(r) { var u = {}; delayed().forEach(function (p) { if (p.reason === r) u[UNITS[p.unit].name] = 1; }); var k = Object.keys(u); return k.length + (k.length === 1 ? ' ward' : ' wards'); }
+var ROLE_WORD = { ward: 'ward manager', coord: 'coordinator', ops: 'operations manager' };
+function propose(p) {
+  if (state.pending.some(function (x) { return x.id === p.id; })) return;
+  tickClock(); p.at = nowT(); state.pending.push(p);
+  addLog('Guide proposed: ' + p.text + ' Waiting for the ' + ROLE_WORD[p.who] + '.');
+  render(); toast('Proposed. The ' + ROLE_WORD[p.who] + ' decides.');
+}
+function decide(p, yes) {
+  state.pending = state.pending.filter(function (x) { return x.id !== p.id; });
+  tickClock();
+  if (!yes) { state.dismissed[p.id] = true; addLog('The ' + ROLE_WORD[p.who] + ' declined: ' + p.text); render(); toast('Declined. Nothing changed.'); return; }
+  if (p.kind === 'review') {
+    p.codes.forEach(function (c) { if (state.reviewList.indexOf(c) < 0) state.reviewList.push(c); });
+  } else if (p.kind === 'start') {
+    p.codes.forEach(function (c) { var x = state.pts[c]; if (x && !x.st.length) x.st.push(state.day); });
+  } else if (p.kind === 'return') {
+    var o = state.ooa.filter(function (x) { return x.id === p.ooa; })[0], b = state.beds[p.bed];
+    if (!o || o.end != null || !b || b.state !== 'free') { render(); toast('That bed or placement has changed. Nothing done.'); return; }
+    o.end = state.day; b.state = 'occ'; b.code = newCode();
+  } else if (p.kind === 'raise') {
+    state.dismissed[p.id] = true;
+  }
+  addLog('The ' + ROLE_WORD[p.who] + ' confirmed: ' + p.text);
+  render(); toast('Confirmed. The boards have updated.');
+}
+function newCode() { return uniqueCode(state); }
+// Anonymous, made-up patient codes; never reused within the example.
+function uniqueCode(s) { var c; do { s.seq += 113; c = 'P-' + String(1000 + (s.seq * 7919) % 8999); } while (s.used[c]); s.used[c] = 1; return c; }
+
+// ---------- Helpers ----------
+var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+function wday(d) { return WD[(((2 + d) % 7) + 7) % 7]; }
+function hhmm(m) { var h = Math.floor(m / 60), r = m % 60; return (h < 10 ? '0' : '') + h + ':' + (r < 10 ? '0' : '') + r; }
+function stamp(t) { var d = Math.floor(t / DAY); return wday(d) + ' ' + hhmm(t - d * DAY); }
+function dayWord(n) { return n === 0 ? 'today' : n === 1 ? 'yesterday' : n + ' days ago'; }
+function el(tag, attrs, kids) { var e = document.createElement(tag); if (attrs) for (var k in attrs) { if (k === 'text') e.textContent = attrs[k]; else if (k === 'class') e.className = attrs[k]; else if (k.slice(0, 2) === 'on') e.addEventListener(k.slice(2), attrs[k]); else if (attrs[k] !== false && attrs[k] != null) e.setAttribute(k, attrs[k]); } (kids || []).forEach(function (c) { if (c != null) e.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); }); return e; }
+var lastLogT = -1;
+function addLog(text) { lastLogT = nowT(); state.log.unshift({ t: lastLogT, text: text }); state.log = state.log.slice(0, 50); }
+var toastT; function toast(msg) { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(function () { t.classList.remove('on'); }, 2600); }
+
+// ---------- Actions ----------
+function advance(code) {
+  var p = state.pts[code]; if (!p) return;
+  tickClock();
+  var s = stage(p), w = UNITS[p.unit].name;
+  if (s < 4) {
+    p.st.push(state.day);
+    addLog(w + ': ' + (s === 0 ? 'request started for ' + code : code + ' ' + STAGES[s + 1].toLowerCase()));
+    render(); toast(s === 0 ? 'Request started. The coordinator sees it now.' : 'Stage updated: ' + STAGES[s + 1] + '.');
+    return;
+  }
+  // Moved: the delay ends and the bed is free.
+  state.history.push({ ready: p.ready, left: state.day, req: p.st[0], reason: p.reason });
+  var b = state.beds[p.unit + '-' + p.bed]; b.state = 'free'; b.code = null;
+  delete state.pts[code];
+  state.reviewList = state.reviewList.filter(function (c) { return c !== code; });
+  addLog(w + ': ' + code + ' moved after ' + waiting(p) + ' days waiting. Bed ' + p.bed + ' is free.');
+  render(); toast('Moved. Bed ' + p.bed + ' shows free on the bed board.');
+}
+function setReason(code, r) {
+  var p = state.pts[code]; if (!p || p.reason === r) return;
+  tickClock(); var was = p.reason; p.reason = r;
+  addLog(UNITS[p.unit].name + ': delay reason for ' + code + ' changed from ' + REASON_WORD[was].toLowerCase() + ' to ' + REASON_WORD[r].toLowerCase());
+  render(); toast('Reason updated.');
+}
+function recordReady(bedKey, r) {
+  var b = state.beds[bedKey]; if (!b || b.state !== 'occ' || REASONS.indexOf(r) < 0) return;
+  tickClock(); b.state = 'ready';
+  state.pts[b.code] = { code: b.code, unit: b.unit, bed: b.bed, ready: state.day, reason: r, st: [] };
+  addLog(UNITS[b.unit].name + ' recorded ready to leave: ' + b.code + ' · ' + REASON_WORD[r].toLowerCase());
+  render(); toast('Recorded. The delay clock has started for ' + b.code + '.');
+}
+
+// ---------- Render ----------
+var HINTS = {
+  ward: 'A ward manager\'s phone. Patients ready to leave on your ward, longest wait first. Update a placement stage or the reason in one tap, or record a new ready-to-leave date.',
+  coord: 'The discharge or placement coordinator. Every delayed transfer by reason and days waiting, where placement requests wait, and beds out of area as counts.',
+  ops: 'The operations manager. Bed-days lost to delays this month, which causes are growing, beds by unit and state, and out-of-area placements.'
+};
+var TITLES = { ward: 'Ready to leave', coord: 'Delayed transfers', ops: 'Delays and capacity this month' };
+function render() {
+  var aid = document.activeElement && document.activeElement.id;
+  ['ward', 'coord', 'ops'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
+  document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('view-h').textContent = TITLES[state.role];
+  document.getElementById('clocknow').textContent = 'Demo clock ' + wday(state.day) + ' ' + hhmm(state.min);
+  var v = document.getElementById('view'); v.textContent = '';
+  if (state.role === 'ward') { v.appendChild(wardView()); v.appendChild(kpiBlock(true)); }
+  else { v.appendChild(kpiBlock(false)); v.appendChild(state.role === 'coord' ? coordView() : opsView()); }
+  renderGuide();
+  renderLog();
+  save();
+  if (aid) { var e = document.getElementById(aid); if (e) e.focus({ preventScroll: true }); }
+}
+function kpiBlock(below) {
+  var k = kpis(), box = el('div', { class: 'stats', id: 'kpis' });
+  var tiles = [
+    ['lost', String(k.delayedTransferDaysThisMonth), 'Delayed transfer days', 'this month', 'Days from ready to leave to departure, summed for this month (patients still waiting count up to today). Local definition.'],
+    ['delayed', k.patientsDelayed + ' (' + k.patientsDelayedPct + '%)', 'Patients delayed', 'of ' + k.inpatients + ' inpatients', 'Patients past their ready-to-leave date, divided by all inpatients, today. Local definition.'],
+    ['move', k.requestToMoveMedianDays == null ? '–' : k.requestToMoveMedianDays + ' days', 'Request to move', 'median of ' + k.movesThisMonth + ' this month', 'Days from placement requested to moved, median, for moves this month. Local definition.'],
+    ['ooa', String(k.outOfAreaDaysThisMonth), 'Out-of-area days', k.outOfAreaNow + ' placed away now', 'Bed-days spent outside the usual area this month, all placements. Local definition.'],
+    ['occ', k.occupancyPct + '%', 'Bed occupancy', k.availableBeds + ' beds open today', 'Occupied beds divided by available (not closed) beds, today. Local definition.'],
+    ['free', String(k.freeBeds), 'Free beds', k.closedBeds + ' closed', 'Beds open and empty now, across mental health, rehabilitation and long-stay units.']
+  ];
+  tiles.forEach(function (t) {
+    var open = state.kpiOpen === t[0];
+    box.appendChild(el('button', { type: 'button', id: 'kpi-' + t[0], class: 'stat', 'aria-expanded': String(open), title: t[4], onclick: function () { state.kpiOpen = open ? null : t[0]; render(); } },
+      [el('b', { text: t[1] }), el('span', { class: 'lbl', text: t[2] }), el('span', { class: 'n', text: t[3] }), el('span', { class: 'def', text: t[4] })]));
+  });
+  return el('div', { class: 'kpiblock' + (below ? ' below' : '') }, [below ? el('h3', { class: 'sec', text: 'Whole hospital measures' }) : null, box, el('p', { class: 'stathint', text: 'Tap a tile for its definition.' })]);
+}
+function reasonSelect(id, value, label, onchange) {
+  var s = el('select', { id: id, 'aria-label': label, onchange: onchange });
+  if (value == null) s.appendChild(el('option', { value: '', text: 'Choose a reason' }));
+  REASONS.forEach(function (r) { s.appendChild(el('option', { value: r, text: REASON_WORD[r] })); });
+  s.value = value == null ? '' : value; return s;
+}
+var draft = { bed: '', reason: '' };
+function wardView() {
+  var frag = document.createDocumentFragment(), u = state.ward, c = bedCounts(u);
+  var sel = el('select', { id: 'ward-pick', onchange: function (e) { state.ward = e.target.value; draft = { bed: '', reason: '' }; render(); } });
+  UNIT_IDS.forEach(function (id) { sel.appendChild(el('option', { value: id, text: UNITS[id].name + ' · ' + TYPES[UNITS[id].type] })); });
+  sel.value = u;
+  frag.appendChild(el('div', { class: 'bar1' }, [el('label', { for: 'ward-pick' }, ['Your ward', sel])]));
+  frag.appendChild(el('div', { class: 'summary' }, [
+    el('span', { class: 'pill', text: (c.occ + c.ready) + ' patients' }), el('span', { class: 'pill ready', text: c.ready + ' ready to leave' }),
+    el('span', { class: 'pill free', text: c.free + ' free' }), c.closed ? el('span', { class: 'pill closed', text: c.closed + ' closed' }) : null
+  ]));
+  var list = delayed().filter(function (p) { return p.unit === u; }).sort(function (a, b) { return waiting(b) - waiting(a); });
+  frag.appendChild(el('h3', { class: 'sec', text: 'Ready to leave · ' + list.length + ', longest wait first' }));
+  if (!list.length) frag.appendChild(el('p', { class: 'empty', text: 'No one on this ward is waiting past a ready-to-leave date.' }));
+  var box = el('div', { class: 'pts', id: 'ward-list' });
+  list.forEach(function (p) {
+    var s = stage(p), long = waiting(p) >= state.set.review, rev = state.reviewList.indexOf(p.code) >= 0;
+    var chips = [el('span', { class: 'chip', text: REASON_WORD[p.reason] })];
+    if (s === 0) chips.push(el('span', { class: 'chip none', text: 'No request yet' }));
+    if (rev) chips.push(el('span', { class: 'chip rev', text: 'On today\'s review' }));
+    var segs = el('div', { class: 'segs', 'aria-hidden': 'true' }); for (var i = 1; i <= 5; i++) segs.appendChild(el('i', { class: i <= s ? 'on' : '' }));
+    var since = s ? STAGES[s].toLowerCase() + ' ' + dayWord(state.day - p.st[s - 1]) : 'not started';
+    box.appendChild(el('article', { class: 'pt' + (long ? ' long' : ''), 'aria-label': p.code + ', bed ' + p.bed + ', ' + waiting(p) + ' days waiting' }, [
+      el('div', { class: 'top' }, [
+        el('p', { class: 'code' }, [p.code, el('small', { text: 'Bed ' + p.bed + ' · ready ' + dayWord(waiting(p)) })]),
+        el('div', { class: 'days' }, [String(waiting(p)), el('small', { text: waiting(p) === 1 ? 'day waiting' : 'days waiting' })])
+      ]),
+      el('div', { class: 'chips' }, chips),
+      el('div', { class: 'prog' }, [el('p', { class: 'lbl' }, ['Request: ' + (s ? 'stage ' + s + ' of 5' : 'none') + ' ', el('span', { text: '(' + since + ')' })]), segs]),
+      el('div', { class: 'acts' }, [el('button', { type: 'button', id: 'a-' + p.code, class: 'go' + (s === 0 ? ' start' : s === 4 ? ' moved' : ''), 'aria-label': NEXT_VERB[s] + ': ' + p.code, onclick: function () { advance(p.code); }, text: NEXT_VERB[s] })]),
+      el('label', { class: 'reasonrow', for: 'rs-' + p.code }, ['Reason', reasonSelect('rs-' + p.code, p.reason, 'Delay reason for ' + p.code, function (e) { setReason(p.code, e.target.value); })])
+    ]));
+  });
+  frag.appendChild(box);
+  // Record a new ready-to-leave date.
+  var occ = bedList(u).filter(function (b) { return b.state === 'occ'; });
+  frag.appendChild(el('h3', { class: 'sec', text: 'Record ready to leave' }));
+  var bs = el('select', { id: 'rec-bed', onchange: function (e) { draft.bed = e.target.value; render(); } });
+  bs.appendChild(el('option', { value: '', text: 'Choose a patient code' }));
+  occ.forEach(function (b) { bs.appendChild(el('option', { value: b.unit + '-' + b.bed, text: b.code + ' · bed ' + b.bed })); });
+  if (draft.bed && !state.beds[draft.bed] || (draft.bed && state.beds[draft.bed].state !== 'occ')) draft.bed = '';
+  bs.value = draft.bed;
+  var rs = reasonSelect('rec-reason', draft.reason || null, null, function (e) { draft.reason = e.target.value; render(); });
+  rs.removeAttribute('aria-label');
+  frag.appendChild(el('div', { class: 'record' }, [
+    el('label', { for: 'rec-bed' }, ['Patient (code)', bs]),
+    el('label', { for: 'rec-reason' }, ['What is holding the transfer?', rs]),
+    el('button', { type: 'button', id: 'rec-go', class: 'primary go', disabled: draft.bed && draft.reason ? false : 'disabled', onclick: function () { var b = draft.bed, r = draft.reason; draft = { bed: '', reason: '' }; recordReady(b, r); }, text: draft.bed && draft.reason ? 'Record ready to leave today' : 'Choose a code and a reason' }),
+    el('p', { class: 'fine', style: 'margin:0', text: 'The care team decides when a patient is ready to leave. This only records the date, so the delay is counted.' })
+  ]));
+  // Beds on this ward.
+  frag.appendChild(el('h3', { class: 'sec', text: UNITS[u].name + ' beds' }));
+  var grid = el('div', { class: 'beds' });
+  var SW = { occ: 'in use', ready: 'ready', free: 'free', closed: 'closed' };
+  bedList(u).forEach(function (b) { grid.appendChild(el('div', { class: 'bed s-' + b.state, title: 'Bed ' + b.bed + ': ' + SW[b.state] + (b.reason ? ' (' + b.reason + ')' : '') }, [String(b.bed), el('small', { text: SW[b.state] })])); });
+  frag.appendChild(grid);
+  frag.appendChild(legend());
+  return frag;
+}
+function legend() {
+  return el('p', { class: 'legend' }, [['occ', 'In use'], ['ready', 'Ready to leave'], ['free', 'Free'], ['closed', 'Closed']].map(function (x) { return el('span', {}, [el('i', { class: 'k-' + x[0] }), x[1]]); }));
+}
+function coordView() {
+  var frag = document.createDocumentFragment(), ds = delayed(), cnt = countBy(ds);
+  frag.appendChild(el('h3', { class: 'sec', text: 'All delayed transfers · ' + ds.length + ', longest wait first' }));
+  var f = el('div', { class: 'filters', role: 'group', 'aria-label': 'Filter by reason' });
+  [['all', 'All · ' + ds.length]].concat(REASONS.map(function (r) { return [r, REASON_WORD[r] + ' · ' + cnt[r]]; })).forEach(function (x) {
+    f.appendChild(el('button', { type: 'button', id: 'f-' + x[0], 'aria-pressed': String(state.filter === x[0]), onclick: function () { state.filter = x[0]; render(); }, text: x[1] }));
+  });
+  frag.appendChild(f);
+  var list = ds.filter(function (p) { return state.filter === 'all' || p.reason === state.filter; }).sort(function (a, b) { return waiting(b) - waiting(a); });
+  var wrap = el('div', { id: 'delays' });
+  if (!list.length) wrap.appendChild(el('p', { class: 'empty', text: 'No delays with this reason.' }));
+  list.forEach(function (p) {
+    var s = stage(p), long = waiting(p) >= state.set.review, rev = state.reviewList.indexOf(p.code) >= 0;
+    wrap.appendChild(el('div', { class: 'drow' + (long ? ' long' : '') }, [
+      el('div', {}, [el('b', { text: p.code }), el('span', { class: 'sub', text: UNITS[p.unit].name + ' · bed ' + p.bed })]),
+      el('div', { class: 'c2' }, [el('b', { text: REASON_WORD[p.reason] }), el('span', { class: 'sub', text: rev ? 'On today\'s review' : TYPES[UNITS[p.unit].type] })]),
+      el('div', { class: 'c3' }, [el('b', { text: STAGES[s] }), el('span', { class: 'sub', text: s ? 'for ' + days(state.day - p.st[s - 1]) + ' · requested ' + dayWord(state.day - p.st[0]) : 'nothing logged yet' })]),
+      el('div', { class: 'd' }, [String(waiting(p)), el('small', { text: 'days' })])
+    ]));
+  });
+  frag.appendChild(wrap);
+  // Placement requests by stage.
+  frag.appendChild(el('h3', { class: 'sec', text: 'Placement and support requests by stage' }));
+  var st = el('div', { class: 'stages', id: 'stages' });
+  [0, 1, 2, 3, 4].forEach(function (i) {
+    var at = ds.filter(function (p) { return stage(p) === i; });
+    var med = median(at.map(function (p) { return i ? state.day - p.st[i - 1] : waiting(p); }));
+    st.appendChild(el('div', { class: 'stage s' + i }, [el('span', { class: 't', text: STAGES[i] }), el('b', { text: String(at.length) }), el('span', { class: 'sub', text: at.length ? 'median ' + days(med) + ' here' : '–' })]));
+  });
+  frag.appendChild(st);
+  frag.appendChild(el('p', { class: 'fine', text: 'Moved this month: ' + kpis().movesThisMonth + '. Days at a stage count from the day it was reached.' }));
+  frag.appendChild(ooaBlock());
+  return frag;
+}
+function ooaBlock() {
+  var frag = document.createDocumentFragment();
+  frag.appendChild(el('h3', { class: 'sec', text: 'Beds out of area (counts only)' }));
+  var g = el('div', { class: 'ooa', id: 'ooa' });
+  Object.keys(TYPES).forEach(function (t) {
+    var open = ooaOpen().filter(function (o) { return o.type === t; });
+    var days = state.ooa.filter(function (o) { return o.type === t; }).reduce(function (s, o) { return s + inMonth(o.start, o.end == null ? state.day : o.end); }, 0);
+    g.appendChild(el('div', {}, [el('h4', { text: TYPES[t] }), el('div', { class: 'nums' }, [
+      el('div', {}, [el('b', { text: String(open.length) }), el('span', { text: 'away now' })]),
+      el('div', {}, [el('b', { text: String(days) }), el('span', { text: 'days, month' })]),
+      el('div', {}, [el('b', { text: String(freeByType(t).length) }), el('span', { text: 'free here' })])
+    ])]));
+  });
+  frag.appendChild(g);
+  return frag;
+}
+function opsView() {
+  var frag = document.createDocumentFragment(), k = kpis(), lost = lostByReason();
+  frag.appendChild(el('h3', { class: 'sec', text: 'Bed-days lost to delays, this month' }));
+  frag.appendChild(el('div', { class: 'hero' }, [el('b', { id: 'lost-total', text: String(k.delayedTransferDaysThisMonth) }), el('span', { text: 'bed-days from ready to leave to departure, ' + (state.day - MONTH_START) + ' days into the month' })]));
+  var max = Math.max.apply(null, REASONS.map(function (r) { return lost[r]; })) || 1;
+  var hb = el('div', { class: 'hbars', role: 'list', 'aria-label': 'Bed-days lost by reason' });
+  REASONS.slice().sort(function (a, b) { return lost[b] - lost[a]; }).forEach(function (r) {
+    hb.appendChild(el('div', { class: 'hbar', role: 'listitem', title: REASON_WORD[r] + ': ' + lost[r] + ' bed-days this month' }, [el('span', { text: REASON_WORD[r] }), el('div', { class: 'track' }, [el('div', { class: 'fill', style: 'width:' + (100 * lost[r] / max).toFixed(1) + '%' })]), el('span', { class: 'v', text: String(lost[r]) })]));
+  });
+  frag.appendChild(hb);
+  // Trend by reason.
+  frag.appendChild(el('h3', { class: 'sec', text: 'Open delays by reason, week by week' }));
+  var rows = trendRows(), all = [];
+  REASONS.forEach(function (r) { all = all.concat(rows[r]); });
+  var top = Math.max.apply(null, all) || 1;
+  var tb = el('tbody');
+  REASONS.forEach(function (r) {
+    var g = growing(rows[r]);
+    tb.appendChild(el('tr', { class: g ? 'grow' : '' }, [el('td', { class: 'rl', text: REASON_WORD[r] })].concat(rows[r].map(function (n, i) {
+      var a = n / top;
+      return el('td', { title: REASON_WORD[r] + ', ' + WEEKS[i] + ': ' + n, style: 'background:rgba(10,147,150,' + (0.08 + 0.6 * a).toFixed(2) + ');color:' + (a > 0.8 ? '#fff' : 'var(--ink)') }, [String(n)]);
+    }))));
+  });
+  frag.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 'grid', id: 'trend' }, [el('caption', { class: 'fine', style: 'caption-side:bottom;text-align:left', text: 'Open delays at the start of each week (weeks ago); Now is live. Darker means more.' }), el('thead', {}, [el('tr', {}, [el('th', { class: 'rl', text: 'Reason' })].concat(WEEKS.map(function (w) { return el('th', { text: w }); })))]), tb])]));
+  // Beds by unit and state.
+  frag.appendChild(el('h3', { class: 'sec', text: 'Beds by unit and state, now' }));
+  var us = el('div', { class: 'units', id: 'units' });
+  UNIT_IDS.forEach(function (u) {
+    var c = bedCounts(u);
+    var bar = el('div', { class: 'stack', role: 'img', 'aria-label': UNITS[u].name + ': ' + c.occ + ' in use, ' + c.ready + ' ready to leave, ' + c.free + ' free, ' + c.closed + ' closed' });
+    ['occ', 'ready', 'free', 'closed'].forEach(function (s) { if (c[s]) bar.appendChild(el('i', { class: 'k-' + s, style: 'flex:' + c[s], title: c[s] + ' ' + s })); });
+    us.appendChild(el('div', { class: 'unit' }, [el('div', { class: 'nm' }, [el('b', { text: UNITS[u].name + ' · ' + TYPES[UNITS[u].type] }), el('span', { text: c.total + ' beds: ' + c.occ + ' in use, ' + c.ready + ' ready to leave, ' + c.free + ' free, ' + c.closed + ' closed' })]), bar]));
+  });
+  frag.appendChild(us);
+  frag.appendChild(legend());
+  frag.appendChild(ooaBlock());
+  return frag;
+}
+function renderGuide() {
+  document.getElementById('guide-on').checked = state.guide;
+  document.getElementById('settings').hidden = !state.guide;
+  var r1 = document.getElementById('set-review'), r2 = document.getElementById('set-noreq');
+  if (document.activeElement !== r1) r1.value = state.set.review;
+  if (document.activeElement !== r2) r2.value = state.set.noreq;
+  var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
+  if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. The ward list, the delays board, placements and the measures all work without it.' })); return; }
+  var list = suggest();
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag against the current settings.' }));
+  list.forEach(function (sg) {
+    var pend = state.pending.some(function (p) { return p.id === sg.id; });
+    var acts = sg.acts.map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend ? 'disabled' : false, onclick: a.fn, text: pend ? 'Proposed' : a.label }); });
+    acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
+    box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
+      el('span', { class: 'tag ' + (sg.kind === 'time' ? 'time' : sg.kind === 'ask' ? 'ask' : ''), text: sg.tag }),
+      el('h3', { text: sg.title }), sg.text ? el('p', { text: sg.text }) : null,
+      sg.list ? el('ul', {}, sg.list.map(function (x) { return el('li', { text: x }); })) : null,
+      el('p', { class: 'why', text: 'Why: ' + sg.why + ' Decided by the ' + ROLE_WORD[sg.who] + '.' }), el('div', { class: 'acts' }, acts)
+    ]));
+  });
+  if (state.pending.length) {
+    var d = el('div', { class: 'decide', id: 'pending' }, [el('h3', { text: 'Waiting for a person to decide' })]);
+    state.pending.forEach(function (p) {
+      var mine = state.role === p.who;
+      d.appendChild(el('div', { class: 'prop' }, [el('p', { text: p.text }), el('p', { class: 'who', text: 'Decides: ' + ROLE_WORD[p.who] }),
+        mine ? el('div', { class: 'acts', style: 'display:flex;gap:8px;flex-wrap:wrap' }, [el('button', { type: 'button', class: 'small primary', onclick: function () { decide(p, true); }, text: 'Confirm' }), el('button', { type: 'button', class: 'small', onclick: function () { decide(p, false); }, text: 'Decline' })])
+          : el('button', { type: 'button', class: 'small', onclick: function () { state.role = p.who; render(); }, text: 'Switch to the ' + ROLE_WORD[p.who] + ' view to decide' })]));
+    });
+    dec.appendChild(d);
+  } else dec.appendChild(el('p', { class: 'decide', text: 'Nothing changes until a person decides. Proposals wait here for the named role.' }));
+}
+function renderLog() {
+  var ol = document.getElementById('log'); ol.textContent = '';
+  state.log.slice(0, 30).forEach(function (e) { ol.appendChild(el('li', { class: e.t === lastLogT ? 'new' : '' }, [el('time', { text: stamp(e.t) }), el('span', { text: e.text })])); });
+}
+
+// ---------- Wiring ----------
+['ward', 'coord', 'ops'].forEach(function (r) { document.getElementById('r-' + r).addEventListener('click', function () { state.role = r; render(); }); });
+document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; render(); });
+[['set-review', 'review', 120], ['set-noreq', 'noreq', 60]].forEach(function (x) {
+  document.getElementById(x[0]).addEventListener('change', function (e) {
+    var n = Math.max(1, Math.min(x[2], Math.round(+e.target.value) || DEFAULT_SET[x[1]])); state.set[x[1]] = n; e.target.value = n;
+    tickClock(); addLog('Guide setting changed: ' + (x[1] === 'review' ? 'review delays from ' : 'flag no request after ') + n + ' days.'); render();
+  });
+});
+document.getElementById('t-day').addEventListener('click', function () {
+  state.day++; state.min = 9 * 60;
+  addLog('Demo: a new day. Every delay is one day longer.');
+  render(); toast('A day has passed. Days waiting have grown by one.');
+});
+document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; draft = { bed: '', reason: '' }; lastLogT = -1; render(); toast('Example reset to the start of the demo.'); });
+
+// Read-only view for software agents (no writes): window.ospeliLongStayDemo
+window.ospeliLongStayDemo = Object.freeze({
+  describe: function () { return 'Read-only demo of mental health, rehabilitation and long-stay beds for a fictional hospital. get() returns beds by unit and state, delayed transfers (anonymous codes, days waiting, reason, placement stage) and out-of-area counts; kpis() the measures; suggestions() the guide\'s current suggestions. Operational only; runs in the browser; nothing is sent anywhere.'; },
+  get: function () {
+    return clone({ role: state.role, demoDay: wday(state.day), demoClock: hhmm(state.min), reasons: REASONS, stages: STAGES, settings: state.set,
+      beds: UNIT_IDS.map(function (u) { var c = bedCounts(u); return { unit: UNITS[u].name, type: TYPES[UNITS[u].type], total: c.total, inUse: c.occ, readyToLeave: c.ready, free: c.free, closed: c.closed }; }),
+      delays: delayed().sort(function (a, b) { return waiting(b) - waiting(a); }).map(function (p) { return { code: p.code, unit: UNITS[p.unit].name, bed: p.bed, daysWaiting: waiting(p), reason: p.reason, stage: STAGES[stage(p)], onReviewList: state.reviewList.indexOf(p.code) >= 0 }; }),
+      outOfArea: Object.keys(TYPES).map(function (t) { return { type: TYPES[t], placedAwayNow: ooaOpen().filter(function (o) { return o.type === t; }).length }; }),
+      trendByReason: trendRows(), pendingDecisions: state.pending.map(function (p) { return { text: p.text, decides: ROLE_WORD[p.who] }; }) });
+  },
+  kpis: function () { return kpis(); },
+  suggestions: function () { return state.guide ? suggest().map(function (s) { return { id: s.id, title: s.title, text: s.text || (s.list || []).join('; '), why: s.why, decides: ROLE_WORD[s.who] }; }) : []; }
+});
+if (!load() && window.matchMedia && !window.matchMedia('(max-width: 640px)').matches) state.role = 'coord';
+render();
+})();
+</script>
+</body>
+</html>
