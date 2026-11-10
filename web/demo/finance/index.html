@@ -320,14 +320,17 @@ function seed() {
       W2: { status: 'received', reason: 'temp', text: 'Two staff vacancies covered by internal relief and agency staff while we recruit; both posts are at interview stage.', day: 4 }
     },
     history: { W4: 'Month 6 note (agreed): More occupied bed-days than plan; agency cover for staff sickness.' } };
-  var L = function (day, minsAgo, text) { var d = new Date(T - minsAgo * M); s.log.push({ day: day, hm: hhmm(d), text: text }); };
+  // Day-5 entries are minutes before the demo time (never before midnight); earlier days have fixed daytime times, newest first.
+  var d0 = new Date(T); d0.setHours(0, 0, 0, 0);
+  var L = function (day, minsAgo, text) { s.log.push({ day: day, hm: hhmm(new Date(Math.max(d0.getTime(), T - minsAgo * M))), text: text }); };
+  var F = function (day, hm, text) { s.log.push({ day: day, hm: hm, text: text }); };
   L(5, 25, 'Variance board refreshed: ' + beyondList(s).length + ' cost centres beyond the ±' + s.tol + '% tolerance for month 7.');
   L(5, 40, 'Activity counts for month 7 linked from the event log: occupied bed-days, attendances, cases, exams and visits.');
-  L(4, 300, 'Ward 2 manager sent a variance note for month 7.');
-  L(4, 420, 'Ward 6 manager sent a variance note; finance partner agreed it.');
-  L(3, 360, 'Theatres manager sent a variance note; finance partner agreed it.');
-  L(2, 480, 'Ward 5 manager sent a variance note; finance partner agreed it.');
-  L(1, 540, 'Ledger extract for month 7 imported (source file kept: ledger_month07.csv, 10 cost centres).');
+  F(4, '14:30', 'Ward 2 manager sent a variance note for month 7.');
+  F(4, '11:15', 'Ward 6 manager sent a variance note; finance partner agreed it.');
+  F(3, '10:20', 'Theatres manager sent a variance note; finance partner agreed it.');
+  F(2, '15:45', 'Ward 5 manager sent a variance note; finance partner agreed it.');
+  F(1, '09:05', 'Ledger extract for month 7 imported (source file kept: ledger_month07.csv, 10 cost centres).');
   return s;
 }
 var state = load() || seed();
@@ -751,11 +754,13 @@ function doSign() { var k = kpis(), open = k.notesMissing + k.notesReceived; sta
 function trendChart() {
   var ids = wardIds(), pts = [];
   for (var m = 1; m <= MONTH; m++) { var u = unitCost(ids, m); pts.push({ m: m, a: u.actual, p: u.plan }); }
-  var W = 600, H = 210, L = 44, R = 92, Tp = 12, B = 30;
+  var W = 600, H = 224, L = 44, R = 92, Tp = 26, B = 30;
   var lo = Math.min.apply(null, pts.map(function (x) { return Math.min(x.a, x.p); })), hi = Math.max.apply(null, pts.map(function (x) { return Math.max(x.a, x.p); }));
   lo = Math.floor((lo - 2) / 5) * 5; hi = Math.ceil((hi + 2) / 5) * 5;
   var X = function (m) { return L + (m - 1) / (MONTH - 1) * (W - L - R); }, Y = function (v) { return Tp + (hi - v) / (hi - lo) * (H - Tp - B); };
-  var s = svg('svg', { class: 'chart', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Cost per occupied bed-day by month, actual against plan. Month ' + MONTH + ': ' + pts[MONTH - 1].a.toFixed(2) + ' against ' + pts[MONTH - 1].p.toFixed(2) + ' planned.' });
+  var s = svg('svg', { class: 'chart', viewBox: '0 0 ' + W + ' ' + H, role: 'img', 'aria-label': 'Cost per occupied bed-day by month, actual against plan. Month ' + MONTH + ': ' + pts[MONTH - 1].a.toFixed(2) + ' against ' + pts[MONTH - 1].p.toFixed(2) + ' planned. The axis starts at ' + lo + ', not 0.' });
+  // The axis is cut to show month-to-month change; say so plainly on the chart.
+  var ax = svg('text', { x: L - 8, y: 12, 'text-anchor': 'start', 'class': 'axisnote', style: 'font-weight:800' }); ax.textContent = 'Axis starts at ' + lo + ', not 0'; s.appendChild(ax);
   for (var g = lo; g <= hi; g += 5) { s.appendChild(svg('line', { class: 'grid', x1: L, x2: W - R, y1: Y(g), y2: Y(g) })); var t = svg('text', { x: L - 8, y: Y(g) + 4, 'text-anchor': 'end' }); t.textContent = g; s.appendChild(t); }
   pts.forEach(function (x) { var t = svg('text', { x: X(x.m), y: H - 8, 'text-anchor': 'middle' }); t.textContent = 'M' + x.m; s.appendChild(t); });
   var path = function (k) { return pts.map(function (x, i) { return (i ? 'L' : 'M') + X(x.m).toFixed(1) + ' ' + Y(x[k]).toFixed(1); }).join(' '); };

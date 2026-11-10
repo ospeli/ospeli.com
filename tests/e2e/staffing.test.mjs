@@ -127,3 +127,17 @@ test('the agent object is read-only and returns data', async () => {
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+test('the guide offers shifts to the relief pool, not to one named person, and earlier log entries are in the daytime', async () => {
+  const { context, page, errors } = await open(1280);
+  await page.click('#r-office');
+  const g = await page.locator('#sugg').textContent();
+  assert.doesNotMatch(g, /Staff [A-Z]{2} \(relief\)|Staff [A-Z]{2} in the relief pool/);
+  if (/relief pool (is|are) free then/.test(g)) assert.match(g, /Propose: offer to the relief pool/);
+  // Admin actions on earlier days (an unplanned absence can be called in at any hour, so it is left out).
+  const times = await page.locator('#log li').evaluateAll((ls) => ls.filter((l) => l.querySelector('time small') && !/Unplanned absence/.test(l.textContent)).map((l) => l.querySelector('time').firstChild.textContent));
+  assert.ok(times.length >= 3);
+  for (const t of times) assert.ok(t >= '08:00' && t <= '17:00', `earlier-day log entry at ${t}`);
+  assert.deepEqual(errors, []);
+  await context.close();
+});

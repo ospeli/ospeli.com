@@ -160,3 +160,14 @@ test('the agent object is read-only and returns data', async () => {
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+test('a demo clock is shown and no log time is after it', async () => {
+  const { context, page, errors } = await open(1280);
+  const clock = (await page.locator('#clocknow').textContent()).match(/Demo clock (\d\d:\d\d)/);
+  assert.ok(clock, 'demo clock chip is shown');
+  const times = await page.locator('#log time').allTextContents();
+  assert.ok(times.length > 0);
+  for (const t of times) assert.ok(t <= clock[1], `log time ${t} is after the demo clock ${clock[1]}`);
+  assert.deepEqual(errors, []);
+  await context.close();
+});

@@ -362,7 +362,7 @@ function faceSvg(n) {
 function seed() {
   var r = rng(20270301), ri = function (lo, hi) { return lo + Math.floor(r() * (hi - lo + 1)); };
   var s = { v: 1, day0: midnight(Date.now()), offset: 0, role: window.matchMedia('(max-width: 640px)').matches ? 'patient' : 'manager', dept: 'w4', guide: true,
-    settings: clone(DEFAULTS), filter: 'open', kpiOpen: null, dismissed: {}, pending: [], log: [], seq: { fb: 4817, c: 2045, k: 121, a: 20, y: 10 },
+    settings: clone(DEFAULTS), filter: 'open', kpiOpen: null, dismissed: {}, pending: [], log: [], seq: { fb: 4817, c: 2045, k: 121, a: 20, y: 11 },
     history: {}, items: [], complaints: [], actions: [], cards: [], form: { face: 0, text: '', contact: false }, sent: null, openDraft: null };
   var fb = 4100;
   SERVICES.forEach(function (sv) {
@@ -414,6 +414,7 @@ function seed() {
   s.cards.push({ id: 'Y-7', svc: 'ed', action: 'A-11', said: 'It was hard to find us at night.', did: 'We put lit signs from the car park to the entrance.', status: 'published', day: -32 });
   s.cards.push({ id: 'Y-8', svc: 'w7', action: 'A-12', said: 'Food sometimes arrived cold.', did: 'We now check the temperature of each meal on the ward before serving.', status: 'published', day: -11 });
   s.cards.push({ id: 'Y-9', svc: 'opd', action: 'A-13', said: 'Appointments were missed because letters came late.', did: 'We now send a text reminder two days before, with a number to rebook.', status: 'published', day: -18 });
+  s.cards.push({ id: 'Y-10', svc: 'w4', action: 'A-14', said: 'It was noisy at night.', did: 'We made night rounds quieter and fitted soft-close bins.', status: 'published', day: -4 });
   s.log.push({ t: Date.now(), text: 'Example loaded: ' + s.complaints.length + ' complaints and compliments, ' + s.items.length + ' feedback cards in the last 30 days.' });
   return s;
 }

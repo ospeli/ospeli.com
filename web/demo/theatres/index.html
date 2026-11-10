@@ -893,6 +893,12 @@ function renderGuide() {
   var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
   if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Lists, case times, cancellations, readiness and the measures all work without it.' })); return; }
   var list = suggest();
+  // Every proposal here is decided by the theatre coordinator, so the ward nurse sees a one-line summary, not buttons they cannot use.
+  if (state.role === 'nurse') {
+    var np = state.pending.length;
+    box.appendChild(el('p', { class: 'how', id: 'nurse-guide', text: list.length ? 'The theatre coordinator has ' + list.length + ' proposal' + (list.length > 1 ? 's' : '') + ' from the guide to look at' + (np ? ' (' + np + ' waiting for a decision)' : '') + '. Your ready checks feed them.' : 'Nothing to flag for the theatre coordinator right now.' }));
+    return;
+  }
   if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag: lists look on time, the next patients are ready and tomorrow has no bed gaps.' }));
   list.forEach(function (sg) {
     var pend = state.pending.some(function (p) { return p.id === sg.id; });

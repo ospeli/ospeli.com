@@ -49,6 +49,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
 .rolehint { color: var(--soft); font-size: 0.95rem; margin: 0 0 14px; }
 .tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; font-size: 0.85rem; color: var(--soft); }
 .tools b { font-weight: 800; margin-right: 2px; }
+.clocknow { font-weight: 800; color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 0.9rem; font-variant-numeric: tabular-nums; }
 .layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; padding-bottom: 28px; }
 @media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
 .col { display: grid; gap: 18px; min-width: 0; }
@@ -215,6 +216,7 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
   <p class="rolehint" id="rolehint"></p>
   <div class="tools" role="group" aria-label="Demo tools">
     <b>Demo tools:</b>
+    <span class="clocknow" id="clocknow" aria-live="polite"></span>
     <button type="button" class="small" id="t-clock">Move clock on 15 min</button>
     <button type="button" class="small" id="t-delivery">A delivery arrives</button>
     <button type="button" class="small" id="t-reset">Reset example</button>
@@ -600,6 +602,7 @@ function render() {
   var aid = document.activeElement && document.activeElement.id;
   ['ward', 'dispensary', 'manager'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
   document.getElementById('rolehint').textContent = HINTS[state.role];
+  document.getElementById('clocknow').textContent = 'Demo clock ' + hhmm(now());
   document.getElementById('view-h').textContent = { ward: 'Ward requests', dispensary: 'Dispensing queue', manager: 'Pharmacy overview' }[state.role];
   renderKpis();
   var v = document.getElementById('view'); v.textContent = '';
@@ -820,6 +823,7 @@ var sig = '';
 function signature() { return suggest().map(function (s) { return s.id; }).join(',') + '|' + nearExpiry().length; }
 function tick() {
   if (signature() !== sig) { render(); return; }
+  document.getElementById('clocknow').textContent = 'Demo clock ' + hhmm(now());
   Array.prototype.forEach.call(document.querySelectorAll('[data-since]'), function (n) { var q = byId(n.getAttribute('data-since')); if (q && n.firstChild) n.firstChild.textContent = fmt(waitMin(q)); });
   Array.prototype.forEach.call(document.querySelectorAll('[data-shelf]'), function (n) { var q = byId(n.getAttribute('data-shelf')); if (q) n.textContent = 'Ready ' + fmt(onShelfMin(q)); });
 }

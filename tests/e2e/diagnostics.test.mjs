@@ -140,3 +140,12 @@ test('agent object is read-only and returns data, never results', async () => {
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+test('the move-bookings proposal never moves a booking earlier than its booked time', async () => {
+  const { context, page, errors } = await open(1280);
+  const rows = (await page.locator('#sugg').textContent()).match(/\d\d:\d\d CT \d → \d\d:\d\d CT \d/g) || [];
+  assert.ok(rows.length >= 1, 'a move is proposed');
+  for (const r of rows) { const [from, to] = r.match(/\d\d:\d\d/g); assert.ok(to >= from, `moved earlier: ${r}`); }
+  assert.deepEqual(errors, []);
+  await context.close();
+});

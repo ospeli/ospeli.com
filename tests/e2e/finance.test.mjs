@@ -103,3 +103,16 @@ test('the agent object returns data and the tolerance changes the board', async 
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+test('seeded log times are in order within each day and earlier days are in the daytime', async () => {
+  const { context, page, errors } = await open(1280);
+  const rows = await page.locator('#log li time').evaluateAll((ts) => ts.map((t) => ({ hm: t.firstChild.textContent, day: Number(t.querySelector('small').textContent.replace('day ', '')) })));
+  for (let i = 1; i < rows.length; i++) {
+    assert.ok(rows[i].day < rows[i - 1].day || (rows[i].day === rows[i - 1].day && rows[i].hm <= rows[i - 1].hm), `log out of order at ${rows[i].day} ${rows[i].hm}`);
+    if (rows[i].day < 5) assert.ok(rows[i].hm >= '08:00' && rows[i].hm <= '17:00', `day ${rows[i].day} entry at ${rows[i].hm} is outside the working day`);
+  }
+  await page.click('#r-lead');
+  assert.match(await page.locator('svg.chart').first().textContent(), /Axis starts at \d+, not 0/);
+  assert.deepEqual(errors, []);
+  await context.close();
+});

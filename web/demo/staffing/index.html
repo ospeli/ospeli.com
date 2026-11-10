@@ -180,7 +180,8 @@ details.set summary { cursor: pointer; font-weight: 800; min-height: 44px; displ
 /* log */
 ol.log { list-style: none; margin: 0; padding: 0; max-height: 340px; overflow-y: auto; }
 ol.log li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 0.92rem; }
-ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; }
+ol.log time { font-weight: 800; color: var(--soft); font-variant-numeric: tabular-nums; line-height: 1.25; }
+ol.log time small { display: block; font-weight: 700; font-size: 0.78rem; }
 ol.log li.new { background: var(--wash); border-radius: 6px; }
 .toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 16px; border-radius: 16px; font-weight: 700; opacity: 0; transition: opacity 0.2s; pointer-events: none; width: max-content; max-width: calc(100vw - 32px); text-align: center; z-index: 5; }
 .toast.on { opacity: 1; }
@@ -335,14 +336,17 @@ function seed() {
   // One swap already asked for by another Ward 3 colleague.
   var other = s.asg.filter(function (a) { return a.unit === 'W3' && a.skill === 'rn' && a.day === 3 && a.staff !== me.id; })[0];
   var taker = other && s.staff.filter(function (p) { return p.unit === 'W3' && p.skill === 'rn' && p.id !== other.staff && p.id !== me.id && canWorkIn(s, p.id, 3, other.shift); })[0];
-  if (other && taker) s.swaps.push({ id: 'w' + (++s.seq), asg: other.id, from: other.staff, to: taker.id, at: T - 5 * H });
-  // History for the log (newest first).
+  if (other && taker) s.swaps.push({ id: 'w' + (++s.seq), asg: other.id, from: other.staff, to: taker.id, at: s.day0 - DAY + (15 * 60 + 10) * 60000 });
+  // History for the log (newest first). Admin actions sit in the working day on previous days;
+  // only the unplanned absence is recent (3 hours ago, when its gap was raised; absences can be called in at any hour).
+  var at = function (dayBack, h, m) { return s.day0 - dayBack * DAY + (h * 60 + m) * 60000; };
+  var absT = T - 3 * H;
   s.log = [
-    { t: T - 3 * H, text: 'Unplanned absence logged: Ward 4 tonight, 1 registered nurse. Gap raised.' },
-    other && taker ? { t: T - 5 * H, text: 'Ward 3: a swap was asked for (' + dayLabel(s.day0, 3) + ', ' + SHIFT[other.shift].name.toLowerCase() + ' shift). Waiting for the unit manager.' } : null,
-    { t: T - 8 * H, text: 'Ward 4: leave approved for ' + dayLabel(s.day0, 3) + ' day. Open shift raised for 1 nursing assistant.' },
-    { t: T - 9 * H, text: 'Ward 4 gap filled from the relief pool (9 h from gap to cover).' },
-    { t: T - 12 * H, text: 'Ward 2: training day booked for ' + dayLabel(s.day0, 5) + '. Open shift raised for 1 registered nurse.' }
+    { t: absT, text: 'Unplanned absence logged: Ward 4 tonight, 1 registered nurse. Gap raised.' },
+    other && taker ? { t: at(1, 15, 10), text: 'Ward 3: a swap was asked for (' + dayLabel(s.day0, 3) + ', ' + SHIFT[other.shift].name.toLowerCase() + ' shift). Waiting for the unit manager.' } : null,
+    { t: at(1, 11, 40), text: 'Ward 4: leave approved for ' + dayLabel(s.day0, 3) + ' day. Open shift raised for 1 nursing assistant.' },
+    { t: at(1, 10, 5), text: 'Ward 4 gap filled from the relief pool (9 h from gap to cover).' },
+    { t: at(2, 14, 20), text: 'Ward 2: training day booked for ' + dayLabel(s.day0, 5) + '. Open shift raised for 1 registered nurse.' }
   ].filter(Boolean);
   return s;
 }
@@ -427,15 +431,15 @@ function suggest() {
   soon.sort(function (a, b) { return (b._below - a._below) || a.day - b.day || (a.shift === 'D' ? -1 : 1); });
   var o = soon[0];
   if (o) {
-    var rf = reliefFree(o.skill, o.day, o.shift)[0], when2 = whenWord(o.day, o.shift), n = inCell(o.unit, o.day, o.shift, o.skill).length, sid = 'relief-' + o.id;
+    var rfs = reliefFree(o.skill, o.day, o.shift), rf = rfs[0], when2 = whenWord(o.day, o.shift), n = inCell(o.unit, o.day, o.shift, o.skill).length, sid = 'relief-' + o.id;
     var base = o._below
       ? { title: UNAME[o.unit] + ' ' + when2 + ' is below minimum cover', text: UNAME[o.unit] + ' has ' + n + ' ' + (n === 1 ? SK[o.skill].one.toLowerCase() : SK[o.skill].many) + ' rostered for ' + when2 + '; the minimum set for this site is ' + state.basis[o.skill].min + '. Asking now gives more people the chance to say yes.' }
       : { title: 'Offer ' + UNAME[o.unit] + '\'s open shift ' + when2 + ' to relief staff first', text: '1 ' + SK[o.skill].one.toLowerCase() + ' is still needed on ' + UNAME[o.unit] + ' ' + when2 + ' (' + n + ' of ' + planned(o.unit, o.day, o.shift, o.skill) + ' planned).' };
     base.id = sid; base.kind = 'time';
     base.why = 'An open shift in the next 48 hours, matched to relief staff in the same skill group who offered that slot and are rested (no day shift straight after a night). Minimum cover is an example setting, not a standard.';
     if (rf) {
-      base.text += ' Staff ' + rf.ini + ' in the relief pool is free then.';
-      base.acts = [{ label: 'Propose: offer to Staff ' + rf.ini + ' (relief)', primary: true, fn: function () { propose({ id: sid, kind: 'relief', open: o.id, staff: rf.id, text: 'Offer ' + UNAME[o.unit] + ' ' + when2 + ' (' + SK[o.skill].one.toLowerCase() + ') to Staff ' + rf.ini + ' from the relief pool, and book it if they say yes.' }); } }];
+      base.text += ' ' + rfs.length + (rfs.length === 1 ? ' person' : ' people') + ' in the relief pool ' + (rfs.length === 1 ? 'is' : 'are') + ' free then.';
+      base.acts = [{ label: 'Propose: offer to the relief pool', primary: true, fn: function () { propose({ id: sid, kind: 'relief', open: o.id, staff: rf.id, text: 'Offer ' + UNAME[o.unit] + ' ' + when2 + ' (' + SK[o.skill].one.toLowerCase() + ') to the relief pool, and book the first person who says yes.' }); } }];
     } else {
       base.text += ' No one in the relief pool is free then.';
       base.acts = [{ label: 'Propose: offer to ' + UNAME[o.unit] + ' staff', primary: true, fn: function () { propose({ id: sid, kind: 'unitoffer', open: o.id, text: 'Offer ' + UNAME[o.unit] + ' ' + when2 + ' (' + SK[o.skill].one.toLowerCase() + ') to ' + UNAME[o.unit] + ' staff, so they can pick it up on their phones.' }); } }];
@@ -604,7 +608,7 @@ function staffView() {
   Object.keys(p.creds).sort(function (a, b) { return p.creds[a].days - p.creds[b].days; }).forEach(function (k) {
     var c = p.creds[k], st = credStatus(c.days);
     var word = st === 'expired' ? 'Expired' : c.days <= 90 ? 'Due in ' + c.days + ' days' : 'In date';
-    var due = new Date(state.day0 + c.days * DAY + 12 * H).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    var due = new Date(state.day0 + c.days * DAY + 12 * H).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' });
     var kids = [el('div', {}, [el('b', { text: CRED[k].name }), el('span', { class: 's', text: (c.days < 0 ? 'Ran out ' : 'Runs out ') + due })]),
       el('span', { class: 'st ' + (c.booked ? 'ok' : st === 'ok' ? 'ok' : st === 'due90' ? 'soon' : 'due'), text: c.booked ? CRED[k].doneWord : word })];
     if (st !== 'ok' && !c.booked) kids.push(el('button', { type: 'button', class: 'go book', id: 'bk-' + k, onclick: function () { c.booked = true; addLog('You: ' + CRED[k].doneWord.toLowerCase() + ' for ' + CRED[k].name.toLowerCase() + '.'); render(); toast(CRED[k].doneWord + '. HR sees it when they check the record.'); }, text: CRED[k].action }));
@@ -837,7 +841,7 @@ function renderGuide() {
 }
 function renderLog() {
   var ol = document.getElementById('log'); ol.textContent = '';
-  state.log.slice(0, 25).forEach(function (e) { ol.appendChild(el('li', { class: e.t === lastLogT && now() - e.t < 5000 ? 'new' : '' }, [el('time', { text: hhmm(e.t) }), el('span', { text: e.text })])); });
+  state.log.slice(0, 25).forEach(function (e) { ol.appendChild(el('li', { class: e.t === lastLogT && now() - e.t < 5000 ? 'new' : '' }, [el('time', {}, [hhmm(e.t), e.t < state.day0 ? el('small', { text: new Date(e.t).toLocaleDateString('en', { weekday: 'short' }) }) : null]), el('span', { text: e.text })])); });
 }
 
 // ---------- Wiring ----------

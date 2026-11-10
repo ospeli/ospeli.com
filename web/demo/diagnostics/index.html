@@ -437,7 +437,15 @@ function movePlan(sc) {
   var book = futureOn(sc), mod = EQUIP[sc].mod, free = [];
   scannersOf(mod).filter(function (id) { return id !== sc && !isDown(id); }).forEach(function (id) { freeSlots(id, now() + 5 * M).forEach(function (t) { free.push({ sc: id, t: t }); }); });
   free.sort(function (a, b) { return a.t - b.t; });
-  return { book: book, pairs: book.slice(0, free.length).map(function (x, i) { return { id: x.id, code: x.code, from: x.slot, to: free[i] }; }) };
+  // Each booking takes the earliest free slot at or after its own booked time (never earlier), in booking order.
+  var pairs = [], used = {}, last = -Infinity;
+  book.forEach(function (x) {
+    var f = free.filter(function (s) { return !used[s.sc + s.t] && s.t >= x.slot.t && s.t >= last; })[0];
+    if (!f) return;
+    used[f.sc + f.t] = true; last = f.t;
+    pairs.push({ id: x.id, code: x.code, from: x.slot, to: f });
+  });
+  return { book: book, pairs: pairs };
 }
 function suggest() {
   var out = [];
@@ -469,10 +477,10 @@ function suggest() {
     var to = uniq(plan.pairs.map(function (p) { return EQUIP[p.to.sc].name; }));
     out.push({ id: 'move-' + sc + '-' + plan.book.map(function (x) { return x.id; }).join(''), kind: 'time', by: 'imaging',
       title: EQUIP[sc].name + ' is down: ' + plan.book.length + ' booking' + (plan.book.length > 1 ? 's' : '') + ' today need' + (plan.book.length > 1 ? '' : 's') + ' a new slot',
-      text: plan.pairs.length ? 'Proposed: move ' + (plan.pairs.length === plan.book.length ? 'them' : plan.pairs.length + ' of them') + ' to the earliest free slots on ' + to.join(' and ') + ', keeping their order.' : 'There is no free slot on another ' + MODS[EQUIP[sc].mod].label + ' scanner today. The imaging team decides on extra time or rebooking.',
+      text: plan.pairs.length ? 'Proposed: move ' + (plan.pairs.length === plan.book.length ? 'them' : plan.pairs.length + ' of them') + ' to the earliest free slots on ' + to.join(' and ') + ' at or after their booked times, keeping their order.' : 'There is no free slot on another ' + MODS[EQUIP[sc].mod].label + ' scanner today. The imaging team decides on extra time or rebooking.',
       list: plan.pairs.slice(0, 5).map(function (p) { return p.code + ': ' + hhmm(p.from.t) + ' ' + EQUIP[sc].name + ' → ' + hhmm(p.to.t) + ' ' + EQUIP[p.to.sc].name; }),
       why: EQUIP[sc].name + ' was marked down at ' + hhmm(e.start) + ' (work order ' + e.wo + (e.back ? ', expected back about ' + hhmm(e.back) : '') + '). Order kept is booking time, not clinical priority.',
-      acts: plan.pairs.length ? [{ label: 'Propose: move ' + plan.pairs.length + ' booking' + (plan.pairs.length > 1 ? 's' : ''), primary: true, p: { kind: 'move', sc: sc, text: 'Move ' + plan.pairs.length + ' booking' + (plan.pairs.length > 1 ? 's' : '') + ' from ' + EQUIP[sc].name + ' to the earliest free slots on ' + to.join(' and ') + ', in booking order.' } }] : [] });
+      acts: plan.pairs.length ? [{ label: 'Propose: move ' + plan.pairs.length + ' booking' + (plan.pairs.length > 1 ? 's' : ''), primary: true, p: { kind: 'move', sc: sc, text: 'Move ' + plan.pairs.length + ' booking' + (plan.pairs.length > 1 ? 's' : '') + ' from ' + EQUIP[sc].name + ' to the earliest free slots on ' + to.join(' and ') + ' at or after their booked times, in booking order.' } }] : [] });
   });
   // 4. Equipment down and wards not told yet.
   EQUIP_KEYS.filter(function (id) { return isDown(id) && !state.equip[id].posted; }).forEach(function (id) {

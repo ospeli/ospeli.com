@@ -155,3 +155,10 @@ test('the agent object is read-only and returns data', async () => {
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+test('Ward 4 patients see a published "You said, we did" card from the start', async () => {
+  const { context, page, errors } = await open(1280, 'patient');
+  assert.ok(await page.getByText('It was noisy at night.').isVisible(), 'the seeded Ward 4 card is shown to patients');
+  assert.deepEqual(errors, []);
+  await context.close();
+});

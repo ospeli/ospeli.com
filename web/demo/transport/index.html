@@ -65,6 +65,7 @@ button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible
 .stat.alert { background: var(--hot); }
 .stat.alert b { color: #B23A22; }
 .stathint { color: var(--soft); font-size: 0.8rem; margin: 6px 0 0; }
+#kpiwrap.below { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--line); }
 .chip { display: inline-block; font-size: 0.78rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; border-radius: 999px; padding: 1px 8px; background: var(--sand); white-space: nowrap; }
 .chip.hour { background: var(--coral); color: #fff; }
 .chip.today { background: var(--warn); }
@@ -230,8 +231,10 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
     <div class="col">
       <section class="card" aria-labelledby="view-h">
         <h2 id="view-h">Transport</h2>
-        <div class="stats" id="kpis"></div>
-        <p class="stathint">This shift so far. Tap a tile for its definition.</p>
+        <div id="kpiwrap">
+          <div class="stats" id="kpis"></div>
+          <p class="stathint">This shift so far. Tap a tile for its definition.</p>
+        </div>
         <div id="view"></div>
       </section>
       <section class="card" aria-labelledby="log-h">
@@ -609,6 +612,10 @@ function render() {
   var v = document.getElementById('view'); v.textContent = '';
   v.className = state.role === 'ward' || state.role === 'crew' ? 'fl' : '';
   v.appendChild({ ward: wardView, desk: deskView, crew: crewView, manager: managerView }[state.role]());
+  // On the ward's phone the booking form comes first; the shift measures sit below it.
+  var kw = document.getElementById('kpiwrap');
+  if (state.role === 'ward') v.parentNode.insertBefore(kw, v.nextSibling); else v.parentNode.insertBefore(kw, v);
+  kw.classList.toggle('below', state.role === 'ward');
   renderGuide();
   renderLog();
   save();

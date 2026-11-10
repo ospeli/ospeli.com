@@ -25,6 +25,7 @@ const overflow = (page) => page.evaluate(() => document.documentElement.scrollWi
 for (const width of [360, 390, 1280]) {
   test(`theatres renders every role at ${width}px with no sideways scroll`, async () => {
     const { context, page, errors } = await open(width);
+    await page.click('#r-coord');
     assert.ok(await page.locator('.sugg').count() >= 2, 'guide shows suggestions');
     for (const role of ['coord', 'manager', 'nurse']) {
       await page.click('#r-' + role);
@@ -136,6 +137,15 @@ test('agent object is read-only and returns data', async () => {
   assert.ok(k.utilisationPct > 0 && k.turnaroundMedianMin > 0 && k.casesListed > 0);
   assert.ok((await api(page, 'suggestions')).length >= 2);
   assert.ok(await page.evaluate(() => Object.isFrozen(window.ospeliTheatresDemo)));
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('the ward nurse sees no guide buttons for decisions that belong to the coordinator', async () => {
+  const { context, page, errors } = await open(390);
+  await page.click('#r-nurse');
+  assert.equal(await page.locator('#guide .sugg').count(), 0);
+  assert.match(await page.locator('#nurse-guide').textContent(), /The theatre coordinator has \d+ proposals?/);
   assert.deepEqual(errors, []);
   await context.close();
 });

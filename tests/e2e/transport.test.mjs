@@ -169,3 +169,15 @@ test('the agent object is read-only and returns data', async () => {
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+test('on the ward view the booking form comes before the shift measures', async () => {
+  const { context, page, errors } = await open(390);
+  await page.click('#r-ward');
+  const order = await page.evaluate(() => document.getElementById('view').compareDocumentPosition(document.getElementById('kpis')) & Node.DOCUMENT_POSITION_FOLLOWING);
+  assert.ok(order, 'KPI tiles sit below the booking form');
+  await page.click('#r-desk');
+  const desk = await page.evaluate(() => document.getElementById('view').compareDocumentPosition(document.getElementById('kpis')) & Node.DOCUMENT_POSITION_PRECEDING);
+  assert.ok(desk, 'other views keep the tiles on top');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
