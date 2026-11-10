@@ -584,7 +584,7 @@ function render() {
   ['reception', 'booking', 'manager'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
   document.getElementById('rolehint').textContent = HINTS[state.role];
   document.getElementById('view-h').textContent = { reception: 'Today\'s clinic', booking: 'Waiting list and slots', manager: 'Clinics and waiting list' }[state.role];
-  document.getElementById('clocknow').textContent = 'Demo clock: Mon ' + hhmm(nowMin());
+  document.getElementById('clocknow').textContent = 'Demo clock: ' + hhmm(nowMin());
   renderKpis();
   var v = document.getElementById('view'); v.textContent = ''; v.className = 'v-' + state.role;
   v.appendChild(state.role === 'reception' ? reception() : state.role === 'booking' ? booking() : manager());
@@ -843,7 +843,7 @@ function tick() {
   var n = nowMin();
   if (n === lastMin) return; lastMin = n;
   var a = document.activeElement;
-  if (a && (a.tagName === 'SELECT' || a.tagName === 'INPUT')) { document.getElementById('clocknow').textContent = 'Demo clock: Mon ' + hhmm(n); return; }
+  if (a && (a.tagName === 'SELECT' || a.tagName === 'INPUT')) { document.getElementById('clocknow').textContent = 'Demo clock: ' + hhmm(n); return; }
   if (signature() !== sig) render();
 }
 setInterval(tick, 5000);
@@ -866,7 +866,7 @@ document.getElementById('t-reset').addEventListener('click', function () { var r
 window.ospeliClinicsDemo = Object.freeze({
   describe: function () { return 'Read-only outpatients and clinics demo for a fictional hospital. get() returns today\'s clinics, appointments by anonymous code, the referral waiting list and free slots; kpis() the measures; suggestions() the guide\'s current suggestions; listWaiting(service, limit) and findSlots(service) mirror the read-only commands. Runs in the browser; nothing is sent anywhere. Changes are made by people in the page, never through this object.'; },
   get: function () {
-    return clone({ role: state.role, clock: 'Mon ' + hhmm(nowMin()), targetsWeeks: state.targets, behindThresholdMin: state.behindMin,
+    return clone({ role: state.role, clock: hhmm(nowMin()), targetsWeeks: state.targets, behindThresholdMin: state.behindMin,
       clinics: state.clinics.map(function (c) { return clinicStats(c.id); }).map(function (k) { k.nowCalling = k.nowCalling ? k.nowCalling.code : null; return k; }),
       appointments: state.appts.map(function (a) { return { code: a.code, clinic: SERVICES[svcOf(a)].name, booked: hhmm(a.booked), status: a.status, arrived: a.arr == null ? null : hhmm(a.arr), called: a.call == null ? null : hhmm(a.call), finished: a.fin == null ? null : hhmm(a.fin) }; }),
       waitingList: waitingList('all').map(function (r) { return { code: r.code, service: SERVICES[r.svc].name, weeksWaiting: weeks(r), status: r.status, slot: r.slot ? slotName(slot(r.slot)) : null, pastTarget: pastTarget(r) }; }),

@@ -325,7 +325,7 @@ function seed() {
   // Closed in the last 14 days: [fault, room, days ago reported, hours to close, priority]
   [['leak', 'M-1-04', 9, 7, 'high'], ['lights', 'M-1-02', 13, 46, 'routine'], ['power', 'E-G-04', 12, 2.5, 'urgent'], ['ac', 'M-2-02', 11, 11, 'high'],
    ['door', 'M-G-05', 10, 70, 'routine'], ['lift', 'M-1-06', 8, 3, 'urgent'], ['lights', 'E-1-03', 8, 30, 'routine'], ['leak', 'E-G-03', 7, 20, 'high'],
-   ['power', 'M-2-01', 6, 1.5, 'urgent'], ['ac', 'E-G-01', 6, 15, 'high'], ['door', 'E-1-01', 5, 52, 'routine'], ['lights', 'M-G-04', 4, 100, 'routine'],
+   ['power', 'M-2-01', 6, 1.5, 'urgent'], ['ac', 'E-G-01', 6, 15, 'high'], ['door', 'E-1-01', 5, 52, 'routine'], ['lights', 'M-G-04', 4, 80, 'routine'],
    ['leak', 'M-2-03', 3, 9, 'high'], ['power', 'M-1-03', 3, 4.5, 'urgent'], ['ac', 'M-G-02', 2, 30, 'high'], ['lights', 'S-G-02', 2, 26, 'routine'], ['door', 'M-1-05', 1, 6, 'high']
   ].forEach(function (r) {
     var j = mk(s, r[0], r[1], T - r[2] * D - 3 * H, '', r[4]);
@@ -372,7 +372,7 @@ function seed() {
   // Utility check log
   s.checks = [
     { t: T - 9 * D, check: 'gen1', result: 'pass', reading: null, note: '' }, { t: T - 3 * D + H, check: 'gen2', result: 'pass', reading: null, note: '' },
-    { t: T - 26 * H, check: 'water', result: 'pass', reading: 61, note: '' }, { t: T - 2 * H, check: 'water', result: 'pass', reading: 46, note: '' },
+    { t: T - 26 * H, check: 'water', result: 'pass', reading: 61, note: '' }, { t: T - 2 * H, check: 'water', result: 'fail', reading: 46, note: 'Below set level', note: '' },
     { t: T - 5 * H, check: 'fuel', result: 'pass', reading: 72, note: '' }, { t: T - 3 * H, check: 'gas', result: 'pass', reading: null, note: 'All alarms clear' }
   ];
   // Plant board (status reported by staff; Ospeli records it and never switches plant)
