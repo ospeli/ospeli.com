@@ -97,12 +97,12 @@
    {
     "name": "ospeli_clinics_list_waiting",
     "does": "List open referrals by service and wait, unbooked first, with filters and limit.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_clinics_find_slots",
     "does": "Find free slots for a service and date range, with clinic and time.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_clinics_book_appointment",
@@ -112,12 +112,12 @@
    {
     "name": "ospeli_clinics_record_attendance",
     "does": "Record arrived, called, finished or did not attend for an appointment code.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_clinics_get_day_summary",
     "does": "Return a clinic day's slots used, empty, cancelled and waits.",
-    "approval": "none"
+    "approval": "none (read only)"
    }
   ],
   "standards": [
@@ -199,9 +199,9 @@
   ],
   "kpis": [
    {
-    "name": "4-hour standard",
+    "name": "national time standard",
     "definition": "attendances departing within 4 hours of arrival / all attendances",
-    "source": "NHS UEC 4-hour standard"
+    "source": "National emergency department time standard (set locally)"
    },
    {
     "name": "Time to triage",
@@ -237,17 +237,17 @@
    {
     "name": "ospeli_ed_get_board",
     "does": "Return the live department board by area, stage and wait, using patient codes.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_ed_log_stage",
     "does": "Record a stage change for a patient code with event time.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_ed_list_awaiting_beds",
     "does": "List decisions to admit waiting for beds, with time and specialty.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_ed_propose_escalation",
@@ -256,7 +256,7 @@
    }
   ],
   "standards": [
-   "NHS UEC 4-hour standard",
+   "National emergency department time standard (set locally)",
    "JCI Access to Care and Continuity of Care (ACC)",
    "HL7 FHIR Encounter resource"
   ],
@@ -374,7 +374,7 @@
    {
     "name": "ospeli_beds_find_free",
     "does": "Find ready beds by ward and bed type, with time ready.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_beds_propose_allocation",
@@ -384,17 +384,17 @@
    {
     "name": "ospeli_beds_update_state",
     "does": "Set a bed's state or a patient code's expected discharge date.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_beds_list_delays",
     "does": "List patients ready to leave and their delay reasons, by ward.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_beds_get_summary",
     "does": "Return occupancy, expected discharges and long stays for the bed meeting.",
-    "approval": "none"
+    "approval": "none (read only)"
    }
   ],
   "standards": [
@@ -515,17 +515,17 @@
    {
     "name": "ospeli_theatres_get_lists",
     "does": "Return today's or a date's lists by theatre, with case stages and delays.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_theatres_log_case_time",
     "does": "Record a case milestone time for a patient code.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_theatres_check_readiness",
     "does": "List next-day cases missing a bed, kit, staff or checklist.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_theatres_propose_list_change",
@@ -650,17 +650,17 @@
    {
     "name": "ospeli_diagnostics_get_request_status",
     "does": "Return status and timestamps for requests by patient code or area.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_diagnostics_log_specimen",
     "does": "Record a specimen collected, received or rejected, with reason.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_diagnostics_list_backlog",
     "does": "List waiting scans or tests by modality, age and area.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_diagnostics_set_equipment_status",
@@ -776,12 +776,12 @@
    {
     "name": "ospeli_pharmacy_list_queue",
     "does": "List dispensing requests by ward, type and wait.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_pharmacy_get_stock",
     "does": "Return stock levels, top-up levels and days left by item or location.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_pharmacy_propose_reorder",
@@ -791,7 +791,7 @@
    {
     "name": "ospeli_pharmacy_mark_ready",
     "does": "Mark a dispensing request ready for collection.",
-    "approval": "none"
+    "approval": "person confirms"
    }
   ],
   "standards": [
@@ -901,17 +901,17 @@
    {
     "name": "ospeli_maternity_get_capacity",
     "does": "Return labour rooms, beds and cots by state and unit.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_maternity_log_closure",
     "does": "Record a unit closure or reopening with reason and decision maker.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_maternity_list_transfers",
     "does": "List transfer requests by stage, reason and wait.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_maternity_propose_transfer_route",
@@ -1031,17 +1031,17 @@
    {
     "name": "ospeli_criticalcare_get_capacity",
     "does": "Return beds by state and staffing, with ready-to-step-down count.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_criticalcare_list_stepdowns",
     "does": "List patient codes ready to step down, hours waiting and ward bed status.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_criticalcare_mark_ready",
     "does": "Record a patient code ready to step down, as decided by the team.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_criticalcare_propose_ward_bed",
@@ -1161,17 +1161,17 @@
    {
     "name": "ospeli_longstay_list_delays",
     "does": "List patient codes past ready to leave, days waiting and reason.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_longstay_update_placement",
     "does": "Record a placement request stage for a patient code.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_longstay_get_capacity",
     "does": "Return beds by unit, type and state, with far-away placements.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_longstay_propose_return",
@@ -1290,12 +1290,12 @@
    {
     "name": "ospeli_equipment_report_fault",
     "does": "Raise a fault on an asset from its ID, fault code and urgency.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_equipment_list_workorders",
     "does": "List open work orders by area, team, status or overdue, with timers.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_equipment_assign_workorder",
@@ -1305,7 +1305,7 @@
    {
     "name": "ospeli_equipment_get_asset_history",
     "does": "Return an asset's faults, maintenance, downtime and step guides.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_equipment_plan_maintenance",
@@ -1428,22 +1428,22 @@
    {
     "name": "ospeli_facilities_report_fault",
     "does": "Raise a building or plant fault for a room or plant item.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_facilities_list_workorders",
     "does": "List open facilities work orders by building, priority or overdue.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_facilities_log_utility_check",
     "does": "Record a generator test, gas check or outage with times.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_facilities_list_compliance_due",
     "does": "List statutory inspections due or overdue in a date range.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_facilities_close_room",
@@ -1541,7 +1541,7 @@
    {
     "name": "Cleanliness audit score",
     "definition": "elements passed / elements audited, by functional risk category",
-    "source": "NHS National Standards of Healthcare Cleanliness 2021"
+    "source": "National cleanliness standard (set locally)"
    },
    {
     "name": "Linen stock-outs",
@@ -1567,12 +1567,12 @@
    {
     "name": "ospeli_support_request_task",
     "does": "Request a clean, porter move, linen or meal delivery for a location.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_support_list_tasks",
     "does": "List open support tasks by team, area or wait, oldest first.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_support_reorder_queue",
@@ -1582,11 +1582,11 @@
    {
     "name": "ospeli_support_record_audit",
     "does": "Record a cleaning audit result for a room and risk category.",
-    "approval": "none"
+    "approval": "person confirms"
    }
   ],
   "standards": [
-   "NHS National Standards of Healthcare Cleanliness 2021",
+   "National cleanliness standard (set locally)",
    "JCI Prevention and Control of Infections (PCI)"
   ],
   "connects": [
@@ -1688,17 +1688,17 @@
    {
     "name": "ospeli_stores_check_stock",
     "does": "Return stock on hand against top-up level for an area or item.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_stores_request_topup",
     "does": "Raise a top-up request for an area from its latest count.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_stores_track_order",
     "does": "Return an order's status, current step and days waiting.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_stores_propose_transfer",
@@ -1815,12 +1815,12 @@
    {
     "name": "ospeli_transport_request_transfer",
     "does": "Book a transfer with from, to, time needed and escort needs.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_transport_list_waiting",
     "does": "List transfers waiting, with time needed and delay reason.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_transport_assign_vehicle",
@@ -1830,7 +1830,7 @@
    {
     "name": "ospeli_transport_get_fleet_status",
     "does": "Return each vehicle's availability, faults and service due.",
-    "approval": "none"
+    "approval": "none (read only)"
    }
   ],
   "standards": [
@@ -1951,7 +1951,7 @@
    {
     "name": "ospeli_staffing_list_gaps",
     "does": "Lists uncovered shifts by unit, skill and start time.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_staffing_request_cover",
@@ -1961,12 +1961,12 @@
    {
     "name": "ospeli_staffing_get_demand",
     "does": "Returns staff needed versus rostered per unit and shift, with workload basis.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_credentials_list_expiring",
     "does": "Lists credentials and training expiring in a date range, by role and unit.",
-    "approval": "none"
+    "approval": "none (read only)"
    }
   ],
   "standards": [
@@ -2091,7 +2091,7 @@
    {
     "name": "ospeli_actions_list_overdue",
     "does": "Lists overdue actions by source, area and owner role, with days late.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_actions_create",
@@ -2101,13 +2101,13 @@
    {
     "name": "ospeli_risks_get_register",
     "does": "Returns risks above a score, with controls, owner and review dates.",
-    "approval": "none"
+    "approval": "none (read only)"
    }
   ],
   "standards": [
-   "NHS Patient Safety Incident Response Framework (PSIRF)",
+   "National incident response framework (set locally)",
    "WHO Global Patient Safety Action Plan 2021–2030",
-   "IHI Model for Improvement",
+   "Model for Improvement (plan-do-study-act cycles)",
    "AHRQ Surveys on Patient Safety Culture (SOPS)"
   ],
   "connects": [
@@ -2218,12 +2218,12 @@
    {
     "name": "ospeli_ipc_list_isolation_rooms",
     "does": "Returns isolation rooms by status and time in status, per site.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_ipc_record_audit",
     "does": "Records a completed audit from structured observations.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_ipc_close_area",
@@ -2233,7 +2233,7 @@
    {
     "name": "ospeli_ipc_get_compliance",
     "does": "Returns audit compliance by area and period, with KPI definition.",
-    "approval": "none"
+    "approval": "none (read only)"
    }
   ],
   "standards": [
@@ -2348,12 +2348,12 @@
    {
     "name": "ospeli_docs_find_current",
     "does": "Returns the current approved version of a policy by topic.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_docs_list_due_review",
     "does": "Lists documents past or near review date, by owner role.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_docs_submit_revision",
@@ -2363,13 +2363,13 @@
    {
     "name": "ospeli_accreditation_get_gaps",
     "does": "Lists standards with missing evidence or unmet self-assessment, with actions.",
-    "approval": "none"
+    "approval": "none (read only)"
    }
   ],
   "standards": [
    "JCI Hospital Standards (governance and quality improvement)",
    "ISO 9001",
-   "IHI Model for Improvement"
+   "Model for Improvement (plan-do-study-act cycles)"
   ],
   "connects": [
    "C2",
@@ -2480,17 +2480,17 @@
    {
     "name": "ospeli_records_get_pull_list",
     "does": "Returns records needed per clinic session with location and status.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_records_log_movement",
     "does": "Records a chart moving between locations, with time and role.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_records_list_coding_backlog",
     "does": "Lists uncoded discharges by age and specialty.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_records_propose_merge",
@@ -2611,7 +2611,7 @@
    {
     "name": "ospeli_projects_list_at_risk",
     "does": "Lists projects with slipped milestones or overspend, with reasons.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_cases_draft",
@@ -2621,12 +2621,12 @@
    {
     "name": "ospeli_projects_update_milestone",
     "does": "Records a milestone's status and date for a project.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_benefits_get_review",
     "does": "Returns baseline versus current values for a project's promised KPIs.",
-    "approval": "none"
+    "approval": "none (read only)"
    }
   ],
   "standards": [
@@ -2716,7 +2716,7 @@
    },
    {
     "name": "Temporary staffing spend share",
-    "definition": "agency and bank staff cost ÷ total staff cost",
+    "definition": "agency and internal relief staff cost ÷ total staff cost",
     "source": "local definition"
    },
    {
@@ -2744,12 +2744,12 @@
    {
     "name": "ospeli_finance_get_position",
     "does": "Returns budget, actual and variance for a cost centre and period.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_finance_list_variances",
     "does": "Lists variances beyond tolerance, with owner, reason and note status.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_finance_draft_variance_note",
@@ -2869,12 +2869,12 @@
    {
     "name": "ospeli_revenue_list_claims",
     "does": "Lists claims by stage, payer group or age, with what each is waiting for.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_revenue_check_ready",
     "does": "Checks an encounter for missing coverage, authorisation, charges or coding before submission.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_revenue_draft_appeal",
@@ -2884,7 +2884,7 @@
    {
     "name": "ospeli_revenue_get_ageing",
     "does": "Returns accounts receivable by payer group and age band.",
-    "approval": "none"
+    "approval": "none (read only)"
    }
   ],
   "standards": [
@@ -3004,12 +3004,12 @@
    {
     "name": "ospeli_it_report_fault",
     "does": "Raises an IT ticket for a system or device, with location and description.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_it_get_status",
     "does": "Returns current status of systems, open downtime and departments affected.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_it_declare_downtime",
@@ -3019,7 +3019,7 @@
    {
     "name": "ospeli_it_list_access_risks",
     "does": "Lists leaver accounts still active, overdue reviews and unpatched devices.",
-    "approval": "none"
+    "approval": "none (read only)"
    }
   ],
   "standards": [
@@ -3135,17 +3135,17 @@
    {
     "name": "ospeli_reports_get_kpi",
     "does": "Returns a KPI value, trend, SPC signal and its full definition.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_reports_check_completeness",
     "does": "Lists missing or late data for a report or period, by data owner.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_reports_draft_pack",
     "does": "Assembles a draft performance pack with charts and commentary prompts.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_reports_submit_external",
@@ -3274,7 +3274,7 @@
    {
     "name": "ospeli_continuity_readiness_get",
     "does": "Returns readiness by area: plans, drills, backup cover, open actions.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_continuity_checklist_start",
@@ -3294,7 +3294,7 @@
    {
     "name": "ospeli_continuity_fallback_print",
     "does": "Builds the printable downtime pack: bed list, contacts, rosters, critical stock.",
-    "approval": "none"
+    "approval": "none (read only)"
    }
   ],
   "standards": [
@@ -3411,12 +3411,12 @@
    {
     "name": "ospeli_community_capacity_get",
     "does": "Returns free, held and occupied community places by service.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_community_followups_overdue",
     "does": "Lists overdue follow-ups by programme and health centre, with recall status.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_community_recall_book",
@@ -3534,12 +3534,12 @@
    {
     "name": "ospeli_publichealth_campaign_gaps",
     "does": "Lists upcoming sessions missing staff, transport or stock.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_publichealth_stock_get",
     "does": "Returns stock, expiry and days of cover per site and item.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_publichealth_transfer_propose",
@@ -3549,7 +3549,7 @@
    {
     "name": "ospeli_publichealth_coldchain_status",
     "does": "Returns device readings, alarms and open excursions.",
-    "approval": "none"
+    "approval": "none (read only)"
    }
   ],
   "standards": [
@@ -3653,12 +3653,12 @@
    {
     "name": "ospeli_experience_complaint_log",
     "does": "Logs a complaint or compliment with channel, service and theme.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_experience_queue_list",
     "does": "Lists open complaints by stage, owner role and due date.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_experience_response_draft",
@@ -3668,7 +3668,7 @@
    {
     "name": "ospeli_experience_themes_get",
     "does": "Returns themes by service and period with trend.",
-    "approval": "none"
+    "approval": "none (read only)"
    }
   ],
   "standards": [
@@ -3770,17 +3770,17 @@
    {
     "name": "ospeli_processmap_get",
     "does": "Returns a map's steps, roles and times, today or proposed.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_processmap_analyse",
     "does": "Returns elapsed time, waiting share, handoffs and biggest waits.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_processmap_suggest",
     "does": "Returns the guide's suggestions with their reasons.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_processmap_propose_change",
@@ -3885,12 +3885,12 @@
    {
     "name": "ospeli_playbooks_list",
     "does": "Lists playbooks with inputs, outputs and last run.",
-    "approval": "none"
+    "approval": "none (read only)"
    },
    {
     "name": "ospeli_playbooks_run",
     "does": "Runs a playbook for a chosen area and period; returns a draft.",
-    "approval": "none"
+    "approval": "person confirms"
    },
    {
     "name": "ospeli_playbooks_output_approve",

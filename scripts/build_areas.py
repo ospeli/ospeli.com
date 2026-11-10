@@ -43,7 +43,7 @@ def logo():
 
 def status(a):
     if a["id"] in LIVE:
-        return '<span class="st live">Live preview</span>'
+        return '<span class="st live">Preview</span>'
     return f'<span class="st">{e(a["month"])}</span>'
 
 
@@ -114,6 +114,12 @@ def page(title, desc, depth, body):
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>{e(title)}</title>
 <meta name="description" content="{e(desc)}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="{e(title)}">
+<meta property="og:description" content="{e(desc)}">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0B2F4E">
 <link rel="icon" href="{up}favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="{up}favicon.ico">
@@ -133,7 +139,8 @@ def page(title, desc, depth, body):
 
 def area_page(a, by_id):
     live = LIVE.get(a["id"])
-    cta = f'<p><a class="go" href="{e(live[1])}">{e(live[0])}</a></p>' if live else f'<p class="lead">First version due: <b>{e(a["month"])}</b>. <a href="../#roadmap">See the roadmap</a>.</p>'
+    due = "" if a["month"] == MONTHS[0] else f' First full version due: <b>{e(a["month"])}</b>.'
+    cta = f'<p><a class="go" href="{e(live[1])}">{e(live[0])}</a></p><p class="lead">Preview on fictional data.{due}</p>' if live else f'<p class="lead">First version due: <b>{e(a["month"])}</b>. <a href="../#roadmap">See the roadmap</a>.</p>'
     people = "".join(f'<div class="person"><b>{e(p["role"])}</b><span>{e(p["does"])}</span></div>' for p in a["people"])
     screens = "".join(f'<li><b>{e(s["name"])}</b>: {e(s["shows"])}</li>' for s in a["screens"])
     captures = "".join(f"<li>{e(c)}</li>" for c in a["captures"])
@@ -157,7 +164,7 @@ def area_page(a, by_id):
 <section class="card" aria-labelledby="pb"><h2 id="pb">Playbooks</h2><ul>{plays}</ul></section>
 </div>
 <section class="block card" aria-labelledby="kp"><h2 id="kp">Measures, with their definitions</h2><div class="tw"><table><thead><tr><th>Measure</th><th>Definition</th><th>Source</th></tr></thead><tbody>{kpis}</tbody></table></div></section>
-<section class="block card" aria-labelledby="ag"><h2 id="ag">For AI assistants</h2><p class="legend">Assistants may read and propose through these commands. Anything marked "person decides" waits for a named person.</p><div class="tw"><table><thead><tr><th>Command</th><th>What it does</th><th>Approval</th></tr></thead><tbody>{cmds}</tbody></table></div></section>
+<section class="block card" aria-labelledby="ag"><h2 id="ag">For AI assistants</h2><p class="legend">Assistants may read and propose through these commands. "none (read only)" commands only read. Anything that records or changes data is a proposal until a person confirms it, and "person decides" waits for a named person with that role.</p><div class="tw"><table><thead><tr><th>Command</th><th>What it does</th><th>Approval</th></tr></thead><tbody>{cmds}</tbody></table></div></section>
 <section class="block" aria-labelledby="st"><h2 id="st">Standards it follows</h2><p>{stds}</p></section>
 {'<section class="block" aria-labelledby="cn"><h2 id="cn">Works with</h2><div class="chips">' + links + '</div></section>' if links else ''}
 <p class="not"><b>What it does not do:</b> {e(a["notFor"])}</p>"""
@@ -175,7 +182,7 @@ def index_page(areas):
     n = len([a for a in areas if not a["id"].startswith("X")])
     body = f"""<h1 style="margin-top:28px">Every area of the operation</h1>
 <p class="lead">Ospeli covers {n} operational areas on one shared core, plus process mapping and playbooks that work across all of them. Each area page shows who uses it, what it records, how it is measured and what it deliberately does not do.</p>
-<p class="legend"><span class="st live">Live preview</span> try it today · <span class="st">Month</span> first version due</p>
+<p class="legend"><span class="st live">Preview</span> try it today · <span class="st">Month</span> first version due</p>
 <div class="groups">{''.join(groups)}</div>"""
     return page("Every area · Ospeli", "All the operational areas Ospeli covers, from beds and theatres to facilities, stores, staffing, quality and preparedness.", 1, body)
 

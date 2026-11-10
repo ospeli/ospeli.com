@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Bed board · Ospeli demo</title>
 <meta name="description" content="Live demo of the Ospeli bed board: a fictional hospital with synthetic data.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Bed board · Ospeli demo">
+<meta property="og:description" content="Live demo of the Ospeli bed board: a fictional hospital with synthetic data.">
+<meta property="og:url" content="https://ospeli.com/demo/bed-board/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0B2F4E">
 <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="../../favicon.ico">
@@ -370,7 +379,7 @@ a.ghost { color: var(--ink); text-decoration: none; }
         el('span', { class: 'key', text: q.key }),
         el('span', { class: 'wait' + (w > mins(120) ? ' long' : ''), text: dur(w) }),
         el('span', { class: 'needs', text: q.spec + ' · ' + (q.needs.length ? q.needs.map(function (n) { return ATTR[n]; }).join(', ') : 'no special needs') + ' · decided ' + hhmm(q.dta) }),
-        el('span', { class: 'act' }, [el('button', { type: 'button', class: 'primary', text: S.picking === q.key ? 'Choosing…' : 'Find a bed', onclick: function () { S.picking = S.picking === q.key ? null : q.key; var m = S.beds.filter(function (b) { return fits(b, q); })[0]; if (S.picking && m) S.ward = m.ward; save(); render(); } })])
+        el('span', { class: 'act' }, [el('button', { type: 'button', class: 'primary', text: S.picking === q.key ? 'Choosing…' : 'Find a bed', onclick: function () { S.picking = S.picking === q.key ? null : q.key; var m = S.beds.filter(function (b) { return fits(b, q); })[0]; if (S.picking && m) S.ward = m.ward; save(); render(); if (S.picking && window.innerWidth < 900) { var bn = document.getElementById('banner'); if (bn && bn.scrollIntoView) bn.scrollIntoView({ behavior: 'smooth', block: 'start' }); } } })])
       ]));
     });
   }

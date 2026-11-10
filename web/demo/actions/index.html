@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Incidents, risk and actions demo · Ospeli</title>
 <meta name="description" content="Report an incident or near miss from a phone in under a minute, review and group reports into themes, and track every action and risk in one place. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Incidents, risk and actions demo · Ospeli">
+<meta property="og:description" content="Report an incident or near miss from a phone in under a minute, review and group reports into themes, and track every action and risk in one place. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/actions/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0B2F4E">
 <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="../../favicon.ico">
@@ -290,7 +299,7 @@ function seed() {
   var log = [
     [now - 2 * DAY, 'Facilities manager closed A-112 with evidence (late by 2 days)'],
     [now - 1 * DAY - 3 * HOUR, 'Report R-420 made · Equipment fault or missing · Ward 7 (older people)'],
-    [now - 20 * HOUR, 'Quality and safety lead reviewed R-416: Fix locally; action A-107 created'],
+    [now - 2 * DAY, 'Quality and safety lead reviewed R-416: Fix locally; action A-107 created'],
     [now - 3.6 * HOUR, 'Report R-421 made (anonymous) · Supplies ran out · Ward 3 (medical)']
   ].map(function (l) { return { at: l[0], text: l[1] }; }).reverse();
   return { v: 1, seededAt: now, role: null, guide: true, tab: 'open', dismissed: {}, reports: reports, themes: themes, actions: actions, risks: risks, log: log, mine: [], n: { R: 422, A: 115, T: 4 } };

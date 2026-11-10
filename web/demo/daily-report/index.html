@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Daily flow report demo · Ospeli</title>
 <meta name="description" content="A daily flow report and morning operations overview: beds, emergency department, equipment, stores, support tasks, staffing and actions on one page, with run charts, a bottleneck finder and a huddle list. Fictional example data; runs in your browser.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ospeli">
+<meta property="og:title" content="Daily flow report demo · Ospeli">
+<meta property="og:description" content="A daily flow report and morning operations overview: beds, emergency department, equipment, stores, support tasks, staffing and actions on one page, with run charts, a bottleneck finder and a huddle list. Fictional example data; runs in your browser.">
+<meta property="og:url" content="https://ospeli.com/demo/daily-report/">
+<meta property="og:image" content="https://ospeli.com/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="627">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0B2F4E">
 <link rel="icon" href="../../favicon.svg" type="image/svg+xml">
 <link rel="alternate icon" href="../../favicon.ico">
@@ -271,7 +280,7 @@ var ACTIONS = [
   { id: 'a2', text: 'Fix missing “left department” times in emergency department records', owner: 'Data owner, emergency department', due: -3 },
   { id: 'a3', text: 'Review porter task routing at the 10:00–12:00 peak', owner: 'Support services manager', due: -2 },
   { id: 'a4', text: 'Confirm reorder levels for the tracer items list', owner: 'Stores manager', due: -1 },
-  { id: 'a5', text: 'Agree a cleaning response time for beds freed by discharge', owner: 'Housekeeping supervisor', due: 0 },
+  { id: 'a5', text: 'Agree a cleaning response time for beds freed by discharge', owner: 'Support services supervisor', due: 0 },
   { id: 'a6', text: 'Clear overdue planned maintenance on ward monitors', owner: 'Equipment manager', due: 0 },
   { id: 'a7', text: 'Share bottleneck finder results with ward managers', owner: 'Operations manager', due: 3 },
   { id: 'a8', text: 'Test a fixed daily slot for take-home medicines', owner: 'Pharmacy manager', due: 6 }
@@ -783,7 +792,7 @@ function renderFlow(main) {
 }
 function logCard() {
   var ol = el('ol', { class: 'log', id: 'log' });
-  if (!state.log.length) ol.appendChild(el('li', {}, [el('time', { text: '07:31' }), 'Daily flow report run: data to ' + SNAP + ', example data seed ' + state.seed + '.']));
+  if (!state.log.length) ol.appendChild(el('li', {}, [el('time', { text: '07:31' }), 'Daily flow report run: data to ' + SNAP + '. Example data loaded.']));
   state.log.forEach(function (e) { ol.appendChild(el('li', {}, [el('time', { text: e.t }), e.text])); });
   return el('section', { class: 'card noprint', 'aria-labelledby': 'lg-h' }, [el('h2', { id: 'lg-h', text: 'What happened' }), ol]);
 }
