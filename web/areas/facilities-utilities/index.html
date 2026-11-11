@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Facilities and utilities · Ospeli</title>
-<meta name="description" content="Keeps buildings, power, water, medical gases and waste running, checked and logged.">
+<meta name="description" content="Logs faults, checks and outages for buildings, power, water, medical gases and waste.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Ospeli">
 <meta property="og:title" content="Facilities and utilities · Ospeli">
-<meta property="og:description" content="Keeps buildings, power, water, medical gases and waste running, checked and logged.">
+<meta property="og:description" content="Logs faults, checks and outages for buildings, power, water, medical gases and waste.">
 <meta property="og:image" content="https://ospeli.com/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0B2F4E">
@@ -36,6 +36,7 @@ h3 { font-size: 1rem; margin: 0 0 4px; }
 .lead { color: var(--soft); max-width: 44em; margin: 0 0 14px; font-size: 1.08rem; }
 .st { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; border: 1px dashed #CFC5B2; color: var(--soft); background: #fff; }
 .st.live { border: 0; background: var(--wash); color: var(--ink); }
+.st.built { border: 0; background: var(--navy); color: #fff; }
 .go { display: inline-block; background: var(--coral); color: #fff; text-decoration: none; font-weight: 800; padding: 11px 18px; border-radius: 999px; min-height: 44px; }
 .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 8px; }
 .ba div { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
@@ -65,6 +66,7 @@ section.block { margin: 22px 0; }
 .areas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .area { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; text-decoration: none; display: flex; flex-direction: column; gap: 6px; min-height: 44px; }
 .area:hover { border-color: var(--sea); }
+.area .st { align-self: flex-start; }
 .area h3 { font-size: 1.02rem; }
 .area p { margin: 0; color: var(--soft); font-size: 0.92rem; }
 .legend { font-size: 0.88rem; color: var(--soft); margin: 0 0 10px; }
@@ -78,9 +80,9 @@ section.block { margin: 22px 0; }
 <p class="crumb"><a href="../">All areas</a> · Infrastructure and support</p>
 <span class="st live">Preview</span>
 <h1>Facilities and utilities</h1>
-<p class="lead">Keeps buildings, power, water, medical gases and waste running, checked and logged.</p>
-<p><a class="go" href="../../demo/facilities/">Open the facilities preview</a></p><p class="lead">Preview on fictional data. First full version due: <b>Mar 2027</b>.</p>
-<div class="ba"><div class="now"><span class="lbl">Today</span>Leaks and broken lights are reported by word of mouth. Generator tests and gas checks live on paper. An outage arrives with no warning and no record of the last fix.</div><div class="then"><span class="lbl">With Ospeli</span>Any room or plant item has a QR label for fault reports. One work-order queue covers building and plant jobs. Utility checks and outages are logged, so trends and gaps show early.</div></div>
+<p class="lead">Logs faults, checks and outages for buildings, power, water, medical gases and waste.</p>
+<p><a class="go" href="../../demo/facilities/">Open the facilities preview</a></p><p class="lead">Preview on fictional data; not yet built on the shared core. First version planned <b>Mar 2027</b>.</p>
+<div class="ba"><div class="now"><span class="lbl">Common patterns we design for</span><b>Where there is no system:</b> Leaks and broken lights are often reported by word of mouth. Generator tests and gas checks often live on paper. An outage can arrive with no warning and no record of the last fix.<br><b>Where there is a record or tracking system:</b> A building management or helpdesk system covers part of the estate, but checks, outages and room closures are often logged in separate places.<br>Ospeli works alongside existing systems.</div><div class="then"><span class="lbl">With Ospeli</span>Any room or plant item has a QR label for fault reports. One work-order queue covers building and plant jobs. Utility checks and outages are logged, so trends and gaps show early.</div></div>
 <section class="block" aria-labelledby="who"><h2 id="who">Who uses it</h2><div class="people"><div class="person"><b>Ward clerk</b><span>Scans a room QR label to report a leak, light or door fault.</span></div><div class="person"><b>Facilities technician</b><span>Works the queue on a phone, logs plant checks, follows step guides for simple fixes.</span></div><div class="person"><b>Facilities manager</b><span>Sets planned work, tracks statutory checks, reviews outages and repeat building faults.</span></div><div class="person"><b>Operations manager</b><span>Sees rooms out of use, utility outages and overdue safety checks.</span></div></div></section>
 <div class="grid">
 <section class="card" aria-labelledby="scr"><h2 id="scr">Key screens</h2><ul><li><b>Report a fault (phone)</b>: Opened from a room or plant QR label: location, fault list, urgency. Three taps.</li><li><b>Work-order queue</b>: Building and plant jobs, overdue first, with SLA timers, team and room status.</li><li><b>Utilities log</b>: Generator tests, fuel level, water storage, medical gas checks and outages with times.</li><li><b>Compliance calendar</b>: Fire, water safety, lifts, pressure systems and gas inspections: due, done, overdue.</li><li><b>Waste log</b>: Healthcare waste collections by stream and area, with missed collections flagged.</li></ul></section>
@@ -90,7 +92,7 @@ section.block { margin: 22px 0; }
 </div>
 <section class="block card" aria-labelledby="kp"><h2 id="kp">Measures, with their definitions</h2><div class="tw"><table><thead><tr><th>Measure</th><th>Definition</th><th>Source</th></tr></thead><tbody><tr><td><b>Reactive work-order completion time by priority</b></td><td>fault reported → work order closed, median per priority</td><td>local definition</td></tr><tr><td><b>Planned maintenance compliance</b></td><td>planned facilities jobs done by due date / jobs due</td><td>local definition</td></tr><tr><td><b>Generator test compliance</b></td><td>scheduled generator tests completed / tests scheduled</td><td>local definition</td></tr><tr><td><b>Utility outage hours</b></td><td>sum of outage start → outage end, per utility per month</td><td>local definition</td></tr><tr><td><b>Rooms out of use</b></td><td>room-hours out of use for facilities reasons / total room-hours</td><td>local definition</td></tr></tbody></table></div></section>
 <section class="block card" aria-labelledby="ag"><h2 id="ag">For AI assistants</h2><p class="legend">Assistants may read and propose through these commands. "none (read only)" commands only read. Anything that records or changes data is a proposal until a person confirms it, and "person decides" waits for a named person with that role.</p><div class="tw"><table><thead><tr><th>Command</th><th>What it does</th><th>Approval</th></tr></thead><tbody><tr><td><code>ospeli_facilities_report_fault</code></td><td>Raise a building or plant fault for a room or plant item.</td><td>person confirms</td></tr><tr><td><code>ospeli_facilities_list_workorders</code></td><td>List open facilities work orders by building, priority or overdue.</td><td>none (read only)</td></tr><tr><td><code>ospeli_facilities_log_utility_check</code></td><td>Record a generator test, gas check or outage with times.</td><td>person confirms</td></tr><tr><td><code>ospeli_facilities_list_compliance_due</code></td><td>List statutory inspections due or overdue in a date range.</td><td>none (read only)</td></tr><tr><td><code>ospeli_facilities_close_room</code></td><td>Propose taking a room out of use, with reason and expected return.</td><td>person decides</td></tr></tbody></table></div></section>
-<section class="block" aria-labelledby="st"><h2 id="st">Standards it follows</h2><p>ISO 41001, JCI Facility Management and Safety (FMS), PAHO Smart Hospitals Toolkit, ISO 7396-1</p></section>
+<section class="block card" aria-labelledby="st"><h2 id="st">Standards and methods it is designed around</h2><p class="legend">Ospeli is not certified against any of these. Each line says how the area relates to the standard or method.</p><h3>Standards and references</h3><ul><li><b>ISO 41001</b>: Work-order and check records are designed to support a facility management system that your organisation runs.</li><li><b>JCI Facility Management and Safety (FMS)</b>: Utility check, outage and inspection records are designed to be usable as evidence when your organisation prepares for this chapter.</li><li><b>PAHO Smart Hospitals Toolkit</b>: Used as a reference for the utility and resilience checks a site can log.</li></ul></section>
 <section class="block" aria-labelledby="cn"><h2 id="cn">Works with</h2><div class="chips"><a href="../medical-equipment/">Medical equipment and maintenance</a><a href="../support-services/">Cleaning, portering and support services</a><a href="../supply-chain-stores/">Supply chain and stores</a><a href="../beds-and-patient-flow/">Beds, admissions and discharge</a><a href="../theatres-and-procedures/">Theatres and procedure lists</a><a href="../incidents-risk-actions/">Incidents, risk and actions</a><a href="../infection-prevention-operations/">Infection prevention operations</a><a href="../emergency-preparedness/">Emergency preparedness and continuity</a></div></section>
 <p class="not"><b>What it does not do:</b> Not a building management or SCADA control system; it never switches plant. Does not score staff.</p>
 <p class="foot">Ospeli is in development and launches in the first quarter of 2027. Demos use a fictional hospital and invented data. People decide; Ospeli suggests. Nothing here is clinical advice.</p>

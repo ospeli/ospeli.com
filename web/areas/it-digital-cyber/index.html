@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>IT, digital and cyber · Ospeli</title>
-<meta name="description" content="Keeps systems, devices and access working, and plans for when they fail.">
+<meta name="description" content="Tracks system status, IT faults, access reviews and backup tests, with a downtime plan.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Ospeli">
 <meta property="og:title" content="IT, digital and cyber · Ospeli">
-<meta property="og:description" content="Keeps systems, devices and access working, and plans for when they fail.">
+<meta property="og:description" content="Tracks system status, IT faults, access reviews and backup tests, with a downtime plan.">
 <meta property="og:image" content="https://ospeli.com/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0B2F4E">
@@ -36,6 +36,7 @@ h3 { font-size: 1rem; margin: 0 0 4px; }
 .lead { color: var(--soft); max-width: 44em; margin: 0 0 14px; font-size: 1.08rem; }
 .st { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; border: 1px dashed #CFC5B2; color: var(--soft); background: #fff; }
 .st.live { border: 0; background: var(--wash); color: var(--ink); }
+.st.built { border: 0; background: var(--navy); color: #fff; }
 .go { display: inline-block; background: var(--coral); color: #fff; text-decoration: none; font-weight: 800; padding: 11px 18px; border-radius: 999px; min-height: 44px; }
 .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 8px; }
 .ba div { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
@@ -65,6 +66,7 @@ section.block { margin: 22px 0; }
 .areas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .area { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; text-decoration: none; display: flex; flex-direction: column; gap: 6px; min-height: 44px; }
 .area:hover { border-color: var(--sea); }
+.area .st { align-self: flex-start; }
 .area h3 { font-size: 1.02rem; }
 .area p { margin: 0; color: var(--soft); font-size: 0.92rem; }
 .legend { font-size: 0.88rem; color: var(--soft); margin: 0 0 10px; }
@@ -78,9 +80,9 @@ section.block { margin: 22px 0; }
 <p class="crumb"><a href="../">All areas</a> · Finance and digital</p>
 <span class="st live">Preview</span>
 <h1>IT, digital and cyber</h1>
-<p class="lead">Keeps systems, devices and access working, and plans for when they fail.</p>
-<p><a class="go" href="../../demo/it-digital/">Open the IT and digital preview</a></p><p class="lead">Preview on fictional data. First full version due: <b>Feb 2027</b>.</p>
-<div class="ba"><div class="now"><span class="lbl">Today</span>IT faults are reported by phone and forgotten. Nobody knows which systems are down, who still has access after leaving, or whether backups restore. Downtime means hunting for paper forms.</div><div class="then"><span class="lbl">With Ospeli</span>IT faults use the same work-order engine as facilities. A status board shows systems up or down; access, patches and backup tests are tracked. Downtime mode switches staff to printable fallbacks.</div></div>
+<p class="lead">Tracks system status, IT faults, access reviews and backup tests, with a downtime plan.</p>
+<p><a class="go" href="../../demo/it-digital/">Open the IT and digital preview</a></p><p class="lead">Preview on fictional data; not yet built on the shared core. First version planned <b>Feb 2027</b>.</p>
+<div class="ba"><div class="now"><span class="lbl">Common patterns we design for</span><b>Where there is no system:</b> IT faults are often reported by phone and can be forgotten. It is often unclear which systems are down, which accounts should have been closed, or whether backups restore. Downtime can mean hunting for paper forms.<br><b>Where there is a record or tracking system:</b> A service desk tool handles tickets, but clinical areas often cannot see system status, and downtime forms are kept separately.<br>Ospeli works alongside existing systems.</div><div class="then"><span class="lbl">With Ospeli</span>IT faults use the same work-order engine as facilities. A status board shows systems up or down; access, patches and backup tests are tracked. Downtime mode switches staff to printable fallbacks.</div></div>
 <section class="block" aria-labelledby="who"><h2 id="who">Who uses it</h2><div class="people"><div class="person"><b>Charge nurse</b><span>Reports a broken device or system by QR scan; sees system status.</span></div><div class="person"><b>IT service desk analyst</b><span>Works the ticket queue, updates status, uses fix guides, closes with cause.</span></div><div class="person"><b>IT lead (in-house or supplier)</b><span>Tracks uptime, patching, backups and supplier tickets; declares and ends downtime.</span></div><div class="person"><b>Information security lead</b><span>Runs access reviews, logs security incidents, checks leaver access is removed.</span></div><div class="person"><b>Operations manager</b><span>Sees which services are affected by downtime and approves the continuity plan.</span></div></div></section>
 <div class="grid">
 <section class="card" aria-labelledby="scr"><h2 id="scr">Key screens</h2><ul><li><b>Report IT fault (phone)</b>: Scan a device QR or pick a system, describe the problem, add a photo.</li><li><b>System status board</b>: Each clinical and business system up, degraded or down, since when, and departments affected.</li><li><b>Service desk queue</b>: Open IT tickets by priority, age, time left on target and assignee role.</li><li><b>Downtime mode</b>: Active downtime, paper forms to print, catch-up entry list once systems return.</li><li><b>Access and patch review</b>: Accounts of leavers still active, overdue access reviews, devices missing patches.</li></ul></section>
@@ -90,7 +92,7 @@ section.block { margin: 22px 0; }
 </div>
 <section class="block card" aria-labelledby="kp"><h2 id="kp">Measures, with their definitions</h2><div class="tw"><table><thead><tr><th>Measure</th><th>Definition</th><th>Source</th></tr></thead><tbody><tr><td><b>System availability</b></td><td>minutes up in scheduled service hours ÷ scheduled service minutes, per system</td><td>local definition</td></tr><tr><td><b>IT ticket time to resolve</b></td><td>ticket raised event → ticket resolved event, by priority</td><td>local definition</td></tr><tr><td><b>Backup restore test success</b></td><td>restore tests passed ÷ restore tests scheduled in period</td><td>local definition</td></tr><tr><td><b>Leaver access removed on time</b></td><td>leaver accounts disabled by the local deadline ÷ leavers in period</td><td>local definition</td></tr><tr><td><b>Patch compliance</b></td><td>devices with critical patches applied within local target ÷ devices in scope</td><td>local definition</td></tr></tbody></table></div></section>
 <section class="block card" aria-labelledby="ag"><h2 id="ag">For AI assistants</h2><p class="legend">Assistants may read and propose through these commands. "none (read only)" commands only read. Anything that records or changes data is a proposal until a person confirms it, and "person decides" waits for a named person with that role.</p><div class="tw"><table><thead><tr><th>Command</th><th>What it does</th><th>Approval</th></tr></thead><tbody><tr><td><code>ospeli_it_report_fault</code></td><td>Raises an IT ticket for a system or device, with location and description.</td><td>person confirms</td></tr><tr><td><code>ospeli_it_get_status</code></td><td>Returns current status of systems, open downtime and departments affected.</td><td>none (read only)</td></tr><tr><td><code>ospeli_it_declare_downtime</code></td><td>Proposes declaring downtime for a system and starts the paper fallback plan.</td><td>person decides</td></tr><tr><td><code>ospeli_it_list_access_risks</code></td><td>Lists leaver accounts still active, overdue reviews and unpatched devices.</td><td>none (read only)</td></tr></tbody></table></div></section>
-<section class="block" aria-labelledby="st"><h2 id="st">Standards it follows</h2><p>NIST Cybersecurity Framework 2.0, ISO/IEC 27001, HIMSS INFRAM, HL7 FHIR</p></section>
+<section class="block card" aria-labelledby="st"><h2 id="st">Standards and methods it is designed around</h2><p class="legend">Ospeli is not certified against any of these. Each line says how the area relates to the standard or method.</p><h3>Standards and references</h3><ul><li><b>NIST Cybersecurity Framework 2.0</b>: Access, patch, backup and incident records are grouped so they can be used in a self-assessment that your organisation runs.</li><li><b>ISO/IEC 27001</b>: The same records are designed to support an information security programme that your organisation runs.</li><li><b>HIMSS INFRAM</b>: Used as a reference for describing infrastructure maturity. Ospeli does not score it.</li></ul></section>
 <section class="block" aria-labelledby="cn"><h2 id="cn">Works with</h2><div class="chips"><a href="../medical-equipment/">Medical equipment and maintenance</a><a href="../facilities-utilities/">Facilities and utilities</a><a href="../incidents-risk-actions/">Incidents, risk and actions</a><a href="../health-records/">Health records and information</a><a href="../emergency-preparedness/">Emergency preparedness and continuity</a><a href="../performance-reporting/">Performance and external reporting</a></div></section>
 <p class="not"><b>What it does not do:</b> Not an antivirus or network monitoring tool. Never monitors or scores individual staff computer use.</p>
 <p class="foot">Ospeli is in development and launches in the first quarter of 2027. Demos use a fictional hospital and invented data. People decide; Ospeli suggests. Nothing here is clinical advice.</p>

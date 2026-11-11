@@ -2,7 +2,7 @@
 
 One page per operational area (web/areas/<slug>/index.html) and an index (web/areas/index.html).
 The JSON is the single source of truth for what each module does, who uses it, what it records,
-its KPIs and its roadmap month. Edit the JSON, then run:  python scripts/build_areas.py
+its KPIs and the month its first version is planned. Edit the JSON, then run:  python scripts/build_areas.py
 The generated pages are committed (the site has no build step at serve time).
 """
 import html, json, pathlib, re
@@ -20,6 +20,11 @@ GROUP_ORDER = [
     "Across every area",
 ]
 MONTHS = ["Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"]
+# Status in words on every card and page (issue #43):
+#   Built   = runs on the shared core in the app today (beds, engineering work orders, process maps).
+#   Preview = a clickable demo on fictional data; not yet built on the core.
+#   Planned = designed, nothing to click yet.
+BUILT = ["A3", "B1", "X1"]
 # Areas with something to click today.
 LIVE = {
     "A3": ("Open the bed board demo", "../../demo/bed-board/"),
@@ -62,10 +67,16 @@ def logo():
     return re.search(r'<svg class="logo".*?</svg>', src, re.S).group(0)
 
 
+def status_word(a):
+    if a["id"] in BUILT:
+        return "Built"
+    return "Preview" if a["id"] in LIVE else "Planned"
+
+
 def status(a):
-    if a["id"] in LIVE:
-        return '<span class="st live">Preview</span>'
-    return f'<span class="st">{e(a["month"])}</span>'
+    word = status_word(a)
+    cls = {"Built": "st built", "Preview": "st live", "Planned": "st"}[word]
+    return f'<span class="{cls}">{word}</span>'
 
 
 CSS = """
@@ -89,6 +100,7 @@ h3 { font-size: 1rem; margin: 0 0 4px; }
 .lead { color: var(--soft); max-width: 44em; margin: 0 0 14px; font-size: 1.08rem; }
 .st { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; border: 1px dashed #CFC5B2; color: var(--soft); background: #fff; }
 .st.live { border: 0; background: var(--wash); color: var(--ink); }
+.st.built { border: 0; background: var(--navy); color: #fff; }
 .go { display: inline-block; background: var(--coral); color: #fff; text-decoration: none; font-weight: 800; padding: 11px 18px; border-radius: 999px; min-height: 44px; }
 .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 8px; }
 .ba div { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
@@ -118,6 +130,7 @@ section.block { margin: 22px 0; }
 .areas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .area { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; text-decoration: none; display: flex; flex-direction: column; gap: 6px; min-height: 44px; }
 .area:hover { border-color: var(--sea); }
+.area .st { align-self: flex-start; }
 .area h3 { font-size: 1.02rem; }
 .area p { margin: 0; color: var(--soft); font-size: 0.92rem; }
 .legend { font-size: 0.88rem; color: var(--soft); margin: 0 0 10px; }
@@ -160,8 +173,12 @@ def page(title, desc, depth, body):
 
 def area_page(a, by_id):
     live = LIVE.get(a["id"])
-    due = "" if a["month"] == MONTHS[0] else f' First full version due: <b>{e(a["month"])}</b>.'
-    cta = f'<p><a class="go" href="{e(live[1])}">{e(live[0])}</a></p><p class="lead">Preview on fictional data.{due}</p>' if live else f'<p class="lead">First version due: <b>{e(a["month"])}</b>. <a href="../#roadmap">See the roadmap</a>.</p>'
+    word = status_word(a)
+    planned = f'First version planned <b>{e(a["month"])}</b>.'
+    note = {"Built": "Built on the shared core today. The demo uses fictional data.",
+            "Preview": f"Preview on fictional data; not yet built on the shared core. {planned}",
+            "Planned": f'Planned; nothing to try yet. {planned} <a href="../../#roadmap">See the roadmap</a>.'}[word]
+    cta = (f'<p><a class="go" href="{e(live[1])}">{e(live[0])}</a></p>' if live else "") + f'<p class="lead">{note}</p>'
     people = "".join(f'<div class="person"><b>{e(p["role"])}</b><span>{e(p["does"])}</span></div>' for p in a["people"])
     screens = "".join(f'<li><b>{e(s["name"])}</b>: {e(s["shows"])}</li>' for s in a["screens"])
     captures = "".join(f"<li>{e(c)}</li>" for c in a["captures"])
@@ -169,14 +186,20 @@ def area_page(a, by_id):
     guide = "".join(f"<li>{e(g)}</li>" for g in a["guide"])
     plays = "".join(f"<li>{e(p)}</li>" for p in a["playbooks"])
     cmds = "".join(f'<tr><td><code>{e(c["name"])}</code></td><td>{e(c["does"])}</td><td>{e(c["approval"])}</td></tr>' for c in a["agentCommands"])
-    stds = ", ".join(e(s) for s in a["standards"]) or "Local definitions"
+    methods = "".join(f"<li>{e(m)}</li>" for m in a["methods"])
+    stds = "".join(f'<li><b>{e(s["name"])}</b>: {e(s["how"])}</li>' for s in a["standards"])
+    design = (f'<h3>Improvement methods</h3><ul>{methods}</ul>' if methods else "") + (f'<h3>Standards and references</h3><ul>{stds}</ul>' if stds else "")
+    if not design:
+        design = "<p>Local definitions only: each site sets its own measures. No external standard is used here.</p>"
+    else:
+        design = '<p class="legend">Ospeli is not certified against any of these. Each line says how the area relates to the standard or method.</p>' + design
     links = "".join(f'<a href="../{e(by_id[c]["slug"])}/">{e(by_id[c]["name"])}</a>' for c in a.get("connects", []) if c in by_id and c != a["id"])
     body = f"""<p class="crumb"><a href="../">All areas</a> · {e(a["group"])}</p>
 {status(a)}
 <h1>{e(a["name"])}</h1>
 <p class="lead">{e(a["oneLine"])}</p>
 {cta}
-<div class="ba"><div class="now"><span class="lbl">Today</span>{e(a["today"])}</div><div class="then"><span class="lbl">With Ospeli</span>{e(a["withOspeli"])}</div></div>
+<div class="ba"><div class="now"><span class="lbl">Common patterns we design for</span><b>Where there is no system:</b> {e(a["today"])}<br><b>Where there is a record or tracking system:</b> {e(a["todaySystem"])}<br>Ospeli works alongside existing systems.</div><div class="then"><span class="lbl">With Ospeli</span>{e(a["withOspeli"])}</div></div>
 <section class="block" aria-labelledby="who"><h2 id="who">Who uses it</h2><div class="people">{people}</div></section>
 <div class="grid">
 <section class="card" aria-labelledby="scr"><h2 id="scr">Key screens</h2><ul>{screens}</ul></section>
@@ -186,26 +209,33 @@ def area_page(a, by_id):
 </div>
 <section class="block card" aria-labelledby="kp"><h2 id="kp">Measures, with their definitions</h2><div class="tw"><table><thead><tr><th>Measure</th><th>Definition</th><th>Source</th></tr></thead><tbody>{kpis}</tbody></table></div></section>
 <section class="block card" aria-labelledby="ag"><h2 id="ag">For AI assistants</h2><p class="legend">Assistants may read and propose through these commands. "none (read only)" commands only read. Anything that records or changes data is a proposal until a person confirms it, and "person decides" waits for a named person with that role.</p><div class="tw"><table><thead><tr><th>Command</th><th>What it does</th><th>Approval</th></tr></thead><tbody>{cmds}</tbody></table></div></section>
-<section class="block" aria-labelledby="st"><h2 id="st">Standards it follows</h2><p>{stds}</p></section>
+<section class="block card" aria-labelledby="st"><h2 id="st">Standards and methods it is designed around</h2>{design}</section>
 {'<section class="block" aria-labelledby="cn"><h2 id="cn">Works with</h2><div class="chips">' + links + '</div></section>' if links else ''}
 <p class="not"><b>What it does not do:</b> {e(a["notFor"])}</p>"""
     return page(f'{a["name"]} · Ospeli', a["oneLine"], 2, body)
 
 
 def index_page(areas):
-    groups = []
+    card = lambda a: f'<a class="area" href="{e(a["slug"])}/">{status(a)}<h3>{e(a["name"])}</h3><p>{e(a["oneLine"])}</p></a>'
+    # Built areas come first, in their own group; the rest follow by group.
+    built = [a for i in BUILT for a in areas if a["id"] == i]
+    groups = [f'<section class="group" aria-label="Built today"><h2>Built today</h2><div class="areas">{"".join(card(a) for a in built)}</div></section>']
     for g in GROUP_ORDER:
-        items = [a for a in areas if a["group"] == g]
+        items = [a for a in areas if a["group"] == g and a["id"] not in BUILT]
         if not items:
             continue
-        cards = "".join(f'<a class="area" href="{e(a["slug"])}/">{status(a)}<h3>{e(a["name"])}</h3><p>{e(a["oneLine"])}</p></a>' for a in items)
-        groups.append(f'<section class="group" aria-label="{e(g)}"><h2>{e(g)}</h2><div class="areas">{cards}</div></section>')
-    n = len([a for a in areas if not a["id"].startswith("X")])
+        groups.append(f'<section class="group" aria-label="{e(g)}"><h2>{e(g)}</h2><div class="areas">{"".join(card(a) for a in items)}</div></section>')
+    # "26 more areas": the operational areas (not the cross-cutting X entries) that are not built yet.
+    more = len([a for a in areas if not a["id"].startswith("X") and a["id"] not in BUILT])
+    words = sorted({status_word(a) for a in areas})
+    legend = '<span class="st built">Built</span> runs on the shared core today · <span class="st live">Preview</span> a demo on fictional data, not yet built on the core; each area page gives the month its first version is planned'
+    if "Planned" in words:
+        legend += ' · <span class="st">Planned</span> designed, nothing to try yet'
     body = f"""<h1 style="margin-top:28px">Every area of the operation</h1>
-<p class="lead">Ospeli covers {n} operational areas on one shared core, plus process mapping and playbooks that work across all of them. Each area page shows who uses it, what it records, how it is measured and what it deliberately does not do.</p>
-<p class="legend"><span class="st live">Preview</span> try it today · <span class="st">Month</span> first version due</p>
+<p class="lead">Built today: beds and flow, engineering work orders, process maps and the KPI library, on one core. Designed on the same core: {more} more areas, each with a preview. Each area page shows who uses it, what it records, how it is measured and what it deliberately does not do.</p>
+<p class="legend">{legend}</p>
 <div class="groups">{''.join(groups)}</div>"""
-    return page("Every area · Ospeli", "All the operational areas Ospeli covers, from beds and theatres to facilities, stores, staffing, quality and preparedness.", 1, body)
+    return page("Every area · Ospeli", "What is built today and what is in preview across hospital operations, from beds and theatres to facilities, stores, staffing, quality and preparedness.", 1, body)
 
 
 def main():

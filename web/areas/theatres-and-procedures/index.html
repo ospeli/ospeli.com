@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Theatres and procedure lists · Ospeli</title>
-<meta name="description" content="Makes every theatre and procedure session start on time and run full.">
+<meta name="description" content="Shows late starts, gaps and on-the-day cancellations, session by session.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Ospeli">
 <meta property="og:title" content="Theatres and procedure lists · Ospeli">
-<meta property="og:description" content="Makes every theatre and procedure session start on time and run full.">
+<meta property="og:description" content="Shows late starts, gaps and on-the-day cancellations, session by session.">
 <meta property="og:image" content="https://ospeli.com/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0B2F4E">
@@ -36,6 +36,7 @@ h3 { font-size: 1rem; margin: 0 0 4px; }
 .lead { color: var(--soft); max-width: 44em; margin: 0 0 14px; font-size: 1.08rem; }
 .st { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; border: 1px dashed #CFC5B2; color: var(--soft); background: #fff; }
 .st.live { border: 0; background: var(--wash); color: var(--ink); }
+.st.built { border: 0; background: var(--navy); color: #fff; }
 .go { display: inline-block; background: var(--coral); color: #fff; text-decoration: none; font-weight: 800; padding: 11px 18px; border-radius: 999px; min-height: 44px; }
 .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 8px; }
 .ba div { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
@@ -65,6 +66,7 @@ section.block { margin: 22px 0; }
 .areas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .area { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; text-decoration: none; display: flex; flex-direction: column; gap: 6px; min-height: 44px; }
 .area:hover { border-color: var(--sea); }
+.area .st { align-self: flex-start; }
 .area h3 { font-size: 1.02rem; }
 .area p { margin: 0; color: var(--soft); font-size: 0.92rem; }
 .legend { font-size: 0.88rem; color: var(--soft); margin: 0 0 10px; }
@@ -78,9 +80,9 @@ section.block { margin: 22px 0; }
 <p class="crumb"><a href="../">All areas</a> · Patient flow and clinical services</p>
 <span class="st live">Preview</span>
 <h1>Theatres and procedure lists</h1>
-<p class="lead">Makes every theatre and procedure session start on time and run full.</p>
-<p><a class="go" href="../../demo/theatres/">Open the theatres preview</a></p><p class="lead">Preview on fictional data. First full version due: <b>Jan 2027</b>.</p>
-<div class="ba"><div class="now"><span class="lbl">Today</span>Lists are set late and change on the day. Sessions start late waiting for a bed, a missing tray or staff. Cancellations happen after patients are prepared, and turnaround time is a guess.</div><div class="then"><span class="lbl">With Ospeli</span>Lists, sessions and each case&#x27;s key times are logged in taps. Readiness checks show missing beds, kit or staff the day before, and cancellations carry reasons, so lost session time is visible.</div></div>
+<p class="lead">Shows late starts, gaps and on-the-day cancellations, session by session.</p>
+<p><a class="go" href="../../demo/theatres/">Open the theatres preview</a></p><p class="lead">Preview on fictional data; not yet built on the shared core. First version planned <b>Jan 2027</b>.</p>
+<div class="ba"><div class="now"><span class="lbl">Common patterns we design for</span><b>Where there is no system:</b> Lists are often set late and change on the day. Sessions can start late waiting for a bed, a missing tray or staff. Cancellations sometimes happen after patients are prepared, and turnaround time is estimated.<br><b>Where there is a record or tracking system:</b> A theatre system holds the list and case times, but late-start reasons and readiness checks for tomorrow often sit outside it.<br>Ospeli works alongside existing systems.</div><div class="then"><span class="lbl">With Ospeli</span>Lists, sessions and each case&#x27;s key times are logged in taps. Readiness checks show missing beds, kit or staff the day before, and cancellations carry reasons, so lost session time is visible.</div></div>
 <section class="block" aria-labelledby="who"><h2 id="who">Who uses it</h2><div class="people"><div class="person"><b>Theatre coordinator</b><span>Builds and changes lists, checks readiness, records cancellations and reasons.</span></div><div class="person"><b>Theatre nurse</b><span>Taps patient in, procedure start, finish and out on a phone.</span></div><div class="person"><b>Sterile services lead</b><span>Sees trays needed per list and flags kit not ready.</span></div><div class="person"><b>Theatre manager</b><span>Reviews session use, late starts, cancellations and turnaround by theatre.</span></div><div class="person"><b>Operations manager</b><span>Sees sessions unused, cancellations for lack of beds, and lists at risk.</span></div></div></section>
 <div class="grid">
 <section class="card" aria-labelledby="scr"><h2 id="scr">Key screens</h2><ul><li><b>Today&#x27;s lists</b>: Each theatre&#x27;s sessions and cases by patient code, current stage, running late or early.</li><li><b>Case times (phone)</b>: Tap into room, anaesthesia start, procedure start, finish, out of room; stamped automatically.</li><li><b>Readiness check</b>: Tomorrow&#x27;s cases: bed, kit, staff and checklist status, gaps highlighted.</li><li><b>Session review</b>: Planned versus used time, late start, early finish, turnaround and cancellations per session.</li></ul></section>
@@ -90,7 +92,7 @@ section.block { margin: 22px 0; }
 </div>
 <section class="block card" aria-labelledby="kp"><h2 id="kp">Measures, with their definitions</h2><div class="tw"><table><thead><tr><th>Measure</th><th>Definition</th><th>Source</th></tr></thead><tbody><tr><td><b>Session utilisation</b></td><td>time patients in theatre within planned session / planned session time</td><td>local definition</td></tr><tr><td><b>Late starts</b></td><td>sessions where first case starts after the set window / sessions held</td><td>local definition</td></tr><tr><td><b>Cancellations on the day</b></td><td>cases cancelled on the day / cases listed</td><td>local definition</td></tr><tr><td><b>Turnaround time</b></td><td>patient out of room → next patient in room, median</td><td>local definition</td></tr><tr><td><b>Checklist completion</b></td><td>cases with the surgical safety checklist recorded complete / cases</td><td>WHO Surgical Safety Checklist</td></tr></tbody></table></div></section>
 <section class="block card" aria-labelledby="ag"><h2 id="ag">For AI assistants</h2><p class="legend">Assistants may read and propose through these commands. "none (read only)" commands only read. Anything that records or changes data is a proposal until a person confirms it, and "person decides" waits for a named person with that role.</p><div class="tw"><table><thead><tr><th>Command</th><th>What it does</th><th>Approval</th></tr></thead><tbody><tr><td><code>ospeli_theatres_get_lists</code></td><td>Return today&#x27;s or a date&#x27;s lists by theatre, with case stages and delays.</td><td>none (read only)</td></tr><tr><td><code>ospeli_theatres_log_case_time</code></td><td>Record a case milestone time for a patient code.</td><td>person confirms</td></tr><tr><td><code>ospeli_theatres_check_readiness</code></td><td>List next-day cases missing a bed, kit, staff or checklist.</td><td>none (read only)</td></tr><tr><td><code>ospeli_theatres_propose_list_change</code></td><td>Propose moving or swapping a case; the theatre coordinator decides.</td><td>person decides</td></tr></tbody></table></div></section>
-<section class="block" aria-labelledby="st"><h2 id="st">Standards it follows</h2><p>WHO Surgical Safety Checklist, JCI Anesthesia and Surgical Care (ASC), HL7 FHIR Procedure resource</p></section>
+<section class="block card" aria-labelledby="st"><h2 id="st">Standards and methods it is designed around</h2><p class="legend">Ospeli is not certified against any of these. Each line says how the area relates to the standard or method.</p><h3>Standards and references</h3><ul><li><b>WHO Surgical Safety Checklist</b>: Records whether the checklist was completed for each case, yes or no. The theatre team runs the checklist.</li><li><b>JCI Anesthesia and Surgical Care (ASC)</b>: Session and case-time records are designed to be usable as evidence when your organisation prepares for this chapter.</li><li><b>HL7 FHIR Procedure resource (planned)</b>: Export of case times in this format is planned, not built.</li></ul></section>
 <section class="block" aria-labelledby="cn"><h2 id="cn">Works with</h2><div class="chips"><a href="../beds-and-patient-flow/">Beds, admissions and discharge</a><a href="../diagnostics-imaging-lab/">Diagnostics: imaging and laboratory</a><a href="../pharmacy-operations/">Pharmacy operations</a><a href="../critical-care-capacity/">Critical care capacity</a><a href="../medical-equipment/">Medical equipment and maintenance</a><a href="../support-services/">Cleaning, portering and support services</a><a href="../supply-chain-stores/">Supply chain and stores</a><a href="../staffing-and-rostering/">Staffing, rosters and credentials</a><a href="../infection-prevention-operations/">Infection prevention operations</a><a href="../finance-budgets/">Finance, costing and budgets</a></div></section>
 <p class="not"><b>What it does not do:</b> Does not decide which patient is operated on first or clinical fitness. Never times or ranks individual surgeons.</p>
 <p class="foot">Ospeli is in development and launches in the first quarter of 2027. Demos use a fictional hospital and invented data. People decide; Ospeli suggests. Nothing here is clinical advice.</p>

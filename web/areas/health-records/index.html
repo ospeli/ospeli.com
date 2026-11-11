@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Health records and information · Ospeli</title>
-<meta name="description" content="Tracks where records are, how fast they arrive, and who accessed them.">
+<meta name="description" content="Tracks where paper records are and how fast they arrive. Shows record-request trends; access auditing stays in your record system.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Ospeli">
 <meta property="og:title" content="Health records and information · Ospeli">
-<meta property="og:description" content="Tracks where records are, how fast they arrive, and who accessed them.">
+<meta property="og:description" content="Tracks where paper records are and how fast they arrive. Shows record-request trends; access auditing stays in your record system.">
 <meta property="og:image" content="https://ospeli.com/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#0B2F4E">
@@ -36,6 +36,7 @@ h3 { font-size: 1rem; margin: 0 0 4px; }
 .lead { color: var(--soft); max-width: 44em; margin: 0 0 14px; font-size: 1.08rem; }
 .st { display: inline-block; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; border: 1px dashed #CFC5B2; color: var(--soft); background: #fff; }
 .st.live { border: 0; background: var(--wash); color: var(--ink); }
+.st.built { border: 0; background: var(--navy); color: #fff; }
 .go { display: inline-block; background: var(--coral); color: #fff; text-decoration: none; font-weight: 800; padding: 11px 18px; border-radius: 999px; min-height: 44px; }
 .ba { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 18px 0 8px; }
 .ba div { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
@@ -65,6 +66,7 @@ section.block { margin: 22px 0; }
 .areas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .area { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; text-decoration: none; display: flex; flex-direction: column; gap: 6px; min-height: 44px; }
 .area:hover { border-color: var(--sea); }
+.area .st { align-self: flex-start; }
 .area h3 { font-size: 1.02rem; }
 .area p { margin: 0; color: var(--soft); font-size: 0.92rem; }
 .legend { font-size: 0.88rem; color: var(--soft); margin: 0 0 10px; }
@@ -78,9 +80,9 @@ section.block { margin: 22px 0; }
 <p class="crumb"><a href="../">All areas</a> · People, quality and governance</p>
 <span class="st live">Preview</span>
 <h1>Health records and information</h1>
-<p class="lead">Tracks where records are, how fast they arrive, and who accessed them.</p>
-<p><a class="go" href="../../demo/records/">Open the health records preview</a></p><p class="lead">Preview on fictional data. First full version due: <b>Feb 2027</b>.</p>
-<div class="ba"><div class="now"><span class="lbl">Today</span>Paper charts go missing before clinic. Duplicate patient numbers split one history. Coding runs weeks behind, and requests for records wait in an inbox with no clock.</div><div class="then"><span class="lbl">With Ospeli</span>Record requests and movements are tracked like work orders. Duplicates are flagged for merge review. Coding backlogs and release requests show their age. Every access is in the audit trail.</div></div>
+<p class="lead">Tracks where paper records are and how fast they arrive. Shows record-request trends; access auditing stays in your record system.</p>
+<p><a class="go" href="../../demo/records/">Open the health records preview</a></p><p class="lead">Preview on fictional data; not yet built on the shared core. First version planned <b>Feb 2027</b>.</p>
+<div class="ba"><div class="now"><span class="lbl">Common patterns we design for</span><b>Where there is no system:</b> Paper charts can go missing before clinic. Duplicate patient numbers can split one history. Coding often runs weeks behind, and requests for records can wait in an inbox with no clock.<br><b>Where there is a record or tracking system:</b> An electronic record holds the clinical notes, but paper charts, coding backlogs and release requests are often still tracked on separate lists.<br>Ospeli works alongside existing systems.</div><div class="then"><span class="lbl">With Ospeli</span>Record requests and movements are tracked like work orders. Duplicates are flagged for merge review. Coding backlogs and release requests show their age. Access auditing stays in your record system.</div></div>
 <section class="block" aria-labelledby="who"><h2 id="who">Who uses it</h2><div class="people"><div class="person"><b>Records clerk</b><span>Scans a chart out and in by phone; works the pull list.</span></div><div class="person"><b>Clinic coordinator</b><span>Sees which records are ready for tomorrow&#x27;s clinics.</span></div><div class="person"><b>Clinical coder</b><span>Works the coding queue by age and sees what is missing.</span></div><div class="person"><b>Information governance lead</b><span>Handles release requests, access reviews and breach reports.</span></div><div class="person"><b>Records manager</b><span>Monitors retrieval times, duplicates, backlog and retention schedules.</span></div></div></section>
 <div class="grid">
 <section class="card" aria-labelledby="scr"><h2 id="scr">Key screens</h2><ul><li><b>Record scan (phone)</b>: Scan or search a record; mark sent, received, or missing, with location.</li><li><b>Clinic pull list</b>: Records needed per clinic session, with status and missing items.</li><li><b>Coding queue</b>: Discharges awaiting coding by age, with completeness flags.</li><li><b>Release of information</b>: Requests by type, received date, due date and status.</li><li><b>Duplicate review</b>: Possible duplicate patient records for a person to confirm or reject.</li></ul></section>
@@ -90,7 +92,7 @@ section.block { margin: 22px 0; }
 </div>
 <section class="block card" aria-labelledby="kp"><h2 id="kp">Measures, with their definitions</h2><div class="tw"><table><thead><tr><th>Measure</th><th>Definition</th><th>Source</th></tr></thead><tbody><tr><td><b>Record available at clinic start</b></td><td>Records present at session start / records requested for session</td><td>local definition</td></tr><tr><td><b>Record retrieval time</b></td><td>Record requested → record delivered</td><td>local definition</td></tr><tr><td><b>Coding timeliness</b></td><td>Discharge → episode coded</td><td>local definition</td></tr><tr><td><b>Duplicate record rate</b></td><td>Confirmed duplicate records / new registrations</td><td>local definition</td></tr><tr><td><b>Release request response time</b></td><td>Request received → information released or refused</td><td>local definition</td></tr></tbody></table></div></section>
 <section class="block card" aria-labelledby="ag"><h2 id="ag">For AI assistants</h2><p class="legend">Assistants may read and propose through these commands. "none (read only)" commands only read. Anything that records or changes data is a proposal until a person confirms it, and "person decides" waits for a named person with that role.</p><div class="tw"><table><thead><tr><th>Command</th><th>What it does</th><th>Approval</th></tr></thead><tbody><tr><td><code>ospeli_records_get_pull_list</code></td><td>Returns records needed per clinic session with location and status.</td><td>none (read only)</td></tr><tr><td><code>ospeli_records_log_movement</code></td><td>Records a chart moving between locations, with time and role.</td><td>person confirms</td></tr><tr><td><code>ospeli_records_list_coding_backlog</code></td><td>Lists uncoded discharges by age and specialty.</td><td>none (read only)</td></tr><tr><td><code>ospeli_records_propose_merge</code></td><td>Proposes merging two patient records; a records officer confirms.</td><td>person decides</td></tr></tbody></table></div></section>
-<section class="block" aria-labelledby="st"><h2 id="st">Standards it follows</h2><p>WHO ICD-10 and ICD-11, HL7 FHIR, ISO/IEC 27001, JCI Hospital Standards (management of information)</p></section>
+<section class="block card" aria-labelledby="st"><h2 id="st">Standards and methods it is designed around</h2><p class="legend">Ospeli is not certified against any of these. Each line says how the area relates to the standard or method.</p><h3>Standards and references</h3><ul><li><b>WHO ICD-10 and ICD-11</b>: Records the date each episode was coded. Coders do the coding in your own system.</li><li><b>ISO/IEC 27001</b>: Release-request and breach-report records are designed to support an information security programme that your organisation runs.</li><li><b>JCI Hospital Standards (management of information)</b>: Record availability and release-request times are designed to be usable as evidence when your organisation prepares for these standards.</li></ul></section>
 <section class="block" aria-labelledby="cn"><h2 id="cn">Works with</h2><div class="chips"><a href="../outpatients-and-clinics/">Outpatients and clinics</a><a href="../beds-and-patient-flow/">Beds, admissions and discharge</a><a href="../governance-and-accreditation/">Governance, policies and accreditation</a><a href="../revenue-cycle/">Revenue cycle (optional)</a><a href="../it-digital-cyber/">IT, digital and cyber</a></div></section>
 <p class="not"><b>What it does not do:</b> Not an electronic health record. No clinical content review. Does not code automatically without a coder.</p>
 <p class="foot">Ospeli is in development and launches in the first quarter of 2027. Demos use a fictional hospital and invented data. People decide; Ospeli suggests. Nothing here is clinical advice.</p>

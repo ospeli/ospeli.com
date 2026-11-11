@@ -5,8 +5,9 @@
   "name": "Outpatients and clinics",
   "group": "Patient flow and clinical services",
   "month": "Dec 2026",
-  "oneLine": "Keeps referrals, bookings, waiting lists and clinic days visible and moving.",
-  "today": "Referrals sit in inboxes and paper books. There is no single waiting list. Everyone is booked for the start of clinic, slots go unfilled, and nobody chases who did not attend.",
+  "oneLine": "Shows referrals, bookings, waiting lists and clinic days in one place.",
+  "today": "Referrals often sit in inboxes and paper books, with no single waiting list. Patients are often all booked for the start of clinic, slots go unfilled, and missed appointments are rarely followed up.",
+  "todaySystem": "A booking system holds the appointments, but waits inside the clinic and the reasons for empty slots often go unrecorded.",
   "withOspeli": "Every referral lands on one list with its wait shown. Clinic templates set slots, reminders go out, and check-in times are logged, so waits, empty slots and did-not-attend show clearly.",
   "people": [
    {
@@ -120,9 +121,16 @@
     "approval": "none (read only)"
    }
   ],
+  "methods": [],
   "standards": [
-   "JCI Access to Care and Continuity of Care (ACC)",
-   "HL7 FHIR Appointment, Slot and Schedule resources"
+   {
+    "name": "JCI Access to Care and Continuity of Care (ACC)",
+    "how": "Waiting-list and clinic records are designed to be usable as evidence when your organisation prepares for this chapter."
+   },
+   {
+    "name": "HL7 FHIR Appointment, Slot and Schedule resources (planned)",
+    "how": "Export of bookings and clinic slots in this format is planned, not built."
+   }
   ],
   "connects": [
    "A5",
@@ -142,7 +150,8 @@
   "group": "Patient flow and clinical services",
   "month": "Jan 2027",
   "oneLine": "Shows every wait in the emergency department, from arrival to departure.",
-  "today": "Times are written on paper or not at all. Ambulances wait at the door, cubicles fill with patients waiting for ward beds, and nobody can say where the hours went.",
+  "today": "Times are often written on paper, or not recorded. Ambulances can wait at the door, cubicles fill with patients waiting for ward beds, and it is hard to say where the hours went.",
+  "todaySystem": "A tracking system records arrival and departure, but the waits between steps, and what each one was waiting for, are often hard to see.",
   "withOspeli": "Each stage is a timestamped tap: arrival, triage, seen, decision, bed requested, departed. A live board shows waits and blocks, and admission requests reach the bed board at once.",
   "people": [
    {
@@ -199,9 +208,9 @@
   ],
   "kpis": [
    {
-    "name": "national time standard",
-    "definition": "attendances departing within 4 hours of arrival / all attendances",
-    "source": "National emergency department time standard (set locally)"
+    "name": "Time in department (arrival → departure), share within the local standard",
+    "definition": "attendances departing within the locally set time from arrival / all attendances",
+    "source": "local standard, set by each site"
    },
    {
     "name": "Time to triage",
@@ -255,10 +264,20 @@
     "approval": "person decides"
    }
   ],
+  "methods": [],
   "standards": [
-   "National emergency department time standard (set locally)",
-   "JCI Access to Care and Continuity of Care (ACC)",
-   "HL7 FHIR Encounter resource"
+   {
+    "name": "Your local time standard for the emergency department",
+    "how": "Reports the share of attendances within the time limit your site sets."
+   },
+   {
+    "name": "JCI Access to Care and Continuity of Care (ACC)",
+    "how": "Arrival-to-departure times are designed to be usable as evidence when your organisation prepares for this chapter."
+   },
+   {
+    "name": "HL7 FHIR Encounter resource (planned)",
+    "how": "Export of attendance times in this format is planned, not built."
+   }
   ],
   "connects": [
    "A3",
@@ -279,8 +298,9 @@
   "group": "Patient flow and clinical services",
   "month": "Nov 2026",
   "oneLine": "One live picture of every bed, admission and discharge across the organisation.",
-  "today": "Bed state lives on whiteboards and phone calls. Discharges are decided late, then wait for medicines, transport or family. Beds sit empty but dirty while patients wait downstairs.",
-  "withOspeli": "A live bed board shows each bed as occupied, ready, dirty or blocked. Expected discharge dates and delay reasons are logged, and a discharge triggers cleaning, so delays show and beds turn faster.",
+  "today": "Bed state often lives on whiteboards and phone calls. Discharges are often decided late, then wait for medicines, transport or family. Beds can sit empty but not yet cleaned while patients wait elsewhere.",
+  "todaySystem": "The record system shows who is in each bed, but cleaning status, delay reasons and bed requests are often tracked beside it by phone.",
+  "withOspeli": "A live bed board shows each bed as occupied, ready, dirty or blocked. Expected discharge dates and delay reasons are logged, and a discharge triggers cleaning, so delays and their reasons are visible.",
   "people": [
    {
     "role": "Charge nurse",
@@ -346,8 +366,8 @@
     "source": "local definition"
    },
    {
-    "name": "Discharges before noon",
-    "definition": "discharges before 12:00 / all discharges",
+    "name": "Discharges before noon (diagnostic, no target)",
+    "definition": "discharges before 12:00 / all discharges; shown to understand the pattern of the day, never as a target",
     "source": "local definition"
    },
    {
@@ -397,11 +417,19 @@
     "approval": "none (read only)"
    }
   ],
-  "standards": [
+  "methods": [
    "SAFER patient flow bundle",
-   "Red2Green bed days",
-   "JCI Access to Care and Continuity of Care (ACC)",
-   "HL7 FHIR Encounter and Location resources"
+   "Red2Green bed days"
+  ],
+  "standards": [
+   {
+    "name": "JCI Access to Care and Continuity of Care (ACC)",
+    "how": "Bed request, admission and discharge-delay records are designed to be usable as evidence when your organisation prepares for this chapter."
+   },
+   {
+    "name": "HL7 FHIR Encounter and Location resources (planned)",
+    "how": "Export of bed and stay events in this format is planned, not built."
+   }
   ],
   "connects": [
    "A2",
@@ -423,8 +451,9 @@
   "name": "Theatres and procedure lists",
   "group": "Patient flow and clinical services",
   "month": "Jan 2027",
-  "oneLine": "Makes every theatre and procedure session start on time and run full.",
-  "today": "Lists are set late and change on the day. Sessions start late waiting for a bed, a missing tray or staff. Cancellations happen after patients are prepared, and turnaround time is a guess.",
+  "oneLine": "Shows late starts, gaps and on-the-day cancellations, session by session.",
+  "today": "Lists are often set late and change on the day. Sessions can start late waiting for a bed, a missing tray or staff. Cancellations sometimes happen after patients are prepared, and turnaround time is estimated.",
+  "todaySystem": "A theatre system holds the list and case times, but late-start reasons and readiness checks for tomorrow often sit outside it.",
   "withOspeli": "Lists, sessions and each case's key times are logged in taps. Readiness checks show missing beds, kit or staff the day before, and cancellations carry reasons, so lost session time is visible.",
   "people": [
    {
@@ -533,10 +562,20 @@
     "approval": "person decides"
    }
   ],
+  "methods": [],
   "standards": [
-   "WHO Surgical Safety Checklist",
-   "JCI Anesthesia and Surgical Care (ASC)",
-   "HL7 FHIR Procedure resource"
+   {
+    "name": "WHO Surgical Safety Checklist",
+    "how": "Records whether the checklist was completed for each case, yes or no. The theatre team runs the checklist."
+   },
+   {
+    "name": "JCI Anesthesia and Surgical Care (ASC)",
+    "how": "Session and case-time records are designed to be usable as evidence when your organisation prepares for this chapter."
+   },
+   {
+    "name": "HL7 FHIR Procedure resource (planned)",
+    "how": "Export of case times in this format is planned, not built."
+   }
   ],
   "connects": [
    "A3",
@@ -559,7 +598,8 @@
   "group": "Patient flow and clinical services",
   "month": "Jan 2027",
   "oneLine": "Tracks every request, sample and scan from order to reported result.",
-  "today": "Samples get lost between ward and lab. Nobody can say when a scan will happen. An analyser or scanner goes down and wards find out by phoning. Results wait to be seen.",
+  "today": "Samples can get lost between ward and laboratory. It is often hard to say when a scan will happen. When an analyser or scanner goes down, wards often find out by phoning. Results can wait to be seen.",
+  "todaySystem": "Laboratory and imaging systems track the test itself, but the steps before and after, and equipment downtime, are often invisible to the wards.",
   "withOspeli": "Requests, specimens and scans carry timestamps at each handoff. Wards see status without phoning, downtime is posted on the board, and turnaround is measured per test and step.",
   "people": [
    {
@@ -668,10 +708,20 @@
     "approval": "person decides"
    }
   ],
+  "methods": [],
   "standards": [
-   "ISO 15189:2022",
-   "WHO Laboratory Quality Management System (LQMS) Handbook",
-   "HL7 FHIR ServiceRequest, Specimen and DiagnosticReport resources"
+   {
+    "name": "ISO 15189:2022",
+    "how": "Turnaround times and specimen rejections are recorded in a form a laboratory can use in its own ISO 15189 quality system."
+   },
+   {
+    "name": "WHO Laboratory Quality Management System (LQMS) Handbook",
+    "how": "Used as a reference for the steps before and after testing that the board tracks."
+   },
+   {
+    "name": "HL7 FHIR ServiceRequest, Specimen and DiagnosticReport resources (planned)",
+    "how": "Export of request and specimen status in this format is planned, not built."
+   }
   ],
   "connects": [
    "A1",
@@ -690,8 +740,9 @@
   "name": "Pharmacy operations",
   "group": "Patient flow and clinical services",
   "month": "Jan 2027",
-  "oneLine": "Keeps medicines in stock and dispensing moving, so nobody waits needlessly.",
-  "today": "Stock is counted by hand and runs out without warning. Discharge medicines are requested late and patients wait hours to go home. Expired stock is found too late.",
+  "oneLine": "Shows medicine stock, expiry dates and dispensing waits, step by step.",
+  "today": "Stock is often counted by hand and can run out without warning. Discharge medicines are often requested late, so patients wait to go home. Expired stock is often found late.",
+  "todaySystem": "A pharmacy system holds stock and dispensing records, but wards often cannot see where a request is, so they phone.",
   "withOspeli": "Stock levels, top-up points and expiry dates are tracked by location. Dispensing requests are timestamped, so discharge medicine waits show live, and stock-outs are warned before they happen.",
   "people": [
    {
@@ -794,10 +845,20 @@
     "approval": "person confirms"
    }
   ],
+  "methods": [],
   "standards": [
-   "WHO Model List of Essential Medicines",
-   "WHO harmonized PSM indicators",
-   "JCI Medication Management and Use (MMU)"
+   {
+    "name": "WHO Model List of Essential Medicines",
+    "how": "Designed so a site can use it as a starting list of tracer medicines; each site sets its own."
+   },
+   {
+    "name": "WHO harmonized PSM indicators",
+    "how": "Tracer medicine availability and stock-out duration use these indicator definitions."
+   },
+   {
+    "name": "JCI Medication Management and Use (MMU)",
+    "how": "Stock and dispensing-time records are designed to be usable as evidence when your organisation prepares for this chapter."
+   }
   ],
   "connects": [
    "A3",
@@ -816,7 +877,8 @@
   "group": "Patient flow and clinical services",
   "month": "Jan 2027",
   "oneLine": "Shows maternity beds, cots and children's beds live, with transfers tracked.",
-  "today": "Nobody knows how many cots are free until someone phones round. Units close to admissions with little notice. Transfers out are arranged by phone and nobody records why.",
+  "today": "Free cots are often found by phoning round. Units can close to admissions with little notice. Transfers out are often arranged by phone, with the reason unrecorded.",
+  "todaySystem": "The record system holds each admission, but unit closures, transfer requests and their reasons are often kept on paper or in messages.",
   "withOspeli": "Live boards show labour rooms, maternity beds, cots and children's beds. Closures and transfers are logged with reasons and times, and mother and baby codes stay linked across moves.",
   "people": [
    {
@@ -919,9 +981,16 @@
     "approval": "person decides"
    }
   ],
+  "methods": [],
   "standards": [
-   "WHO Standards for Improving Quality of Maternal and Newborn Care in Health Facilities",
-   "JCI Access to Care and Continuity of Care (ACC)"
+   {
+    "name": "WHO Standards for Improving Quality of Maternal and Newborn Care in Health Facilities",
+    "how": "Used as a reference for what a unit should be able to count: capacity, closures and transfers. Ospeli does not assess the quality of care."
+   },
+   {
+    "name": "JCI Access to Care and Continuity of Care (ACC)",
+    "how": "Transfer and unit-closure records are designed to be usable as evidence when your organisation prepares for this chapter."
+   }
   ],
   "connects": [
    "A2",
@@ -941,7 +1010,8 @@
   "group": "Patient flow and clinical services",
   "month": "Jan 2027",
   "oneLine": "Shows critical care beds, delayed step-downs and transfers out, live.",
-  "today": "Critical care is full while patients ready to step down wait for ward beds. Surgery is cancelled for lack of a bed. Transfers out happen at night and are not counted.",
+  "today": "Critical care is often full while patients ready to step down wait for ward beds. Surgery can be cancelled for lack of a bed. Transfers out at night are often not counted.",
+  "todaySystem": "A clinical system holds the patient record, but step-down delays and capacity refusals are often counted by hand, if at all.",
   "withOspeli": "A live board shows critical care beds, staffed status and patients ready to step down. Delays waiting for ward beds are timed and transfers out for capacity are logged with reasons.",
   "people": [
    {
@@ -1049,9 +1119,16 @@
     "approval": "person decides"
    }
   ],
+  "methods": [],
   "standards": [
-   "JCI Access to Care and Continuity of Care (ACC)",
-   "HL7 FHIR Encounter and Location resources"
+   {
+    "name": "JCI Access to Care and Continuity of Care (ACC)",
+    "how": "Step-down delay and transfer-out records are designed to be usable as evidence when your organisation prepares for this chapter."
+   },
+   {
+    "name": "HL7 FHIR Encounter and Location resources (planned)",
+    "how": "Export of bed and stay events in this format is planned, not built."
+   }
   ],
   "connects": [
    "A2",
@@ -1071,7 +1148,8 @@
   "group": "Patient flow and clinical services",
   "month": "Jan 2027",
   "oneLine": "Tracks mental health and long-stay beds, delayed transfers and placements.",
-  "today": "Patients stay weeks after they are ready because a placement, home support or funding is not arranged. Beds are found far away by phone. Nobody counts the days lost.",
+  "today": "Patients can stay weeks after they are ready because a placement, home support or funding is not arranged. Beds are often found far away by phone, and the days lost are rarely counted.",
+  "todaySystem": "The record system shows the stay, but placement steps happen across several organisations and are often tracked in spreadsheets and email.",
   "withOspeli": "A board shows mental health, rehabilitation and long-stay beds. Ready-to-leave dates, delay reasons and placement requests are logged, so lost bed-days and their causes are visible.",
   "people": [
    {
@@ -1179,9 +1257,16 @@
     "approval": "person decides"
    }
   ],
+  "methods": [],
   "standards": [
-   "JCI Access to Care and Continuity of Care (ACC)",
-   "HL7 FHIR EpisodeOfCare resource"
+   {
+    "name": "JCI Access to Care and Continuity of Care (ACC)",
+    "how": "Delayed-transfer and placement records are designed to be usable as evidence when your organisation prepares for this chapter."
+   },
+   {
+    "name": "HL7 FHIR EpisodeOfCare resource (planned)",
+    "how": "Export of stay and placement dates in this format is planned, not built."
+   }
   ],
   "connects": [
    "A2",
@@ -1198,8 +1283,9 @@
   "name": "Medical equipment and maintenance",
   "group": "Infrastructure and support",
   "month": "Dec 2026",
-  "oneLine": "Keeps every device known, maintained and fixed fast, with a clear history.",
-  "today": "Nobody knows how many pumps work. Faults are phoned in and lost. Planned maintenance slips, donated kit has no manual, and repairs stall waiting for parts or approval.",
+  "oneLine": "One register of every device, with its maintenance and fault history.",
+  "today": "In many places there is no reliable count of working devices. Faults are phoned in and can be lost. Planned maintenance slips, donated equipment often has no manual, and repairs stall waiting for parts or approval.",
+  "todaySystem": "A maintenance system holds the asset register, but ward staff often cannot report into it or see progress, so faults still arrive by phone.",
   "withOspeli": "Staff scan a device's QR label to report a fault in three taps. Work orders carry timers, repeat faults surface, and step guides help with simple fixes before escalation.",
   "people": [
    {
@@ -1313,11 +1399,24 @@
     "approval": "person decides"
    }
   ],
+  "methods": [],
   "standards": [
-   "WHO Medical Device Technical Series",
-   "ISO 55001",
-   "JCI Facility Management and Safety (FMS)",
-   "IEC 62353"
+   {
+    "name": "WHO Medical Device Technical Series",
+    "how": "The asset register and maintenance fields are designed around its guidance on inventory and maintenance programmes."
+   },
+   {
+    "name": "ISO 55001",
+    "how": "Asset history and maintenance records are designed to support an asset management system that your organisation runs."
+   },
+   {
+    "name": "JCI Facility Management and Safety (FMS)",
+    "how": "Maintenance and fault records are designed to be usable as evidence when your organisation prepares for this chapter."
+   },
+   {
+    "name": "IEC 62353",
+    "how": "Designed to record IEC 62353 test dates and results against each device. Your engineers do the tests."
+   }
   ],
   "connects": [
    "B2",
@@ -1336,8 +1435,9 @@
   "name": "Facilities and utilities",
   "group": "Infrastructure and support",
   "month": "Mar 2027",
-  "oneLine": "Keeps buildings, power, water, medical gases and waste running, checked and logged.",
-  "today": "Leaks and broken lights are reported by word of mouth. Generator tests and gas checks live on paper. An outage arrives with no warning and no record of the last fix.",
+  "oneLine": "Logs faults, checks and outages for buildings, power, water, medical gases and waste.",
+  "today": "Leaks and broken lights are often reported by word of mouth. Generator tests and gas checks often live on paper. An outage can arrive with no warning and no record of the last fix.",
+  "todaySystem": "A building management or helpdesk system covers part of the estate, but checks, outages and room closures are often logged in separate places.",
   "withOspeli": "Any room or plant item has a QR label for fault reports. One work-order queue covers building and plant jobs. Utility checks and outages are logged, so trends and gaps show early.",
   "people": [
    {
@@ -1451,11 +1551,20 @@
     "approval": "person decides"
    }
   ],
+  "methods": [],
   "standards": [
-   "ISO 41001",
-   "JCI Facility Management and Safety (FMS)",
-   "PAHO Smart Hospitals Toolkit",
-   "ISO 7396-1"
+   {
+    "name": "ISO 41001",
+    "how": "Work-order and check records are designed to support a facility management system that your organisation runs."
+   },
+   {
+    "name": "JCI Facility Management and Safety (FMS)",
+    "how": "Utility check, outage and inspection records are designed to be usable as evidence when your organisation prepares for this chapter."
+   },
+   {
+    "name": "PAHO Smart Hospitals Toolkit",
+    "how": "Used as a reference for the utility and resilience checks a site can log."
+   }
   ],
   "connects": [
    "B1",
@@ -1475,8 +1584,9 @@
   "name": "Cleaning, portering and support services",
   "group": "Infrastructure and support",
   "month": "Dec 2026",
-  "oneLine": "Gets beds cleaned, patients moved, linen and meals delivered on time.",
-  "today": "A bed is empty but dirty, and nobody told cleaning. Porter requests go by phone and vanish. Linen runs out on the night shift. Audits sit in folders.",
+  "oneLine": "Turns bed cleans, patient moves, linen and meal requests into tracked tasks.",
+  "today": "A bed can be empty but not cleaned because cleaning was not told. Porter requests often go by phone and can be missed. Linen can run out on the night shift. Audits often sit in folders.",
+  "todaySystem": "A task or helpdesk system handles some requests, but it is often not linked to bed state, so a discharge does not start a clean.",
   "withOspeli": "A discharge on the bed board creates a clean task automatically. Porter, linen and meal requests become tracked tasks for the team. Cleaning audits are done on a phone and scored.",
   "people": [
    {
@@ -1585,9 +1695,16 @@
     "approval": "person confirms"
    }
   ],
+  "methods": [],
   "standards": [
-   "National cleanliness standard (set locally)",
-   "JCI Prevention and Control of Infections (PCI)"
+   {
+    "name": "Your local cleanliness standard",
+    "how": "Audit scores are calculated against the standard and risk categories your site sets."
+   },
+   {
+    "name": "JCI Prevention and Control of Infections (PCI)",
+    "how": "Cleaning task and audit records are designed to be usable as evidence when your organisation prepares for this chapter."
+   }
   ],
   "connects": [
    "A3",
@@ -1607,7 +1724,8 @@
   "group": "Infrastructure and support",
   "month": "Dec 2026",
   "oneLine": "Shows what stock each area has, what is running out, and what's ordered.",
-  "today": "Wards find out gloves are gone when the box is empty. Some areas hoard, others run short. Requests go on paper, and nobody can see where an order is in the purchasing process.",
+  "today": "Wards often find out an item is gone when the box is empty. Some areas hold extra while others run short. Requests often go on paper, and it is hard to see where an order is in the purchasing process.",
+  "todaySystem": "An inventory or purchasing system holds central stock, but ward-level stock and the status of a request are often invisible to the people waiting.",
   "withOspeli": "Each area has top-up levels and quick counts on a phone. Low stock raises a request; orders show each step from request to delivery. Stock-outs are logged with their cause.",
   "people": [
    {
@@ -1706,10 +1824,20 @@
     "approval": "person decides"
    }
   ],
+  "methods": [],
   "standards": [
-   "GS1 healthcare standards",
-   "ISO 9001",
-   "JCI Governance, Leadership, and Direction (GLD)"
+   {
+    "name": "GS1 healthcare standards",
+    "how": "Item records are designed to hold GS1 identifiers where your suppliers provide them."
+   },
+   {
+    "name": "ISO 9001",
+    "how": "Request, order and stock-out records are designed to support a quality management system that your organisation runs."
+   },
+   {
+    "name": "JCI Governance, Leadership, and Direction (GLD)",
+    "how": "Purchasing steps and approval records are designed to be usable as evidence when your organisation prepares for this chapter."
+   }
   ],
   "connects": [
    "A6",
@@ -1720,7 +1848,7 @@
    "B3",
    "D1"
   ],
-  "notFor": "Not for medicines dispensing (see A8) or choosing suppliers. Does not approve purchases; people do."
+  "notFor": "Not for medicines dispensing (see A6, Pharmacy operations) or choosing suppliers. Does not approve purchases; people do."
  },
  {
   "id": "B5",
@@ -1729,7 +1857,8 @@
   "group": "Infrastructure and support",
   "month": "Mar 2027",
   "oneLine": "Books, tracks and closes every patient journey between sites, and the vehicles.",
-  "today": "Transfers are booked by phone and chased all day. Nobody knows which vehicle is free or off the road. Patients wait for an escort, and discharges slip to tomorrow.",
+  "today": "Transfers are often booked by phone and chased through the day. It is often unclear which vehicle is free or off the road. Patients can wait for an escort, and discharges slip to the next day.",
+  "todaySystem": "A dispatch system handles emergency calls, but planned transfers between sites are often still booked by phone and not timed.",
   "withOspeli": "Transfer requests go into one queue with the vehicle, crew and escort they need. Vehicle status is live. Each journey's steps are timed, and vehicle faults raise work orders.",
   "people": [
    {
@@ -1833,10 +1962,20 @@
     "approval": "none (read only)"
    }
   ],
+  "methods": [],
   "standards": [
-   "JCI Access to Care and Continuity of Care (ACC)",
-   "WHO Emergency Care System Framework",
-   "ISO 39001"
+   {
+    "name": "JCI Access to Care and Continuity of Care (ACC)",
+    "how": "Transfer request and journey-time records are designed to be usable as evidence when your organisation prepares for this chapter."
+   },
+   {
+    "name": "WHO Emergency Care System Framework",
+    "how": "Used as a reference for the transfer steps that are timed."
+   },
+   {
+    "name": "ISO 39001",
+    "how": "Vehicle check and defect records are designed to support a road traffic safety management system that your organisation runs."
+   }
   ],
   "connects": [
    "A2",
@@ -1854,8 +1993,9 @@
   "name": "Staffing, rosters and credentials",
   "group": "People, quality and governance",
   "month": "Feb 2027",
-  "oneLine": "Matches staff on each shift to the workload, and keeps credentials in date.",
-  "today": "Rosters live on paper or spreadsheets. Gaps surface at shift start, staff are moved by phone, and an expired licence or missing training is found only at inspection.",
+  "oneLine": "Shows staff on each shift against the workload, and credentials due to expire.",
+  "today": "Rosters often live on paper or spreadsheets. Gaps surface at shift start, staff are moved by phone, and an expired licence or missing training is sometimes found only at inspection.",
+  "todaySystem": "A rostering or staff records system holds shifts and contracts, but the shift-by-shift picture against workload, and credential expiry, often need manual checks.",
   "withOspeli": "Each shift shows staff rostered against staff needed for today's workload. Gaps show early, cover requests are tracked to filled, and expiring credentials are flagged weeks ahead.",
   "people": [
    {
@@ -1969,9 +2109,14 @@
     "approval": "none (read only)"
    }
   ],
+  "methods": [
+   "WHO WISN (Workload Indicators of Staffing Need)"
+  ],
   "standards": [
-   "WHO WISN (Workload Indicators of Staffing Need)",
-   "JCI Hospital Standards (staff qualifications and education)"
+   {
+    "name": "JCI Hospital Standards (staff qualifications and education)",
+    "how": "Credential and training expiry records are designed to be usable as evidence when your organisation prepares for these standards."
+   }
   ],
   "connects": [
    "A2",
@@ -1990,7 +2135,8 @@
   "group": "People, quality and governance",
   "month": "Feb 2027",
   "oneLine": "One place to report incidents, track risks and close every action.",
-  "today": "Incidents go on paper forms or email and vanish. Risks sit in a spreadsheet nobody updates. Actions from meetings, audits and incidents scatter across minutes, and the same problem recurs.",
+  "today": "Incidents often go on paper forms or email and can be lost. Risks often sit in a spreadsheet that is rarely updated. Actions from meetings, audits and incidents scatter across minutes, and the same problem can recur.",
+  "todaySystem": "An incident system collects reports, but actions from meetings and audits often live elsewhere, so there is no single list of what is overdue.",
   "withOspeli": "Reporting is a short phone form, anonymous if wished. Each incident is triaged, learned from and linked to risks. Every action, from any source, has one owner, a due date and a visible status.",
   "people": [
    {
@@ -2104,11 +2250,19 @@
     "approval": "none (read only)"
    }
   ],
-  "standards": [
-   "National incident response framework (set locally)",
-   "WHO Global Patient Safety Action Plan 2021–2030",
+  "methods": [
    "Model for Improvement (plan-do-study-act cycles)",
    "AHRQ Surveys on Patient Safety Culture (SOPS)"
+  ],
+  "standards": [
+   {
+    "name": "Your local incident response framework",
+    "how": "Triage steps and learning responses are set up to match the framework your health system uses."
+   },
+   {
+    "name": "WHO Global Patient Safety Action Plan 2021–2030",
+    "how": "Used as a reference for reporting and learning. Ospeli is not part of any reporting programme."
+   }
   ],
   "connects": [
    "C3",
@@ -2128,7 +2282,8 @@
   "group": "People, quality and governance",
   "month": "Feb 2027",
   "oneLine": "Runs hand hygiene audits, isolation rooms and outbreak logistics on one board.",
-  "today": "Audits are tallied by hand and reported months late. Nobody knows which isolation rooms are free. In an outbreak, closed bays, cleaning and staff lists are tracked on whiteboards and phone calls.",
+  "today": "Audits are often tallied by hand and reported late. It is often unclear which isolation rooms are free. In an outbreak, closed bays, cleaning and staff lists are often tracked on whiteboards and phone calls.",
+  "todaySystem": "A surveillance system holds infection data, but isolation rooms, closures and cleaning are often coordinated outside it.",
   "withOspeli": "Audits are entered on a phone and roll up the same day. Isolation rooms show live status. An outbreak gets one board for closed areas, deep cleans, supplies and actions.",
   "people": [
    {
@@ -2176,7 +2331,7 @@
    "Area closed and reopened: outbreak duration and bed-days lost.",
    "Enhanced or terminal clean requested and completed: links to cleaning.",
    "Environment audit item failed: creates a work order or action.",
-   "Device-days counted per unit: denominator for device infection rates."
+   "Device-days counted per unit: a count passed to your infection surveillance system."
   ],
   "kpis": [
    {
@@ -2195,9 +2350,9 @@
     "source": "local definition"
    },
    {
-    "name": "CLABSI rate",
-    "definition": "Central line infections / central line-days × 1,000",
-    "source": "CDC NHSN"
+    "name": "Central line infection rate (imported)",
+    "definition": "imported from your infection surveillance system; Ospeli does not calculate or judge infections",
+    "source": "your infection surveillance system"
    },
    {
     "name": "Bed-days lost to closures",
@@ -2236,11 +2391,18 @@
     "approval": "none (read only)"
    }
   ],
+  "methods": [
+   "WHO My 5 Moments for Hand Hygiene"
+  ],
   "standards": [
-   "WHO Core Components for IPC Programmes",
-   "WHO My 5 Moments for Hand Hygiene",
-   "CDC NHSN surveillance definitions",
-   "JCI Hospital Standards (prevention and control of infections)"
+   {
+    "name": "WHO Core Components for IPC Programmes",
+    "how": "Used as a reference for the audit and monitoring records."
+   },
+   {
+    "name": "JCI Hospital Standards (prevention and control of infections)",
+    "how": "Audit, isolation room and area-closure records are designed to be usable as evidence when your organisation prepares for these standards."
+   }
   ],
   "connects": [
    "A3",
@@ -2258,8 +2420,9 @@
   "name": "Governance, policies and accreditation",
   "group": "People, quality and governance",
   "month": "Feb 2027",
-  "oneLine": "Keeps policies in date, audits on cycle, and accreditation evidence always ready.",
-  "today": "Policies sit in binders and shared drives, many past review. Audits stop after one round. Committee actions live in minutes, and accreditation prep is a scramble before each visit.",
+  "oneLine": "Shows policy review dates, audit cycles and the evidence linked to each standard.",
+  "today": "Policies often sit in binders and shared drives, many past review. Audits often stop after one round. Committee actions live in minutes, and accreditation preparation is often a rush before each visit.",
+  "todaySystem": "A document system stores the policies, but review dates, staff acknowledgement and the evidence for each standard are often tracked by hand.",
   "withOspeli": "Each policy has an owner, version and review date; staff acknowledge changes by phone. Audits run on a schedule. Standards link to evidence, so readiness is visible all year.",
   "people": [
    {
@@ -2366,10 +2529,18 @@
     "approval": "none (read only)"
    }
   ],
-  "standards": [
-   "JCI Hospital Standards (governance and quality improvement)",
-   "ISO 9001",
+  "methods": [
    "Model for Improvement (plan-do-study-act cycles)"
+  ],
+  "standards": [
+   {
+    "name": "JCI Hospital Standards (governance and quality improvement)",
+    "how": "Policies, audits and evidence can be linked to the standards your organisation chooses. An accreditor judges compliance; Ospeli does not."
+   },
+   {
+    "name": "ISO 9001",
+    "how": "Document control and audit records are designed to support a quality management system that your organisation runs."
+   }
   ],
   "connects": [
    "C2",
@@ -2385,9 +2556,10 @@
   "name": "Health records and information",
   "group": "People, quality and governance",
   "month": "Feb 2027",
-  "oneLine": "Tracks where records are, how fast they arrive, and who accessed them.",
-  "today": "Paper charts go missing before clinic. Duplicate patient numbers split one history. Coding runs weeks behind, and requests for records wait in an inbox with no clock.",
-  "withOspeli": "Record requests and movements are tracked like work orders. Duplicates are flagged for merge review. Coding backlogs and release requests show their age. Every access is in the audit trail.",
+  "oneLine": "Tracks where paper records are and how fast they arrive. Shows record-request trends; access auditing stays in your record system.",
+  "today": "Paper charts can go missing before clinic. Duplicate patient numbers can split one history. Coding often runs weeks behind, and requests for records can wait in an inbox with no clock.",
+  "todaySystem": "An electronic record holds the clinical notes, but paper charts, coding backlogs and release requests are often still tracked on separate lists.",
+  "withOspeli": "Record requests and movements are tracked like work orders. Duplicates are flagged for merge review. Coding backlogs and release requests show their age. Access auditing stays in your record system.",
   "people": [
    {
     "role": "Records clerk",
@@ -2498,11 +2670,20 @@
     "approval": "person decides"
    }
   ],
+  "methods": [],
   "standards": [
-   "WHO ICD-10 and ICD-11",
-   "HL7 FHIR",
-   "ISO/IEC 27001",
-   "JCI Hospital Standards (management of information)"
+   {
+    "name": "WHO ICD-10 and ICD-11",
+    "how": "Records the date each episode was coded. Coders do the coding in your own system."
+   },
+   {
+    "name": "ISO/IEC 27001",
+    "how": "Release-request and breach-report records are designed to support an information security programme that your organisation runs."
+   },
+   {
+    "name": "JCI Hospital Standards (management of information)",
+    "how": "Record availability and release-request times are designed to be usable as evidence when your organisation prepares for these standards."
+   }
   ],
   "connects": [
    "A1",
@@ -2519,8 +2700,9 @@
   "name": "Planning, business cases, capital projects",
   "group": "People, quality and governance",
   "month": "Feb 2027",
-  "oneLine": "Builds business cases from real data and tracks capital projects to benefits.",
-  "today": "Business cases are written from scratch with guessed figures. Approved projects drift without a clear owner. Department redesigns open with no check that the promised benefits came.",
+  "oneLine": "Builds business cases from the site's own recorded data and tracks capital projects to benefits.",
+  "today": "Business cases are often written from scratch with estimated figures. Approved projects can drift without a clear owner. Redesigned departments often open with no check that the expected benefits came.",
+  "todaySystem": "A project tool tracks tasks and dates, but the baseline measures and the benefits after opening are often not linked to it.",
   "withOspeli": "Cases draw on the site's own time stamps, process maps and costs. Each project tracks milestones, budget, risks and actions. After go-live, the same KPIs show whether benefits came.",
   "people": [
    {
@@ -2629,9 +2811,16 @@
     "approval": "none (read only)"
    }
   ],
+  "methods": [],
   "standards": [
-   "WHO health system building blocks (leadership and governance)",
-   "ISO 21502 (project management)"
+   {
+    "name": "WHO health system building blocks (leadership and governance)",
+    "how": "Used as a reference for how a business case describes the service."
+   },
+   {
+    "name": "ISO 21502 (project management)",
+    "how": "Milestone, budget, risk and benefit records use its project management terms."
+   }
   ],
   "connects": [
    "D1",
@@ -2649,7 +2838,8 @@
   "group": "Finance and digital",
   "month": "Feb 2027",
   "oneLine": "Shows each department its budget, spend and cost per case, with reasons.",
-  "today": "Budget reports arrive weeks after month end, in spreadsheets few managers read. Overspends surface too late, and nobody can link cost to the beds, theatre lists or staffing behind it.",
+  "today": "Budget reports often arrive weeks after month end, in spreadsheets few managers read. Overspends surface late, and it is hard to link cost to the beds, theatre lists or staffing behind it.",
+  "todaySystem": "A finance system holds the ledger, but budget holders often cannot see spend beside the activity that drove it.",
   "withOspeli": "Spend sits beside activity from the event log, so cost per bed-day or case uses the same counts as operations. Designed to flag variances early, with the likely driver and an owner.",
   "people": [
    {
@@ -2762,9 +2952,8 @@
     "approval": "person decides"
    }
   ],
-  "standards": [
-   "HL7 FHIR"
-  ],
+  "methods": [],
+  "standards": [],
   "connects": [
    "A3",
    "A4",
@@ -2784,7 +2973,8 @@
   "group": "Finance and digital",
   "month": "Feb 2027",
   "oneLine": "For sites that bill insurers, payers or patients: track every claim to payment.",
-  "today": "Where care is billed, missing authorisations, uncaptured charges and rejected claims are found weeks later. Staff chase paper, cash arrives late, and nobody sees where claims get stuck.",
+  "today": "Where care is billed, missing authorisations, uncaptured charges and rejected claims are often found weeks later. Staff chase paper, cash arrives late, and it is hard to see where claims get stuck.",
+  "todaySystem": "A billing system submits the claims, but the steps before submission and the reasons for denials are often worked from separate lists.",
   "withOspeli": "An optional module, switched off by default. Each claim follows one timeline from registration to payment. Designed to surface missing steps before submission and route denials to the right queue.",
   "people": [
    {
@@ -2887,9 +3077,16 @@
     "approval": "none (read only)"
    }
   ],
+  "methods": [],
   "standards": [
-   "HFMA MAP Keys",
-   "HL7 FHIR (Coverage, Claim, ClaimResponse)"
+   {
+    "name": "HFMA MAP Keys",
+    "how": "Net days in accounts receivable, clean claim rate and denial rate use these measure definitions."
+   },
+   {
+    "name": "HL7 FHIR Coverage, Claim and ClaimResponse resources (planned)",
+    "how": "Export of claim status in this format is planned, not built."
+   }
   ],
   "connects": [
    "A1",
@@ -2907,8 +3104,9 @@
   "name": "IT, digital and cyber",
   "group": "Finance and digital",
   "month": "Feb 2027",
-  "oneLine": "Keeps systems, devices and access working, and plans for when they fail.",
-  "today": "IT faults are reported by phone and forgotten. Nobody knows which systems are down, who still has access after leaving, or whether backups restore. Downtime means hunting for paper forms.",
+  "oneLine": "Tracks system status, IT faults, access reviews and backup tests, with a downtime plan.",
+  "today": "IT faults are often reported by phone and can be forgotten. It is often unclear which systems are down, which accounts should have been closed, or whether backups restore. Downtime can mean hunting for paper forms.",
+  "todaySystem": "A service desk tool handles tickets, but clinical areas often cannot see system status, and downtime forms are kept separately.",
   "withOspeli": "IT faults use the same work-order engine as facilities. A status board shows systems up or down; access, patches and backup tests are tracked. Downtime mode switches staff to printable fallbacks.",
   "people": [
    {
@@ -3022,11 +3220,20 @@
     "approval": "none (read only)"
    }
   ],
+  "methods": [],
   "standards": [
-   "NIST Cybersecurity Framework 2.0",
-   "ISO/IEC 27001",
-   "HIMSS INFRAM",
-   "HL7 FHIR"
+   {
+    "name": "NIST Cybersecurity Framework 2.0",
+    "how": "Access, patch, backup and incident records are grouped so they can be used in a self-assessment that your organisation runs."
+   },
+   {
+    "name": "ISO/IEC 27001",
+    "how": "The same records are designed to support an information security programme that your organisation runs."
+   },
+   {
+    "name": "HIMSS INFRAM",
+    "how": "Used as a reference for describing infrastructure maturity. Ospeli does not score it."
+   }
   ],
   "connects": [
    "B1",
@@ -3045,7 +3252,8 @@
   "group": "Finance and digital",
   "month": "Feb 2027",
   "oneLine": "Builds monthly performance packs and external reports from one set of definitions.",
-  "today": "Each department counts differently, numbers are hand-tallied from registers, and external reports are rebuilt from scratch every month. Deadlines slip and nobody can trace a figure to its source.",
+  "today": "Departments often count differently, numbers are tallied by hand from registers, and external reports are rebuilt every month. Deadlines slip and it is hard to trace a figure to its source.",
+  "todaySystem": "A reporting tool or data warehouse produces figures, but definitions often differ between reports and the source of a number is hard to trace.",
   "withOspeli": "Every KPI has one definition, owner and source, computed from the event log. Packs and external reports to regulators, funders, payers or owners are designed to assemble themselves, ready for named sign-off.",
   "people": [
    {
@@ -3153,9 +3361,16 @@
     "approval": "person decides"
    }
   ],
+  "methods": [],
   "standards": [
-   "HL7 FHIR (Measure, MeasureReport)",
-   "WHO SARA"
+   {
+    "name": "HL7 FHIR Measure and MeasureReport resources (planned)",
+    "how": "Export of measure definitions and results in this format is planned, not built."
+   },
+   {
+    "name": "WHO SARA",
+    "how": "Designed so service readiness indicators use SARA definitions where a site reports them."
+   }
   ],
   "connects": [
    "A2",
@@ -3177,8 +3392,9 @@
   "name": "Emergency preparedness and continuity",
   "group": "System, community and resilience",
   "month": "Mar 2027",
-  "oneLine": "Keeps plans, drills and backup systems ready before an emergency or outage.",
-  "today": "Plans sit in a binder nobody has opened since the last inspection. Generator tests, water reserves and call-down lists go unchecked, so gaps surface during the severe weather or outage itself.",
+  "oneLine": "Shows whether plans, drills and backup checks are up to date before an emergency or outage.",
+  "today": "Plans often sit in a binder that is opened only at inspection. Generator tests, water reserves and call-down lists can go unchecked, so gaps surface during the severe weather or outage itself.",
+  "todaySystem": "Plans are stored on a shared drive or intranet, which may be out of reach in the outage they describe, and checks are often logged elsewhere.",
   "withOspeli": "Plans, checklists and drills live beside the asset registry and stock. Readiness is visible on one board, drill actions are tracked to closure, and downtime fallbacks print from the same data.",
   "people": [
    {
@@ -3297,11 +3513,24 @@
     "approval": "none (read only)"
    }
   ],
+  "methods": [],
   "standards": [
-   "WHO Hospital Safety Index",
-   "WHO Hospital Emergency Response Checklist",
-   "ISO 22301",
-   "JCI Facility Management and Safety"
+   {
+    "name": "WHO Hospital Safety Index",
+    "how": "Records the category from your own Hospital Safety Index assessment. Ospeli does not perform the assessment."
+   },
+   {
+    "name": "WHO Hospital Emergency Response Checklist",
+    "how": "Readiness checklists are based on its headings; each site edits its own."
+   },
+   {
+    "name": "ISO 22301",
+    "how": "Plan review, drill and downtime records are designed to support a business continuity management system that your organisation runs."
+   },
+   {
+    "name": "JCI Facility Management and Safety",
+    "how": "Plan, drill and backup check records are designed to be usable as evidence when your organisation prepares for this chapter."
+   }
   ],
   "connects": [
    "A2",
@@ -3322,7 +3551,8 @@
   "group": "System, community and resilience",
   "month": "Mar 2027",
   "oneLine": "Runs clinic sessions, home visits, follow-up registers and step-down placements in one place.",
-  "today": "Follow-up lists live in paper registers, home visits are planned on a whiteboard, and hospital wards cannot see community capacity, so patients wait in hospital beds for a place.",
+  "today": "Follow-up lists often live in paper registers and home visits are planned on a whiteboard. Hospital wards often cannot see community capacity, so patients wait in hospital beds for a place.",
+  "todaySystem": "A community record system holds visits and notes, but hospital wards often cannot see community places, and it may not work without signal.",
   "withOspeli": "Clinic sessions, visit rounds and follow-up lists share one log. Wards see community and step-down capacity, and placement waits are timed, designed to shorten delays leaving hospital.",
   "people": [
    {
@@ -3429,9 +3659,12 @@
     "approval": "person decides"
    }
   ],
+  "methods": [],
   "standards": [
-   "WHO SARA",
-   "HL7 FHIR"
+   {
+    "name": "WHO SARA",
+    "how": "The general service readiness index uses SARA definitions."
+   }
   ],
   "connects": [
    "A1",
@@ -3450,7 +3683,8 @@
   "group": "System, community and resilience",
   "month": "Mar 2027",
   "oneLine": "Plans campaign logistics, vaccine and supply stock, cold chain and outreach staffing.",
-  "today": "Campaign plans live in spreadsheets, vaccine stock is counted by phone, fridge temperatures are written on paper, and outreach sessions are cancelled when staff, transport or stock fail to arrive.",
+  "today": "Campaign plans often live in spreadsheets, vaccine stock is counted by phone, fridge temperatures are written on paper, and outreach sessions can be cancelled when staff, transport or stock do not arrive.",
+  "todaySystem": "An immunisation or stock system records doses, but session logistics, transport and cold chain alarms are often handled outside it.",
   "withOspeli": "Campaigns, sessions, stock and cold chain share one log. Teams see what each site holds, which sessions lack staff or transport, and temperature excursions as they happen.",
   "people": [
    {
@@ -3552,9 +3786,16 @@
     "approval": "none (read only)"
    }
   ],
+  "methods": [],
   "standards": [
-   "WHO Effective Vaccine Management",
-   "International Health Regulations (2005)"
+   {
+    "name": "WHO Effective Vaccine Management",
+    "how": "Cold chain and stock records are designed around the areas an Effective Vaccine Management assessment looks at. Ospeli does not perform the assessment."
+   },
+   {
+    "name": "International Health Regulations (2005)",
+    "how": "Used as a reference for preparedness. Ospeli does not report notifiable events."
+   }
   ],
   "connects": [
    "B1",
@@ -3573,7 +3814,8 @@
   "group": "System, community and resilience",
   "month": "Dec 2026",
   "oneLine": "Logs complaints and feedback, tracks responses, and turns themes into actions.",
-  "today": "Complaints arrive by letter, email, phone and in person, and some are lost. Responses run late, the same themes repeat, and nobody can show what changed.",
+  "today": "Complaints arrive by letter, email, phone and in person, and some can be lost. Responses often run late, the same themes repeat, and it is hard to show what changed.",
+  "todaySystem": "A complaints system logs each case, but themes and the actions that follow are often not linked to the services involved.",
   "withOspeli": "Every complaint and comment gets one record, an owner and response timers. Themes link to the services and processes involved, and actions are tracked until done.",
   "people": [
    {
@@ -3671,9 +3913,16 @@
     "approval": "none (read only)"
    }
   ],
+  "methods": [],
   "standards": [
-   "ISO 10002",
-   "JCI Patient-Centered Care"
+   {
+    "name": "ISO 10002",
+    "how": "Complaint stages and response timers are designed around its complaint-handling steps."
+   },
+   {
+    "name": "JCI Patient-Centered Care",
+    "how": "Complaint and feedback records are designed to be usable as evidence when your organisation prepares for this chapter."
+   }
   ],
   "connects": [
    "A1",
@@ -3691,7 +3940,8 @@
   "group": "Across every area",
   "month": "Nov 2026",
   "oneLine": "Maps how work really flows, step by step and role by role.",
-  "today": "Process maps are sticky notes from a workshop, with guessed times. Nobody knows which wait is biggest, and changes are tried on the ward without testing first.",
+  "today": "Process maps are often sticky notes from a workshop, with estimated times. It is hard to know which wait is biggest, and changes are often tried on the ward without testing first.",
+  "todaySystem": "Maps are drawn in a diagram tool, but they hold no times, so they cannot show where the delay is or test a change.",
   "withOspeli": "Teams map steps by role with waiting and hands-on time, see where time goes, and test a change on a proposed version first. Phone walk mode is coming, so times are measured.",
   "people": [
    {
@@ -3788,9 +4038,10 @@
     "approval": "person decides"
    }
   ],
-  "standards": [
+  "methods": [
    "Lean value stream mapping"
   ],
+  "standards": [],
   "connects": [
    "A2",
    "A3",
@@ -3808,7 +4059,8 @@
   "group": "Across every area",
   "month": "Jan 2027",
   "oneLine": "Ready-made routines turn the day's events into the reports operations teams produce.",
-  "today": "Every week someone rebuilds the same flow report, delay summary or business case from scratch, in a different spreadsheet, so results never compare week to week.",
+  "today": "The same flow report, delay summary or business case is often rebuilt from scratch each week, in a different spreadsheet, so results are hard to compare week to week.",
+  "todaySystem": "A reporting tool produces standard charts, but the analysis and write-up around them are often redone by hand each time.",
   "withOspeli": "Each playbook has a fixed input, a fixed analysis and a ready-to-use output, run on the site's own data the same way every time, with each metric's definition beside its number.",
   "people": [
    {
@@ -3903,10 +4155,11 @@
     "approval": "person decides"
    }
   ],
-  "standards": [
+  "methods": [
    "Statistical process control",
    "Lean value stream mapping"
   ],
+  "standards": [],
   "connects": [
    "A2",
    "A3",
