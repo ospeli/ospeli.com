@@ -116,3 +116,47 @@ for (const width of [360, 390]) {
     await context.close();
   });
 }
+
+// Issue #42: the "I work in" role links were a 1,702 px strip in a 356 px box with no swipe cue.
+// On phones they are now a closed "Find your area" row that opens into a full-width list.
+for (const width of [360, 390]) {
+  test(`phone front page: every role link is reachable without sideways scrolling (issue #42, ${width}px)`, async () => {
+    const { context, page, errors } = await open(width);
+    const sum = page.locator('details.roles-wrap > summary');
+    assert.equal(await page.locator('details.roles-wrap').evaluate((d) => d.open), false, 'closed at first, to keep the page short');
+    assert.match(await sum.innerText(), /^Find your area \(11\)$/);
+    assert.ok((await sum.boundingBox()).height >= 44, 'the row is a 44 px tap target');
+    await sum.tap();
+    const m = await page.evaluate(() => {
+      const nav = document.querySelector('nav.roles');
+      return {
+        open: document.querySelector('details.roles-wrap').open,
+        navScroll: nav.scrollWidth - nav.clientWidth,
+        pageScroll: document.documentElement.scrollWidth - innerWidth,
+        links: [...nav.querySelectorAll('a')].map((a) => {
+          const r = a.getBoundingClientRect();
+          return { t: a.textContent.trim(), h: r.height, fs: parseFloat(getComputedStyle(a).fontSize), inside: r.left >= 0 && r.right <= innerWidth && r.width > 0, cut: a.scrollWidth > a.clientWidth };
+        }),
+      };
+    });
+    assert.equal(m.open, true);
+    assert.equal(m.links.length, 11);
+    assert.ok(m.navScroll <= 0 && m.pageScroll <= 0, `sideways scroll: list ${m.navScroll}px, page ${m.pageScroll}px`);
+    const bad = m.links.filter((l) => !l.inside || l.cut || l.h < 44 || l.fs < 15);
+    assert.deepEqual(bad, [], 'every link is fully on screen, not cut, at least 44 px tall and 15 px text');
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}
+
+test('desktop front page: the role links stay one visible row of chips (issue #42)', async () => {
+  const { context, page, errors } = await open(1280);
+  const m = await page.evaluate(() => ({
+    summaryShown: document.querySelector('details.roles-wrap > summary').getBoundingClientRect().height > 0,
+    label: document.querySelector('.roles-k').getBoundingClientRect().height > 0,
+    shown: [...document.querySelectorAll('nav.roles a')].filter((a) => a.getBoundingClientRect().height > 0 && a.checkVisibility({ contentVisibilityAuto: true })).length,
+  }));
+  assert.deepEqual(m, { summaryShown: false, label: true, shown: 11 });
+  assert.deepEqual(errors, []);
+  await context.close();
+});

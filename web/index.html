@@ -163,7 +163,17 @@ nav.links a.btn-primary { color: #FFFFFF; }
 .roles a { display: inline-flex; align-items: center; min-height: 40px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font-weight: 700; font-size: 0.9rem; text-decoration: none; }
 .roles a:hover, .roles a:focus-visible { border-color: #0A9396; background: var(--wash); }
 .roles a.all { background: #0B2F4E; color: #fff; border-color: #0B2F4E; }
-@media (max-width: 640px) { #modules .head p, #modules .swipe-hint { display: none; } .roles { flex-wrap: nowrap; overflow-x: auto; margin: 0 -18px 16px; padding: 0 18px 6px; scrollbar-width: none; } .roles a { flex: none; } .roles-k { flex: none; } }
+/* Phones (issue #42): the role links are a closed "Find your area" list that opens into full-width rows, instead of a sideways strip. */
+@media (max-width: 640px) {
+  #modules .head p, #modules .swipe-hint { display: none; }
+  .roles-wrap { margin: 0 0 16px; }
+  .roles-wrap > summary.acc-sum { display: block; font-weight: 800; font-size: 1rem; color: var(--ink); padding: 11px 16px; border: 1px solid var(--line-strong); border-radius: 12px; min-height: 48px; background: var(--surface); }
+  .roles-wrap > summary.acc-sum::after { right: 18px !important; }
+  .roles-wrap[open] > summary.acc-sum { margin-bottom: 8px; }
+  .roles { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; margin: 0; }
+  .roles-k { display: none; }
+  .roles a { min-height: 46px; padding: 8px 16px; border-radius: 12px; font-size: 1rem; }
+}
 .modules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .mod { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .mod p { color: var(--ink-soft); font-size: 0.96rem; }
@@ -461,6 +471,7 @@ details.acc > summary::-webkit-details-marker { display: none; }
         <h2 id="mod-h">One system for the whole operation.</h2>
         <p>Built today: beds and flow, engineering work orders, process maps and the KPI library, on one core. Designed on the same core: 26 more areas, each with a preview.</p>
       </div>
+      <details class="acc roles-wrap" open><summary class="acc-sum">Find your area (11)</summary>
       <nav class="roles" aria-label="Find your area by role">
         <span class="roles-k">I work in</span>
         <a href="areas/beds-and-patient-flow/">Wards and nursing</a>
@@ -475,6 +486,7 @@ details.acc > summary::-webkit-details-marker { display: none; }
         <a href="areas/it-digital-cyber/">IT and data</a>
         <a class="all" href="areas/">All 30 areas</a>
       </nav>
+      </details>
       <p class="swipe-hint" aria-hidden="true">Swipe to see more</p>
       <div class="modules swipe" tabindex="0" aria-label="modules, scroll sideways">
         <div class="mod"><span class="st built">Built</span><h3>Bed board</h3><p>Bed states, the waiting list, allocation with reasons for declines, and today's flow.</p><a href="demo/bed-board/">Open the demo</a></div>
