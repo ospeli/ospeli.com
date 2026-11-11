@@ -1,6 +1,6 @@
 # Ospeli
 
-> Ospeli is an open-core, offline-first healthcare operations platform. It records what happens in a hospital or clinic (beds, engineering faults and work orders, emergency department flow, process maps) as one event log, and helps staff fix the flow. The bed board is one module, not the product. People decide, Ospeli suggests: there are no clinical decision features, and every AI feature has an off switch. This public build runs on synthetic data only (a fictional "Example General Hospital").
+> Ospeli is an open-core, offline-first healthcare operations platform. It records what happens in a hospital or clinic as one event log, and helps staff fix the flow. Built today: beds and flow, engineering faults and work orders, process maps and a KPI library. Other areas, such as emergency department flow, are previews on fictional data and not yet built on the core. The bed board is one module, not the product. People decide, Ospeli suggests: there are no clinical decision features, and every AI feature has an off switch. This public build runs on synthetic data only (a fictional "Example General Hospital").
 
 ## Try it
 - [Live demo app](https://ospeli.com/app/): installable web app; works offline after the first load; synthetic data only.
@@ -31,7 +31,7 @@
 - [Health records and information preview](https://ospeli.com/demo/records/): Tomorrow's clinic pull list on a phone, chart moves by scan or tap, the coding backlog, and record requests by due date. Fictional data.
 - [Revenue cycle (optional) preview](https://ospeli.com/demo/revenue/): For organisations that bill payers: coverage at the front desk, claims ready or missing something, and denials by reason. Off by default; never affects care. Fictional data.
 - [Public health operations preview](https://ospeli.com/demo/public-health/): Outreach sessions that work without signal, stock and expiry by site, cold chain readings and alarms, and people reached against the local target. Fictional data.
-- [All 30 areas](https://ospeli.com/areas/): what each area of hospital operations will do, who uses it, what it records, its measures and its AI assistant commands; spec in https://ospeli.com/areas/areas.json.
+- [All 30 areas](https://ospeli.com/areas/): each page says in words whether the area is Built, a Preview or Planned, then what it is designed to do, who uses it, what it records, its measures and its AI assistant commands. Ospeli is not certified against any standard named there. Spec in https://ospeli.com/areas/areas.json.
 - [Front page](https://ospeli.com/): what Ospeli is, its modules, how a pilot runs, and its governance rules.
 
 ## For agents
