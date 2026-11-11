@@ -124,6 +124,13 @@ def visible_text(html):
     html = re.sub(r"<(script|style)\b.*?</\1>", " ", html, flags=re.S | re.I)
     html = re.sub(r"<[^>]+>", " ", html)
     return re.sub(r"\s+", " ", html)
+# agents.md and llms.txt may only name commands that exist in the registry (issue #25).
+_cmds = {c["name"] for c in json.loads((ROOT / "app/api/commands.json").read_text(encoding="utf-8"))["commands"]}
+for name in ("agents.md", "llms.txt"):
+    for tok in set(re.findall(r"`([a-z]+(?:\.[a-z-]+)+)`", (ROOT / name).read_text(encoding="utf-8"))):
+        if tok not in _cmds and not tok.endswith((".md", ".json", ".txt", ".js", ".com")) and not tok.startswith("window."):
+            errors.append(f"{name}: names a command that does not exist: {tok}")
+
 for name in ("index.html", "llms.txt", "agents.md"):
     f = ROOT / name
     if not f.exists():
