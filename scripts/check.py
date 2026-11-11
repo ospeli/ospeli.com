@@ -134,6 +134,58 @@ for name in ("index.html", "llms.txt", "agents.md"):
         if PLANNED_TERMS.search(sentence) and not PLANNED_MARKERS.search(sentence):
             errors.append(f"{name}: unbuilt feature stated as fact (say planned / designed to / in development): {sentence.strip()[:120]}")
 
+# Honest public claims (issue #43): no coverage, compliance or outcome claims on public pages.
+# - "covers 28 areas": most areas are previews, so a count of areas "covered" is not true.
+# - "Standards it follows": software does not follow or hold a standard; say what it is designed around.
+# - "run full": an outcome Ospeli cannot promise.
+# - an area cross-reference ("see A6") must be followed by that area's exact name, so the id and
+#   the area it is meant to name cannot drift apart.
+# - a FHIR line in an area's standards must say "(planned)".
+COVERS = re.compile(r"\bcover(?:s|ing|ed)?\s+(?:all\s+|every\s+)?(?:\d+|twenty|thirty|forty)[\w-]*\s+(?:\w+\s+){0,2}areas\b", re.I)
+CLAIMS = [(COVERS, 'claims a number of areas "covered"; say what is built and what is a preview'),
+          (re.compile(r"standards\s+it\s+follows", re.I), 'says "Standards it follows"; use "Standards and methods it is designed around"'),
+          (re.compile(r"\brun(?:s|ning)?\s+full\b", re.I), 'promises an outcome ("run full")')]
+claim_files = [(p, p.relative_to(ROOT).as_posix()) for p in pages]
+claim_files += [(ROOT / n, n) for n in ("llms.txt", "agents.md", "areas/areas.json") if (ROOT / n).exists()]
+for f, rel in claim_files:
+    text = f.read_text(encoding="utf-8")
+    text = visible_text(text) if rel.endswith(".html") else re.sub(r"\s+", " ", text)
+    for rx, why in CLAIMS:
+        m = rx.search(text)
+        if m:
+            errors.append(f"{rel}: {why}: \"{text[max(0, m.start() - 30):m.end() + 30].strip()}\"")
+
+areas_file = ROOT / "areas" / "areas.json"
+if areas_file.exists():
+    import json
+    areas = json.loads(areas_file.read_text(encoding="utf-8"))
+    names = {a["id"]: a["name"] for a in areas}
+    def strings(x):
+        if isinstance(x, str):
+            yield x
+        elif isinstance(x, dict):
+            for k, v in x.items():
+                if k not in ("id", "connects", "slug"):
+                    yield from strings(v)
+        elif isinstance(x, list):
+            for v in x:
+                yield from strings(v)
+    for a in areas:
+        for s in strings(a):
+            for m in re.finditer(r"\b([A-EX]\d{1,2})\b(.{0,80})", s):
+                ref, rest = m.group(1), m.group(2)
+                if ref not in names:
+                    errors.append(f"areas.json {a['id']}: cross-reference to unknown area {ref}: \"{s[:100]}\"")
+                elif not rest.startswith(", " + names[ref]):
+                    errors.append(f"areas.json {a['id']}: cross-reference {ref} must be followed by its name (\"{ref}, {names[ref]}\"): \"{s[:100]}\"")
+        for st in a.get("standards", []):
+            line = st if isinstance(st, str) else " ".join(str(v) for v in st.values())
+            if re.search(r"\bFHIR\b", line) and "(planned)" not in line:
+                errors.append(f"areas.json {a['id']}: FHIR is not built; mark the line \"(planned)\": \"{line[:100]}\"")
+        for c in a.get("connects", []):
+            if c not in names:
+                errors.append(f"areas.json {a['id']}: connects to unknown area {c}")
+
 for e in errors:
     print("FAIL", e)
 print(f"Checked {len(pages)} pages, {len(errors)} problems")
