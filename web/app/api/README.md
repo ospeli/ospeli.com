@@ -8,6 +8,8 @@ Every action in the app is a named command. The screens call these commands, and
 ## Rules for agents
 - People decide, Ospeli suggests: an agent may read, and its write commands become proposals that wait for a person.
 - Agent access is off by default, for the hospital and for each ward (agents.set-access, people only).
+- Only agents on the site's list may call (agent.add, people only): each has one role, its wards and an end date of 90 days at most. An agent that is not listed, is past its end date or claims another role is refused. Agents are named, not verified: the browser app has no secret keys; keys are planned with the site server.
+- Anyone on site can stop every agent at once (agents.stop-all); only the operations manager or chief operating officer can switch agents on again.
 - Every agent read, proposal and refusal is in the audit trail with actor type "agent", the agent name and the role it acts for.
 - Nothing leaves the site: commands run on this device or the hospital's own server, never through a cloud relay.
 
@@ -18,7 +20,7 @@ Every action in the app is a named command. The screens call these commands, and
 - An agent's write returns `{ status: "proposed", proposal: { id } }`. A person accepts or declines it on the bed board (`proposal.accept`, `proposal.decline`); the agent reads the outcome with `proposals.list` (accepted, declined, or expired if the bed changed first).
 - More for agents: [/agents.md](../../agents.md) and [/llms.txt](../../llms.txt).
 
-## Commands (36)
+## Commands (40)
 | Command | Kind | Roles | Needs a person | What it does |
 |---|---|---|---|---|
 | `beds.board` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | no | Live bed state for every ward (or one ward), the waiting-for-a-bed list and any conflicting events, derived from the event log. |
@@ -37,6 +39,10 @@ Every action in the app is a named command. The screens call these commands, and
 | `kpi.value` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | no | Calculate one KPI from the event log, with its definition beside the number. |
 | `agents.access` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | no | Whether agents may work on this hospital, and on which wards. Off by default. |
 | `agents.set-access` | write | ops-manager, coo | yes (agents propose) | Switch agent access on or off for the hospital and for each ward. People only. |
+| `agents.list` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | no | The Agents screen as data: the dial (off or advise), the agents this site allows, and what each agent did in the last 7 days. People only. |
+| `agent.add` | write | ops-manager, coo | yes (agents propose) | Put an agent on this site's list: its name, the one role it works for, the wards it may see and how many days until it ends (90 at most). Adding a name again replaces its entry. People only. |
+| `agent.remove` | write | ops-manager, coo | yes (agents propose) | Take an agent off this site's list. It is refused from its next call. Its proposals still waiting are marked so nobody accepts them without looking. People only. |
+| `agents.stop-all` | write | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | yes (agents propose) | Stop every agent on this site now: the dial goes to off and every ward is switched off. Anyone can stop; only the operations manager or chief operating officer can start again. People only. |
 | `proposals.list` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | no | Agent proposals and what happened to them. People see every proposal; an agent sees only its own. |
 | `proposal.accept` | write | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | yes (agents propose) | Accept an agent's proposal: its command runs now, as you, against the bed as the agent saw it. People only. |
 | `proposal.decline` | write | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | yes (agents propose) | Decline an agent's proposal, with a reason. Nothing changes. People only. |

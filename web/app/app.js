@@ -147,7 +147,7 @@ async function boot() {
   // log, the audit trail or the agent switches except through the commands. End-to-end tests
   // get the core only on a local address with a flag set before the app loads.
   const api = {
-    version: '0.3.0',
+    version: '0.4.0',
     commands: () => listCommands(),
     describe: (name) => describeCommand(name),
     run: (name, input = {}, { agent = 'browser-agent', role = ctx.role } = {}) => runCommand(core, name, input, { type: 'agent', agent, role }),

@@ -8,7 +8,7 @@ let env;
 before(async () => { env = await startApp(); });
 after(async () => { await env.close(); });
 
-const ROUTES = ['#/', '#/beds', '#/engineering', '#/process', '#/kpi', '#/data'];
+const ROUTES = ['#/', '#/beds', '#/engineering', '#/process', '#/kpi', '#/agents', '#/data'];
 const ROLES = ['ward-nurse', 'estates-tech'];
 
 for (const width of [360, 390, 1024, 1280]) {

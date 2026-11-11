@@ -163,7 +163,11 @@ test('agents: off by default, audited as agents, read only allowed wards, and on
   await assert.rejects(runCommand(core, 'agents.set-access', { allowed: true }, agent('coo')), code('agents-off'));
   await assert.rejects(runCommand(core, 'agents.set-access', { allowed: true }, human('ward-nurse')), code('forbidden'));
   await runCommand(core, 'agents.set-access', { allowed: true, wards: { 'ward-a1': true } }, human('coo'));
-  assert.deepEqual(await runCommand(core, 'agents.access', {}, agent('coo')), { allowed: true, wards: { 'ward-a1': true } });
+  // Agents must also be on the site's list, each for one role (issues #20, #25).
+  await runCommand(core, 'agent.add', { name: 'test-agent', role: 'bed-manager', wards: ['ward-a1', 'ward-b1'], days: 30 }, human('coo'));
+  await runCommand(core, 'agent.add', { name: 'night-helper', role: 'ward-nurse', wards: ['ward-a1'], days: 30 }, human('coo'));
+  await runCommand(core, 'agent.add', { name: 'coo-helper', role: 'coo', wards: [], days: 30 }, human('coo'));
+  assert.deepEqual(await runCommand(core, 'agents.access', {}, agent('coo', 'coo-helper')), { allowed: true, wards: { 'ward-a1': true } });
 
   const read = await runCommand(core, 'beds.board', {}, agent('bed-manager'));
   assert.deepEqual(read.wards.map((w) => w.id), ['ward-a1'], 'agents see only wards switched on');
@@ -186,7 +190,7 @@ test('agents: off by default, audited as agents, read only allowed wards, and on
   assert.equal(log.at(-1).agent, 'night-helper');
   assert.ok(log.some((e) => e.action === 'agent.read' && e.actorType === 'agent' && e.detail.command === 'beds.board'));
   // An agent's role rules still apply, and an agent must name itself.
-  await assert.rejects(runCommand(core, 'bed.admit', { bedId: bed.id }, agent('coo')), code('forbidden'));
+  await assert.rejects(runCommand(core, 'bed.admit', { bedId: bed.id }, agent('coo', 'coo-helper')), code('forbidden'));
   await assert.rejects(runCommand(core, 'beds.board', {}, { type: 'agent', role: 'coo' }), code('forbidden'));
   assert.deepEqual(await core.verifyAudit(), { ok: true }, 'agent entries keep the chain intact');
   assert.deepEqual(await verifyChain(await core.auditLog()), { ok: true });

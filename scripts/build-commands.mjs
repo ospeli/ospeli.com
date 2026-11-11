@@ -25,6 +25,8 @@ const spec = {
   rules: [
     'People decide, Ospeli suggests: an agent may read, and its write commands become proposals that wait for a person.',
     'Agent access is off by default, for the hospital and for each ward (agents.set-access, people only).',
+    'Only agents on the site\'s list may call (agent.add, people only): each has one role, its wards and an end date of 90 days at most. An agent that is not listed, is past its end date or claims another role is refused. Agents are named, not verified: the browser app has no secret keys; keys are planned with the site server.',
+    'Anyone on site can stop every agent at once (agents.stop-all); only the operations manager or chief operating officer can switch agents on again.',
     'Every agent read, proposal and refusal is in the audit trail with actor type "agent", the agent name and the role it acts for.',
     'Nothing leaves the site: commands run on this device or the hospital\'s own server, never through a cloud relay.',
   ],

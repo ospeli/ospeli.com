@@ -13,6 +13,7 @@ export const MODULES = [
   { id: 'sops', name: 'SOP library', week: 3, summary: 'Procedures with review dates.', soon: 'Standard operating procedures with versions, owners, review dates and staff acknowledgement.' },
   { id: 'knowledge', name: 'Knowledge', week: 4, summary: 'What works, with sources.', soon: 'Search operational evidence offline. Every card shows its source, setting and who reviewed it.' },
   { id: 'playbooks', name: 'Playbooks', week: 4, summary: 'Daily flow report and bottleneck finder.', soon: 'A printable daily flow report and a bottleneck finder that shows the longest waits between steps.' },
+  { id: 'agents', name: 'Agents', summary: 'Choose whether AI helpers may read and suggest. Off until you turn it on.', load: () => import('./agents.js') },
   { id: 'data', name: 'Data and audit', summary: 'Export, import, reset and the audit trail.', load: () => import('./data.js') },
 ];
 

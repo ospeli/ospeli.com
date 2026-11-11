@@ -123,6 +123,7 @@ test('an agent only proposes a map change; a person accepts it on the page', asy
   await page.evaluate(async () => {
     const { runCommand } = await import('./core/commands.js');
     await runCommand(window.ospeli.core, 'agents.set-access', { allowed: true }, { type: 'human', role: 'ops-manager' });
+    await runCommand(window.ospeli.core, 'agent.add', { name: 'flow-helper', role: 'ops-manager', days: 30 }, { type: 'human', role: 'ops-manager' });
   });
   const p = await page.evaluate(() => window.ospeli.run('map.reset-proposed', { mapId: 'map-001' }, { agent: 'flow-helper', role: 'ops-manager' }));
   assert.equal(p.status, 'proposed');

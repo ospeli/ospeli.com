@@ -98,14 +98,17 @@ test('agents: off by default, scoped to wards, and a fault report waits for a pe
   const core = await hospital();
   await assert.rejects(runCommand(core, 'workorders.list', {}, agent('estates-tech')), code('agents-off'));
   await runCommand(core, 'agents.set-access', { allowed: true, wards: { 'ward-a1': true } }, human('ops-manager'));
+  // Agents must also be on the site's list, each for one role (issues #20, #25).
+  await runCommand(core, 'agent.add', { name: 'fix-bot', role: 'estates-tech', wards: ['ward-a1', 'ward-b1'], days: 30 }, human('ops-manager'));
+  await runCommand(core, 'agent.add', { name: 'ward-bot', role: 'ward-nurse', wards: ['ward-a1', 'ward-b1'], days: 30 }, human('ops-manager'));
   const q = await runCommand(core, 'workorders.list', { state: 'all' }, agent('estates-tech'));
   assert.ok(q.workOrders.length > 0 && q.workOrders.every((w) => w.locationId === 'ward-a1'), 'agents see only wards switched on');
-  const assets = await runCommand(core, 'assets.list', {}, agent('ward-nurse'));
+  const assets = await runCommand(core, 'assets.list', {}, agent('ward-nurse', 'ward-bot'));
   assert.ok(assets.assets.every((x) => x.locationId === 'ward-a1'));
-  await assert.rejects(runCommand(core, 'fault.report', { assetId: 'asset-b1-sink-1', fault: 'Blocked sink', priority: 'routine' }, agent('ward-nurse')), code('agents-off'));
+  await assert.rejects(runCommand(core, 'fault.report', { assetId: 'asset-b1-sink-1', fault: 'Blocked sink', priority: 'routine' }, agent('ward-nurse', 'ward-bot')), code('agents-off'));
 
   const n = await core.eventCount();
-  const prop = await runCommand(core, 'fault.report', { assetId: 'asset-a1-sink-1', fault: 'Blocked sink', priority: 'routine' }, agent('ward-nurse'));
+  const prop = await runCommand(core, 'fault.report', { assetId: 'asset-a1-sink-1', fault: 'Blocked sink', priority: 'routine' }, agent('ward-nurse', 'ward-bot'));
   assert.equal(prop.status, 'proposed');
   assert.equal(await core.eventCount(), n, 'nothing is reported until a person accepts');
   const acc = await runCommand(core, 'proposal.accept', { id: prop.proposal.id }, human('ward-nurse'));

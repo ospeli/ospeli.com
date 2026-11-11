@@ -18,7 +18,7 @@ import {
   PRIORITIES, TEAMS, OUTCOMES, WO_STATES, ALL_FAULTS, faultsFor, teamFor, deriveWorkOrders, nextWorkOrderId,
 } from './workorders.js';
 import {
-  EXAMPLES as MAP_EXAMPLES, VERSIONS as MAP_VERSIONS, MAX_STEPS, MAX_MINUTES, newMap, analyse, suggest, applyChange, personalDetailIn,
+  EXAMPLES as MAP_EXAMPLES, VERSIONS as MAP_VERSIONS, MAX_STEPS, MAX_MINUTES, newMap, analyse, suggest, applyChange, personalDetailIn, personNameIn, NAME_ADVICE,
 } from './processmap.js';
 
 export class CommandError extends Error {
@@ -247,13 +247,152 @@ const COMMAND_LIST = [
     async run(core, input, { actor }) {
       const prev = await agentAccess(core);
       const next = { allowed: input.allowed, wards: { ...prev.wards, ...(input.wards || {}) } };
-      await core.setMeta('agents', next);
+      await core.updateMeta('agents', (raw) => ({ ...(raw || {}), ...next }));
       await core.recordAs(actor, 'agents.access-changed', null, { from: prev, to: next });
       return next;
     },
     example: { input: { allowed: true, wards: { 'ward-a1': true } } },
   },
 ];
+
+// The Agents screen (issues #25, #20; spec A9, first step). A person on the operations side puts
+// each agent on the site's list: its name, the one role it works for, the wards it may see and an
+// end date (90 days at most). An agent that is not on the list, is past its end date or claims
+// another role is refused. This is a control and a record, not security: the app runs in one
+// browser with no server, so there is no secret key yet. Keys arrive with the site server (A8).
+const AGENT_NAME = '^[A-Za-z0-9][A-Za-z0-9 ._-]{1,40}$';
+const AGENT_ADMINS = ['ops-manager', 'coo'];
+export const MAX_AGENT_DAYS = 90;
+const agentKey = (name) => String(name).trim().toLowerCase();
+export async function agentList(core) {
+  const a = await core.getMeta('agents', null);
+  return Array.isArray(a?.registered) ? a.registered : [];
+}
+const AGENT_RECORD = {
+  type: 'object', required: ['name', 'role', 'roleName', 'wards', 'until', 'ended'],
+  properties: {
+    name: { type: 'string' }, role: ID, roleName: { type: 'string' },
+    wards: { type: 'array', items: ID, description: 'Wards this agent may see. It also needs the ward itself to be switched on.' },
+    until: TIME, ended: { type: 'boolean', description: 'True once the end date has passed: the agent is refused until a person adds it again.' },
+    addedByRole: ID, addedAt: TIME,
+  },
+};
+const publicAgent = (r, now) => ({ name: r.name, role: r.role, roleName: roleById(r.role)?.name || r.role, wards: [...r.wards], until: r.until, ended: Date.parse(r.until) <= Date.parse(now), addedByRole: r.addedByRole, addedAt: r.addedAt });
+
+COMMAND_LIST.push(
+  {
+    name: 'agents.list',
+    summary: 'The Agents screen as data: the dial (off or advise), the agents this site allows, and what each agent did in the last 7 days. People only.',
+    kind: 'read', roles: ALL_ROLES, approval: false, agents: false,
+    input: { type: 'object', additionalProperties: false, properties: {} },
+    output: {
+      type: 'object', required: ['dial', 'allowed', 'wards', 'agents', 'recent', 'canChange', 'keys'],
+      properties: {
+        dial: { type: 'string', enum: ['off', 'advise'], description: 'off: agents can do nothing. advise: listed agents may read and propose; a person accepts or declines each proposal.' },
+        allowed: { type: 'boolean' }, wards: { type: 'object', additionalProperties: { type: 'boolean' } },
+        agents: { type: 'array', items: AGENT_RECORD },
+        recent: { type: 'array', items: { type: 'object', required: ['agent', 'lastAt', 'reads', 'proposals', 'refused'], properties: { agent: { type: 'string' }, lastAt: TIME, reads: { type: 'integer' }, proposals: { type: 'integer' }, refused: { type: 'integer' }, onList: { type: 'boolean' } } } },
+        canChange: { type: 'boolean', description: 'Whether the caller\'s role may change these settings.' },
+        stopped: { type: ['object', 'null'], description: 'When the dial is off because someone pressed stop: when, and the role that pressed it.', properties: { at: TIME, byRole: ID, byRoleName: { type: 'string' } } },
+        keys: { type: 'string', enum: ['none'], description: 'No secret keys in the browser app: agents are named, not verified. Keys arrive with the site server.' },
+      },
+    },
+    async run(core, input, { actor }) {
+      const now = core.now();
+      const access = await agentAccess(core);
+      const list = await agentList(core);
+      const since = Date.parse(now) - 7 * 864e5;
+      const by = new Map();
+      const row = (name, at) => {
+        const k = agentKey(name);
+        if (!by.has(k)) by.set(k, { agent: name, lastAt: at, reads: 0, proposals: 0, refused: 0, onList: list.some((r) => agentKey(r.name) === k) });
+        const r = by.get(k);
+        if (at > r.lastAt) r.lastAt = at;
+        return r;
+      };
+      let stopped = null;
+      for (const e of await core.auditLog()) {
+        if (e.action === 'agents.stopped') stopped = { at: e.at, byRole: e.actorRole, byRoleName: roleById(e.actorRole)?.name || e.actorRole };
+        else if (e.action === 'agents.access-changed') stopped = null;
+        if (e.actorType !== 'agent' || Date.parse(e.at) < since) continue;
+        const r = row(e.agent, e.at);
+        if (e.action === 'agent.read') r.reads++;
+        else if (e.action === 'agent.proposed') r.proposals++;
+        else if (e.action === 'agent.refused') r.refused += 1 + (e.detail?.repeats?.count || 0);
+      }
+      // Refusals collapsed since the last audit row for the same agent, command and reason.
+      for (const rec of Object.values((await core.getMeta('agent-refusals', null)) || {})) {
+        if (rec.suppressed && Date.parse(rec.last) >= since) { const r = row(rec.agent, rec.last); r.refused += rec.suppressed; }
+      }
+      return {
+        dial: access.allowed ? 'advise' : 'off', ...access,
+        agents: list.map((r) => publicAgent(r, now)),
+        recent: [...by.values()].sort((a, b) => (a.lastAt < b.lastAt ? 1 : -1)),
+        canChange: AGENT_ADMINS.includes(actor.role), keys: 'none', stopped: access.allowed ? null : stopped,
+      };
+    },
+    example: { input: {} },
+  },
+  {
+    name: 'agent.add',
+    summary: 'Put an agent on this site\'s list: its name, the one role it works for, the wards it may see and how many days until it ends (90 at most). Adding a name again replaces its entry. People only.',
+    kind: 'write', roles: AGENT_ADMINS, approval: true, agents: false,
+    input: {
+      type: 'object', additionalProperties: false, required: ['name', 'role', 'days'],
+      properties: {
+        name: { type: 'string', pattern: AGENT_NAME, description: 'The name the agent gives when it calls, for example night-flow-helper. Not a person\'s name.' },
+        role: { type: 'string', enum: ALL_ROLES, description: 'The one role this agent works for. It is refused if it claims another.' },
+        wards: { type: 'array', maxItems: 200, items: ID, description: 'Ward ids, for example ["ward-a1"]. Leave empty for an agent that needs no ward data.' },
+        days: { type: 'integer', minimum: 1, maximum: MAX_AGENT_DAYS, description: 'Days until the agent stops working. 90 at most; add it again to renew.' },
+      },
+    },
+    output: { type: 'object', required: ['status', 'agent'], properties: { status: { type: 'string', enum: ['done'] }, agent: AGENT_RECORD } },
+    async run(core, input, { actor }) {
+      const name = input.name.trim();
+      if (personNameIn(name) || personNameIn(name, { roleField: true })) throw new CommandError('invalid-input', 'name looks like a person\'s name. Give the agent a name that says what it does, for example night-flow-helper.');
+      const wardIds = new Set((await core.listEntities('ward')).map((w) => w.id));
+      const wards = [...new Set(input.wards || [])];
+      const bad = wards.find((w) => !wardIds.has(w));
+      if (bad) throw new CommandError('invalid-input', `There is no ward ${bad}. Wards on this site: ${[...wardIds].slice(0, 8).join(', ')}.`);
+      const now = core.now();
+      const rec = { name, role: input.role, wards, until: new Date(Date.parse(now) + input.days * 864e5).toISOString(), addedByRole: actor.role, addedAt: now };
+      await core.updateMeta('agents', (raw) => ({ ...(raw || {}), registered: [...(Array.isArray(raw?.registered) ? raw.registered : []).filter((r) => agentKey(r.name) !== agentKey(name)), rec] }));
+      await core.recordAs(actor, 'agents.agent-added', null, { agent: name, role: rec.role, wards, until: rec.until });
+      return { status: 'done', agent: publicAgent(rec, now) };
+    },
+    example: { input: { name: 'night-flow-helper', role: 'bed-manager', wards: ['ward-a1'], days: 30 } },
+  },
+  {
+    name: 'agent.remove',
+    summary: 'Take an agent off this site\'s list. It is refused from its next call. Its proposals still waiting are marked so nobody accepts them without looking. People only.',
+    kind: 'write', roles: AGENT_ADMINS, approval: true, agents: false,
+    input: { type: 'object', additionalProperties: false, required: ['name'], properties: { name: { type: 'string', pattern: AGENT_NAME } } },
+    output: { type: 'object', required: ['status', 'name'], properties: { status: { type: 'string', enum: ['done'] }, name: { type: 'string' } } },
+    async run(core, input, { actor }) {
+      const list = await agentList(core);
+      const found = list.find((r) => agentKey(r.name) === agentKey(input.name));
+      if (!found) throw new CommandError('not-found', `No agent called ${input.name} is on the list${list.length ? ` (on the list: ${list.map((r) => r.name).slice(0, 8).join(', ')})` : ''}.`);
+      await core.updateMeta('agents', (raw) => ({ ...(raw || {}), registered: (raw?.registered || []).filter((r) => agentKey(r.name) !== agentKey(input.name)) }));
+      await core.recordAs(actor, 'agents.agent-removed', null, { agent: found.name });
+      return { status: 'done', name: found.name };
+    },
+    example: { input: { name: 'night-flow-helper' } },
+  },
+  {
+    name: 'agents.stop-all',
+    summary: 'Stop every agent on this site now: the dial goes to off and every ward is switched off. Anyone can stop; only the operations manager or chief operating officer can start again. People only.',
+    kind: 'write', roles: ALL_ROLES, approval: true, agents: false,
+    input: { type: 'object', additionalProperties: false, properties: {} },
+    output: { type: 'object', required: ['status', 'dial', 'wasOn'], properties: { status: { type: 'string', enum: ['done'] }, dial: { type: 'string', enum: ['off'] }, wasOn: { type: 'boolean' } } },
+    async run(core, input, { actor }) {
+      const prev = await agentAccess(core);
+      await core.updateMeta('agents', (raw) => ({ ...(raw || {}), allowed: false, wards: {} }));
+      await core.recordAs(actor, 'agents.stopped', null, { from: prev });
+      return { status: 'done', dial: 'off', wasOn: prev.allowed };
+    },
+    example: { input: {} },
+  },
+);
 
 const PROPOSAL = {
   type: 'object', required: ['id', 'command', 'input', 'agent', 'role', 'at', 'status'],
@@ -263,6 +402,7 @@ const PROPOSAL = {
     wardId: { type: ['string', 'null'] }, seenState: { type: ['string', 'null'] },
     decidedAt: TIME, decidedByRole: ID, reason: { type: ['string', 'null'] }, events: { type: 'array', items: { type: 'integer' } },
     canDecide: { type: 'boolean', description: 'Whether the caller\'s role may accept or decline it.' },
+    agentOnList: { type: 'boolean', description: 'False when the agent that asked has since been removed or has passed its end date. Check before accepting.' },
   },
 };
 export const DECLINE_REASONS = ['Not needed', 'Wrong bed or patient', 'Already done', 'Needs a conversation first', 'Other'];
@@ -287,7 +427,9 @@ COMMAND_LIST.push(
       let list = await core.proposals();
       if (actor.type === 'agent') list = list.filter((p) => p.agent === actor.agent);
       if (input.status) list = list.filter((p) => p.status === input.status);
-      return { proposals: list.map((p) => ({ ...p, canDecide: actor.type === 'human' && p.status === 'pending' && mayDecide(p, actor.role) })) };
+      const now = core.now();
+      const live = new Set((await agentList(core)).filter((r) => Date.parse(r.until) > Date.parse(now)).map((r) => agentKey(r.name)));
+      return { proposals: list.map((p) => ({ ...p, canDecide: actor.type === 'human' && p.status === 'pending' && mayDecide(p, actor.role), agentOnList: live.has(agentKey(p.agent)) })) };
     },
     example: { input: { status: 'pending' } },
   },
@@ -564,6 +706,7 @@ function checkText(input) {
     if (input[k] == null) continue;
     const what = personalDetailIn(input[k]);
     if (what) throw new CommandError('invalid-input', `${k} looks like it holds ${what}. Describe the step and the role only; never personal details.`);
+    if (personNameIn(input[k], { roleField: k === 'role' })) throw new CommandError('invalid-input', `${k} looks like it names a person. ${NAME_ADVICE}`);
     if (!String(input[k]).trim()) throw new CommandError('invalid-input', `${k} cannot be empty.`);
   }
 }
@@ -575,6 +718,7 @@ function mapWrite({ name, summary, required = [], props, example, mutate, audit 
     name, summary, kind: 'write', roles: ALL_ROLES, approval: true,
     input: { type: 'object', additionalProperties: false, required: ['mapId', ...required], properties: { mapId: MAP_ID, ...props, expectedRevision: REVISION } },
     output: MAP_WRITE_OUTPUT,
+    check: checkText,
     async snapshot(core, input) {
       const store = mapStore(await core.getMeta(MAPS_KEY, null));
       const m = store.maps.find((x) => x.id === input.mapId);
@@ -682,6 +826,7 @@ COMMAND_LIST.push(
       from: { type: 'string', enum: MAP_SOURCES, description: 'An example process to start from, or "blank".' },
       title: { ...STEP_TEXT, description: 'The map\'s name, e.g. "Discharge from ward 3". Defaults to the example\'s title.' } } },
     output: MAP_WRITE_OUTPUT,
+    check: checkText,
     async run(core, input, { actor }) {
       checkText(input);
       let id = null; let revision = 1;
@@ -835,36 +980,95 @@ export async function agentAccess(core) {
 function normaliseActor(actor) {
   if (!actor || typeof actor !== 'object') throw new CommandError('forbidden', 'Every command needs an actor.');
   const type = actor.type === 'agent' ? 'agent' : 'human';
-  if (!roleById(actor.role)) throw new CommandError('forbidden', `Unknown role ${actor.role}.`);
+  if (!roleById(actor.role)) throw new CommandError('forbidden', type === 'agent' ? `Unknown role. Use one of: ${ALL_ROLES.join(', ')}.` : `Unknown role ${actor.role}.`);
   if (type === 'agent' && !(typeof actor.agent === 'string' && /^[a-z0-9][a-z0-9 ._-]{0,40}$/i.test(actor.agent))) {
     throw new CommandError('forbidden', 'An agent must give its name.');
   }
   return type === 'agent' ? { type, role: actor.role, agent: actor.agent } : { type, role: actor.role };
 }
 
+// Every refused agent call leaves an audit entry (issue #27), whatever the reason: unknown
+// command, unknown or wrong role, bad input, agents off, not on the list. Nothing the agent
+// typed is stored: the command name only if it is a real one, the names of the input fields
+// but never their values, and a fixed reason for bad input. A looping agent cannot flood the
+// trail: the same agent, command and reason within a minute is counted, and the count is
+// written on the next entry for that agent, command and reason.
+const REFUSAL_WINDOW_MS = 60_000;
+async function auditRefusal(core, name, input, actor, err) {
+  const known = !!commandByName(name);
+  const role = roleById(actor?.role) ? actor.role : 'system';
+  const agent = typeof actor?.agent === 'string' && /^[a-z0-9][a-z0-9 ._-]{0,40}$/i.test(actor.agent) ? actor.agent : 'unnamed';
+  const command = known ? name : '(unknown)';
+  const detail = {
+    command, code: err.code, reason: err.reason || err.code,
+    why: err.code === 'invalid-input' ? 'The input did not match what the command accepts.' : err.code === 'unknown-command' ? 'There is no such command.' : err.message,
+    claimedRole: role === 'system' ? '(unknown)' : role,
+    fields: input && typeof input === 'object' ? Object.keys(input).filter((k) => /^[A-Za-z][A-Za-z0-9]{0,30}$/.test(k)).slice(0, 12) : [],
+  };
+  const key = `${agent.toLowerCase()}|${command}|${err.code}|${err.reason || ''}`;
+  const now = core.now();
+  let write = null;
+  await core.updateMeta('agent-refusals', (raw) => {
+    const all = { ...(raw || {}) };
+    for (const [k, r] of Object.entries(all)) if (Date.parse(now) - Date.parse(r.rowAt) > 7 * 864e5) delete all[k];
+    const rec = all[key];
+    if (rec && Date.parse(now) - Date.parse(rec.rowAt) < REFUSAL_WINDOW_MS) {
+      all[key] = { ...rec, suppressed: (rec.suppressed || 0) + 1, first: rec.first || now, last: now };
+    } else {
+      write = rec?.suppressed ? { count: rec.suppressed, first: rec.first, last: rec.last } : false;
+      all[key] = { agent, rowAt: now, suppressed: 0 };
+    }
+    return all;
+  });
+  if (write !== null) await core.recordAs({ type: 'agent', role, agent }, 'agent.refused', null, write ? { ...detail, repeats: write } : detail);
+}
+
 // Run a command. `actor` is { type: 'human', role } or { type: 'agent', agent, role }.
 export async function runCommand(core, name, input = {}, actor) {
-  const cmd = commandByName(name);
-  if (!cmd) throw new CommandError('unknown-command', `There is no command ${name}.`);
-  const who = normaliseActor(actor);
-  if (!cmd.roles.includes(who.role)) {
-    throw new CommandError('forbidden', `${roleById(who.role).name} cannot run ${name}.`, { roles: cmd.roles });
+  if (actor?.type !== 'agent') return runChecked(core, name, input, actor);
+  try {
+    return await runChecked(core, name, input, actor);
+  } catch (err) {
+    if (err instanceof CommandError && err.refusal) await auditRefusal(core, name, input, actor, err);
+    throw err;
   }
-  const errs = validate(cmd.input, input ?? {});
-  if (errs.length) throw new CommandError('invalid-input', errs.join('; '), { errors: errs });
-  if (who.type === 'human') return cmd.run(core, input ?? {}, { actor: who, wards: null });
+}
 
-  // Agents: off by default, per hospital and per ward; reads are audited; writes become proposals.
-  const refuse = async (why) => {
-    await core.recordAs(who, 'agent.refused', null, { command: name, why });
-    throw new CommandError('agents-off', why);
-  };
-  if (cmd.agents === false) await refuse('This command is for people only.');
+async function runChecked(core, name, input, actor) {
+  // A refusal: the call was turned away before the command ran (as opposed to the command
+  // itself answering not-found or conflict, which a read already records as an agent read).
+  const refuse = (code, why, detail = null, reason = code) => { throw Object.assign(new CommandError(code, why, detail), { refusal: true, reason }); };
+  const cmd = commandByName(name);
+  if (!cmd) refuse('unknown-command', `There is no command ${String(name).slice(0, 60)}.`);
+  let who;
+  try { who = normaliseActor(actor); } catch (err) { err.refusal = true; err.reason = 'actor'; throw err; }
+  if (who.type === 'human') {
+    if (!cmd.roles.includes(who.role)) refuse('forbidden', `${roleById(who.role).name} cannot run ${name}.`, { roles: cmd.roles });
+    const errs = validate(cmd.input, input ?? {});
+    if (errs.length) refuse('invalid-input', errs.join('; '), { errors: errs });
+    return cmd.run(core, input ?? {}, { actor: who, wards: null });
+  }
+
+  // Agents: off by default, per hospital and per ward; only agents on the site's list, in the
+  // role they were listed for; reads are audited; writes become proposals.
+  if (cmd.agents === false) refuse('agents-off', 'This command is for people only.', null, 'people-only');
   const access = await agentAccess(core);
-  if (!access.allowed) await refuse('Agent access is off for this hospital.');
+  if (!access.allowed) refuse('agents-off', 'Agent access is off for this hospital.', null, 'dial-off');
+  const listed = (await agentList(core)).find((r) => agentKey(r.name) === agentKey(who.agent));
+  if (!listed) refuse('forbidden', `Agent ${who.agent} is not on this site's list. ${AGENT_ADMINS.map((r) => roleById(r).name).join(' or ')} can add it on the Agents screen.`, null, 'not-listed');
+  if (Date.parse(listed.until) <= Date.parse(core.now())) refuse('forbidden', `Agent ${who.agent} passed its end date. A person can add it again on the Agents screen.`, null, 'ended');
+  if (listed.role !== who.role) refuse('forbidden', `Agent ${who.agent} works for ${roleById(listed.role).name} on this site, not ${roleById(who.role).name}.`, null, 'other-role');
+  if (!cmd.roles.includes(who.role)) refuse('forbidden', `${roleById(who.role).name} cannot run ${name}.`, { roles: cmd.roles }, 'role-cannot');
+  const errs = validate(cmd.input, input ?? {});
+  if (errs.length) refuse('invalid-input', errs.join('; '), { errors: errs });
+  // Free text is checked before a proposal is queued, so a personal detail never waits in the queue (#38).
+  if (cmd.check) {
+    try { cmd.check(input); } catch (err) { if (err instanceof CommandError) { err.refusal = true; err.reason = 'personal-detail'; } throw err; }
+  }
   const ward = cmd.wardOf ? await cmd.wardOf(core, input) : null;
-  if (ward && access.wards[ward] !== true) await refuse(`Agent access is off for ward ${ward}.`);
-  const allowedWards = new Set(Object.entries(access.wards).filter(([, on]) => on).map(([id]) => id));
+  if (ward && access.wards[ward] !== true) refuse('agents-off', `Agent access is off for ward ${ward}.`, null, 'ward-off');
+  if (ward && !listed.wards.includes(ward)) refuse('forbidden', `Agent ${who.agent} is not allowed on ward ${ward}.`, null, 'ward-not-listed');
+  const allowedWards = new Set(listed.wards.filter((id) => access.wards[id] === true));
   if (cmd.kind === 'read') {
     const out = await cmd.run(core, input, { actor: who, wards: allowedWards });
     await core.recordAs(who, 'agent.read', null, { command: name, input });

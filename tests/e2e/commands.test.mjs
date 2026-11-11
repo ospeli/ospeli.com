@@ -53,10 +53,13 @@ test('an agent with access switched on reads one ward and its change waits for a
     const core = window.ospeli.core;
     const { runCommand } = await import('./core/commands.js');
     await runCommand(core, 'agents.set-access', { allowed: true, wards: { 'ward-a1': true } }, { type: 'human', role: 'coo' });
+    // Each agent is on the site's list for one role (issues #20, #25).
+    await runCommand(core, 'agent.add', { name: 'e2e-agent', role: 'bed-manager', wards: ['ward-a1'], days: 30 }, { type: 'human', role: 'coo' });
+    await runCommand(core, 'agent.add', { name: 'e2e-ward-agent', role: 'ward-nurse', wards: ['ward-a1'], days: 30 }, { type: 'human', role: 'coo' });
     const board = await window.ospeli.run('beds.board', {}, { agent: 'e2e-agent', role: 'bed-manager' });
     const bed = board.beds.find((b) => b.state === 'available' || b.state === 'vacated' || b.state === 'cleaning') || board.beds[0];
     const before = await core.eventCount();
-    const res = await window.ospeli.run('bed.take-out-of-service', { bedId: bed.id, reason: 'Electrical' }, { agent: 'e2e-agent', role: 'ward-nurse' });
+    const res = await window.ospeli.run('bed.take-out-of-service', { bedId: bed.id, reason: 'Electrical' }, { agent: 'e2e-ward-agent', role: 'ward-nurse' });
     return { wards: board.wards.map((w) => w.id), res, same: before === await core.eventCount(), last: (await core.auditLog()).at(-1) };
   });
   assert.deepEqual(out.wards, ['ward-a1']);

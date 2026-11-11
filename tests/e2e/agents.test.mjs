@@ -69,6 +69,7 @@ test('issue #17: an agent proposes, the bed manager accepts on the board, and th
     const all = await runCommand(core, 'beds.board', {}, coo);
     const ward = all.wards.find((w) => w.counts.available > 0).id;
     await runCommand(core, 'agents.set-access', { allowed: true, wards: { [ward]: true } }, coo);
+    await runCommand(core, 'agent.add', { name: 'flow-bot', role: 'bed-manager', wards: [ward], days: 30 }, coo);
     const bed = all.beds.find((b) => b.wardId === ward && b.state === 'available');
     const wait = all.waiting.find((w) => !w.allocatedBed);
     const res = await window.ospeli.run('bed.allocate', { bedId: bed.id, encounter: wait.encounter }, { agent: 'flow-bot', role: 'bed-manager' });
@@ -130,6 +131,7 @@ test('issue #17: declining needs a listed reason and changes nothing', async () 
     const all = await runCommand(core, 'beds.board', {}, coo);
     const bed = all.beds.find((b) => b.state === 'occupied');
     await runCommand(core, 'agents.set-access', { allowed: true, wards: { [bed.wardId]: true } }, coo);
+    await runCommand(core, 'agent.add', { name: 'flow-bot', role: 'ward-nurse', wards: [bed.wardId], days: 30 }, coo);
     const res = await window.ospeli.run('bed.flag-expected-discharge', { bedId: bed.id }, { agent: 'flow-bot', role: 'ward-nurse' });
     return { ...res.proposal, events: await core.eventCount() };
   });

@@ -146,6 +146,7 @@ test('agents read and propose; a person accepts; every change is audited', async
   await run(core, 'map.create', { from: 'discharge' });
   await assert.rejects(run(core, 'maps.list', {}, agent('ops-manager')), code('agents-off'));
   await run(core, 'agents.set-access', { allowed: true }, human('ops-manager'));
+  await run(core, 'agent.add', { name: 'map-helper', role: 'ops-manager', days: 30 }, human('ops-manager'));
   const read = await run(core, 'map.suggest', { mapId: 'map-001', version: 'proposed' }, agent('ops-manager'));
   const t = read.suggestions.find((x) => x.tryable);
   const p = await run(core, 'map.try-suggestion', { mapId: 'map-001', suggestionId: t.id }, agent('ops-manager'));
@@ -180,4 +181,30 @@ test('reset removes maps from the device', async () => {
   assert.equal((await run(core, 'maps.list', {})).maps[0].title, 'Clinic check-in');
   await core.reset();
   assert.deepEqual((await run(core, 'maps.list', {})).maps, []);
+});
+
+test('maps time steps, never people: a named person is refused as a step, a role or a title (#38)', async () => {
+  const core = await fresh();
+  await run(core, 'map.create', { from: 'blank', title: 'Clinic visit' });
+  const id = (await run(core, 'maps.list', {})).maps[0].id;
+  const step = { mapId: id, name: 'Reviews the patient', role: 'Doctor', wait: 5, work: 10 };
+  const named = (err) => code('invalid-input')(err) && /role, not a person/.test(err.message);
+  for (const actor of [human('ops-manager')]) {
+    await assert.rejects(run(core, 'map.step.add', { ...step, name: 'Dr Sarah Jones reviews the patient' }, actor), named);
+    await assert.rejects(run(core, 'map.step.add', { ...step, role: 'Sister Mary Brown' }, actor), named);
+    await assert.rejects(run(core, 'map.step.add', { ...step, role: 'Mary Brown' }, actor), named);
+  }
+  await assert.rejects(run(core, 'map.create', { from: 'blank', title: 'Mr Patel\'s clinic' }), named);
+  // Roles in the site's own words still pass, in any capitals.
+  for (const role of ['Doctor', 'Charge Nurse', 'Nurse Manager', 'Patient Transport', 'Reception', 'Senior Doctor', 'Patient and family']) {
+    assert.equal((await run(core, 'map.step.add', { ...step, role })).status, 'done', role);
+  }
+  const added = (await run(core, 'map.get', { mapId: id })).today.steps[0];
+  await assert.rejects(run(core, 'map.step.update', { mapId: id, stepId: added.id, name: 'Nurse Amina checks in' }), named);
+  await assert.rejects(run(core, 'map.step.update', { mapId: id, stepId: added.id, role: 'Dr. O\'Neil' }), named);
+  // An agent's proposal is checked the same way before it is ever queued.
+  await run(core, 'agents.set-access', { allowed: true }, human('ops-manager'));
+  await run(core, 'agent.add', { name: 'map-helper', role: 'ops-manager', days: 30 }, human('ops-manager'));
+  await assert.rejects(run(core, 'map.step.add', { ...step, role: 'Sister Mary Brown' }, agent('ops-manager')), named);
+  assert.equal((await run(core, 'proposals.list', {})).proposals.length, 0);
 });

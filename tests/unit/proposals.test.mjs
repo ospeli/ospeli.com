@@ -21,6 +21,10 @@ async function setup() {
   const all = await runCommand(core, 'beds.board', {}, human('bed-manager'));
   const ward = all.wards.find((w) => w.counts.available >= 1).id;
   await runCommand(core, 'agents.set-access', { allowed: true, wards: { [ward]: true } }, human('coo'));
+  // Agents must also be on the site's list, each for one role (issues #20, #25).
+  for (const [name, role] of [['flow-bot', 'bed-manager'], ['other-bot', 'bed-manager'], ['ward-bot', 'ward-nurse']]) {
+    await runCommand(core, 'agent.add', { name, role, wards: [ward], days: 30 }, human('coo'));
+  }
   const board = await runCommand(core, 'beds.board', {}, agent('bed-manager'));
   return { core, board: { ...board, waiting: all.waiting }, ward };
 }
@@ -76,7 +80,7 @@ test('a stale proposal expires instead of running, and a decline changes nothing
   const { core, board } = await setup();
   const free = board.beds.filter((b) => b.state === 'available');
   assert.ok(free.length >= 1);
-  const p1 = await runCommand(core, 'bed.take-out-of-service', { bedId: free[0].id, reason: 'Electrical' }, agent('ward-nurse'));
+  const p1 = await runCommand(core, 'bed.take-out-of-service', { bedId: free[0].id, reason: 'Electrical' }, agent('ward-nurse', 'ward-bot'));
   // A person changes the bed before anyone looks at the proposal.
   await runCommand(core, 'bed.take-out-of-service', { bedId: free[0].id, reason: 'Plumbing or leak' }, human('ward-nurse'));
   const before = await core.eventCount();
@@ -86,7 +90,7 @@ test('a stale proposal expires instead of running, and a decline changes nothing
   assert.equal(await core.eventCount(), before, 'an out-of-date proposal writes nothing');
   assert.equal((await core.auditLog()).at(-1).action, 'agent.proposal-expired');
 
-  const p2 = await runCommand(core, 'bed.flag-expected-discharge', { bedId: free[0].id }, agent('ward-nurse'));
+  const p2 = await runCommand(core, 'bed.flag-expected-discharge', { bedId: free[0].id }, agent('ward-nurse', 'ward-bot'));
   await assert.rejects(runCommand(core, 'proposal.decline', { id: p2.proposal.id, reason: 'Free text is not allowed' }, human('ward-nurse')), code('invalid-input'));
   const d = await runCommand(core, 'proposal.decline', { id: p2.proposal.id, reason: 'Not needed' }, human('ward-nurse'));
   assert.equal(d.proposal.status, 'declined');

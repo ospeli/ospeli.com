@@ -5,6 +5,8 @@
   "rules": [
     "People decide, Ospeli suggests: an agent may read, and its write commands become proposals that wait for a person.",
     "Agent access is off by default, for the hospital and for each ward (agents.set-access, people only).",
+    "Only agents on the site's list may call (agent.add, people only): each has one role, its wards and an end date of 90 days at most. An agent that is not listed, is past its end date or claims another role is refused. Agents are named, not verified: the browser app has no secret keys; keys are planned with the site server.",
+    "Anyone on site can stop every agent at once (agents.stop-all); only the operations manager or chief operating officer can switch agents on again.",
     "Every agent read, proposal and refusal is in the audit trail with actor type \"agent\", the agent name and the role it acts for.",
     "Nothing leaves the site: commands run on this device or the hospital's own server, never through a cloud relay."
   ],
@@ -1419,6 +1421,400 @@
       }
     },
     {
+      "name": "agents.list",
+      "summary": "The Agents screen as data: the dial (off or advise), the agents this site allows, and what each agent did in the last 7 days. People only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "dial",
+          "allowed",
+          "wards",
+          "agents",
+          "recent",
+          "canChange",
+          "keys"
+        ],
+        "properties": {
+          "dial": {
+            "type": "string",
+            "enum": [
+              "off",
+              "advise"
+            ],
+            "description": "off: agents can do nothing. advise: listed agents may read and propose; a person accepts or declines each proposal."
+          },
+          "allowed": {
+            "type": "boolean"
+          },
+          "wards": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          },
+          "agents": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "role",
+                "roleName",
+                "wards",
+                "until",
+                "ended"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "roleName": {
+                  "type": "string"
+                },
+                "wards": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  },
+                  "description": "Wards this agent may see. It also needs the ward itself to be switched on."
+                },
+                "until": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "ended": {
+                  "type": "boolean",
+                  "description": "True once the end date has passed: the agent is refused until a person adds it again."
+                },
+                "addedByRole": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "addedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                }
+              }
+            }
+          },
+          "recent": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "agent",
+                "lastAt",
+                "reads",
+                "proposals",
+                "refused"
+              ],
+              "properties": {
+                "agent": {
+                  "type": "string"
+                },
+                "lastAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "reads": {
+                  "type": "integer"
+                },
+                "proposals": {
+                  "type": "integer"
+                },
+                "refused": {
+                  "type": "integer"
+                },
+                "onList": {
+                  "type": "boolean"
+                }
+              }
+            }
+          },
+          "canChange": {
+            "type": "boolean",
+            "description": "Whether the caller's role may change these settings."
+          },
+          "stopped": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "When the dial is off because someone pressed stop: when, and the role that pressed it.",
+            "properties": {
+              "at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "byRole": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "byRoleName": {
+                "type": "string"
+              }
+            }
+          },
+          "keys": {
+            "type": "string",
+            "enum": [
+              "none"
+            ],
+            "description": "No secret keys in the browser app: agents are named, not verified. Keys arrive with the site server."
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
+      "name": "agent.add",
+      "summary": "Put an agent on this site's list: its name, the one role it works for, the wards it may see and how many days until it ends (90 at most). Adding a name again replaces its entry. People only.",
+      "kind": "write",
+      "roles": [
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "role",
+          "days"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._-]{1,40}$",
+            "description": "The name the agent gives when it calls, for example night-flow-helper. Not a person's name."
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "ward-nurse",
+              "bed-manager",
+              "estates-tech",
+              "ae-nic",
+              "ops-manager",
+              "coo"
+            ],
+            "description": "The one role this agent works for. It is refused if it claims another."
+          },
+          "wards": {
+            "type": "array",
+            "maxItems": 200,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9-]*$"
+            },
+            "description": "Ward ids, for example [\"ward-a1\"]. Leave empty for an agent that needs no ward data."
+          },
+          "days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 90,
+            "description": "Days until the agent stops working. 90 at most; add it again to renew."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "agent"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done"
+            ]
+          },
+          "agent": {
+            "type": "object",
+            "required": [
+              "name",
+              "role",
+              "roleName",
+              "wards",
+              "until",
+              "ended"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "roleName": {
+                "type": "string"
+              },
+              "wards": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "description": "Wards this agent may see. It also needs the ward itself to be switched on."
+              },
+              "until": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "ended": {
+                "type": "boolean",
+                "description": "True once the end date has passed: the agent is refused until a person adds it again."
+              },
+              "addedByRole": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "addedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "name": "night-flow-helper",
+          "role": "bed-manager",
+          "wards": [
+            "ward-a1"
+          ],
+          "days": 30
+        }
+      }
+    },
+    {
+      "name": "agent.remove",
+      "summary": "Take an agent off this site's list. It is refused from its next call. Its proposals still waiting are marked so nobody accepts them without looking. People only.",
+      "kind": "write",
+      "roles": [
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._-]{1,40}$"
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "name"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done"
+            ]
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "name": "night-flow-helper"
+        }
+      }
+    },
+    {
+      "name": "agents.stop-all",
+      "summary": "Stop every agent on this site now: the dial goes to off and every ward is switched off. Anyone can stop; only the operations manager or chief operating officer can start again. People only.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "dial",
+          "wasOn"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done"
+            ]
+          },
+          "dial": {
+            "type": "string",
+            "enum": [
+              "off"
+            ]
+          },
+          "wasOn": {
+            "type": "boolean"
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
       "name": "proposals.list",
       "summary": "Agent proposals and what happened to them. People see every proposal; an agent sees only its own.",
       "kind": "read",
@@ -1534,6 +1930,10 @@
                 "canDecide": {
                   "type": "boolean",
                   "description": "Whether the caller's role may accept or decline it."
+                },
+                "agentOnList": {
+                  "type": "boolean",
+                  "description": "False when the agent that asked has since been removed or has passed its end date. Check before accepting."
                 }
               }
             }
@@ -1666,6 +2066,10 @@
               "canDecide": {
                 "type": "boolean",
                 "description": "Whether the caller's role may accept or decline it."
+              },
+              "agentOnList": {
+                "type": "boolean",
+                "description": "False when the agent that asked has since been removed or has passed its end date. Check before accepting."
               }
             }
           },
@@ -1814,6 +2218,10 @@
               "canDecide": {
                 "type": "boolean",
                 "description": "Whether the caller's role may accept or decline it."
+              },
+              "agentOnList": {
+                "type": "boolean",
+                "description": "False when the agent that asked has since been removed or has passed its end date. Check before accepting."
               }
             }
           }

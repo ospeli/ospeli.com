@@ -84,6 +84,31 @@ const PERSONAL = [
   [/\+?\d[\d\s().-]{7,}\d/, 'a phone or ID number'],
   [/\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b/, 'a date'],
 ];
+// Maps measure flows, never people (issue #38): a title followed by a name ("Dr Sarah Jones",
+// "Sister Mary Brown") is refused. A title followed by a job word ("Nurse Manager") is a role.
+const TITLE_NAME = /\b(?:Dr|Doctor|Nurse|Sister|Matron|Mr|Mrs|Ms|Miss|Mx|Prof|Professor)\.?\s+([A-Z][A-Za-z'’-]+)/g;
+const JOB_WORDS = new Set(`admin administrator admissions anaesthetist assistant biomedical booking care caretaker carer charge chief
+  cleaner cleaning clerk clinic clinical clinician community consultant coordinator dental dentist department desk diagnostics dietitian
+  discharge dispenser doctor driver duty education educator emergency engineer engineering equipment facilities family finance flow
+  general head health helpdesk housekeeper housekeeping imaging infection junior lab laboratory lead leader liaison maintenance manager
+  matron medical medicines midwife nurse nursing occupational office officer on-call operations operator outpatient outpatients patient
+  pharmacist pharmacy physician physio physiotherapist physiotherapy porter practice practitioner prevention quality radiographer
+  radiology reception receptionist records registrar relative review round safety security senior service services shift site social
+  specialist staff stores supervisor support surgeon surgical team technician theatre therapist therapy transport triage unit visitor
+  volunteer ward worker and for in of on the at`.split(/\s+/));
+const isJobWord = (w) => JOB_WORDS.has(w.toLowerCase().replace(/[^a-z-]/g, ''));
+export function personNameIn(text, { roleField = false } = {}) {
+  const s = String(text);
+  for (const m of s.matchAll(TITLE_NAME)) if (!isJobWord(m[1])) return true;
+  if (roleField) {
+    // In the role field, two or three capitalised words with no job word among them read as a name.
+    const words = s.trim().split(/\s+/);
+    if (words.length >= 2 && words.length <= 3 && words.every((w) => /^[A-Z][A-Za-z'’-]+$/.test(w)) && !words.some(isJobWord)) return true;
+  }
+  return false;
+}
+export const NAME_ADVICE = 'Use a role, not a person\'s name (for example Doctor, Charge nurse, Pharmacy). Ospeli times steps, never people.';
+
 export function personalDetailIn(text) {
   for (const [re, what] of PERSONAL) if (re.test(String(text))) return what;
   return null;
