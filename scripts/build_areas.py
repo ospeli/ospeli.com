@@ -232,7 +232,7 @@ def index_page(areas):
     if "Planned" in words:
         legend += ' · <span class="st">Planned</span> designed, nothing to try yet'
     body = f"""<h1 style="margin-top:28px">Every area of the operation</h1>
-<p class="lead">Built today: beds and flow, engineering work orders, process maps and the KPI library, on one core. Designed on the same core: {more} more areas, each with a preview. Each area page shows who uses it, what it records, how it is measured and what it deliberately does not do.</p>
+<p class="lead">Built today: the bed board, engineering work orders, process maps and the KPI library, on one core. Designed on the same core: {more} more areas, each with a preview. Each area page shows who uses it, what it records, how it is measured and what it deliberately does not do.</p>
 <p class="legend">{legend}</p>
 <div class="groups">{''.join(groups)}</div>"""
     return page("Every area · Ospeli", "What is built today and what is in preview across hospital operations, from beds and theatres to facilities, stores, staffing, quality and preparedness.", 1, body)

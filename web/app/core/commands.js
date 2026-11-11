@@ -979,7 +979,9 @@ export async function agentAccess(core) {
 
 function normaliseActor(actor) {
   if (!actor || typeof actor !== 'object') throw new CommandError('forbidden', 'Every command needs an actor.');
-  const type = actor.type === 'agent' ? 'agent' : 'human';
+  // Exactly 'human' or 'agent': anything else is refused, never treated as a person.
+  if (actor.type !== 'human' && actor.type !== 'agent') throw new CommandError('forbidden', 'The actor type must be "human" or "agent".');
+  const type = actor.type;
   if (!roleById(actor.role)) throw new CommandError('forbidden', type === 'agent' ? `Unknown role. Use one of: ${ALL_ROLES.join(', ')}.` : `Unknown role ${actor.role}.`);
   if (type === 'agent' && !(typeof actor.agent === 'string' && /^[a-z0-9][a-z0-9 ._-]{0,40}$/i.test(actor.agent))) {
     throw new CommandError('forbidden', 'An agent must give its name.');
@@ -989,21 +991,25 @@ function normaliseActor(actor) {
 
 // Every refused agent call leaves an audit entry (issue #27), whatever the reason: unknown
 // command, unknown or wrong role, bad input, agents off, not on the list. Nothing the agent
-// typed is stored: the command name only if it is a real one, the names of the input fields
-// but never their values, and a fixed reason for bad input. A looping agent cannot flood the
+// typed is stored: the command name only if it is a real one, the agent's name only if a person
+// put it on the site's list (otherwise "unlisted"), the names of input fields only if the
+// command has them, never their values, and a fixed reason for bad input. A looping agent cannot flood the
 // trail: the same agent, command and reason within a minute is counted, and the count is
 // written on the next entry for that agent, command and reason.
 const REFUSAL_WINDOW_MS = 60_000;
 async function auditRefusal(core, name, input, actor, err) {
-  const known = !!commandByName(name);
+  const cmd = commandByName(name);
+  const known = !!cmd;
   const role = roleById(actor?.role) ? actor.role : 'system';
-  const agent = typeof actor?.agent === 'string' && /^[a-z0-9][a-z0-9 ._-]{0,40}$/i.test(actor.agent) ? actor.agent : 'unnamed';
+  const listed = typeof actor?.agent === 'string' ? (await agentList(core)).find((r) => agentKey(r.name) === agentKey(actor.agent)) : null;
+  const agent = listed ? listed.name : 'unlisted';
+  const ownFields = new Set(Object.keys(cmd?.input?.properties || {}));
   const command = known ? name : '(unknown)';
   const detail = {
     command, code: err.code, reason: err.reason || err.code,
     why: err.code === 'invalid-input' ? 'The input did not match what the command accepts.' : err.code === 'unknown-command' ? 'There is no such command.' : err.message,
     claimedRole: role === 'system' ? '(unknown)' : role,
-    fields: input && typeof input === 'object' ? Object.keys(input).filter((k) => /^[A-Za-z][A-Za-z0-9]{0,30}$/.test(k)).slice(0, 12) : [],
+    fields: input && typeof input === 'object' ? Object.keys(input).filter((k) => ownFields.has(k)).slice(0, 12) : [],
   };
   const key = `${agent.toLowerCase()}|${command}|${err.code}|${err.reason || ''}`;
   const now = core.now();
@@ -1035,8 +1041,8 @@ export async function runCommand(core, name, input = {}, actor) {
 }
 
 async function runChecked(core, name, input, actor) {
-  // A refusal: the call was turned away before the command ran (as opposed to the command
-  // itself answering not-found or conflict, which a read already records as an agent read).
+  // A refusal: the call was turned away before the command ran. (A read that runs and then
+  // answers not-found is recorded as an agent read with its outcome, further down.)
   const refuse = (code, why, detail = null, reason = code) => { throw Object.assign(new CommandError(code, why, detail), { refusal: true, reason }); };
   const cmd = commandByName(name);
   if (!cmd) refuse('unknown-command', `There is no command ${String(name).slice(0, 60)}.`);
@@ -1069,8 +1075,16 @@ async function runChecked(core, name, input, actor) {
   if (ward && access.wards[ward] !== true) refuse('agents-off', `Agent access is off for ward ${ward}.`, null, 'ward-off');
   if (ward && !listed.wards.includes(ward)) refuse('forbidden', `Agent ${who.agent} is not allowed on ward ${ward}.`, null, 'ward-not-listed');
   const allowedWards = new Set(listed.wards.filter((id) => access.wards[id] === true));
+  who.agent = listed.name; // the name as a person wrote it on the list
   if (cmd.kind === 'read') {
-    const out = await cmd.run(core, input, { actor: who, wards: allowedWards });
+    // A read that fails (for example not-found) is audited too: every agent call leaves a trace.
+    let out;
+    try {
+      out = await cmd.run(core, input, { actor: who, wards: allowedWards });
+    } catch (err) {
+      await core.recordAs(who, 'agent.read', null, { command: name, input, outcome: err instanceof CommandError ? err.code : 'error' });
+      throw err;
+    }
     await core.recordAs(who, 'agent.read', null, { command: name, input });
     return out;
   }

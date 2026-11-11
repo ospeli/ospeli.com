@@ -28,7 +28,8 @@ test('window.ospeli lists and describes commands; agents are off by default and 
   const last = await page.evaluate(async () => (await window.ospeli.core.auditLog()).at(-1));
   assert.equal(last.action, 'agent.refused');
   assert.equal(last.actorType, 'agent');
-  assert.equal(last.agent, 'e2e-agent');
+  // The name of a caller nobody has put on the site's list is agent-typed text: it is not stored (#27).
+  assert.equal(last.agent, 'unlisted');
 
   // Every action control on the board names the command it runs, and that command exists.
   await page.click('.bed');

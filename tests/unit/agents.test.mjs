@@ -61,7 +61,9 @@ test('agents screen: off by default; only a listed agent, in its listed role and
   assert.equal(view.dial, 'advise');
   const mine = view.recent.find((r) => r.agent.toLowerCase() === 'night-flow-helper');
   assert.deepEqual({ reads: mine.reads, proposals: mine.proposals, refused: mine.refused, onList: mine.onList }, { reads: 2, proposals: 0, refused: 3, onList: true });
-  assert.equal(view.recent.find((r) => r.agent === 'browser-agent').onList, false);
+  // A caller that is not on the list is counted, but the name it typed is not kept.
+  assert.equal(view.recent.some((r) => r.agent === 'browser-agent'), false);
+  assert.deepEqual([view.recent.find((r) => r.agent === 'unlisted').onList, view.recent.find((r) => r.agent === 'unlisted').refused], [false, 2]);
   assert.deepEqual(await core.verifyAudit(), { ok: true });
 });
 
@@ -110,7 +112,8 @@ test('every refused agent call leaves one audit entry, for each reason, and stor
     ['agents-off', 'kpi.value', { id: 'occupancy' }, agent('coo', 'coo-helper')], // dial off
     ['unknown-command', `no.such ${SECRET}`, {}, agent('coo', 'coo-helper')],
     ['forbidden', 'kpi.value', { id: 'occupancy' }, agent(`boss ${SECRET}`, 'coo-helper')], // unknown role
-    ['forbidden', 'kpi.value', { id: 'occupancy' }, { type: 'agent', role: 'coo', agent: `<b>${SECRET}</b>` }], // bad name
+    ['forbidden', 'beds.board', {}, { type: 'agent', role: 'coo', agent: `<b>${SECRET}</b>` }], // bad name
+    ['agents-off', 'kpi.list', {}, agent('coo', `Mr ${SECRET.replace(/[0-9 ]/g, '')} in bed four`)], // a name that passes the pattern but is not on the list
     ['agents-off', 'agents.set-access', { allowed: true }, agent('coo', 'coo-helper')], // people only
   ];
   for (const [c, name, input, actor] of tries) await assert.rejects(runCommand(core, name, input, actor), code(c));
@@ -132,7 +135,16 @@ test('every refused agent call leaves one audit entry, for each reason, and stor
   assert.equal(JSON.stringify(rows).includes('555'), false);
   assert.deepEqual(rows.at(-1).detail.fields, ['id'], 'field names only, never values');
   assert.equal(rows[1].detail.command, '(unknown)');
-  assert.equal(rows[3].agent, 'unnamed');
+  assert.ok(rows.slice(0, tries.length).every((e) => e.agent === 'unlisted'), 'a name nobody put on the list is never stored');
+  assert.equal(rows.at(-1).agent, 'coo-helper');
+  assert.equal(JSON.stringify(await runCommand(core, 'agents.list', {}, human('coo'))).includes('Mary'), false, 'nor shown on the screen');
+  // A read that runs and fails is audited too, with its outcome.
+  await assert.rejects(runCommand(core, 'map.get', { mapId: 'map-999' }, agent('coo', 'coo-helper')), code('not-found'));
+  const lastRead = (await core.auditLog()).at(-1);
+  assert.deepEqual([lastRead.action, lastRead.actorType, lastRead.detail.command, lastRead.detail.outcome], ['agent.read', 'agent', 'map.get', 'not-found']);
+  // An actor that is neither a person nor an agent is refused, never treated as a person.
+  await assert.rejects(runCommand(core, 'agent.add', { name: 'self-made', role: 'coo', days: 90 }, { type: 'Agent', role: 'coo', agent: 'x' }), code('forbidden'));
+  await assert.rejects(runCommand(core, 'kpi.list', {}, { role: 'coo' }), code('forbidden'));
   // A refused person leaves no agent entry.
   await assert.rejects(runCommand(core, 'agents.set-access', { allowed: true }, human('ward-nurse')), code('forbidden'));
   assert.equal((await refusals(core)).length, rows.length);
@@ -148,7 +160,7 @@ test('a looping agent cannot flood the trail: repeats within a minute are counte
   await assert.rejects(runCommand(core, 'bed.get', { bedId: 'ward-a1-bed-01' }, agent('bed-manager', 'looper')), code('agents-off'));
   assert.equal((await refusals(core)).length, 2);
   // The screen still counts every refusal, written or not.
-  const seen = (await runCommand(core, 'agents.list', {}, human('coo'))).recent.find((r) => r.agent === 'looper');
+  const seen = (await runCommand(core, 'agents.list', {}, human('coo'))).recent.find((r) => r.agent === 'unlisted');
   assert.equal(seen.refused, 26);
   // After the minute, the next entry carries the count, so the hash-chained trail has it too.
   skip(61_000);
@@ -156,6 +168,6 @@ test('a looping agent cannot flood the trail: repeats within a minute are counte
   const rows = await refusals(core);
   assert.equal(rows.length, 3);
   assert.equal(rows.at(-1).detail.repeats.count, 24);
-  assert.equal((await runCommand(core, 'agents.list', {}, human('coo'))).recent.find((r) => r.agent === 'looper').refused, 27);
+  assert.equal((await runCommand(core, 'agents.list', {}, human('coo'))).recent.find((r) => r.agent === 'unlisted').refused, 27);
   assert.deepEqual(await core.verifyAudit(), { ok: true });
 });

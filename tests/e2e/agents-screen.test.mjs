@@ -53,21 +53,38 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
   assert.match(r1.message, /not on this site's list/);
 
   // Switch one ward on, add the agent: name, role, ward, save.
-  await c.tap('[data-test="agents-wards"] summary');
+  // Nothing is on yet, so the ward list is already open: the next step is in view.
+  assert.equal(await page.locator('[data-test="agents-wards"]').getAttribute('open') !== null, true);
   await c.tap('[data-ward="ward-a1"]');
   await page.waitForSelector('[data-ward="ward-a1"][aria-pressed="true"]');
   assert.match(await page.textContent('[data-test="agents-wards"] summary'), /1 of 6 wards on/);
   await c.tap('[data-test="agents-add"]');
+  // Errors appear under the Name field, in view, in plain words.
+  const errInView = () => page.evaluate(() => { const r = document.querySelector('.ag-err').getBoundingClientRect(); return r.height > 0 && r.top >= 0 && r.bottom <= innerHeight; });
+  await c.tap('[data-cmd="agent.add"]');
+  await page.waitForFunction(() => /Give the agent a name/.test(document.querySelector('.ag-err')?.textContent || ''));
+  assert.equal(await errInView(), true, 'the empty-name error is visible');
+  await page.fill('#ag-name', 'Bed helper!');
+  await c.tap('[data-cmd="agent.add"]');
+  await page.waitForFunction(() => /Use 2 to 41 letters/.test(document.querySelector('.ag-err')?.textContent || ''));
   await page.fill('#ag-name', 'Dr Sarah Jones');
   await c.tap('[data-cmd="agent.add"]');
   await page.waitForFunction(() => /person's name/.test(document.querySelector('.ag-err')?.textContent || ''));
+  assert.equal(await errInView(), true);
   await page.fill('#ag-name', 'night-flow-helper');
   await page.selectOption('#ag-role', 'bed-manager');
   await c.tap('.ag-tick input[value="ward-a1"]');
   await c.tap('[data-cmd="agent.add"]');
   await page.waitForSelector('[data-agent="night-flow-helper"]');
-  assert.ok(c.taps <= 8, `setting up one agent took ${c.taps} taps`);
-  assert.match(await page.textContent('[data-agent="night-flow-helper"]'), /Works for Bed manager · Ward A1.*0 reads, 0 suggestions, 1 refused/s, "the earlier refused call is counted against the name");
+  assert.ok(c.taps <= 9, `setting up one agent, with three mistakes on the way, took ${c.taps} taps`);
+  // The same name again is refused in words instead of silently replacing the entry.
+  await c.tap('[data-test="agents-add"]');
+  await page.fill('#ag-name', 'Night-Flow-Helper');
+  await c.tap('[data-cmd="agent.add"]');
+  await page.waitForFunction(() => /already on the list/.test(document.querySelector('.ag-err')?.textContent || ''));
+  await page.locator('.ag-dialog button:has-text("Cancel")').tap();
+  assert.match(await page.textContent('[data-agent="night-flow-helper"]'), /Works for Bed manager · Ward A1 \(acute medicine\) · ends .*Not used in the last 7 days/s);
+  assert.match(await page.textContent('[data-test="agents-strangers"]'), /Not on the list.*1 refused/s, 'the call made before it was listed is counted, without a name');
 
   // The agent journey the issue could not complete: a read works, scoped to its ward and role.
   const r2 = await asAgent(page, 'beds.board', {}, helper);
@@ -105,6 +122,7 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
   await c.tap('[data-dial="advise"]');
   await page.waitForSelector('[data-test="agents-wards"]');
   assert.match(await page.textContent('[data-test="agents-wards"] summary'), /0 of 6 wards on/);
+  assert.match(await page.textContent('[data-agent="night-flow-helper"]'), /Ward A1 \(acute medicine\) \(ward off\)/);
   assert.equal((await asAgent(page, 'beds.board', { wardId: 'ward-a1' }, helper)).code, 'agents-off');
 
   // The trail: every change by a person, every agent call (allowed or refused) by an agent.
@@ -113,9 +131,10 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
   await page.waitForFunction(() => /^Intact/.test(document.querySelector('[data-test="audit-status"]').textContent));
   await page.selectOption('[data-test="audit-actor"]', 'agent');
   const rows = await page.$$eval('tbody tr', (trs) => trs.map((tr) => tr.children[3].textContent));
-  // 7 calls were refused; the two "ward is off" refusals of the same command came within a
-  // minute, so the second is counted on the screen instead of written as a new entry (#27).
-  assert.equal(rows.filter((r) => r.startsWith('agent.refused')).length, 6, rows.join(' | '));
+  // 7 calls were refused. Two repeats came within a minute of the same refusal (a second call from
+  // a name not on the list, a second "ward is off"), so they are counted on the screen instead of
+  // written as new entries (#27): 5 entries.
+  assert.equal(rows.filter((r) => r.startsWith('agent.refused')).length, 5, rows.join(' | '));
   assert.equal(rows.filter((r) => r.startsWith('agent.read')).length, 1);
   await page.selectOption('[data-test="audit-actor"]', 'human');
   const people = (await page.$$eval('tbody tr', (trs) => trs.map((tr) => tr.children[3].textContent))).join(' | ');
@@ -144,14 +163,15 @@ test('remove an agent: it is refused at once, shows under "Refused", and the lis
   await context.setOffline(true);
   await page.reload();
   await page.waitForSelector('[data-agent="map-reader"]');
-  assert.match(await page.textContent('[data-agent="map-reader"]'), /Last active .* ago: 1 read, 0 suggestions, 0 refused/);
+  assert.match(await page.textContent('[data-agent="map-reader"]'), /Last active (just now|.* ago): 1 read, 0 suggestions, 0 refused/);
   await page.click('[data-agent="map-reader"] [data-cmd="agent.remove"]');
   await page.waitForFunction(() => !document.querySelector('[data-agent="map-reader"]'));
   const r = await asAgent(page, 'maps.list', {}, who);
   assert.deepEqual([r.ok, r.code], [false, 'forbidden']);
   await page.reload();
   await page.waitForSelector('[data-test="agents-strangers"]');
-  assert.match(await page.textContent('[data-test="agents-strangers"]'), /map-reader/);
+  assert.match(await page.textContent('[data-test="agents-strangers"]'), /Not on the list.*1 refused/s);
+  assert.equal((await page.textContent('[data-test="agents-strangers"]')).includes('map-reader'), false);
   assert.match(await page.textContent('[data-test="agents"]'), /named, not verified/);
   await context.setOffline(false);
   assert.deepEqual(errors, []);

@@ -124,7 +124,7 @@ for (const width of [360, 390]) {
     const { context, page, errors } = await open(width);
     const sum = page.locator('details.roles-wrap > summary');
     assert.equal(await page.locator('details.roles-wrap').evaluate((d) => d.open), false, 'closed at first, to keep the page short');
-    assert.match(await sum.innerText(), /^Find your area \(11\)$/);
+    assert.match(await sum.innerText(), /^Find your area by role$/);
     assert.ok((await sum.boundingBox()).height >= 44, 'the row is a 44 px tap target');
     await sum.tap();
     const m = await page.evaluate(() => {

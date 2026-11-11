@@ -156,7 +156,8 @@ test('agents: off by default, audited as agents, read only allowed wards, and on
   assert.equal(log.length, auditBefore + 1);
   assert.equal(log.at(-1).action, 'agent.refused');
   assert.equal(log.at(-1).actorType, 'agent');
-  assert.equal(log.at(-1).agent, 'test-agent');
+  // The name of a caller nobody has put on the site's list is agent-typed text: it is not stored (#27).
+  assert.equal(log.at(-1).agent, 'unlisted');
   assert.equal(log.at(-1).actorRole, 'bed-manager');
 
   // Only people (ops manager or COO) can switch agents on.

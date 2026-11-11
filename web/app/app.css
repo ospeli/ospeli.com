@@ -393,3 +393,5 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .ag-dialog-actions { position: sticky; bottom: -20px; background: var(--surface); padding: 10px 0 20px; margin-bottom: -20px; }
 @media (max-width: 420px) { .ag-dial { grid-template-columns: 1fr; } .ag-dial-btn { min-height: 64px; } }
 .ag-agent .btn-small { font-size: .95rem; flex: none; }
+.ag-card > .ag-stop { margin: 0 0 10px; }
+.ag-card .ag-dial + .ag-stop { margin: 10px 0 0; }
