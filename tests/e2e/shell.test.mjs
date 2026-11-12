@@ -57,7 +57,7 @@ test('phone menu opens the module list and marks the current page', async () => 
   await page.waitForFunction(() => document.querySelector('main h1')?.textContent === 'A&E flow');
   assert.equal(await page.locator('#nav').isVisible(), false);
   assert.equal(await page.getAttribute('#nav a[data-module="ae"]', 'aria-current'), 'page');
-  assert.match(await page.locator('main').textContent(), /Coming in week 2/);
+  assert.match(await page.locator('main').textContent(), /Planned, not built yet/); // was "Coming in week 2" (issue #53: no build-month labels)
   await context.close();
 });
 
@@ -160,5 +160,44 @@ test('Escape closes the phone menu and returns focus to the Menu button (issue #
   assert.equal(await page.locator('#nav').isVisible(), false);
   assert.equal(await page.getAttribute('#menu-btn', 'aria-expanded'), 'false');
   assert.equal(await page.evaluate(() => document.activeElement.id), 'menu-btn');
+  await context.close();
+});
+
+// Issue #53: a role's shortcuts open things that role can use today. Pages that are not built are
+// listed under one "Planned" heading, and no build-month label ("Week 3") is shown anywhere.
+test('Today at 390px: every role gets at least three shortcuts and all of them are built; unbuilt pages sit under Planned (issue #53)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844 });
+  const roles = await page.evaluate(() => [...document.querySelector('#role-select').options].map((o) => o.value));
+  for (const role of roles) {
+    await page.selectOption('#role-select', role);
+    await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
+    await page.goto(`${env.appUrl}#/home`);
+    await page.reload();
+    await page.waitForSelector('html[data-ready="true"]');
+    await page.waitForSelector('[data-test="role-shortcuts"] a');
+    const seen = await page.evaluate(() => ({
+      shortcuts: [...document.querySelectorAll('[data-test="role-shortcuts"] a')].map((a) => ({ href: a.getAttribute('href'), soon: a.classList.contains('is-soon'), h: a.getBoundingClientRect().height })),
+      planned: [...document.querySelectorAll('[data-test="planned-modules"] a')].map((a) => a.textContent),
+      elsewhere: [...document.querySelectorAll('main a.is-soon')].filter((a) => !a.closest('[data-test="planned-modules"]')).length,
+      plannedBelow: document.querySelector('[data-test="planned-modules"]').getBoundingClientRect().top > document.querySelector('[data-test="role-shortcuts"]').getBoundingClientRect().bottom,
+      text: document.querySelector('main').innerText + ' ' + document.querySelector('#nav').textContent,
+    }));
+    assert.ok(seen.shortcuts.length >= 3, `${role} has ${seen.shortcuts.length} shortcuts`);
+    assert.ok(seen.shortcuts.every((s) => !s.soon), `${role}: a shortcut opens a page that is not built`);
+    assert.ok(seen.shortcuts.every((s) => s.h >= 44));
+    assert.ok(seen.planned.length >= 1 && seen.planned.every((t) => /Planned/.test(t)), `${role}: unbuilt pages are marked Planned`);
+    assert.equal(seen.elsewhere, 0, `${role}: an unbuilt page is listed outside Planned`);
+    assert.ok(seen.plannedBelow);
+    assert.doesNotMatch(seen.text, /week \d/i, `${role}: a build-month label is shown`);
+    // The first shortcut opens a real page.
+    await page.locator('[data-test="role-shortcuts"] a').first().click();
+    await page.waitForFunction(() => document.querySelector('main h1') && !/^Planned/.test(document.querySelector('main .eyebrow')?.textContent || ''));
+  }
+  // An unbuilt page says Planned, not a week.
+  await page.goto(`${env.appUrl}#/dashboard`);
+  await page.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Operations dashboard');
+  assert.match(await page.locator('main .eyebrow').textContent(), /^Planned/);
+  assert.doesNotMatch(await page.locator('main').innerText(), /week \d/i);
+  assert.deepEqual(errors, []);
   await context.close();
 });

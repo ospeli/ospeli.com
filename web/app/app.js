@@ -32,8 +32,8 @@ function buildNav() {
     if (!m.load) {
       const tag = document.createElement('span');
       tag.className = 'soon-tag';
-      tag.textContent = `Week ${m.week}`;
-      tag.setAttribute('aria-label', `coming in week ${m.week}`);
+      tag.textContent = 'Planned';
+      tag.setAttribute('aria-label', 'planned, not built yet');
       a.append(tag);
     }
     li.append(a);

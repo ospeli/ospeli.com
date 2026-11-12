@@ -29,6 +29,17 @@ export const ROLE_MODULES = {
 
 export const moduleById = (id) => MODULES.find((m) => m.id === id) || null;
 
+// A role's shortcuts on Today (issue #53): only pages that are built, the role's own first, topped
+// up to three from the built operational modules. As a planned module ships (gets a `load`), it
+// takes its place in the role's order by itself.
+const SHORTCUT_FILL = ['beds', 'engineering', 'process'];
+export function shortcutsFor(role) {
+  const built = (ids) => ids.map(moduleById).filter((m) => m && m.load);
+  const mine = built(ROLE_MODULES[role] || []);
+  for (const m of built(SHORTCUT_FILL)) if (mine.length < 3 && !mine.includes(m)) mine.push(m);
+  return mine;
+}
+
 // Parse "#/beds" or "#/beds/ward-1" into { id, rest }.
 export function parseRoute(hash) {
   const parts = String(hash || '').replace(/^#\/?/, '').split('/').filter(Boolean);
