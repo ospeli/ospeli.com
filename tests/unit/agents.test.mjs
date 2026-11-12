@@ -171,3 +171,61 @@ test('a looping agent cannot flood the trail: repeats within a minute are counte
   assert.equal((await runCommand(core, 'agents.list', {}, human('coo'))).recent.find((r) => r.agent === 'unlisted').refused, 27);
   assert.deepEqual(await core.verifyAudit(), { ok: true });
 });
+
+// Issue #51: off by default also means a replaced data set starts with agents off.
+async function agentsOn(core) {
+  await runCommand(core, 'agents.set-access', { allowed: true, wards: { 'ward-a1': true } }, human('ops-manager'));
+  await runCommand(core, 'agent.add', { name: 'flow-helper', role: 'bed-manager', wards: ['ward-a1'], days: 30 }, human('ops-manager'));
+  const board = await runCommand(core, 'beds.board', { wardId: 'ward-a1' }, agent('bed-manager', 'flow-helper'));
+  assert.equal(board.beds.length, 20);
+}
+
+test('reset then a fresh copy leaves agents off, the list empty, and one entry in the new trail (issue #51)', async () => {
+  const { core } = await setup();
+  await agentsOn(core);
+  await core.reset('ward-nurse');
+  await loadSyntheticHospital(core, { end: END });
+  await assert.rejects(runCommand(core, 'beds.board', { wardId: 'ward-a1' }, agent('bed-manager', 'flow-helper')), code('agents-off'));
+  const view = await runCommand(core, 'agents.list', {}, human('ops-manager'));
+  ok('agents.list', view);
+  assert.equal(view.dial, 'off');
+  assert.deepEqual(view.wards, {});
+  assert.deepEqual(view.agents, []);
+  assert.equal(view.cleared.by, 'reset');
+  assert.equal(view.cleared.byRole, 'ward-nurse');
+  const log = await core.auditLog();
+  assert.equal(log[0].action, 'agents.access-cleared');
+  assert.deepEqual(log[0].detail, { by: 'reset', was: { dial: 'advise', wards: 1, agents: 1, pendingProposals: 0 } });
+  assert.equal(log.filter((e) => e.action === 'agents.access-cleared').length, 1);
+  assert.deepEqual(await core.verifyAudit(), { ok: true });
+  // Switching agents on again is a person's choice, and clears the notice.
+  await runCommand(core, 'agents.set-access', { allowed: true }, human('ops-manager'));
+  assert.equal((await runCommand(core, 'agents.list', {}, human('ops-manager'))).cleared, null);
+});
+
+test('import leaves agents off, drops waiting proposals, and says so in the trail (issue #51)', async () => {
+  const { core } = await setup();
+  const file = JSON.parse(JSON.stringify(await core.exportData())); // exported before agents were switched on
+  await agentsOn(core);
+  const bed = (await runCommand(core, 'beds.board', { wardId: 'ward-a1' }, human('bed-manager'))).beds.find((b) => b.state === 'occupied');
+  await runCommand(core, 'bed.flag-expected-discharge', { bedId: bed.id }, agent('bed-manager', 'flow-helper'));
+  await core.importData(file, 'ward-nurse');
+  await assert.rejects(runCommand(core, 'beds.board', { wardId: 'ward-a1' }, agent('bed-manager', 'flow-helper')), code('agents-off'));
+  const view = await runCommand(core, 'agents.list', {}, human('coo'));
+  assert.equal(view.dial, 'off');
+  assert.deepEqual(view.agents, []);
+  assert.equal(view.cleared.by, 'import');
+  assert.deepEqual((await runCommand(core, 'proposals.list', {}, human('bed-manager'))).proposals, []);
+  const log = await core.auditLog();
+  const entry = log.find((e) => e.action === 'agents.access-cleared');
+  assert.deepEqual(entry.detail, { by: 'import', was: { dial: 'advise', wards: 1, agents: 1, pendingProposals: 1 } });
+  assert.equal(entry.actorRole, 'ward-nurse');
+  assert.deepEqual(await core.verifyAudit(), { ok: true });
+});
+
+test('a reset with agents never switched on writes nothing about agents (issue #51)', async () => {
+  const { core } = await setup();
+  await core.reset('ward-nurse');
+  assert.equal((await core.auditLog()).length, 0);
+  assert.equal(await core.agentAccessInUse(), null);
+});

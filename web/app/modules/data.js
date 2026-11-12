@@ -13,6 +13,15 @@ export function actorLabel(e) {
 }
 const actorTypeOf = (e) => e.actorType || (e.actorRole === 'system' ? 'system' : 'human');
 
+// Reset, a fresh copy and import also switch agents off (issue #51); say so before the person confirms.
+const AGENTS_OFF_TOO = ' AI agents will also be switched off.';
+// The one audit action whose detail a person needs to read in the table.
+function actionLabel(e) {
+  if (e.action !== 'agents.access-cleared' || !e.detail?.was) return e.action;
+  const w = e.detail.was; const n = (c, word) => `${c} ${word}${c === 1 ? '' : 's'}`;
+  return `Agents switched off by ${e.detail.by} (was ${w.dial === 'advise' ? 'Advise' : 'Off'}, ${n(w.wards, 'ward')}, ${n(w.agents, 'agent')})`;
+}
+
 function download(name, text) {
   const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
   const a = h('a', { href: url, download: name });
@@ -42,7 +51,7 @@ export async function render(el, ctx) {
       h('td', {}, e.seq),
       h('td', {}, fmtTime(e.at)),
       h('td', { 'data-actor-type': actorTypeOf(e) }, actorLabel(e)),
-      h('td', {}, e.action, e.target ? ` · ${e.target}` : ''),
+      h('td', {}, actionLabel(e), e.target ? ` · ${e.target}` : ''),
       h('td', {}, h('code', { title: e.hash }, e.hash.slice(0, 12))))) : [h('tr', {}, h('td', { colspan: 5 }, want === 'all' ? 'No entries yet.' : 'No entries by this kind of actor.'))]));
   }
 
@@ -55,10 +64,11 @@ export async function render(el, ctx) {
       const data = JSON.parse(await f.text());
       const errs = await core.validateImport(data);
       if (errs.length) { status.textContent = `Import refused. Nothing was changed. ${errs[0]}`; return; }
-      if (!confirm(`Replace all data on this device with ${data.entities.length} records and ${data.events.length} events from this file?`)) return;
+      const agentsOn = await core.agentAccessInUse();
+      if (!confirm(`Replace all data on this device with ${data.entities.length} records and ${data.events.length} events from this file?${agentsOn ? AGENTS_OFF_TOO : ''}`)) return;
       const res = await core.importData(data, ctx.role);
-      status.textContent = `Imported ${res.entities} records and ${res.events} events.`;
-      ctx.toast('Import complete');
+      status.textContent = `Imported ${res.entities} records and ${res.events} events.${agentsOn ? ' Agents are off.' : ''}`;
+      ctx.toast(agentsOn ? 'Import complete. Agents are off.' : 'Import complete');
       await refresh();
     } catch (err) {
       status.textContent = `Import refused. Nothing was changed. ${err.message}`;
@@ -76,20 +86,22 @@ export async function render(el, ctx) {
   } }, 'Export JSON');
 
   const resetBtn = h('button', { class: 'btn btn-danger', type: 'button', onclick: async () => {
-    if (!confirm('Delete all Ospeli data on this device? Export first if you want to keep it.')) return;
-    await core.reset();
+    const agentsOn = await core.agentAccessInUse();
+    if (!confirm(`Delete all Ospeli data on this device?${agentsOn ? AGENTS_OFF_TOO : ''} Export first if you want to keep your data.`)) return;
+    await core.reset(ctx.role);
     await core.record(ctx.role, 'data.reset');
     genLine?.remove(); // nothing is loaded now (issue #7)
-    ctx.toast('Device data cleared');
+    ctx.toast(agentsOn ? 'Device data cleared. Agents are off.' : 'Device data cleared');
     await refresh();
   } }, 'Reset device data');
 
   const gen = await core.getMeta('generator');
   const genLine = gen ? h('p', { class: 'meta', 'data-test': 'generator-meta' }, `Seed ${gen.seed}, data up to ${fmtTime(gen.end)}.`) : null;
   const reloadBtn = h('button', { class: 'btn btn-ghost', type: 'button', onclick: async () => {
-    if (!confirm(`Replace all data on this device with a fresh ${HOSPITAL_NAME}? Export first if you want to keep it.`)) return;
+    const agentsOn = await core.agentAccessInUse();
+    if (!confirm(`Replace all data on this device with a fresh ${HOSPITAL_NAME}?${agentsOn ? AGENTS_OFF_TOO : ''} Export first if you want to keep your data.`)) return;
     reloadBtn.disabled = true;
-    await core.reset();
+    await core.reset(ctx.role);
     const res = await loadSyntheticHospital(core, { end: currentHour() });
     await core.record(ctx.role, 'data.synthetic-loaded', null, { seed: res.meta.seed, end: res.meta.end });
     ctx.toast(`${HOSPITAL_NAME} loaded`);

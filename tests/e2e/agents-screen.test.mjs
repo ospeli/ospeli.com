@@ -179,3 +179,52 @@ test('remove an agent: it is refused at once, shows under "Refused", and the lis
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #51, as a visitor does it (no test hook): agents on, then a ward nurse resets the device
+// and loads a fresh copy. The new data starts with agents off, and the new trail says why.
+test('reset and a fresh copy switch agents off and say so, at 360 px (issue #51)', async () => {
+  const { context, page, errors } = await openPhone(360);
+  const dialogs = [];
+  page.on('dialog', (d) => { dialogs.push(d.message()); d.accept(); });
+  await page.selectOption('#role-select', 'ops-manager');
+  await page.waitForSelector('[data-dial="advise"]:not([disabled])');
+  await page.locator('[data-dial="advise"]').tap();
+  await page.waitForSelector('[data-test="agents-dial"][data-dial-now="advise"]');
+  await page.locator('[data-ward="ward-a1"]').tap();
+  await page.waitForSelector('[data-ward="ward-a1"][aria-pressed="true"]');
+  await page.locator('[data-test="agents-add"]').tap();
+  await page.fill('#ag-name', 'night-flow-helper');
+  await page.selectOption('#ag-role', 'bed-manager');
+  await page.locator('.ag-tick input[value="ward-a1"]').tap();
+  await page.locator('[data-cmd="agent.add"]').tap();
+  await page.waitForSelector('[data-agent="night-flow-helper"]');
+  assert.equal((await asAgent(page, 'beds.board', { wardId: 'ward-a1' }, helper)).ok, true);
+
+  await page.selectOption('#role-select', 'ward-nurse');
+  await page.goto(`${env.appUrl}#/data`);
+  await page.waitForSelector('[data-test="audit-status"]');
+  dialogs.length = 0;
+  await page.getByRole('button', { name: 'Reset device data' }).tap();
+  await page.waitForFunction(() => /Intact: 2 entries/.test(document.querySelector('[data-test="audit-status"]').textContent));
+  assert.match(dialogs[0], /AI agents will also be switched off/);
+  const row = await page.evaluate(() => {
+    const td = [...document.querySelectorAll('tbody td')].find((x) => /Agents switched off by reset/.test(x.textContent));
+    return td ? td.textContent : null;
+  });
+  assert.equal(row, 'Agents switched off by reset (was Advise, 1 ward, 1 agent)');
+  const r1 = await asAgent(page, 'beds.board', { wardId: 'ward-a1' }, helper);
+  assert.deepEqual([r1.ok, r1.code], [false, 'agents-off']);
+
+  await page.getByRole('button', { name: 'Load a fresh copy' }).tap();
+  await page.waitForLoadState('load');
+  await page.waitForSelector('html[data-ready="true"]');
+  const r2 = await asAgent(page, 'beds.board', { wardId: 'ward-a1' }, helper);
+  assert.deepEqual([r2.ok, r2.code], [false, 'agents-off']);
+  await page.goto(`${env.appUrl}#/agents`);
+  await page.waitForSelector('[data-test="agents-dial"][data-dial-now="off"]');
+  assert.equal(await page.locator('[data-agent]').count(), 0);
+  assert.match(await page.textContent('[data-test="agents-cleared"]'), /switched off when this device's data was reset/);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  assert.deepEqual(errors, []);
+  await context.close();
+});

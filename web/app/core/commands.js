@@ -248,6 +248,7 @@ const COMMAND_LIST = [
       const prev = await agentAccess(core);
       const next = { allowed: input.allowed, wards: { ...prev.wards, ...(input.wards || {}) } };
       await core.updateMeta('agents', (raw) => ({ ...(raw || {}), ...next }));
+      if (next.allowed) await core.setMeta('agents-cleared', null);
       await core.recordAs(actor, 'agents.access-changed', null, { from: prev, to: next });
       return next;
     },
@@ -294,6 +295,7 @@ COMMAND_LIST.push(
         recent: { type: 'array', items: { type: 'object', required: ['agent', 'lastAt', 'reads', 'proposals', 'refused'], properties: { agent: { type: 'string' }, lastAt: TIME, reads: { type: 'integer' }, proposals: { type: 'integer' }, refused: { type: 'integer' }, onList: { type: 'boolean' } } } },
         canChange: { type: 'boolean', description: 'Whether the caller\'s role may change these settings.' },
         stopped: { type: ['object', 'null'], description: 'When the dial is off because someone pressed stop: when, and the role that pressed it.', properties: { at: TIME, byRole: ID, byRoleName: { type: 'string' } } },
+        cleared: { type: ['object', 'null'], description: 'When agents are off because this device\'s data was reset or replaced (reset, a fresh copy or an import): when, how, and the role that did it.', properties: { at: TIME, by: { type: 'string', enum: ['reset', 'import'] }, byRole: ID, byRoleName: { type: 'string' } } },
         keys: { type: 'string', enum: ['none'], description: 'No secret keys in the browser app: agents are named, not verified. Keys arrive with the site server.' },
       },
     },
@@ -311,9 +313,11 @@ COMMAND_LIST.push(
         return r;
       };
       let stopped = null;
+      const note = await core.getMeta('agents-cleared', null);
+      const cleared = note ? { at: note.at, by: note.by === 'import' ? 'import' : 'reset', byRole: note.byRole, byRoleName: roleById(note.byRole)?.name || note.byRole } : null;
       for (const e of await core.auditLog()) {
         if (e.action === 'agents.stopped') stopped = { at: e.at, byRole: e.actorRole, byRoleName: roleById(e.actorRole)?.name || e.actorRole };
-        else if (e.action === 'agents.access-changed') stopped = null;
+        else if (e.action === 'agents.access-changed' || e.action === 'agents.access-cleared') stopped = null;
         if (e.actorType !== 'agent' || Date.parse(e.at) < since) continue;
         const r = row(e.agent, e.at);
         if (e.action === 'agent.read') r.reads++;
@@ -328,7 +332,7 @@ COMMAND_LIST.push(
         dial: access.allowed ? 'advise' : 'off', ...access,
         agents: list.map((r) => publicAgent(r, now)),
         recent: [...by.values()].sort((a, b) => (a.lastAt < b.lastAt ? 1 : -1)),
-        canChange: AGENT_ADMINS.includes(actor.role), keys: 'none', stopped: access.allowed ? null : stopped,
+        canChange: AGENT_ADMINS.includes(actor.role), keys: 'none', stopped: access.allowed ? null : stopped, cleared: access.allowed ? null : cleared,
       };
     },
     example: { input: {} },

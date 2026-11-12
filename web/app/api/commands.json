@@ -1577,6 +1577,33 @@
               }
             }
           },
+          "cleared": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "When agents are off because this device's data was reset or replaced (reset, a fresh copy or an import): when, how, and the role that did it.",
+            "properties": {
+              "at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "by": {
+                "type": "string",
+                "enum": [
+                  "reset",
+                  "import"
+                ]
+              },
+              "byRole": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$"
+              },
+              "byRoleName": {
+                "type": "string"
+              }
+            }
+          },
           "keys": {
             "type": "string",
             "enum": [

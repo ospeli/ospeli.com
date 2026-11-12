@@ -364,12 +364,14 @@ export class Core {
       checkActor(actorRole);
       const errs = await this.validateImport(data);
       if (errs.length) throw new Error(`import refused: ${errs.join('; ')}`);
+      const was = await this._agentAccessInUse();
       for (const s of ['entities', 'events', 'audit']) await this.db.clear(s);
       await this.db.putMany('entities', data.entities);
       await this.db.putMany('events', data.events);
       await this.db.putMany('audit', data.audit);
       await this._loadTails();
       await this.setMeta('synthetic', true);
+      await this._clearAgentAccess(actorRole, 'import', was);
       await this._audit(actorRole, 'data.imported', null, {
         entities: data.entities.length, events: data.events.length, exportedAt: data.exportedAt ?? null,
         checks: { markedSynthetic: true, identifierFields: 0 },
@@ -379,14 +381,37 @@ export class Core {
     });
   }
 
-  // Wipe everything on this device (used by "Reset demo data").
-  reset() {
+  // Agent access never carries over to a replaced data set (issue #51): off by default means a
+  // reset, a fresh copy or an import starts with the dial at Off, no ward switched on, an empty
+  // agent list and no waiting proposals. If anything was on, the new trail says so in one entry.
+  async _agentAccessInUse() {
+    const a = await this.getMeta('agents', null);
+    const wards = Object.values(a?.wards || {}).filter((v) => v === true).length;
+    const agents = Array.isArray(a?.registered) ? a.registered.length : 0;
+    const pendingProposals = ((await this.getMeta('agent-proposals', [])) || []).filter((p) => p.status === 'pending').length;
+    if (a?.allowed !== true && !wards && !agents && !pendingProposals) return null;
+    return { dial: a?.allowed === true ? 'advise' : 'off', wards, agents, pendingProposals };
+  }
+  agentAccessInUse() { return this._agentAccessInUse(); }
+  async _clearAgentAccess(actorRole, by, was) {
+    for (const id of ['agents', 'agent-refusals', 'agent-proposals']) await this.db.put('meta', { id, value: null });
+    if (!was) return;
+    // The notice outlives a later reset (which wipes the trail) until a person switches agents on again.
+    await this.db.put('meta', { id: 'agents-cleared', value: { at: this.now(), by, byRole: actorRole } });
+    await this._audit(actorRole, 'agents.access-cleared', null, { by, was });
+  }
+
+  // Wipe everything on this device (used by "Reset device data" and "Load a fresh copy").
+  reset(actorRole = 'system') {
     return this._serial(async () => {
+      checkActor(actorRole);
+      const was = await this._agentAccessInUse();
       for (const s of ['entities', 'events', 'audit']) await this.db.clear(s);
       // Nothing is loaded now, so nothing is claimed about it (issue #5 badge, issue #7).
-      for (const id of ['synthetic', 'generator', 'agent-proposals', 'process-maps']) await this.db.put('meta', { id, value: null });
+      for (const id of ['synthetic', 'generator', 'process-maps']) await this.db.put('meta', { id, value: null });
       this.lastEvent = null;
       this.lastAudit = null;
+      await this._clearAgentAccess(actorRole, 'reset', was);
       this._emit('reset', null);
     });
   }

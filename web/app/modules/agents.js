@@ -124,6 +124,7 @@ export async function render(el, ctx) {
     const strangers = view.recent.filter((r) => !r.onList && r.refused > 0);
 
     body.replaceChildren(...[
+      view.cleared ? h('p', { class: 'ag-banner', 'data-test': 'agents-cleared' }, `Agents were switched off when this device's data was ${view.cleared.by === 'import' ? 'replaced by an import' : 'reset'}, ${ago(view.cleared.at, now)}. Switch them on again here if this data should have them.`) : null,
       view.stopped ? h('p', { class: 'ag-banner', 'data-test': 'agents-stopped' }, `All agents stopped by ${view.stopped.byRoleName}, ${ago(view.stopped.at, now)}.`) : null,
       h('section', { class: 'card ag-card', 'aria-labelledby': 'ag-dial-h' },
         h('h2', { id: 'ag-dial-h' }, 'Agents for this site'),
