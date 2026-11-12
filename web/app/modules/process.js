@@ -1,7 +1,7 @@
 // Process maps (backlog PM1): map a process step by step and role by role, see where the time
 // goes, and try a change in a Proposed version beside Today. Every control runs a named command
-// (core/commands.js: maps.list, map.get, map.suggest, map.create, map.step.*, map.try-suggestion,
-// map.hide-suggestion, map.reset-proposed, map.guide.set), the same ones an agent would.
+// (core/commands.js: ospeli_maps_list, ospeli_maps_get, ospeli_maps_suggest, ospeli_maps_create, map.step.*, ospeli_maps_try_suggestion,
+// ospeli_maps_hide_suggestion, ospeli_maps_reset_proposed, ospeli_maps_guide_set), the same ones an agent would.
 // Deep link: #/process/<mapId>. The guide is rule-based, says why, and has an off switch.
 import { h } from './ui.js';
 import { fmtMinutes } from '../core/processmap.js';
@@ -20,18 +20,18 @@ export async function render(el, ctx) {
   const ui = { mapId: ctx.rest[0] || null, version: 'today', view: phone() ? 'list' : 'map', editing: null, busy: false };
   const body = h('div', { 'data-test': 'process-body' });
   const props = proposalsCard(ctx, {
-    match: (p) => p.command.startsWith('map.'),
+    match: (p) => p.command.startsWith('ospeli_maps_'),
     describe: (p) => {
       const what = {
-        'map.create': `Start a map from ${p.input.from}`, 'map.step.add': `Add step "${p.input.name}"`, 'map.step.update': `Change step ${p.input.stepId}`,
-        'map.step.move': `Move step ${p.input.stepId} ${p.input.direction}`, 'map.step.remove': `Remove step ${p.input.stepId}`,
-        'map.try-suggestion': `Try in Proposed: ${p.input.suggestionId}`, 'map.hide-suggestion': `Hide suggestion ${p.input.suggestionId}`,
-        'map.reset-proposed': 'Reset Proposed',
+        'ospeli_maps_create': `Start a map from ${p.input.from}`, 'ospeli_maps_step_add': `Add step "${p.input.name}"`, 'ospeli_maps_step_update': `Change step ${p.input.stepId}`,
+        'ospeli_maps_step_move': `Move step ${p.input.stepId} ${p.input.direction}`, 'ospeli_maps_step_remove': `Remove step ${p.input.stepId}`,
+        'ospeli_maps_try_suggestion': `Try in Proposed: ${p.input.suggestionId}`, 'ospeli_maps_hide_suggestion': `Hide suggestion ${p.input.suggestionId}`,
+        'ospeli_maps_reset_proposed': 'Reset Proposed',
       }[p.command] || p.command;
       return `${p.input.mapId ? `${p.input.mapId}: ` : ''}${what}`;
     },
   });
-  const guideBtn = h('button', { type: 'button', class: 'chip-btn guide-switch', 'data-test': 'guide-switch', 'data-cmd': 'map.guide.set', 'aria-pressed': 'true' }, 'Guide: On');
+  const guideBtn = h('button', { type: 'button', class: 'chip-btn guide-switch', 'data-test': 'guide-switch', 'data-cmd': 'ospeli_maps_guide_set', 'aria-pressed': 'true' }, 'Guide: On');
   el.append(
     h('div', { class: 'page-head' },
       h('div', {},
@@ -49,12 +49,12 @@ export async function render(el, ctx) {
   };
 
   guideBtn.addEventListener('click', async () => {
-    const out = await run('map.guide.set', { on: !list.guideOn });
+    const out = await run('ospeli_maps_guide_set', { on: !list.guideOn });
     if (out) { ctx.toast(out.guideOn ? 'Guide on.' : 'Guide off. Maps, times and editing all still work.'); await draw(); }
   });
 
   async function create(from) {
-    const out = await run('map.create', { from });
+    const out = await run('ospeli_maps_create', { from });
     if (out) { location.hash = `#/process/${out.mapId}`; }
   }
 
@@ -63,14 +63,14 @@ export async function render(el, ctx) {
       h('h2', { id: 'chooser-h' }, withHeading),
       h('p', { class: 'meta' }, 'Open an example to see how it works, or start a blank map for your own process. Lanes use your own words, from a small clinic to a large hospital.'),
       h('div', { class: 'chooser-grid' },
-        list.examples.map((e) => h('button', { type: 'button', class: 'choice', 'data-cmd': 'map.create', 'data-from': e.from, onclick: () => create(e.from) },
+        list.examples.map((e) => h('button', { type: 'button', class: 'choice', 'data-cmd': 'ospeli_maps_create', 'data-from': e.from, onclick: () => create(e.from) },
           h('b', {}, e.title), h('span', {}, SOURCE_TEXT[e.from] || 'An example process.'), h('span', { class: 'tag' }, 'Example'))),
-        h('button', { type: 'button', class: 'choice blank', 'data-cmd': 'map.create', 'data-from': 'blank', onclick: () => create('blank') },
+        h('button', { type: 'button', class: 'choice blank', 'data-cmd': 'ospeli_maps_create', 'data-from': 'blank', onclick: () => create('blank') },
           h('b', {}, 'Blank map'), h('span', {}, 'Describe your own process, step by step.'))));
   }
 
   async function draw() {
-    list = await ctx.run('maps.list', {});
+    list = await ctx.run('ospeli_maps_list', { limit: 200 });
     guideBtn.setAttribute('aria-pressed', String(list.guideOn));
     guideBtn.textContent = `Guide: ${list.guideOn ? 'On' : 'Off'}`;
     if (ui.mapId && !list.maps.some((m) => m.id === ui.mapId)) ui.mapId = null;
@@ -88,8 +88,8 @@ export async function render(el, ctx) {
   }
 
   async function drawMap() {
-    const m = await ctx.run('map.get', { mapId: ui.mapId });
-    const sugg = await ctx.run('map.suggest', { mapId: ui.mapId, version: ui.version });
+    const m = await ctx.run('ospeli_maps_get', { mapId: ui.mapId });
+    const sugg = await ctx.run('ospeli_maps_suggest', { mapId: ui.mapId, version: ui.version });
     const v = m[ui.version]; const t = m.today.stats;
     const steps = v.steps; const a = v.stats;
     const roles = [...new Set([...m.today.steps, ...m.proposed.steps].map((s) => s.role))];
@@ -131,7 +131,7 @@ export async function render(el, ctx) {
       m.changed ? bar('Proposed', m.proposed.stats, scale, 'bar-proposed') : null,
       h('p', { class: 'legend meta' }, h('span', { class: 'sw w' }), 'Waiting ', h('span', { class: 'sw k' }), 'Hands-on work'),
       m.changed ? h('p', { class: 'meta', 'data-test': 'whatif-note' }, 'A what-if from your map, not a prediction. Test it and measure.',
-        ' ', h('button', { type: 'button', class: 'linkish', 'data-cmd': 'map.reset-proposed', onclick: async () => { if (await run('map.reset-proposed', { mapId: m.id })) { ctx.toast('Proposed is a copy of Today again.'); drawMap(); } } }, 'Reset Proposed')) : null);
+        ' ', h('button', { type: 'button', class: 'linkish', 'data-cmd': 'ospeli_maps_reset_proposed', onclick: async () => { if (await run('ospeli_maps_reset_proposed', { mapId: m.id })) { ctx.toast('Proposed is a copy of Today again.'); drawMap(); } } }, 'Reset Proposed')) : null);
 
     // The guide.
     const guide = h('section', { class: 'card guide', 'aria-labelledby': 'guide-h', 'data-test': 'guide' },
@@ -142,13 +142,13 @@ export async function render(el, ctx) {
           suggList(sugg.suggestions.map((sg) => h('li', { class: `sg ${sg.kind}`, 'data-suggestion': sg.id },
             h('b', {}, sg.title), h('p', {}, sg.text), h('p', { class: 'why' }, `Why: ${sg.why}`),
             h('div', { class: 'sg-actions' },
-              sg.tryable ? h('button', { type: 'button', class: 'btn btn-small', 'data-cmd': 'map.try-suggestion', disabled: sg.tried && isP ? true : null,
+              sg.tryable ? h('button', { type: 'button', class: 'btn btn-small', 'data-cmd': 'ospeli_maps_try_suggestion', disabled: sg.tried && isP ? true : null,
                 onclick: async () => {
-                  const out = await run('map.try-suggestion', { mapId: m.id, suggestionId: sg.id, expectedRevision: m.revision });
+                  const out = await run('ospeli_maps_try_suggestion', { mapId: m.id, suggestionId: sg.id, expectedRevision: m.revision });
                   if (out) { ui.version = 'proposed'; ctx.toast('Tried in Proposed. Today has not changed.'); drawMap(); }
                 } }, sg.tried && isP ? 'Tried in Proposed' : sg.tryLabel) : null,
-              h('button', { type: 'button', class: 'btn btn-ghost btn-small', 'data-cmd': 'map.hide-suggestion',
-                onclick: async () => { if (await run('map.hide-suggestion', { mapId: m.id, suggestionId: sg.id })) { ctx.toast('Hidden for this map.'); drawMap(); } } }, 'Hide'))))),
+              h('button', { type: 'button', class: 'btn btn-ghost btn-small', 'data-cmd': 'ospeli_maps_hide_suggestion',
+                onclick: async () => { if (await run('ospeli_maps_hide_suggestion', { mapId: m.id, suggestionId: sg.id })) { ctx.toast('Hidden for this map.'); drawMap(); } } }, 'Hide'))))),
         ]);
 
     // Steps: swimlane map or list.
@@ -200,7 +200,7 @@ export async function render(el, ctx) {
   function stepList(steps, a, colour, m) {
     return h('ol', { class: 'pm-list', 'data-test': 'step-list' }, steps.map((s, i) => {
       const hot = a.biggestWaitStepId === s.id;
-      const mv = (dir) => async () => { if (await run('map.step.move', { mapId: m.id, version: ui.version, stepId: s.id, direction: dir, expectedRevision: m.revision })) drawMap(); };
+      const mv = (dir) => async () => { if (await run('ospeli_maps_step_move', { mapId: m.id, version: ui.version, stepId: s.id, direction: dir, expectedRevision: m.revision })) drawMap(); };
       return h('li', { 'data-step': s.id },
         s.wait || s.par ? h('div', { class: `wait${hot ? ' hot' : ''}` }, s.par ? `Starts alongside the step before${s.wait ? `, after ${fmtMinutes(s.wait)}` : ''}` : `Waits ${fmtMinutes(s.wait)}${hot ? ' · the biggest wait' : ''}`) : null,
         changedNote(s, m),
@@ -209,8 +209,8 @@ export async function render(el, ctx) {
           h('div', { class: 'what' }, h('b', {}, s.name),
             h('span', {}, h('span', { class: 'role-dot', style: `background:${colour(s.role)}` }), `${s.role} · work ${fmtMinutes(s.work)}${s.msg ? ' · passes on information' : ''}`)),
           h('div', { class: 'ctl' },
-            h('button', { type: 'button', class: 'icon', 'data-cmd': 'map.step.move', 'aria-label': `Move step ${i + 1} up`, disabled: i === 0 ? true : null, onclick: mv('up') }, '↑'),
-            h('button', { type: 'button', class: 'icon', 'data-cmd': 'map.step.move', 'aria-label': `Move step ${i + 1} down`, disabled: i === steps.length - 1 ? true : null, onclick: mv('down') }, '↓'),
+            h('button', { type: 'button', class: 'icon', 'data-cmd': 'ospeli_maps_step_move', 'aria-label': `Move step ${i + 1} up`, disabled: i === 0 ? true : null, onclick: mv('up') }, '↑'),
+            h('button', { type: 'button', class: 'icon', 'data-cmd': 'ospeli_maps_step_move', 'aria-label': `Move step ${i + 1} down`, disabled: i === steps.length - 1 ? true : null, onclick: mv('down') }, '↓'),
             h('button', { type: 'button', class: 'icon', 'aria-label': `Change step ${i + 1}`, onclick: () => edit(s.id) }, '✎'))));
     }));
   }
@@ -241,17 +241,17 @@ export async function render(el, ctx) {
       h('label', { class: 'check' }, h('input', { id: 'st-msg', type: 'checkbox', checked: s?.msg ? true : null }), 'Only passes on information (a call, message or form)'),
       h('label', { class: 'check' }, h('input', { id: 'st-par', type: 'checkbox', checked: s?.par ? true : null }), 'Starts alongside the step before'),
       h('div', { class: 'form-actions' },
-        h('button', { type: 'submit', class: 'btn', 'data-cmd': s ? 'map.step.update' : 'map.step.add' }, s ? 'Save step' : 'Add step'),
+        h('button', { type: 'submit', class: 'btn', 'data-cmd': s ? 'ospeli_maps_step_update' : 'ospeli_maps_step_add' }, s ? 'Save step' : 'Add step'),
         s ? h('button', { type: 'button', class: 'btn btn-ghost', onclick: () => { ui.editing = null; drawMap(); } }, 'Cancel') : null,
-        s ? h('button', { type: 'button', class: 'btn btn-danger', 'data-cmd': 'map.step.remove',
-          onclick: async () => { if (await run('map.step.remove', { mapId: m.id, version: ui.version, stepId: s.id, expectedRevision: m.revision })) { ui.editing = null; ctx.toast('Step removed.'); drawMap(); } } }, 'Remove') : null));
+        s ? h('button', { type: 'button', class: 'btn btn-danger', 'data-cmd': 'ospeli_maps_step_remove',
+          onclick: async () => { if (await run('ospeli_maps_step_remove', { mapId: m.id, version: ui.version, stepId: s.id, expectedRevision: m.revision })) { ui.editing = null; ctx.toast('Step removed.'); drawMap(); } } }, 'Remove') : null));
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const val = (id) => form.querySelector(`#${id}`);
       const input = { mapId: m.id, version: ui.version, name: val('st-name').value.trim(), role: val('st-role').value.trim(),
         wait: Math.max(0, Math.round(+val('st-wait').value || 0)), work: Math.max(0, Math.round(+val('st-work').value || 0)),
         msg: val('st-msg').checked, par: val('st-par').checked, expectedRevision: m.revision };
-      const out = s ? await run('map.step.update', { ...input, stepId: s.id }) : await run('map.step.add', input);
+      const out = s ? await run('ospeli_maps_step_update', { ...input, stepId: s.id }) : await run('ospeli_maps_step_add', input);
       if (out) { ctx.toast(s ? 'Step saved.' : 'Step added.'); ui.editing = null; await drawMap(); }
     });
     return form;

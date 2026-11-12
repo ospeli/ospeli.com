@@ -1,7 +1,7 @@
 // Agents (issues #25, #20; spec A9, first step): a person sets the dial. Off by default.
 // Advise: agents on this site's list may read and suggest; a person accepts or declines.
-// Everything here calls a command (agents.list, agents.set-access, agent.add, agent.remove,
-// agents.stop-all); the same commands are in api/commands.json. Agents cannot run any of them.
+// Everything here calls a command (ospeli_agents_list, ospeli_agents_set_access, ospeli_agents_add, ospeli_agents_remove,
+// ospeli_agents_stop_all); the same commands are in api/commands.json. Agents cannot run any of them.
 import { h } from './ui.js';
 import { ROLES, roleById } from '../core/model.js';
 import { since } from '../core/beds.js';
@@ -49,7 +49,7 @@ export async function render(el, ctx) {
       if (!input.name) { fail('Give the agent a name.'); return; }
       if (view.agents.some((a) => a.name.toLowerCase() === input.name.toLowerCase())) { fail('That name is already on the list. Remove it first, or use another name.'); return; }
       try {
-        await ctx.run('agent.add', input);
+        await ctx.run('ospeli_agents_add', input);
         dialog.close();
         status.textContent = `${input.name} is on the list. It can read and suggest for ${roleById(input.role).name} until ${day(new Date(Date.now() + input.days * 864e5).toISOString())}.`;
         await draw();
@@ -64,14 +64,14 @@ export async function render(el, ctx) {
       h('fieldset', { class: 'ag-wards-pick' }, h('legend', {}, 'Wards it may see'), ticks),
       h('div', { class: 'field' }, h('label', { for: 'ag-days' }, 'Stops working after'), days),
       h('div', { class: 'form-actions ag-dialog-actions' },
-        h('button', { class: 'btn', type: 'button', 'data-cmd': 'agent.add', onclick: save }, 'Add agent'),
+        h('button', { class: 'btn', type: 'button', 'data-cmd': 'ospeli_agents_add', onclick: save }, 'Add agent'),
         h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => dialog.close() }, 'Cancel')));
     dialog.showModal();
     name.focus();
   }
 
   async function draw() {
-    const view = await ctx.run('agents.list', {});
+    const view = await ctx.run('ospeli_agents_list', {});
     const on = view.dial === 'advise';
     const can = view.canChange;
     const now = Date.now();
@@ -80,28 +80,28 @@ export async function render(el, ctx) {
 
     const dialBtn = (id, label, text) => h('button', {
       type: 'button', class: 'ag-dial-btn', 'data-dial': id, 'aria-pressed': String(view.dial === id), disabled: !can && view.dial !== id,
-      'data-cmd': 'agents.set-access',
+      'data-cmd': 'ospeli_agents_set_access',
       onclick: () => {
         if (view.dial === id) return;
         if (!can) return;
         if (id === 'advise') {
           if (!confirm('Turn agents on to Advise?\n\nAgents on your list can read and suggest. Nothing changes until a person accepts.')) return;
-          act('agents.set-access', { allowed: true }, 'Agents are on: Advise. Next, choose where they can work and add an agent.');
+          act('ospeli_agents_set_access', { allowed: true }, 'Agents are on: Advise. Next, choose where they can work and add an agent.');
         } else {
-          act('agents.set-access', { allowed: false }, 'Agents are off. Nothing was changed.');
+          act('ospeli_agents_set_access', { allowed: false }, 'Agents are off. Nothing was changed.');
         }
       },
     }, h('b', {}, label, view.dial === id ? h('span', { class: 'pill pill-ok' }, 'Now') : null), h('span', {}, text));
 
-    const stop = on ? h('button', { type: 'button', class: 'btn ag-stop', 'data-cmd': 'agents.stop-all', 'data-test': 'agents-stop',
-      onclick: () => act('agents.stop-all', {}, 'Stopped. Every agent is off, on every ward. Nothing else was changed.') }, 'Stop all agents') : null;
+    const stop = on ? h('button', { type: 'button', class: 'btn ag-stop', 'data-cmd': 'ospeli_agents_stop_all', 'data-test': 'agents-stop',
+      onclick: () => act('ospeli_agents_stop_all', {}, 'Stopped. Every agent is off, on every ward. Nothing else was changed.') }, 'Stop all agents') : null;
 
     const wardRows = wards.map((w) => {
       const isOn = view.wards[w.id] === true;
       return h('li', { class: 'ag-row' },
         h('span', {}, w.name),
-        h('button', { type: 'button', class: 'ag-switch', 'aria-pressed': String(isOn), 'aria-label': `${w.name}: agents ${isOn ? 'on' : 'off'}`, 'data-ward': w.id, disabled: !can, 'data-cmd': 'agents.set-access',
-          onclick: () => act('agents.set-access', { allowed: true, wards: { [w.id]: !isOn } }, `${w.name}: agents ${isOn ? 'off' : 'on'}.`) }, isOn ? 'On' : 'Off'));
+        h('button', { type: 'button', class: 'ag-switch', 'aria-pressed': String(isOn), 'aria-label': `${w.name}: agents ${isOn ? 'on' : 'off'}`, 'data-ward': w.id, disabled: !can, 'data-cmd': 'ospeli_agents_set_access',
+          onclick: () => act('ospeli_agents_set_access', { allowed: true, wards: { [w.id]: !isOn } }, `${w.name}: agents ${isOn ? 'off' : 'on'}.`) }, isOn ? 'On' : 'Off'));
     });
     const wardBox = h('details', { class: 'ag-details', 'data-test': 'agents-wards' },
       h('summary', {}, h('b', {}, 'Where agents can work'), h('span', {}, `${onCount} of ${wards.length} wards on`)),
@@ -118,8 +118,8 @@ export async function render(el, ctx) {
           h('b', {}, a.name, a.ended ? h('span', { class: 'pill pill-bad' }, 'Ended') : null),
           h('span', {}, `Works for ${a.roleName} · ${a.wards.length ? a.wards.map((id) => `${wardName(id)}${view.wards[id] === true ? '' : ' (ward off)'}`).join(', ') : 'no wards'} · ${a.ended ? 'ended' : 'ends'} ${day(a.until)}`),
           h('span', {}, did)),
-        can ? h('button', { type: 'button', class: 'btn btn-ghost btn-small', 'data-cmd': 'agent.remove', 'aria-label': `Remove ${a.name}`,
-          onclick: () => { if (confirm(`Remove ${a.name}? It stops at once.`)) act('agent.remove', { name: a.name }, `${a.name} removed. It is refused from now on.`); } }, 'Remove') : null);
+        can ? h('button', { type: 'button', class: 'btn btn-ghost btn-small', 'data-cmd': 'ospeli_agents_remove', 'aria-label': `Remove ${a.name}`,
+          onclick: () => { if (confirm(`Remove ${a.name}? It stops at once.`)) act('ospeli_agents_remove', { name: a.name }, `${a.name} removed. It is refused from now on.`); } }, 'Remove') : null);
     });
     const strangers = view.recent.filter((r) => !r.onList && r.refused > 0);
 

@@ -12,7 +12,7 @@ export function proposalsCard(ctx, { describe, match = () => true }) {
   let busy = false;
 
   async function load() {
-    try { list = (await ctx.run('proposals.list', { status: 'pending' })).proposals.filter(match); } catch { list = []; }
+    try { list = (await ctx.run('ospeli_proposals_list', { status: 'pending', limit: 200 })).proposals.filter(match); } catch { list = []; }
     render();
   }
 
@@ -20,7 +20,7 @@ export function proposalsCard(ctx, { describe, match = () => true }) {
     if (busy) return;
     busy = true;
     try {
-      const out = verb === 'accept' ? await ctx.run('proposal.accept', { id: p.id }) : await ctx.run('proposal.decline', { id: p.id, reason });
+      const out = verb === 'accept' ? await ctx.run('ospeli_proposals_accept', { id: p.id }) : await ctx.run('ospeli_proposals_decline', { id: p.id, reason });
       ctx.toast(out.status === 'accepted' ? `Accepted: ${describe(p)}`
         : out.status === 'expired' ? `Not done. ${out.message} The proposal is closed.` : `Declined: ${describe(p)}`);
     } catch (err) {
@@ -47,9 +47,9 @@ export function proposalsCard(ctx, { describe, match = () => true }) {
             h('b', {}, describe(p)),
             h('div', { class: 'meta' }, `Agent ${p.agent} for ${roleById(p.role)?.name || p.role} · ${since(p.at, now)} ago`)),
           p.canDecide ? h('div', { class: 'proposal-actions' },
-            h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'proposal.accept', 'aria-label': `Accept: ${describe(p)}`, onclick: () => decide(p, 'accept') }, 'Accept'),
+            h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_proposals_accept', 'aria-label': `Accept: ${describe(p)}`, onclick: () => decide(p, 'accept') }, 'Accept'),
             sel,
-            h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'proposal.decline', 'aria-label': `Decline: ${describe(p)}`, onclick: () => decide(p, 'decline', sel.value) }, 'Decline')) : null);
+            h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_proposals_decline', 'aria-label': `Decline: ${describe(p)}`, onclick: () => decide(p, 'decline', sel.value) }, 'Decline')) : null);
       }))));
   }
 

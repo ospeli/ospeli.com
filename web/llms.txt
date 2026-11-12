@@ -4,12 +4,12 @@
 
 ## Try it
 - [Live demo app](https://ospeli.com/app/): installable web app; works offline after the first load; synthetic data only.
-- [Process mapping demo](https://ospeli.com/demo/process-map/): map a process step by step and test changes with a rule-based guide; read-only agent view at `window.ospeliProcessMap` (describe, get, analyse, suggestions); fictional data.
-- [Emergency department flow preview](https://ospeli.com/demo/ed-flow/): anonymous patient timeline, pressure levels set by the site, action cards; read-only agent view at `window.ospeliEdFlowDemo`; fictional data.
-- [Cleaning and portering preview](https://ospeli.com/demo/support-tasks/): porter and cleaner task lists, ward requests, helpdesk by team; read-only agent view at `window.ospeliSupportTasksDemo`; fictional data.
-- [Incidents and actions preview](https://ospeli.com/demo/actions/): staff reports, learning review, one action tracker, risk register; read-only agent view at `window.ospeliActionsDemo`; fictional data.
-- [Stores and stock preview](https://ospeli.com/demo/stores-stock/): ward stock reports, storekeeper pick list, supply view; read-only agent view at `window.ospeliStoresDemo`; fictional data.
-- [Daily operations report preview](https://ospeli.com/demo/daily-report/): decisions for today, run charts, bottleneck finder, huddle list; read-only agent view at `window.ospeliDailyReportDemo`; fictional data.
+- [Process mapping demo](https://ospeli.com/demo/process-map/): map a process step by step and test changes with a rule-based guide; page object `window.ospeliProcessMap` (preview only, not the agent API); fictional data.
+- [Emergency department flow preview](https://ospeli.com/demo/ed-flow/): anonymous patient timeline, pressure levels set by the site, action cards; page object `window.ospeliEdFlowDemo` (preview only, not the agent API); fictional data.
+- [Cleaning and portering preview](https://ospeli.com/demo/support-tasks/): porter and cleaner task lists, ward requests, helpdesk by team; page object `window.ospeliSupportTasksDemo` (preview only, not the agent API); fictional data.
+- [Incidents and actions preview](https://ospeli.com/demo/actions/): staff reports, learning review, one action tracker, risk register; page object `window.ospeliActionsDemo` (preview only, not the agent API); fictional data.
+- [Stores and stock preview](https://ospeli.com/demo/stores-stock/): ward stock reports, storekeeper pick list, supply view; page object `window.ospeliStoresDemo` (preview only, not the agent API); fictional data.
+- [Daily operations report preview](https://ospeli.com/demo/daily-report/): decisions for today, run charts, bottleneck finder, huddle list; page object `window.ospeliDailyReportDemo` (preview only, not the agent API); fictional data.
 - [Theatres and procedure lists preview](https://ospeli.com/demo/theatres/): Case times on one timeline, session use, cancellations on the day with reasons, and tomorrow's readiness: bed, kit and checklist. Fictional data.
 - [Outpatients and clinics preview](https://ospeli.com/demo/clinics/): Clinic reception on a phone, the referral waiting list and free slots for booking, and utilisation and did-not-attend for the manager. Fictional data.
 - [Facilities and utilities preview](https://ospeli.com/demo/facilities/): Report a building fault by room or QR code, technician job queues by trade, planned maintenance, utility checks and a plant status board. Fictional data.
@@ -35,9 +35,10 @@
 - [Front page](https://ospeli.com/): what Ospeli is, its modules, how a pilot runs, and its governance rules.
 
 ## For agents
+- Start here, not from the preview pages: the app's commands (`window.ospeli` on https://ospeli.com/app/) are the agent API. Page objects on preview pages are preview only, not the agent API.
 - [Agent guide](https://ospeli.com/agents.md): how an AI agent may use Ospeli, and what it may not do.
 - [Command API (readable)](https://ospeli.com/app/api/README.md): every action in the app as a named command, with roles and whether a person must approve.
-- [Command API (JSON)](https://ospeli.com/app/api/commands.json): input and output JSON schemas and an example for every command.
+- [Command API (JSON)](https://ospeli.com/app/api/commands.json): input and output JSON schemas and an example for every command. Names are `ospeli_<module>_<action>`, for example `ospeli_beds_find_free`, `ospeli_workorders_list` and `ospeli_maps_summary`.
 
 ## Rules
 - Synthetic data only in this build. Never send real patient, staff or hospital data to the demo.

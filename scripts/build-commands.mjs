@@ -24,21 +24,23 @@ const spec = {
   description: 'Every action in the Ospeli app is one of these commands. People and agents run the same commands. Synthetic data only in this build.',
   rules: [
     'People decide, Ospeli suggests: an agent may read, and its write commands become proposals that wait for a person.',
-    'Agent access is off by default, for the hospital and for each ward (agents.set-access, people only).',
-    'Only agents on the site\'s list may call (agent.add, people only): each has one role, its wards and an end date of 90 days at most. An agent that is not listed, is past its end date or claims another role is refused. Agents are named, not verified: the browser app has no secret keys; keys are planned with the site server.',
-    'Anyone on site can stop every agent at once (agents.stop-all); only the operations manager or chief operating officer can switch agents on again.',
+    'Agent access is off by default, for the hospital and for each ward (ospeli_agents_set_access, people only).',
+    'Only agents on the site\'s list may call (ospeli_agents_add, people only): each has one role, its wards and an end date of 90 days at most. An agent that is not listed, is past its end date or claims another role is refused. Agents are named, not verified: the browser app has no secret keys; keys are planned with the site server.',
+    'Anyone on site can stop every agent at once (ospeli_agents_stop_all); only the operations manager or chief operating officer can switch agents on again.',
     'Every agent read, proposal and refusal is in the audit trail with actor type "agent", the agent name and the role it acts for.',
     'Nothing leaves the site: commands run on this device or the hospital\'s own server, never through a cloud relay.',
   ],
   howToCall: {
     browser: 'window.ospeli.commands(), window.ospeli.describe(name), await window.ospeli.run(name, input, { agent: "your-agent-name", role: "bed-manager" })',
+    names: 'Command names are ospeli_<module>_<action>. The dotted names used before 12 Nov 2026 still work in this build; each is listed as deprecatedName. The audit trail and the proposal queue always record the new name. Use the new names.',
+    lists: 'List reads take a limit and return total and truncated; most take format: "short". Start with the task-shaped reads: ospeli_beds_find_free, ospeli_workorders_list (overdue, locationId) and ospeli_maps_summary.',
     errors: 'A refused call throws an error with .code: invalid-input, unknown-command, forbidden, not-found, conflict or agents-off.',
   },
   commands,
 };
 const json = `${JSON.stringify(spec, null, 2)}\n`;
 
-const row = (c) => `| \`${c.name}\` | ${c.kind} | ${c.roles.join(', ')} | ${c.kind === 'write' ? 'yes (agents propose)' : 'no'} | ${c.summary} |`;
+const row = (c) => `| \`${c.name}\` | ${c.kind} | ${c.roles.join(', ')} | ${!c.agentsMayCall ? 'people only' : c.kind === 'write' ? 'yes (agents propose)' : 'no'} | ${c.summary} |`;
 const md = `# Ospeli command API
 
 Generated from \`core/commands.js\` by \`scripts/build-commands.mjs\`. Do not edit by hand.
@@ -51,13 +53,15 @@ ${spec.rules.map((r) => `- ${r}`).join('\n')}
 
 ## How to call
 - In the browser: \`window.ospeli.commands()\`, \`window.ospeli.describe(name)\`, \`await window.ospeli.run(name, input, { agent, role })\`.
-- ${spec.howToCall.errors}
+- ${spec.howToCall.names}
+- ${spec.howToCall.lists}
+- ${spec.howToCall.errors} Errors say how to fix the call: a wrong ward, place or map id comes back with the ids you may use.
 - Write commands take an optional \`expectedState\`: if the bed changed since you looked, the command is refused with \`conflict\` instead of acting on stale data.
-- An agent's write returns \`{ status: "proposed", proposal: { id } }\`. A person accepts or declines it on the bed board (\`proposal.accept\`, \`proposal.decline\`); the agent reads the outcome with \`proposals.list\` (accepted, declined, or expired if the bed changed first).
+- An agent's write returns \`{ status: "proposed", proposal: { id } }\`. A person accepts or declines it on the bed board (\`ospeli_proposals_accept\`, \`ospeli_proposals_decline\`); the agent reads the outcome with \`ospeli_proposals_list\` (accepted, declined, or expired if the bed changed first).
 - More for agents: [/agents.md](../../agents.md) and [/llms.txt](../../llms.txt).
 
 ## Commands (${commands.length})
-| Command | Kind | Roles | Needs a person | What it does |
+| Command | Kind | Roles | Agents: needs a person | What it does |
 |---|---|---|---|---|
 ${commands.map(row).join('\n')}
 `;

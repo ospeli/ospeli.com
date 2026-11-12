@@ -4,20 +4,22 @@
   "description": "Every action in the Ospeli app is one of these commands. People and agents run the same commands. Synthetic data only in this build.",
   "rules": [
     "People decide, Ospeli suggests: an agent may read, and its write commands become proposals that wait for a person.",
-    "Agent access is off by default, for the hospital and for each ward (agents.set-access, people only).",
-    "Only agents on the site's list may call (agent.add, people only): each has one role, its wards and an end date of 90 days at most. An agent that is not listed, is past its end date or claims another role is refused. Agents are named, not verified: the browser app has no secret keys; keys are planned with the site server.",
-    "Anyone on site can stop every agent at once (agents.stop-all); only the operations manager or chief operating officer can switch agents on again.",
+    "Agent access is off by default, for the hospital and for each ward (ospeli_agents_set_access, people only).",
+    "Only agents on the site's list may call (ospeli_agents_add, people only): each has one role, its wards and an end date of 90 days at most. An agent that is not listed, is past its end date or claims another role is refused. Agents are named, not verified: the browser app has no secret keys; keys are planned with the site server.",
+    "Anyone on site can stop every agent at once (ospeli_agents_stop_all); only the operations manager or chief operating officer can switch agents on again.",
     "Every agent read, proposal and refusal is in the audit trail with actor type \"agent\", the agent name and the role it acts for.",
     "Nothing leaves the site: commands run on this device or the hospital's own server, never through a cloud relay."
   ],
   "howToCall": {
     "browser": "window.ospeli.commands(), window.ospeli.describe(name), await window.ospeli.run(name, input, { agent: \"your-agent-name\", role: \"bed-manager\" })",
+    "names": "Command names are ospeli_<module>_<action>. The dotted names used before 12 Nov 2026 still work in this build; each is listed as deprecatedName. The audit trail and the proposal queue always record the new name. Use the new names.",
+    "lists": "List reads take a limit and return total and truncated; most take format: \"short\". Start with the task-shaped reads: ospeli_beds_find_free, ospeli_workorders_list (overdue, locationId) and ospeli_maps_summary.",
     "errors": "A refused call throws an error with .code: invalid-input, unknown-command, forbidden, not-found, conflict or agents-off."
   },
   "commands": [
     {
-      "name": "beds.board",
-      "summary": "Live bed state for every ward (or one ward), the waiting-for-a-bed list and any conflicting events, derived from the event log.",
+      "name": "ospeli_beds_board",
+      "summary": "Live bed state for every ward (or one ward), the waiting-for-a-bed list and any conflicting events, derived from the event log. To find a free bed for a waiting patient use ospeli_beds_find_free instead: it answers in one short call. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -30,13 +32,29 @@
       "humanApproval": false,
       "agentsMayCall": true,
       "agentBehaviour": "runs and is audited as an agent read",
+      "deprecatedName": "beds.board",
       "input": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "wardId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "description": "One ward, for example ward-a1. Leave out for every ward."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: ward counts and the waiting list, no bed list. detailed (default): every bed too."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 2000,
+            "description": "At most this many beds. Default 200, 2000 at most. \"total\" and \"truncated\" in the answer say if there are more."
           }
         }
       },
@@ -48,7 +66,9 @@
           "wards",
           "beds",
           "waiting",
-          "conflicts"
+          "conflicts",
+          "total",
+          "truncated"
         ],
         "properties": {
           "asOf": {
@@ -58,6 +78,15 @@
           "synthetic": {
             "type": "boolean",
             "description": "True while the data on this device is synthetic."
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
           },
           "wards": {
             "type": "array",
@@ -198,7 +227,7 @@
       }
     },
     {
-      "name": "bed.get",
+      "name": "ospeli_beds_get",
       "summary": "One bed: its state and the commands the caller's role may run on it next.",
       "kind": "read",
       "roles": [
@@ -212,6 +241,7 @@
       "humanApproval": false,
       "agentsMayCall": true,
       "agentBehaviour": "runs and is audited as an agent read",
+      "deprecatedName": "bed.get",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -308,7 +338,216 @@
       }
     },
     {
-      "name": "bed.flag-expected-discharge",
+      "name": "ospeli_beds_find_free",
+      "summary": "Find a free bed for a patient who is waiting: the beds that are available now (the ward the patient was requested for first), and who has waited longest. One call instead of reading the whole board. It lists; it does not judge whether a bed suits a patient, and it holds nothing. To hold a bed, a person runs ospeli_beds_allocate (an agent's allocate becomes a proposal). Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "wardId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "description": "Only look on this ward, for example ward-a1. Leave out to look on every ward the caller may see."
+          },
+          "forEncounter": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "description": "The waiting patient's synthetic encounter id, for example enc-000123. Leave out to see who has waited longest."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "description": "At most this many beds. Default 5, 20 at most. totalFree and truncated say if there are more."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "wardsSearched",
+          "beds",
+          "totalFree",
+          "truncated",
+          "waiting",
+          "totalWaiting",
+          "order",
+          "nextStep",
+          "note"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "wardsSearched": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "beds": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "bedId",
+                "bedName",
+                "wardId",
+                "wardName",
+                "requestedWard",
+                "sideRoom"
+              ],
+              "properties": {
+                "bedId": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "bedName": {
+                  "type": "string"
+                },
+                "wardId": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "wardName": {
+                  "type": "string"
+                },
+                "requestedWard": {
+                  "type": "boolean",
+                  "description": "True when this is the ward the patient was requested for."
+                },
+                "sideRoom": {
+                  "type": "boolean"
+                },
+                "freeSince": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "When the bed became available."
+                }
+              }
+            }
+          },
+          "totalFree": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Available beds on the wards searched, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          },
+          "waiting": {
+            "type": "array",
+            "description": "Patients waiting with no bed held: the one asked for, or the three who have waited longest.",
+            "items": {
+              "type": "object",
+              "required": [
+                "encounter",
+                "decisionAt",
+                "waitingMinutes"
+              ],
+              "properties": {
+                "encounter": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                },
+                "wardId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The ward requested, if one was."
+                },
+                "wardName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "decisionAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "waitingMinutes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Minutes since the decision to admit."
+                }
+              }
+            }
+          },
+          "totalWaiting": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Patients waiting with no bed held, in the caller's view."
+          },
+          "order": {
+            "type": "string",
+            "description": "How the lists are ordered, in words. An order, not a recommendation."
+          },
+          "nextStep": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "The command that would hold the first listed bed for the first listed patient. A person decides; any listed bed can be used instead.",
+            "properties": {
+              "command": {
+                "type": "string"
+              },
+              "input": {
+                "type": "object"
+              }
+            }
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "wardId": "ward-a1",
+          "limit": 5
+        }
+      }
+    },
+    {
+      "name": "ospeli_beds_flag_expected_discharge",
       "summary": "Flag that the patient in this bed is expected to go home today.",
       "kind": "write",
       "roles": [
@@ -318,6 +557,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "bed.flag-expected-discharge",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -399,7 +639,7 @@
       }
     },
     {
-      "name": "bed.cancel-expected-discharge",
+      "name": "ospeli_beds_cancel_expected_discharge",
       "summary": "Cancel an expected discharge; the patient stays.",
       "kind": "write",
       "roles": [
@@ -409,6 +649,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "bed.cancel-expected-discharge",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -484,7 +725,7 @@
       }
     },
     {
-      "name": "bed.mark-vacated",
+      "name": "ospeli_beds_mark_vacated",
       "summary": "The patient has left: discharge them from the bed and mark it to clean.",
       "kind": "write",
       "roles": [
@@ -494,6 +735,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "bed.mark-vacated",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -569,7 +811,7 @@
       }
     },
     {
-      "name": "bed.start-clean",
+      "name": "ospeli_beds_start_clean",
       "summary": "Cleaning of a vacated bed has started.",
       "kind": "write",
       "roles": [
@@ -579,6 +821,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "bed.start-clean",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -654,7 +897,7 @@
       }
     },
     {
-      "name": "bed.finish-clean",
+      "name": "ospeli_beds_finish_clean",
       "summary": "Cleaning is finished: the bed is ready for the next patient.",
       "kind": "write",
       "roles": [
@@ -664,6 +907,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "bed.finish-clean",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -739,7 +983,7 @@
       }
     },
     {
-      "name": "bed.allocate",
+      "name": "ospeli_beds_allocate",
       "summary": "Hold an available bed for a patient waiting for a bed.",
       "kind": "write",
       "roles": [
@@ -750,6 +994,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "bed.allocate",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -765,7 +1010,7 @@
           "encounter": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "description": "The waiting patient's synthetic encounter id (from beds.board waiting)."
+            "description": "The waiting patient's synthetic encounter id (from ospeli_beds_board waiting)."
           },
           "expectedState": {
             "type": "string",
@@ -832,7 +1077,7 @@
       }
     },
     {
-      "name": "bed.cancel-allocation",
+      "name": "ospeli_beds_cancel_allocation",
       "summary": "Release a held bed; the patient goes back on the waiting list.",
       "kind": "write",
       "roles": [
@@ -843,6 +1088,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "bed.cancel-allocation",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -918,7 +1164,7 @@
       }
     },
     {
-      "name": "bed.admit",
+      "name": "ospeli_beds_admit",
       "summary": "The patient the bed was held for has arrived in it.",
       "kind": "write",
       "roles": [
@@ -928,6 +1174,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "bed.admit",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -1003,7 +1250,7 @@
       }
     },
     {
-      "name": "bed.take-out-of-service",
+      "name": "ospeli_beds_take_out_of_service",
       "summary": "Take an empty bed out of service, with a reason.",
       "kind": "write",
       "roles": [
@@ -1014,6 +1261,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "bed.take-out-of-service",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -1102,7 +1350,7 @@
       }
     },
     {
-      "name": "bed.return-to-service",
+      "name": "ospeli_beds_return_to_service",
       "summary": "Put an out-of-service bed back into use.",
       "kind": "write",
       "roles": [
@@ -1113,6 +1361,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "bed.return-to-service",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -1188,8 +1437,8 @@
       }
     },
     {
-      "name": "kpi.list",
-      "summary": "Every KPI definition: numerator, denominator, exclusions, source standard, owner and target.",
+      "name": "ospeli_kpi_list",
+      "summary": "Every KPI definition: numerator, denominator, exclusions, source standard, owner and target. Use ospeli_kpi_get for a number. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -1202,15 +1451,33 @@
       "humanApproval": false,
       "agentsMayCall": true,
       "agentBehaviour": "runs and is audited as an agent read",
+      "deprecatedName": "kpi.list",
       "input": {
         "type": "object",
         "additionalProperties": false,
-        "properties": {}
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: id, name, unit and target only. detailed (default): the full definition."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "description": "At most this many KPIs. Default 50, 200 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
       },
       "output": {
         "type": "object",
         "required": [
-          "kpis"
+          "kpis",
+          "total",
+          "truncated"
         ],
         "properties": {
           "kpis": {
@@ -1222,6 +1489,15 @@
                 "name"
               ]
             }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
           }
         }
       },
@@ -1230,7 +1506,7 @@
       }
     },
     {
-      "name": "kpi.value",
+      "name": "ospeli_kpi_get",
       "summary": "Calculate one KPI from the event log, with its definition beside the number.",
       "kind": "read",
       "roles": [
@@ -1244,6 +1520,7 @@
       "humanApproval": false,
       "agentsMayCall": true,
       "agentBehaviour": "runs and is audited as an agent read",
+      "deprecatedName": "kpi.value",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -1326,7 +1603,7 @@
       }
     },
     {
-      "name": "agents.access",
+      "name": "ospeli_agents_access",
       "summary": "Whether agents may work on this hospital, and on which wards. Off by default.",
       "kind": "read",
       "roles": [
@@ -1340,6 +1617,7 @@
       "humanApproval": false,
       "agentsMayCall": true,
       "agentBehaviour": "runs and is audited as an agent read",
+      "deprecatedName": "agents.access",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -1368,7 +1646,7 @@
       }
     },
     {
-      "name": "agents.set-access",
+      "name": "ospeli_agents_set_access",
       "summary": "Switch agent access on or off for the hospital and for each ward. People only.",
       "kind": "write",
       "roles": [
@@ -1378,6 +1656,7 @@
       "humanApproval": true,
       "agentsMayCall": false,
       "agentBehaviour": "refused: people only",
+      "deprecatedName": "agents.set-access",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -1421,7 +1700,7 @@
       }
     },
     {
-      "name": "agents.list",
+      "name": "ospeli_agents_list",
       "summary": "The Agents screen as data: the dial (off or advise), the agents this site allows, and what each agent did in the last 7 days. People only.",
       "kind": "read",
       "roles": [
@@ -1435,6 +1714,7 @@
       "humanApproval": false,
       "agentsMayCall": false,
       "agentBehaviour": "refused: people only",
+      "deprecatedName": "agents.list",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -1618,7 +1898,7 @@
       }
     },
     {
-      "name": "agent.add",
+      "name": "ospeli_agents_add",
       "summary": "Put an agent on this site's list: its name, the one role it works for, the wards it may see and how many days until it ends (90 at most). Adding a name again replaces its entry. People only.",
       "kind": "write",
       "roles": [
@@ -1628,6 +1908,7 @@
       "humanApproval": true,
       "agentsMayCall": false,
       "agentBehaviour": "refused: people only",
+      "deprecatedName": "agent.add",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -1745,7 +2026,7 @@
       }
     },
     {
-      "name": "agent.remove",
+      "name": "ospeli_agents_remove",
       "summary": "Take an agent off this site's list. It is refused from its next call. Its proposals still waiting are marked so nobody accepts them without looking. People only.",
       "kind": "write",
       "roles": [
@@ -1755,6 +2036,7 @@
       "humanApproval": true,
       "agentsMayCall": false,
       "agentBehaviour": "refused: people only",
+      "deprecatedName": "agent.remove",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -1793,7 +2075,7 @@
       }
     },
     {
-      "name": "agents.stop-all",
+      "name": "ospeli_agents_stop_all",
       "summary": "Stop every agent on this site now: the dial goes to off and every ward is switched off. Anyone can stop; only the operations manager or chief operating officer can start again. People only.",
       "kind": "write",
       "roles": [
@@ -1807,6 +2089,7 @@
       "humanApproval": true,
       "agentsMayCall": false,
       "agentBehaviour": "refused: people only",
+      "deprecatedName": "agents.stop-all",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -1842,7 +2125,7 @@
       }
     },
     {
-      "name": "proposals.list",
+      "name": "ospeli_proposals_list",
       "summary": "Agent proposals and what happened to them. People see every proposal; an agent sees only its own.",
       "kind": "read",
       "roles": [
@@ -1856,6 +2139,7 @@
       "humanApproval": false,
       "agentsMayCall": true,
       "agentBehaviour": "runs and is audited as an agent read",
+      "deprecatedName": "proposals.list",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -1868,13 +2152,21 @@
               "declined",
               "expired"
             ]
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "description": "At most this many proposals, oldest first. Default 20, 200 at most. \"total\" and \"truncated\" in the answer say if there are more."
           }
         }
       },
       "output": {
         "type": "object",
         "required": [
-          "proposals"
+          "proposals",
+          "total",
+          "truncated"
         ],
         "properties": {
           "proposals": {
@@ -1964,6 +2256,15 @@
                 }
               }
             }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
           }
         }
       },
@@ -1974,7 +2275,7 @@
       }
     },
     {
-      "name": "proposal.accept",
+      "name": "ospeli_proposals_accept",
       "summary": "Accept an agent's proposal: its command runs now, as you, against the bed as the agent saw it. People only.",
       "kind": "write",
       "roles": [
@@ -1988,6 +2289,7 @@
       "humanApproval": true,
       "agentsMayCall": false,
       "agentBehaviour": "refused: people only",
+      "deprecatedName": "proposal.accept",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -2116,7 +2418,7 @@
       }
     },
     {
-      "name": "proposal.decline",
+      "name": "ospeli_proposals_decline",
       "summary": "Decline an agent's proposal, with a reason. Nothing changes. People only.",
       "kind": "write",
       "roles": [
@@ -2130,6 +2432,7 @@
       "humanApproval": true,
       "agentsMayCall": false,
       "agentBehaviour": "refused: people only",
+      "deprecatedName": "proposal.decline",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -2262,8 +2565,8 @@
       }
     },
     {
-      "name": "assets.list",
-      "summary": "Assets that can have a fault, with where they are and the faults that can be reported for each.",
+      "name": "ospeli_assets_list",
+      "summary": "Assets that can have a fault, with where they are and the faults that can be reported for each. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -2276,13 +2579,29 @@
       "humanApproval": false,
       "agentsMayCall": true,
       "agentBehaviour": "runs and is audited as an agent read",
+      "deprecatedName": "assets.list",
       "input": {
         "type": "object",
         "additionalProperties": false,
         "properties": {
           "locationId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "description": "A ward, room or other place id, for example ward-a1. Leave out for every place."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: id, name, kind and place only. detailed (default): the faults that can be reported for each asset too."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000,
+            "description": "At most this many assets. Default 50, 1000 at most. \"total\" and \"truncated\" in the answer say if there are more."
           }
         }
       },
@@ -2290,9 +2609,20 @@
         "type": "object",
         "required": [
           "locations",
-          "assets"
+          "assets",
+          "total",
+          "truncated"
         ],
         "properties": {
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          },
           "locations": {
             "type": "array",
             "items": {
@@ -2324,8 +2654,7 @@
                 "id",
                 "name",
                 "kind",
-                "locationId",
-                "faults"
+                "locationId"
               ],
               "properties": {
                 "id": {
@@ -2360,8 +2689,8 @@
       }
     },
     {
-      "name": "workorders.list",
-      "summary": "The work-order queue: open (or completed) work orders with priority, team, SLA due time, overdue flag and repeat-fault count, most urgent first.",
+      "name": "ospeli_workorders_list",
+      "summary": "The work-order queue: open (or completed) work orders with priority, team, due time, overdue flag and repeat-fault count, overdue and most urgent first. For \"what is overdue on this ward\" pass overdue: true and locationId. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -2374,6 +2703,7 @@
       "humanApproval": false,
       "agentsMayCall": true,
       "agentBehaviour": "runs and is audited as an agent read",
+      "deprecatedName": "workorders.list",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -2387,13 +2717,33 @@
             ],
             "description": "open (default) means reported or assigned."
           },
+          "overdue": {
+            "type": "boolean",
+            "description": "true: only open work orders past their due time. Only with state open (the default)."
+          },
           "locationId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "description": "A ward, room or other place id, for example ward-a1."
           },
           "assetId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "description": "One asset, for example asset-a1-sink-1."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: what, where, priority, team, due time and overdue. detailed (default): who reported it, assignment and outcome too."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
+            "description": "At most this many work orders. Default 20, 500 at most. \"total\" and \"truncated\" in the answer say if there are more."
           }
         }
       },
@@ -2403,7 +2753,9 @@
           "asOf",
           "synthetic",
           "workOrders",
-          "counts"
+          "counts",
+          "total",
+          "truncated"
         ],
         "properties": {
           "asOf": {
@@ -2413,6 +2765,15 @@
           "synthetic": {
             "type": "boolean",
             "description": "True while the data on this device is synthetic."
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
           },
           "workOrders": {
             "type": "array",
@@ -2508,6 +2869,11 @@
                 "overdue": {
                   "type": "boolean"
                 },
+                "overdueByMinutes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Minutes past the due time; 0 when not overdue."
+                },
                 "metSla": {
                   "type": [
                     "boolean",
@@ -2550,7 +2916,7 @@
       }
     },
     {
-      "name": "fault.report",
+      "name": "ospeli_workorders_report_fault",
       "summary": "Report a fault on an asset. Opens a work order with a priority and an SLA due time, and says if it is a repeat fault.",
       "kind": "write",
       "roles": [
@@ -2563,6 +2929,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "fault.report",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -2602,7 +2969,7 @@
               "Analyser calibration error",
               "Other fault (describe to the team in person)"
             ],
-            "description": "Pick from the asset's faults (assets.list). No free text, so no personal details."
+            "description": "Pick from the asset's faults (ospeli_assets_list). No free text, so no personal details."
           },
           "priority": {
             "type": "string",
@@ -2664,7 +3031,7 @@
       }
     },
     {
-      "name": "workorder.assign",
+      "name": "ospeli_workorders_assign",
       "summary": "Assign (or re-assign) an open work order to a team. Teams, not named people.",
       "kind": "write",
       "roles": [
@@ -2674,6 +3041,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "workorder.assign",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -2754,7 +3122,7 @@
       }
     },
     {
-      "name": "workorder.complete",
+      "name": "ospeli_workorders_complete",
       "summary": "Close a work order with its outcome: fixed, escalated or no fault found.",
       "kind": "write",
       "roles": [
@@ -2763,6 +3131,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "workorder.complete",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -2843,7 +3212,7 @@
       }
     },
     {
-      "name": "maps.list",
+      "name": "ospeli_maps_list",
       "summary": "The process maps on this device, with steps and start-to-finish time for Today and Proposed, plus the example processes a new map can start from. Read-only.",
       "kind": "read",
       "roles": [
@@ -2857,21 +3226,40 @@
       "humanApproval": false,
       "agentsMayCall": true,
       "agentBehaviour": "runs and is audited as an agent read",
+      "deprecatedName": "maps.list",
       "input": {
         "type": "object",
         "additionalProperties": false,
-        "properties": {}
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "description": "At most this many maps. Default 20, 200 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
       },
       "output": {
         "type": "object",
         "required": [
           "guideOn",
           "maps",
-          "examples"
+          "examples",
+          "total",
+          "truncated"
         ],
         "properties": {
           "guideOn": {
             "type": "boolean"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
           },
           "maps": {
             "type": "array",
@@ -2886,7 +3274,7 @@
                 "id": {
                   "type": "string",
                   "pattern": "^map-[0-9]{3,}$",
-                  "description": "A map id from maps.list, e.g. map-001."
+                  "description": "A map id from ospeli_maps_list, e.g. map-001."
                 },
                 "title": {
                   "type": "string"
@@ -2938,7 +3326,7 @@
       }
     },
     {
-      "name": "map.get",
+      "name": "ospeli_maps_get",
       "summary": "One process map: its steps (Today and Proposed) and the numbers for each: start to finish, hands-on time, waiting, handoffs and the biggest wait. Use \"short\" for the numbers only. Read-only.",
       "kind": "read",
       "roles": [
@@ -2952,6 +3340,7 @@
       "humanApproval": false,
       "agentsMayCall": true,
       "agentBehaviour": "runs and is audited as an agent read",
+      "deprecatedName": "map.get",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -2962,7 +3351,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "format": {
             "type": "string",
@@ -2988,7 +3377,7 @@
           "id": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "title": {
             "type": "string"
@@ -3085,7 +3474,7 @@
                     "id": {
                       "type": "string",
                       "pattern": "^map-[0-9]{3,}-s[0-9]+$",
-                      "description": "A step id from map.get, e.g. map-001-s3."
+                      "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
                     },
                     "name": {
                       "type": "string",
@@ -3196,7 +3585,7 @@
                     "id": {
                       "type": "string",
                       "pattern": "^map-[0-9]{3,}-s[0-9]+$",
-                      "description": "A step id from map.get, e.g. map-001-s3."
+                      "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
                     },
                     "name": {
                       "type": "string",
@@ -3241,8 +3630,8 @@
       }
     },
     {
-      "name": "map.suggest",
-      "summary": "The guide's suggestions for one version of a map: biggest waits, steps that only pass on information, handoffs, steps that could run alongside, missing times and walk questions. Each says why. Rule-based; empty when the guide is switched off. Suggests only; changes nothing.",
+      "name": "ospeli_maps_summary",
+      "summary": "One process map in one short call: the numbers for Today and Proposed, the difference between them, the biggest wait and the guide's top suggestions with their reasons. Use this to answer \"where does the time go in this process?\". For every step use ospeli_maps_get. Read-only; suggests only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -3265,7 +3654,314 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
+          },
+          "version": {
+            "type": "string",
+            "enum": [
+              "today",
+              "proposed"
+            ],
+            "description": "Which version the biggest wait and the suggestions are for: \"today\" (default) or \"proposed\". ospeli_maps_try_suggestion only takes suggestion ids from \"proposed\"."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "revision",
+          "version",
+          "changed",
+          "today",
+          "proposed",
+          "difference",
+          "biggestWait",
+          "guideOn",
+          "suggestions",
+          "suggestionsTotal"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
+          },
+          "title": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer"
+          },
+          "version": {
+            "type": "string",
+            "enum": [
+              "today",
+              "proposed"
+            ],
+            "description": "\"today\" is the process as it runs now; \"proposed\" is the what-if. Defaults to today."
+          },
+          "changed": {
+            "type": "boolean",
+            "description": "Proposed differs from Today."
+          },
+          "today": {
+            "type": "object",
+            "required": [
+              "steps",
+              "elapsed",
+              "work",
+              "wait",
+              "handoffs"
+            ],
+            "properties": {
+              "steps": {
+                "type": "integer"
+              },
+              "elapsed": {
+                "type": "integer",
+                "description": "Minutes from start to finish (steps that run alongside overlap)."
+              },
+              "work": {
+                "type": "integer",
+                "description": "Hands-on minutes, summed."
+              },
+              "wait": {
+                "type": "integer",
+                "description": "Waiting minutes, summed."
+              },
+              "handoffs": {
+                "type": "integer",
+                "description": "Times the role changes from one step to the next."
+              },
+              "infoSteps": {
+                "type": "integer"
+              },
+              "workShare": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Hands-on time as a % of start to finish."
+              },
+              "biggestWaitStepId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "roles": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "proposed": {
+            "type": "object",
+            "required": [
+              "steps",
+              "elapsed",
+              "work",
+              "wait",
+              "handoffs"
+            ],
+            "properties": {
+              "steps": {
+                "type": "integer"
+              },
+              "elapsed": {
+                "type": "integer",
+                "description": "Minutes from start to finish (steps that run alongside overlap)."
+              },
+              "work": {
+                "type": "integer",
+                "description": "Hands-on minutes, summed."
+              },
+              "wait": {
+                "type": "integer",
+                "description": "Waiting minutes, summed."
+              },
+              "handoffs": {
+                "type": "integer",
+                "description": "Times the role changes from one step to the next."
+              },
+              "infoSteps": {
+                "type": "integer"
+              },
+              "workShare": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Hands-on time as a % of start to finish."
+              },
+              "biggestWaitStepId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "roles": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "difference": {
+            "type": "object",
+            "description": "Proposed minus Today, in minutes (handoffs as a count). Negative means Proposed is shorter. A what-if, not a prediction.",
+            "required": [
+              "elapsed",
+              "wait",
+              "work",
+              "handoffs"
+            ],
+            "properties": {
+              "elapsed": {
+                "type": "integer"
+              },
+              "wait": {
+                "type": "integer"
+              },
+              "work": {
+                "type": "integer"
+              },
+              "handoffs": {
+                "type": "integer"
+              }
+            }
+          },
+          "biggestWait": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "The step with the longest wait before it, in the version asked for. Null when no step has a wait.",
+            "properties": {
+              "stepId": {
+                "type": "string",
+                "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+                "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
+              },
+              "name": {
+                "type": "string"
+              },
+              "role": {
+                "type": "string"
+              },
+              "wait": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 10080
+              },
+              "shareOfElapsed": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "This wait as a % of start to finish."
+              }
+            }
+          },
+          "guideOn": {
+            "type": "boolean",
+            "description": "False when a person switched the guide off: suggestions is then empty; the numbers still work."
+          },
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "kind",
+                "title",
+                "text",
+                "why"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "time",
+                    "ask"
+                  ]
+                },
+                "title": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                },
+                "why": {
+                  "type": "string",
+                  "description": "The rule or data behind it, so a person can check it."
+                },
+                "stepId": {
+                  "type": "string",
+                  "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+                  "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
+                },
+                "tryLabel": {
+                  "type": "string"
+                },
+                "tryable": {
+                  "type": "boolean",
+                  "description": "ospeli_maps_try_suggestion can apply it to the Proposed version."
+                },
+                "tried": {
+                  "type": "boolean"
+                }
+              }
+            },
+            "description": "The first three suggestions for the version asked for."
+          },
+          "suggestionsTotal": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "mapId": "map-001"
+        }
+      }
+    },
+    {
+      "name": "ospeli_maps_suggest",
+      "summary": "The guide's suggestions for one version of a map: biggest waits, steps that only pass on information, handoffs, steps that could run alongside, missing times and walk questions. Each says why. Rule-based; empty when the guide is switched off. Suggests only; changes nothing.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "deprecatedName": "map.suggest",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "mapId"
+        ],
+        "properties": {
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "version": {
             "type": "string",
@@ -3325,14 +4021,14 @@
                 "stepId": {
                   "type": "string",
                   "pattern": "^map-[0-9]{3,}-s[0-9]+$",
-                  "description": "A step id from map.get, e.g. map-001-s3."
+                  "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
                 },
                 "tryLabel": {
                   "type": "string"
                 },
                 "tryable": {
                   "type": "boolean",
-                  "description": "map.try-suggestion can apply it to the Proposed version."
+                  "description": "ospeli_maps_try_suggestion can apply it to the Proposed version."
                 },
                 "tried": {
                   "type": "boolean"
@@ -3350,8 +4046,8 @@
       }
     },
     {
-      "name": "map.create",
-      "summary": "Start a new process map, from one of the example processes (see maps.list) or blank. Proposed starts as a copy of Today.",
+      "name": "ospeli_maps_create",
+      "summary": "Start a new process map, from one of the example processes (see ospeli_maps_list) or blank. Proposed starts as a copy of Today.",
       "kind": "write",
       "roles": [
         "ward-nurse",
@@ -3364,6 +4060,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "map.create",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -3405,7 +4102,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "revision": {
             "type": "integer"
@@ -3413,7 +4110,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
-            "description": "A step id from map.get, e.g. map-001-s3."
+            "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "proposal": {
             "type": "object",
@@ -3428,7 +4125,7 @@
       }
     },
     {
-      "name": "map.step.add",
+      "name": "ospeli_maps_step_add",
       "summary": "Add a step to one version of a map: what happens, who does it, minutes waiting before it and hands-on minutes. Added at the end unless a position is given.",
       "kind": "write",
       "roles": [
@@ -3442,6 +4139,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "map.step.add",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -3454,7 +4152,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "version": {
             "type": "string",
@@ -3504,7 +4202,7 @@
           "expectedRevision": {
             "type": "integer",
             "minimum": 1,
-            "description": "The map revision the caller last saw (from map.get). If the map changed since, the command is refused (conflict)."
+            "description": "The map revision the caller last saw (from ospeli_maps_get). If the map changed since, the command is refused (conflict)."
           }
         }
       },
@@ -3524,7 +4222,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "revision": {
             "type": "integer"
@@ -3532,7 +4230,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
-            "description": "A step id from map.get, e.g. map-001-s3."
+            "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "proposal": {
             "type": "object",
@@ -3552,7 +4250,7 @@
       }
     },
     {
-      "name": "map.step.update",
+      "name": "ospeli_maps_step_update",
       "summary": "Change a step in one version of a map: its wording, who does it, its times or its flags. Only the fields given change.",
       "kind": "write",
       "roles": [
@@ -3566,6 +4264,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "map.step.update",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -3577,7 +4276,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "version": {
             "type": "string",
@@ -3590,7 +4289,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
-            "description": "A step id from map.get, e.g. map-001-s3."
+            "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "name": {
             "type": "string",
@@ -3621,7 +4320,7 @@
           "expectedRevision": {
             "type": "integer",
             "minimum": 1,
-            "description": "The map revision the caller last saw (from map.get). If the map changed since, the command is refused (conflict)."
+            "description": "The map revision the caller last saw (from ospeli_maps_get). If the map changed since, the command is refused (conflict)."
           }
         }
       },
@@ -3641,7 +4340,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "revision": {
             "type": "integer"
@@ -3649,7 +4348,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
-            "description": "A step id from map.get, e.g. map-001-s3."
+            "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "proposal": {
             "type": "object",
@@ -3667,7 +4366,7 @@
       }
     },
     {
-      "name": "map.step.move",
+      "name": "ospeli_maps_step_move",
       "summary": "Move a step one place up or down in one version of a map.",
       "kind": "write",
       "roles": [
@@ -3681,6 +4380,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "map.step.move",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -3693,7 +4393,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "version": {
             "type": "string",
@@ -3706,7 +4406,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
-            "description": "A step id from map.get, e.g. map-001-s3."
+            "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "direction": {
             "type": "string",
@@ -3718,7 +4418,7 @@
           "expectedRevision": {
             "type": "integer",
             "minimum": 1,
-            "description": "The map revision the caller last saw (from map.get). If the map changed since, the command is refused (conflict)."
+            "description": "The map revision the caller last saw (from ospeli_maps_get). If the map changed since, the command is refused (conflict)."
           }
         }
       },
@@ -3738,7 +4438,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "revision": {
             "type": "integer"
@@ -3746,7 +4446,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
-            "description": "A step id from map.get, e.g. map-001-s3."
+            "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "proposal": {
             "type": "object",
@@ -3764,7 +4464,7 @@
       }
     },
     {
-      "name": "map.step.remove",
+      "name": "ospeli_maps_step_remove",
       "summary": "Remove a step from one version of a map.",
       "kind": "write",
       "roles": [
@@ -3778,6 +4478,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "map.step.remove",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -3789,7 +4490,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "version": {
             "type": "string",
@@ -3802,12 +4503,12 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
-            "description": "A step id from map.get, e.g. map-001-s3."
+            "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "expectedRevision": {
             "type": "integer",
             "minimum": 1,
-            "description": "The map revision the caller last saw (from map.get). If the map changed since, the command is refused (conflict)."
+            "description": "The map revision the caller last saw (from ospeli_maps_get). If the map changed since, the command is refused (conflict)."
           }
         }
       },
@@ -3827,7 +4528,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "revision": {
             "type": "integer"
@@ -3835,7 +4536,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
-            "description": "A step id from map.get, e.g. map-001-s3."
+            "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "proposal": {
             "type": "object",
@@ -3852,8 +4553,8 @@
       }
     },
     {
-      "name": "map.try-suggestion",
-      "summary": "Apply one of the guide's suggestions (from map.suggest on the proposed version, where tryable is true) to the Proposed version only. Today never changes. A what-if, not a prediction.",
+      "name": "ospeli_maps_try_suggestion",
+      "summary": "Apply one of the guide's suggestions (from ospeli_maps_suggest on the proposed version, where tryable is true) to the Proposed version only. Today never changes. A what-if, not a prediction.",
       "kind": "write",
       "roles": [
         "ward-nurse",
@@ -3866,6 +4567,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "map.try-suggestion",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -3877,18 +4579,18 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "suggestionId": {
             "type": "string",
             "minLength": 1,
             "maxLength": 80,
-            "description": "The id of a tryable suggestion from map.suggest (version \"proposed\")."
+            "description": "The id of a tryable suggestion from ospeli_maps_suggest (version \"proposed\")."
           },
           "expectedRevision": {
             "type": "integer",
             "minimum": 1,
-            "description": "The map revision the caller last saw (from map.get). If the map changed since, the command is refused (conflict)."
+            "description": "The map revision the caller last saw (from ospeli_maps_get). If the map changed since, the command is refused (conflict)."
           }
         }
       },
@@ -3908,7 +4610,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "revision": {
             "type": "integer"
@@ -3916,7 +4618,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
-            "description": "A step id from map.get, e.g. map-001-s3."
+            "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "proposal": {
             "type": "object",
@@ -3932,7 +4634,7 @@
       }
     },
     {
-      "name": "map.hide-suggestion",
+      "name": "ospeli_maps_hide_suggestion",
       "summary": "Hide one guide suggestion on this map (not useful here). Changes no steps.",
       "kind": "write",
       "roles": [
@@ -3946,6 +4648,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "map.hide-suggestion",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -3957,7 +4660,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "suggestionId": {
             "type": "string",
@@ -3967,7 +4670,7 @@
           "expectedRevision": {
             "type": "integer",
             "minimum": 1,
-            "description": "The map revision the caller last saw (from map.get). If the map changed since, the command is refused (conflict)."
+            "description": "The map revision the caller last saw (from ospeli_maps_get). If the map changed since, the command is refused (conflict)."
           }
         }
       },
@@ -3987,7 +4690,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "revision": {
             "type": "integer"
@@ -3995,7 +4698,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
-            "description": "A step id from map.get, e.g. map-001-s3."
+            "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "proposal": {
             "type": "object",
@@ -4011,7 +4714,7 @@
       }
     },
     {
-      "name": "map.reset-proposed",
+      "name": "ospeli_maps_reset_proposed",
       "summary": "Throw away every change in the Proposed version: it becomes a copy of Today again, and hidden suggestions come back.",
       "kind": "write",
       "roles": [
@@ -4025,6 +4728,7 @@
       "humanApproval": true,
       "agentsMayCall": true,
       "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "deprecatedName": "map.reset-proposed",
       "input": {
         "type": "object",
         "additionalProperties": false,
@@ -4035,12 +4739,12 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "expectedRevision": {
             "type": "integer",
             "minimum": 1,
-            "description": "The map revision the caller last saw (from map.get). If the map changed since, the command is refused (conflict)."
+            "description": "The map revision the caller last saw (from ospeli_maps_get). If the map changed since, the command is refused (conflict)."
           }
         }
       },
@@ -4060,7 +4764,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
-            "description": "A map id from maps.list, e.g. map-001."
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "revision": {
             "type": "integer"
@@ -4068,7 +4772,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
-            "description": "A step id from map.get, e.g. map-001-s3."
+            "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "proposal": {
             "type": "object",
@@ -4083,7 +4787,7 @@
       }
     },
     {
-      "name": "map.guide.set",
+      "name": "ospeli_maps_guide_set",
       "summary": "Switch the process-map guide on or off on this device. With it off, maps, times and editing all still work. People only.",
       "kind": "write",
       "roles": [
@@ -4097,6 +4801,7 @@
       "humanApproval": true,
       "agentsMayCall": false,
       "agentBehaviour": "refused: people only",
+      "deprecatedName": "map.guide.set",
       "input": {
         "type": "object",
         "additionalProperties": false,

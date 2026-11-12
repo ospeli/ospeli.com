@@ -23,7 +23,7 @@ const agent = (role, name = 'test-agent') => ({ type: 'agent', role, agent: name
 const code = (c) => (err) => err instanceof CommandError && err.code === c;
 
 async function freeBed(core, wardId) {
-  const board = await runCommand(core, 'beds.board', wardId ? { wardId } : {}, human('bed-manager'));
+  const board = await runCommand(core, 'ospeli_beds_board', wardId ? { wardId } : {}, human('bed-manager'));
   return { board, bed: board.beds.find((b) => b.state === 'available'), waiting: board.waiting.find((w) => !w.allocatedBed) };
 }
 
@@ -32,7 +32,8 @@ test('every command declares schemas, roles, approval and a valid example', () =
   assert.ok(list.length >= 14);
   const names = new Set();
   for (const c of list) {
-    assert.match(c.name, /^[a-z]+(\.[a-z-]+)+$/, c.name);
+    assert.match(c.name, /^ospeli_[a-z]+(_[a-z]+)+$/, c.name);
+    assert.ok(c.name.length <= 64, c.name);
     assert.ok(!names.has(c.name), `duplicate ${c.name}`); names.add(c.name);
     assert.ok(c.summary.length > 10, c.name);
     assert.ok(['read', 'write'].includes(c.kind), c.name);
@@ -48,10 +49,10 @@ test('every command declares schemas, roles, approval and a valid example', () =
   assert.equal(describeCommand('nope'), null);
 });
 
-test('beds.board returns schema-valid JSON that agrees with the occupancy KPI', async () => {
+test('ospeli_beds_board returns schema-valid JSON that agrees with the occupancy KPI', async () => {
   const core = await hospital();
-  const out = await runCommand(core, 'beds.board', {}, human('coo'));
-  assert.deepEqual(validate(commandByName('beds.board').output, out, 'output'), []);
+  const out = await runCommand(core, 'ospeli_beds_board', {}, human('coo'));
+  assert.deepEqual(validate(commandByName('ospeli_beds_board').output, out, 'output'), []);
   assert.equal(out.synthetic, true);
   assert.equal(out.beds.length, 120);
   assert.equal(out.wards.length, 6);
@@ -59,10 +60,10 @@ test('beds.board returns schema-valid JSON that agrees with the occupancy KPI', 
   const occupied = out.beds.filter((b) => b.state === 'occupied' || b.state === 'expected-discharge').length;
   const occ = computeKpi('occupancy', await core.events(), { until: '2026-11-07T00:00:00.000Z', bedCount: 120 });
   assert.equal(occupied, occ.numerator);
-  const one = await runCommand(core, 'beds.board', { wardId: 'ward-a1' }, human('ward-nurse'));
+  const one = await runCommand(core, 'ospeli_beds_board', { wardId: 'ward-a1' }, human('ward-nurse'));
   assert.equal(one.beds.length, 20);
   assert.ok(one.beds.every((b) => b.wardId === 'ward-a1'));
-  await assert.rejects(runCommand(core, 'beds.board', { wardId: 'ward-zz' }, human('coo')), code('not-found'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_board', { wardId: 'ward-zz' }, human('coo')), code('not-found'));
 });
 
 test('a full bed cycle runs through commands alone, each output schema-valid', async () => {
@@ -70,21 +71,21 @@ test('a full bed cycle runs through commands alone, each output schema-valid', a
   const { bed, waiting } = await freeBed(core);
   assert.ok(bed && waiting);
   const steps = [
-    ['bed.allocate', 'bed-manager', { encounter: waiting.encounter }, 'allocated'],
-    ['bed.admit', 'ward-nurse', {}, 'occupied'],
-    ['bed.flag-expected-discharge', 'ward-nurse', {}, 'expected-discharge'],
-    ['bed.mark-vacated', 'ward-nurse', {}, 'vacated'],
-    ['bed.start-clean', 'ward-nurse', {}, 'cleaning'],
-    ['bed.finish-clean', 'ward-nurse', {}, 'available'],
-    ['bed.take-out-of-service', 'estates-tech', { reason: 'Electrical' }, 'out-of-service'],
-    ['bed.return-to-service', 'estates-tech', {}, 'available'],
+    ['ospeli_beds_allocate', 'bed-manager', { encounter: waiting.encounter }, 'allocated'],
+    ['ospeli_beds_admit', 'ward-nurse', {}, 'occupied'],
+    ['ospeli_beds_flag_expected_discharge', 'ward-nurse', {}, 'expected-discharge'],
+    ['ospeli_beds_mark_vacated', 'ward-nurse', {}, 'vacated'],
+    ['ospeli_beds_start_clean', 'ward-nurse', {}, 'cleaning'],
+    ['ospeli_beds_finish_clean', 'ward-nurse', {}, 'available'],
+    ['ospeli_beds_take_out_of_service', 'estates-tech', { reason: 'Electrical' }, 'out-of-service'],
+    ['ospeli_beds_return_to_service', 'estates-tech', {}, 'available'],
   ];
   for (const [name, role, extra, to] of steps) {
     const out = await runCommand(core, name, { bedId: bed.id, ...extra }, human(role));
     assert.deepEqual(validate(commandByName(name).output, out, 'output'), [], name);
     assert.equal(out.status, 'done');
     assert.equal(out.state, to, name);
-    const got = await runCommand(core, 'bed.get', { bedId: bed.id }, human(role));
+    const got = await runCommand(core, 'ospeli_beds_get', { bedId: bed.id }, human(role));
     assert.equal(got.bed.state, to, `${name} leaves the bed ${to}`);
   }
   const mine = (await core.events()).filter((e) => e.subject === bed.id || e.data?.bedId === bed.id).slice(-9);
@@ -95,20 +96,20 @@ test('a full bed cycle runs through commands alone, each output schema-valid', a
 test('commands check role and input', async () => {
   const core = await hospital();
   const { bed, waiting } = await freeBed(core);
-  await assert.rejects(runCommand(core, 'bed.allocate', { bedId: bed.id, encounter: waiting.encounter }, human('coo')), code('forbidden'));
-  await assert.rejects(runCommand(core, 'bed.allocate', { bedId: bed.id }, human('bed-manager')), code('invalid-input'));
-  await assert.rejects(runCommand(core, 'bed.take-out-of-service', { bedId: bed.id, reason: 'Gremlins' }, human('ward-nurse')), code('invalid-input'));
-  await assert.rejects(runCommand(core, 'bed.admit', { bedId: bed.id, extra: 1 }, human('ward-nurse')), code('invalid-input'));
-  await assert.rejects(runCommand(core, 'bed.admit', { bedId: 'no-such-bed' }, human('ward-nurse')), code('not-found'));
-  await assert.rejects(runCommand(core, 'bed.admit', { bedId: bed.id }, human('ward-nurse')), code('conflict'), 'nobody is allocated to it');
+  await assert.rejects(runCommand(core, 'ospeli_beds_allocate', { bedId: bed.id, encounter: waiting.encounter }, human('coo')), code('forbidden'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_allocate', { bedId: bed.id }, human('bed-manager')), code('invalid-input'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_take_out_of_service', { bedId: bed.id, reason: 'Gremlins' }, human('ward-nurse')), code('invalid-input'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_admit', { bedId: bed.id, extra: 1 }, human('ward-nurse')), code('invalid-input'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_admit', { bedId: 'no-such-bed' }, human('ward-nurse')), code('not-found'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_admit', { bedId: bed.id }, human('ward-nurse')), code('conflict'), 'nobody is allocated to it');
   await assert.rejects(runCommand(core, 'beds.teleport', {}, human('coo')), code('unknown-command'));
-  await assert.rejects(runCommand(core, 'beds.board', {}, { type: 'human', role: 'janitor' }), code('forbidden'));
-  const next = await runCommand(core, 'bed.get', { bedId: bed.id }, human('coo'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_board', {}, { type: 'human', role: 'janitor' }), code('forbidden'));
+  const next = await runCommand(core, 'ospeli_beds_get', { bedId: bed.id }, human('coo'));
   assert.deepEqual(next.next, [], 'the COO can read but not change beds');
   // The same patient cannot be given two beds.
-  await runCommand(core, 'bed.allocate', { bedId: bed.id, encounter: waiting.encounter }, human('bed-manager'));
-  const other = (await runCommand(core, 'beds.board', {}, human('bed-manager'))).beds.find((b) => b.state === 'available');
-  if (other) await assert.rejects(runCommand(core, 'bed.allocate', { bedId: other.id, encounter: waiting.encounter }, human('bed-manager')), code('conflict'));
+  await runCommand(core, 'ospeli_beds_allocate', { bedId: bed.id, encounter: waiting.encounter }, human('bed-manager'));
+  const other = (await runCommand(core, 'ospeli_beds_board', {}, human('bed-manager'))).beds.find((b) => b.state === 'available');
+  if (other) await assert.rejects(runCommand(core, 'ospeli_beds_allocate', { bedId: other.id, encounter: waiting.encounter }, human('bed-manager')), code('conflict'));
 });
 
 test('issue #9: a stale tab cannot take an occupied bed out of service; board and KPI agree', async () => {
@@ -117,13 +118,13 @@ test('issue #9: a stale tab cannot take an occupied bed out of service; board an
   const a = await hospital(shared, clock);
   const b = await Core.open({ adapter: shared, clock }); // second tab, opened earlier, now stale
   const { bed, waiting } = await freeBed(a);
-  await runCommand(a, 'bed.allocate', { bedId: bed.id, encounter: waiting.encounter }, human('bed-manager'));
-  await runCommand(a, 'bed.admit', { bedId: bed.id }, human('ward-nurse'));
+  await runCommand(a, 'ospeli_beds_allocate', { bedId: bed.id, encounter: waiting.encounter }, human('bed-manager'));
+  await runCommand(a, 'ospeli_beds_admit', { bedId: bed.id }, human('ward-nurse'));
   // Tab B still thinks the bed is available.
-  await assert.rejects(runCommand(b, 'bed.take-out-of-service', { bedId: bed.id, reason: 'Electrical', expectedState: 'available' }, human('ward-nurse')),
+  await assert.rejects(runCommand(b, 'ospeli_beds_take_out_of_service', { bedId: bed.id, reason: 'Electrical', expectedState: 'available' }, human('ward-nurse')),
     (err) => err.code === 'conflict' && err.detail.state === 'occupied');
-  await assert.rejects(runCommand(b, 'bed.take-out-of-service', { bedId: bed.id, reason: 'Electrical' }, human('ward-nurse')), code('conflict'));
-  await assert.rejects(runCommand(b, 'bed.allocate', { bedId: bed.id, encounter: waiting.encounter }, human('bed-manager')), code('conflict'));
+  await assert.rejects(runCommand(b, 'ospeli_beds_take_out_of_service', { bedId: bed.id, reason: 'Electrical' }, human('ward-nurse')), code('conflict'));
+  await assert.rejects(runCommand(b, 'ospeli_beds_allocate', { bedId: bed.id, encounter: waiting.encounter }, human('bed-manager')), code('conflict'));
   const events = await b.events();
   const board = deriveBoard(await b.listEntities('bed'), events);
   assert.equal(board.beds.get(bed.id).state, 'occupied');
@@ -151,7 +152,7 @@ test('the board ignores an event that would push a patient out of a bed, and lis
 test('agents: off by default, audited as agents, read only allowed wards, and only propose', async () => {
   const core = await hospital();
   const auditBefore = (await core.auditLog()).length;
-  await assert.rejects(runCommand(core, 'beds.board', {}, agent('bed-manager')), code('agents-off'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_board', {}, agent('bed-manager')), code('agents-off'));
   let log = await core.auditLog();
   assert.equal(log.length, auditBefore + 1);
   assert.equal(log.at(-1).action, 'agent.refused');
@@ -161,48 +162,48 @@ test('agents: off by default, audited as agents, read only allowed wards, and on
   assert.equal(log.at(-1).actorRole, 'bed-manager');
 
   // Only people (ops manager or COO) can switch agents on.
-  await assert.rejects(runCommand(core, 'agents.set-access', { allowed: true }, agent('coo')), code('agents-off'));
-  await assert.rejects(runCommand(core, 'agents.set-access', { allowed: true }, human('ward-nurse')), code('forbidden'));
-  await runCommand(core, 'agents.set-access', { allowed: true, wards: { 'ward-a1': true } }, human('coo'));
+  await assert.rejects(runCommand(core, 'ospeli_agents_set_access', { allowed: true }, agent('coo')), code('agents-off'));
+  await assert.rejects(runCommand(core, 'ospeli_agents_set_access', { allowed: true }, human('ward-nurse')), code('forbidden'));
+  await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: { 'ward-a1': true } }, human('coo'));
   // Agents must also be on the site's list, each for one role (issues #20, #25).
-  await runCommand(core, 'agent.add', { name: 'test-agent', role: 'bed-manager', wards: ['ward-a1', 'ward-b1'], days: 30 }, human('coo'));
-  await runCommand(core, 'agent.add', { name: 'night-helper', role: 'ward-nurse', wards: ['ward-a1'], days: 30 }, human('coo'));
-  await runCommand(core, 'agent.add', { name: 'coo-helper', role: 'coo', wards: [], days: 30 }, human('coo'));
-  assert.deepEqual(await runCommand(core, 'agents.access', {}, agent('coo', 'coo-helper')), { allowed: true, wards: { 'ward-a1': true } });
+  await runCommand(core, 'ospeli_agents_add', { name: 'test-agent', role: 'bed-manager', wards: ['ward-a1', 'ward-b1'], days: 30 }, human('coo'));
+  await runCommand(core, 'ospeli_agents_add', { name: 'night-helper', role: 'ward-nurse', wards: ['ward-a1'], days: 30 }, human('coo'));
+  await runCommand(core, 'ospeli_agents_add', { name: 'coo-helper', role: 'coo', wards: [], days: 30 }, human('coo'));
+  assert.deepEqual(await runCommand(core, 'ospeli_agents_access', {}, agent('coo', 'coo-helper')), { allowed: true, wards: { 'ward-a1': true } });
 
-  const read = await runCommand(core, 'beds.board', {}, agent('bed-manager'));
+  const read = await runCommand(core, 'ospeli_beds_board', {}, agent('bed-manager'));
   assert.deepEqual(read.wards.map((w) => w.id), ['ward-a1'], 'agents see only wards switched on');
   assert.ok(read.beds.every((b) => b.wardId === 'ward-a1'));
-  await assert.rejects(runCommand(core, 'beds.board', { wardId: 'ward-b1' }, agent('bed-manager')), code('agents-off'));
-  await assert.rejects(runCommand(core, 'bed.get', { bedId: 'ward-b1-bed-01' }, agent('bed-manager')), code('agents-off'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_board', { wardId: 'ward-b1' }, agent('bed-manager')), code('agents-off'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_get', { bedId: 'ward-b1-bed-01' }, agent('bed-manager')), code('agents-off'));
 
   const bed = read.beds.find((b) => b.state === 'available') || read.beds[0];
   const eventsBefore = await core.eventCount();
-  const out = await runCommand(core, 'bed.take-out-of-service', { bedId: bed.id, reason: 'Electrical' }, agent('ward-nurse', 'night-helper'));
+  const out = await runCommand(core, 'ospeli_beds_take_out_of_service', { bedId: bed.id, reason: 'Electrical' }, agent('ward-nurse', 'night-helper'));
   assert.equal(out.status, 'proposed');
-  assert.deepEqual(validate(commandByName('bed.take-out-of-service').output, out, 'output'), []);
+  assert.deepEqual(validate(commandByName('ospeli_beds_take_out_of_service').output, out, 'output'), []);
   assert.equal(await core.eventCount(), eventsBefore, 'a proposal changes nothing in the event log');
   const props = await core.proposals();
   assert.equal(props.length, 1);
-  assert.deepEqual({ ...props[0], at: 0 }, { id: 'prop-0001', command: 'bed.take-out-of-service', input: { bedId: bed.id, reason: 'Electrical' }, agent: 'night-helper', role: 'ward-nurse', at: 0, status: 'pending', wardId: 'ward-a1', seenState: bed.state });
+  assert.deepEqual({ ...props[0], at: 0 }, { id: 'prop-0001', command: 'ospeli_beds_take_out_of_service', input: { bedId: bed.id, reason: 'Electrical' }, agent: 'night-helper', role: 'ward-nurse', at: 0, status: 'pending', wardId: 'ward-a1', seenState: bed.state });
   log = await core.auditLog();
   assert.equal(log.at(-1).action, 'agent.proposed');
   assert.equal(log.at(-1).actorType, 'agent');
   assert.equal(log.at(-1).agent, 'night-helper');
-  assert.ok(log.some((e) => e.action === 'agent.read' && e.actorType === 'agent' && e.detail.command === 'beds.board'));
+  assert.ok(log.some((e) => e.action === 'agent.read' && e.actorType === 'agent' && e.detail.command === 'ospeli_beds_board'));
   // An agent's role rules still apply, and an agent must name itself.
-  await assert.rejects(runCommand(core, 'bed.admit', { bedId: bed.id }, agent('coo', 'coo-helper')), code('forbidden'));
-  await assert.rejects(runCommand(core, 'beds.board', {}, { type: 'agent', role: 'coo' }), code('forbidden'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_admit', { bedId: bed.id }, agent('coo', 'coo-helper')), code('forbidden'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_board', {}, { type: 'agent', role: 'coo' }), code('forbidden'));
   assert.deepEqual(await core.verifyAudit(), { ok: true }, 'agent entries keep the chain intact');
   assert.deepEqual(await verifyChain(await core.auditLog()), { ok: true });
 });
 
 test('kpi commands return the number with its definition', async () => {
   const core = await hospital();
-  const list = await runCommand(core, 'kpi.list', {}, human('coo'));
+  const list = await runCommand(core, 'ospeli_kpi_list', {}, human('coo'));
   assert.ok(list.kpis.length >= 7);
-  const v = await runCommand(core, 'kpi.value', { id: 'occupancy' }, human('coo'));
-  assert.deepEqual(validate(commandByName('kpi.value').output, v, 'output'), []);
+  const v = await runCommand(core, 'ospeli_kpi_get', { id: 'occupancy' }, human('coo'));
+  assert.deepEqual(validate(commandByName('ospeli_kpi_get').output, v, 'output'), []);
   assert.equal(v.definition.id, 'occupancy');
   assert.ok(v.definition.numerator && v.definition.source);
   assert.ok(v.value > 0 && v.value <= 100);

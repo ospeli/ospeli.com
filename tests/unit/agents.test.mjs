@@ -26,38 +26,38 @@ const refusals = async (core) => (await core.auditLog()).filter((e) => e.action 
 
 test('agents screen: off by default; only a listed agent, in its listed role and wards, may read', async () => {
   const { core } = await setup();
-  const start = await runCommand(core, 'agents.list', {}, human('ward-nurse'));
-  ok('agents.list', start);
+  const start = await runCommand(core, 'ospeli_agents_list', {}, human('ward-nurse'));
+  ok('ospeli_agents_list', start);
   assert.deepEqual({ dial: start.dial, agents: start.agents, canChange: start.canChange, keys: start.keys }, { dial: 'off', agents: [], canChange: false, keys: 'none' });
-  assert.equal((await runCommand(core, 'agents.list', {}, human('coo'))).canChange, true);
+  assert.equal((await runCommand(core, 'ospeli_agents_list', {}, human('coo'))).canChange, true);
 
   // Only the operations manager or chief operating officer can add an agent; agents never can.
   const add = { name: 'night-flow-helper', role: 'bed-manager', wards: ['ward-a1'], days: 30 };
-  await assert.rejects(runCommand(core, 'agent.add', add, human('ward-nurse')), code('forbidden'));
-  await assert.rejects(runCommand(core, 'agent.add', add, agent('coo', 'sneaky')), code('agents-off'));
-  await assert.rejects(runCommand(core, 'agent.add', { ...add, days: MAX_AGENT_DAYS + 1 }, human('coo')), code('invalid-input'));
-  await assert.rejects(runCommand(core, 'agent.add', { ...add, wards: ['ward-zz'] }, human('coo')), code('invalid-input'));
-  await assert.rejects(runCommand(core, 'agent.add', { ...add, name: 'Dr Sarah Jones' }, human('coo')), code('invalid-input'));
-  const added = await runCommand(core, 'agent.add', add, human('coo'));
-  ok('agent.add', added);
+  await assert.rejects(runCommand(core, 'ospeli_agents_add', add, human('ward-nurse')), code('forbidden'));
+  await assert.rejects(runCommand(core, 'ospeli_agents_add', add, agent('coo', 'sneaky')), code('agents-off'));
+  await assert.rejects(runCommand(core, 'ospeli_agents_add', { ...add, days: MAX_AGENT_DAYS + 1 }, human('coo')), code('invalid-input'));
+  await assert.rejects(runCommand(core, 'ospeli_agents_add', { ...add, wards: ['ward-zz'] }, human('coo')), code('invalid-input'));
+  await assert.rejects(runCommand(core, 'ospeli_agents_add', { ...add, name: 'Dr Sarah Jones' }, human('coo')), code('invalid-input'));
+  const added = await runCommand(core, 'ospeli_agents_add', add, human('coo'));
+  ok('ospeli_agents_add', added);
   assert.equal(Date.parse(added.agent.until) - Date.parse(added.agent.addedAt), 30 * 864e5);
   assert.equal(added.agent.addedByRole, 'coo');
 
   // On the list, but the dial is still off.
-  await assert.rejects(runCommand(core, 'beds.board', {}, agent('bed-manager', 'night-flow-helper')), code('agents-off'));
-  await runCommand(core, 'agents.set-access', { allowed: true, wards: { 'ward-a1': true, 'ward-b1': true } }, human('ops-manager'));
-  assert.equal((await runCommand(core, 'agents.list', {}, human('coo'))).agents.length, 1, 'changing the dial keeps the list');
+  await assert.rejects(runCommand(core, 'ospeli_beds_board', {}, agent('bed-manager', 'night-flow-helper')), code('agents-off'));
+  await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: { 'ward-a1': true, 'ward-b1': true } }, human('ops-manager'));
+  assert.equal((await runCommand(core, 'ospeli_agents_list', {}, human('coo'))).agents.length, 1, 'changing the dial keeps the list');
 
-  const board = await runCommand(core, 'beds.board', {}, agent('bed-manager', 'night-flow-helper'));
+  const board = await runCommand(core, 'ospeli_beds_board', {}, agent('bed-manager', 'night-flow-helper'));
   assert.deepEqual(board.wards.map((w) => w.id), ['ward-a1'], 'sees only wards that are switched on AND on its own entry');
   // The name is matched whatever its case; another role, another ward or an unlisted name is refused.
-  await runCommand(core, 'beds.board', {}, agent('bed-manager', 'Night-Flow-Helper'));
-  await assert.rejects(runCommand(core, 'kpi.value', { id: 'occupancy' }, agent('coo', 'night-flow-helper')), code('forbidden'));
-  await assert.rejects(runCommand(core, 'beds.board', { wardId: 'ward-b1' }, agent('bed-manager', 'night-flow-helper')), code('forbidden'));
-  await assert.rejects(runCommand(core, 'beds.board', {}, agent('bed-manager', 'browser-agent')), code('forbidden'));
+  await runCommand(core, 'ospeli_beds_board', {}, agent('bed-manager', 'Night-Flow-Helper'));
+  await assert.rejects(runCommand(core, 'ospeli_kpi_get', { id: 'occupancy' }, agent('coo', 'night-flow-helper')), code('forbidden'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_board', { wardId: 'ward-b1' }, agent('bed-manager', 'night-flow-helper')), code('forbidden'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_board', {}, agent('bed-manager', 'browser-agent')), code('forbidden'));
 
-  const view = await runCommand(core, 'agents.list', {}, human('coo'));
-  ok('agents.list', view);
+  const view = await runCommand(core, 'ospeli_agents_list', {}, human('coo'));
+  ok('ospeli_agents_list', view);
   assert.equal(view.dial, 'advise');
   const mine = view.recent.find((r) => r.agent.toLowerCase() === 'night-flow-helper');
   assert.deepEqual({ reads: mine.reads, proposals: mine.proposals, refused: mine.refused, onList: mine.onList }, { reads: 2, proposals: 0, refused: 3, onList: true });
@@ -69,35 +69,35 @@ test('agents screen: off by default; only a listed agent, in its listed role and
 
 test('an agent stops at its end date, when removed, and when anyone presses stop', async () => {
   const { core, skip } = await setup();
-  await runCommand(core, 'agents.set-access', { allowed: true, wards: { 'ward-a1': true } }, human('coo'));
-  await runCommand(core, 'agent.add', { name: 'short-job', role: 'bed-manager', wards: ['ward-a1'], days: 1 }, human('coo'));
-  await runCommand(core, 'agent.add', { name: 'ward-helper', role: 'ward-nurse', wards: ['ward-a1'], days: 90 }, human('coo'));
-  const bed = (await runCommand(core, 'beds.board', {}, agent('bed-manager', 'short-job'))).beds.find((b) => b.state === 'available');
-  const prop = await runCommand(core, 'bed.take-out-of-service', { bedId: bed.id, reason: 'Electrical' }, agent('ward-nurse', 'ward-helper'));
-  assert.equal((await runCommand(core, 'proposals.list', { status: 'pending' }, human('ward-nurse'))).proposals[0].agentOnList, true);
+  await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: { 'ward-a1': true } }, human('coo'));
+  await runCommand(core, 'ospeli_agents_add', { name: 'short-job', role: 'bed-manager', wards: ['ward-a1'], days: 1 }, human('coo'));
+  await runCommand(core, 'ospeli_agents_add', { name: 'ward-helper', role: 'ward-nurse', wards: ['ward-a1'], days: 90 }, human('coo'));
+  const bed = (await runCommand(core, 'ospeli_beds_board', {}, agent('bed-manager', 'short-job'))).beds.find((b) => b.state === 'available');
+  const prop = await runCommand(core, 'ospeli_beds_take_out_of_service', { bedId: bed.id, reason: 'Electrical' }, agent('ward-nurse', 'ward-helper'));
+  assert.equal((await runCommand(core, 'ospeli_proposals_list', { status: 'pending' }, human('ward-nurse'))).proposals[0].agentOnList, true);
 
   skip(864e5);
-  await assert.rejects(runCommand(core, 'beds.board', {}, agent('bed-manager', 'short-job')), code('forbidden'));
-  assert.equal((await runCommand(core, 'agents.list', {}, human('coo'))).agents.find((a) => a.name === 'short-job').ended, true);
+  await assert.rejects(runCommand(core, 'ospeli_beds_board', {}, agent('bed-manager', 'short-job')), code('forbidden'));
+  assert.equal((await runCommand(core, 'ospeli_agents_list', {}, human('coo'))).agents.find((a) => a.name === 'short-job').ended, true);
 
   // Remove: refused from the next call; its waiting proposal is marked, not silently dropped.
-  await assert.rejects(runCommand(core, 'agent.remove', { name: 'ward-helper' }, human('bed-manager')), code('forbidden'));
-  await assert.rejects(runCommand(core, 'agent.remove', { name: 'nobody' }, human('coo')), code('not-found'));
-  ok('agent.remove', await runCommand(core, 'agent.remove', { name: 'ward-helper' }, human('ops-manager')));
-  await assert.rejects(runCommand(core, 'beds.board', {}, agent('ward-nurse', 'ward-helper')), code('forbidden'));
-  const waiting = (await runCommand(core, 'proposals.list', { status: 'pending' }, human('ward-nurse'))).proposals;
+  await assert.rejects(runCommand(core, 'ospeli_agents_remove', { name: 'ward-helper' }, human('bed-manager')), code('forbidden'));
+  await assert.rejects(runCommand(core, 'ospeli_agents_remove', { name: 'nobody' }, human('coo')), code('not-found'));
+  ok('ospeli_agents_remove', await runCommand(core, 'ospeli_agents_remove', { name: 'ward-helper' }, human('ops-manager')));
+  await assert.rejects(runCommand(core, 'ospeli_beds_board', {}, agent('ward-nurse', 'ward-helper')), code('forbidden'));
+  const waiting = (await runCommand(core, 'ospeli_proposals_list', { status: 'pending' }, human('ward-nurse'))).proposals;
   assert.deepEqual(waiting.map((p) => [p.id, p.agentOnList]), [[prop.proposal.id, false]]);
 
   // Stop all: any role may stop; agents may not; only the two operations roles start again.
-  await runCommand(core, 'agent.add', { name: 'ward-helper', role: 'ward-nurse', wards: ['ward-a1'], days: 7 }, human('coo'));
-  await runCommand(core, 'beds.board', {}, agent('ward-nurse', 'ward-helper'));
-  await assert.rejects(runCommand(core, 'agents.stop-all', {}, agent('ward-nurse', 'ward-helper')), code('agents-off'));
-  const stop = await runCommand(core, 'agents.stop-all', {}, human('estates-tech'));
-  ok('agents.stop-all', stop);
+  await runCommand(core, 'ospeli_agents_add', { name: 'ward-helper', role: 'ward-nurse', wards: ['ward-a1'], days: 7 }, human('coo'));
+  await runCommand(core, 'ospeli_beds_board', {}, agent('ward-nurse', 'ward-helper'));
+  await assert.rejects(runCommand(core, 'ospeli_agents_stop_all', {}, agent('ward-nurse', 'ward-helper')), code('agents-off'));
+  const stop = await runCommand(core, 'ospeli_agents_stop_all', {}, human('estates-tech'));
+  ok('ospeli_agents_stop_all', stop);
   assert.deepEqual(stop, { status: 'done', dial: 'off', wasOn: true });
-  assert.deepEqual(await runCommand(core, 'agents.access', {}, human('coo')), { allowed: false, wards: {} });
-  await assert.rejects(runCommand(core, 'beds.board', {}, agent('ward-nurse', 'ward-helper')), code('agents-off'));
-  await assert.rejects(runCommand(core, 'agents.set-access', { allowed: true }, human('estates-tech')), code('forbidden'));
+  assert.deepEqual(await runCommand(core, 'ospeli_agents_access', {}, human('coo')), { allowed: false, wards: {} });
+  await assert.rejects(runCommand(core, 'ospeli_beds_board', {}, agent('ward-nurse', 'ward-helper')), code('agents-off'));
+  await assert.rejects(runCommand(core, 'ospeli_agents_set_access', { allowed: true }, human('estates-tech')), code('forbidden'));
   const log = await core.auditLog();
   const stopped = log.find((e) => e.action === 'agents.stopped');
   assert.deepEqual([stopped.actorType, stopped.actorRole], ['human', 'estates-tech']);
@@ -109,21 +109,21 @@ test('every refused agent call leaves one audit entry, for each reason, and stor
   const { core } = await setup();
   const SECRET = 'Mary Brown 555 0100';
   const tries = [
-    ['agents-off', 'kpi.value', { id: 'occupancy' }, agent('coo', 'coo-helper')], // dial off
+    ['agents-off', 'ospeli_kpi_get', { id: 'occupancy' }, agent('coo', 'coo-helper')], // dial off
     ['unknown-command', `no.such ${SECRET}`, {}, agent('coo', 'coo-helper')],
-    ['forbidden', 'kpi.value', { id: 'occupancy' }, agent(`boss ${SECRET}`, 'coo-helper')], // unknown role
-    ['forbidden', 'beds.board', {}, { type: 'agent', role: 'coo', agent: `<b>${SECRET}</b>` }], // bad name
-    ['agents-off', 'kpi.list', {}, agent('coo', `Mr ${SECRET.replace(/[0-9 ]/g, '')} in bed four`)], // a name that passes the pattern but is not on the list
-    ['agents-off', 'agents.set-access', { allowed: true }, agent('coo', 'coo-helper')], // people only
+    ['forbidden', 'ospeli_kpi_get', { id: 'occupancy' }, agent(`boss ${SECRET}`, 'coo-helper')], // unknown role
+    ['forbidden', 'ospeli_beds_board', {}, { type: 'agent', role: 'coo', agent: `<b>${SECRET}</b>` }], // bad name
+    ['agents-off', 'ospeli_kpi_list', {}, agent('coo', `Mr ${SECRET.replace(/[0-9 ]/g, '')} in bed four`)], // a name that passes the pattern but is not on the list
+    ['agents-off', 'ospeli_agents_set_access', { allowed: true }, agent('coo', 'coo-helper')], // people only
   ];
   for (const [c, name, input, actor] of tries) await assert.rejects(runCommand(core, name, input, actor), code(c));
-  await runCommand(core, 'agents.set-access', { allowed: true, wards: { 'ward-a1': true } }, human('coo'));
-  await runCommand(core, 'agent.add', { name: 'coo-helper', role: 'coo', days: 30 }, human('coo'));
+  await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: { 'ward-a1': true } }, human('coo'));
+  await runCommand(core, 'ospeli_agents_add', { name: 'coo-helper', role: 'coo', days: 30 }, human('coo'));
   const more = [
-    ['forbidden', 'kpi.value', { id: 'occupancy' }, agent('coo', 'stranger')], // not on the list
-    ['forbidden', 'kpi.value', { id: 'occupancy' }, agent('bed-manager', 'coo-helper')], // another role
-    ['forbidden', 'fault.report', { assetId: 'asset-a1-sink-1', fault: 'Blocked sink', priority: 'routine' }, agent('coo', 'coo-helper')], // role cannot run it
-    ['invalid-input', 'kpi.value', { id: SECRET, [SECRET]: 1 }, agent('coo', 'coo-helper')],
+    ['forbidden', 'ospeli_kpi_get', { id: 'occupancy' }, agent('coo', 'stranger')], // not on the list
+    ['forbidden', 'ospeli_kpi_get', { id: 'occupancy' }, agent('bed-manager', 'coo-helper')], // another role
+    ['forbidden', 'ospeli_workorders_report_fault', { assetId: 'asset-a1-sink-1', fault: 'Blocked sink', priority: 'routine' }, agent('coo', 'coo-helper')], // role cannot run it
+    ['invalid-input', 'ospeli_kpi_get', { id: SECRET, [SECRET]: 1 }, agent('coo', 'coo-helper')],
   ];
   for (const [c, name, input, actor] of more) await assert.rejects(runCommand(core, name, input, actor), code(c));
 
@@ -137,30 +137,30 @@ test('every refused agent call leaves one audit entry, for each reason, and stor
   assert.equal(rows[1].detail.command, '(unknown)');
   assert.ok(rows.slice(0, tries.length).every((e) => e.agent === 'unlisted'), 'a name nobody put on the list is never stored');
   assert.equal(rows.at(-1).agent, 'coo-helper');
-  assert.equal(JSON.stringify(await runCommand(core, 'agents.list', {}, human('coo'))).includes('Mary'), false, 'nor shown on the screen');
+  assert.equal(JSON.stringify(await runCommand(core, 'ospeli_agents_list', {}, human('coo'))).includes('Mary'), false, 'nor shown on the screen');
   // A read that runs and fails is audited too, with its outcome.
-  await assert.rejects(runCommand(core, 'map.get', { mapId: 'map-999' }, agent('coo', 'coo-helper')), code('not-found'));
+  await assert.rejects(runCommand(core, 'ospeli_maps_get', { mapId: 'map-999' }, agent('coo', 'coo-helper')), code('not-found'));
   const lastRead = (await core.auditLog()).at(-1);
-  assert.deepEqual([lastRead.action, lastRead.actorType, lastRead.detail.command, lastRead.detail.outcome], ['agent.read', 'agent', 'map.get', 'not-found']);
+  assert.deepEqual([lastRead.action, lastRead.actorType, lastRead.detail.command, lastRead.detail.outcome], ['agent.read', 'agent', 'ospeli_maps_get', 'not-found']);
   // An actor that is neither a person nor an agent is refused, never treated as a person.
-  await assert.rejects(runCommand(core, 'agent.add', { name: 'self-made', role: 'coo', days: 90 }, { type: 'Agent', role: 'coo', agent: 'x' }), code('forbidden'));
-  await assert.rejects(runCommand(core, 'kpi.list', {}, { role: 'coo' }), code('forbidden'));
+  await assert.rejects(runCommand(core, 'ospeli_agents_add', { name: 'self-made', role: 'coo', days: 90 }, { type: 'Agent', role: 'coo', agent: 'x' }), code('forbidden'));
+  await assert.rejects(runCommand(core, 'ospeli_kpi_list', {}, { role: 'coo' }), code('forbidden'));
   // A refused person leaves no agent entry.
-  await assert.rejects(runCommand(core, 'agents.set-access', { allowed: true }, human('ward-nurse')), code('forbidden'));
+  await assert.rejects(runCommand(core, 'ospeli_agents_set_access', { allowed: true }, human('ward-nurse')), code('forbidden'));
   assert.equal((await refusals(core)).length, rows.length);
   assert.deepEqual(await core.verifyAudit(), { ok: true });
 });
 
 test('a looping agent cannot flood the trail: repeats within a minute are counted, not written', async () => {
   const { core, skip } = await setup();
-  const call = () => runCommand(core, 'beds.board', {}, agent('bed-manager', 'looper'));
+  const call = () => runCommand(core, 'ospeli_beds_board', {}, agent('bed-manager', 'looper'));
   for (let i = 0; i < 25; i++) await assert.rejects(call(), code('agents-off'));
   assert.equal((await refusals(core)).length, 1);
   // A different command or reason is a new entry straight away.
-  await assert.rejects(runCommand(core, 'bed.get', { bedId: 'ward-a1-bed-01' }, agent('bed-manager', 'looper')), code('agents-off'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_get', { bedId: 'ward-a1-bed-01' }, agent('bed-manager', 'looper')), code('agents-off'));
   assert.equal((await refusals(core)).length, 2);
   // The screen still counts every refusal, written or not.
-  const seen = (await runCommand(core, 'agents.list', {}, human('coo'))).recent.find((r) => r.agent === 'unlisted');
+  const seen = (await runCommand(core, 'ospeli_agents_list', {}, human('coo'))).recent.find((r) => r.agent === 'unlisted');
   assert.equal(seen.refused, 26);
   // After the minute, the next entry carries the count, so the hash-chained trail has it too.
   skip(61_000);
@@ -168,15 +168,15 @@ test('a looping agent cannot flood the trail: repeats within a minute are counte
   const rows = await refusals(core);
   assert.equal(rows.length, 3);
   assert.equal(rows.at(-1).detail.repeats.count, 24);
-  assert.equal((await runCommand(core, 'agents.list', {}, human('coo'))).recent.find((r) => r.agent === 'unlisted').refused, 27);
+  assert.equal((await runCommand(core, 'ospeli_agents_list', {}, human('coo'))).recent.find((r) => r.agent === 'unlisted').refused, 27);
   assert.deepEqual(await core.verifyAudit(), { ok: true });
 });
 
 // Issue #51: off by default also means a replaced data set starts with agents off.
 async function agentsOn(core) {
-  await runCommand(core, 'agents.set-access', { allowed: true, wards: { 'ward-a1': true } }, human('ops-manager'));
-  await runCommand(core, 'agent.add', { name: 'flow-helper', role: 'bed-manager', wards: ['ward-a1'], days: 30 }, human('ops-manager'));
-  const board = await runCommand(core, 'beds.board', { wardId: 'ward-a1' }, agent('bed-manager', 'flow-helper'));
+  await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: { 'ward-a1': true } }, human('ops-manager'));
+  await runCommand(core, 'ospeli_agents_add', { name: 'flow-helper', role: 'bed-manager', wards: ['ward-a1'], days: 30 }, human('ops-manager'));
+  const board = await runCommand(core, 'ospeli_beds_board', { wardId: 'ward-a1' }, agent('bed-manager', 'flow-helper'));
   assert.equal(board.beds.length, 20);
 }
 
@@ -185,9 +185,9 @@ test('reset then a fresh copy leaves agents off, the list empty, and one entry i
   await agentsOn(core);
   await core.reset('ward-nurse');
   await loadSyntheticHospital(core, { end: END });
-  await assert.rejects(runCommand(core, 'beds.board', { wardId: 'ward-a1' }, agent('bed-manager', 'flow-helper')), code('agents-off'));
-  const view = await runCommand(core, 'agents.list', {}, human('ops-manager'));
-  ok('agents.list', view);
+  await assert.rejects(runCommand(core, 'ospeli_beds_board', { wardId: 'ward-a1' }, agent('bed-manager', 'flow-helper')), code('agents-off'));
+  const view = await runCommand(core, 'ospeli_agents_list', {}, human('ops-manager'));
+  ok('ospeli_agents_list', view);
   assert.equal(view.dial, 'off');
   assert.deepEqual(view.wards, {});
   assert.deepEqual(view.agents, []);
@@ -199,23 +199,23 @@ test('reset then a fresh copy leaves agents off, the list empty, and one entry i
   assert.equal(log.filter((e) => e.action === 'agents.access-cleared').length, 1);
   assert.deepEqual(await core.verifyAudit(), { ok: true });
   // Switching agents on again is a person's choice, and clears the notice.
-  await runCommand(core, 'agents.set-access', { allowed: true }, human('ops-manager'));
-  assert.equal((await runCommand(core, 'agents.list', {}, human('ops-manager'))).cleared, null);
+  await runCommand(core, 'ospeli_agents_set_access', { allowed: true }, human('ops-manager'));
+  assert.equal((await runCommand(core, 'ospeli_agents_list', {}, human('ops-manager'))).cleared, null);
 });
 
 test('import leaves agents off, drops waiting proposals, and says so in the trail (issue #51)', async () => {
   const { core } = await setup();
   const file = JSON.parse(JSON.stringify(await core.exportData())); // exported before agents were switched on
   await agentsOn(core);
-  const bed = (await runCommand(core, 'beds.board', { wardId: 'ward-a1' }, human('bed-manager'))).beds.find((b) => b.state === 'occupied');
-  await runCommand(core, 'bed.flag-expected-discharge', { bedId: bed.id }, agent('bed-manager', 'flow-helper'));
+  const bed = (await runCommand(core, 'ospeli_beds_board', { wardId: 'ward-a1' }, human('bed-manager'))).beds.find((b) => b.state === 'occupied');
+  await runCommand(core, 'ospeli_beds_flag_expected_discharge', { bedId: bed.id }, agent('bed-manager', 'flow-helper'));
   await core.importData(file, 'ward-nurse');
-  await assert.rejects(runCommand(core, 'beds.board', { wardId: 'ward-a1' }, agent('bed-manager', 'flow-helper')), code('agents-off'));
-  const view = await runCommand(core, 'agents.list', {}, human('coo'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_board', { wardId: 'ward-a1' }, agent('bed-manager', 'flow-helper')), code('agents-off'));
+  const view = await runCommand(core, 'ospeli_agents_list', {}, human('coo'));
   assert.equal(view.dial, 'off');
   assert.deepEqual(view.agents, []);
   assert.equal(view.cleared.by, 'import');
-  assert.deepEqual((await runCommand(core, 'proposals.list', {}, human('bed-manager'))).proposals, []);
+  assert.deepEqual((await runCommand(core, 'ospeli_proposals_list', {}, human('bed-manager'))).proposals, []);
   const log = await core.auditLog();
   const entry = log.find((e) => e.action === 'agents.access-cleared');
   assert.deepEqual(entry.detail, { by: 'import', was: { dial: 'advise', wards: 1, agents: 1, pendingProposals: 1 } });

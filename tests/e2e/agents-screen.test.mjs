@@ -48,7 +48,7 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
   assert.match(await page.textContent('[data-test="agents-status"]'), /Agents are on: Advise/);
 
   // Still refused: on the dial is not enough, the agent must be on the list.
-  const r1 = await asAgent(page, 'beds.board', {}, helper);
+  const r1 = await asAgent(page, 'ospeli_beds_board', {}, helper);
   assert.deepEqual([r1.ok, r1.code], [false, 'forbidden']);
   assert.match(r1.message, /not on this site's list/);
 
@@ -61,38 +61,38 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
   await c.tap('[data-test="agents-add"]');
   // Errors appear under the Name field, in view, in plain words.
   const errInView = () => page.evaluate(() => { const r = document.querySelector('.ag-err').getBoundingClientRect(); return r.height > 0 && r.top >= 0 && r.bottom <= innerHeight; });
-  await c.tap('[data-cmd="agent.add"]');
+  await c.tap('[data-cmd="ospeli_agents_add"]');
   await page.waitForFunction(() => /Give the agent a name/.test(document.querySelector('.ag-err')?.textContent || ''));
   assert.equal(await errInView(), true, 'the empty-name error is visible');
   await page.fill('#ag-name', 'Bed helper!');
-  await c.tap('[data-cmd="agent.add"]');
+  await c.tap('[data-cmd="ospeli_agents_add"]');
   await page.waitForFunction(() => /Use 2 to 41 letters/.test(document.querySelector('.ag-err')?.textContent || ''));
   await page.fill('#ag-name', 'Dr Sarah Jones');
-  await c.tap('[data-cmd="agent.add"]');
+  await c.tap('[data-cmd="ospeli_agents_add"]');
   await page.waitForFunction(() => /person's name/.test(document.querySelector('.ag-err')?.textContent || ''));
   assert.equal(await errInView(), true);
   await page.fill('#ag-name', 'night-flow-helper');
   await page.selectOption('#ag-role', 'bed-manager');
   await c.tap('.ag-tick input[value="ward-a1"]');
-  await c.tap('[data-cmd="agent.add"]');
+  await c.tap('[data-cmd="ospeli_agents_add"]');
   await page.waitForSelector('[data-agent="night-flow-helper"]');
   assert.ok(c.taps <= 9, `setting up one agent, with three mistakes on the way, took ${c.taps} taps`);
   // The same name again is refused in words instead of silently replacing the entry.
   await c.tap('[data-test="agents-add"]');
   await page.fill('#ag-name', 'Night-Flow-Helper');
-  await c.tap('[data-cmd="agent.add"]');
+  await c.tap('[data-cmd="ospeli_agents_add"]');
   await page.waitForFunction(() => /already on the list/.test(document.querySelector('.ag-err')?.textContent || ''));
   await page.locator('.ag-dialog button:has-text("Cancel")').tap();
   assert.match(await page.textContent('[data-agent="night-flow-helper"]'), /Works for Bed manager · Ward A1 \(acute medicine\) · ends .*Not used in the last 7 days/s);
   assert.match(await page.textContent('[data-test="agents-strangers"]'), /Not on the list.*1 refused/s, 'the call made before it was listed is counted, without a name');
 
   // The agent journey the issue could not complete: a read works, scoped to its ward and role.
-  const r2 = await asAgent(page, 'beds.board', {}, helper);
+  const r2 = await asAgent(page, 'ospeli_beds_board', {}, helper);
   assert.deepEqual([r2.ok, r2.wards], [true, ['ward-a1']]);
-  assert.equal((await asAgent(page, 'beds.board', {}, { agent: 'night-flow-helper', role: 'coo' })).code, 'forbidden', 'cannot claim another role');
-  assert.equal((await asAgent(page, 'beds.board', { wardId: 'ward-b1' }, helper)).code, 'agents-off', 'a ward that is off stays off');
-  assert.equal((await asAgent(page, 'agent.add', { name: 'self-made', role: 'coo', days: 90 }, helper)).code, 'agents-off', 'an agent cannot add agents');
-  assert.equal((await asAgent(page, 'beds.board', {}, { agent: 'stranger', role: 'coo' })).code, 'forbidden');
+  assert.equal((await asAgent(page, 'ospeli_beds_board', {}, { agent: 'night-flow-helper', role: 'coo' })).code, 'forbidden', 'cannot claim another role');
+  assert.equal((await asAgent(page, 'ospeli_beds_board', { wardId: 'ward-b1' }, helper)).code, 'agents-off', 'a ward that is off stays off');
+  assert.equal((await asAgent(page, 'ospeli_agents_add', { name: 'self-made', role: 'coo', days: 90 }, helper)).code, 'agents-off', 'an agent cannot add agents');
+  assert.equal((await asAgent(page, 'ospeli_beds_board', {}, { agent: 'stranger', role: 'coo' })).code, 'forbidden');
 
   // Controls are at least 44 px tall and nothing runs off the side of a 360 px phone.
   const small = await page.evaluate(() => [...document.querySelectorAll('.page button, .page a.btn, main button, main summary')]
@@ -113,7 +113,7 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
   assert.equal(c.taps - before, 1);
   assert.match(await page.textContent('[data-test="agents-stopped"]'), /All agents stopped by Ward nurse/);
   assert.equal(await page.getAttribute('[data-test="agents-dial"]', 'data-dial-now'), 'off');
-  assert.equal((await asAgent(page, 'beds.board', {}, helper)).code, 'agents-off');
+  assert.equal((await asAgent(page, 'ospeli_beds_board', {}, helper)).code, 'agents-off');
   assert.equal(await page.isDisabled('[data-dial="advise"]'), true, 'a ward nurse cannot start agents again');
 
   // Stop cleared every ward: turning the dial back on does not quietly reopen ward A1.
@@ -123,7 +123,7 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
   await page.waitForSelector('[data-test="agents-wards"]');
   assert.match(await page.textContent('[data-test="agents-wards"] summary'), /0 of 6 wards on/);
   assert.match(await page.textContent('[data-agent="night-flow-helper"]'), /Ward A1 \(acute medicine\) \(ward off\)/);
-  assert.equal((await asAgent(page, 'beds.board', { wardId: 'ward-a1' }, helper)).code, 'agents-off');
+  assert.equal((await asAgent(page, 'ospeli_beds_board', { wardId: 'ward-a1' }, helper)).code, 'agents-off');
 
   // The trail: every change by a person, every agent call (allowed or refused) by an agent.
   await page.goto(`${env.appUrl}#/data`);
@@ -155,10 +155,10 @@ test('remove an agent: it is refused at once, shows under "Refused", and the lis
   await page.fill('#ag-name', 'map-reader');
   await page.selectOption('#ag-role', 'ops-manager');
   await page.selectOption('#ag-days', '7');
-  await page.click('[data-cmd="agent.add"]');
+  await page.click('[data-cmd="ospeli_agents_add"]');
   await page.waitForSelector('[data-agent="map-reader"]');
   const who = { agent: 'map-reader', role: 'ops-manager' };
-  assert.equal((await asAgent(page, 'maps.list', {}, who)).ok, true, 'an agent with no wards can still read process maps');
+  assert.equal((await asAgent(page, 'ospeli_maps_list', {}, who)).ok, true, 'an agent with no wards can still read process maps');
 
   // Offline: the service worker has the screen, and the settings are on the device.
   await page.evaluate(() => navigator.serviceWorker.ready);
@@ -166,9 +166,9 @@ test('remove an agent: it is refused at once, shows under "Refused", and the lis
   await page.reload();
   await page.waitForSelector('[data-agent="map-reader"]');
   assert.match(await page.textContent('[data-agent="map-reader"]'), /Last active (just now|.* ago): 1 read, 0 suggestions, 0 refused/);
-  await page.click('[data-agent="map-reader"] [data-cmd="agent.remove"]');
+  await page.click('[data-agent="map-reader"] [data-cmd="ospeli_agents_remove"]');
   await page.waitForFunction(() => !document.querySelector('[data-agent="map-reader"]'));
-  const r = await asAgent(page, 'maps.list', {}, who);
+  const r = await asAgent(page, 'ospeli_maps_list', {}, who);
   assert.deepEqual([r.ok, r.code], [false, 'forbidden']);
   await page.reload();
   await page.waitForSelector('[data-test="agents-strangers"]');
@@ -196,9 +196,9 @@ test('reset and a fresh copy switch agents off and say so, at 360 px (issue #51)
   await page.fill('#ag-name', 'night-flow-helper');
   await page.selectOption('#ag-role', 'bed-manager');
   await page.locator('.ag-tick input[value="ward-a1"]').tap();
-  await page.locator('[data-cmd="agent.add"]').tap();
+  await page.locator('[data-cmd="ospeli_agents_add"]').tap();
   await page.waitForSelector('[data-agent="night-flow-helper"]');
-  assert.equal((await asAgent(page, 'beds.board', { wardId: 'ward-a1' }, helper)).ok, true);
+  assert.equal((await asAgent(page, 'ospeli_beds_board', { wardId: 'ward-a1' }, helper)).ok, true);
 
   await page.selectOption('#role-select', 'ward-nurse');
   await page.goto(`${env.appUrl}#/data`);
@@ -212,13 +212,13 @@ test('reset and a fresh copy switch agents off and say so, at 360 px (issue #51)
     return td ? td.textContent : null;
   });
   assert.equal(row, 'Agents switched off by reset (was Advise, 1 ward, 1 agent)');
-  const r1 = await asAgent(page, 'beds.board', { wardId: 'ward-a1' }, helper);
+  const r1 = await asAgent(page, 'ospeli_beds_board', { wardId: 'ward-a1' }, helper);
   assert.deepEqual([r1.ok, r1.code], [false, 'agents-off']);
 
   await page.getByRole('button', { name: 'Load a fresh copy' }).tap();
   await page.waitForLoadState('load');
   await page.waitForSelector('html[data-ready="true"]');
-  const r2 = await asAgent(page, 'beds.board', { wardId: 'ward-a1' }, helper);
+  const r2 = await asAgent(page, 'ospeli_beds_board', { wardId: 'ward-a1' }, helper);
   assert.deepEqual([r2.ok, r2.code], [false, 'agents-off']);
   await page.goto(`${env.appUrl}#/agents`);
   await page.waitForSelector('[data-test="agents-dial"][data-dial-now="off"]');

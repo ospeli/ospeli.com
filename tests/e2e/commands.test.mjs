@@ -12,18 +12,18 @@ after(async () => { await env.close(); });
 
 const bedState = (page, id) => page.evaluate(async (bedId) => {
   const { runCommand } = await import('./core/commands.js');
-  return (await runCommand(window.ospeli.core, 'bed.get', { bedId }, { type: 'human', role: 'coo' })).bed.state;
+  return (await runCommand(window.ospeli.core, 'ospeli_beds_get', { bedId }, { type: 'human', role: 'coo' })).bed.state;
 }, id);
 
 test('window.ospeli lists and describes commands; agents are off by default and audited', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, path: '#/beds/ward-a1' });
   await page.waitForSelector('.bed');
   const names = await page.evaluate(() => window.ospeli.commands().map((c) => c.name));
-  assert.ok(names.includes('beds.board') && names.includes('bed.allocate'));
-  const d = await page.evaluate(() => window.ospeli.describe('bed.allocate'));
+  assert.ok(names.includes('ospeli_beds_board') && names.includes('ospeli_beds_allocate'));
+  const d = await page.evaluate(() => window.ospeli.describe('ospeli_beds_allocate'));
   assert.equal(d.humanApproval, true);
   assert.deepEqual(d.input.required, ['bedId', 'encounter']);
-  const refused = await page.evaluate(() => window.ospeli.run('beds.board', {}, { agent: 'e2e-agent' }).then(() => 'ran', (e) => e.code));
+  const refused = await page.evaluate(() => window.ospeli.run('ospeli_beds_board', {}, { agent: 'e2e-agent' }).then(() => 'ran', (e) => e.code));
   assert.equal(refused, 'agents-off');
   const last = await page.evaluate(async () => (await window.ospeli.core.auditLog()).at(-1));
   assert.equal(last.action, 'agent.refused');
@@ -53,14 +53,14 @@ test('an agent with access switched on reads one ward and its change waits for a
   const out = await page.evaluate(async () => {
     const core = window.ospeli.core;
     const { runCommand } = await import('./core/commands.js');
-    await runCommand(core, 'agents.set-access', { allowed: true, wards: { 'ward-a1': true } }, { type: 'human', role: 'coo' });
+    await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: { 'ward-a1': true } }, { type: 'human', role: 'coo' });
     // Each agent is on the site's list for one role (issues #20, #25).
-    await runCommand(core, 'agent.add', { name: 'e2e-agent', role: 'bed-manager', wards: ['ward-a1'], days: 30 }, { type: 'human', role: 'coo' });
-    await runCommand(core, 'agent.add', { name: 'e2e-ward-agent', role: 'ward-nurse', wards: ['ward-a1'], days: 30 }, { type: 'human', role: 'coo' });
-    const board = await window.ospeli.run('beds.board', {}, { agent: 'e2e-agent', role: 'bed-manager' });
+    await runCommand(core, 'ospeli_agents_add', { name: 'e2e-agent', role: 'bed-manager', wards: ['ward-a1'], days: 30 }, { type: 'human', role: 'coo' });
+    await runCommand(core, 'ospeli_agents_add', { name: 'e2e-ward-agent', role: 'ward-nurse', wards: ['ward-a1'], days: 30 }, { type: 'human', role: 'coo' });
+    const board = await window.ospeli.run('ospeli_beds_board', {}, { agent: 'e2e-agent', role: 'bed-manager' });
     const bed = board.beds.find((b) => b.state === 'available' || b.state === 'vacated' || b.state === 'cleaning') || board.beds[0];
     const before = await core.eventCount();
-    const res = await window.ospeli.run('bed.take-out-of-service', { bedId: bed.id, reason: 'Electrical' }, { agent: 'e2e-ward-agent', role: 'ward-nurse' });
+    const res = await window.ospeli.run('ospeli_beds_take_out_of_service', { bedId: bed.id, reason: 'Electrical' }, { agent: 'e2e-ward-agent', role: 'ward-nurse' });
     return { wards: board.wards.map((w) => w.id), res, same: before === await core.eventCount(), last: (await core.auditLog()).at(-1) };
   });
   assert.deepEqual(out.wards, ['ward-a1']);
@@ -83,7 +83,7 @@ test('issue #9: a second tab refreshes, and a stale dialog cannot take an occupi
   // Pick a free bed and a waiting patient.
   const { bedId, wardId, encounter } = await a.evaluate(async () => {
     const { runCommand } = await import('./core/commands.js');
-    const board = await runCommand(window.ospeli.core, 'beds.board', {}, { type: 'human', role: 'bed-manager' });
+    const board = await runCommand(window.ospeli.core, 'ospeli_beds_board', {}, { type: 'human', role: 'bed-manager' });
     const bed = board.beds.find((x) => x.state === 'available');
     return { bedId: bed.id, wardId: bed.wardId, encounter: board.waiting.find((w) => !w.allocatedBed).encounter };
   });
@@ -94,8 +94,8 @@ test('issue #9: a second tab refreshes, and a stale dialog cannot take an occupi
   // Tab A: allocate and admit.
   await a.evaluate(async ([bed, enc]) => {
     const { runCommand } = await import('./core/commands.js');
-    await runCommand(window.ospeli.core, 'bed.allocate', { bedId: bed, encounter: enc }, { type: 'human', role: 'bed-manager' });
-    await runCommand(window.ospeli.core, 'bed.admit', { bedId: bed }, { type: 'human', role: 'ward-nurse' });
+    await runCommand(window.ospeli.core, 'ospeli_beds_allocate', { bedId: bed, encounter: enc }, { type: 'human', role: 'bed-manager' });
+    await runCommand(window.ospeli.core, 'ospeli_beds_admit', { bedId: bed }, { type: 'human', role: 'ward-nurse' });
   }, [bedId, encounter]);
   // Tab B's board redraws from the shared log behind the open dialog.
   await b.waitForFunction((id) => document.querySelector(`.bed[data-bed="${id}"]`)?.classList.contains('st-occupied'), bedId);
@@ -110,8 +110,8 @@ test('issue #9: a second tab refreshes, and a stale dialog cannot take an occupi
   const agree = await b.evaluate(async () => {
     const { runCommand } = await import('./core/commands.js');
     const r = { type: 'human', role: 'coo' };
-    const board = await runCommand(window.ospeli.core, 'beds.board', {}, r);
-    const kpi = await runCommand(window.ospeli.core, 'kpi.value', { id: 'occupancy' }, r);
+    const board = await runCommand(window.ospeli.core, 'ospeli_beds_board', {}, r);
+    const kpi = await runCommand(window.ospeli.core, 'ospeli_kpi_get', { id: 'occupancy' }, r);
     return [board.beds.filter((x) => x.state === 'occupied' || x.state === 'expected-discharge').length, kpi.numerator];
   });
   assert.equal(agree[0], agree[1]);

@@ -20,7 +20,7 @@ const FILTERS = [
 export async function render(el, ctx) {
   const { core } = ctx;
   const ui = { filter: 'open', busy: false };
-  const assetData = await ctx.run('assets.list', {});
+  const assetData = await ctx.run('ospeli_assets_list', { limit: 1000 });
   if (!assetData.assets.length) {
     el.append(h('div', { class: 'page-head' }, h('div', {}, h('p', { class: 'eyebrow' }, 'Engineering'), h('h1', {}, 'Engineering'))),
       h('div', { class: 'card notice' }, h('p', {}, 'No hospital is loaded on this device. Load Example General Hospital from ', h('a', { href: '#/data' }, 'Data and audit'), '.')));
@@ -31,7 +31,7 @@ export async function render(el, ctx) {
   const deepAsset = ctx.rest[0] === 'report' && assets.has(ctx.rest[1]) ? ctx.rest[1] : null;
 
   // ---- report a fault ----
-  const canReport = can(ctx.role, 'fault.report');
+  const canReport = can(ctx.role, 'ospeli_workorders_report_fault');
   const locSel = h('select', { id: 'f-loc', 'data-test': 'f-loc' }, assetData.locations.map((p) => new Option(p.name, p.id)));
   const assetSel = h('select', { id: 'f-asset', 'data-test': 'f-asset' });
   const faultSel = h('select', { id: 'f-fault', 'data-test': 'f-fault' });
@@ -52,7 +52,7 @@ export async function render(el, ctx) {
   if (deepAsset) locSel.value = assets.get(deepAsset).locationId;
   fillAssets(deepAsset);
 
-  const reportBtn = h('button', { class: 'btn', type: 'submit', 'data-cmd': 'fault.report' }, 'Report fault');
+  const reportBtn = h('button', { class: 'btn', type: 'submit', 'data-cmd': 'ospeli_workorders_report_fault' }, 'Report fault');
   const form = h('form', { class: 'card report-form', 'aria-labelledby': 'report-h', 'data-test': 'report-form' },
     h('h2', { id: 'report-h' }, 'Report a fault'),
     deepAsset ? h('p', { class: 'meta' }, `From the label on ${assets.get(deepAsset).name}.`) : null,
@@ -70,7 +70,7 @@ export async function render(el, ctx) {
     reportBtn.disabled = true;
     try {
       const priority = form.querySelector('input[name="f-prio"]:checked')?.value || 'routine';
-      const out = await ctx.run('fault.report', { assetId: assetSel.value, fault: faultSel.value, priority });
+      const out = await ctx.run('ospeli_workorders_report_fault', { assetId: assetSel.value, fault: faultSel.value, priority });
       const a = assets.get(assetSel.value);
       reportStatus.textContent = `Reported: ${out.workOrderId.toUpperCase()}, ${faultSel.value}, ${a.name}.${out.repeat ? ` Repeat fault: ${out.repeat} earlier on this asset in 30 days.` : ''}`;
       ctx.toast(`Work order ${out.workOrderId.toUpperCase()} opened`);
@@ -93,7 +93,7 @@ export async function render(el, ctx) {
   let data = { open: null, completed: null };
 
   async function load() {
-    const [open, completed] = await Promise.all([ctx.run('workorders.list', { state: 'open' }), ctx.run('workorders.list', { state: 'completed' })]);
+    const [open, completed] = await Promise.all([ctx.run('ospeli_workorders_list', { state: 'open', limit: 500 }), ctx.run('ospeli_workorders_list', { state: 'completed', limit: 500 })]);
     data = { open, completed };
     draw();
   }
@@ -103,7 +103,7 @@ export async function render(el, ctx) {
     ui.busy = true;
     try {
       await ctx.run(cmd, { workOrderId: w.id, expectedState: w.state, ...extra });
-      ctx.toast(`${w.id.toUpperCase()}: ${cmd === 'workorder.assign' ? `assigned to ${TEAMS[extra.team]}` : OUTCOMES[extra.outcome]}`);
+      ctx.toast(`${w.id.toUpperCase()}: ${cmd === 'ospeli_workorders_assign' ? `assigned to ${TEAMS[extra.team]}` : OUTCOMES[extra.outcome]}`);
     } catch (err) {
       ctx.toast(`Not saved. ${err.message}`);
       await load();
@@ -119,8 +119,8 @@ export async function render(el, ctx) {
     teamSel.value = w.team;
     const outSel = h('select', { id: 'wo-outcome' }, Object.entries(OUTCOMES).map(([id, t]) => new Option(t, id)));
     const open = w.state !== 'completed';
-    const mayAssign = open && can(ctx.role, 'workorder.assign');
-    const mayClose = open && can(ctx.role, 'workorder.complete');
+    const mayAssign = open && can(ctx.role, 'ospeli_workorders_assign');
+    const mayClose = open && can(ctx.role, 'ospeli_workorders_complete');
     const row = (k, v) => h('div', { class: 'def-row' }, h('dt', {}, k), h('dd', {}, v));
     dialog.replaceChildren(
       h('h2', { id: 'wo-dlg-h' }, `${w.id.toUpperCase()} · ${w.title}`),
@@ -140,8 +140,8 @@ export async function render(el, ctx) {
       h('p', { class: 'meta' }, mayAssign || mayClose ? `Each change is saved to the event log as ${roleById(ctx.role).name}.`
         : open ? `${roleById(ctx.role).name} can see this work order but not change it.` : 'This work order is closed.'),
       h('div', { class: 'actions' },
-        mayAssign ? h('button', { class: 'btn btn-ghost', type: 'button', 'data-cmd': 'workorder.assign', onclick: () => { dialog.close(); act('workorder.assign', w, { team: teamSel.value }); } }, 'Assign') : null,
-        mayClose ? h('button', { class: 'btn', type: 'button', 'data-cmd': 'workorder.complete', onclick: () => { dialog.close(); act('workorder.complete', w, { outcome: outSel.value }); } }, 'Close work order') : null,
+        mayAssign ? h('button', { class: 'btn btn-ghost', type: 'button', 'data-cmd': 'ospeli_workorders_assign', onclick: () => { dialog.close(); act('ospeli_workorders_assign', w, { team: teamSel.value }); } }, 'Assign') : null,
+        mayClose ? h('button', { class: 'btn', type: 'button', 'data-cmd': 'ospeli_workorders_complete', onclick: () => { dialog.close(); act('ospeli_workorders_complete', w, { outcome: outSel.value }); } }, 'Close work order') : null,
         h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => dialog.close() }, 'Close')));
     dialog.showModal();
   }
@@ -160,7 +160,7 @@ export async function render(el, ctx) {
     if (ui.filter === 'repeat') rows = rows.filter((w) => w.repeat > 0);
     list.replaceChildren(...(rows.length ? rows.map((w) => h('li', {},
       h('button', {
-        type: 'button', class: `wo pr-${w.priority}${w.overdue ? ' is-over' : ''}`, 'data-wo': w.id, 'data-cmd': 'workorders.list',
+        type: 'button', class: `wo pr-${w.priority}${w.overdue ? ' is-over' : ''}`, 'data-wo': w.id, 'data-cmd': 'ospeli_workorders_list',
         'aria-label': `${w.id.toUpperCase()}, ${w.title}, ${w.assetName}, ${w.locationName}, ${PRIORITIES[w.priority].name}, ${slaText(w, now)}${w.repeat ? ', repeat fault' : ''}`,
         onclick: () => openWorkOrder(w),
       },
@@ -178,10 +178,10 @@ export async function render(el, ctx) {
   }
 
   const props = proposalsCard(ctx, {
-    match: (p) => p.command.startsWith('fault.') || p.command.startsWith('workorder.'),
-    describe: (p) => (p.command === 'fault.report'
+    match: (p) => p.command.startsWith('ospeli_workorders_'),
+    describe: (p) => (p.command === 'ospeli_workorders_report_fault'
       ? `Report: ${p.input.fault}, ${assets.get(p.input.assetId)?.name || p.input.assetId} (${PRIORITIES[p.input.priority]?.name || p.input.priority})`
-      : `${p.input.workOrderId?.toUpperCase()}: ${p.command === 'workorder.assign' ? `assign to ${TEAMS[p.input.team]}` : `close as ${OUTCOMES[p.input.outcome]}`}`),
+      : `${p.input.workOrderId?.toUpperCase()}: ${p.command === 'ospeli_workorders_assign' ? `assign to ${TEAMS[p.input.team]}` : `close as ${OUTCOMES[p.input.outcome]}`}`),
   });
 
   const queueFirst = ctx.role === 'estates-tech' && !deepAsset;

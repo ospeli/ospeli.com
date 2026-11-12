@@ -31,7 +31,7 @@ for (const width of [390, 1280]) {
     });
     if (width < 641) assert.ok(order.guide < order.steps, 'guide before steps on a phone');
 
-    await page.click('[data-cmd="map.try-suggestion"] >> nth=0');
+    await page.click('[data-cmd="ospeli_maps_try_suggestion"] >> nth=0');
     await page.waitForSelector('[data-test="bar-proposed"]');
     assert.match(await page.textContent('[data-test="map-title"]'), /Proposed/);
     assert.match(await page.textContent('[data-test="whatif-note"]'), /not a prediction/);
@@ -46,7 +46,7 @@ for (const width of [390, 1280]) {
     // The page shows what the command layer says.
     const viaCommand = await page.evaluate(async () => {
       const { runCommand } = await import('./core/commands.js');
-      return runCommand(window.ospeli.core, 'map.get', { mapId: 'map-001', format: 'short' }, { type: 'human', role: 'ops-manager' });
+      return runCommand(window.ospeli.core, 'ospeli_maps_get', { mapId: 'map-001', format: 'short' }, { type: 'human', role: 'ops-manager' });
     });
     assert.equal(viaCommand.changed, true);
     assert.ok(viaCommand.proposed.stats.elapsed < viaCommand.today.stats.elapsed);
@@ -65,30 +65,30 @@ test('add, change and remove a step; the numbers follow (390px)', async () => {
   await page.fill('#st-name', 'Patient checks in');
   await page.fill('#st-role', 'Reception');
   await page.fill('#st-work', '5');
-  await page.click('[data-cmd="map.step.add"]');
+  await page.click('[data-cmd="ospeli_maps_step_add"]');
   await page.waitForSelector('[data-test="step-list"] li');
   await page.fill('#st-name', 'Seen by a nurse');
   await page.fill('#st-role', 'Nurse');
   await page.fill('#st-wait', '20');
   await page.fill('#st-work', '10');
-  await page.click('[data-cmd="map.step.add"]');
+  await page.click('[data-cmd="ospeli_maps_step_add"]');
   await page.waitForFunction(() => document.querySelectorAll('[data-test="step-list"] li').length === 2);
   assert.equal(await statText(page), '35 min');
   // Personal details are refused with a reason.
   await page.fill('#st-name', 'Call 0700 123 4567');
   await page.fill('#st-role', 'Nurse');
-  await page.click('[data-cmd="map.step.add"]');
+  await page.click('[data-cmd="ospeli_maps_step_add"]');
   await page.waitForFunction(() => /personal details/.test(document.getElementById('toast').textContent));
   assert.equal(await page.locator('[data-test="step-list"] li').count(), 2);
   // Change the second step, then remove it.
   await page.click('[aria-label="Change step 2"]');
   await page.waitForFunction(() => document.getElementById('st-h')?.textContent === 'Change step 2');
   await page.fill('#st-wait', '0');
-  await page.click('[data-cmd="map.step.update"]');
+  await page.click('[data-cmd="ospeli_maps_step_update"]');
   await page.waitForFunction(() => document.querySelector('[data-test="pm-stats"] .pm-stat b').textContent === '15 min');
   await page.click('[aria-label="Change step 2"]');
   await page.waitForFunction(() => document.getElementById('st-h')?.textContent === 'Change step 2');
-  await page.click('[data-cmd="map.step.remove"]');
+  await page.click('[data-cmd="ospeli_maps_step_remove"]');
   await page.waitForFunction(() => document.querySelectorAll('[data-test="step-list"] li').length === 1);
   assert.ok(await noSideways(page) <= 0);
   assert.deepEqual(errors, []);
@@ -122,16 +122,16 @@ test('an agent only proposes a map change; a person accepts it on the page', asy
   // People switch agent access on (people-only command, through the test hook's core).
   await page.evaluate(async () => {
     const { runCommand } = await import('./core/commands.js');
-    await runCommand(window.ospeli.core, 'agents.set-access', { allowed: true }, { type: 'human', role: 'ops-manager' });
-    await runCommand(window.ospeli.core, 'agent.add', { name: 'flow-helper', role: 'ops-manager', days: 30 }, { type: 'human', role: 'ops-manager' });
+    await runCommand(window.ospeli.core, 'ospeli_agents_set_access', { allowed: true }, { type: 'human', role: 'ops-manager' });
+    await runCommand(window.ospeli.core, 'ospeli_agents_add', { name: 'flow-helper', role: 'ops-manager', days: 30 }, { type: 'human', role: 'ops-manager' });
   });
-  const p = await page.evaluate(() => window.ospeli.run('map.reset-proposed', { mapId: 'map-001' }, { agent: 'flow-helper', role: 'ops-manager' }));
+  const p = await page.evaluate(() => window.ospeli.run('ospeli_maps_reset_proposed', { mapId: 'map-001' }, { agent: 'flow-helper', role: 'ops-manager' }));
   assert.equal(p.status, 'proposed');
   await page.reload();
-  await page.waitForSelector('[data-test="proposals"] [data-cmd="proposal.accept"]');
+  await page.waitForSelector('[data-test="proposals"] [data-cmd="ospeli_proposals_accept"]');
   assert.match(await page.textContent('[data-test="proposals"]'), /map-001: Reset Proposed/);
-  await page.click('[data-test="proposals"] [data-cmd="proposal.accept"]');
-  await page.waitForFunction(() => !document.querySelector('[data-test="proposals"] [data-cmd="proposal.accept"]'));
+  await page.click('[data-test="proposals"] [data-cmd="ospeli_proposals_accept"]');
+  await page.waitForFunction(() => !document.querySelector('[data-test="proposals"] [data-cmd="ospeli_proposals_accept"]'));
   const audit = await page.evaluate(async () => (await window.ospeli.core.auditLog()).map((a) => `${a.actorType}:${a.action}`));
   assert.ok(audit.includes('agent:agent.proposed'));
   assert.ok(audit.includes('human:map.proposed-reset'));

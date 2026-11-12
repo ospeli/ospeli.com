@@ -37,6 +37,15 @@ const STATE = { type: 'string', enum: Object.keys(BED_STATES) };
 const TIME = { type: 'string', format: 'date-time' };
 const SYNTHETIC = { type: 'boolean', description: 'True while the data on this device is synthetic.' };
 
+// List reads never dump a whole table (tool-design rule, issue #39): each takes a limit, and says
+// how many there are in all and whether the answer was cut short. Counts are worked out before the cut.
+const LIMIT = (def, max, what) => ({ type: 'integer', minimum: 1, maximum: max, description: `At most this many ${what}. Default ${def}, ${max} at most. "total" and "truncated" in the answer say if there are more.` });
+const TOTAL = { type: 'integer', minimum: 0, description: 'How many there are in all, before the limit.' };
+const TRUNCATED = { type: 'boolean', description: 'True when the limit cut the list short. Narrow the filters or raise the limit.' };
+const FORMAT = (short, detailed) => ({ type: 'string', enum: ['short', 'detailed'], description: `short: ${short}. detailed (default): ${detailed}.` });
+const page = (list, limit, def) => ({ items: list.slice(0, limit ?? def), total: list.length, truncated: list.length > (limit ?? def) });
+const idsHint = (list, n = 8) => list.slice(0, n).map((x) => x.id).join(', ') + (list.length > n ? ', …' : '');
+
 const BED_STATE_SCHEMA = {
   type: 'object',
   required: ['id', 'name', 'wardId', 'state'],
@@ -61,29 +70,29 @@ const WRITE_OUTPUT = {
 
 // Bed actions (core/beds.js) and the state each one leaves the bed in.
 const BED_WRITES = [
-  { action: 'expect-discharge', name: 'bed.flag-expected-discharge', to: 'expected-discharge', roles: FLOOR,
+  { action: 'expect-discharge', name: 'ospeli_beds_flag_expected_discharge', to: 'expected-discharge', roles: FLOOR,
     summary: 'Flag that the patient in this bed is expected to go home today.',
     extra: { expectedAt: { ...TIME, description: 'When the patient is expected to leave. Defaults to now.' } } },
-  { action: 'cancel-expected', name: 'bed.cancel-expected-discharge', to: 'occupied', roles: FLOOR,
+  { action: 'cancel-expected', name: 'ospeli_beds_cancel_expected_discharge', to: 'occupied', roles: FLOOR,
     summary: 'Cancel an expected discharge; the patient stays.' },
-  { action: 'vacate', name: 'bed.mark-vacated', to: 'vacated', roles: FLOOR,
+  { action: 'vacate', name: 'ospeli_beds_mark_vacated', to: 'vacated', roles: FLOOR,
     summary: 'The patient has left: discharge them from the bed and mark it to clean.' },
-  { action: 'start-clean', name: 'bed.start-clean', to: 'cleaning', roles: FLOOR,
+  { action: 'start-clean', name: 'ospeli_beds_start_clean', to: 'cleaning', roles: FLOOR,
     summary: 'Cleaning of a vacated bed has started.' },
-  { action: 'finish-clean', name: 'bed.finish-clean', to: 'available', roles: FLOOR,
+  { action: 'finish-clean', name: 'ospeli_beds_finish_clean', to: 'available', roles: FLOOR,
     summary: 'Cleaning is finished: the bed is ready for the next patient.' },
-  { action: 'allocate', name: 'bed.allocate', to: 'allocated', roles: ['bed-manager', 'ae-nic', 'ward-nurse'],
+  { action: 'allocate', name: 'ospeli_beds_allocate', to: 'allocated', roles: ['bed-manager', 'ae-nic', 'ward-nurse'],
     summary: 'Hold an available bed for a patient waiting for a bed.',
-    extra: { encounter: { ...ID, description: 'The waiting patient\'s synthetic encounter id (from beds.board waiting).' } },
+    extra: { encounter: { ...ID, description: 'The waiting patient\'s synthetic encounter id (from ospeli_beds_board waiting).' } },
     required: ['encounter'] },
-  { action: 'cancel-allocation', name: 'bed.cancel-allocation', to: 'available', roles: ['bed-manager', 'ae-nic', 'ward-nurse'],
+  { action: 'cancel-allocation', name: 'ospeli_beds_cancel_allocation', to: 'available', roles: ['bed-manager', 'ae-nic', 'ward-nurse'],
     summary: 'Release a held bed; the patient goes back on the waiting list.' },
-  { action: 'admit', name: 'bed.admit', to: 'occupied', roles: FLOOR,
+  { action: 'admit', name: 'ospeli_beds_admit', to: 'occupied', roles: FLOOR,
     summary: 'The patient the bed was held for has arrived in it.' },
-  { action: 'out-of-service', name: 'bed.take-out-of-service', to: 'out-of-service', roles: [...FLOOR, 'estates-tech'],
+  { action: 'out-of-service', name: 'ospeli_beds_take_out_of_service', to: 'out-of-service', roles: [...FLOOR, 'estates-tech'],
     summary: 'Take an empty bed out of service, with a reason.',
     extra: { reason: { type: 'string', enum: OUT_OF_SERVICE_REASONS } }, required: ['reason'] },
-  { action: 'back-in-service', name: 'bed.return-to-service', to: 'available', roles: [...FLOOR, 'estates-tech'],
+  { action: 'back-in-service', name: 'ospeli_beds_return_to_service', to: 'available', roles: [...FLOOR, 'estates-tech'],
     summary: 'Put an out-of-service bed back into use.' },
 ];
 
@@ -97,6 +106,12 @@ const bedOut = (b, info) => ({
 async function loadBoard(core, events) {
   const [beds, wards] = await Promise.all([core.listEntities('bed'), core.listEntities('ward')]);
   return { beds, wards, info: new Map(beds.map((b) => [b.id, b])), board: deriveBoard(beds, events ?? await core.events()) };
+}
+
+// A wrong ward id says which ids would work. An agent is only told about the wards it may see.
+function noWard(wardId, wards, allowed) {
+  const can = wards.filter((w) => !allowed || allowed.has(w.id)).map((w) => ({ id: w.id, name: w.name }));
+  return new CommandError('not-found', `No ward ${wardId}. ${can.length ? `Use one of: ${idsHint(can)}.` : 'No ward is open to this caller.'}`, { wards: can });
 }
 
 async function wardOfBed(core, input) {
@@ -153,14 +168,17 @@ function bedWriteCommand(w) {
 
 const COMMAND_LIST = [
   {
-    name: 'beds.board',
-    summary: 'Live bed state for every ward (or one ward), the waiting-for-a-bed list and any conflicting events, derived from the event log.',
+    name: 'ospeli_beds_board',
+    summary: 'Live bed state for every ward (or one ward), the waiting-for-a-bed list and any conflicting events, derived from the event log. To find a free bed for a waiting patient use ospeli_beds_find_free instead: it answers in one short call. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
-    input: { type: 'object', additionalProperties: false, properties: { wardId: ID } },
+    input: { type: 'object', additionalProperties: false, properties: {
+      wardId: { ...ID, description: 'One ward, for example ward-a1. Leave out for every ward.' },
+      format: FORMAT('ward counts and the waiting list, no bed list', 'every bed too'),
+      limit: LIMIT(200, 2000, 'beds') } },
     output: {
-      type: 'object', required: ['asOf', 'synthetic', 'wards', 'beds', 'waiting', 'conflicts'],
+      type: 'object', required: ['asOf', 'synthetic', 'wards', 'beds', 'waiting', 'conflicts', 'total', 'truncated'],
       properties: {
-        asOf: TIME, synthetic: SYNTHETIC,
+        asOf: TIME, synthetic: SYNTHETIC, total: TOTAL, truncated: TRUNCATED,
         wards: { type: 'array', items: { type: 'object', required: ['id', 'name', 'counts'], properties: { id: ID, name: { type: 'string' }, counts: { type: 'object' } } } },
         beds: { type: 'array', items: BED_STATE_SCHEMA },
         waiting: { type: 'array', items: { type: 'object', required: ['encounter', 'decisionAt'], properties: { encounter: ID, wardId: { type: ['string', 'null'] }, decisionAt: TIME, requestedAt: TIME, allocatedBed: { type: ['string', 'null'] } } } },
@@ -171,15 +189,18 @@ const COMMAND_LIST = [
     async run(core, input, { wards: allowed }) {
       const { beds, wards, info, board } = await loadBoard(core);
       const keep = (wardId) => (!input.wardId || wardId === input.wardId) && (!allowed || allowed.has(wardId));
-      if (input.wardId && !wards.some((w) => w.id === input.wardId)) throw new CommandError('not-found', `No ward ${input.wardId}.`);
+      if (input.wardId && !wards.some((w) => w.id === input.wardId)) throw noWard(input.wardId, wards, allowed);
       const wardIds = new Set(wards.map((w) => w.id).filter(keep));
+      const all = beds.filter((b) => wardIds.has(b.parentId));
+      const cut = input.format === 'short' ? { items: [], total: all.length, truncated: false } : page(all, input.limit, 200);
       return {
+        total: cut.total, truncated: cut.truncated,
         asOf: core.now(),
         synthetic: (await core.getMeta('synthetic', false)) === true,
         wards: wards.filter((w) => wardIds.has(w.id)).map((w) => ({
           id: w.id, name: w.name, counts: countStates(beds.filter((b) => b.parentId === w.id).map((b) => board.beds.get(b.id))),
         })),
-        beds: beds.filter((b) => wardIds.has(b.parentId)).map((b) => bedOut(board.beds.get(b.id), b)),
+        beds: cut.items.map((b) => bedOut(board.beds.get(b.id), b)),
         waiting: board.waiting.filter((x) => !x.wardId || wardIds.has(x.wardId) || !allowed),
         conflicts: board.conflicts.filter((c) => wardIds.has(info.get(c.bedId)?.parentId)),
       };
@@ -187,7 +208,7 @@ const COMMAND_LIST = [
     example: { input: { wardId: 'ward-a1' } },
   },
   {
-    name: 'bed.get',
+    name: 'ospeli_beds_get',
     summary: 'One bed: its state and the commands the caller\'s role may run on it next.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, required: ['bedId'], properties: { bedId: ID } },
@@ -203,18 +224,90 @@ const COMMAND_LIST = [
     },
     example: { input: { bedId: 'ward-a1-bed-01' } },
   },
+  {
+    name: 'ospeli_beds_find_free',
+    summary: 'Find a free bed for a patient who is waiting: the beds that are available now (the ward the patient was requested for first), and who has waited longest. One call instead of reading the whole board. It lists; it does not judge whether a bed suits a patient, and it holds nothing. To hold a bed, a person runs ospeli_beds_allocate (an agent\'s allocate becomes a proposal). Read-only.',
+    kind: 'read', roles: ALL_ROLES, approval: false,
+    input: { type: 'object', additionalProperties: false, properties: {
+      wardId: { ...ID, description: 'Only look on this ward, for example ward-a1. Leave out to look on every ward the caller may see.' },
+      forEncounter: { ...ID, description: 'The waiting patient\'s synthetic encounter id, for example enc-000123. Leave out to see who has waited longest.' },
+      limit: { type: 'integer', minimum: 1, maximum: 20, description: 'At most this many beds. Default 5, 20 at most. totalFree and truncated say if there are more.' } } },
+    output: {
+      type: 'object', required: ['asOf', 'synthetic', 'wardsSearched', 'beds', 'totalFree', 'truncated', 'waiting', 'totalWaiting', 'order', 'nextStep', 'note'],
+      properties: {
+        asOf: TIME, synthetic: SYNTHETIC,
+        wardsSearched: { type: 'array', items: { type: 'object', required: ['id', 'name'], properties: { id: ID, name: { type: 'string' } } } },
+        beds: { type: 'array', items: { type: 'object', required: ['bedId', 'bedName', 'wardId', 'wardName', 'requestedWard', 'sideRoom'], properties: {
+          bedId: ID, bedName: { type: 'string' }, wardId: ID, wardName: { type: 'string' },
+          requestedWard: { type: 'boolean', description: 'True when this is the ward the patient was requested for.' },
+          sideRoom: { type: 'boolean' }, freeSince: { type: ['string', 'null'], description: 'When the bed became available.' } } } },
+        totalFree: { type: 'integer', minimum: 0, description: 'Available beds on the wards searched, before the limit.' }, truncated: TRUNCATED,
+        waiting: { type: 'array', description: 'Patients waiting with no bed held: the one asked for, or the three who have waited longest.', items: { type: 'object', required: ['encounter', 'decisionAt', 'waitingMinutes'], properties: {
+          encounter: ID, wardId: { type: ['string', 'null'], description: 'The ward requested, if one was.' }, wardName: { type: ['string', 'null'] },
+          decisionAt: TIME, waitingMinutes: { type: 'integer', minimum: 0, description: 'Minutes since the decision to admit.' } } } },
+        totalWaiting: { type: 'integer', minimum: 0, description: 'Patients waiting with no bed held, in the caller\'s view.' },
+        order: { type: 'string', description: 'How the lists are ordered, in words. An order, not a recommendation.' },
+        nextStep: { type: ['object', 'null'], description: 'The command that would hold the first listed bed for the first listed patient. A person decides; any listed bed can be used instead.', properties: { command: { type: 'string' }, input: { type: 'object' } } },
+        note: { type: 'string' },
+      },
+    },
+    wardOf: (core, input) => input.wardId ?? null,
+    size: (out) => ({ returned: out.beds.length, total: out.totalFree }),
+    async run(core, input, { wards: allowed }) {
+      const { beds, wards, board } = await loadBoard(core);
+      if (input.wardId && !wards.some((w) => w.id === input.wardId)) throw noWard(input.wardId, wards, allowed);
+      const now = core.now();
+      const wardName = new Map(wards.map((w) => [w.id, w.name]));
+      const open = wards.filter((w) => (!input.wardId || w.id === input.wardId) && (!allowed || allowed.has(w.id)));
+      const openIds = new Set(open.map((w) => w.id));
+      // Same view of the waiting list as ospeli_beds_board: an agent sees patients with no ward
+      // requested, and patients requested for a ward it may see.
+      const queue = board.waiting.filter((x) => !x.allocatedBed && (!allowed || !x.wardId || allowed.has(x.wardId)))
+        .sort((a, b) => (a.decisionAt < b.decisionAt ? -1 : 1));
+      let patients = queue.slice(0, 3);
+      if (input.forEncounter) {
+        const one = queue.find((x) => x.encounter === input.forEncounter);
+        // The same answer whether the patient does not exist, already has a bed held, or is outside the caller's wards.
+        if (!one) throw new CommandError('not-found', `No patient ${input.forEncounter} is waiting for a bed in your view. Leave forEncounter out to see who is waiting.`);
+        patients = [one];
+      }
+      const wanted = patients[0]?.wardId ?? null;
+      const free = beds.filter((b) => openIds.has(b.parentId) && board.beds.get(b.id)?.state === 'available')
+        .map((b) => ({ b, s: board.beds.get(b.id) }))
+        .sort((x, y) => ((y.b.parentId === wanted) - (x.b.parentId === wanted)) || ((x.s.since || '') < (y.s.since || '') ? -1 : (x.s.since || '') > (y.s.since || '') ? 1 : 0) || (x.b.name < y.b.name ? -1 : 1));
+      const cut = page(free, input.limit, 5);
+      const first = cut.items[0]; const who = patients[0];
+      return {
+        asOf: now, synthetic: (await core.getMeta('synthetic', false)) === true,
+        wardsSearched: open.map((w) => ({ id: w.id, name: w.name })),
+        beds: cut.items.map(({ b, s }) => ({ bedId: b.id, bedName: b.name, wardId: b.parentId, wardName: wardName.get(b.parentId) || b.parentId, requestedWard: !!wanted && b.parentId === wanted, sideRoom: !!b.sideRoom, freeSince: s.since ?? null })),
+        totalFree: cut.total, truncated: cut.truncated,
+        waiting: patients.map((x) => ({ encounter: x.encounter, wardId: x.wardId ?? null, wardName: x.wardId ? wardName.get(x.wardId) || null : null, decisionAt: x.decisionAt, waitingMinutes: Math.max(0, Math.round((Date.parse(now) - Date.parse(x.decisionAt)) / 60000)) })),
+        totalWaiting: queue.length,
+        order: 'Beds: the ward the first listed patient was requested for comes first, then the bed that has been free longest. Patients: longest wait first. This is an order, not a recommendation.',
+        nextStep: first && who ? { command: 'ospeli_beds_allocate', input: { bedId: first.b.id, encounter: who.encounter, expectedState: 'available' } } : null,
+        note: 'Ospeli lists free beds; it does not judge whether a bed suits a patient. A person decides, and an agent\'s allocate is a proposal a person accepts or declines.',
+      };
+    },
+    example: { input: { wardId: 'ward-a1', limit: 5 } },
+  },
   ...BED_WRITES.map(bedWriteCommand),
   {
-    name: 'kpi.list',
-    summary: 'Every KPI definition: numerator, denominator, exclusions, source standard, owner and target.',
+    name: 'ospeli_kpi_list',
+    summary: 'Every KPI definition: numerator, denominator, exclusions, source standard, owner and target. Use ospeli_kpi_get for a number. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
-    input: { type: 'object', additionalProperties: false, properties: {} },
-    output: { type: 'object', required: ['kpis'], properties: { kpis: { type: 'array', items: { type: 'object', required: ['id', 'name'] } } } },
-    async run() { return { kpis: KPIS.map((k) => ({ ...k })) }; },
+    input: { type: 'object', additionalProperties: false, properties: {
+      format: FORMAT('id, name, unit and target only', 'the full definition'), limit: LIMIT(50, 200, 'KPIs') } },
+    output: { type: 'object', required: ['kpis', 'total', 'truncated'], properties: { kpis: { type: 'array', items: { type: 'object', required: ['id', 'name'] } }, total: TOTAL, truncated: TRUNCATED } },
+    async run(core, input) {
+      const cut = page(KPIS, input.limit, 50);
+      const short = ({ id, name, unit, target }) => ({ id, name, ...(unit != null ? { unit } : {}), ...(target != null ? { target } : {}) });
+      return { kpis: cut.items.map((k) => (input.format === 'short' ? short(k) : { ...k })), total: cut.total, truncated: cut.truncated };
+    },
     example: { input: {} },
   },
   {
-    name: 'kpi.value',
+    name: 'ospeli_kpi_get',
     summary: 'Calculate one KPI from the event log, with its definition beside the number.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: { type: 'string', enum: KPIS.map((k) => k.id) }, days: { type: 'integer', minimum: 1, maximum: 90 } } },
@@ -230,7 +323,7 @@ const COMMAND_LIST = [
     example: { input: { id: 'occupancy' } },
   },
   {
-    name: 'agents.access',
+    name: 'ospeli_agents_access',
     summary: 'Whether agents may work on this hospital, and on which wards. Off by default.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, properties: {} },
@@ -239,7 +332,7 @@ const COMMAND_LIST = [
     example: { input: {} },
   },
   {
-    name: 'agents.set-access',
+    name: 'ospeli_agents_set_access',
     summary: 'Switch agent access on or off for the hospital and for each ward. People only.',
     kind: 'write', roles: ['ops-manager', 'coo'], approval: true, agents: false,
     input: { type: 'object', additionalProperties: false, required: ['allowed'], properties: { allowed: { type: 'boolean' }, wards: { type: 'object', additionalProperties: { type: 'boolean' } } } },
@@ -282,7 +375,7 @@ const publicAgent = (r, now) => ({ name: r.name, role: r.role, roleName: roleByI
 
 COMMAND_LIST.push(
   {
-    name: 'agents.list',
+    name: 'ospeli_agents_list',
     summary: 'The Agents screen as data: the dial (off or advise), the agents this site allows, and what each agent did in the last 7 days. People only.',
     kind: 'read', roles: ALL_ROLES, approval: false, agents: false,
     input: { type: 'object', additionalProperties: false, properties: {} },
@@ -338,7 +431,7 @@ COMMAND_LIST.push(
     example: { input: {} },
   },
   {
-    name: 'agent.add',
+    name: 'ospeli_agents_add',
     summary: 'Put an agent on this site\'s list: its name, the one role it works for, the wards it may see and how many days until it ends (90 at most). Adding a name again replaces its entry. People only.',
     kind: 'write', roles: AGENT_ADMINS, approval: true, agents: false,
     input: {
@@ -367,7 +460,7 @@ COMMAND_LIST.push(
     example: { input: { name: 'night-flow-helper', role: 'bed-manager', wards: ['ward-a1'], days: 30 } },
   },
   {
-    name: 'agent.remove',
+    name: 'ospeli_agents_remove',
     summary: 'Take an agent off this site\'s list. It is refused from its next call. Its proposals still waiting are marked so nobody accepts them without looking. People only.',
     kind: 'write', roles: AGENT_ADMINS, approval: true, agents: false,
     input: { type: 'object', additionalProperties: false, required: ['name'], properties: { name: { type: 'string', pattern: AGENT_NAME } } },
@@ -383,7 +476,7 @@ COMMAND_LIST.push(
     example: { input: { name: 'night-flow-helper' } },
   },
   {
-    name: 'agents.stop-all',
+    name: 'ospeli_agents_stop_all',
     summary: 'Stop every agent on this site now: the dial goes to off and every ward is switched off. Anyone can stop; only the operations manager or chief operating officer can start again. People only.',
     kind: 'write', roles: ALL_ROLES, approval: true, agents: false,
     input: { type: 'object', additionalProperties: false, properties: {} },
@@ -411,8 +504,10 @@ const PROPOSAL = {
 };
 export const DECLINE_REASONS = ['Not needed', 'Wrong bed or patient', 'Already done', 'Needs a conversation first', 'Other'];
 
+// Proposals queued under an old command name (before issue #39) read back under the new one.
+const proposalsOf = async (core) => (await core.proposals()).map((p) => ({ ...p, command: canonicalName(p.command) || p.command }));
 async function pendingProposal(core, id) {
-  const p = (await core.proposals()).find((x) => x.id === id);
+  const p = (await proposalsOf(core)).find((x) => x.id === id);
   if (!p) throw new CommandError('not-found', `No proposal ${id}.`);
   if (p.status !== 'pending') throw new CommandError('conflict', `That proposal is already ${p.status}.`, { status: p.status });
   return p;
@@ -422,23 +517,24 @@ const mayDecide = (p, role) => !!commandByName(p.command)?.roles.includes(role);
 // Agent proposals (issue #17, backlog A4): people see what agents asked for, and accept or decline.
 COMMAND_LIST.push(
   {
-    name: 'proposals.list',
+    name: 'ospeli_proposals_list',
     summary: 'Agent proposals and what happened to them. People see every proposal; an agent sees only its own.',
     kind: 'read', roles: ALL_ROLES, approval: false,
-    input: { type: 'object', additionalProperties: false, properties: { status: { type: 'string', enum: ['pending', 'accepted', 'declined', 'expired'] } } },
-    output: { type: 'object', required: ['proposals'], properties: { proposals: { type: 'array', items: PROPOSAL } } },
+    input: { type: 'object', additionalProperties: false, properties: { status: { type: 'string', enum: ['pending', 'accepted', 'declined', 'expired'] }, limit: LIMIT(20, 200, 'proposals, oldest first') } },
+    output: { type: 'object', required: ['proposals', 'total', 'truncated'], properties: { proposals: { type: 'array', items: PROPOSAL }, total: TOTAL, truncated: TRUNCATED } },
     async run(core, input, { actor }) {
-      let list = await core.proposals();
+      let list = await proposalsOf(core);
       if (actor.type === 'agent') list = list.filter((p) => p.agent === actor.agent);
       if (input.status) list = list.filter((p) => p.status === input.status);
       const now = core.now();
       const live = new Set((await agentList(core)).filter((r) => Date.parse(r.until) > Date.parse(now)).map((r) => agentKey(r.name)));
-      return { proposals: list.map((p) => ({ ...p, canDecide: actor.type === 'human' && p.status === 'pending' && mayDecide(p, actor.role), agentOnList: live.has(agentKey(p.agent)) })) };
+      const cut = page(list, input.limit, 20);
+      return { proposals: cut.items.map((p) => ({ ...p, canDecide: actor.type === 'human' && p.status === 'pending' && mayDecide(p, actor.role), agentOnList: live.has(agentKey(p.agent)) })), total: cut.total, truncated: cut.truncated };
     },
     example: { input: { status: 'pending' } },
   },
   {
-    name: 'proposal.accept',
+    name: 'ospeli_proposals_accept',
     summary: 'Accept an agent\'s proposal: its command runs now, as you, against the bed as the agent saw it. People only.',
     kind: 'write', roles: ALL_ROLES, approval: true, agents: false,
     input: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: ID } },
@@ -465,7 +561,7 @@ COMMAND_LIST.push(
     example: { input: { id: 'prop-0001' } },
   },
   {
-    name: 'proposal.decline',
+    name: 'ospeli_proposals_decline',
     summary: 'Decline an agent\'s proposal, with a reason. Nothing changes. People only.',
     kind: 'write', roles: ALL_ROLES, approval: true, agents: false,
     input: { type: 'object', additionalProperties: false, required: ['id', 'reason'], properties: { id: ID, reason: { type: 'string', enum: DECLINE_REASONS } } },
@@ -489,7 +585,7 @@ const WO_SCHEMA = {
     state: { type: 'string', enum: Object.keys(WO_STATES) }, reportedAt: TIME, reportedByRole: { type: 'string' },
     assignedAt: { type: ['string', 'null'] }, completedAt: { type: ['string', 'null'] }, outcome: { type: ['string', 'null'] },
     dueAt: { ...TIME, description: 'Reported time plus the response target for its priority (urgent 4 h, high 24 h, routine 72 h; examples, set locally).' },
-    overdue: { type: 'boolean' }, metSla: { type: ['boolean', 'null'] },
+    overdue: { type: 'boolean' }, overdueByMinutes: { type: 'integer', minimum: 0, description: 'Minutes past the due time; 0 when not overdue.' }, metSla: { type: ['boolean', 'null'] },
     repeat: { type: 'integer', minimum: 0, description: 'Earlier faults on the same asset in the 30 days before this one. 1 or more is a repeat fault.' },
   },
 };
@@ -517,9 +613,13 @@ async function wardOfWorkOrder(core, input) {
   return rep ? wardOfAsset(core, rep.subject) : null;
 }
 
-function woOut(w, assets, places) {
+function woOut(w, assets, places, now, short = false) {
   const a = assets.get(w.assetId); const loc = a ? places.get(a.parentId) : null;
-  return { ...w, assetName: a?.name ?? w.assetId, locationId: a?.parentId ?? null, locationName: loc?.name ?? '' };
+  const full = { ...w, assetName: a?.name ?? w.assetId, locationId: a?.parentId ?? null, locationName: loc?.name ?? '',
+    overdueByMinutes: w.overdue ? Math.max(0, Math.round((Date.parse(now) - Date.parse(w.dueAt)) / 60000)) : 0 };
+  if (!short) return full;
+  const { id, assetId, assetName, locationName, title, team, priority, state, reportedAt, dueAt, overdue, overdueByMinutes, repeat } = full;
+  return { id, assetId, assetName, locationName, title, team, priority, state, reportedAt, dueAt, overdue, overdueByMinutes, repeat };
 }
 
 function workOrderWrite({ name, summary, roles, to, extra, required, build }) {
@@ -551,34 +651,43 @@ function workOrderWrite({ name, summary, roles, to, extra, required, build }) {
 
 COMMAND_LIST.push(
   {
-    name: 'assets.list',
-    summary: 'Assets that can have a fault, with where they are and the faults that can be reported for each.',
+    name: 'ospeli_assets_list',
+    summary: 'Assets that can have a fault, with where they are and the faults that can be reported for each. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
-    input: { type: 'object', additionalProperties: false, properties: { locationId: ID } },
-    output: { type: 'object', required: ['locations', 'assets'], properties: {
+    input: { type: 'object', additionalProperties: false, properties: {
+      locationId: { ...ID, description: 'A ward, room or other place id, for example ward-a1. Leave out for every place.' },
+      format: FORMAT('id, name, kind and place only', 'the faults that can be reported for each asset too'), limit: LIMIT(50, 1000, 'assets') } },
+    output: { type: 'object', required: ['locations', 'assets', 'total', 'truncated'], properties: {
+      total: TOTAL, truncated: TRUNCATED,
       locations: { type: 'array', items: { type: 'object', required: ['id', 'name', 'type'], properties: { id: ID, name: { type: 'string' }, type: { type: 'string' } } } },
-      assets: { type: 'array', items: { type: 'object', required: ['id', 'name', 'kind', 'locationId', 'faults'], properties: { id: ID, name: { type: 'string' }, kind: { type: 'string' }, locationId: ID, faults: { type: 'array', items: { type: 'string' } } } } } } },
+      assets: { type: 'array', items: { type: 'object', required: ['id', 'name', 'kind', 'locationId'], properties: { id: ID, name: { type: 'string' }, kind: { type: 'string' }, locationId: ID, faults: { type: 'array', items: { type: 'string' } } } } } } },
     wardOf: (core, input) => (String(input.locationId || '').startsWith('ward-') ? input.locationId : null),
     async run(core, input, { wards: allowed }) {
       const [assets, places] = await Promise.all([core.listEntities('asset'), placesById(core)]);
-      const keep = assets.filter((a) => (!input.locationId || a.parentId === input.locationId) && (!allowed || allowed.has(a.parentId)));
+      const cut = page(assets.filter((a) => (!input.locationId || a.parentId === input.locationId) && (!allowed || allowed.has(a.parentId))), input.limit, 50);
+      const keep = cut.items;
       const locIds = new Set(keep.map((a) => a.parentId));
       return {
+        total: cut.total, truncated: cut.truncated,
         locations: [...places.values()].filter((p) => locIds.has(p.id)).map((p) => ({ id: p.id, name: p.name, type: p.type })),
-        assets: keep.map((a) => ({ id: a.id, name: a.name, kind: a.kind, locationId: a.parentId, faults: faultsFor(a.kind) })),
+        assets: keep.map((a) => ({ id: a.id, name: a.name, kind: a.kind, locationId: a.parentId, ...(input.format === 'short' ? {} : { faults: faultsFor(a.kind) }) })),
       };
     },
     example: { input: { locationId: 'ward-a1' } },
   },
   {
-    name: 'workorders.list',
-    summary: 'The work-order queue: open (or completed) work orders with priority, team, SLA due time, overdue flag and repeat-fault count, most urgent first.',
+    name: 'ospeli_workorders_list',
+    summary: 'The work-order queue: open (or completed) work orders with priority, team, due time, overdue flag and repeat-fault count, overdue and most urgent first. For "what is overdue on this ward" pass overdue: true and locationId. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, properties: {
       state: { type: 'string', enum: ['open', 'completed', 'all'], description: 'open (default) means reported or assigned.' },
-      locationId: ID, assetId: ID } },
-    output: { type: 'object', required: ['asOf', 'synthetic', 'workOrders', 'counts'], properties: {
-      asOf: TIME, synthetic: SYNTHETIC, workOrders: { type: 'array', items: WO_SCHEMA },
+      overdue: { type: 'boolean', description: 'true: only open work orders past their due time. Only with state open (the default).' },
+      locationId: { ...ID, description: 'A ward, room or other place id, for example ward-a1.' },
+      assetId: { ...ID, description: 'One asset, for example asset-a1-sink-1.' },
+      format: FORMAT('what, where, priority, team, due time and overdue', 'who reported it, assignment and outcome too'),
+      limit: LIMIT(20, 500, 'work orders') } },
+    output: { type: 'object', required: ['asOf', 'synthetic', 'workOrders', 'counts', 'total', 'truncated'], properties: {
+      asOf: TIME, synthetic: SYNTHETIC, total: TOTAL, truncated: TRUNCATED, workOrders: { type: 'array', items: WO_SCHEMA },
       counts: { type: 'object', required: ['open', 'overdue', 'repeat'], properties: { open: { type: 'integer' }, overdue: { type: 'integer' }, repeat: { type: 'integer' } } } } },
     wardOf: (core, input) => (String(input.locationId || '').startsWith('ward-') ? input.locationId : input.assetId ? wardOfAsset(core, input.assetId) : null),
     async run(core, input, { wards: allowed }) {
@@ -590,24 +699,31 @@ COMMAND_LIST.push(
         .filter((w) => (!input.assetId || w.assetId === input.assetId) && (!input.locationId || assets.get(w.assetId)?.parentId === input.locationId));
       const open = all.filter((w) => w.state !== 'completed');
       const state = input.state || 'open';
-      const pick = state === 'all' ? all : state === 'open' ? open : all.filter((w) => w.state === 'completed');
+      if (input.overdue && state !== 'open') throw new CommandError('invalid-input', 'overdue: true only works with open work orders. For example { "state": "open", "overdue": true }.', { example: { state: 'open', overdue: true } });
+      if (input.locationId && !places.has(input.locationId)) {
+        const can = [...places.values()].filter((pl) => !allowed || allowed.has(pl.id)).map((pl) => ({ id: pl.id, name: pl.name }));
+        throw new CommandError('not-found', `No place ${input.locationId}. ${can.length ? `Use one of: ${idsHint(can)}.` : 'No place is open to this caller.'}`, { locations: can.slice(0, 50) });
+      }
+      const pick = state === 'all' ? all : state === 'open' ? open.filter((w) => !input.overdue || w.overdue) : all.filter((w) => w.state === 'completed');
       const rank = { urgent: 0, high: 1, routine: 2 };
       pick.sort(state === 'completed' ? (a, b) => (a.completedAt < b.completedAt ? 1 : -1)
         : (a, b) => (b.overdue - a.overdue) || (rank[a.priority] - rank[b.priority]) || (a.dueAt < b.dueAt ? -1 : 1));
+      const cut = page(pick, input.limit, 20);
       return {
         asOf: now, synthetic: (await core.getMeta('synthetic', false)) === true,
-        workOrders: pick.map((w) => woOut(w, assets, places)),
+        workOrders: cut.items.map((w) => woOut(w, assets, places, now, input.format === 'short')),
+        total: cut.total, truncated: cut.truncated,
         counts: { open: open.length, overdue: open.filter((w) => w.overdue).length, repeat: open.filter((w) => w.repeat > 0).length },
       };
     },
     example: { input: { state: 'open' } },
   },
   {
-    name: 'fault.report',
+    name: 'ospeli_workorders_report_fault',
     summary: 'Report a fault on an asset. Opens a work order with a priority and an SLA due time, and says if it is a repeat fault.',
     kind: 'write', roles: ['ward-nurse', 'bed-manager', 'ae-nic', 'estates-tech', 'ops-manager'], approval: true,
     input: { type: 'object', additionalProperties: false, required: ['assetId', 'fault', 'priority'], properties: {
-      assetId: ID, fault: { type: 'string', enum: ALL_FAULTS, description: 'Pick from the asset\'s faults (assets.list). No free text, so no personal details.' },
+      assetId: ID, fault: { type: 'string', enum: ALL_FAULTS, description: 'Pick from the asset\'s faults (ospeli_assets_list). No free text, so no personal details.' },
       priority: { type: 'string', enum: Object.keys(PRIORITIES) } } },
     output: WO_WRITE_OUTPUT,
     wardOf: (core, input) => wardOfAsset(core, input.assetId),
@@ -628,7 +744,7 @@ COMMAND_LIST.push(
   },
   {
     ...workOrderWrite({
-      name: 'workorder.assign', summary: 'Assign (or re-assign) an open work order to a team. Teams, not named people.',
+      name: 'ospeli_workorders_assign', summary: 'Assign (or re-assign) an open work order to a team. Teams, not named people.',
       roles: ['estates-tech', 'ops-manager'], to: 'assigned', required: ['team'],
       extra: { team: { type: 'string', enum: Object.keys(TEAMS) } },
       build: (w, input, role, at) => ({ type: 'workorder.assigned', subject: w.id, actorRole: role, at, data: { asset: w.assetId, trade: input.team } }),
@@ -637,7 +753,7 @@ COMMAND_LIST.push(
   },
   {
     ...workOrderWrite({
-      name: 'workorder.complete', summary: 'Close a work order with its outcome: fixed, escalated or no fault found.',
+      name: 'ospeli_workorders_complete', summary: 'Close a work order with its outcome: fixed, escalated or no fault found.',
       roles: ['estates-tech'], to: 'completed', required: ['outcome'],
       extra: { outcome: { type: 'string', enum: Object.keys(OUTCOMES) } },
       build: (w, input, role, at) => ({ type: 'workorder.completed', subject: w.id, actorRole: role, at, data: { asset: w.assetId, outcome: input.outcome } }),
@@ -649,13 +765,13 @@ COMMAND_LIST.push(
 // Process maps (backlog PM1): map a process step by step, see where the time goes, and try a
 // change in a Proposed version beside Today. Nothing here changes how the hospital runs, but an
 // agent still only proposes; a person accepts. The guide is rule-based, explainable, and has an
-// off switch (map.guide.set, people only). Maps are kept on this device (setting "process-maps").
-const MAP_ID = { type: 'string', pattern: '^map-[0-9]{3,}$', description: 'A map id from maps.list, e.g. map-001.' };
-const STEP_ID = { type: 'string', pattern: '^map-[0-9]{3,}-s[0-9]+$', description: 'A step id from map.get, e.g. map-001-s3.' };
+// off switch (ospeli_maps_guide_set, people only). Maps are kept on this device (setting "process-maps").
+const MAP_ID = { type: 'string', pattern: '^map-[0-9]{3,}$', description: 'A map id from ospeli_maps_list, e.g. map-001.' };
+const STEP_ID = { type: 'string', pattern: '^map-[0-9]{3,}-s[0-9]+$', description: 'A step id from ospeli_maps_get, e.g. map-001-s3.' };
 const VERSION = { type: 'string', enum: MAP_VERSIONS, description: '"today" is the process as it runs now; "proposed" is the what-if. Defaults to today.' };
 const MINUTES = { type: 'integer', minimum: 0, maximum: MAX_MINUTES };
 const STEP_TEXT = { type: 'string', minLength: 1, maxLength: 140 };
-const REVISION = { type: 'integer', minimum: 1, description: 'The map revision the caller last saw (from map.get). If the map changed since, the command is refused (conflict).' };
+const REVISION = { type: 'integer', minimum: 1, description: 'The map revision the caller last saw (from ospeli_maps_get). If the map changed since, the command is refused (conflict).' };
 const MAP_STEP = {
   type: 'object', required: ['id', 'name', 'role', 'wait', 'work', 'msg', 'par'],
   properties: {
@@ -681,7 +797,7 @@ const SUGGESTION = {
   properties: {
     id: { type: 'string' }, kind: { type: 'string', enum: ['time', 'ask'] }, title: { type: 'string' }, text: { type: 'string' },
     why: { type: 'string', description: 'The rule or data behind it, so a person can check it.' }, stepId: STEP_ID,
-    tryLabel: { type: 'string' }, tryable: { type: 'boolean', description: 'map.try-suggestion can apply it to the Proposed version.' },
+    tryLabel: { type: 'string' }, tryable: { type: 'boolean', description: 'ospeli_maps_try_suggestion can apply it to the Proposed version.' },
     tried: { type: 'boolean' },
   },
 };
@@ -700,7 +816,8 @@ async function loadMap(core, mapId) {
   const store = mapStore(await core.getMeta(MAPS_KEY, null));
   const map = store.maps.find((m) => m.id === mapId);
   if (!map) {
-    throw new CommandError('not-found', `No map ${mapId}. Use maps.list to see the maps on this device${store.maps.length ? ` (for example ${store.maps[0].id})` : ''}, or map.create to start one.`);
+    throw new CommandError('not-found', `No map ${mapId}. Use ospeli_maps_list to see the maps on this device${store.maps.length ? ` (for example ${store.maps[0].id})` : ''}, or ospeli_maps_create to start one.`,
+      { maps: store.maps.slice(0, 20).map((m) => ({ id: m.id, title: m.title })) });
   }
   return { store, map };
 }
@@ -734,10 +851,10 @@ function mapWrite({ name, summary, required = [], props, example, mutate, audit 
       await core.updateMeta(MAPS_KEY, async (raw) => {
         const store = mapStore(raw);
         const i = store.maps.findIndex((m) => m.id === input.mapId);
-        if (i < 0) throw new CommandError('not-found', `No map ${input.mapId}. Use maps.list to see the maps on this device.`);
+        if (i < 0) throw new CommandError('not-found', `No map ${input.mapId}. Use ospeli_maps_list to see the maps on this device.`);
         const map = JSON.parse(JSON.stringify(store.maps[i]));
         if (input.expectedRevision && map.revision !== input.expectedRevision) {
-          throw new CommandError('conflict', 'This map changed since you opened it. Open it again (map.get) and retry.', { revision: map.revision });
+          throw new CommandError('conflict', 'This map changed since you opened it. Open it again (ospeli_maps_get) and retry.', { revision: map.revision });
         }
         out = mutate(map, input, core) || {};
         map.revision += 1; map.updatedAt = core.now();
@@ -755,7 +872,7 @@ function mapWrite({ name, summary, required = [], props, example, mutate, audit 
 function stepIndex(map, version, stepId) {
   const list = map[version];
   const i = list.findIndex((s) => s.id === stepId);
-  if (i < 0) throw new CommandError('not-found', `No step ${stepId} in the ${version} version of this map. Step ids come from map.get.`);
+  if (i < 0) throw new CommandError('not-found', `No step ${stepId} in the ${version} version of this map. Step ids come from ospeli_maps_get.`);
   return i;
 }
 
@@ -769,24 +886,25 @@ const visibleSuggestions = (map, list) => suggest(list)
 
 COMMAND_LIST.push(
   {
-    name: 'maps.list',
+    name: 'ospeli_maps_list',
     summary: 'The process maps on this device, with steps and start-to-finish time for Today and Proposed, plus the example processes a new map can start from. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
-    input: { type: 'object', additionalProperties: false, properties: {} },
-    output: { type: 'object', required: ['guideOn', 'maps', 'examples'], properties: {
-      guideOn: { type: 'boolean' },
+    input: { type: 'object', additionalProperties: false, properties: { limit: LIMIT(20, 200, 'maps') } },
+    output: { type: 'object', required: ['guideOn', 'maps', 'examples', 'total', 'truncated'], properties: {
+      guideOn: { type: 'boolean' }, total: TOTAL, truncated: TRUNCATED,
       maps: { type: 'array', items: { type: 'object', required: ['id', 'title', 'steps'], properties: {
         id: MAP_ID, title: { type: 'string' }, from: { type: 'string' }, steps: { type: 'integer' },
         elapsedToday: { type: 'integer' }, elapsedProposed: { type: 'integer' }, revision: { type: 'integer' }, updatedAt: TIME } } },
       examples: { type: 'array', items: { type: 'object', required: ['from', 'title'], properties: { from: { type: 'string' }, title: { type: 'string' } } } } } },
-    async run(core) {
+    async run(core, input) {
       const store = mapStore(await core.getMeta(MAPS_KEY, null));
-      return { guideOn: store.guideOn !== false, maps: store.maps.map(mapSummary), examples: Object.entries(MAP_EXAMPLES).map(([from, e]) => ({ from, title: e.title })) };
+      const cut = page(store.maps, input.limit, 20);
+      return { guideOn: store.guideOn !== false, total: cut.total, truncated: cut.truncated, maps: cut.items.map(mapSummary), examples: Object.entries(MAP_EXAMPLES).map(([from, e]) => ({ from, title: e.title })) };
     },
     example: { input: {} },
   },
   {
-    name: 'map.get',
+    name: 'ospeli_maps_get',
     summary: 'One process map: its steps (Today and Proposed) and the numbers for each: start to finish, hands-on time, waiting, handoffs and the biggest wait. Use "short" for the numbers only. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, required: ['mapId'], properties: {
@@ -809,7 +927,40 @@ COMMAND_LIST.push(
     example: { input: { mapId: 'map-001', format: 'short' } },
   },
   {
-    name: 'map.suggest',
+    name: 'ospeli_maps_summary',
+    summary: 'One process map in one short call: the numbers for Today and Proposed, the difference between them, the biggest wait and the guide\'s top suggestions with their reasons. Use this to answer "where does the time go in this process?". For every step use ospeli_maps_get. Read-only; suggests only.',
+    kind: 'read', roles: ALL_ROLES, approval: false,
+    input: { type: 'object', additionalProperties: false, required: ['mapId'], properties: {
+      mapId: MAP_ID, version: { ...VERSION, description: 'Which version the biggest wait and the suggestions are for: "today" (default) or "proposed". ospeli_maps_try_suggestion only takes suggestion ids from "proposed".' } } },
+    output: { type: 'object', required: ['id', 'title', 'revision', 'version', 'changed', 'today', 'proposed', 'difference', 'biggestWait', 'guideOn', 'suggestions', 'suggestionsTotal'], properties: {
+      id: MAP_ID, title: { type: 'string' }, revision: { type: 'integer' }, version: VERSION, changed: { type: 'boolean', description: 'Proposed differs from Today.' },
+      today: MAP_STATS, proposed: MAP_STATS,
+      difference: { type: 'object', description: 'Proposed minus Today, in minutes (handoffs as a count). Negative means Proposed is shorter. A what-if, not a prediction.', required: ['elapsed', 'wait', 'work', 'handoffs'], properties: { elapsed: { type: 'integer' }, wait: { type: 'integer' }, work: { type: 'integer' }, handoffs: { type: 'integer' } } },
+      biggestWait: { type: ['object', 'null'], description: 'The step with the longest wait before it, in the version asked for. Null when no step has a wait.', properties: {
+        stepId: STEP_ID, name: { type: 'string' }, role: { type: 'string' }, wait: MINUTES, shareOfElapsed: { type: ['integer', 'null'], description: 'This wait as a % of start to finish.' } } },
+      guideOn: { type: 'boolean', description: 'False when a person switched the guide off: suggestions is then empty; the numbers still work.' },
+      suggestions: { type: 'array', items: SUGGESTION, description: 'The first three suggestions for the version asked for.' },
+      suggestionsTotal: { type: 'integer', minimum: 0 } } },
+    async run(core, input) {
+      const { store, map } = await loadMap(core, input.mapId);
+      const version = input.version || 'today';
+      const stats = (list) => { const { timed, ...s } = analyse(list); return s; };
+      const t = stats(map.today); const p = stats(map.proposed); const mine = version === 'today' ? t : p;
+      const worst = mine.biggestWaitStepId ? map[version].find((s) => s.id === mine.biggestWaitStepId) : null;
+      const guideOn = store.guideOn !== false;
+      const all = guideOn ? visibleSuggestions(map, map[version]) : [];
+      return {
+        id: map.id, title: map.title, revision: map.revision, version,
+        changed: JSON.stringify(map.today) !== JSON.stringify(map.proposed), today: t, proposed: p,
+        difference: { elapsed: p.elapsed - t.elapsed, wait: p.wait - t.wait, work: p.work - t.work, handoffs: p.handoffs - t.handoffs },
+        biggestWait: worst ? { stepId: worst.id, name: worst.name, role: worst.role, wait: worst.wait, shareOfElapsed: mine.elapsed ? Math.round((100 * worst.wait) / mine.elapsed) : null } : null,
+        guideOn, suggestions: all.slice(0, 3), suggestionsTotal: all.length,
+      };
+    },
+    example: { input: { mapId: 'map-001' } },
+  },
+  {
+    name: 'ospeli_maps_suggest',
     summary: 'The guide\'s suggestions for one version of a map: biggest waits, steps that only pass on information, handoffs, steps that could run alongside, missing times and walk questions. Each says why. Rule-based; empty when the guide is switched off. Suggests only; changes nothing.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, required: ['mapId'], properties: { mapId: MAP_ID, version: VERSION } },
@@ -823,8 +974,8 @@ COMMAND_LIST.push(
     example: { input: { mapId: 'map-001', version: 'today' } },
   },
   {
-    name: 'map.create',
-    summary: 'Start a new process map, from one of the example processes (see maps.list) or blank. Proposed starts as a copy of Today.',
+    name: 'ospeli_maps_create',
+    summary: 'Start a new process map, from one of the example processes (see ospeli_maps_list) or blank. Proposed starts as a copy of Today.',
     kind: 'write', roles: ALL_ROLES, approval: true,
     input: { type: 'object', additionalProperties: false, required: ['from'], properties: {
       from: { type: 'string', enum: MAP_SOURCES, description: 'An example process to start from, or "blank".' },
@@ -849,7 +1000,7 @@ COMMAND_LIST.push(
     example: { input: { from: 'discharge' } },
   },
   mapWrite({
-    name: 'map.step.add', audit: 'map.step-added',
+    name: 'ospeli_maps_step_add', audit: 'map.step-added',
     summary: 'Add a step to one version of a map: what happens, who does it, minutes waiting before it and hands-on minutes. Added at the end unless a position is given.',
     required: ['name', 'role'],
     props: { version: VERSION, name: { ...STEP_TEXT, description: 'What happens, e.g. "Bed cleaned". No personal details.' },
@@ -869,7 +1020,7 @@ COMMAND_LIST.push(
     },
   }),
   mapWrite({
-    name: 'map.step.update', audit: 'map.step-updated',
+    name: 'ospeli_maps_step_update', audit: 'map.step-updated',
     summary: 'Change a step in one version of a map: its wording, who does it, its times or its flags. Only the fields given change.',
     required: ['stepId'],
     props: { version: VERSION, stepId: STEP_ID, name: STEP_TEXT, role: STEP_TEXT, wait: MINUTES, work: MINUTES, msg: { type: 'boolean' }, par: { type: 'boolean' } },
@@ -882,7 +1033,7 @@ COMMAND_LIST.push(
     },
   }),
   mapWrite({
-    name: 'map.step.move', audit: 'map.step-moved',
+    name: 'ospeli_maps_step_move', audit: 'map.step-moved',
     summary: 'Move a step one place up or down in one version of a map.',
     required: ['stepId', 'direction'],
     props: { version: VERSION, stepId: STEP_ID, direction: { type: 'string', enum: ['up', 'down'] } },
@@ -896,7 +1047,7 @@ COMMAND_LIST.push(
     },
   }),
   mapWrite({
-    name: 'map.step.remove', audit: 'map.step-removed',
+    name: 'ospeli_maps_step_remove', audit: 'map.step-removed',
     summary: 'Remove a step from one version of a map.',
     required: ['stepId'],
     props: { version: VERSION, stepId: STEP_ID },
@@ -907,10 +1058,10 @@ COMMAND_LIST.push(
     },
   }),
   mapWrite({
-    name: 'map.try-suggestion', audit: 'map.suggestion-tried',
-    summary: 'Apply one of the guide\'s suggestions (from map.suggest on the proposed version, where tryable is true) to the Proposed version only. Today never changes. A what-if, not a prediction.',
+    name: 'ospeli_maps_try_suggestion', audit: 'map.suggestion-tried',
+    summary: 'Apply one of the guide\'s suggestions (from ospeli_maps_suggest on the proposed version, where tryable is true) to the Proposed version only. Today never changes. A what-if, not a prediction.',
     required: ['suggestionId'],
-    props: { suggestionId: { type: 'string', minLength: 1, maxLength: 80, description: 'The id of a tryable suggestion from map.suggest (version "proposed").' } },
+    props: { suggestionId: { type: 'string', minLength: 1, maxLength: 80, description: 'The id of a tryable suggestion from ospeli_maps_suggest (version "proposed").' } },
     example: { suggestionId: 'msgs' },
     mutate(map, input, core) {
       const sg = suggest(map.proposed).find((x) => x.id === input.suggestionId);
@@ -924,7 +1075,7 @@ COMMAND_LIST.push(
     },
   }),
   mapWrite({
-    name: 'map.hide-suggestion', audit: 'map.suggestion-hidden',
+    name: 'ospeli_maps_hide_suggestion', audit: 'map.suggestion-hidden',
     summary: 'Hide one guide suggestion on this map (not useful here). Changes no steps.',
     required: ['suggestionId'],
     props: { suggestionId: { type: 'string', minLength: 1, maxLength: 80 } },
@@ -932,14 +1083,14 @@ COMMAND_LIST.push(
     mutate(map, input) { if (!map.hidden.includes(input.suggestionId)) map.hidden.push(input.suggestionId); return {}; },
   }),
   mapWrite({
-    name: 'map.reset-proposed', audit: 'map.proposed-reset',
+    name: 'ospeli_maps_reset_proposed', audit: 'map.proposed-reset',
     summary: 'Throw away every change in the Proposed version: it becomes a copy of Today again, and hidden suggestions come back.',
     props: {},
     example: {},
     mutate(map) { map.proposed = JSON.parse(JSON.stringify(map.today)); map.tried = []; map.hidden = []; return {}; },
   }),
   {
-    name: 'map.guide.set',
+    name: 'ospeli_maps_guide_set',
     summary: 'Switch the process-map guide on or off on this device. With it off, maps, times and editing all still work. People only.',
     kind: 'write', roles: ALL_ROLES, approval: true, agents: false,
     input: { type: 'object', additionalProperties: false, required: ['on'], properties: { on: { type: 'boolean' } } },
@@ -953,13 +1104,63 @@ COMMAND_LIST.push(
   },
 );
 
-const EXAMPLE_BED = { 'bed.allocate': { encounter: 'enc-000123' }, 'bed.take-out-of-service': { reason: 'Electrical' }, 'bed.flag-expected-discharge': { expectedAt: '2026-11-08T15:00:00.000Z' } };
+const EXAMPLE_BED = { 'ospeli_beds_allocate': { encounter: 'enc-000123' }, 'ospeli_beds_take_out_of_service': { reason: 'Electrical' }, 'ospeli_beds_flag_expected_discharge': { expectedAt: '2026-11-08T15:00:00.000Z' } };
 for (const c of COMMAND_LIST) {
   if (!c.example) c.example = { input: { bedId: 'ward-a1-bed-01', ...(EXAMPLE_BED[c.name] || {}) } };
 }
 
 const BY_NAME = new Map(COMMAND_LIST.map((c) => [c.name, c]));
-export const commandByName = (name) => BY_NAME.get(name) || null;
+
+// Names (issue #39, tool-design rule): every command is ospeli_<module>_<action>, so an agent that
+// runs many tool servers cannot confuse them. The dotted names used before 12 Nov 2026 still work
+// in this build as deprecated names: a call by an old name runs the same command, and the audit
+// trail and the proposal queue always record the new name (plus calledAs for an agent, taken from
+// this table, never from what the agent typed).
+const DEPRECATED_NAMES = {
+  'beds.board': 'ospeli_beds_board',
+  'bed.get': 'ospeli_beds_get',
+  'bed.flag-expected-discharge': 'ospeli_beds_flag_expected_discharge',
+  'bed.cancel-expected-discharge': 'ospeli_beds_cancel_expected_discharge',
+  'bed.mark-vacated': 'ospeli_beds_mark_vacated',
+  'bed.start-clean': 'ospeli_beds_start_clean',
+  'bed.finish-clean': 'ospeli_beds_finish_clean',
+  'bed.allocate': 'ospeli_beds_allocate',
+  'bed.cancel-allocation': 'ospeli_beds_cancel_allocation',
+  'bed.admit': 'ospeli_beds_admit',
+  'bed.take-out-of-service': 'ospeli_beds_take_out_of_service',
+  'bed.return-to-service': 'ospeli_beds_return_to_service',
+  'kpi.list': 'ospeli_kpi_list',
+  'kpi.value': 'ospeli_kpi_get',
+  'agents.access': 'ospeli_agents_access',
+  'agents.set-access': 'ospeli_agents_set_access',
+  'agents.list': 'ospeli_agents_list',
+  'agent.add': 'ospeli_agents_add',
+  'agent.remove': 'ospeli_agents_remove',
+  'agents.stop-all': 'ospeli_agents_stop_all',
+  'proposals.list': 'ospeli_proposals_list',
+  'proposal.accept': 'ospeli_proposals_accept',
+  'proposal.decline': 'ospeli_proposals_decline',
+  'assets.list': 'ospeli_assets_list',
+  'workorders.list': 'ospeli_workorders_list',
+  'fault.report': 'ospeli_workorders_report_fault',
+  'workorder.assign': 'ospeli_workorders_assign',
+  'workorder.complete': 'ospeli_workorders_complete',
+  'maps.list': 'ospeli_maps_list',
+  'map.get': 'ospeli_maps_get',
+  'map.suggest': 'ospeli_maps_suggest',
+  'map.create': 'ospeli_maps_create',
+  'map.step.add': 'ospeli_maps_step_add',
+  'map.step.update': 'ospeli_maps_step_update',
+  'map.step.move': 'ospeli_maps_step_move',
+  'map.step.remove': 'ospeli_maps_step_remove',
+  'map.try-suggestion': 'ospeli_maps_try_suggestion',
+  'map.hide-suggestion': 'ospeli_maps_hide_suggestion',
+  'map.reset-proposed': 'ospeli_maps_reset_proposed',
+  'map.guide.set': 'ospeli_maps_guide_set',
+};
+for (const [oldName, name] of Object.entries(DEPRECATED_NAMES)) BY_NAME.get(name).deprecatedName = oldName;
+export const canonicalName = (name) => (BY_NAME.has(name) ? name : Object.hasOwn(DEPRECATED_NAMES, String(name)) ? DEPRECATED_NAMES[name] : null);
+export const commandByName = (name) => BY_NAME.get(canonicalName(name)) || null;
 
 // Plain, serialisable description (no functions): what agents and commands.json see.
 export function describeCommand(name) {
@@ -971,6 +1172,7 @@ export function describeCommand(name) {
     agentBehaviour: c.agents === false ? 'refused: people only'
       : c.kind === 'read' ? 'runs and is audited as an agent read'
         : 'recorded as a proposal for a person to accept or decline; nothing changes until they do',
+    ...(c.deprecatedName ? { deprecatedName: c.deprecatedName } : {}),
     input: c.input, output: c.output, example: c.example,
   };
 }
@@ -1008,12 +1210,13 @@ async function auditRefusal(core, name, input, actor, err) {
   const listed = typeof actor?.agent === 'string' ? (await agentList(core)).find((r) => agentKey(r.name) === agentKey(actor.agent)) : null;
   const agent = listed ? listed.name : 'unlisted';
   const ownFields = new Set(Object.keys(cmd?.input?.properties || {}));
-  const command = known ? name : '(unknown)';
+  const command = known ? cmd.name : '(unknown)';
   const detail = {
     command, code: err.code, reason: err.reason || err.code,
     why: err.code === 'invalid-input' ? 'The input did not match what the command accepts.' : err.code === 'unknown-command' ? 'There is no such command.' : err.message,
     claimedRole: role === 'system' ? '(unknown)' : role,
     fields: input && typeof input === 'object' ? Object.keys(input).filter((k) => ownFields.has(k)).slice(0, 12) : [],
+    ...(known && name !== cmd.name ? { calledAs: cmd.deprecatedName } : {}),
   };
   const key = `${agent.toLowerCase()}|${command}|${err.code}|${err.reason || ''}`;
   const now = core.now();
@@ -1049,7 +1252,10 @@ async function runChecked(core, name, input, actor) {
   // answers not-found is recorded as an agent read with its outcome, further down.)
   const refuse = (code, why, detail = null, reason = code) => { throw Object.assign(new CommandError(code, why, detail), { refusal: true, reason }); };
   const cmd = commandByName(name);
-  if (!cmd) refuse('unknown-command', `There is no command ${String(name).slice(0, 60)}.`);
+  if (!cmd) refuse('unknown-command', `There is no command ${String(name).slice(0, 60)}. Command names look like ospeli_beds_find_free; the full list is in commands.json.`);
+  // From here on the command goes by its one real name, whatever name it was called by.
+  const calledAs = name !== cmd.name ? { calledAs: cmd.deprecatedName } : {};
+  name = cmd.name;
   let who;
   try { who = normaliseActor(actor); } catch (err) { err.refusal = true; err.reason = 'actor'; throw err; }
   if (who.type === 'human') {
@@ -1086,13 +1292,15 @@ async function runChecked(core, name, input, actor) {
     try {
       out = await cmd.run(core, input, { actor: who, wards: allowedWards });
     } catch (err) {
-      await core.recordAs(who, 'agent.read', null, { command: name, input, outcome: err instanceof CommandError ? err.code : 'error' });
+      await core.recordAs(who, 'agent.read', null, { command: name, input, outcome: err instanceof CommandError ? err.code : 'error', ...calledAs });
       throw err;
     }
-    await core.recordAs(who, 'agent.read', null, { command: name, input });
+    // How much the agent was shown, so a reviewer can see what a read returned without the data itself.
+    const size = cmd.size ? cmd.size(out) : typeof out?.total === 'number' ? { total: out.total, truncated: out.truncated === true } : {};
+    await core.recordAs(who, 'agent.read', null, { command: name, input, ...size, ...calledAs });
     return out;
   }
   const extra = cmd.snapshot ? await cmd.snapshot(core, input) : {};
-  const proposal = await core.propose(who, name, input, { wardId: ward, ...extra });
+  const proposal = await core.propose(who, name, input, { wardId: ward, ...extra, ...calledAs });
   return { status: 'proposed', ...(input.bedId ? { bedId: input.bedId } : {}), ...(input.workOrderId ? { workOrderId: input.workOrderId } : {}), ...(input.mapId ? { mapId: input.mapId } : {}), proposal };
 }

@@ -62,109 +62,109 @@ test('free text refuses personal details', () => {
 
 test('a person maps a process end to end with commands only', async () => {
   const core = await fresh();
-  const empty = await run(core, 'maps.list', {});
-  ok('maps.list', empty);
+  const empty = await run(core, 'ospeli_maps_list', {});
+  ok('ospeli_maps_list', empty);
   assert.deepEqual(empty.maps, []);
   assert.equal(empty.guideOn, true);
   assert.equal(empty.examples.length, 3);
 
-  const c = await run(core, 'map.create', { from: 'discharge' }, human('ward-nurse'));
-  ok('map.create', c);
+  const c = await run(core, 'ospeli_maps_create', { from: 'discharge' }, human('ward-nurse'));
+  ok('ospeli_maps_create', c);
   assert.equal(c.mapId, 'map-001');
-  const m = await run(core, 'map.get', { mapId: 'map-001' });
-  ok('map.get', m);
+  const m = await run(core, 'ospeli_maps_get', { mapId: 'map-001' });
+  ok('ospeli_maps_get', m);
   assert.equal(m.today.steps.length, 10);
   assert.equal(m.changed, false);
   assert.equal(m.today.stats.elapsed, m.proposed.stats.elapsed);
 
-  const add = await run(core, 'map.step.add', { mapId: 'map-001', name: 'Family told the time to collect', role: 'Nurse', wait: 10, work: 3, position: 2, expectedRevision: m.revision });
-  ok('map.step.add', add);
-  const m2 = await run(core, 'map.get', { mapId: 'map-001' });
+  const add = await run(core, 'ospeli_maps_step_add', { mapId: 'map-001', name: 'Family told the time to collect', role: 'Nurse', wait: 10, work: 3, position: 2, expectedRevision: m.revision });
+  ok('ospeli_maps_step_add', add);
+  const m2 = await run(core, 'ospeli_maps_get', { mapId: 'map-001' });
   assert.equal(m2.today.steps[1].id, add.stepId);
   assert.equal(m2.proposed.steps.length, 10, 'editing Today leaves Proposed alone');
-  await run(core, 'map.step.update', { mapId: 'map-001', stepId: add.stepId, wait: 0 });
-  await run(core, 'map.step.move', { mapId: 'map-001', stepId: add.stepId, direction: 'down' });
-  const m3 = await run(core, 'map.get', { mapId: 'map-001' });
+  await run(core, 'ospeli_maps_step_update', { mapId: 'map-001', stepId: add.stepId, wait: 0 });
+  await run(core, 'ospeli_maps_step_move', { mapId: 'map-001', stepId: add.stepId, direction: 'down' });
+  const m3 = await run(core, 'ospeli_maps_get', { mapId: 'map-001' });
   assert.equal(m3.today.steps[2].id, add.stepId);
   assert.equal(m3.today.steps[2].wait, 0);
-  await assert.rejects(run(core, 'map.step.move', { mapId: 'map-001', stepId: 'map-001-s1', direction: 'up' }), code('invalid-input'));
-  await run(core, 'map.step.remove', { mapId: 'map-001', stepId: add.stepId });
-  assert.equal((await run(core, 'map.get', { mapId: 'map-001', format: 'short' })).today.stats.steps, 10);
+  await assert.rejects(run(core, 'ospeli_maps_step_move', { mapId: 'map-001', stepId: 'map-001-s1', direction: 'up' }), code('invalid-input'));
+  await run(core, 'ospeli_maps_step_remove', { mapId: 'map-001', stepId: add.stepId });
+  assert.equal((await run(core, 'ospeli_maps_get', { mapId: 'map-001', format: 'short' })).today.stats.steps, 10);
 
   // A stale writer is refused instead of overwriting someone else's change.
-  await assert.rejects(run(core, 'map.step.update', { mapId: 'map-001', stepId: 'map-001-s2', wait: 1, expectedRevision: 1 }), code('conflict'));
+  await assert.rejects(run(core, 'ospeli_maps_step_update', { mapId: 'map-001', stepId: 'map-001-s2', wait: 1, expectedRevision: 1 }), code('conflict'));
   // Personal details are refused with a fix.
-  await assert.rejects(run(core, 'map.step.add', { mapId: 'map-001', name: 'Ring 0700 123 4567', role: 'Nurse' }), (e) => e.code === 'invalid-input' && /personal details/.test(e.message));
-  await assert.rejects(run(core, 'map.get', { mapId: 'map-099' }), (e) => e.code === 'not-found' && /maps\.list/.test(e.message));
+  await assert.rejects(run(core, 'ospeli_maps_step_add', { mapId: 'map-001', name: 'Ring 0700 123 4567', role: 'Nurse' }), (e) => e.code === 'invalid-input' && /personal details/.test(e.message));
+  await assert.rejects(run(core, 'ospeli_maps_get', { mapId: 'map-099' }), (e) => e.code === 'not-found' && /ospeli_maps_list/.test(e.message));
 });
 
 test('trying a suggestion changes Proposed only; reset brings Today back', async () => {
   const core = await fresh();
-  await run(core, 'map.create', { from: 'fault' });
-  const s = await run(core, 'map.suggest', { mapId: 'map-001', version: 'proposed' });
-  ok('map.suggest', s);
+  await run(core, 'ospeli_maps_create', { from: 'fault' });
+  const s = await run(core, 'ospeli_maps_suggest', { mapId: 'map-001', version: 'proposed' });
+  ok('ospeli_maps_suggest', s);
   const t = s.suggestions.find((x) => x.tryable);
   assert.ok(t);
-  const before = await run(core, 'map.get', { mapId: 'map-001' });
-  await run(core, 'map.try-suggestion', { mapId: 'map-001', suggestionId: t.id });
-  const after = await run(core, 'map.get', { mapId: 'map-001' });
+  const before = await run(core, 'ospeli_maps_get', { mapId: 'map-001' });
+  await run(core, 'ospeli_maps_try_suggestion', { mapId: 'map-001', suggestionId: t.id });
+  const after = await run(core, 'ospeli_maps_get', { mapId: 'map-001' });
   assert.deepEqual(after.today, before.today, 'Today never changes');
   assert.ok(after.proposed.stats.elapsed < before.proposed.stats.elapsed);
   assert.equal(after.changed, true);
   assert.deepEqual(after.tried, [t.id]);
-  assert.ok((await run(core, 'map.suggest', { mapId: 'map-001', version: 'proposed' })).suggestions.find((x) => x.id === t.id)?.tried !== false);
-  await assert.rejects(run(core, 'map.try-suggestion', { mapId: 'map-001', suggestionId: 'questions' }), (e) => e.code === 'invalid-input' && /Try one of/.test(e.message));
+  assert.ok((await run(core, 'ospeli_maps_suggest', { mapId: 'map-001', version: 'proposed' })).suggestions.find((x) => x.id === t.id)?.tried !== false);
+  await assert.rejects(run(core, 'ospeli_maps_try_suggestion', { mapId: 'map-001', suggestionId: 'questions' }), (e) => e.code === 'invalid-input' && /Try one of/.test(e.message));
 
-  await run(core, 'map.hide-suggestion', { mapId: 'map-001', suggestionId: 'questions' });
-  const hid = await run(core, 'map.suggest', { mapId: 'map-001' });
+  await run(core, 'ospeli_maps_hide_suggestion', { mapId: 'map-001', suggestionId: 'questions' });
+  const hid = await run(core, 'ospeli_maps_suggest', { mapId: 'map-001' });
   assert.equal(hid.hidden, 1);
   assert.ok(!hid.suggestions.some((x) => x.id === 'questions'));
 
-  await run(core, 'map.reset-proposed', { mapId: 'map-001' });
-  const back = await run(core, 'map.get', { mapId: 'map-001' });
+  await run(core, 'ospeli_maps_reset_proposed', { mapId: 'map-001' });
+  const back = await run(core, 'ospeli_maps_get', { mapId: 'map-001' });
   assert.deepEqual(back.proposed, back.today);
   assert.equal(back.changed, false);
-  assert.equal((await run(core, 'map.suggest', { mapId: 'map-001' })).hidden, 0);
+  assert.equal((await run(core, 'ospeli_maps_suggest', { mapId: 'map-001' })).hidden, 0);
 });
 
 test('the guide has an off switch; maps and editing work without it', async () => {
   const core = await fresh();
-  await run(core, 'map.create', { from: 'ed' });
-  const off = await run(core, 'map.guide.set', { on: false }, human('ward-nurse'));
-  ok('map.guide.set', off);
-  const s = await run(core, 'map.suggest', { mapId: 'map-001' });
+  await run(core, 'ospeli_maps_create', { from: 'ed' });
+  const off = await run(core, 'ospeli_maps_guide_set', { on: false }, human('ward-nurse'));
+  ok('ospeli_maps_guide_set', off);
+  const s = await run(core, 'ospeli_maps_suggest', { mapId: 'map-001' });
   assert.deepEqual(s, { guideOn: false, hidden: 0, suggestions: [] });
-  assert.equal((await run(core, 'maps.list', {})).guideOn, false);
-  await run(core, 'map.step.update', { mapId: 'map-001', stepId: 'map-001-s2', work: 12 });
-  assert.equal((await run(core, 'map.get', { mapId: 'map-001' })).today.steps[1].work, 12);
-  await run(core, 'map.guide.set', { on: true });
-  assert.ok((await run(core, 'map.suggest', { mapId: 'map-001' })).suggestions.length > 0);
+  assert.equal((await run(core, 'ospeli_maps_list', {})).guideOn, false);
+  await run(core, 'ospeli_maps_step_update', { mapId: 'map-001', stepId: 'map-001-s2', work: 12 });
+  assert.equal((await run(core, 'ospeli_maps_get', { mapId: 'map-001' })).today.steps[1].work, 12);
+  await run(core, 'ospeli_maps_guide_set', { on: true });
+  assert.ok((await run(core, 'ospeli_maps_suggest', { mapId: 'map-001' })).suggestions.length > 0);
 });
 
 test('agents read and propose; a person accepts; every change is audited', async () => {
   const core = await fresh();
-  await run(core, 'map.create', { from: 'discharge' });
-  await assert.rejects(run(core, 'maps.list', {}, agent('ops-manager')), code('agents-off'));
-  await run(core, 'agents.set-access', { allowed: true }, human('ops-manager'));
-  await run(core, 'agent.add', { name: 'map-helper', role: 'ops-manager', days: 30 }, human('ops-manager'));
-  const read = await run(core, 'map.suggest', { mapId: 'map-001', version: 'proposed' }, agent('ops-manager'));
+  await run(core, 'ospeli_maps_create', { from: 'discharge' });
+  await assert.rejects(run(core, 'ospeli_maps_list', {}, agent('ops-manager')), code('agents-off'));
+  await run(core, 'ospeli_agents_set_access', { allowed: true }, human('ops-manager'));
+  await run(core, 'ospeli_agents_add', { name: 'map-helper', role: 'ops-manager', days: 30 }, human('ops-manager'));
+  const read = await run(core, 'ospeli_maps_suggest', { mapId: 'map-001', version: 'proposed' }, agent('ops-manager'));
   const t = read.suggestions.find((x) => x.tryable);
-  const p = await run(core, 'map.try-suggestion', { mapId: 'map-001', suggestionId: t.id }, agent('ops-manager'));
+  const p = await run(core, 'ospeli_maps_try_suggestion', { mapId: 'map-001', suggestionId: t.id }, agent('ops-manager'));
   assert.equal(p.status, 'proposed');
   assert.equal(p.mapId, 'map-001');
-  assert.equal((await run(core, 'map.get', { mapId: 'map-001' })).changed, false, 'nothing changes until a person accepts');
-  await assert.rejects(run(core, 'map.guide.set', { on: false }, agent('ops-manager')), code('agents-off'));
+  assert.equal((await run(core, 'ospeli_maps_get', { mapId: 'map-001' })).changed, false, 'nothing changes until a person accepts');
+  await assert.rejects(run(core, 'ospeli_maps_guide_set', { on: false }, agent('ops-manager')), code('agents-off'));
 
-  const acc = await run(core, 'proposal.accept', { id: p.proposal.id }, human('ops-manager'));
+  const acc = await run(core, 'ospeli_proposals_accept', { id: p.proposal.id }, human('ops-manager'));
   assert.equal(acc.status, 'accepted');
-  assert.equal((await run(core, 'map.get', { mapId: 'map-001' })).changed, true);
+  assert.equal((await run(core, 'ospeli_maps_get', { mapId: 'map-001' })).changed, true);
 
   // A proposal made against an older revision expires instead of acting on a changed map.
-  const p2 = await run(core, 'map.step.update', { mapId: 'map-001', stepId: 'map-001-s1', work: 9 }, agent('ops-manager'));
-  await run(core, 'map.step.update', { mapId: 'map-001', stepId: 'map-001-s1', work: 7 });
-  const exp = await run(core, 'proposal.accept', { id: p2.proposal.id }, human('ops-manager'));
+  const p2 = await run(core, 'ospeli_maps_step_update', { mapId: 'map-001', stepId: 'map-001-s1', work: 9 }, agent('ops-manager'));
+  await run(core, 'ospeli_maps_step_update', { mapId: 'map-001', stepId: 'map-001-s1', work: 7 });
+  const exp = await run(core, 'ospeli_proposals_accept', { id: p2.proposal.id }, human('ops-manager'));
   assert.equal(exp.status, 'expired');
-  assert.equal((await run(core, 'map.get', { mapId: 'map-001' })).today.steps[0].work, 7);
+  assert.equal((await run(core, 'ospeli_maps_get', { mapId: 'map-001' })).today.steps[0].work, 7);
 
   const audit = await core.auditLog();
   const actions = audit.map((a) => `${a.actorType}:${a.action}`);
@@ -177,34 +177,34 @@ test('agents read and propose; a person accepts; every change is audited', async
 
 test('reset removes maps from the device', async () => {
   const core = await fresh();
-  await run(core, 'map.create', { from: 'blank', title: 'Clinic check-in' });
-  assert.equal((await run(core, 'maps.list', {})).maps[0].title, 'Clinic check-in');
+  await run(core, 'ospeli_maps_create', { from: 'blank', title: 'Clinic check-in' });
+  assert.equal((await run(core, 'ospeli_maps_list', {})).maps[0].title, 'Clinic check-in');
   await core.reset();
-  assert.deepEqual((await run(core, 'maps.list', {})).maps, []);
+  assert.deepEqual((await run(core, 'ospeli_maps_list', {})).maps, []);
 });
 
 test('maps time steps, never people: a named person is refused as a step, a role or a title (#38)', async () => {
   const core = await fresh();
-  await run(core, 'map.create', { from: 'blank', title: 'Clinic visit' });
-  const id = (await run(core, 'maps.list', {})).maps[0].id;
+  await run(core, 'ospeli_maps_create', { from: 'blank', title: 'Clinic visit' });
+  const id = (await run(core, 'ospeli_maps_list', {})).maps[0].id;
   const step = { mapId: id, name: 'Reviews the patient', role: 'Doctor', wait: 5, work: 10 };
   const named = (err) => code('invalid-input')(err) && /role, not a person/.test(err.message);
   for (const actor of [human('ops-manager')]) {
-    await assert.rejects(run(core, 'map.step.add', { ...step, name: 'Dr Sarah Jones reviews the patient' }, actor), named);
-    await assert.rejects(run(core, 'map.step.add', { ...step, role: 'Sister Mary Brown' }, actor), named);
-    await assert.rejects(run(core, 'map.step.add', { ...step, role: 'Mary Brown' }, actor), named);
+    await assert.rejects(run(core, 'ospeli_maps_step_add', { ...step, name: 'Dr Sarah Jones reviews the patient' }, actor), named);
+    await assert.rejects(run(core, 'ospeli_maps_step_add', { ...step, role: 'Sister Mary Brown' }, actor), named);
+    await assert.rejects(run(core, 'ospeli_maps_step_add', { ...step, role: 'Mary Brown' }, actor), named);
   }
-  await assert.rejects(run(core, 'map.create', { from: 'blank', title: 'Mr Patel\'s clinic' }), named);
+  await assert.rejects(run(core, 'ospeli_maps_create', { from: 'blank', title: 'Mr Patel\'s clinic' }), named);
   // Roles in the site's own words still pass, in any capitals.
   for (const role of ['Doctor', 'Charge Nurse', 'Nurse Manager', 'Patient Transport', 'Reception', 'Senior Doctor', 'Patient and family']) {
-    assert.equal((await run(core, 'map.step.add', { ...step, role })).status, 'done', role);
+    assert.equal((await run(core, 'ospeli_maps_step_add', { ...step, role })).status, 'done', role);
   }
-  const added = (await run(core, 'map.get', { mapId: id })).today.steps[0];
-  await assert.rejects(run(core, 'map.step.update', { mapId: id, stepId: added.id, name: 'Nurse Amina checks in' }), named);
-  await assert.rejects(run(core, 'map.step.update', { mapId: id, stepId: added.id, role: 'Dr. O\'Neil' }), named);
+  const added = (await run(core, 'ospeli_maps_get', { mapId: id })).today.steps[0];
+  await assert.rejects(run(core, 'ospeli_maps_step_update', { mapId: id, stepId: added.id, name: 'Nurse Amina checks in' }), named);
+  await assert.rejects(run(core, 'ospeli_maps_step_update', { mapId: id, stepId: added.id, role: 'Dr. O\'Neil' }), named);
   // An agent's proposal is checked the same way before it is ever queued.
-  await run(core, 'agents.set-access', { allowed: true }, human('ops-manager'));
-  await run(core, 'agent.add', { name: 'map-helper', role: 'ops-manager', days: 30 }, human('ops-manager'));
-  await assert.rejects(run(core, 'map.step.add', { ...step, role: 'Sister Mary Brown' }, agent('ops-manager')), named);
-  assert.equal((await run(core, 'proposals.list', {})).proposals.length, 0);
+  await run(core, 'ospeli_agents_set_access', { allowed: true }, human('ops-manager'));
+  await run(core, 'ospeli_agents_add', { name: 'map-helper', role: 'ops-manager', days: 30 }, human('ops-manager'));
+  await assert.rejects(run(core, 'ospeli_maps_step_add', { ...step, role: 'Sister Mary Brown' }, agent('ops-manager')), named);
+  assert.equal((await run(core, 'ospeli_proposals_list', {})).proposals.length, 0);
 });

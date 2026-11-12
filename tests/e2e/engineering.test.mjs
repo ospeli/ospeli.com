@@ -21,7 +21,7 @@ for (const width of [390, 1280]) {
     const before = await openCount(page);
     await page.selectOption('[data-test="f-fault"]', 'Tap leaking');
     await page.locator('.prio-opt', { hasText: 'High' }).click();
-    await page.click('[data-cmd="fault.report"]');
+    await page.click('[data-cmd="ospeli_workorders_report_fault"]');
     await page.waitForFunction(() => /^Reported: WO-\d{5}/.test(document.querySelector('[data-test="report-status"]').textContent));
     await page.waitForFunction((n) => Number(document.querySelector('[data-test="wo-open"] b').textContent) === n + 1, before);
     const ev = await page.evaluate(async () => (await window.ospeli.core.events({ type: 'asset.fault-reported' })).at(-1));
@@ -55,12 +55,12 @@ test('estates tech sees the queue first, assigns and closes a work order; the KP
   await page.waitForSelector('dialog[open]');
   assert.match(await page.locator('dialog[open] .label-link').textContent(), /#\/engineering\/report\/asset-/);
   await page.selectOption('#wo-team', 'contractor');
-  await page.click('dialog[open] [data-cmd="workorder.assign"]');
+  await page.click('dialog[open] [data-cmd="ospeli_workorders_assign"]');
   await page.waitForFunction((wo) => document.querySelector(`[data-wo="${wo}"]`)?.textContent.includes('External contractor'), id);
   await page.click(`[data-wo="${id}"]`);
   await page.waitForSelector('dialog[open]');
   await page.selectOption('#wo-outcome', 'fixed');
-  await page.click('dialog[open] [data-cmd="workorder.complete"]');
+  await page.click('dialog[open] [data-cmd="ospeli_workorders_complete"]');
   await page.waitForFunction((n) => Number(document.querySelector('[data-test="wo-open"] b').textContent) === n - 1, before);
   await page.waitForFunction((n) => Number(document.querySelector('[data-kpi="open-work-orders"] .kpi-value')?.textContent) === n - 1, before);
   const types = await page.evaluate(async (wo) => (await window.ospeli.core.events()).filter((e) => e.subject === wo).map((e) => [e.type, e.actorRole]), id);

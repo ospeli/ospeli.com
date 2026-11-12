@@ -45,8 +45,8 @@ test('issue #16: without the test flag a page script gets no core and cannot cha
     try { window.ospeli = { run: () => 'hijacked' }; } catch { /* ignore */ }
     r.stillNoCore = window.ospeli.core === undefined;
     r.runIntact = window.ospeli.run !== undefined && window.ospeli.run.toString().includes('runCommand');
-    r.setAccess = await window.ospeli.run('agents.set-access', { allowed: true, wards: { 'ward-a1': true } }, { agent: 'sneaky', role: 'coo' }).then(() => 'ran', (e) => e.code);
-    r.read = await window.ospeli.run('beds.board', {}, { agent: 'sneaky', role: 'bed-manager' }).then(() => 'ran', (e) => e.code);
+    r.setAccess = await window.ospeli.run('ospeli_agents_set_access', { allowed: true, wards: { 'ward-a1': true } }, { agent: 'sneaky', role: 'coo' }).then(() => 'ran', (e) => e.code);
+    r.read = await window.ospeli.run('ospeli_beds_board', {}, { agent: 'sneaky', role: 'bed-manager' }).then(() => 'ran', (e) => e.code);
     return r;
   });
   assert.deepEqual(probe, { core: true, frozen: true, keys: ['commands', 'describe', 'run', 'version'], stillNoCore: true, runIntact: true, setAccess: 'agents-off', read: 'agents-off' });
@@ -66,13 +66,13 @@ test('issue #17: an agent proposes, the bed manager accepts on the board, and th
     const { runCommand } = await import('./core/commands.js');
     const core = window.ospeli.core;
     const coo = { type: 'human', role: 'coo' };
-    const all = await runCommand(core, 'beds.board', {}, coo);
+    const all = await runCommand(core, 'ospeli_beds_board', {}, coo);
     const ward = all.wards.find((w) => w.counts.available > 0).id;
-    await runCommand(core, 'agents.set-access', { allowed: true, wards: { [ward]: true } }, coo);
-    await runCommand(core, 'agent.add', { name: 'flow-bot', role: 'bed-manager', wards: [ward], days: 30 }, coo);
+    await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: { [ward]: true } }, coo);
+    await runCommand(core, 'ospeli_agents_add', { name: 'flow-bot', role: 'bed-manager', wards: [ward], days: 30 }, coo);
     const bed = all.beds.find((b) => b.wardId === ward && b.state === 'available');
     const wait = all.waiting.find((w) => !w.allocatedBed);
-    const res = await window.ospeli.run('bed.allocate', { bedId: bed.id, encounter: wait.encounter }, { agent: 'flow-bot', role: 'bed-manager' });
+    const res = await window.ospeli.run('ospeli_beds_allocate', { bedId: bed.id, encounter: wait.encounter }, { agent: 'flow-bot', role: 'bed-manager' });
     return { ...res.proposal, events: await core.eventCount() };
   });
   assert.equal(prop.status, 'pending');
@@ -83,10 +83,10 @@ test('issue #17: an agent proposes, the bed manager accepts on the board, and th
   await item.waitFor();
   assert.match(await page.locator('#prop-h').textContent(), /Agent proposals \(1\)/);
   assert.match(await item.textContent(), /Agent flow-bot for Bed manager/);
-  const box = await item.locator('[data-cmd="proposal.accept"]').boundingBox();
+  const box = await item.locator('[data-cmd="ospeli_proposals_accept"]').boundingBox();
   assert.ok(box.height >= 44, 'Accept is a full-size tap target');
   assert.ok(box.y < 1400, 'the proposal is near the top of the board');
-  await item.locator('[data-cmd="proposal.accept"]').click();
+  await item.locator('[data-cmd="ospeli_proposals_accept"]').click();
   await page.waitForFunction(() => !document.querySelector('[data-proposal]'));
   await waitForStatus(page, prop.id, (s) => s === 'accepted');
 
@@ -101,7 +101,7 @@ test('issue #17: an agent proposes, the bed manager accepts on the board, and th
   assert.ok(after.events > prop.events);
   assert.deepEqual([after.lastAction, after.lastType, after.lastRole], ['agent.proposal-accepted', 'human', 'bed-manager']);
   assert.equal(after.bedEvent.subject, prop.input.bedId);
-  const seen = await page.evaluate(async () => (await window.ospeli.run('proposals.list', {}, { agent: 'flow-bot', role: 'bed-manager' })).proposals.map((p) => p.status));
+  const seen = await page.evaluate(async () => (await window.ospeli.run('ospeli_proposals_list', {}, { agent: 'flow-bot', role: 'bed-manager' })).proposals.map((p) => p.status));
   assert.deepEqual(seen, ['accepted'], 'the agent learns its proposal was accepted');
 
   // Data and audit: an Actor column and a filter.
@@ -128,17 +128,17 @@ test('issue #17: declining needs a listed reason and changes nothing', async () 
     const { runCommand } = await import('./core/commands.js');
     const core = window.ospeli.core;
     const coo = { type: 'human', role: 'coo' };
-    const all = await runCommand(core, 'beds.board', {}, coo);
+    const all = await runCommand(core, 'ospeli_beds_board', {}, coo);
     const bed = all.beds.find((b) => b.state === 'occupied');
-    await runCommand(core, 'agents.set-access', { allowed: true, wards: { [bed.wardId]: true } }, coo);
-    await runCommand(core, 'agent.add', { name: 'flow-bot', role: 'ward-nurse', wards: [bed.wardId], days: 30 }, coo);
-    const res = await window.ospeli.run('bed.flag-expected-discharge', { bedId: bed.id }, { agent: 'flow-bot', role: 'ward-nurse' });
+    await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: { [bed.wardId]: true } }, coo);
+    await runCommand(core, 'ospeli_agents_add', { name: 'flow-bot', role: 'ward-nurse', wards: [bed.wardId], days: 30 }, coo);
+    const res = await window.ospeli.run('ospeli_beds_flag_expected_discharge', { bedId: bed.id }, { agent: 'flow-bot', role: 'ward-nurse' });
     return { ...res.proposal, events: await core.eventCount() };
   });
   const item = page.locator(`[data-proposal="${prop.id}"]`);
   await item.waitFor();
   await item.locator('select').selectOption('Already done');
-  await item.locator('[data-cmd="proposal.decline"]').click();
+  await item.locator('[data-cmd="ospeli_proposals_decline"]').click();
   await page.waitForFunction(() => !document.querySelector('[data-proposal]'));
   await waitForStatus(page, prop.id, (s) => s === 'declined');
   const after = await page.evaluate(async (id) => ({
@@ -147,6 +147,48 @@ test('issue #17: declining needs a listed reason and changes nothing', async () 
   assert.equal(after.p.status, 'declined');
   assert.equal(after.p.reason, 'Already done');
   assert.equal(after.events, prop.events);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+// Agent journey in the browser (backlog A7, issue #39): the flow coordinator's top task through
+// window.ospeli only, in two calls, and the person still decides on the board.
+test('agent journey: find a free bed and propose it in two window.ospeli calls; a person accepts on the board (issue #39)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, path: '#/beds' });
+  await page.waitForSelector('.bed');
+  const out = await page.evaluate(async () => {
+    const { runCommand } = await import('./core/commands.js');
+    const core = window.ospeli.core;
+    const coo = { type: 'human', role: 'coo' };
+    const all = await runCommand(core, 'ospeli_beds_board', { format: 'short' }, coo);
+    const ward = all.wards.find((w) => w.counts.available > 0).id;
+    await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: { [ward]: true } }, coo);
+    await runCommand(core, 'ospeli_agents_add', { name: 'flow-bot', role: 'bed-manager', wards: [ward], days: 30 }, coo);
+    // The agent: two calls.
+    const who = { agent: 'flow-bot', role: 'bed-manager' };
+    const found = await window.ospeli.run('ospeli_beds_find_free', { wardId: ward }, who);
+    const res = await window.ospeli.run(found.nextStep.command, found.nextStep.input, who);
+    // The old name still answers, and commands() lists only the new names.
+    const old = await window.ospeli.run('beds.board', { wardId: ward, format: 'short' }, who);
+    const names = window.ospeli.commands().map((c) => c.name);
+    return { ward, found, status: res.status, id: res.proposal.id, command: res.proposal.command, oldTotal: old.total, names,
+      described: window.ospeli.describe('bed.allocate').name };
+  });
+  assert.equal(out.status, 'proposed');
+  assert.equal(out.command, 'ospeli_beds_allocate');
+  assert.ok(out.found.beds.length >= 1 && out.found.beds.every((b) => b.wardId === out.ward));
+  assert.ok(out.oldTotal > 0);
+  assert.ok(out.names.every((n) => /^ospeli_[a-z]+(_[a-z]+)+$/.test(n)), 'only new names are listed');
+  assert.equal(out.described, 'ospeli_beds_allocate');
+
+  await page.selectOption('#role-select', 'bed-manager');
+  const item = page.locator(`[data-proposal="${out.id}"]`);
+  await item.waitFor();
+  await item.locator('[data-cmd="ospeli_proposals_accept"]').click();
+  await page.waitForFunction(() => !document.querySelector('[data-proposal]'));
+  await waitForStatus(page, out.id, (s) => s === 'accepted');
+  const bed = await page.evaluate(async (id) => (await window.ospeli.run('ospeli_beds_get', { bedId: id }, { agent: 'flow-bot', role: 'bed-manager' })).bed.state, out.found.nextStep.input.bedId);
+  assert.equal(bed, 'allocated');
   assert.deepEqual(errors, []);
   await context.close();
 });

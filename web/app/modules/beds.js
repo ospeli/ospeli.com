@@ -157,7 +157,7 @@ export async function render(el, ctx) {
     const extra = p.input?.encounter ? ` for ${encounterLabel(p.input.encounter)}` : p.input?.reason ? ` (${p.input.reason})` : '';
     return `${where}: ${what}${extra}`;
   }
-  const props = proposalsCard(ctx, { describe: describeProposal, match: (p) => p.command.startsWith('bed.') });
+  const props = proposalsCard(ctx, { describe: describeProposal, match: (p) => p.command.startsWith('ospeli_beds_') });
 
   function renderConflicts() {
     const n = board.conflicts.length;
@@ -194,7 +194,7 @@ export async function render(el, ctx) {
           h('span', { class: 'meta' }, ` · for ${ward ? shortWard(ward) : 'any ward'} · waiting ${since(w.decisionAt, now)}`),
           held ? h('div', { class: 'meta' }, `Bed held: ${shortWard(wardById.get(held.parentId))} ${held.name}`) : null),
         held || !canDo(ctx.role, 'allocate') ? null : h('button', {
-          class: 'btn btn-ghost btn-small', type: 'button', 'data-find': w.encounter, 'data-cmd': 'bed.allocate',
+          class: 'btn btn-ghost btn-small', type: 'button', 'data-find': w.encounter, 'data-cmd': 'ospeli_beds_allocate',
           'aria-label': `${ui.picking === w.encounter ? 'Cancel finding a bed' : 'Find a bed'} for ${encounterLabel(w.encounter)}`,
           onclick: () => {
             ui.picking = ui.picking === w.encounter ? null : w.encounter;
@@ -253,7 +253,7 @@ export async function render(el, ctx) {
       const match = picking && b.state === 'available';
       const who = b.state === 'out-of-service' ? b.reason : b.encounter ? (b.state === 'allocated' ? `For ${encounterLabel(b.encounter)}` : encounterLabel(b.encounter)) : '';
       return h('button', {
-        type: 'button', class: `bed st-${b.state}${match ? ' match' : ''}${picking && !match ? ' dim' : ''}`, 'data-bed': b.id, 'data-cmd': 'bed.get',
+        type: 'button', class: `bed st-${b.state}${match ? ' match' : ''}${picking && !match ? ' dim' : ''}`, 'data-bed': b.id, 'data-cmd': 'ospeli_beds_get',
         'aria-label': `${info.name}, ${BED_STATES[b.state].name}${b.since ? `, for ${since(b.since, now)}` : ''}${match ? ', available to allocate' : ''}`,
         onclick: () => openBed(b.id),
       },
