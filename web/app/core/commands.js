@@ -32,7 +32,7 @@ export class CommandError extends Error {
 
 const ALL_ROLES = ROLES.map((r) => r.id);
 const FLOOR = ['ward-nurse', 'bed-manager'];
-const ID = { type: 'string', pattern: '^[a-z0-9][a-z0-9-]*$' };
+const ID = { type: 'string', pattern: '^[a-z0-9][a-z0-9-]*$', maxLength: 64 };
 const STATE = { type: 'string', enum: Object.keys(BED_STATES) };
 const TIME = { type: 'string', format: 'date-time' };
 const SYNTHETIC = { type: 'boolean', description: 'True while the data on this device is synthetic.' };
@@ -247,7 +247,7 @@ const COMMAND_LIST = [
           decisionAt: TIME, waitingMinutes: { type: 'integer', minimum: 0, description: 'Minutes since the decision to admit.' } } } },
         totalWaiting: { type: 'integer', minimum: 0, description: 'Patients waiting with no bed held, in the caller\'s view.' },
         order: { type: 'string', description: 'How the lists are ordered, in words. An order, not a recommendation.' },
-        nextStep: { type: ['object', 'null'], description: 'The command that would hold the first listed bed for the first listed patient. A person decides; any listed bed can be used instead.', properties: { command: { type: 'string' }, input: { type: 'object' } } },
+        nextStep: { type: ['object', 'null'], description: 'The command that would hold the first listed bed for the first listed patient. Null when there is no free bed or no one waiting, or when the first bed is not on the ward that patient was requested for. A person decides; any listed bed can be used instead.', properties: { command: { type: 'string' }, input: { type: 'object' } } },
         note: { type: 'string' },
       },
     },
@@ -285,7 +285,7 @@ const COMMAND_LIST = [
         waiting: patients.map((x) => ({ encounter: x.encounter, wardId: x.wardId ?? null, wardName: x.wardId ? wardName.get(x.wardId) || null : null, decisionAt: x.decisionAt, waitingMinutes: Math.max(0, Math.round((Date.parse(now) - Date.parse(x.decisionAt)) / 60000)) })),
         totalWaiting: queue.length,
         order: 'Beds: the ward the first listed patient was requested for comes first, then the bed that has been free longest. Patients: longest wait first. This is an order, not a recommendation.',
-        nextStep: first && who ? { command: 'ospeli_beds_allocate', input: { bedId: first.b.id, encounter: who.encounter, expectedState: 'available' } } : null,
+        nextStep: first && who && (!who.wardId || first.b.parentId === who.wardId) ? { command: 'ospeli_beds_allocate', input: { bedId: first.b.id, encounter: who.encounter, expectedState: 'available' } } : null,
         note: 'Ospeli lists free beds; it does not judge whether a bed suits a patient. A person decides, and an agent\'s allocate is a proposal a person accepts or declines.',
       };
     },
@@ -544,17 +544,17 @@ COMMAND_LIST.push(
     async run(core, input, { actor }) {
       const p = await pendingProposal(core, input.id);
       if (!mayDecide(p, actor.role)) throw new CommandError('forbidden', `${roleById(actor.role).name} cannot run ${p.command}.`);
-      await core.decideProposal(p.id, actor, { status: 'accepting' });
+      await core.decideProposal(p.id, actor, { status: 'accepting', command: p.command });
       const args = { ...p.input };
       if (p.seenState && commandByName(p.command).input.properties.expectedState && !args.expectedState) args.expectedState = p.seenState;
       if (p.seenRevision && commandByName(p.command).input.properties.expectedRevision && !args.expectedRevision) args.expectedRevision = p.seenRevision;
       try {
         const result = await runCommand(core, p.command, args, actor);
-        const proposal = await core.decideProposal(p.id, actor, { status: 'accepted', events: result.events || [] });
+        const proposal = await core.decideProposal(p.id, actor, { status: 'accepted', events: result.events || [], command: p.command });
         return { status: 'accepted', proposal, result };
       } catch (err) {
         if (!(err instanceof CommandError)) throw err;
-        const proposal = await core.decideProposal(p.id, actor, { status: 'expired', reason: err.message });
+        const proposal = await core.decideProposal(p.id, actor, { status: 'expired', reason: err.message, command: p.command });
         return { status: 'expired', proposal, message: err.message };
       }
     },
@@ -569,7 +569,7 @@ COMMAND_LIST.push(
     async run(core, input, { actor }) {
       const p = await pendingProposal(core, input.id);
       if (!mayDecide(p, actor.role)) throw new CommandError('forbidden', `${roleById(actor.role).name} cannot decide on ${p.command}.`);
-      return { status: 'declined', proposal: await core.decideProposal(p.id, actor, { status: 'declined', reason: input.reason }) };
+      return { status: 'declined', proposal: await core.decideProposal(p.id, actor, { status: 'declined', reason: input.reason, command: p.command }) };
     },
     example: { input: { id: 'prop-0001', reason: 'Not needed' } },
   },
@@ -655,7 +655,7 @@ COMMAND_LIST.push(
     summary: 'Assets that can have a fault, with where they are and the faults that can be reported for each. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, properties: {
-      locationId: { ...ID, description: 'A ward, room or other place id, for example ward-a1. Leave out for every place.' },
+      locationId: { ...ID, description: 'The id of the ward, department or building the asset is in, for example ward-a1. Leave out for every place.' },
       format: FORMAT('id, name, kind and place only', 'the faults that can be reported for each asset too'), limit: LIMIT(50, 1000, 'assets') } },
     output: { type: 'object', required: ['locations', 'assets', 'total', 'truncated'], properties: {
       total: TOTAL, truncated: TRUNCATED,
@@ -682,7 +682,7 @@ COMMAND_LIST.push(
     input: { type: 'object', additionalProperties: false, properties: {
       state: { type: 'string', enum: ['open', 'completed', 'all'], description: 'open (default) means reported or assigned.' },
       overdue: { type: 'boolean', description: 'true: only open work orders past their due time. Only with state open (the default).' },
-      locationId: { ...ID, description: 'A ward, room or other place id, for example ward-a1.' },
+      locationId: { ...ID, description: 'The id of the ward, department or building the asset is in, for example ward-a1. Matches that place only, not the places inside it.' },
       assetId: { ...ID, description: 'One asset, for example asset-a1-sink-1.' },
       format: FORMAT('what, where, priority, team, due time and overdue', 'who reported it, assignment and outcome too'),
       limit: LIMIT(20, 500, 'work orders') } },
@@ -766,8 +766,8 @@ COMMAND_LIST.push(
 // change in a Proposed version beside Today. Nothing here changes how the hospital runs, but an
 // agent still only proposes; a person accepts. The guide is rule-based, explainable, and has an
 // off switch (ospeli_maps_guide_set, people only). Maps are kept on this device (setting "process-maps").
-const MAP_ID = { type: 'string', pattern: '^map-[0-9]{3,}$', description: 'A map id from ospeli_maps_list, e.g. map-001.' };
-const STEP_ID = { type: 'string', pattern: '^map-[0-9]{3,}-s[0-9]+$', description: 'A step id from ospeli_maps_get, e.g. map-001-s3.' };
+const MAP_ID = { type: 'string', pattern: '^map-[0-9]{3,}$', maxLength: 16, description: 'A map id from ospeli_maps_list, e.g. map-001.' };
+const STEP_ID = { type: 'string', pattern: '^map-[0-9]{3,}-s[0-9]+$', maxLength: 28, description: 'A step id from ospeli_maps_get, e.g. map-001-s3.' };
 const VERSION = { type: 'string', enum: MAP_VERSIONS, description: '"today" is the process as it runs now; "proposed" is the what-if. Defaults to today.' };
 const MINUTES = { type: 'integer', minimum: 0, maximum: MAX_MINUTES };
 const STEP_TEXT = { type: 'string', minLength: 1, maxLength: 140 };
@@ -1236,6 +1236,21 @@ async function auditRefusal(core, name, input, actor, err) {
   if (write !== null) await core.recordAs({ type: 'agent', role, agent }, 'agent.refused', null, write ? { ...detail, repeats: write } : detail);
 }
 
+// What an agent read stores about its input. An id is kept only when it names something real
+// (a ward, bed, asset or other place; a waiting patient the read just found); anything else is
+// recorded as "(unknown)", so text an agent typed into an id field never reaches the trail.
+// Map, step and work-order ids are digits behind a fixed prefix and carry no text.
+async function auditInput(core, cmd, input, succeeded) {
+  const out = {};
+  for (const [k, v] of Object.entries(input || {})) {
+    const idField = typeof v === 'string' && cmd.input.properties[k]?.pattern === ID.pattern;
+    if (!idField) { out[k] = v; continue; }
+    const real = k === 'forEncounter' ? succeeded : !!(await core.getEntity(v));
+    out[k] = real ? v : '(unknown)';
+  }
+  return out;
+}
+
 // Run a command. `actor` is { type: 'human', role } or { type: 'agent', agent, role }.
 export async function runCommand(core, name, input = {}, actor) {
   if (actor?.type !== 'agent') return runChecked(core, name, input, actor);
@@ -1281,7 +1296,11 @@ async function runChecked(core, name, input, actor) {
   if (cmd.check) {
     try { cmd.check(input); } catch (err) { if (err instanceof CommandError) { err.refusal = true; err.reason = 'personal-detail'; } throw err; }
   }
-  const ward = cmd.wardOf ? await cmd.wardOf(core, input) : null;
+  // The ward gate applies to real wards. A ward id that does not exist is not echoed back in a
+  // refusal (nothing an agent typed reaches the trail): the command answers not-found instead,
+  // with the ids of the wards this agent may see.
+  const claimed = cmd.wardOf ? await cmd.wardOf(core, input) : null;
+  const ward = claimed && (await core.getEntity(claimed))?.type === 'ward' ? claimed : null;
   if (ward && access.wards[ward] !== true) refuse('agents-off', `Agent access is off for ward ${ward}.`, null, 'ward-off');
   if (ward && !listed.wards.includes(ward)) refuse('forbidden', `Agent ${who.agent} is not allowed on ward ${ward}.`, null, 'ward-not-listed');
   const allowedWards = new Set(listed.wards.filter((id) => access.wards[id] === true));
@@ -1292,12 +1311,12 @@ async function runChecked(core, name, input, actor) {
     try {
       out = await cmd.run(core, input, { actor: who, wards: allowedWards });
     } catch (err) {
-      await core.recordAs(who, 'agent.read', null, { command: name, input, outcome: err instanceof CommandError ? err.code : 'error', ...calledAs });
+      await core.recordAs(who, 'agent.read', null, { command: name, input: await auditInput(core, cmd, input, false), outcome: err instanceof CommandError ? err.code : 'error', ...calledAs });
       throw err;
     }
     // How much the agent was shown, so a reviewer can see what a read returned without the data itself.
     const size = cmd.size ? cmd.size(out) : typeof out?.total === 'number' ? { total: out.total, truncated: out.truncated === true } : {};
-    await core.recordAs(who, 'agent.read', null, { command: name, input, ...size, ...calledAs });
+    await core.recordAs(who, 'agent.read', null, { command: name, input: await auditInput(core, cmd, input, true), ...size, ...calledAs });
     return out;
   }
   const extra = cmd.snapshot ? await cmd.snapshot(core, input) : {};

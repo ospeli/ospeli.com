@@ -14,7 +14,7 @@ The public demo at https://ospeli.com/app/ holds **synthetic data only** (the fi
 7. **Measure flows, never people.** Report beds, queues and waits by role and place, never by named person. Process maps refuse a named person as a step or role.
 
 ## How to call Ospeli (in the browser)
-The app exposes one small, read-only-by-design object, `window.ospeli`:
+The app exposes one small object, `window.ospeli`:
 
 ```js
 window.ospeli.commands();                      // every command: schemas, roles, approval rule, example
@@ -35,7 +35,7 @@ await window.ospeli.run('ospeli_beds_board', { wardId: 'ward-a1' }, { agent: 'fl
 Every command, with its schema, roles and whether agents may call it (the list here is not complete; that file is generated from the code): [app/api/README.md](app/api/README.md) and the JSON schemas in [app/api/commands.json](app/api/commands.json).
 
 ## Preview pages are not the agent API
-Each preview under `/demo/` has a small page object (for example `window.ospeliEdFlowDemo`) so its fictional data can be read. These are preview only, not the agent API: they sit outside the command layer, the access rules and the audit trail, and they will go when the area is built in the app. Start from `commands.json`.
+Each preview under `/demo/` has a small page object (for example `window.ospeliEdFlowDemo`) so its fictional data can be read. These are preview only, not the agent API: they sit outside the command layer, the access rules and the audit trail, and they are planned to go when the area is built in the app. Start from `commands.json`.
 
 ## Coming next
 A local MCP server that runs on the hospital's own server next to the app, with a per-agent key issued by the hospital and the same audit and approval rules. Until then, the browser API above is the only agent interface.

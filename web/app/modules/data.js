@@ -17,6 +17,8 @@ const actorTypeOf = (e) => e.actorType || (e.actorRole === 'system' ? 'system' :
 const AGENTS_OFF_TOO = ' AI agents will also be switched off.';
 // The one audit action whose detail a person needs to read in the table.
 function actionLabel(e) {
+  const plain = { 'data.reset': 'Device data cleared', 'data.exported': 'Data exported', 'data.imported': 'Data imported', 'data.synthetic-loaded': 'Fresh copy loaded' }[e.action];
+  if (plain) return plain;
   if (e.action !== 'agents.access-cleared' || !e.detail?.was) return e.action;
   const w = e.detail.was; const n = (c, word) => `${c} ${word}${c === 1 ? '' : 's'}`;
   return `Agents switched off by ${e.detail.by} (was ${w.dial === 'advise' ? 'Advise' : 'Off'}, ${n(w.wards, 'ward')}, ${n(w.agents, 'agent')})`;

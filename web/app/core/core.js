@@ -278,7 +278,7 @@ export class Core {
   // proposal can be decided, once; the audit entry links the proposal id.
   // A proposal being accepted is first claimed ('accepting', not audited) so a second tap or tab
   // cannot run it twice; the claim then becomes 'accepted' or 'expired'.
-  decideProposal(id, actor, { status, reason = null, events = [], result = null }) {
+  decideProposal(id, actor, { status, reason = null, events = [], result = null, command = null }) {
     return this._serial(async () => {
       checkActor(actor.role);
       const list = (await this.getMeta('agent-proposals', [])) || [];
@@ -286,7 +286,8 @@ export class Core {
       if (i < 0) throw Object.assign(new Error(`No proposal ${id}.`), { code: 'not-found' });
       const from = list[i].status;
       if (!(from === 'pending' || (from === 'accepting' && status !== 'accepting'))) throw Object.assign(new Error(`Proposal ${id} is already ${list[i].status}.`), { code: 'conflict' });
-      const decided = { ...list[i], status, decidedAt: this.now(), decidedByRole: actor.role, reason, events, result };
+      // `command`: the command's current name, when the proposal was queued under an older one.
+      const decided = { ...list[i], ...(command ? { command } : {}), status, decidedAt: this.now(), decidedByRole: actor.role, reason, events, result };
       const next = [...list]; next[i] = decided;
       await this.setMeta('agent-proposals', next);
       if (status !== 'accepting') await this._audit(actor, `agent.proposal-${status}`, id, { command: decided.command, agent: decided.agent, reason, events });

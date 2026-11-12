@@ -44,12 +44,15 @@ test('journey: find a bed on a ward for the longest-waiting patient and propose 
   assert.ok(found.waiting.length >= 1 && found.waiting.length <= 3, 'the longest-waiting patients, three at most');
   for (let i = 1; i < found.waiting.length; i++) assert.ok(found.waiting[i - 1].decisionAt <= found.waiting[i].decisionAt, 'longest wait first');
   assert.ok(found.waiting[0].waitingMinutes > 0);
-  assert.equal(found.nextStep.command, 'ospeli_beds_allocate');
-  assert.deepEqual(found.nextStep.input, { bedId: found.beds[0].bedId, encounter: found.waiting[0].encounter, expectedState: 'available' });
+  // The ready-made next step is only offered when the first bed is on the ward the patient was
+  // requested for (or none was requested); otherwise the agent builds the same call itself.
+  const pair = { bedId: found.beds[0].bedId, encounter: found.waiting[0].encounter, expectedState: 'available' };
+  const fits = !found.waiting[0].wardId || found.waiting[0].wardId === found.beds[0].wardId;
+  assert.deepEqual(found.nextStep, fits ? { command: 'ospeli_beds_allocate', input: pair } : null);
   assert.match(found.order, /not a recommendation/);
   assert.equal('best' in found || 'recommended' in found, false, 'no "best bed" field');
 
-  const res = await agent(found.nextStep.command, found.nextStep.input);
+  const res = await agent('ospeli_beds_allocate', pair);
   assert.equal(res.status, 'proposed');
   assert.equal(calls.length, 2, `the task took ${calls.length} tool calls`);
   // Nothing changed yet; a person sees the proposal and accepts it.
@@ -80,9 +83,9 @@ test('find_free keeps to the agent\'s wards, lists only available beds, and trea
   assert.equal(all.totalFree, board.beds.filter((b) => b.wardId === 'ward-a1' && b.state === 'available').length);
   // A ward that is not open to the agent: refused, and the hint names only its own wards.
   await assert.rejects(agent('ospeli_beds_find_free', { wardId: 'ward-b1' }), (e) => ['agents-off', 'forbidden'].includes(e.code));
-  // A ward that does not exist gets the same refusal as one that is closed to the agent.
-  const refusal = (wardId) => agent('ospeli_beds_find_free', { wardId }).then(() => null, (e) => [e.code, e.message.replace(wardId, 'X')]);
-  assert.deepEqual(await refusal('ward-zz'), await refusal('ward-b1'));
+  // A ward that does not exist: not-found, and the hint names only the agent's own wards.
+  await assert.rejects(agent('ospeli_beds_find_free', { wardId: 'ward-zz' }), (e) => e.code === 'not-found' && /Use one of: ward-a1\./.test(e.message) && e.detail.wards.length === 1);
+  await assert.rejects(agent('ospeli_workorders_list', { locationId: 'ward-zz' }), (e) => e.code === 'not-found' && !/ward-b1/.test(e.message));
   // A person who mistypes a ward is told which ids exist.
   await assert.rejects(runCommand(core, 'ospeli_beds_find_free', { wardId: 'ward-zz' }, human('bed-manager')), (e) => e.code === 'not-found' && /Use one of: ward-a1, /.test(e.message) && e.detail.wards.length === 6);
   // A patient requested for another ward, and one that does not exist, get the same answer.
@@ -238,4 +241,39 @@ test('list reads are never dumped whole: limit, total and truncated, with counts
     assert.ok(c.input.properties.limit, `${c.name} takes a limit`);
     assert.ok(c.output.required.includes('total') && c.output.required.includes('truncated'), `${c.name} says total and truncated`);
   }
+});
+
+test('nothing an agent types into an id field reaches the audit trail, and ids are short', async () => {
+  const { core, agent } = await setup();
+  const typed = 'ward-jane-doe-bed-4-typed-this';
+  await assert.rejects(agent('ospeli_beds_find_free', { wardId: typed }), code('not-found'));
+  await assert.rejects(agent('ospeli_workorders_list', { locationId: typed }), code('not-found'));
+  await assert.rejects(agent('ospeli_beds_find_free', { forEncounter: 'enc-jane-doe' }), code('not-found'));
+  await agent('ospeli_assets_list', { locationId: typed });
+  await agent('ospeli_beds_find_free', { wardId: 'ward-a1' });
+  // An id longer than 64 characters is refused as bad input, by people and agents.
+  await assert.rejects(agent('ospeli_beds_find_free', { forEncounter: 'e'.repeat(4000) }), code('invalid-input'));
+  await assert.rejects(agent('ospeli_beds_find_free', { wardId: `ward-${'x'.repeat(3000)}` }), code('invalid-input'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_get', { bedId: 'b'.repeat(65) }, human('coo')), code('invalid-input'));
+  const trail = JSON.stringify(await core.auditLog());
+  assert.equal(/jane/.test(trail), false, 'typed text is not in the trail');
+  assert.equal(/xxxxxxxx|eeeeeeee/.test(trail), false);
+  const log = await reads(core);
+  assert.deepEqual(log.map((e) => e.detail.input), [{ wardId: '(unknown)' }, { locationId: '(unknown)' }, { forEncounter: '(unknown)' }, { locationId: '(unknown)' }, { wardId: 'ward-a1' }]);
+  // A real ward that is closed to the agent is still refused at the gate, by its real id.
+  await assert.rejects(agent('ospeli_beds_find_free', { wardId: 'ward-b1' }), (e) => e.code === 'agents-off' || e.code === 'forbidden');
+});
+
+test('accepting or declining a proposal queued under an old name records the new name', async () => {
+  const { core } = await setup();
+  const beds = (await runCommand(core, 'ospeli_beds_board', { wardId: 'ward-a1' }, human('bed-manager'))).beds.filter((x) => x.state === 'occupied');
+  const old = (id, bed) => ({ id, command: 'bed.flag-expected-discharge', input: { bedId: bed.id }, agent: 'flow-helper', role: 'bed-manager', at: END, status: 'pending', wardId: 'ward-a1', seenState: 'occupied' });
+  await core.setMeta('agent-proposals', [old('prop-0001', beds[0]), old('prop-0002', beds[1])]);
+  const yes = await runCommand(core, 'ospeli_proposals_accept', { id: 'prop-0001' }, human('ward-nurse'));
+  const no = await runCommand(core, 'ospeli_proposals_decline', { id: 'prop-0002', reason: 'Not needed' }, human('ward-nurse'));
+  assert.equal(yes.proposal.command, 'ospeli_beds_flag_expected_discharge');
+  assert.equal(no.proposal.command, 'ospeli_beds_flag_expected_discharge');
+  const decided = (await core.auditLog()).filter((e) => /^agent\.proposal-/.test(e.action));
+  assert.deepEqual(decided.map((e) => [e.action, e.detail.command]), [['agent.proposal-accepted', 'ospeli_beds_flag_expected_discharge'], ['agent.proposal-declined', 'ospeli_beds_flag_expected_discharge']]);
+  assert.equal(/bed\.flag/.test(JSON.stringify(await core.auditLog())), false);
 });

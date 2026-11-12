@@ -167,7 +167,8 @@ test('agent journey: find a free bed and propose it in two window.ospeli calls; 
     // The agent: two calls.
     const who = { agent: 'flow-bot', role: 'bed-manager' };
     const found = await window.ospeli.run('ospeli_beds_find_free', { wardId: ward }, who);
-    const res = await window.ospeli.run(found.nextStep.command, found.nextStep.input, who);
+    const pair = { bedId: found.beds[0].bedId, encounter: found.waiting[0].encounter, expectedState: 'available' };
+    const res = await window.ospeli.run('ospeli_beds_allocate', found.nextStep ? found.nextStep.input : pair, who);
     // The old name still answers, and commands() lists only the new names.
     const old = await window.ospeli.run('beds.board', { wardId: ward, format: 'short' }, who);
     const names = window.ospeli.commands().map((c) => c.name);
@@ -187,7 +188,7 @@ test('agent journey: find a free bed and propose it in two window.ospeli calls; 
   await item.locator('[data-cmd="ospeli_proposals_accept"]').click();
   await page.waitForFunction(() => !document.querySelector('[data-proposal]'));
   await waitForStatus(page, out.id, (s) => s === 'accepted');
-  const bed = await page.evaluate(async (id) => (await window.ospeli.run('ospeli_beds_get', { bedId: id }, { agent: 'flow-bot', role: 'bed-manager' })).bed.state, out.found.nextStep.input.bedId);
+  const bed = await page.evaluate(async (id) => (await window.ospeli.run('ospeli_beds_get', { bedId: id }, { agent: 'flow-bot', role: 'bed-manager' })).bed.state, out.found.beds[0].bedId);
   assert.equal(bed, 'allocated');
   assert.deepEqual(errors, []);
   await context.close();

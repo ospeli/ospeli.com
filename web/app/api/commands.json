@@ -40,6 +40,7 @@
           "wardId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
             "description": "One ward, for example ward-a1. Leave out for every ward."
           },
           "format": {
@@ -100,7 +101,8 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "name": {
                   "type": "string"
@@ -124,14 +126,16 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "name": {
                   "type": "string"
                 },
                 "wardId": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "state": {
                   "type": "string",
@@ -186,7 +190,8 @@
               "properties": {
                 "encounter": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "wardId": {
                   "type": [
@@ -251,7 +256,8 @@
         "properties": {
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           }
         }
       },
@@ -273,14 +279,16 @@
             "properties": {
               "id": {
                 "type": "string",
-                "pattern": "^[a-z0-9][a-z0-9-]*$"
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 64
               },
               "name": {
                 "type": "string"
               },
               "wardId": {
                 "type": "string",
-                "pattern": "^[a-z0-9][a-z0-9-]*$"
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 64
               },
               "state": {
                 "type": "string",
@@ -359,11 +367,13 @@
           "wardId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
             "description": "Only look on this ward, for example ward-a1. Leave out to look on every ward the caller may see."
           },
           "forEncounter": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
             "description": "The waiting patient's synthetic encounter id, for example enc-000123. Leave out to see who has waited longest."
           },
           "limit": {
@@ -409,7 +419,8 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "name": {
                   "type": "string"
@@ -432,14 +443,16 @@
               "properties": {
                 "bedId": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "bedName": {
                   "type": "string"
                 },
                 "wardId": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "wardName": {
                   "type": "string"
@@ -483,7 +496,8 @@
               "properties": {
                 "encounter": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "wardId": {
                   "type": [
@@ -524,7 +538,7 @@
               "object",
               "null"
             ],
-            "description": "The command that would hold the first listed bed for the first listed patient. A person decides; any listed bed can be used instead.",
+            "description": "The command that would hold the first listed bed for the first listed patient. Null when there is no free bed or no one waiting, or when the first bed is not on the ward that patient was requested for. A person decides; any listed bed can be used instead.",
             "properties": {
               "command": {
                 "type": "string"
@@ -567,7 +581,8 @@
         "properties": {
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "expectedAt": {
             "type": "string",
@@ -604,7 +619,8 @@
           },
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "state": {
             "type": "string",
@@ -659,7 +675,8 @@
         "properties": {
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "expectedState": {
             "type": "string",
@@ -691,7 +708,8 @@
           },
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "state": {
             "type": "string",
@@ -745,7 +763,8 @@
         "properties": {
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "expectedState": {
             "type": "string",
@@ -777,7 +796,8 @@
           },
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "state": {
             "type": "string",
@@ -831,7 +851,8 @@
         "properties": {
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "expectedState": {
             "type": "string",
@@ -863,7 +884,8 @@
           },
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "state": {
             "type": "string",
@@ -917,7 +939,8 @@
         "properties": {
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "expectedState": {
             "type": "string",
@@ -949,7 +972,8 @@
           },
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "state": {
             "type": "string",
@@ -1005,11 +1029,13 @@
         "properties": {
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "encounter": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
             "description": "The waiting patient's synthetic encounter id (from ospeli_beds_board waiting)."
           },
           "expectedState": {
@@ -1042,7 +1068,8 @@
           },
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "state": {
             "type": "string",
@@ -1098,7 +1125,8 @@
         "properties": {
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "expectedState": {
             "type": "string",
@@ -1130,7 +1158,8 @@
           },
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "state": {
             "type": "string",
@@ -1184,7 +1213,8 @@
         "properties": {
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "expectedState": {
             "type": "string",
@@ -1216,7 +1246,8 @@
           },
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "state": {
             "type": "string",
@@ -1272,7 +1303,8 @@
         "properties": {
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "reason": {
             "type": "string",
@@ -1315,7 +1347,8 @@
           },
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "state": {
             "type": "string",
@@ -1371,7 +1404,8 @@
         "properties": {
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "expectedState": {
             "type": "string",
@@ -1403,7 +1437,8 @@
           },
           "bedId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "state": {
             "type": "string",
@@ -1767,7 +1802,8 @@
                 },
                 "role": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "roleName": {
                   "type": "string"
@@ -1776,7 +1812,8 @@
                   "type": "array",
                   "items": {
                     "type": "string",
-                    "pattern": "^[a-z0-9][a-z0-9-]*$"
+                    "pattern": "^[a-z0-9][a-z0-9-]*$",
+                    "maxLength": 64
                   },
                   "description": "Wards this agent may see. It also needs the ward itself to be switched on."
                 },
@@ -1790,7 +1827,8 @@
                 },
                 "addedByRole": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "addedAt": {
                   "type": "string",
@@ -1850,7 +1888,8 @@
               },
               "byRole": {
                 "type": "string",
-                "pattern": "^[a-z0-9][a-z0-9-]*$"
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 64
               },
               "byRoleName": {
                 "type": "string"
@@ -1877,7 +1916,8 @@
               },
               "byRole": {
                 "type": "string",
-                "pattern": "^[a-z0-9][a-z0-9-]*$"
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 64
               },
               "byRoleName": {
                 "type": "string"
@@ -1940,7 +1980,8 @@
             "maxItems": 200,
             "items": {
               "type": "string",
-              "pattern": "^[a-z0-9][a-z0-9-]*$"
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "maxLength": 64
             },
             "description": "Ward ids, for example [\"ward-a1\"]. Leave empty for an agent that needs no ward data."
           },
@@ -1981,7 +2022,8 @@
               },
               "role": {
                 "type": "string",
-                "pattern": "^[a-z0-9][a-z0-9-]*$"
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 64
               },
               "roleName": {
                 "type": "string"
@@ -1990,7 +2032,8 @@
                 "type": "array",
                 "items": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "description": "Wards this agent may see. It also needs the ward itself to be switched on."
               },
@@ -2004,7 +2047,8 @@
               },
               "addedByRole": {
                 "type": "string",
-                "pattern": "^[a-z0-9][a-z0-9-]*$"
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 64
               },
               "addedAt": {
                 "type": "string",
@@ -2185,7 +2229,8 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "command": {
                   "type": "string"
@@ -2198,7 +2243,8 @@
                 },
                 "role": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "at": {
                   "type": "string",
@@ -2232,7 +2278,8 @@
                 },
                 "decidedByRole": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "reason": {
                   "type": [
@@ -2299,7 +2346,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           }
         }
       },
@@ -2331,7 +2379,8 @@
             "properties": {
               "id": {
                 "type": "string",
-                "pattern": "^[a-z0-9][a-z0-9-]*$"
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 64
               },
               "command": {
                 "type": "string"
@@ -2344,7 +2393,8 @@
               },
               "role": {
                 "type": "string",
-                "pattern": "^[a-z0-9][a-z0-9-]*$"
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 64
               },
               "at": {
                 "type": "string",
@@ -2378,7 +2428,8 @@
               },
               "decidedByRole": {
                 "type": "string",
-                "pattern": "^[a-z0-9][a-z0-9-]*$"
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 64
               },
               "reason": {
                 "type": [
@@ -2443,7 +2494,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "reason": {
             "type": "string",
@@ -2484,7 +2536,8 @@
             "properties": {
               "id": {
                 "type": "string",
-                "pattern": "^[a-z0-9][a-z0-9-]*$"
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 64
               },
               "command": {
                 "type": "string"
@@ -2497,7 +2550,8 @@
               },
               "role": {
                 "type": "string",
-                "pattern": "^[a-z0-9][a-z0-9-]*$"
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 64
               },
               "at": {
                 "type": "string",
@@ -2531,7 +2585,8 @@
               },
               "decidedByRole": {
                 "type": "string",
-                "pattern": "^[a-z0-9][a-z0-9-]*$"
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 64
               },
               "reason": {
                 "type": [
@@ -2587,7 +2642,8 @@
           "locationId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "description": "A ward, room or other place id, for example ward-a1. Leave out for every place."
+            "maxLength": 64,
+            "description": "The id of the ward, department or building the asset is in, for example ward-a1. Leave out for every place."
           },
           "format": {
             "type": "string",
@@ -2635,7 +2691,8 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "name": {
                   "type": "string"
@@ -2659,7 +2716,8 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "name": {
                   "type": "string"
@@ -2669,7 +2727,8 @@
                 },
                 "locationId": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "faults": {
                   "type": "array",
@@ -2724,11 +2783,13 @@
           "locationId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "description": "A ward, room or other place id, for example ward-a1."
+            "maxLength": 64,
+            "description": "The id of the ward, department or building the asset is in, for example ward-a1. Matches that place only, not the places inside it."
           },
           "assetId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
             "description": "One asset, for example asset-a1-sink-1."
           },
           "format": {
@@ -2797,14 +2858,16 @@
                 },
                 "assetId": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "assetName": {
                   "type": "string"
                 },
                 "locationId": {
                   "type": "string",
-                  "pattern": "^[a-z0-9][a-z0-9-]*$"
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
                 },
                 "locationName": {
                   "type": "string"
@@ -2941,7 +3004,8 @@
         "properties": {
           "assetId": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]*$"
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
           },
           "fault": {
             "type": "string",
@@ -3274,6 +3338,7 @@
                 "id": {
                   "type": "string",
                   "pattern": "^map-[0-9]{3,}$",
+                  "maxLength": 16,
                   "description": "A map id from ospeli_maps_list, e.g. map-001."
                 },
                 "title": {
@@ -3351,6 +3416,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "format": {
@@ -3377,6 +3443,7 @@
           "id": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "title": {
@@ -3474,6 +3541,7 @@
                     "id": {
                       "type": "string",
                       "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+                      "maxLength": 28,
                       "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
                     },
                     "name": {
@@ -3585,6 +3653,7 @@
                     "id": {
                       "type": "string",
                       "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+                      "maxLength": 28,
                       "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
                     },
                     "name": {
@@ -3654,6 +3723,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "version": {
@@ -3686,6 +3756,7 @@
           "id": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "title": {
@@ -3846,6 +3917,7 @@
               "stepId": {
                 "type": "string",
                 "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+                "maxLength": 28,
                 "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
               },
               "name": {
@@ -3907,6 +3979,7 @@
                 "stepId": {
                   "type": "string",
                   "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+                  "maxLength": 28,
                   "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
                 },
                 "tryLabel": {
@@ -3961,6 +4034,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "version": {
@@ -4021,6 +4095,7 @@
                 "stepId": {
                   "type": "string",
                   "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+                  "maxLength": 28,
                   "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
                 },
                 "tryLabel": {
@@ -4102,6 +4177,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "revision": {
@@ -4110,6 +4186,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "maxLength": 28,
             "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "proposal": {
@@ -4152,6 +4229,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "version": {
@@ -4222,6 +4300,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "revision": {
@@ -4230,6 +4309,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "maxLength": 28,
             "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "proposal": {
@@ -4276,6 +4356,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "version": {
@@ -4289,6 +4370,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "maxLength": 28,
             "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "name": {
@@ -4340,6 +4422,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "revision": {
@@ -4348,6 +4431,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "maxLength": 28,
             "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "proposal": {
@@ -4393,6 +4477,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "version": {
@@ -4406,6 +4491,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "maxLength": 28,
             "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "direction": {
@@ -4438,6 +4524,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "revision": {
@@ -4446,6 +4533,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "maxLength": 28,
             "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "proposal": {
@@ -4490,6 +4578,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "version": {
@@ -4503,6 +4592,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "maxLength": 28,
             "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "expectedRevision": {
@@ -4528,6 +4618,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "revision": {
@@ -4536,6 +4627,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "maxLength": 28,
             "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "proposal": {
@@ -4579,6 +4671,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "suggestionId": {
@@ -4610,6 +4703,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "revision": {
@@ -4618,6 +4712,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "maxLength": 28,
             "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "proposal": {
@@ -4660,6 +4755,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "suggestionId": {
@@ -4690,6 +4786,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "revision": {
@@ -4698,6 +4795,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "maxLength": 28,
             "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "proposal": {
@@ -4739,6 +4837,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "expectedRevision": {
@@ -4764,6 +4863,7 @@
           "mapId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
             "description": "A map id from ospeli_maps_list, e.g. map-001."
           },
           "revision": {
@@ -4772,6 +4872,7 @@
           "stepId": {
             "type": "string",
             "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+            "maxLength": 28,
             "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
           },
           "proposal": {
