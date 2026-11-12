@@ -131,12 +131,15 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
   await page.waitForFunction(() => /^Intact/.test(document.querySelector('[data-test="audit-status"]').textContent));
   await page.selectOption('[data-test="audit-actor"]', 'agent');
   await page.waitForFunction(() => [...document.querySelectorAll('tbody td[data-actor-type]')].every((td) => td.dataset.actorType === 'agent'));
-  const rows = await page.$$eval('tbody tr', (trs) => trs.map((tr) => tr.children[3].textContent));
+  // The table now says each action in words (issue #65); the raw action id is on the cell.
+  const rows = await page.$$eval('tbody tr', (trs) => trs.map((tr) => `${tr.children[3].dataset.action} ${tr.children[3].textContent}`));
   // 7 calls were refused. Two repeats came within a minute of the same refusal (a second call from
   // a name not on the list, a second "ward is off"), so they are counted on the screen instead of
   // written as new entries (#27): 5 entries.
   assert.equal(rows.filter((r) => r.startsWith('agent.refused')).length, 5, rows.join(' | '));
   assert.equal(rows.filter((r) => r.startsWith('agent.read')).length, 1);
+  assert.ok(rows.filter((r) => r.startsWith('agent.refused')).every((r) => /^agent\.refused Refused: .+\. \S/.test(r)), rows.join(' | '));
+  assert.ok(rows.filter((r) => r.startsWith('agent.read')).every((r) => /^agent\.read Read /.test(r)), rows.join(' | '));
   await page.selectOption('[data-test="audit-actor"]', 'human');
   await page.waitForFunction(() => [...document.querySelectorAll('tbody td[data-actor-type]')].every((td) => td.dataset.actorType === 'human'));
   const people = (await page.$$eval('tbody tr', (trs) => trs.map((tr) => tr.children[3].textContent))).join(' | ');

@@ -195,3 +195,44 @@ test('agent journey: find a free bed and propose it in two window.ospeli calls; 
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #65: the audit table says in words what an agent read, where, what it proposed and why a
+// call was refused. The raw action id stays on the cell (data-action and title) for people who want it.
+test('issue #65: the audit table names what an agent read, proposed and was refused, in words', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, path: '#/beds', clock: '2026-11-10T10:00:00Z' });
+  await page.waitForSelector('.bed');
+  await page.evaluate(async () => {
+    const { runCommand } = await import('./core/commands.js');
+    const core = window.ospeli.core;
+    const coo = { type: 'human', role: 'coo' };
+    await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: { 'ward-a1': true } }, coo);
+    await runCommand(core, 'ospeli_agents_add', { name: 'flow-bot', role: 'bed-manager', wards: ['ward-a1'], days: 30 }, coo);
+    const who = { agent: 'flow-bot', role: 'bed-manager' };
+    await window.ospeli.run('ospeli_beds_board', { wardId: 'ward-a1', format: 'short' }, who);
+    await window.ospeli.run('ospeli_kpi_get', { id: 'occupancy' }, who);
+    await window.ospeli.run('ospeli_workorders_list', { overdue: true, format: 'short' }, who);
+    await window.ospeli.run('ospeli_beds_board', { wardId: 'ward-b1' }, who).catch(() => {}); // a ward that is off for agents
+    await window.ospeli.run('ospeli_agents_set_access', { allowed: true }, who).catch(() => {}); // people only
+    const board = await runCommand(core, 'ospeli_beds_board', { wardId: 'ward-a1', limit: 500 }, coo);
+    const bed = board.beds.find((b) => b.state === 'occupied');
+    await window.ospeli.run('ospeli_beds_flag_expected_discharge', { bedId: bed.id, expectedState: 'occupied' }, who);
+  });
+  await page.goto(`${env.appUrl}#/data`);
+  await page.waitForSelector('[data-test="audit-actor"]');
+  await page.selectOption('[data-test="audit-actor"]', 'agent');
+  await page.waitForFunction(() => document.querySelectorAll('tbody td[data-action]').length >= 6);
+  const rows = await page.$$eval('tbody td[data-action]', (tds) => tds.map((td) => ({ action: td.dataset.action, title: td.title, text: td.textContent })));
+  const text = (action, rx) => rows.filter((r) => r.action === action).map((r) => r.text).find((t) => rx.test(t));
+  const all = rows.map((r) => `${r.action}: ${r.text}`).join(' | ');
+  assert.ok(text('agent.read', /^Read the bed board: Ward A1/), all);
+  assert.ok(text('agent.read', /^Read a KPI: Bed occupancy/), all);
+  assert.ok(text('agent.read', /^Read the work-order queue: overdue only/), all);
+  assert.ok(text('agent.refused', /^Refused: the bed board\. .*(ward|Ward)/), all);
+  assert.ok(text('agent.refused', /^Refused: .*people/i), all);
+  assert.ok(text('agent.proposed', /^Proposed: Flag that the patient in this bed is expected to go home today \(Ward A1, Bed \d+\) · prop-\d+/), all);
+  assert.ok(rows.every((r) => r.title === r.action), 'the raw action id stays on the cell');
+  assert.ok(rows.every((r) => !/^agent\.(read|refused|proposed)/.test(r.text)), all);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'no sideways scroll');
+  assert.deepEqual(errors, []);
+  await context.close();
+});

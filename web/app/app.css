@@ -124,6 +124,7 @@ a.card h3 { display: flex; justify-content: space-between; gap: 8px; }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 
 .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.table-wrap td[data-action] { min-width: 9.5rem; } /* the action is a sentence now (issue #65); the table scrolls sideways inside its box */
 table { width: 100%; border-collapse: collapse; font-size: .9rem; }
 th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-weight: 800; font-size: .8rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); background: #FBF8F2; }

@@ -2,6 +2,8 @@
 import { h, fmtTime } from './ui.js';
 import { roleById } from '../core/model.js';
 import { loadSyntheticHospital, currentHour, HOSPITAL_NAME } from '../core/generator.js';
+import { commandByName } from '../core/commands.js';
+import { KPIS } from '../core/kpi.js';
 
 const roleName = (id) => (id === 'system' ? 'System' : roleById(id)?.name || id);
 // Who acted, in words (issue #17): a person in a role, an agent for a role, or the system.
@@ -15,10 +17,59 @@ const actorTypeOf = (e) => e.actorType || (e.actorRole === 'system' ? 'system' :
 
 // Reset, a fresh copy and import also switch agents off (issue #51); say so before the person confirms.
 const AGENTS_OFF_TOO = ' AI agents will also be switched off.';
-// The one audit action whose detail a person needs to read in the table.
-function actionLabel(e) {
+// What an agent read, in words a data-protection lead can scan (issue #65).
+const READ_WORDS = {
+  ospeli_beds_board: 'the bed board', ospeli_beds_get: 'one bed', ospeli_beds_find_free: 'free beds and the waiting list',
+  ospeli_kpi_list: 'the KPI definitions', ospeli_kpi_get: 'a KPI', ospeli_agents_access: 'the agent access settings',
+  ospeli_proposals_list: 'its own proposals', ospeli_assets_list: 'the asset list', ospeli_workorders_list: 'the work-order queue',
+  ospeli_maps_list: 'the list of process maps', ospeli_maps_get: 'a process map', ospeli_maps_summary: 'the numbers for a process map',
+  ospeli_maps_suggest: 'the guide\'s suggestions for a process map',
+};
+const shortName = (n) => String(n).replace(/\s*\(.*\)$/, '');
+function commandWords(name) {
+  if (READ_WORDS[name]) return READ_WORDS[name];
+  const cmd = commandByName(name);
+  // A write command's summary is one short sentence written for a new colleague.
+  if (cmd && cmd.kind === 'write') return cmd.summary.split(/(?<=[.!?])\s/)[0].replace(/[.:]$/, '');
+  return String(name || 'a command').replace(/^ospeli_/, '').replace(/_/g, ' ');
+}
+// Where a call pointed: only ids the trail stored as real, turned into the names on screen.
+// `places` maps an entity id to { name, parentId }.
+function whereWords(command, input, places) {
+  const out = [];
+  const place = (id) => {
+    if (id === '(unknown)') return 'an id that names nothing here';
+    const p = places.get(id);
+    if (!p) return id;
+    const parent = p.type === 'bed' && places.get(p.parentId);
+    return parent ? `${shortName(parent.name)}, ${p.name}` : shortName(p.name);
+  };
+  for (const k of ['wardId', 'locationId', 'bedId', 'assetId']) if (typeof input?.[k] === 'string') out.push(place(input[k]));
+  if (command === 'ospeli_kpi_get' && input?.id) out.push(KPIS.find((k) => k.id === input.id)?.name || input.id);
+  if (typeof input?.mapId === 'string') out.push(input.mapId);
+  if (input?.overdue === true) out.push('overdue only');
+  if (input?.state === 'completed') out.push('completed');
+  return out.join(', ');
+}
+
+// Audit actions whose detail a person needs to read in the table. The raw action id stays on the
+// cell as data-action and title.
+export function actionLabel(e, places = new Map()) {
   const plain = { 'data.reset': 'Device data cleared', 'data.exported': 'Data exported', 'data.imported': 'Data imported', 'data.synthetic-loaded': 'Fresh copy loaded' }[e.action];
   if (plain) return plain;
+  const d = e.detail || {};
+  if (e.action === 'agent.read' && d.command) {
+    const where = whereWords(d.command, d.input, places);
+    return `Read ${commandWords(d.command)}${where ? `: ${where}` : ''}${d.outcome ? ` (failed: ${d.outcome})` : ''}`;
+  }
+  if (e.action === 'agent.refused' && d.command) {
+    const more = d.repeats?.count ? ` (and ${d.repeats.count} more like it just before)` : '';
+    return `Refused: ${d.command === '(unknown)' ? 'a command that does not exist' : commandWords(d.command)}. ${String(d.why || d.code || '').slice(0, 200)}${more}`;
+  }
+  if (e.action === 'agent.proposed' && d.command) {
+    const where = whereWords(d.command, d.input, places);
+    return `Proposed: ${commandWords(d.command)}${where ? ` (${where})` : ''}`;
+  }
   if (e.action !== 'agents.access-cleared' || !e.detail?.was) return e.action;
   const w = e.detail.was; const n = (c, word) => `${c} ${word}${c === 1 ? '' : 's'}`;
   return `Agents switched off by ${e.detail.by} (was ${w.dial === 'advise' ? 'Advise' : 'Off'}, ${n(w.wards, 'ward')}, ${n(w.agents, 'agent')})`;
@@ -43,7 +94,8 @@ export async function render(el, ctx) {
   actorFilter.addEventListener('change', () => refresh());
 
   async function refresh() {
-    const log = await core.auditLog();
+    const [log, entities] = await Promise.all([core.auditLog(), core.listEntities()]);
+    const places = new Map(entities.map((x) => [x.id, x]));
     const res = await core.verifyAudit();
     chain.className = `pill ${res.ok ? 'pill-ok' : 'pill-bad'}`;
     chain.textContent = res.ok ? `Intact: ${log.length} entries` : `Broken at entry ${res.at}`;
@@ -53,7 +105,7 @@ export async function render(el, ctx) {
       h('td', {}, e.seq),
       h('td', {}, fmtTime(e.at)),
       h('td', { 'data-actor-type': actorTypeOf(e) }, actorLabel(e)),
-      h('td', {}, actionLabel(e), e.target ? ` · ${e.target}` : ''),
+      h('td', { 'data-action': e.action, title: e.action }, actionLabel(e, places), e.target ? ` · ${e.target}` : ''),
       h('td', {}, h('code', { title: e.hash }, e.hash.slice(0, 12))))) : [h('tr', {}, h('td', { colspan: 5 }, want === 'all' ? 'No entries yet.' : 'No entries by this kind of actor.'))]));
   }
 

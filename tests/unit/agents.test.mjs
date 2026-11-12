@@ -229,3 +229,20 @@ test('a reset with agents never switched on writes nothing about agents (issue #
   assert.equal((await core.auditLog()).length, 0);
   assert.equal(await core.agentAccessInUse(), null);
 });
+
+// Issue #65: audit entries by agents read in words; the stored detail is the only source.
+test('audit labels: an agent read, a refusal and a proposal are said in words (issue #65)', async () => {
+  const { actionLabel } = await import('../../web/app/modules/data.js');
+  const places = new Map([['ward-a1', { id: 'ward-a1', type: 'ward', name: 'Ward A1 (acute medicine)' }], ['ward-a1-bed-03', { id: 'ward-a1-bed-03', type: 'bed', name: 'Bed 03', parentId: 'ward-a1' }]]);
+  const e = (action, detail) => ({ action, detail });
+  assert.equal(actionLabel(e('agent.read', { command: 'ospeli_beds_find_free', input: { wardId: 'ward-a1' } }), places), 'Read free beds and the waiting list: Ward A1');
+  assert.equal(actionLabel(e('agent.read', { command: 'ospeli_kpi_get', input: { id: 'occupancy' } }), places), 'Read a KPI: Bed occupancy');
+  assert.equal(actionLabel(e('agent.read', { command: 'ospeli_beds_get', input: { bedId: '(unknown)' }, outcome: 'not-found' }), places), 'Read one bed: an id that names nothing here (failed: not-found)');
+  assert.equal(actionLabel(e('agent.refused', { command: 'ospeli_beds_board', code: 'forbidden', why: 'Ward B1 is off for agents.', repeats: { count: 2 } }), places),
+    'Refused: the bed board. Ward B1 is off for agents. (and 2 more like it just before)');
+  assert.equal(actionLabel(e('agent.refused', { command: '(unknown)', code: 'unknown-command', why: 'There is no such command.' }), places), 'Refused: a command that does not exist. There is no such command.');
+  assert.equal(actionLabel(e('agent.proposed', { command: 'ospeli_beds_allocate', input: { bedId: 'ward-a1-bed-03', encounter: 'enc-1' } }), places), 'Proposed: Hold an available bed for a patient waiting for a bed (Ward A1, Bed 03)');
+  // Anything else keeps its action id; entries without detail are not guessed at.
+  assert.equal(actionLabel(e('role.changed', null), places), 'role.changed');
+  assert.equal(actionLabel(e('agent.read', null), places), 'agent.read');
+});
