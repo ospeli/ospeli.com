@@ -162,6 +162,18 @@ for f, rel in claim_files:
         if m:
             errors.append(f"{rel}: {why}: \"{text[max(0, m.start() - 30):m.end() + 30].strip()}\"")
 
+# Honest public claims (issue #57): the app has no personal sign-in yet; it records the role that
+# acted and whether it was a person or an agent. So "a named person" decides, approves or acts may
+# only appear in a sentence that says it is planned, or that says what Ospeli never does.
+NAMED = re.compile(r"\bnamed (?:person|people|individual)", re.I)
+NAMED_OK = re.compile(r"planned|designed to|in development|\bnever\b|\bnot\b|\brefuse", re.I)
+for f, rel in claim_files:
+    text = f.read_text(encoding="utf-8")
+    text = visible_text(text) if rel.endswith(".html") else re.sub(r"\s+", " ", text)
+    for sentence in re.split(r"(?<=[.!?;])\s+", text):
+        if NAMED.search(sentence) and not NAMED_OK.search(sentence):
+            errors.append(f"{rel}: says a named person acts, but there is no personal sign-in yet (say \"a person\", or planned): {sentence.strip()[:120]}")
+
 areas_file = ROOT / "areas" / "areas.json"
 if areas_file.exists():
     import json

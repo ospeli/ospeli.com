@@ -977,7 +977,7 @@
    },
    {
     "name": "ospeli_maternity_propose_transfer_route",
-    "does": "Propose a receiving unit with free capacity; a named person decides.",
+    "does": "Propose a receiving unit with free capacity; a person decides.",
     "approval": "person decides"
    }
   ],
@@ -4124,7 +4124,7 @@
   "guide": [
    "When the bottleneck finder ranks a delay top for two weeks running, suggests a department redesign or process map.",
    "When data completeness for a run is low, names the missing events and suggests fixing capture first.",
-   "Drafts the business case pack from any playbook's output for a named person to edit and approve."
+   "Drafts the business case pack from any playbook's output for a person to edit and approve."
   ],
   "playbooks": [
    "Daily flow report: beds, delays by reason, overnight gap",

@@ -204,11 +204,11 @@ def area_page(a, by_id):
 <div class="grid">
 <section class="card" aria-labelledby="scr"><h2 id="scr">Key screens</h2><ul>{screens}</ul></section>
 <section class="card" aria-labelledby="cap"><h2 id="cap">What it records</h2><ul>{captures}</ul></section>
-<section class="card" aria-labelledby="gd"><h2 id="gd">What the guide suggests</h2><ul>{guide}</ul><p class="legend" style="margin-top:8px">Every suggestion shows its reason. A named person decides. The guide has an off switch.</p></section>
+<section class="card" aria-labelledby="gd"><h2 id="gd">What the guide suggests</h2><ul>{guide}</ul><p class="legend" style="margin-top:8px">Every suggestion shows its reason. A person decides. The guide has an off switch.</p></section>
 <section class="card" aria-labelledby="pb"><h2 id="pb">Playbooks</h2><ul>{plays}</ul></section>
 </div>
 <section class="block card" aria-labelledby="kp"><h2 id="kp">Measures, with their definitions</h2><div class="tw"><table><thead><tr><th>Measure</th><th>Definition</th><th>Source</th></tr></thead><tbody>{kpis}</tbody></table></div></section>
-<section class="block card" aria-labelledby="ag"><h2 id="ag">For AI assistants</h2><p class="legend">Assistants may read and propose through these commands. "none (read only)" commands only read. Anything that records or changes data is a proposal until a person confirms it, and "person decides" waits for a named person with that role.</p><div class="tw"><table><thead><tr><th>Command</th><th>What it does</th><th>Approval</th></tr></thead><tbody>{cmds}</tbody></table></div></section>
+<section class="block card" aria-labelledby="ag"><h2 id="ag">For AI assistants</h2><p class="legend">Assistants may read and propose through these commands. "none (read only)" commands only read. Anything that records or changes data is a proposal until a person confirms it, and "person decides" waits for a person with that role.</p><div class="tw"><table><thead><tr><th>Command</th><th>What it does</th><th>Approval</th></tr></thead><tbody>{cmds}</tbody></table></div></section>
 <section class="block card" aria-labelledby="st"><h2 id="st">Standards and methods it is designed around</h2>{design}</section>
 {'<section class="block" aria-labelledby="cn"><h2 id="cn">Works with</h2><div class="chips">' + links + '</div></section>' if links else ''}
 <p class="not"><b>What it does not do:</b> {e(a["notFor"])}</p>"""
