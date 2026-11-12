@@ -179,6 +179,30 @@ for f, rel in claim_files:
         if NAMED.search(sentence) and not NAMED_OK.search(sentence):
             errors.append(f"{rel}: says a named person acts, but there is no personal sign-in yet (say \"a person\", or planned): {sentence.strip()[:120]}")
 
+# Honest public claims (issue #64): the public app runs wholly in the browser, so a script in the
+# page can load the app's own modules and act as a person. Until the site server ships (A8), the
+# agent files must say that the agent rules are kept by the app's own code and are not a security
+# boundary, and must not state "only people can switch agents on", "every agent action is audited"
+# or "the page does not expose its storage" as plain fact. Remove this guard only when A8's
+# acceptance test (the same script against the site server is refused) is green.
+AGENT_FILES = ("llms.txt", "agents.md", "app/api/README.md", "app/api/commands.json")
+ABSOLUTE = [(re.compile(r"\bonly (?:a )?(?:people|person)\b[^.]*\bswitch", re.I), "only people can switch agents on"),
+            (re.compile(r"\bagents? cannot\b", re.I), "agents cannot"),
+            (re.compile(r"\bevery (?:agent )?(?:action|read|call|proposal)\b[^.]*\baudit", re.I), "every agent action is audited"),
+            (re.compile(r"does not expose its storage|no other (?:supported )?way in", re.I), "the page does not expose its storage")]
+ABSOLUTE_OK = re.compile(r"designed to|browser demo|not a security boundary|site server|kept by the app", re.I)
+for name in AGENT_FILES:
+    f = ROOT / name
+    if not f.exists():
+        continue
+    text = re.sub(r"\s+", " ", f.read_text(encoding="utf-8"))
+    if "not a security boundary" not in text:
+        errors.append(f"{name}: must say that in the browser demo the agent rules are kept by the app's own code and are not a security boundary (issue #64)")
+    for sentence in re.split(r"(?<=[.!?])\s+", text):
+        for rx, what in ABSOLUTE:
+            if rx.search(sentence) and not ABSOLUTE_OK.search(sentence):
+                errors.append(f"{name}: states \"{what}\" as fact; in the browser demo say \"designed to\" or name the site server (issue #64): {sentence.strip()[:120]}")
+
 areas_file = ROOT / "areas" / "areas.json"
 if areas_file.exists():
     import json

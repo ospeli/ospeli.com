@@ -7,9 +7,9 @@ The public demo at https://ospeli.com/app/ holds **synthetic data only** (the fi
 ## The rules
 1. **People decide, Ospeli suggests.** You may read, and you may *propose* a change. A proposal changes nothing until a person accepts it. You never write to the event log yourself.
 2. **No clinical decisions.** Ospeli is about operations (beds, queues, faults, handoffs), not diagnosis or treatment. Do not use it to recommend care.
-3. **Access is off by default,** for the hospital and for each ward. Only a person (operations manager or chief operating officer) can switch it on, on the Agents screen (`ospeli_agents_set_access`). Agents cannot. The dial has two settings today: Off and Advise (read and propose). Anyone on site can stop every agent in one tap (`ospeli_agents_stop_all`).
+3. **Access is off by default,** for the hospital and for each ward. It is designed to be switched on by a person (operations manager or chief operating officer), on the Agents screen (`ospeli_agents_set_access`); `window.ospeli.run` refuses that command. The dial has two settings today: Off and Advise (read and propose). Anyone on site can stop every agent in one tap (`ospeli_agents_stop_all`).
 4. **You must be on the site's list.** A person adds each agent (`ospeli_agents_add`) with its name, the one role it works for, the wards it may see and an end date of 90 days at most. If you are not listed, are past your end date or claim another role, the call is refused with `forbidden` and the message says why. In the browser demo agents are named, not verified: there are no secret keys yet (keys are planned with the site server).
-5. **You act under your own name, for a role.** Every read, proposal and refused call is in the audit trail with actor type `agent`, your agent name and the role you act for. Name yourself honestly.
+5. **You act under your own name, for a role.** Reads, proposals and refused calls made through `window.ospeli.run` are designed to be recorded in the audit trail with actor type `agent`, your agent name and the role you act for. Name yourself honestly.
 6. **Patient data stays on site.** Ospeli is designed to run on the hospital's own devices or server; today the demo runs in the browser and its data stays on that device. Do not copy data out of it to a cloud service. Export today is one JSON file; FHIR and CSV export and sync between devices are planned, not built.
 7. **Measure flows, never people.** Report beds, queues and waits by role and place, never by named person. Process maps refuse a named person as a step or role.
 
@@ -30,9 +30,12 @@ await window.ospeli.run('ospeli_beds_board', { wardId: 'ward-a1' }, { agent: 'fl
 - Command names are `ospeli_<module>_<action>`. The dotted names used before 12 November 2026 (`beds.board`, `bed.allocate`) still work in this build and are listed as `deprecatedName` in `commands.json`; the audit trail records the new name. Use the new names.
 - Pass `expectedState` with a write when you know the bed's state; a stale request is refused with `conflict` instead of acting on old data.
 - A refused call throws an error with `.code`: `invalid-input`, `unknown-command`, `forbidden`, `not-found`, `conflict` or `agents-off`.
-- The page does not expose its storage. Use the commands; there is no other supported way in.
+- Use the commands through `window.ospeli`: in the browser demo that is the only supported way in. Do not import the app's modules or open its storage yourself; a call made that way skips the access rules and is not recorded as an agent's.
 
 Every command, with its schema, roles and whether agents may call it (the list here is not complete; that file is generated from the code): [app/api/README.md](app/api/README.md) and the JSON schemas in [app/api/commands.json](app/api/commands.json).
+
+## What the browser demo cannot promise
+The public demo runs wholly in your browser. There, the rules above are kept by the app's own code and are not a security boundary: any script running in the page can load the app's modules, go around `window.ospeli` and write as if it were a person, and the audit trail would record a person. So read a trail from the browser demo as a record, not as proof of who acted. Checking who is calling (a key for each agent, sign-in for people) is planned with the site server, which is in development.
 
 ## Preview pages are not the agent API
 Each preview under `/demo/` has a small page object (for example `window.ospeliEdFlowDemo`) so its fictional data can be read. These are preview only, not the agent API: they sit outside the command layer, the access rules and the audit trail, and they are planned to go when the area is built in the app. Start from `commands.json`.

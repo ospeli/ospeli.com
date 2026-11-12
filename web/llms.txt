@@ -43,8 +43,9 @@
 ## Rules
 - Synthetic data only in this build. Never send real patient, staff or hospital data to the demo.
 - People decide, Ospeli suggests. Agents may read and propose; a person accepts or declines.
-- Agent access is off by default, per hospital and per ward, and only people can switch it on.
-- Every agent action is audited with actor type "agent", the agent's name and the role it acts for.
+- Agent access is off by default, per hospital and per ward. It is designed to be switched on by a person, never by an agent.
+- Agent reads, proposals and refused calls are designed to be recorded in the audit trail with actor type "agent", the agent's name and the role it acts for.
+- In the browser demo these rules are kept by the app's own code and are not a security boundary: a script running in the page can load the app's modules and act as a person, and the trail would then record a person. Agents are named, not verified. Checking who is calling (keys for agents, sign-in for people) is planned with the site server.
 - Patient data stays on site: Ospeli is designed to run on the hospital's own devices or server, never through a cloud relay. Today the demo runs in your browser and its data stays on that device. FHIR and CSV export, and sync between devices, are planned, not built.
 - Measure flows, never people.
 
