@@ -154,7 +154,9 @@ test('issue #17: declining needs a listed reason and changes nothing', async () 
 // Agent journey in the browser (backlog A7, issue #39): the flow coordinator's top task through
 // window.ospeli only, in two calls, and the person still decides on the board.
 test('agent journey: find a free bed and propose it in two window.ospeli calls; a person accepts on the board (issue #39)', async () => {
-  const { context, page, errors } = await openPage(env, { width: 390, path: '#/beds' });
+  const { context, page, errors } = await openPage(env, { width: 390, path: '#/beds', clock: '2026-11-10T10:00:00Z' });
+  // The clock is pinned: the synthetic hospital is generated from the current hour, and at some hours
+  // nobody is waiting for a bed, so the journey had nothing to allocate (seen red at 07:54 UTC, 12 Nov).
   await page.waitForSelector('.bed');
   const out = await page.evaluate(async () => {
     const { runCommand } = await import('./core/commands.js');
