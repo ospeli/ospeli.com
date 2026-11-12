@@ -84,3 +84,31 @@ test('the COO can read the queue but has no report form or work-order actions', 
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #28: a role that cannot assign or close saw the text "nullnull" in the work-order dialog.
+// Every role opens an open and a completed work order; no dialog may show "null" or "undefined".
+test('work-order dialog never shows "null" or "undefined", for every role (issue #28)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 360, height: 780, path: '#/engineering', clock: '2026-11-10T10:00:00Z' });
+  await page.waitForSelector('[data-test="wo-list"] [data-wo]');
+  const roles = await page.evaluate(() => [...document.querySelector('#role-select').options].map((o) => o.value));
+  assert.ok(roles.length >= 6);
+  for (const role of roles) {
+    await page.selectOption('#role-select', role);
+    await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
+    for (const filter of ['open', 'completed']) {
+      const chip = page.locator(`.chip-btn[data-filter="${filter}"]`);
+      if (!(await chip.count())) continue;
+      await chip.click();
+      const row = page.locator('[data-test="wo-list"] [data-wo]').first();
+      if (!(await row.count())) continue;
+      await row.click();
+      await page.waitForSelector('dialog[open]');
+      const text = await page.locator('dialog[open]').innerText();
+      assert.doesNotMatch(text, /\bnull|undefined\b/, `${role}, ${filter}: ${text.slice(0, 200)}`);
+      await page.keyboard.press('Escape');
+      await page.waitForFunction(() => !document.querySelector('dialog[open]'));
+    }
+  }
+  assert.deepEqual(errors, []);
+  await context.close();
+});

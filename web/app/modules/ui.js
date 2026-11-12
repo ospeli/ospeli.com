@@ -14,4 +14,11 @@ export function h(tag, attrs = {}, ...kids) {
   return el;
 }
 
+// Replace an element's children, skipping null, undefined and false. The DOM's own
+// replaceChildren() turns a null argument into the text "null" (issue #28).
+export function setKids(el, ...kids) {
+  el.replaceChildren(...kids.flat(Infinity).filter((k) => k != null && k !== false));
+  return el;
+}
+
 export const fmtTime = (iso) => new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });

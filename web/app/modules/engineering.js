@@ -2,7 +2,7 @@
 // assign to a team, close with an outcome, and repeat faults flagged. Every control runs a named
 // command (core/commands.js), the same one an agent would. Deep link per asset:
 // #/engineering/report/<assetId> (the address a QR label on the asset points to).
-import { h, fmtTime } from './ui.js';
+import { h, fmtTime, setKids } from './ui.js';
 import { roleById } from '../core/model.js';
 import { commandByName } from '../core/commands.js';
 import { PRIORITIES, TEAMS, OUTCOMES, WO_STATES, slaText } from '../core/workorders.js';
@@ -122,7 +122,7 @@ export async function render(el, ctx) {
     const mayAssign = open && can(ctx.role, 'ospeli_workorders_assign');
     const mayClose = open && can(ctx.role, 'ospeli_workorders_complete');
     const row = (k, v) => h('div', { class: 'def-row' }, h('dt', {}, k), h('dd', {}, v));
-    dialog.replaceChildren(
+    setKids(dialog,
       h('h2', { id: 'wo-dlg-h' }, `${w.id.toUpperCase()} · ${w.title}`),
       h('p', {}, h('span', { class: `chip pr-${w.priority}` }, PRIORITIES[w.priority].name), ' ',
         h('span', { class: `chip wo-${w.state}` }, WO_STATES[w.state]), ' ',
