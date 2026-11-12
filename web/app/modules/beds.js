@@ -197,23 +197,57 @@ export async function render(el, ctx) {
           class: 'btn btn-ghost btn-small', type: 'button', 'data-find': w.encounter, 'data-cmd': 'ospeli_beds_allocate',
           'aria-label': `${ui.picking === w.encounter ? 'Cancel finding a bed' : 'Find a bed'} for ${encounterLabel(w.encounter)}`,
           onclick: () => {
-            ui.picking = ui.picking === w.encounter ? null : w.encounter;
-            if (ui.picking && w.wardId && wardById.has(w.wardId)) setWard(w.wardId);
+            if (ui.picking === w.encounter) { cancelPick(); return; }
+            ui.picking = w.encounter;
+            ui.filter = 'all'; // a filter must not hide the free beds the banner points at
+            if (w.wardId && wardById.has(w.wardId)) setWard(w.wardId);
             draw();
+            showBanner();
           },
         }, ui.picking === w.encounter ? 'Cancel' : 'Find a bed'));
     })));
   }
 
+  // Stop choosing a bed and hand focus back to the button the pick started from (issue #63).
+  function cancelPick() {
+    const enc = ui.picking;
+    ui.picking = null;
+    draw();
+    waitingBox.querySelector(`[data-find="${enc}"]`)?.focus();
+  }
+
+  // Take the user to the choice (issue #63): the banner comes into view under the top bar and
+  // takes focus, so a phone user sees that a pick has started and a keyboard user is next to the beds.
+  function showBanner() {
+    const box = banner.querySelector('.banner');
+    if (!box) return;
+    box.focus({ preventScroll: true });
+    const r = box.getBoundingClientRect();
+    const barBottom = document.querySelector('.topbar')?.getBoundingClientRect().bottom || 0;
+    if (r.top < barBottom + 8 || r.bottom > window.innerHeight) window.scrollBy(0, r.top - barBottom - 8);
+  }
+
   function renderBanner() {
     const pick = ui.picking && board.waiting.find((w) => w.encounter === ui.picking);
     if (!pick) { banner.replaceChildren(); return; }
-    const anyFree = [...board.beds.values()].some((b) => b.state === 'available');
-    banner.replaceChildren(h('div', { class: 'banner' },
+    const hadFocus = banner.contains(document.activeElement);
+    const free = (id) => wardBeds(id).filter((b) => b.state === 'available').length;
+    const here = free(ui.ward);
+    const others = wards.filter((w) => w.id !== ui.ward && free(w.id) > 0);
+    const hereName = shortWard(wardById.get(ui.ward));
+    banner.replaceChildren(h('div', { class: 'banner', tabindex: '-1' },
       h('span', {}, 'Choose a bed for ', h('b', {}, encounterLabel(pick.encounter)),
         pick.wardId ? ` (asked for ${shortWard(wardById.get(pick.wardId))}). ` : '. ',
-        anyFree ? 'Available beds are highlighted; tap one to allocate it.' : 'No bed is available yet. Beds being cleaned are shown, and you can come back to this.'),
-      h('button', { class: 'btn btn-ghost btn-small', type: 'button', onclick: () => { ui.picking = null; draw(); } }, 'Cancel')));
+        here ? 'Available beds are highlighted; tap one to allocate it.'
+          : others.length ? `No bed is free on ${hereName}. Wards with a free bed:`
+            : 'No bed is available yet. Beds being cleaned are shown, and you can come back to this.'),
+      !here && others.length ? h('span', { class: 'banner-wards' }, others.map((w) => h('button', {
+        class: 'btn btn-ghost btn-small', type: 'button', 'data-go-ward': w.id,
+        'aria-label': `Show ${shortWard(w)}: ${free(w.id)} free`,
+        onclick: () => { setWard(w.id); draw(); },
+      }, `${shortWard(w)} (${free(w.id)})`))) : null,
+      h('button', { class: 'btn btn-ghost btn-small', type: 'button', onclick: cancelPick }, 'Cancel')));
+    if (hadFocus) banner.querySelector('.banner').focus({ preventScroll: true });
   }
 
   function setWard(id) {

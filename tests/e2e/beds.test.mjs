@@ -145,3 +145,87 @@ test('after a bed action, keyboard focus stays on that bed (issue #11)', async (
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #63: on a phone, "Find a bed" must take the user to the choice. The banner comes into view
+// below the top bar, focus moves to it (never to <body>), the banner says where the free beds are
+// when the shown ward has none, and Cancel hands focus back to the button the user started from.
+for (const [width, height] of [[360, 780], [390, 844]]) {
+  test(`find a bed at ${width}px: the banner is in view and holds focus; cancel returns focus (issue #63)`, async () => {
+    const { context, page, errors } = await openPage(env, { clock: CLOCK, width, height, path: '#/beds' });
+    await page.selectOption('#role-select', 'bed-manager');
+    await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
+    await page.reload();
+    await page.waitForSelector('html[data-ready="true"]');
+    await page.waitForSelector('[data-find]');
+    const first = page.locator('[data-find]').first();
+    const enc = await first.getAttribute('data-find');
+    await first.focus();
+    await page.keyboard.press('Enter'); // the keyboard route; a tap runs the same handler
+    await page.waitForSelector('.banner');
+    await page.waitForFunction(() => document.activeElement?.classList.contains('banner'));
+    const seen = await page.evaluate(() => {
+      const r = document.querySelector('.banner').getBoundingClientRect();
+      const bar = document.querySelector('.topbar').getBoundingClientRect();
+      return { top: r.top, bottom: r.bottom, barBottom: bar.bottom, vh: innerHeight, sideways: document.documentElement.scrollWidth - innerWidth,
+        text: document.querySelector('.banner').textContent, match: document.querySelectorAll('.bed.match').length,
+        shown: document.querySelector('.ward-tab[aria-pressed="true"]').dataset.ward,
+        free: [...document.querySelectorAll('.ward-tab')].filter((b) => b.querySelector('.ward-tab-counts b').textContent !== '0').map((b) => b.dataset.ward) };
+    });
+    assert.ok(seen.top >= seen.barBottom - 1, `banner top ${seen.top} is under the top bar (${seen.barBottom})`);
+    assert.ok(seen.bottom <= seen.vh, `banner bottom ${seen.bottom} is below the screen (${seen.vh})`);
+    assert.ok(seen.sideways <= 0, 'no sideways scroll');
+    if (seen.match === 0 && seen.free.length) {
+      assert.match(seen.text, /No bed is free on/);
+      assert.ok(await page.locator('.banner [data-go-ward]').count() >= 1, 'the banner offers the wards that have a free bed');
+    } else if (seen.match > 0) {
+      assert.match(seen.text, /tap one to allocate/);
+    }
+    // A tap does the same.
+    await page.locator('.banner button', { hasText: 'Cancel' }).click();
+    await page.waitForFunction(() => !document.querySelector('.banner'));
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute('data-find')), enc, 'cancel returns focus to the Find a bed button');
+    await page.evaluate(() => scrollTo(0, 0));
+    await first.tap().catch(() => first.click());
+    await page.waitForFunction(() => document.activeElement?.classList.contains('banner'));
+    const again = await page.evaluate(() => document.querySelector('.banner').getBoundingClientRect().top);
+    assert.ok(again >= 0 && again < height - 60, `banner top ${again} is on screen after a tap`);
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}
+
+test('find a bed with no free bed on the asked-for ward: the banner names the wards that have one and one tap goes there (issue #63)', async () => {
+  const { context, page, errors } = await openPage(env, { clock: CLOCK, width: 390, height: 844, path: '#/beds' });
+  await page.selectOption('#role-select', 'bed-manager');
+  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
+  await page.reload();
+  await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForSelector('[data-find]');
+  // Make the first ward full (its free beds go out of service, through the same commands the screen uses).
+  const full = await page.evaluate(async () => {
+    const { runCommand } = await import('./core/commands.js');
+    const who = { type: 'human', role: 'bed-manager' };
+    const board = await runCommand(window.ospeli.core, 'ospeli_beds_board', { limit: 500 }, who);
+    const ward = board.wards[0];
+    for (const b of board.beds.filter((x) => x.wardId === ward.id && x.state === 'available')) {
+      await runCommand(window.ospeli.core, 'ospeli_beds_take_out_of_service', { bedId: b.id, reason: 'Other', expectedState: 'available' }, who);
+    }
+    return { id: ward.id };
+  });
+  await page.waitForFunction((w) => document.querySelector(`.ward-tab[data-ward="${w}"] .ward-tab-counts b`)?.textContent === '0', full.id);
+  // Start the pick, then look at the ward that has no free bed.
+  await page.locator('[data-find]').first().click();
+  await page.waitForSelector('.banner');
+  await page.click(`.ward-tab[data-ward="${full.id}"]`);
+  await page.waitForFunction(() => /No bed is free on/.test(document.querySelector('.banner')?.textContent || ''));
+  const go = page.locator('.banner [data-go-ward]').first();
+  const box = await go.boundingBox();
+  assert.ok(box.height >= 44, `ward button is ${box.height}px tall`);
+  const target = await go.getAttribute('data-go-ward');
+  await go.click();
+  await page.waitForFunction((w) => document.querySelector('.ward-tab[aria-pressed="true"]')?.dataset.ward === w, target);
+  assert.ok(await page.locator('.bed.match').count() >= 1, 'free beds on that ward are highlighted');
+  assert.match(await page.locator('.banner').textContent(), /tap one to allocate/);
+  assert.deepEqual(errors, []);
+  await context.close();
+});

@@ -220,6 +220,9 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .audit-filter select { min-height: 44px; font: inherit; }
 .banner { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: #FDF1D9;
   border: 1.5px solid var(--mango); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 10px; }
+.banner:focus { outline: 3px solid var(--mango); outline-offset: 2px; }
+.banner-wards { display: flex; flex-wrap: wrap; gap: 6px; flex-basis: 100%; }
+.banner-wards .btn { min-height: 44px; }
 .bed-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 142px), 1fr)); }
 @media (max-width: 400px) { .bed-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .bed { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; text-align: left; font: inherit; color: var(--ink); cursor: pointer; min-width: 0;
