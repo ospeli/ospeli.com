@@ -193,3 +193,59 @@ test('desktop front page has no phone footer links (issue #55)', async () => {
   assert.ok(await page.evaluate(() => document.querySelector('footer .tag').getBoundingClientRect().height > 0));
   await context.close();
 });
+
+// Issue #66: every filled button on the front page meets the contrast bar (4.5:1; 3:1 for large
+// text, which is 24 px or 18.66 px bold), at phone and desktop widths. "Email us" was white on
+// coral at 3.7:1 on phones.
+const filledButtons = (page) => page.evaluate(() => {
+  const lum = (c) => { const [r, g, b] = c.match(/[\d.]+/g).slice(0, 3).map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+  return [...document.querySelectorAll('a.btn, button.btn')].filter((el) => {
+    const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+    return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && /^rgb\(/.test(s.backgroundColor);
+  }).map((el) => {
+    const s = getComputedStyle(el); const a = lum(s.color); const b = lum(s.backgroundColor);
+    const px = parseFloat(s.fontSize); const bold = Number(s.fontWeight) >= 700;
+    return { text: el.innerText.trim(), ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05), need: px >= 24 || (bold && px >= 18.66) ? 3 : 4.5, px };
+  });
+});
+for (const width of [360, 390, 1280]) {
+  test(`front page at ${width}px: every filled button meets the contrast bar (issue #66)`, async () => {
+    const { context, page } = await open(width);
+    const btns = await filledButtons(page);
+    assert.ok(btns.length >= 1);
+    if (width < 641) assert.ok(btns.some((b) => /Email us/.test(b.text)), 'the Email us button is shown on phones');
+    for (const b of btns) assert.ok(b.ratio >= b.need, `"${b.text}" is ${b.ratio.toFixed(2)}:1 at ${b.px}px (needs ${b.need}:1)`);
+    await context.close();
+  });
+}
+
+// Issue #21: the hero preview must not contradict the demo it links to. The demo's numbers change
+// every hour, so the card is labelled an illustration, and its bed and work-order numbers are a
+// state the seeded Example General Hospital really shows (checked against the generator).
+test('front page hero card: labelled an illustration, and its numbers are a state the seeded demo shows (issue #21)', async () => {
+  const { context, page } = await open(390);
+  const card = await page.evaluate(() => ({
+    badge: document.querySelector('.board .sample').textContent.trim(),
+    ops: [...document.querySelectorAll('.board .op')].map((o) => ({ k: o.querySelector('.op-k').textContent, n: o.querySelector('.op-n').textContent, l: o.querySelector('.op-l').textContent })),
+  }));
+  assert.equal(card.badge, 'Illustration');
+  const beds = card.ops.find((o) => o.k === 'Beds'); const eng = card.ops.find((o) => o.k === 'Engineering');
+  const want = { free: Number(beds.n), waiting: Number(beds.l.match(/(\d+) waiting/)[1]), open: Number(eng.n), overdue: Number(eng.l.match(/(\d+) overdue/)[1]) };
+  const { loadSyntheticHospital } = await import('../../web/app/core/generator.js');
+  const { Core } = await import('../../web/app/core/core.js');
+  const { MemoryAdapter } = await import('../../web/app/core/db.js');
+  const { runCommand } = await import('../../web/app/core/commands.js');
+  const states = [];
+  for (let hr = 0; hr < 24; hr++) {
+    const end = `2026-11-12T${String(hr).padStart(2, '0')}:00:00.000Z`;
+    const core = await Core.open({ adapter: new MemoryAdapter(), now: () => end });
+    await loadSyntheticHospital(core, { end });
+    const who = { type: 'human', role: 'coo' };
+    const b = await runCommand(core, 'ospeli_beds_board', { format: 'short' }, who);
+    const w = await runCommand(core, 'ospeli_workorders_list', { format: 'short' }, who);
+    states.push({ free: b.wards.reduce((n, x) => n + x.counts.available, 0), waiting: b.waiting.filter((x) => !x.allocatedBed).length, open: w.counts.open, overdue: w.counts.overdue });
+  }
+  assert.ok(states.some((s) => s.free === want.free && s.waiting === want.waiting && s.open === want.open && s.overdue === want.overdue),
+    `the card says ${JSON.stringify(want)}; the seeded demo on 12 Nov shows ${[...new Set(states.map((s) => JSON.stringify(s)))].join(' ')}`);
+  await context.close();
+});
