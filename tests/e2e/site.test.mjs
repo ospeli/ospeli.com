@@ -160,3 +160,36 @@ test('desktop front page: the role links stay one visible row of chips (issue #4
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #55: the end of the phone page offers the next places to go; desktop has no such list.
+for (const width of [360, 390]) {
+  test(`phone front page at ${width}px ends with plain footer links (issue #55)`, async () => {
+    const { context, page, errors } = await open(width);
+    const links = await page.evaluate(() => [...document.querySelectorAll('footer .foot-links a')].map((a) => {
+      const r = a.getBoundingClientRect();
+      return { text: a.innerText.trim(), href: a.getAttribute('href'), h: r.height, size: parseFloat(getComputedStyle(a).fontSize), lines: Math.round(r.height / 44) };
+    }));
+    assert.deepEqual(links.map((l) => l.text), ['Demos', 'All areas', 'Roadmap', 'For AI agents']);
+    assert.ok(links.every((l) => l.h >= 44 && l.h < 60 && l.size >= 16), JSON.stringify(links));
+    for (const l of links.filter((x) => !x.href.startsWith('#'))) {
+      const res = await page.request.get(new URL(l.href, page.url()).href);
+      assert.equal(res.status(), 200, `${l.href} opens`);
+    }
+    // "Roadmap" opens the collapsed roadmap row rather than landing on a closed one.
+    assert.equal(await page.evaluate(() => document.querySelector('#roadmap details').open), false);
+    await page.locator('footer .foot-links a', { hasText: 'Roadmap' }).click();
+    await page.waitForFunction(() => document.querySelector('#roadmap details').open);
+    assert.ok(await page.locator('#roadmap .timeline li').first().isVisible());
+    const o = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    assert.ok(o <= 0, `scrolls sideways by ${o}px`);
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}
+
+test('desktop front page has no phone footer links (issue #55)', async () => {
+  const { context, page } = await open(1280);
+  assert.equal(await page.evaluate(() => document.querySelector('footer .foot-links').getBoundingClientRect().height), 0);
+  assert.ok(await page.evaluate(() => document.querySelector('footer .tag').getBoundingClientRect().height > 0));
+  await context.close();
+});
