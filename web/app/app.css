@@ -236,6 +236,8 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .banner { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: #FDF1D9;
   border: 1.5px solid var(--mango); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 10px; }
 .banner:focus { outline: 3px solid var(--mango); outline-offset: 2px; }
+.banner.held { background: #DDF1EA; border-color: var(--sea); flex-wrap: nowrap; }
+.banner.held .btn { font-size: .95rem; min-width: 72px; justify-content: center; flex: none; }
 .banner-wards { display: flex; flex-wrap: wrap; gap: 6px; flex-basis: 100%; }
 .banner-wards .btn { min-height: 44px; }
 .bed-grid { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 142px), 1fr)); }

@@ -292,3 +292,55 @@ test('ward nurse at 1280 px: the desktop bed board keeps its order (issue #10)',
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #12: one tap still allocates, a double tap does nothing more, and a mis-tap is one tap to undo.
+for (const [width, height] of [[360, 780], [390, 844]]) {
+  test(`find a bed at ${width} px: a double tap allocates once and opens no dialog; Undo frees the bed and starts the choice again (issue #12)`, async () => {
+    const { context, page, errors } = await openPage(env, { clock: CLOCK, width, height, touch: true, path: '#/beds' });
+    await page.selectOption('#role-select', 'bed-manager');
+    await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
+    await page.reload();
+    await page.waitForSelector('html[data-ready="true"]');
+    await page.waitForSelector('[data-find]');
+    const count = (type) => page.evaluate(async (t) => (await window.ospeli.core.events({ type: t })).length, type);
+    const [allocBefore, cancelBefore, waitingBefore] = [await count('bed.allocated'), await count('bed.allocation-cancelled'), await stat(page, 'sum-waiting')];
+    const enc = await page.locator('[data-find]').first().getAttribute('data-find');
+    await page.locator('[data-find]').first().tap();
+    await page.waitForSelector('.bed.match');
+    const bed = await page.locator('.bed.match').first().getAttribute('data-bed');
+    // A double tap: two taps on the same spot, 120 ms apart.
+    const r = await page.locator(`.bed[data-bed="${bed}"]`).boundingBox();
+    await page.touchscreen.tap(r.x + r.width / 2, r.y + r.height / 2);
+    await page.waitForTimeout(120);
+    await page.touchscreen.tap(r.x + r.width / 2, r.y + r.height / 2);
+    await page.waitForFunction((b) => document.querySelector(`.bed[data-bed="${b}"]`)?.classList.contains('st-allocated'), bed);
+    await page.waitForTimeout(700);
+    assert.equal(await count('bed.allocated'), allocBefore + 1, 'one allocation');
+    assert.equal(await page.locator('dialog[open]').count(), 0, 'the second tap opens no dialog');
+    // The page says what was held and offers Undo, in the page (not in a toast that covers controls).
+    const held = page.locator('[data-test="held"]');
+    assert.match(await held.innerText(), /^Ward [A-Z]\d Bed \d+ is held for Patient \d+\./);
+    const undo = held.getByRole('button', { name: /^Undo/ });
+    const ub = await undo.boundingBox();
+    assert.ok(ub.height >= 44 && ub.width >= 44, 'Undo is a 44 px target');
+    assert.ok(parseFloat(await held.evaluate((n) => getComputedStyle(n).fontSize)) >= 15);
+    assert.ok(ub.y >= 0 && ub.y + ub.height <= height, 'Undo is on screen without scrolling');
+    await undo.tap();
+    await page.waitForFunction((b) => document.querySelector(`.bed[data-bed="${b}"]`)?.classList.contains('st-available'), bed);
+    assert.equal(await count('bed.allocation-cancelled'), cancelBefore + 1, 'Undo is recorded as a cancelled allocation, nothing is erased');
+    assert.equal(await stat(page, 'sum-waiting'), waitingBefore);
+    // The choice starts again for the same patient, and the held notice is gone.
+    await page.waitForSelector('.banner');
+    assert.match(await page.locator('.banner').innerText(), /^Choose a bed for/);
+    assert.equal(await page.locator(`[data-find="${enc}"]`).innerText(), 'Cancel');
+    assert.equal(await page.locator('[data-test="held"]').count(), 0);
+    // After the guard time a tap on another free bed allocates as usual.
+    await page.waitForTimeout(700);
+    await page.locator('.bed.match').first().tap();
+    await page.waitForSelector('[data-test="held"]');
+    assert.equal(await count('bed.allocated'), allocBefore + 2);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), 0, 'no sideways scroll');
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}

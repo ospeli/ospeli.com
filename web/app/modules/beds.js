@@ -49,6 +49,8 @@ export async function render(el, ctx) {
     filter: 'all',
     picking: null, // encounter we are choosing a bed for
     busy: false,
+    held: null, // the bed just held from "Find a bed", so a mis-tap is one tap to undo (issue #12)
+    guardUntil: 0, // taps on the grid are ignored until then, so a double tap does nothing more
   };
 
   const kpiBox = h('div');
@@ -78,13 +80,23 @@ export async function render(el, ctx) {
     draw();
   }
 
-  async function act(action, bed, opts = {}) {
-    if (ui.busy) return;
+  function clearHeld() {
+    if (!ui.held) return;
+    clearTimeout(ui.held.timer);
+    ui.held = null;
+  }
+
+  async function act(action, bed, { fromPick = false, ...opts } = {}) {
+    if (ui.busy) return false;
     ui.busy = true;
+    clearHeld();
+    let saved = false;
     const wardId = bedInfo.get(bed.id).parentId;
     try {
       await ctx.run(ACTION_COMMANDS[action], { bedId: bed.id, expectedState: bed.state, ...opts }); // listeners redraw the board
-      ctx.toast(`${shortWard(wardById.get(wardId))} ${bedInfo.get(bed.id).name}: ${ACTION_LABELS[action].replace(/:.*$/, '')}`);
+      saved = true;
+      // A bed held from "Find a bed" is announced in the page with Undo, not in a toast (issue #12).
+      if (!fromPick) ctx.toast(`${shortWard(wardById.get(wardId))} ${bedInfo.get(bed.id).name}: ${ACTION_LABELS[action].replace(/:.*$/, '')}`);
     } catch (err) {
       if (err.code === 'conflict' || err.code === 'forbidden' || err.code === 'not-found') {
         ctx.toast(`Not saved. ${err.message} The board is up to date now.`);
@@ -98,6 +110,19 @@ export async function render(el, ctx) {
       // Keep keyboard and screen-reader users on the bed they acted on (issue #11).
       grid.querySelector(`[data-bed="${bed.id}"]`)?.focus();
     }
+    return saved;
+  }
+
+  // Undo a bed held a moment ago: the allocation is cancelled (a new event; nothing is erased)
+  // and the choice starts again for the same patient.
+  async function undoHeld() {
+    const held = ui.held;
+    const bed = held && board.beds.get(held.bedId);
+    if (!bed || bed.state !== 'allocated' || bed.encounter !== held.encounter) { clearHeld(); draw(); return; }
+    if (!await act('cancel-allocation', bed)) return;
+    if (board.waiting.some((w) => w.encounter === held.encounter && !w.allocatedBed)) ui.picking = held.encounter;
+    draw();
+    showBanner();
   }
 
   function openBed(bedId) {
@@ -105,10 +130,18 @@ export async function render(el, ctx) {
     const info = bedInfo.get(bedId);
     const ward = wardById.get(info.parentId);
     const pick = ui.picking && board.waiting.find((w) => w.encounter === ui.picking);
+    if (Date.now() < ui.guardUntil) return; // the second tap of a double tap (issue #12)
     if (pick && bed.state === 'available' && canDo(ctx.role, 'allocate')) {
-      // Choosing a bed for a waiting patient: one tap allocates, after a clear confirm.
+      // Choosing a bed for a waiting patient: one tap allocates. There is no confirm step; the
+      // page then says which bed is held and offers Undo.
       ui.picking = null;
-      act('allocate', bed, { encounter: pick.encounter });
+      ui.guardUntil = Date.now() + 600;
+      act('allocate', bed, { encounter: pick.encounter, fromPick: true }).then((ok) => {
+        if (!ok) return;
+        ui.held = { bedId, encounter: pick.encounter, timer: setTimeout(() => { ui.held = null; draw(); }, 30e3) };
+        draw();
+        showBanner();
+      });
       return;
     }
     const body = [];
@@ -237,7 +270,19 @@ export async function render(el, ctx) {
 
   function renderBanner() {
     const pick = ui.picking && board.waiting.find((w) => w.encounter === ui.picking);
-    if (!pick) { banner.replaceChildren(); return; }
+    if (!pick) {
+      const bed = ui.held && board.beds.get(ui.held.bedId);
+      if (bed && !(bed.state === 'allocated' && bed.encounter === ui.held.encounter)) clearHeld(); // moved on since
+      if (!ui.held) { banner.replaceChildren(); return; }
+      const info = bedInfo.get(ui.held.bedId);
+      const where = `${shortWard(wardById.get(info.parentId))} ${info.name}`;
+      banner.replaceChildren(h('div', { class: 'banner held', tabindex: '-1', 'data-test': 'held' },
+        h('span', {}, h('b', {}, where), ' is held for ', h('b', {}, encounterLabel(ui.held.encounter)), '.'),
+        h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_beds_cancel_allocation',
+          'aria-label': `Undo: free ${where} again`, onclick: undoHeld }, 'Undo')));
+      return;
+    }
+    clearHeld();
     const hadFocus = banner.contains(document.activeElement);
     const free = (id) => wardBeds(id).filter((b) => b.state === 'available').length;
     const here = free(ui.ward);
@@ -386,5 +431,5 @@ export async function render(el, ctx) {
     kpiTimer = setTimeout(renderKpis, 150);
   });
   const tick = setInterval(draw, 60e3); // keep the "time in state" fresh
-  return () => { off(); clearInterval(tick); clearTimeout(kpiTimer); if (dialog.open) dialog.close(); };
+  return () => { off(); clearInterval(tick); clearTimeout(kpiTimer); clearHeld(); if (dialog.open) dialog.close(); };
 }
