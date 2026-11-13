@@ -172,6 +172,11 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .ward-tab-counts { display: flex; flex-wrap: wrap; gap: 0 10px; font-size: .8rem; }
 .board-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin: 6px 0 10px; }
 .board-head h2 { margin: 0; }
+.ward-counts { margin: 2px 0 0; font-size: .95rem; font-weight: 700; color: var(--ink-soft); }
+.change-ward { margin: 0 0 10px; }
+.change-ward > summary { min-height: 44px; display: flex; align-items: center; font-size: .95rem; font-weight: 800; cursor: pointer; color: var(--sea-ink); }
+.change-ward[open] > summary { margin-bottom: 8px; }
+.ward-first { margin-top: 0; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip-btn { font: inherit; font-size: .88rem; font-weight: 700; color: var(--navy); background: var(--surface); border: 1.5px solid var(--line-strong);
   border-radius: 999px; padding: 6px 12px; min-height: 44px; cursor: pointer; }

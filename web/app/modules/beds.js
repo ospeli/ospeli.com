@@ -38,8 +38,14 @@ export async function render(el, ctx) {
   const bedInfo = new Map(bedEntities.map((b) => [b.id, b]));
   const wardById = new Map(wards.map((w) => [w.id, w]));
   let events = await core.events();
+  // A ward nurse works one ward (issue #10): the ward they last chose is remembered on this
+  // device and opens first. On a phone their page starts with that ward's beds; the hospital
+  // totals and the waiting list, which the patient flow roles need first, come after.
+  const isWardNurse = ctx.role === 'ward-nurse';
+  const myWard = isWardNurse ? await core.getMeta('my-ward') : null;
+  const wardFirst = isWardNurse && window.matchMedia('(max-width: 640px)').matches;
   const ui = {
-    ward: wardById.has(ctx.rest[0]) ? ctx.rest[0] : wards[0].id,
+    ward: wardById.has(ctx.rest[0]) ? ctx.rest[0] : wardById.has(myWard) ? myWard : wards[0].id,
     filter: 'all',
     picking: null, // encounter we are choosing a bed for
     busy: false,
@@ -53,6 +59,8 @@ export async function render(el, ctx) {
   const wardTabs = h('div', { class: 'ward-tabs', role: 'group', 'aria-label': 'Wards' });
   const filterRow = h('div', { class: 'chips', role: 'group', 'aria-label': 'Show beds' });
   const wardHead = h('h2', { id: 'ward-h' });
+  const wardCounts = wardFirst ? h('p', { class: 'ward-counts', 'data-test': 'ward-counts' }) : null;
+  const changeWard = wardFirst ? h('details', { class: 'change-ward', 'data-test': 'change-ward' }, h('summary', {}, 'Change ward'), wardTabs) : null;
   const grid = h('div', { class: 'bed-grid', 'data-test': 'bed-grid' });
   const recent = h('ol', { class: 'recent', 'data-test': 'recent' });
   const dialog = h('dialog', { class: 'kpi-dialog bed-dialog', 'aria-labelledby': 'bed-dlg-h' });
@@ -259,7 +267,12 @@ export async function render(el, ctx) {
     wardTabs.replaceChildren(...wards.map((w) => {
       const c = countStates(wardBeds(w.id));
       return h('button', { type: 'button', class: 'ward-tab', 'aria-pressed': String(ui.ward === w.id), 'data-ward': w.id,
-        onclick: () => { setWard(w.id); draw(); } },
+        onclick: () => {
+          setWard(w.id);
+          if (isWardNurse) core.setMeta('my-ward', w.id); // a view choice on this device, not a change to any record
+          if (changeWard) changeWard.open = false;
+          draw();
+        } },
         h('span', { class: 'ward-tab-name' }, shortWard(w)),
         h('span', { class: 'ward-tab-counts' },
           h('span', {}, h('b', {}, c.available), ' free'),
@@ -281,6 +294,10 @@ export async function render(el, ctx) {
     const test = FILTERS.find((f) => f[0] === ui.filter)[2];
     const picking = !!ui.picking;
     wardHead.textContent = ward.name;
+    if (wardCounts) {
+      const c = countStates(wardBeds(ui.ward));
+      wardCounts.textContent = `${c.available} free · ${c.vacated + c.cleaning} to clean · ${c['expected-discharge']} going home`;
+    }
     const beds = wardBeds(ui.ward).filter(test);
     grid.replaceChildren(...(beds.length ? beds.map((b) => {
       const info = bedInfo.get(b.id);
@@ -321,25 +338,27 @@ export async function render(el, ctx) {
     renderSummary(); renderConflicts(); renderWaiting(); renderBanner(); renderWards(); renderFilters(); renderGrid(); renderRecent();
   }
 
+  const pageHead = h('div', { class: 'page-head' },
+    h('div', {},
+      h('p', { class: 'eyebrow' }, 'Bed board'),
+      h('h1', {}, 'Bed board'),
+      h('p', {}, 'Live bed state from the event log. Tap a bed to move it on: discharge, clean, allocate.')));
+  const waitSection = h('section', { class: 'section', 'aria-labelledby': 'wait-h' },
+    h('h2', { id: 'wait-h' }, 'Waiting for a bed'),
+    h('p', { class: 'meta' }, 'Longest wait first. Waits count from the decision to admit.'),
+    waitingBox);
+  const wardSection = h('section', { class: `section${wardFirst ? ' ward-first' : ''}`, 'aria-labelledby': 'ward-h' },
+    wardFirst ? null : wardTabs,
+    banner,
+    h('div', { class: 'board-head' }, wardFirst ? h('div', {}, wardHead, wardCounts) : wardHead, filterRow),
+    changeWard,
+    grid,
+    h('p', { class: 'meta legend' }, 'Time on each bed is how long it has been in its current state.'));
   el.append(
-    h('div', { class: 'page-head' },
-      h('div', {},
-        h('p', { class: 'eyebrow' }, 'Bed board'),
-        h('h1', {}, 'Bed board'),
-        h('p', {}, 'Live bed state from the event log. Tap a bed to move it on: discharge, clean, allocate.'))),
-    summary,
-    props.el,
-    conflictBox,
-    h('section', { class: 'section', 'aria-labelledby': 'wait-h' },
-      h('h2', { id: 'wait-h' }, 'Waiting for a bed'),
-      h('p', { class: 'meta' }, 'Longest wait first. Waits count from the decision to admit.'),
-      waitingBox),
-    h('section', { class: 'section', 'aria-labelledby': 'ward-h' },
-      wardTabs,
-      banner,
-      h('div', { class: 'board-head' }, wardHead, filterRow),
-      grid,
-      h('p', { class: 'meta legend' }, 'Time on each bed is how long it has been in its current state.')),
+    pageHead,
+    ...(wardFirst
+      ? [wardSection, h('h2', { class: 'section' }, 'Whole hospital'), summary, props.el, conflictBox, waitSection]
+      : [summary, props.el, conflictBox, waitSection, wardSection]),
     h('section', { class: 'section', 'aria-labelledby': 'kpi-h' },
       h('h2', { id: 'kpi-h' }, 'Flow numbers'),
       h('p', { class: 'meta' }, 'Last 7 days, calculated from the same event log. Tap a number to see how it is defined.'),

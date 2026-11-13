@@ -22,6 +22,18 @@ export async function render(el, ctx) {
     ctx.core.listEntities('bed'), ctx.core.listEntities('ward'), ctx.core.eventCount(), ctx.core.db.count('audit'),
   ]);
 
+  // On a phone the role's shortcuts come first, so the day's first tap is on the first screen
+  // (issue #10); wider screens keep Key numbers first.
+  const phone = window.matchMedia('(max-width: 640px)').matches;
+  const keyNumbers = beds.length ? h('section', { class: 'section', style: phone ? null : 'margin-top:0', 'aria-labelledby': 'kpi-h' },
+    h('h2', { id: 'kpi-h' }, 'Key numbers'),
+    h('p', { class: 'meta' }, 'Last 7 days, calculated from the event log. Tap a number to see how it is defined.'),
+    kpiTiles(kpiIds, await kpiContext(ctx.core))) : null;
+  const shortcuts = [
+    h('h2', { class: 'section', style: phone ? 'margin-top:0' : null }, 'Your shortcuts'),
+    h('div', { class: 'grid', 'data-test': 'role-shortcuts' }, mine.map(card)),
+  ];
+
   // Element.append would print a null child as the word "null" (issue #7), so drop them.
   el.append(...[
     h('div', { class: 'page-head' },
@@ -29,12 +41,7 @@ export async function render(el, ctx) {
         h('p', { class: 'eyebrow' }, 'Today'),
         h('h1', {}, `${role.name}`),
         h('p', {}, 'Your shortcuts for this role. Change role at the top of the screen.'))),
-    beds.length ? h('section', { class: 'section', style: 'margin-top:0', 'aria-labelledby': 'kpi-h' },
-      h('h2', { id: 'kpi-h' }, 'Key numbers'),
-      h('p', { class: 'meta' }, 'Last 7 days, calculated from the event log. Tap a number to see how it is defined.'),
-      kpiTiles(kpiIds, await kpiContext(ctx.core))) : null,
-    h('h2', { class: 'section' }, 'Your shortcuts'),
-    h('div', { class: 'grid', 'data-test': 'role-shortcuts' }, mine.map(card)),
+    ...(phone ? [...shortcuts, keyNumbers] : [keyNumbers, ...shortcuts]),
     h('section', { class: 'section', 'aria-labelledby': 'all-h' },
       h('h2', { id: 'all-h' }, 'Settings and data'),
       h('div', { class: 'grid' }, others.map(card))),

@@ -229,3 +229,66 @@ test('find a bed with no free bed on the asked-for ward: the banner names the wa
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #10: a ward nurse on a phone sees their own ward's beds on the first screen.
+for (const [width, height] of [[360, 780], [390, 800]]) {
+  test(`ward nurse at ${width} px: my ward's beds are on the first screen, the ward is remembered, the rest of the hospital sits below (issue #10)`, async () => {
+    const { context, page, errors } = await openPage(env, { clock: CLOCK, width, height, touch: true });
+    await page.selectOption('#role-select', 'ward-nurse');
+    await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
+    await page.goto(`${env.appUrl}#/beds`);
+    await page.waitForSelector('[data-test="bed-grid"] .bed');
+    const box = async (sel) => page.locator(sel).first().boundingBox();
+    const first = await box('[data-test="bed-grid"] .bed');
+    assert.ok(first.y + first.height <= height, `the first bed ends at ${Math.round(first.y + first.height)} px on a ${height} px screen`);
+    // The ward's own counts sit with its name, and the hospital totals and waiting list come after the beds.
+    assert.match(await page.textContent('[data-test="ward-counts"]'), /^\d+ free · \d+ to clean · \d+ going home$/);
+    const order = await page.evaluate(() => {
+      const top = (s) => document.querySelector(s).getBoundingClientRect().top;
+      return top('[data-test="bed-grid"]') < top('[data-test="board-summary"]') && top('[data-test="board-summary"]') < top('[data-test="waiting"]');
+    });
+    assert.ok(order, 'beds, then hospital totals, then the waiting list');
+    // Changing ward is one 44 px row; the choice is remembered on this device.
+    const change = page.locator('[data-test="change-ward"] > summary');
+    assert.ok((await change.boundingBox()).height >= 44);
+    assert.ok(parseFloat(await change.evaluate((n) => getComputedStyle(n).fontSize)) >= 15);
+    await change.tap();
+    await page.locator('.ward-tab[data-ward="ward-b2"]').tap();
+    await page.waitForFunction(() => /^Ward B2/.test(document.querySelector('#ward-h').textContent));
+    assert.equal(await page.locator('[data-test="change-ward"]').evaluate((d) => d.open), false, 'the ward list closes after a choice');
+    const again = await box('[data-test="bed-grid"] .bed');
+    assert.ok(again.y + again.height <= height + await page.evaluate(() => scrollY), 'still on the first screen after changing ward');
+    assert.equal(await page.evaluate(() => window.ospeli.core.getMeta('my-ward')), 'ward-b2');
+    // Today's shortcut opens the board on my ward, also after a reload.
+    await page.goto(`${env.appUrl}#/home`);
+    await page.reload();
+    await page.waitForSelector('html[data-ready="true"]');
+    await page.locator('[data-test="role-shortcuts"] a[href="#/beds"]').tap();
+    await page.waitForFunction(() => /^Ward B2/.test(document.querySelector('#ward-h')?.textContent || ''));
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), 0, 'no sideways scroll');
+    // Another role on the same phone keeps the usual order and does not get the nurse's ward.
+    await page.selectOption('#role-select', 'bed-manager');
+    await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
+    await page.goto(`${env.appUrl}#/beds`);
+    await page.waitForSelector('[data-test="change-ward"]', { state: 'detached' }); // the board redraws for the new role
+    await page.waitForSelector('[data-test="bed-grid"] .bed');
+    assert.ok(await page.evaluate(() => document.querySelector('[data-test="waiting"]').getBoundingClientRect().top < document.querySelector('.ward-tabs').getBoundingClientRect().top), 'bed manager: waiting list first');
+    assert.match(await page.textContent('#ward-h'), /^Ward A1/);
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}
+
+test('ward nurse at 1280 px: the desktop bed board keeps its order (issue #10)', async () => {
+  const { context, page, errors } = await openPage(env, { clock: CLOCK, width: 1280 });
+  await page.selectOption('#role-select', 'ward-nurse');
+  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
+  await page.goto(`${env.appUrl}#/beds`);
+  await page.waitForSelector('[data-test="bed-grid"] .bed');
+  assert.equal(await page.locator('[data-test="change-ward"]').count(), 0);
+  assert.equal(await page.locator('[data-test="ward-counts"]').count(), 0);
+  const tops = await page.evaluate(() => ['[data-test="board-summary"]', '[data-test="waiting"]', '.ward-tabs', '[data-test="bed-grid"]'].map((s) => document.querySelector(s).getBoundingClientRect().top));
+  assert.deepEqual(tops, [...tops].sort((a, b) => a - b), 'totals, waiting list, ward tabs, beds');
+  assert.deepEqual(errors, []);
+  await context.close();
+});

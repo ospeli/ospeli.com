@@ -245,3 +245,20 @@ for (const width of [360, 390, 1280]) {
     await context.close();
   });
 }
+
+// Issue #10: on a phone the role's shortcuts come before the key numbers; desktop keeps its order.
+test('Today: shortcuts come before Key numbers on phones (360 and 390 px) and after them at 1280 px (issue #10)', async () => {
+  for (const [width, height] of [[360, 780], [390, 844], [1280, 860]]) {
+    const { context, page, errors } = await openPage(env, { width, height, touch: width < 1000 });
+    await page.selectOption('#role-select', 'ward-nurse');
+    await page.waitForSelector('[data-test="role-shortcuts"] a');
+    await page.waitForSelector('#kpi-h');
+    const y = await page.evaluate(() => ({ shortcuts: document.querySelector('[data-test="role-shortcuts"] a').getBoundingClientRect(), kpi: document.querySelector('#kpi-h').getBoundingClientRect().top }));
+    if (width < 1000) {
+      assert.ok(y.shortcuts.top < y.kpi, `${width}: shortcuts above Key numbers`);
+      assert.ok(y.shortcuts.bottom <= height, `${width}: the first shortcut is on the first screen (ends at ${Math.round(y.shortcuts.bottom)})`);
+    } else assert.ok(y.kpi < y.shortcuts.top, 'desktop: Key numbers first, as before');
+    assert.deepEqual(errors, []);
+    await context.close();
+  }
+});
