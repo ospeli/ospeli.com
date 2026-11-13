@@ -240,21 +240,29 @@ export function generateHospital({ seed = DEFAULT_SEED, end, days = 30 } = {}) {
 
   // Engineering: faults, work orders and fixes.
   const assets = entities.filter((e) => e.type === 'asset');
+  const woSpans = new Map(); // asset -> [reported, completed] of its work orders so far
   for (let day = 0; day < days; day++) {
     const n = r.int(2, 6);
     for (let k = 0; k < n; k++) {
       const asset = r.pick(assets);
       const [title, trade] = FAULTS[asset.kind];
       const priority = r.weighted([['urgent', 2], ['high', 4], ['routine', 10]]);
-      const reported = startMs + day * DAY + (7 + r.next() * 13) * HOUR;
+      let reported = startMs + day * DAY + (7 + r.next() * 13) * HOUR;
       const woId = `wo-${pad(++wo, 5)}`;
       const reporter = asset.parentId.startsWith('ward-') ? 'ward-nurse' : 'estates-tech';
-      push(reported, 'asset.fault-reported', asset.id, reporter, { workOrder: woId, title, trade, priority });
       const respondH = { urgent: 0.5, high: 2, routine: 8 }[priority];
-      const assigned = reported + r.lognormal(respondH, 0.6) * HOUR;
-      push(assigned, 'workorder.assigned', woId, 'estates-tech', { asset: asset.id, trade });
+      const respond = r.lognormal(respondH, 0.6) * HOUR;
       const fixH = { urgent: 2, high: 6, routine: 30 }[priority];
-      const done = assigned + r.lognormal(fixH, 0.8) * HOUR;
+      const fix = r.lognormal(fixH, 0.8) * HOUR;
+      // One open work order per asset at a time (issue #24): a fault that would be reported while
+      // the last one is still open is reported after that fix instead, so it failed again after a fix.
+      const busy = woSpans.get(asset.id) || [];
+      for (let hit; (hit = busy.find(([from, to]) => reported <= to && reported + respond + fix >= from));) reported = hit[1] + 2 * HOUR;
+      const assigned = reported + respond;
+      const done = assigned + fix;
+      woSpans.set(asset.id, [...busy, [reported, done]]);
+      push(reported, 'asset.fault-reported', asset.id, reporter, { workOrder: woId, title, trade, priority });
+      push(assigned, 'workorder.assigned', woId, 'estates-tech', { asset: asset.id, trade });
       push(done, 'workorder.completed', woId, 'estates-tech', { asset: asset.id, outcome: r.chance(0.9) ? 'fixed' : 'escalated' });
     }
   }

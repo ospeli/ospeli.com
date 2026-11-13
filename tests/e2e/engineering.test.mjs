@@ -112,3 +112,98 @@ test('work-order dialog never shows "null" or "undefined", for every role (issue
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #24: reporting the same fault twice opened a second work order (and counted it as a
+// repeat fault). The second report now says the fault is already in the queue and leads to it.
+test('the same fault reported twice: "Already reported", one work order, and a way to see it (390px, touch) (issue #24)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 780, touch: true, path: '#/engineering/report/asset-a1-sink-1', clock: '2026-11-10T10:00:00Z' });
+  await page.waitForSelector('[data-test="wo-open"] b');
+  const before = await openCount(page);
+  const status = page.locator('[data-test="report-status"]');
+  await page.selectOption('[data-test="f-fault"]', 'Tap leaking');
+  await page.locator('[data-cmd="ospeli_workorders_report_fault"]').tap();
+  await page.waitForFunction(() => /^Reported: WO-\d{5}/.test(document.querySelector('[data-test="report-status"]').textContent));
+  const id = (await status.textContent()).match(/WO-\d{5}/)[0];
+  await page.waitForFunction((n) => Number(document.querySelector('[data-test="wo-open"] b').textContent) === n + 1, before);
+  // (This sink was fixed earlier in the month, so the first report may itself be a genuine repeat.)
+  const repeatsAfterFirst = Number(await page.locator('[data-test="wo-repeat"] b').textContent());
+
+  // A second nurse (or a second tap) reports the same fault on the same sink.
+  await page.locator('[data-cmd="ospeli_workorders_report_fault"]').tap();
+  await page.waitForFunction(() => /^Already reported/.test(document.querySelector('[data-test="report-status"]').textContent));
+  assert.equal(await status.textContent(), `Already reported: ${id} is open for this fault. No new work order was opened.`);
+  const reports = await page.evaluate(async () => (await window.ospeli.core.events({ type: 'asset.fault-reported' })).filter((e) => e.subject === 'asset-a1-sink-1' && e.data.title === 'Tap leaking').length);
+  assert.equal(reports, 1, 'one fault-reported event');
+  assert.equal(await openCount(page), before + 1, 'the open count went up by one, not two');
+  assert.equal(Number(await page.locator('[data-test="wo-repeat"] b').textContent()), repeatsAfterFirst, 'a duplicate is not a repeat fault');
+  assert.equal(Number(await page.locator('[data-kpi="open-work-orders"] .kpi-value').textContent()), before + 1, 'the KPI tile agrees');
+  assert.equal(await page.locator('[data-test="wo-list"] [data-wo]').filter({ hasText: 'Tap leaking' }).count(), 1, 'one card in the queue');
+
+  // No dead end: a button, tall enough to tap, opens that work order.
+  const see = page.locator('[data-test="see-existing"]');
+  assert.equal(await see.textContent(), `See ${id}`);
+  const box = await see.boundingBox();
+  assert.ok(box.height >= 44, `tap target ${box.height}px`);
+  await see.tap();
+  await page.waitForSelector('dialog[open]');
+  assert.match(await page.locator('dialog[open] h2').textContent(), new RegExp(`^${id} · Tap leaking$`));
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => !document.querySelector('dialog[open]'));
+
+  // A different fault on the same sink still opens, and clears the "Already reported" line.
+  await page.selectOption('[data-test="f-fault"]', 'Other fault (describe to the team in person)');
+  await page.locator('[data-cmd="ospeli_workorders_report_fault"]').tap();
+  await page.waitForFunction(() => /^Reported: WO-\d{5}/.test(document.querySelector('[data-test="report-status"]').textContent));
+  assert.equal(await see.count(), 0);
+  assert.ok(await noSideways(page) <= 0);
+
+  // It fits the smallest phone too.
+  await page.setViewportSize({ width: 360, height: 780 });
+  await page.selectOption('[data-test="f-fault"]', 'Tap leaking');
+  await page.locator('[data-cmd="ospeli_workorders_report_fault"]').tap();
+  await page.waitForSelector('[data-test="see-existing"]');
+  const fit = await page.evaluate(() => ['[data-test="report-status"]', '[data-test="see-existing"]'].map((sel) => { const r = document.querySelector(sel).getBoundingClientRect(); return r.left >= 0 && r.right <= window.innerWidth; }));
+  assert.deepEqual(fit, [true, true]);
+  assert.ok(await noSideways(page) <= 0);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('a fault that comes back after a fix is a repeat fault, in plain words (issue #24)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 780, path: '#/engineering/report/asset-a1-sink-1', clock: '2026-11-10T10:00:00Z' });
+  await page.waitForSelector('[data-test="wo-open"] b');
+  const repeatsBefore = Number(await page.locator('[data-test="wo-repeat"] b').textContent());
+  const report = async () => {
+    await page.selectOption('[data-test="f-fault"]', 'Tap leaking');
+    await page.click('[data-cmd="ospeli_workorders_report_fault"]');
+    await page.waitForFunction(() => /^Reported: WO-\d{5}/.test(document.querySelector('[data-test="report-status"]').textContent));
+    return (await page.locator('[data-test="report-status"]').textContent());
+  };
+  // This sink already had fixes in the synthetic month; count them from what the screen says.
+  const fixes = (text) => Number(text.match(/Failed again after a fix: (\d+) earlier fix(es)? on this asset in 30 days\.$/)?.[1] ?? 0);
+  const first = await report();
+  const earlier = fixes(first);
+  const id = first.match(/WO-\d{5}/)[0].toLowerCase();
+  await page.waitForSelector(`[data-wo="${id}"]`);
+  // The page is drawn again for the new role; mark the old queue so the test waits for the new one.
+  await page.evaluate(() => { document.querySelector('[data-test="wo-list"]').dataset.old = '1'; });
+  await page.selectOption('#role-select', 'estates-tech');
+  await page.waitForSelector(`[data-test="wo-list"]:not([data-old]) [data-wo="${id}"]`);
+  await page.click(`[data-wo="${id}"]`);
+  await page.waitForSelector('dialog[open]');
+  await page.selectOption('#wo-outcome', 'fixed');
+  await page.click('dialog[open] [data-cmd="ospeli_workorders_complete"]');
+  await page.waitForFunction((wo) => !document.querySelector(`[data-wo="${wo}"]`), id);
+  const second = await report();
+  assert.match(second, /Repeat fault\. Failed again after a fix: \d+ earlier fix(es)? on this asset in 30 days\.$/);
+  assert.equal(fixes(second), earlier + 1, 'one more fix than before');
+  const id2 = second.match(/WO-\d{5}/)[0].toLowerCase();
+  await page.waitForFunction((n) => Number(document.querySelector('[data-test="wo-repeat"] b').textContent) === n + 1, repeatsBefore);
+  assert.match(await page.locator(`[data-wo="${id2}"]`).textContent(), new RegExp(`Repeat ×${earlier + 2}`));
+  await page.click(`[data-wo="${id2}"]`);
+  await page.waitForSelector('dialog[open]');
+  assert.match(await page.locator('dialog[open]').innerText(), new RegExp(`Failed again after a fix: ${earlier + 1} earlier fix(es)? on this asset in 30 days`));
+  assert.ok(await noSideways(page) <= 0);
+  assert.deepEqual(errors, []);
+  await context.close();
+});

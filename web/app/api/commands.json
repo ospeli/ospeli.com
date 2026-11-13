@@ -2750,7 +2750,7 @@
     },
     {
       "name": "ospeli_workorders_list",
-      "summary": "The work-order queue: open (or completed) work orders with priority, team, due time, overdue flag and repeat-fault count, overdue and most urgent first. For \"what is overdue on this ward\" pass overdue: true and locationId. Read-only.",
+      "summary": "The work-order queue: open (or completed) work orders with priority, team, due time, overdue flag and repeat-fault count (failed again after a fix), overdue and most urgent first. For \"what is overdue on this ward\" pass overdue: true and locationId. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -2947,7 +2947,7 @@
                 "repeat": {
                   "type": "integer",
                   "minimum": 0,
-                  "description": "Earlier faults on the same asset in the 30 days before this one. 1 or more is a repeat fault."
+                  "description": "Failed again after a fix: how many earlier work orders on the same asset were completed in the 30 days before this report. 1 or more is a repeat fault. A second report while a work order is still open is a duplicate, not a repeat."
                 }
               }
             }
@@ -2967,7 +2967,8 @@
                 "type": "integer"
               },
               "repeat": {
-                "type": "integer"
+                "type": "integer",
+                "description": "Open work orders on an asset that failed again after a fix in the last 30 days."
               }
             }
           }
@@ -2981,7 +2982,7 @@
     },
     {
       "name": "ospeli_workorders_report_fault",
-      "summary": "Report a fault on an asset. Opens a work order with a priority and an SLA due time, and says if it is a repeat fault.",
+      "summary": "Report a fault on an asset. Opens a work order with a priority and an SLA due time, and says if it is a repeat fault (failed again after a fix). If a work order is already open for the same fault on the same asset, nothing new is opened: the answer is a conflict that names it in detail.existing.",
       "kind": "write",
       "roles": [
         "ward-nurse",
@@ -3073,7 +3074,8 @@
           },
           "repeat": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Failed again after a fix: how many earlier work orders on the same asset were completed in the 30 days before this report. 1 or more is a repeat fault. A second report while a work order is still open is a duplicate, not a repeat."
           },
           "events": {
             "type": "array",
@@ -3165,7 +3167,8 @@
           },
           "repeat": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Failed again after a fix: how many earlier work orders on the same asset were completed in the 30 days before this report. 1 or more is a repeat fault. A second report while a work order is still open is a duplicate, not a repeat."
           },
           "events": {
             "type": "array",
@@ -3255,7 +3258,8 @@
           },
           "repeat": {
             "type": "integer",
-            "minimum": 0
+            "minimum": 0,
+            "description": "Failed again after a fix: how many earlier work orders on the same asset were completed in the 30 days before this report. 1 or more is a repeat fault. A second report while a work order is still open is a duplicate, not a repeat."
           },
           "events": {
             "type": "array",

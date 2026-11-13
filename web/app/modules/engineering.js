@@ -5,7 +5,7 @@
 import { h, fmtTime, setKids } from './ui.js';
 import { roleById } from '../core/model.js';
 import { commandByName } from '../core/commands.js';
-import { PRIORITIES, TEAMS, OUTCOMES, WO_STATES, slaText } from '../core/workorders.js';
+import { PRIORITIES, TEAMS, OUTCOMES, WO_STATES, slaText, repeatText } from '../core/workorders.js';
 import { kpiContext, kpiTiles } from './kpi-tiles.js';
 import { proposalsCard } from './proposals.js';
 
@@ -40,6 +40,7 @@ export async function render(el, ctx) {
       h('input', { type: 'radio', name: 'f-prio', value: id, checked: id === 'routine' }),
       h('span', {}, h('b', {}, p.name), h('small', {}, p.hint)))));
   const reportStatus = h('p', { class: 'meta', role: 'status', 'data-test': 'report-status' });
+  const reportMore = h('div', { class: 'actions', 'data-test': 'report-more' }); // a way on after "Already reported"
   const fillAssets = (keep) => {
     const list = assetData.assets.filter((a) => a.locationId === locSel.value);
     assetSel.replaceChildren(...list.map((a) => new Option(a.name, a.id)));
@@ -62,21 +63,29 @@ export async function render(el, ctx) {
     h('div', { class: 'field' }, h('span', { id: 'f-prio-l', class: 'label' }, 'How urgent'), prioBox),
     h('div', { class: 'actions' }, reportBtn),
     reportStatus,
+    reportMore,
     h('p', { class: 'meta' }, 'Pick from the lists; there is no free text, so no personal details go in the log. If it is unsafe, make the area safe and call the team as well.'));
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (ui.busy) return;
     ui.busy = true;
     reportBtn.disabled = true;
+    reportMore.replaceChildren();
     try {
       const priority = form.querySelector('input[name="f-prio"]:checked')?.value || 'routine';
       const out = await ctx.run('ospeli_workorders_report_fault', { assetId: assetSel.value, fault: faultSel.value, priority });
       const a = assets.get(assetSel.value);
-      reportStatus.textContent = `Reported: ${out.workOrderId.toUpperCase()}, ${faultSel.value}, ${a.name}.${out.repeat ? ` Repeat fault: ${out.repeat} earlier on this asset in 30 days.` : ''}`;
+      reportStatus.textContent = `Reported: ${out.workOrderId.toUpperCase()}, ${faultSel.value}, ${a.name}.${out.repeat ? ` Repeat fault. ${repeatText(out.repeat)}.` : ''}`;
       ctx.toast(`Work order ${out.workOrderId.toUpperCase()} opened`);
       ui.filter = 'open';
     } catch (err) {
-      reportStatus.textContent = `Not saved. ${err.message}`;
+      const existing = err.code === 'conflict' ? err.detail?.existing : null;
+      if (existing) {
+        // Issue #24: the fault is already in the queue. Say so, and offer the work order itself.
+        const name = existing.toUpperCase();
+        reportStatus.textContent = `Already reported: ${name} is open for this fault. No new work order was opened.`;
+        reportMore.replaceChildren(h('button', { class: 'btn btn-ghost', type: 'button', 'data-test': 'see-existing', onclick: () => showWorkOrder(existing) }, `See ${name}`));
+      } else reportStatus.textContent = `Not saved. ${err.message}`;
     } finally {
       ui.busy = false;
       reportBtn.disabled = false;
@@ -113,6 +122,16 @@ export async function render(el, ctx) {
     }
   }
 
+  // Open one work order by its id, from fresh data (used by "Already reported").
+  async function showWorkOrder(id) {
+    await load();
+    const w = [...data.open.workOrders, ...data.completed.workOrders].find((x) => x.id === id);
+    if (!w) { ctx.toast(`${id.toUpperCase()} is not in the queue any more.`); return; }
+    ui.filter = w.state === 'completed' ? 'completed' : 'open';
+    draw();
+    openWorkOrder(w);
+  }
+
   function openWorkOrder(w) {
     const now = new Date().toISOString();
     const teamSel = h('select', { id: 'wo-team' }, Object.entries(TEAMS).map(([id, t]) => new Option(t, id)));
@@ -133,7 +152,7 @@ export async function render(el, ctx) {
         row('Target', `${fmtTime(w.dueAt)} (${PRIORITIES[w.priority].name.toLowerCase()})`),
         row('Team', TEAMS[w.team] || w.team),
         row('Label link', h('code', { class: 'label-link' }, `${location.origin}${location.pathname}#/engineering/report/${w.assetId}`)),
-        w.repeat ? row('Repeat fault', `${w.repeat} earlier on this asset in 30 days`) : null,
+        w.repeat ? row('Repeat fault', repeatText(w.repeat)) : null,
         w.completedAt ? row('Closed', `${fmtTime(w.completedAt)}: ${OUTCOMES[w.outcome] || w.outcome}`) : null),
       mayAssign ? h('div', { class: 'field' }, h('label', { for: 'wo-team' }, 'Team'), teamSel) : null,
       mayClose ? h('div', { class: 'field' }, h('label', { for: 'wo-outcome' }, 'Outcome'), outSel) : null,
@@ -161,7 +180,7 @@ export async function render(el, ctx) {
     list.replaceChildren(...(rows.length ? rows.map((w) => h('li', {},
       h('button', {
         type: 'button', class: `wo pr-${w.priority}${w.overdue ? ' is-over' : ''}`, 'data-wo': w.id, 'data-cmd': 'ospeli_workorders_list',
-        'aria-label': `${w.id.toUpperCase()}, ${w.title}, ${w.assetName}, ${w.locationName}, ${PRIORITIES[w.priority].name}, ${slaText(w, now)}${w.repeat ? ', repeat fault' : ''}`,
+        'aria-label': `${w.id.toUpperCase()}, ${w.title}, ${w.assetName}, ${w.locationName}, ${PRIORITIES[w.priority].name}, ${slaText(w, now)}${w.repeat ? ', repeat fault, failed again after a fix' : ''}`,
         onclick: () => openWorkOrder(w),
       },
         h('span', { class: 'wo-top' }, h('b', {}, w.title), h('span', { class: `sla${w.overdue ? ' sla-over' : ''}` }, slaText(w, now))),
@@ -187,7 +206,7 @@ export async function render(el, ctx) {
   const queueFirst = ctx.role === 'estates-tech' && !deepAsset;
   const queue = h('section', { class: 'section', 'aria-labelledby': 'queue-h' },
     h('h2', { id: 'queue-h' }, 'Work-order queue'),
-    h('p', { class: 'meta' }, 'Overdue first, then by urgency and due time. Targets: urgent 4 h, high 24 h, routine 72 h (examples; set locally).'),
+    h('p', { class: 'meta' }, 'Overdue first, then by urgency and due time. Targets: urgent 4 h, high 24 h, routine 72 h (examples; set locally). A repeat fault is one that failed again after a fix in the last 30 days; a second report of a fault that is still open is not counted.'),
     counts, filterRow, list);
   const reportSection = canReport ? h('section', { class: 'section' }, form)
     : h('p', { class: 'meta' }, `${roleById(ctx.role).name} can see the queue but not report faults here.`);

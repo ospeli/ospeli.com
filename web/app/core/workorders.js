@@ -45,27 +45,32 @@ export const REPEAT_WINDOW_DAYS = 30;
 export const slaHours = (priority) => WORK_ORDER_SLA_HOURS[priority] ?? WORK_ORDER_SLA_HOURS.routine;
 
 // Build every work order from the log. `now` (ISO) sets the SLA clock.
+// A repeat fault is one that failed again after a fix: `repeat` counts the earlier work orders on
+// the same asset that were completed in the 30 days before this report. A second report while a
+// work order is still open is a duplicate, never a repeat (issue #24).
 export function deriveWorkOrders(events, now) {
   const orders = new Map();
-  const faultsByAsset = new Map(); // asset -> report times, for repeat detection
+  const fixesByAsset = new Map(); // asset -> times its earlier work orders were completed
   for (const e of events) {
     if (e.type === 'asset.fault-reported' && e.data?.workOrder) {
       const at = ms(e.at);
-      const prior = (faultsByAsset.get(e.subject) || []).filter((t) => at - t <= REPEAT_WINDOW_DAYS * DAY);
-      faultsByAsset.set(e.subject, [...(faultsByAsset.get(e.subject) || []), at]);
+      const prior = (fixesByAsset.get(e.subject) || []).filter((t) => t <= at && at - t <= REPEAT_WINDOW_DAYS * DAY);
       orders.set(e.data.workOrder, {
         id: e.data.workOrder, assetId: e.subject, title: e.data.title, team: e.data.trade || 'estates',
         priority: e.data.priority || 'routine', state: 'open', reportedAt: e.at, reportedByRole: e.actorRole,
         assignedAt: null, completedAt: null, outcome: null,
         dueAt: new Date(at + slaHours(e.data.priority) * HOUR).toISOString(),
-        repeat: prior.length, // earlier faults on the same asset in the last 30 days
+        repeat: prior.length, // earlier work orders on this asset completed in the 30 days before this report
       });
     } else if (e.type === 'workorder.assigned') {
       const w = orders.get(e.subject);
       if (w && w.state !== 'completed') Object.assign(w, { state: 'assigned', assignedAt: e.at, team: e.data?.trade || w.team });
     } else if (e.type === 'workorder.completed') {
       const w = orders.get(e.subject);
-      if (w && w.state !== 'completed') Object.assign(w, { state: 'completed', completedAt: e.at, outcome: e.data?.outcome || 'fixed' });
+      if (w && w.state !== 'completed') {
+        Object.assign(w, { state: 'completed', completedAt: e.at, outcome: e.data?.outcome || 'fixed' });
+        fixesByAsset.set(w.assetId, [...(fixesByAsset.get(w.assetId) || []), ms(e.at)]);
+      }
     }
   }
   const t = ms(now);
@@ -75,6 +80,22 @@ export function deriveWorkOrders(events, now) {
   }
   return orders;
 }
+
+// The open work order for the same fault on the same asset, if there is one (issue #24): a second
+// report of it is a duplicate and opens nothing. The oldest one wins.
+export function openDuplicate(orders, assetId, fault) {
+  for (const w of orders.values()) if (w.state !== 'completed' && w.assetId === assetId && w.title === fault) return w;
+  return null;
+}
+
+// How long ago, in words: "just now", "2 min ago", "3 h ago", "2 d ago".
+export function agoText(fromIso, nowIso) {
+  const m = Math.max(0, Math.floor((ms(nowIso) - ms(fromIso)) / 60e3));
+  return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 48 * 60 ? `${Math.floor(m / 60)} h ago` : `${Math.floor(m / 1440)} d ago`;
+}
+
+// "1 earlier fix" or "2 earlier fixes" on this asset, for the repeat-fault words on screen.
+export const repeatText = (n) => `Failed again after a fix: ${n} earlier ${n === 1 ? 'fix' : 'fixes'} on this asset in 30 days`;
 
 // Actions on a work order, in the order a person would take them.
 export function workOrderActions(w) {

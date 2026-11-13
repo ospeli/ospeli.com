@@ -15,7 +15,7 @@ import { ROLES, roleById } from './model.js';
 import { BED_STATES, OUT_OF_SERVICE_REASONS, deriveBoard, bedActions, actionEvents, countStates } from './beds.js';
 import { KPIS, kpiById, computeKpi } from './kpi.js';
 import {
-  PRIORITIES, TEAMS, OUTCOMES, WO_STATES, ALL_FAULTS, faultsFor, teamFor, deriveWorkOrders, nextWorkOrderId,
+  PRIORITIES, TEAMS, OUTCOMES, WO_STATES, ALL_FAULTS, faultsFor, teamFor, deriveWorkOrders, nextWorkOrderId, openDuplicate, agoText,
 } from './workorders.js';
 import {
   EXAMPLES as MAP_EXAMPLES, VERSIONS as MAP_VERSIONS, MAX_STEPS, MAX_MINUTES, newMap, analyse, suggest, applyChange, personalDetailIn, personNameIn, NAME_ADVICE,
@@ -577,6 +577,7 @@ COMMAND_LIST.push(
 
 // Engineering (backlog item 7): report a fault, run the work-order queue. Command-first.
 const WO_ID = { type: 'string', pattern: '^wo-[0-9]{5}$' };
+const REPEAT_WORDS = 'Failed again after a fix: how many earlier work orders on the same asset were completed in the 30 days before this report. 1 or more is a repeat fault. A second report while a work order is still open is a duplicate, not a repeat.';
 const WO_SCHEMA = {
   type: 'object', required: ['id', 'assetId', 'title', 'priority', 'state', 'reportedAt', 'dueAt', 'overdue', 'repeat'],
   properties: {
@@ -586,14 +587,14 @@ const WO_SCHEMA = {
     assignedAt: { type: ['string', 'null'] }, completedAt: { type: ['string', 'null'] }, outcome: { type: ['string', 'null'] },
     dueAt: { ...TIME, description: 'Reported time plus the response target for its priority (urgent 4 h, high 24 h, routine 72 h; examples, set locally).' },
     overdue: { type: 'boolean' }, overdueByMinutes: { type: 'integer', minimum: 0, description: 'Minutes past the due time; 0 when not overdue.' }, metSla: { type: ['boolean', 'null'] },
-    repeat: { type: 'integer', minimum: 0, description: 'Earlier faults on the same asset in the 30 days before this one. 1 or more is a repeat fault.' },
+    repeat: { type: 'integer', minimum: 0, description: REPEAT_WORDS },
   },
 };
 const WO_WRITE_OUTPUT = {
   type: 'object', required: ['status'],
   properties: {
     status: { type: 'string', enum: ['done', 'proposed'] }, workOrderId: WO_ID, state: { type: 'string', enum: Object.keys(WO_STATES) },
-    repeat: { type: 'integer', minimum: 0 }, events: { type: 'array', items: { type: 'integer' } },
+    repeat: { type: 'integer', minimum: 0, description: REPEAT_WORDS }, events: { type: 'array', items: { type: 'integer' } },
     proposal: { type: 'object', description: 'When an agent asked: the proposal waiting for a person.' },
   },
 };
@@ -607,6 +608,13 @@ async function wardOfAsset(core, assetId) {
   const a = await core.getEntity(assetId);
   if (!a || a.type !== 'asset') return null;
   return wardOrNull(await core.getEntity(a.parentId));
+}
+// Issue #24: one open work order for a fault on an asset. A second report of the same fault is
+// refused, and the answer names the work order that is already open.
+function alreadyOpen(events, input, now) {
+  const w = openDuplicate(deriveWorkOrders(events, now), input.assetId, input.fault);
+  if (!w) return null;
+  return new CommandError('conflict', `${w.id.toUpperCase()} is already open for this fault on this asset (reported ${agoText(w.reportedAt, now)}). No new work order was opened.`, { existing: w.id });
 }
 async function wardOfWorkOrder(core, input) {
   const rep = (await core.events({ type: 'asset.fault-reported' })).find((e) => e.data?.workOrder === input.workOrderId);
@@ -677,7 +685,7 @@ COMMAND_LIST.push(
   },
   {
     name: 'ospeli_workorders_list',
-    summary: 'The work-order queue: open (or completed) work orders with priority, team, due time, overdue flag and repeat-fault count, overdue and most urgent first. For "what is overdue on this ward" pass overdue: true and locationId. Read-only.',
+    summary: 'The work-order queue: open (or completed) work orders with priority, team, due time, overdue flag and repeat-fault count (failed again after a fix), overdue and most urgent first. For "what is overdue on this ward" pass overdue: true and locationId. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, properties: {
       state: { type: 'string', enum: ['open', 'completed', 'all'], description: 'open (default) means reported or assigned.' },
@@ -688,7 +696,7 @@ COMMAND_LIST.push(
       limit: LIMIT(20, 500, 'work orders') } },
     output: { type: 'object', required: ['asOf', 'synthetic', 'workOrders', 'counts', 'total', 'truncated'], properties: {
       asOf: TIME, synthetic: SYNTHETIC, total: TOTAL, truncated: TRUNCATED, workOrders: { type: 'array', items: WO_SCHEMA },
-      counts: { type: 'object', required: ['open', 'overdue', 'repeat'], properties: { open: { type: 'integer' }, overdue: { type: 'integer' }, repeat: { type: 'integer' } } } } },
+      counts: { type: 'object', required: ['open', 'overdue', 'repeat'], properties: { open: { type: 'integer' }, overdue: { type: 'integer' }, repeat: { type: 'integer', description: 'Open work orders on an asset that failed again after a fix in the last 30 days.' } } } } },
     wardOf: (core, input) => (String(input.locationId || '').startsWith('ward-') ? input.locationId : input.assetId ? wardOfAsset(core, input.assetId) : null),
     async run(core, input, { wards: allowed }) {
       const now = core.now();
@@ -720,19 +728,27 @@ COMMAND_LIST.push(
   },
   {
     name: 'ospeli_workorders_report_fault',
-    summary: 'Report a fault on an asset. Opens a work order with a priority and an SLA due time, and says if it is a repeat fault.',
+    summary: 'Report a fault on an asset. Opens a work order with a priority and an SLA due time, and says if it is a repeat fault (failed again after a fix). If a work order is already open for the same fault on the same asset, nothing new is opened: the answer is a conflict that names it in detail.existing.',
     kind: 'write', roles: ['ward-nurse', 'bed-manager', 'ae-nic', 'estates-tech', 'ops-manager'], approval: true,
     input: { type: 'object', additionalProperties: false, required: ['assetId', 'fault', 'priority'], properties: {
       assetId: ID, fault: { type: 'string', enum: ALL_FAULTS, description: 'Pick from the asset\'s faults (ospeli_assets_list). No free text, so no personal details.' },
       priority: { type: 'string', enum: Object.keys(PRIORITIES) } } },
     output: WO_WRITE_OUTPUT,
     wardOf: (core, input) => wardOfAsset(core, input.assetId),
+    // An agent gets the same answer before its proposal is queued, so a duplicate never waits for a person.
+    async snapshot(core, input) {
+      const dup = alreadyOpen(await core.events(), input, core.now());
+      if (dup) throw Object.assign(dup, { refusal: true, reason: 'already-open' });
+      return {};
+    },
     async run(core, input, { actor }) {
       let id = null;
       const recs = await core.appendChecked(async (events) => {
         const a = await core.getEntity(input.assetId);
         if (!a || a.type !== 'asset') throw new CommandError('not-found', `No asset ${input.assetId}.`);
         if (!faultsFor(a.kind).includes(input.fault)) throw new CommandError('invalid-input', `"${input.fault}" is not a fault for ${a.name}.`, { faults: faultsFor(a.kind) });
+        const dup = alreadyOpen(events, input, core.now());
+        if (dup) throw dup;
         id = nextWorkOrderId(events);
         return [{ type: 'asset.fault-reported', subject: a.id, actorRole: actor.role, at: core.now(),
           data: { workOrder: id, title: input.fault, trade: teamFor(a.kind, input.fault), priority: input.priority } }];
