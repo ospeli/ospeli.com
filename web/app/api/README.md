@@ -8,10 +8,10 @@ Every action in the app is a named command. The screens call these commands, and
 ## Rules for agents
 - People decide, Ospeli suggests: an agent may read, and its write commands become proposals that wait for a person.
 - Agent access is off by default, for the hospital and for each ward (ospeli_agents_set_access, people only).
-- Only agents on the site's list may call (ospeli_agents_add, people only): each has one role, its wards and an end date of 90 days at most. An agent that is not listed, is past its end date or claims another role is refused. Agents are named, not verified: the browser app has no secret keys; keys are planned with the site server.
+- Only agents on the site's list may call (ospeli_agents_add, people only): each has one role, its wards and an end date of 90 days at most. An agent that is not listed, is past its end date or claims another role is refused. Agents are named, not verified: the browser app has no secret keys; the first version of the site server gives each agent one.
 - Anyone on site can stop every agent at once (ospeli_agents_stop_all); only the operations manager or chief operating officer can switch agents on again.
 - Agent reads, proposals and refusals made through window.ospeli.run are designed to be recorded in the audit trail with actor type "agent", the agent name and the role it acts for.
-- In the browser app these rules are kept by the app's own code and are not a security boundary: a script running in the page can load the app's modules and act as a person, and the trail would then record a person. Checking who is calling (keys for agents, sign-in for people) is planned with the site server.
+- In the browser app these rules are kept by the app's own code and are not a security boundary: a script running in the page can load the app's modules and act as a person, and the trail would then record a person. The first version of the site server (tools/ospeli-server/, run on a site's own computer) checks agent keys and records every call made with a key as that agent, never as a person; sign-in for people is not built yet.
 - Nothing leaves the site: commands run on this device or the hospital's own server, never through a cloud relay.
 
 ## How to call
