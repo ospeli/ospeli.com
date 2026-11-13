@@ -249,3 +249,100 @@ test('front page hero card: labelled an illustration, and its numbers are a stat
     `the card says ${JSON.stringify(want)}; the seeded demo on 12 Nov shows ${[...new Set(states.map((s) => JSON.stringify(s)))].join(' ')}`);
   await context.close();
 });
+
+// Issue #54: on phones the modules were a sideways row 12 cards wide (about 3,400 px at 360 px).
+// Now the built modules are a short stacked list and the previews sit behind one tap-to-open row.
+for (const width of [360, 390]) {
+  test(`phone front page: built modules are stacked rows and previews open from one row, no sideways row (issue #54, ${width}px)`, async () => {
+    const { context, page, errors } = await open(width);
+    const before = await page.evaluate(() => {
+      const sec = document.getElementById('modules');
+      const shown = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+      const all = [...sec.querySelectorAll('*')].filter(shown);
+      const cards = [...sec.querySelectorAll('.modules .mod')];
+      const label = (c) => c.querySelector('.st').textContent.trim();
+      return {
+        screens: document.documentElement.scrollHeight / innerHeight,
+        pageScroll: document.documentElement.scrollWidth - innerWidth,
+        wide: all.filter((el) => { const r = el.getBoundingClientRect(); return r.width > innerWidth + 0.5 || r.left < -0.5 || r.right > innerWidth + 0.5; }).map((el) => el.className || el.tagName),
+        scrollers: all.filter((el) => el.scrollWidth > el.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(el).overflowX)).map((el) => el.className || el.tagName),
+        dots: [...sec.querySelectorAll('.dots, .swipe-hint')].filter(shown).length,
+        text: sec.innerText,
+        labels: cards.map(label),
+        built: cards.filter((c) => label(c) === 'Built').map((c) => {
+          const r = c.getBoundingClientRect(); const a = c.querySelector('a'); const ar = a.getBoundingClientRect();
+          const txt = [...c.querySelectorAll('h3, p, a, .st')].filter(shown);
+          return { name: c.querySelector('h3').textContent.trim(), width: r.width, left: r.left, right: r.right, top: r.top, bottom: r.bottom, linkH: ar.height, linkShown: shown(a) && ar.left >= 0 && ar.right <= innerWidth, href: a.getAttribute('href'), minFs: Math.min(...txt.map((e) => parseFloat(getComputedStyle(e).fontSize))), lines: txt.filter((e) => e.tagName === 'P').length };
+        }),
+        previewCardsShown: cards.filter((c) => label(c) === 'Preview' && shown(c)).length,
+        previewHrefs: cards.filter((c) => label(c) === 'Preview').map((c) => c.querySelector('a').getAttribute('href')),
+        namedPreviews: cards.filter((c) => label(c) === 'Preview' && !/^And \d+ more$/.test(c.querySelector('h3').textContent.trim())).length,
+        more: (cards.map((c) => c.querySelector('h3').textContent.trim()).find((t) => /^And \d+ more$/.test(t)) || '').match(/\d+/)[0],
+      };
+    });
+    assert.ok(before.screens < 7, `page is ${before.screens.toFixed(2)} screens`);
+    assert.ok(before.pageScroll <= 0, `page scrolls sideways by ${before.pageScroll}px`);
+    assert.deepEqual(before.wide, [], 'nothing in the modules section is wider than, or outside, the screen');
+    assert.deepEqual(before.scrollers, [], 'no sideways-scrolling row');
+    assert.equal(before.dots, 0, 'no dots and no swipe hint');
+    assert.doesNotMatch(before.text, /swipe/i);
+    // The labels are unchanged: 3 Built, 9 Preview.
+    assert.equal(before.labels.filter((l) => l === 'Built').length, 3);
+    assert.equal(before.labels.filter((l) => l === 'Preview').length, 9);
+    assert.deepEqual(before.built.map((b) => b.name), ['Bed board', 'Medical equipment and maintenance', 'Process mapping']);
+    for (const b of before.built) {
+      assert.ok(b.width >= width - 48 && b.left >= 0 && b.right <= width, `${b.name}: a full-width row on screen (${Math.round(b.width)}px)`);
+      assert.ok(b.linkShown && b.linkH >= 44, `${b.name}: link is ${Math.round(b.linkH)}px tall`);
+      assert.ok(b.minFs >= 15, `${b.name}: text is ${b.minFs}px`);
+      assert.equal(b.lines, 1, `${b.name}: one line of description`);
+    }
+    // Stacked top to bottom, not side by side.
+    assert.ok(before.built.every((b, i, a) => i === 0 || b.top >= a[i - 1].bottom), 'built rows are stacked');
+    assert.equal(before.previewCardsShown, 0, 'preview cards are not shown as cards on phones');
+
+    const sum = page.locator('#modules details.pv-wrap > summary');
+    assert.equal(await page.locator('#modules details.pv-wrap').evaluate((d) => d.open), false, 'closed at first, to keep the page short');
+    assert.equal(await sum.innerText(), `${before.namedPreviews} previews and ${before.more} more areas`, 'the counts come from the cards');
+    assert.ok((await sum.boundingBox()).height >= 44, 'the row is a 44 px tap target');
+    await sum.tap();
+    const m = await page.evaluate(() => {
+      const nav = document.querySelector('#modules .pv-list');
+      return {
+        open: document.querySelector('#modules details.pv-wrap').open,
+        navScroll: nav.scrollWidth - nav.clientWidth,
+        pageScroll: document.documentElement.scrollWidth - innerWidth,
+        links: [...nav.querySelectorAll('a')].map((a) => {
+          const r = a.getBoundingClientRect();
+          return { t: a.textContent.trim(), href: a.getAttribute('href'), h: r.height, fs: parseFloat(getComputedStyle(a).fontSize), inside: r.left >= 0 && r.right <= innerWidth && r.width > 0, cut: a.scrollWidth > a.clientWidth };
+        }),
+      };
+    });
+    assert.equal(m.open, true);
+    assert.equal(m.links.length, before.previewHrefs.length, 'one link for each preview card');
+    assert.deepEqual(m.links.map((l) => l.href), before.previewHrefs, 'the links go where the cards go');
+    assert.ok(m.navScroll <= 0 && m.pageScroll <= 0, `sideways scroll: list ${m.navScroll}px, page ${m.pageScroll}px`);
+    const bad = m.links.filter((l) => !l.inside || l.cut || l.h < 44 || l.fs < 15);
+    assert.deepEqual(bad, [], 'every link is fully on screen, not cut, at least 44 px tall and 15 px text');
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}
+
+test('desktop front page: the modules grid still shows all 12 cards, with no phone list (issue #54)', async () => {
+  const { context, page, errors } = await open(1280);
+  const m = await page.evaluate(() => {
+    const shown = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
+    const cards = [...document.querySelectorAll('#modules .modules .mod')].filter(shown);
+    return {
+      cards: cards.length,
+      columns: new Set(cards.map((c) => Math.round(c.getBoundingClientRect().left))).size,
+      full: cards.every((c) => ['.st', 'h3', 'p:not(.short)', 'a'].every((q) => shown(c.querySelector(q)))),
+      shortLines: [...document.querySelectorAll('#modules .mod p.short')].filter(shown).length,
+      phoneList: shown(document.querySelector('#modules details.pv-wrap')),
+      display: getComputedStyle(document.querySelector('#modules .modules')).display,
+    };
+  });
+  assert.deepEqual(m, { cards: 12, columns: 3, full: true, shortLines: 0, phoneList: false, display: 'grid' });
+  assert.deepEqual(errors, []);
+  await context.close();
+});

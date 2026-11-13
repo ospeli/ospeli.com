@@ -165,14 +165,26 @@ nav.links a.btn-primary { color: #FFFFFF; }
 .roles a.all { background: #0B2F4E; color: #fff; border-color: #0B2F4E; }
 /* Phones (issue #42): the role links are a closed "Find your area" list that opens into full-width rows, instead of a sideways strip. */
 @media (max-width: 640px) {
-  #modules .head p, #modules .swipe-hint { display: none; }
-  .roles-wrap { margin: 0 0 16px; }
-  .roles-wrap > summary.acc-sum { display: block; font-weight: 800; font-size: 1rem; color: var(--ink); padding: 11px 16px; border: 1px solid var(--line-strong); border-radius: 12px; min-height: 48px; background: var(--surface); }
-  .roles-wrap > summary.acc-sum::after { right: 18px !important; }
-  .roles-wrap[open] > summary.acc-sum { margin-bottom: 8px; }
-  .roles { flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; margin: 0; }
+  #modules .head p { display: none; }
+  #modules { padding-bottom: 24px; }
+  #modules .head { margin-bottom: 10px; }
+  .roles-wrap { margin: 0 0 6px; }
+  .roles-wrap > summary.acc-sum, .pv-wrap > summary.acc-sum { display: block; font-weight: 800; font-size: 1rem; color: var(--ink); padding: 11px 16px; border: 1px solid var(--line-strong); border-radius: 12px; min-height: 48px; background: var(--surface); }
+  .roles-wrap > summary.acc-sum::after, .pv-wrap > summary.acc-sum::after { right: 18px !important; }
+  .roles-wrap[open] > summary.acc-sum, .pv-wrap[open] > summary.acc-sum { margin-bottom: 8px; }
+  .roles, .pv-list { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 6px; margin: 0; }
   .roles-k { display: none; }
   .roles a { min-height: 46px; padding: 8px 16px; border-radius: 12px; font-size: 1rem; }
+  /* Phones (issue #54): built modules are a short stacked list; previews sit behind one tap-to-open row. No sideways row. */
+  #modules .modules { display: flex; flex-direction: column; gap: 6px; }
+  #modules .mod.pv, #modules .mod p { display: none; }
+  #modules .mod { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; align-items: center; padding: 8px 16px 0; border-radius: 12px; }
+  #modules .mod h3 { grid-column: 1 / -1; grid-row: 1; font-size: 1.05rem; }
+  #modules .mod .st { grid-column: 2; grid-row: 3; align-self: center; font-size: 15px; letter-spacing: 0.06em; }
+  #modules .mod p.short { display: block; grid-column: 1 / -1; grid-row: 2; font-size: 15px; line-height: 1.35; }
+  #modules .mod a { grid-column: 1; grid-row: 3; justify-self: start; min-height: 44px; font-size: 1rem; }
+  .pv-wrap { display: block; margin: 6px 0 0; }
+  .pv-list a { display: flex; align-items: center; min-height: 46px; padding: 8px 16px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font-weight: 700; font-size: 1rem; text-decoration: none; }
 }
 .modules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 .mod { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
@@ -498,21 +510,33 @@ details.acc > summary::-webkit-details-marker { display: none; }
         <a class="all" href="areas/">All 30 areas</a>
       </nav>
       </details>
-      <p class="swipe-hint" aria-hidden="true">Swipe to see more</p>
-      <div class="modules swipe" tabindex="0" aria-label="modules, scroll sideways">
-        <div class="mod"><span class="st built">Built</span><h3>Bed board</h3><p>Bed states, the waiting list, allocation with reasons for declines, and today's flow.</p><a href="demo/bed-board/">Open the demo</a></div>
-        <div class="mod"><span class="st built">Built</span><h3>Medical equipment and maintenance</h3><p>Fault reports from a link on each asset, work-order queues and repeat-fault flags. Photos and step guides for simple fixes are planned.</p><a href="app/#/engineering">Open the app</a></div>
-        <div class="mod"><span class="st built">Built</span><h3>Process mapping</h3><p>Map a process step by step, see where the time goes, and test a change with the built-in guide before trying it on a ward.</p><a href="demo/process-map/">Open the demo</a></div>
-        <div class="mod"><span class="st live">Preview</span><h3>Emergency department flow</h3><p>Arrival to bed on one timeline, pressure levels and action cards when the department is under strain.</p><a href="demo/ed-flow/">Open the demo</a></div>
-        <div class="mod"><span class="st live">Preview</span><h3>Cleaning and portering</h3><p>Phone task lists for porters and cleaners, three-tap requests from the ward, and a helpdesk view by team.</p><a href="demo/support-tasks/">Open the demo</a></div>
-        <div class="mod"><span class="st live">Preview</span><h3>Incidents, risk and actions</h3><p>Report a problem in under a minute; track every action from meetings, audits and incidents in one list.</p><a href="demo/actions/">Open the demo</a></div>
-        <div class="mod"><span class="st live">Preview</span><h3>Stores and stock</h3><p>Report an item low or out from the ward; see stock-outs, days of stock and orders waiting for approval.</p><a href="demo/stores-stock/">Open the demo</a></div>
-        <div class="mod"><span class="st live">Preview</span><h3>Daily operations report</h3><p>What needs a decision today, run charts, a bottleneck finder and the huddle list, for operations leads.</p><a href="demo/daily-report/">Open the demo</a></div>
-        <div class="mod"><span class="st live">Preview</span><h3>Theatres and procedure lists</h3><p>Case times on one timeline, session use, cancellations and tomorrow's readiness.</p><a href="demo/theatres/">Open the demo</a></div>
-        <div class="mod"><span class="st live">Preview</span><h3>Outpatients and clinics</h3><p>Reception on a phone, the waiting list and free slots, and clinic use for the manager.</p><a href="demo/clinics/">Open the demo</a></div>
-        <div class="mod"><span class="st live">Preview</span><h3>Facilities and utilities</h3><p>Report a building fault by QR code; job queues by trade, planned maintenance and plant status.</p><a href="demo/facilities/">Open the demo</a></div>
-        <div class="mod"><span class="st live">Preview</span><h3>And 18 more</h3><p>Every area now has a preview: staffing, transport, diagnostics, pharmacy, critical care, maternity, community, governance, IT, finance and more.</p><a href="demo/">See all demos</a></div>
+      <div class="modules">
+        <div class="mod"><span class="st built">Built</span><h3>Bed board</h3><p>Bed states, the waiting list, allocation with reasons for declines, and today's flow.</p><p class="short" hidden>Beds, the waiting list and today's flow.</p><a href="demo/bed-board/">Open the demo</a></div>
+        <div class="mod"><span class="st built">Built</span><h3>Medical equipment and maintenance</h3><p>Fault reports from a link on each asset, work-order queues and repeat-fault flags. Photos and step guides for simple fixes are planned.</p><p class="short" hidden>Fault reports and work-order queues.</p><a href="app/#/engineering">Open the app</a></div>
+        <div class="mod"><span class="st built">Built</span><h3>Process mapping</h3><p>Map a process step by step, see where the time goes, and test a change with the built-in guide before trying it on a ward.</p><p class="short" hidden>Map a process; see where the time goes.</p><a href="demo/process-map/">Open the demo</a></div>
+        <div class="mod pv"><span class="st live">Preview</span><h3>Emergency department flow</h3><p>Arrival to bed on one timeline, pressure levels and action cards when the department is under strain.</p><a href="demo/ed-flow/">Open the demo</a></div>
+        <div class="mod pv"><span class="st live">Preview</span><h3>Cleaning and portering</h3><p>Phone task lists for porters and cleaners, three-tap requests from the ward, and a helpdesk view by team.</p><a href="demo/support-tasks/">Open the demo</a></div>
+        <div class="mod pv"><span class="st live">Preview</span><h3>Incidents, risk and actions</h3><p>Report a problem in under a minute; track every action from meetings, audits and incidents in one list.</p><a href="demo/actions/">Open the demo</a></div>
+        <div class="mod pv"><span class="st live">Preview</span><h3>Stores and stock</h3><p>Report an item low or out from the ward; see stock-outs, days of stock and orders waiting for approval.</p><a href="demo/stores-stock/">Open the demo</a></div>
+        <div class="mod pv"><span class="st live">Preview</span><h3>Daily operations report</h3><p>What needs a decision today, run charts, a bottleneck finder and the huddle list, for operations leads.</p><a href="demo/daily-report/">Open the demo</a></div>
+        <div class="mod pv"><span class="st live">Preview</span><h3>Theatres and procedure lists</h3><p>Case times on one timeline, session use, cancellations and tomorrow's readiness.</p><a href="demo/theatres/">Open the demo</a></div>
+        <div class="mod pv"><span class="st live">Preview</span><h3>Outpatients and clinics</h3><p>Reception on a phone, the waiting list and free slots, and clinic use for the manager.</p><a href="demo/clinics/">Open the demo</a></div>
+        <div class="mod pv"><span class="st live">Preview</span><h3>Facilities and utilities</h3><p>Report a building fault by QR code; job queues by trade, planned maintenance and plant status.</p><a href="demo/facilities/">Open the demo</a></div>
+        <div class="mod pv"><span class="st live">Preview</span><h3>And 18 more</h3><p>Every area now has a preview: staffing, transport, diagnostics, pharmacy, critical care, maternity, community, governance, IT, finance and more.</p><a href="demo/">See all demos</a></div>
       </div>
+      <details class="acc pv-wrap" hidden><summary class="acc-sum">8 previews and 18 more areas</summary>
+      <nav class="pv-list" aria-label="Previews">
+        <a href="demo/ed-flow/">Emergency department flow</a>
+        <a href="demo/support-tasks/">Cleaning and portering</a>
+        <a href="demo/actions/">Incidents, risk and actions</a>
+        <a href="demo/stores-stock/">Stores and stock</a>
+        <a href="demo/daily-report/">Daily operations report</a>
+        <a href="demo/theatres/">Theatres and procedure lists</a>
+        <a href="demo/clinics/">Outpatients and clinics</a>
+        <a href="demo/facilities/">Facilities and utilities</a>
+        <a href="demo/">18 more areas: see all demos</a>
+      </nav>
+      </details>
     </div>
   </section>
 
