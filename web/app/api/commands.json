@@ -2947,7 +2947,7 @@
                 "repeat": {
                   "type": "integer",
                   "minimum": 0,
-                  "description": "Failed again after a fix: how many earlier work orders on the same asset were completed in the 30 days before this report. 1 or more is a repeat fault. A second report while a work order is still open is a duplicate, not a repeat."
+                  "description": "Failed again after a fix: how many earlier work orders for the same fault on the same asset were closed as Fixed in the 30 days before this report. 1 or more is a repeat fault. Not counted: a work order closed as No fault found or Escalated, a different fault, \"Other fault\", and a second report while a work order is still open (a duplicate)."
                 }
               }
             }
@@ -2968,7 +2968,7 @@
               },
               "repeat": {
                 "type": "integer",
-                "description": "Open work orders on an asset that failed again after a fix in the last 30 days."
+                "description": "Open work orders for a fault that came back on the same asset after it was closed as Fixed in the 30 days before the report."
               }
             }
           }
@@ -3075,7 +3075,7 @@
           "repeat": {
             "type": "integer",
             "minimum": 0,
-            "description": "Failed again after a fix: how many earlier work orders on the same asset were completed in the 30 days before this report. 1 or more is a repeat fault. A second report while a work order is still open is a duplicate, not a repeat."
+            "description": "Failed again after a fix: how many earlier work orders for the same fault on the same asset were closed as Fixed in the 30 days before this report. 1 or more is a repeat fault. Not counted: a work order closed as No fault found or Escalated, a different fault, \"Other fault\", and a second report while a work order is still open (a duplicate)."
           },
           "events": {
             "type": "array",
@@ -3168,7 +3168,7 @@
           "repeat": {
             "type": "integer",
             "minimum": 0,
-            "description": "Failed again after a fix: how many earlier work orders on the same asset were completed in the 30 days before this report. 1 or more is a repeat fault. A second report while a work order is still open is a duplicate, not a repeat."
+            "description": "Failed again after a fix: how many earlier work orders for the same fault on the same asset were closed as Fixed in the 30 days before this report. 1 or more is a repeat fault. Not counted: a work order closed as No fault found or Escalated, a different fault, \"Other fault\", and a second report while a work order is still open (a duplicate)."
           },
           "events": {
             "type": "array",
@@ -3259,7 +3259,7 @@
           "repeat": {
             "type": "integer",
             "minimum": 0,
-            "description": "Failed again after a fix: how many earlier work orders on the same asset were completed in the 30 days before this report. 1 or more is a repeat fault. A second report while a work order is still open is a duplicate, not a repeat."
+            "description": "Failed again after a fix: how many earlier work orders for the same fault on the same asset were closed as Fixed in the 30 days before this report. 1 or more is a repeat fault. Not counted: a work order closed as No fault found or Escalated, a different fault, \"Other fault\", and a second report while a work order is still open (a duplicate)."
           },
           "events": {
             "type": "array",

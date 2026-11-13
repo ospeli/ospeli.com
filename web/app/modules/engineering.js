@@ -5,7 +5,7 @@
 import { h, fmtTime, setKids } from './ui.js';
 import { roleById } from '../core/model.js';
 import { commandByName } from '../core/commands.js';
-import { PRIORITIES, TEAMS, OUTCOMES, WO_STATES, slaText, repeatText } from '../core/workorders.js';
+import { PRIORITIES, TEAMS, OUTCOMES, WO_STATES, slaText, repeatText, repeatBadge } from '../core/workorders.js';
 import { kpiContext, kpiTiles } from './kpi-tiles.js';
 import { proposalsCard } from './proposals.js';
 
@@ -191,7 +191,7 @@ export async function render(el, ctx) {
           h('span', { class: `chip pr-${w.priority}` }, PRIORITIES[w.priority].name),
           h('span', { class: `chip wo-${w.state}` }, w.state === 'completed' ? OUTCOMES[w.outcome] || 'Completed' : WO_STATES[w.state]),
           w.state !== 'open' ? h('span', { class: 'meta' }, TEAMS[w.team]) : null,
-          w.repeat ? h('span', { class: 'chip repeat' }, `Repeat ×${w.repeat + 1}`) : null)))) : [h('li', { class: 'meta' }, 'No work orders here.')]));
+          w.repeat ? h('span', { class: 'chip repeat' }, repeatBadge(w.repeat)) : null)))) : [h('li', { class: 'meta' }, 'No work orders here.')]));
   }
 
   async function renderKpis() {
@@ -208,7 +208,7 @@ export async function render(el, ctx) {
   const queueFirst = ctx.role === 'estates-tech' && !deepAsset;
   const queue = h('section', { class: 'section', 'aria-labelledby': 'queue-h' },
     h('h2', { id: 'queue-h' }, 'Work-order queue'),
-    h('p', { class: 'meta' }, 'Overdue first, then by urgency and due time. Targets: urgent 4 h, high 24 h, routine 72 h (examples; set locally). A repeat fault is one that failed again after a fix in the last 30 days; a second report of a fault that is still open is not counted.'),
+    h('p', { class: 'meta' }, 'Overdue first, then by urgency and due time. Targets: urgent 4 h, high 24 h, routine 72 h (examples; set locally). A repeat fault is the same fault on the same asset that came back within 30 days of being closed as Fixed. Not counted: "No fault found", a different fault, and a second report of a fault that is still open.'),
     counts, filterRow, list);
   const reportSection = canReport ? h('section', { class: 'section' }, form)
     : h('p', { class: 'meta' }, `${roleById(ctx.role).name} can see the queue but not report faults here.`);

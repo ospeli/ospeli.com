@@ -577,7 +577,7 @@ COMMAND_LIST.push(
 
 // Engineering (backlog item 7): report a fault, run the work-order queue. Command-first.
 const WO_ID = { type: 'string', pattern: '^wo-[0-9]{5}$' };
-const REPEAT_WORDS = 'Failed again after a fix: how many earlier work orders on the same asset were completed in the 30 days before this report. 1 or more is a repeat fault. A second report while a work order is still open is a duplicate, not a repeat.';
+const REPEAT_WORDS = 'Failed again after a fix: how many earlier work orders for the same fault on the same asset were closed as Fixed in the 30 days before this report. 1 or more is a repeat fault. Not counted: a work order closed as No fault found or Escalated, a different fault, "Other fault", and a second report while a work order is still open (a duplicate).';
 const WO_SCHEMA = {
   type: 'object', required: ['id', 'assetId', 'title', 'priority', 'state', 'reportedAt', 'dueAt', 'overdue', 'repeat'],
   properties: {
@@ -696,7 +696,7 @@ COMMAND_LIST.push(
       limit: LIMIT(20, 500, 'work orders') } },
     output: { type: 'object', required: ['asOf', 'synthetic', 'workOrders', 'counts', 'total', 'truncated'], properties: {
       asOf: TIME, synthetic: SYNTHETIC, total: TOTAL, truncated: TRUNCATED, workOrders: { type: 'array', items: WO_SCHEMA },
-      counts: { type: 'object', required: ['open', 'overdue', 'repeat'], properties: { open: { type: 'integer' }, overdue: { type: 'integer' }, repeat: { type: 'integer', description: 'Open work orders on an asset that failed again after a fix in the last 30 days.' } } } } },
+      counts: { type: 'object', required: ['open', 'overdue', 'repeat'], properties: { open: { type: 'integer' }, overdue: { type: 'integer' }, repeat: { type: 'integer', description: 'Open work orders for a fault that came back on the same asset after it was closed as Fixed in the 30 days before the report.' } } } } },
     wardOf: (core, input) => (String(input.locationId || '').startsWith('ward-') ? input.locationId : input.assetId ? wardOfAsset(core, input.assetId) : null),
     async run(core, input, { wards: allowed }) {
       const now = core.now();

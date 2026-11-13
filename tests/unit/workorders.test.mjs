@@ -8,7 +8,7 @@ import { loadSyntheticHospital } from '../../web/app/core/generator.js';
 import { runCommand, commandByName, CommandError } from '../../web/app/core/commands.js';
 import { validate } from '../../web/app/core/schema.js';
 import { computeKpi } from '../../web/app/core/kpi.js';
-import { deriveWorkOrders, slaText, nextWorkOrderId, FAULT_TYPES, ALL_FAULTS } from '../../web/app/core/workorders.js';
+import { deriveWorkOrders, slaText, nextWorkOrderId, FAULT_TYPES, ALL_FAULTS, OTHER_FAULT, repeatText, repeatBadge } from '../../web/app/core/workorders.js';
 
 const END = '2026-11-06T18:00:00.000Z';
 const clockFrom = (iso) => { let t = Date.parse(iso); return () => new Date(t += 1000); };
@@ -182,10 +182,13 @@ test('issue #24: the open and repeat counts on the queue equal the KPI and the l
   assert.equal(q.counts.overdue, computeKpi('overdue-work-orders', events, { until: core.now() }).value);
   assert.equal(q.counts.repeat, before.counts.repeat, 'duplicates add no repeat fault');
   // Counted again straight from the log: an open work order is a repeat when an earlier work order
-  // on the same asset was completed before it was reported, at most 30 days before.
+  // for the same fault on the same asset was closed as Fixed before it was reported, at most 30 days before.
   const completedAt = new Map(events.filter((e) => e.type === 'workorder.completed').map((e) => [e.subject, Date.parse(e.at)]));
   const reports = events.filter((e) => e.type === 'asset.fault-reported');
-  const fromLog = reports.filter((e) => !completedAt.has(e.data.workOrder) && reports.some((o) => o.subject === e.subject
+  // Issue #75: only the same fault, closed as Fixed, counts.
+  const fixed = new Set(events.filter((e) => e.type === 'workorder.completed' && (e.data?.outcome || 'fixed') === 'fixed').map((e) => e.subject));
+  const fromLog = reports.filter((e) => !completedAt.has(e.data.workOrder) && e.data.title !== OTHER_FAULT && reports.some((o) => o.subject === e.subject
+    && o.data.title === e.data.title && fixed.has(o.data.workOrder)
     && completedAt.get(o.data.workOrder) <= Date.parse(e.at) && Date.parse(e.at) - completedAt.get(o.data.workOrder) <= 30 * 864e5)).length;
   assert.equal(q.counts.repeat, fromLog);
   assert.equal(q.workOrders.filter((x) => x.repeat > 0).length, fromLog);
@@ -267,4 +270,40 @@ test('agents: off by default, scoped to wards, and a fault report waits for a pe
 test('every asset kind in the synthetic hospital has fault types', async () => {
   const core = await hospital();
   for (const a of await core.listEntities('asset')) assert.ok(FAULT_TYPES[a.kind], a.kind);
+});
+
+// Issue #75: a repeat is the same fault on the same asset coming back after it was closed as Fixed.
+test('issue #75: "No fault found", "Escalated" and a different fault are not repeats; the badge and the sentence use one number', async () => {
+  const core = await hospital();
+  const a = await quietAsset(core, 'sink', 'ward-b1');
+  const report = (fault) => runCommand(core, 'ospeli_workorders_report_fault', { assetId: a.id, fault, priority: 'routine' }, human('ward-nurse'));
+  const close = (id, outcome) => runCommand(core, 'ospeli_workorders_complete', { workOrderId: id, outcome }, human('estates-tech'));
+  const before = (await runCommand(core, 'ospeli_workorders_list', {}, human('estates-tech'))).counts.repeat;
+  // Closed as "No fault found", then a different fault: not a repeat.
+  const first = await report('Blocked sink');
+  await close(first.workOrderId, 'no-fault-found');
+  const other = await report(OTHER_FAULT);
+  assert.equal(other.repeat, 0, 'a different fault after "No fault found"');
+  // The same fault again after "No fault found": nothing was fixed, so it did not fail again after a fix.
+  const again = await report('Blocked sink');
+  assert.equal(again.repeat, 0, 'the same fault after "No fault found"');
+  await close(again.workOrderId, 'escalated');
+  const afterEscalation = await report('Blocked sink');
+  assert.equal(afterEscalation.repeat, 0, 'the same fault after "Escalated"');
+  await close(afterEscalation.workOrderId, 'fixed');
+  // A different named fault after a fix: not a repeat. "Other fault" twice cannot be told to be the same fault.
+  assert.equal((await report('Tap leaking')).repeat, 0, 'a different fault after a fix');
+  await close(other.workOrderId, 'fixed');
+  assert.equal((await report(OTHER_FAULT)).repeat, 0, '"Other fault" is never counted as the same fault');
+  assert.equal((await runCommand(core, 'ospeli_workorders_list', {}, human('estates-tech'))).counts.repeat, before, 'none of these is a repeat fault');
+  // The same fault after it was closed as Fixed: a repeat, counted once.
+  const back = await report('Blocked sink');
+  assert.equal(back.repeat, 1);
+  assert.equal((await runCommand(core, 'ospeli_workorders_list', {}, human('estates-tech'))).counts.repeat, before + 1);
+  // One number in the badge and in the sentence, and the rule is in the command's own words.
+  assert.equal(repeatBadge(1), 'Repeat: 1 earlier fix');
+  assert.equal(repeatBadge(4), 'Repeat: 4 earlier fixes');
+  assert.match(repeatText(4), /4 earlier fixes of this fault on this asset in 30 days/);
+  const words = commandByName('ospeli_workorders_list').output.properties.workOrders.items.properties.repeat.description;
+  assert.match(words, /same fault/); assert.match(words, /same asset/); assert.match(words, /closed as Fixed/); assert.match(words, /30 days/);
 });

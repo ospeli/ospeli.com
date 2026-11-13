@@ -180,7 +180,7 @@ test('a fault that comes back after a fix is a repeat fault, in plain words (iss
     return (await page.locator('[data-test="report-status"]').textContent());
   };
   // This sink already had fixes in the synthetic month; count them from what the screen says.
-  const fixes = (text) => Number(text.match(/Failed again after a fix: (\d+) earlier fix(es)? on this asset in 30 days\.$/)?.[1] ?? 0);
+  const fixes = (text) => Number(text.match(/Failed again after a fix: (\d+) earlier fix(es)? of this fault on this asset in 30 days\.$/)?.[1] ?? 0);
   const first = await report();
   const earlier = fixes(first);
   const id = first.match(/WO-\d{5}/)[0].toLowerCase();
@@ -195,14 +195,63 @@ test('a fault that comes back after a fix is a repeat fault, in plain words (iss
   await page.click('dialog[open] [data-cmd="ospeli_workorders_complete"]');
   await page.waitForFunction((wo) => !document.querySelector(`[data-wo="${wo}"]`), id);
   const second = await report();
-  assert.match(second, /Repeat fault\. Failed again after a fix: \d+ earlier fix(es)? on this asset in 30 days\.$/);
+  assert.match(second, /Repeat fault\. Failed again after a fix: \d+ earlier fix(es)? of this fault on this asset in 30 days\.$/);
   assert.equal(fixes(second), earlier + 1, 'one more fix than before');
   const id2 = second.match(/WO-\d{5}/)[0].toLowerCase();
   await page.waitForFunction((n) => Number(document.querySelector('[data-test="wo-repeat"] b').textContent) === n + 1, repeatsBefore);
-  assert.match(await page.locator(`[data-wo="${id2}"]`).textContent(), new RegExp(`Repeat ×${earlier + 2}`));
+  assert.match(await page.locator(`[data-wo="${id2}"]`).textContent(), new RegExp(`Repeat: ${earlier + 1} earlier fix(es)?$`), 'the badge uses the same number as the sentence (issue #75)');
   await page.click(`[data-wo="${id2}"]`);
   await page.waitForSelector('dialog[open]');
-  assert.match(await page.locator('dialog[open]').innerText(), new RegExp(`Failed again after a fix: ${earlier + 1} earlier fix(es)? on this asset in 30 days`));
+  assert.match(await page.locator('dialog[open]').innerText(), new RegExp(`Failed again after a fix: ${earlier + 1} earlier fix(es)? of this fault on this asset in 30 days`));
+  assert.ok(await noSideways(page) <= 0);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+// Issue #75: "No fault found" and a different fault are not a repeat fault.
+test('at 390 px: a work order closed as "No fault found", then a different fault on the same asset, is not a repeat (issue #75)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 780, touch: true, path: '#/engineering/report/asset-a1-sink-1', clock: '2026-11-10T10:00:00Z' });
+  await page.waitForSelector('[data-test="wo-open"] b');
+  const repeats = () => page.locator('[data-test="wo-repeat"] b').textContent().then(Number);
+  const before = await repeats();
+  const report = async (fault) => {
+    await page.selectOption('[data-test="f-fault"]', fault);
+    await page.locator('[data-cmd="ospeli_workorders_report_fault"]').tap();
+    await page.waitForFunction((f) => new RegExp(`^Reported: WO-\\d{5}, ${f.slice(0, 11)}`).test(document.querySelector('[data-test="report-status"]').textContent), fault);
+    return page.locator('[data-test="report-status"]').textContent();
+  };
+  // This sink may already have a fixed "Blocked sink" in the pinned month; the first report says so if it has.
+  const first = await report('Blocked sink');
+  const firstWasRepeat = /Repeat fault/.test(first);
+  const id = first.match(/WO-\d{5}/)[0].toLowerCase();
+  await page.evaluate(() => { document.querySelector('[data-test="wo-list"]').dataset.old = '1'; });
+  await page.selectOption('#role-select', 'estates-tech');
+  await page.waitForSelector(`[data-test="wo-list"]:not([data-old]) [data-wo="${id}"]`);
+  await page.locator(`[data-wo="${id}"]`).tap();
+  await page.waitForSelector('dialog[open]');
+  await page.selectOption('#wo-outcome', 'no-fault-found');
+  await page.locator('dialog[open] [data-cmd="ospeli_workorders_complete"]').tap();
+  await page.waitForFunction((wo) => !document.querySelector(`[data-wo="${wo}"]`), id);
+  assert.equal(await repeats(), before, 'closing the first work order leaves the count where it was');
+  const second = await report('Other fault (describe to the team in person)');
+  assert.doesNotMatch(second, /Repeat fault/);
+  const id2 = second.match(/WO-\d{5}/)[0].toLowerCase();
+  await page.waitForSelector(`[data-wo="${id2}"]`);
+  assert.doesNotMatch(await page.locator(`[data-wo="${id2}"]`).textContent(), /Repeat/);
+  assert.equal(await repeats(), before, '"Repeat faults open" does not move');
+  // The same fault again after "No fault found" is not a repeat either, unless it was one before.
+  const third = await report('Blocked sink');
+  assert.equal(/Repeat fault/.test(third), firstWasRepeat);
+  // Every repeat badge in the queue says the same number as its dialog.
+  const badges = await page.locator('[data-test="wo-list"] .chip.repeat').allTextContents();
+  assert.ok(badges.every((b) => /^Repeat: \d+ earlier fix(es)?$/.test(b)), badges.join(' | '));
+  if (badges.length) {
+    const n = badges[0].match(/\d+/)[0];
+    await page.locator('[data-test="wo-list"] li:has(.chip.repeat) [data-wo], [data-test="wo-list"] [data-wo]:has(.chip.repeat)').first().tap();
+    await page.waitForSelector('dialog[open]');
+    assert.match(await page.locator('dialog[open]').innerText(), new RegExp(`Failed again after a fix: ${n} earlier fix(es)? of this fault on this asset in 30 days`));
+  }
+  assert.match(await page.locator('#queue-h + p').innerText(), /same fault on the same asset.*closed as Fixed.*Not counted: "No fault found", a different fault/);
   assert.ok(await noSideways(page) <= 0);
   assert.deepEqual(errors, []);
   await context.close();
