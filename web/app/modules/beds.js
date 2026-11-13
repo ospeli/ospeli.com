@@ -402,7 +402,7 @@ export async function render(el, ctx) {
   el.append(
     pageHead,
     ...(wardFirst
-      ? [wardSection, h('h2', { class: 'section' }, 'Whole hospital'), summary, props.el, conflictBox, waitSection]
+      ? [props.el, wardSection, h('h2', { class: 'section' }, 'Whole hospital'), summary, conflictBox, waitSection] // proposals waiting for a decision stay at the top
       : [summary, props.el, conflictBox, waitSection, wardSection]),
     h('section', { class: 'section', 'aria-labelledby': 'kpi-h' },
       h('h2', { id: 'kpi-h' }, 'Flow numbers'),
