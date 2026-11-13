@@ -346,3 +346,28 @@ test('desktop front page: the modules grid still shows all 12 cards, with no pho
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #77: the top bar is one slim line at every phone width, with the pilot button on one line.
+for (const width of [320, 360, 375, 390]) {
+  test(`phone front page at ${width}px: the top bar is 60 px or less and "Start a pilot" stays on one line (issue #77)`, async () => {
+    const { context, page, errors } = await open(width);
+    const bar = () => page.evaluate(() => {
+      const b = document.querySelector('nav.links .btn-primary'); const r = b.getBoundingClientRect(); const s = getComputedStyle(b);
+      return { header: document.querySelector('header.site').getBoundingClientRect().height, w: r.width, h: r.height, font: parseFloat(s.fontSize), lines: Math.round((r.height - parseFloat(s.paddingTop) - parseFloat(s.paddingBottom) - parseFloat(s.borderTopWidth) - parseFloat(s.borderBottomWidth)) / parseFloat(s.lineHeight)), visible: s.visibility, text: b.innerText.trim() };
+    });
+    const top = await bar();
+    assert.ok(top.header <= 60, `at the top of the page the bar is ${top.header} px`);
+    await page.evaluate(() => window.scrollTo(0, document.querySelector('.hero').offsetHeight + 200));
+    await page.waitForFunction(() => getComputedStyle(document.querySelector('nav.links .btn-primary')).visibility === 'visible');
+    const down = await bar();
+    assert.equal(down.text, 'Start a pilot');
+    assert.ok(down.header <= 60, `after the hero the bar is ${down.header} px`);
+    assert.equal(down.lines, 1, `the button is ${down.w} x ${down.h} px`);
+    assert.ok(down.h >= 44, 'a 44 px tap target');
+    assert.ok(down.font >= 15, `button text is ${down.font} px`);
+    const o = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    assert.ok(o <= 0, `scrolls sideways by ${o}px`);
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}

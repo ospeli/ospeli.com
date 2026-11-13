@@ -379,6 +379,9 @@ details.acc > summary::-webkit-details-marker { display: none; }
   .cta-short { display: inline; }
   header.site.hero-on nav.links .btn-primary { visibility: hidden; opacity: 0; }
   header.site nav.links .btn-primary { transition: opacity .2s ease, visibility .2s; }
+  /* Top bar: one slim line at every phone width, the pilot button never wraps (issue #77) */
+  header.site nav.links { gap: 12px; }
+  header.site nav.links .btn-primary { white-space: nowrap; font-size: 15px; padding: 9px 14px; min-height: 44px; }
 
   /* Shorter page: two preview tiles, one line per pilot step */
   .ops .op:nth-child(n+3) { display: none; }
