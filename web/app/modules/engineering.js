@@ -71,6 +71,7 @@ export async function render(el, ctx) {
     ui.busy = true;
     reportBtn.disabled = true;
     reportMore.replaceChildren();
+    reportStatus.classList.remove('notice');
     try {
       const priority = form.querySelector('input[name="f-prio"]:checked')?.value || 'routine';
       const out = await ctx.run('ospeli_workorders_report_fault', { assetId: assetSel.value, fault: faultSel.value, priority });
@@ -83,6 +84,7 @@ export async function render(el, ctx) {
       if (existing) {
         // Issue #24: the fault is already in the queue. Say so, and offer the work order itself.
         const name = existing.toUpperCase();
+        reportStatus.classList.add('notice');
         reportStatus.textContent = `Already reported: ${name} is open for this fault. No new work order was opened.`;
         reportMore.replaceChildren(h('button', { class: 'btn btn-ghost', type: 'button', 'data-test': 'see-existing', onclick: () => showWorkOrder(existing) }, `See ${name}`));
       } else reportStatus.textContent = `Not saved. ${err.message}`;
