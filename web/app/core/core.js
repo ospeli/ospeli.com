@@ -104,7 +104,7 @@ export class Core {
     const who = typeof actor === 'string' ? { role: actor } : { ...actor };
     if (who.type !== 'agent') who.type = who.role === 'system' ? 'system' : 'human';
     const [entry] = await this._appendLog('audit', 'lastAudit', async (tail) => [await makeEntry(tail, {
-      at, actorRole: who.role, actorType: who.type, agent: who.agent, action, target, detail,
+      at, actorRole: who.role, actorType: who.type, agent: who.agent, via: who.via, action, target, detail,
     })]);
     return entry;
   }

@@ -31,9 +31,9 @@ export function validate(schema, value, path = 'input') {
   }
   if (typeOf(value) === 'object') {
     const props = schema.properties || {};
-    for (const k of schema.required || []) if (!(k in value)) errs.push(`${path}.${k} is required`);
+    for (const k of schema.required || []) if (!Object.hasOwn(value, k)) errs.push(`${path}.${k} is required`);
     for (const [k, v] of Object.entries(value)) {
-      if (props[k]) errs.push(...validate(props[k], v, `${path}.${k}`));
+      if (Object.hasOwn(props, k)) errs.push(...validate(props[k], v, `${path}.${k}`));
       else if (schema.additionalProperties === false) errs.push(`${path}.${k} is not allowed`);
       else if (typeof schema.additionalProperties === 'object') errs.push(...validate(schema.additionalProperties, v, `${path}.${k}`));
     }
