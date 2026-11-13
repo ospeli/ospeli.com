@@ -1,4 +1,4 @@
-// The Ospeli core: hospital model, append-only event log, hash-chained audit log,
+// The Ospeli core: hospital model, event log (no update or delete command), audit log with chained check codes,
 // JSON export and import. Modules are thin views over this object.
 
 import { MemoryAdapter } from './db.js';
@@ -173,7 +173,7 @@ export class Core {
     return (await this.listEntities(type)).filter((e) => e.parentId === parentId);
   }
 
-  // ---- event log (append-only: there is no update or delete) ----
+  // ---- event log (the core has no update or delete for events; import and reset replace it, issue #71) ----
   _eventRecord(ev, prevSeq) {
     const errs = validateEvent(ev);
     if (errs.length) throw new Error(`invalid event: ${errs.join('; ')}`);
@@ -298,6 +298,14 @@ export class Core {
 
   auditLog() { return this.db.getAll('audit'); }
   async verifyAudit() { return verifyChain(await this.db.getAll('audit')); }
+  // What the Data page and the server console may say about the trail (issue #79): the self-check
+  // result, how many entries it covered, and whether the history on this device was replaced by a
+  // reset, a fresh copy or an import. A replaced or empty trail is never shown as a clean state.
+  async auditCheck() {
+    const log = await this.db.getAll('audit');
+    const res = await verifyChain(log);
+    return { ...res, entries: log.length, replaced: await this.getMeta('history-replaced', null) };
+  }
 
   // ---- settings (not audited: device preferences such as the chosen role) ----
   async getMeta(id, fallback = null) { const r = await this.db.get('meta', id); return r ? r.value : fallback; }
@@ -372,6 +380,7 @@ export class Core {
       await this.db.putMany('audit', data.audit);
       await this._loadTails();
       await this.setMeta('synthetic', true);
+      await this.db.put('meta', { id: 'history-replaced', value: { at: this.now(), by: 'import' } });
       await this._clearAgentAccess(actorRole, 'import', was);
       await this._audit(actorRole, 'data.imported', null, {
         entities: data.entities.length, events: data.events.length, exportedAt: data.exportedAt ?? null,
@@ -407,11 +416,15 @@ export class Core {
     return this._serial(async () => {
       checkActor(actorRole);
       const was = await this._agentAccessInUse();
+      const hadHistory = (await this.db.getAll('audit')).length > 0;
       for (const s of ['entities', 'events', 'audit']) await this.db.clear(s);
       // Nothing is loaded now, so nothing is claimed about it (issue #5 badge, issue #7).
       for (const id of ['synthetic', 'generator', 'process-maps']) await this.db.put('meta', { id, value: null });
       this.lastEvent = null;
       this.lastAudit = null;
+      // An earlier trail was wiped: say so from now on (issue #79). A first setup that never
+      // wrote an entry has no history to replace.
+      if (hadHistory) await this.db.put('meta', { id: 'history-replaced', value: { at: this.now(), by: 'reset' } });
       await this._clearAgentAccess(actorRole, 'reset', was);
       this._emit('reset', null);
     });

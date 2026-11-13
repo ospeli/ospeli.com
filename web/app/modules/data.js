@@ -4,6 +4,7 @@ import { roleById } from '../core/model.js';
 import { loadSyntheticHospital, currentHour, HOSPITAL_NAME } from '../core/generator.js';
 import { commandByName } from '../core/commands.js';
 import { KPIS } from '../core/kpi.js';
+import { SELF_CHECK_CASES } from '../core/audit.js';
 
 const roleName = (id) => (id === 'system' ? 'System' : roleById(id)?.name || id);
 // Who acted, in words (issue #17): a person in a role, an agent for a role, or the system.
@@ -88,6 +89,7 @@ export async function render(el, ctx) {
   const { core } = ctx;
   const status = h('p', { class: 'meta', 'data-test': 'import-status', role: 'status' });
   const chain = h('span', { class: 'pill', 'data-test': 'audit-status' }, 'Checking…');
+  const chainNote = h('p', { class: 'audit-note', 'data-test': 'audit-note', role: 'status' });
   const tbody = h('tbody');
   const actorFilter = h('select', { id: 'audit-actor', 'data-test': 'audit-actor' },
     [['all', 'Everyone'], ['human', 'People'], ['agent', 'Agents'], ['system', 'System']].map(([v, t]) => new Option(t, v)));
@@ -96,9 +98,28 @@ export async function render(el, ctx) {
   async function refresh() {
     const [log, entities] = await Promise.all([core.auditLog(), core.listEntities()]);
     const places = new Map(entities.map((x) => [x.id, x]));
-    const res = await core.verifyAudit();
-    chain.className = `pill ${res.ok ? 'pill-ok' : 'pill-bad'}`;
-    chain.textContent = res.ok ? `Intact: ${log.length} entries` : `Broken at entry ${res.at}`;
+    // The pill says what the self-check proves and no more (issue #79). Green only for a trail
+    // that passed and was never replaced on this device; an empty or replaced trail stays neutral.
+    const res = await core.auditCheck();
+    const n = `${res.entries} ${res.entries === 1 ? 'entry' : 'entries'}`;
+    const NO_COPY = 'No outside copy to compare with yet.';
+    if (!res.ok) {
+      chain.className = 'pill pill-bad';
+      chain.textContent = `Broken at entry ${res.at}`;
+      chainNote.textContent = 'The self-check found an entry that does not match its check code.';
+    } else if (res.replaced) {
+      chain.className = 'pill';
+      chain.textContent = `History replaced on ${new Date(res.replaced.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}`;
+      chainNote.textContent = `The earlier history on this device was replaced by ${res.replaced.by === 'import' ? 'an import' : 'a reset or a fresh copy'}. ${res.entries ? `Self-check passed on the ${n} here now. ` : ''}${NO_COPY}`;
+    } else if (!res.entries) {
+      chain.className = 'pill';
+      chain.textContent = 'No entries yet';
+      chainNote.textContent = 'Nothing to check yet.';
+    } else {
+      chain.className = 'pill pill-ok';
+      chain.textContent = `Self-check passed: ${n}`;
+      chainNote.textContent = NO_COPY;
+    }
     const want = actorFilter.value;
     const recent = log.filter((e) => want === 'all' || actorTypeOf(e) === want).slice(-50).reverse();
     tbody.replaceChildren(...(recent.length ? recent.map((e) => h('tr', {},
@@ -192,8 +213,13 @@ export async function render(el, ctx) {
     h('section', { class: 'section', 'aria-labelledby': 'audit-h' },
       h('div', { class: 'page-head' },
         h('div', {}, h('h2', { id: 'audit-h' }, 'Audit trail'),
-          h('p', {}, 'Every change is recorded by role, never by person, and says whether a person or an agent acted. Each entry is linked to the one before, so edits show up.')),
-        chain),
+          h('p', {}, 'Role changes, data actions and agent activity are recorded here by role, never by person, and agent activity is marked as an agent\u2019s. Bed and work-order changes are kept in the event log. Each entry carries a check code from the one before, which catches accidental damage. It does not yet show whether history was rewritten or shortened on purpose.')),
+        h('div', { class: 'audit-check' }, chain, chainNote)),
+      h('details', { class: 'audit-what', 'data-test': 'audit-what' },
+        h('summary', {}, 'What does this check?'),
+        h('p', {}, 'The self-check re-works every check code on this device. There is no secret key and no copy kept anywhere else yet, so this is what it catches:'),
+        h('ul', {}, SELF_CHECK_CASES.map((c) => h('li', {}, `${c.change}: `, h('b', {}, c.caught ? 'Caught' : 'Not caught')))),
+        h('p', {}, 'A checkpoint kept off the device, so that a rewritten history shows up, is in development.')),
       h('div', { class: 'audit-filter' }, h('label', { for: 'audit-actor' }, 'Show'), actorFilter),
       h('div', { class: 'table-wrap', tabindex: '0', role: 'region', 'aria-label': 'Audit trail, scroll sideways' },
         h('table', {},

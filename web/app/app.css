@@ -218,6 +218,14 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .proposal-item { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; padding: 8px 0; border-top: 1px solid var(--line); }
 .proposal-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .proposal-actions select { min-height: 44px; font: inherit; font-size: .9rem; max-width: 100%; }
+.audit-check { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.audit-note { margin: 0; font-size: .95rem; color: var(--ink-soft); }
+.audit-what { margin-bottom: 12px; }
+.audit-what > summary { min-height: 44px; display: flex; align-items: center; font-weight: 800; cursor: pointer; color: var(--sea-ink); }
+.audit-what p, .audit-what li { font-size: .95rem; color: var(--ink-soft); }
+.audit-what p { margin: 0 0 8px; }
+.audit-what ul { margin: 0 0 8px; padding-left: 20px; }
+.audit-what li b { color: var(--navy); }
 .audit-filter { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .audit-filter select { min-height: 44px; font: inherit; }
 .banner { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; background: #FDF1D9;

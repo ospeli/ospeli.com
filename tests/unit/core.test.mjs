@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
 import { ROLES, validateEntity, validateEvent } from '../../web/app/core/model.js';
-import { canonical, verifyChain, GENESIS } from '../../web/app/core/audit.js';
+import { readFileSync } from 'node:fs';
+import { canonical, verifyChain, makeEntry, GENESIS, SELF_CHECK_CASES } from '../../web/app/core/audit.js';
 
 const fixedClock = () => { let t = Date.parse('2026-11-01T08:00:00Z'); return () => new Date(t += 1000); };
 const open = () => Core.open({ adapter: new MemoryAdapter(), clock: fixedClock() });
@@ -201,4 +202,41 @@ test('adapters refuse duplicate log keys, all or nothing', async () => {
   await assert.rejects(m.addMany('events', [{ seq: 3 }, { seq: 2 }]), { name: 'ConstraintError' });
   assert.equal(await m.count('events'), 2);
   assert.equal((await m.last('events')).seq, 2);
+});
+
+// Issue #79: the public table of what the self-check catches must be what the code does.
+test('the self-check catches an edit without re-hashing and nothing else, as the published table says', async () => {
+  const trail = [];
+  for (let i = 0; i < 6; i += 1) trail.push(await makeEntry(trail[i - 1], { at: `2026-11-01T08:00:0${i}Z`, actorRole: 'coo', actorType: 'human', action: 'role.changed', detail: { n: i } }));
+  assert.deepEqual(await verifyChain(trail), { ok: true });
+  assert.deepEqual(SELF_CHECK_CASES.map((c) => [c.id, c.caught]), [['edit', true], ['edit-rehash', false], ['tail', false], ['middle', false], ['empty', false]]);
+  for (const c of SELF_CHECK_CASES) {
+    const changed = await c.apply(structuredClone(trail));
+    assert.notDeepEqual(changed, trail, `${c.id}: the case must change the trail`);
+    assert.equal((await verifyChain(changed)).ok, !c.caught, `${c.id}: ${c.change}`);
+  }
+  // The site server's README publishes the same rows with the same results.
+  const readme = readFileSync(new URL('../../tools/ospeli-server/README.md', import.meta.url), 'utf8');
+  for (const c of SELF_CHECK_CASES) assert.ok(readme.includes(`| ${c.change} | ${c.caught ? 'Caught' : 'Not caught'} |`), `README row for ${c.id}`);
+});
+
+test('a reset or an import marks the history as replaced; a first trail is not marked (issue #79)', async () => {
+  const core = await open();
+  await core.record('coo', 'role.changed', null, { to: 'coo' });
+  let check = await core.auditCheck();
+  assert.equal(check.ok, true); assert.equal(check.entries, 1); assert.equal(check.replaced, null);
+  const file = await core.exportData();
+  await core.reset('coo');
+  check = await core.auditCheck();
+  assert.equal(check.entries, 0);
+  assert.equal(check.replaced.by, 'reset'); assert.match(check.replaced.at, /^2026-11-01T/);
+  // A second reset of an empty trail keeps the mark.
+  await core.reset('coo');
+  assert.equal((await core.auditCheck()).replaced.by, 'reset');
+  const other = await open();
+  await other.reset(); // nothing to replace on a new device
+  assert.equal((await other.auditCheck()).replaced, null);
+  await other.importData(file, 'coo');
+  check = await other.auditCheck();
+  assert.equal(check.ok, true); assert.equal(check.replaced.by, 'import'); assert.equal(check.entries, 2);
 });

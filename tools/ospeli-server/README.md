@@ -37,3 +37,16 @@ Press Ctrl and C together. Your data is saved in one file (`tools/ospeli-server/
 - People act in the server window. Those entries are recorded as a person in a role, marked `via: console`. This is not a named sign-in: anyone who can use the server's window can act there, so keep that computer's login to the people who should.
 - It listens on this computer only. `--host 0.0.0.0` lets other computers on your network reach it; keys then travel unencrypted, so use it only on a network you trust.
 - One server per data file. Other options: `--port 8787`, `--data FILE`.
+
+### What the audit self-check proves
+The `audit` word at the console runs a self-check on the audit trail. Each entry carries a check code worked out from the entry before it. There is no secret key, no signature and no copy kept off this computer yet, so the check catches accidental damage and nothing more. It does not cover the event log. It runs when someone types `audit`, not at start-up.
+
+| Change to the trail | Self-check |
+|---|---|
+| One entry changed, check codes left alone | Caught |
+| One entry changed, check codes worked out again from there on | Not caught |
+| Newest entries removed | Not caught |
+| A middle entry removed, the rest renumbered and re-coded | Not caught |
+| Trail emptied | Not caught |
+
+A checkpoint kept off the computer, so that a rewritten or shortened history shows up, is in development. A test runs these five cases on every build.

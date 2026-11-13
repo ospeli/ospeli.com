@@ -64,7 +64,7 @@ export class SqliteAdapter {
     for (const r of records) s.set(r[k], clone(r));
   }
   async add(store, record) { return this.addMany(store, [record]); }
-  // All or nothing; a key that already exists is refused (the logs are append-only).
+  // All or nothing; a key that already exists is refused (log entries are added, never overwritten, through this door).
   async addMany(store, records) {
     const s = this._s(store); const k = KEYS[store];
     const seen = new Set();

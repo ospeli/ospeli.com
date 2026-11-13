@@ -1,5 +1,8 @@
-// Hash-chained audit trail (foundation section 5.12).
-// Each entry stores the hash of the previous entry, so any edit or deletion breaks the chain.
+// Audit trail as a chain of check codes (foundation section 5.12).
+// Each entry stores the hash of the previous entry, so an edit without re-hashing breaks the chain.
+// That catches accidental damage. There is no secret key, no signature and no copy kept anywhere
+// else, so a history that was re-hashed, shortened or emptied on purpose still passes (issue #79).
+// SELF_CHECK_CASES below says exactly that, and a unit test keeps it true.
 
 export const GENESIS = '0'.repeat(64);
 
@@ -49,3 +52,28 @@ export async function verifyChain(entries) {
   }
   return { ok: true };
 }
+
+// What the self-check does and does not catch (issue #79). The Data page and the site server's
+// README show this list, and tests/unit/core.test.mjs runs every case against verifyChain.
+// `apply` gets a copy of a valid trail and returns the changed trail.
+const rehashFrom = async (entries, from) => {
+  for (let i = from; i < entries.length; i += 1) {
+    const e = entries[i];
+    e.seq = i + 1;
+    e.prev = i ? entries[i - 1].hash : GENESIS;
+    e.hash = await sha256(canonical(body(e)));
+  }
+  return entries;
+};
+export const SELF_CHECK_CASES = [
+  { id: 'edit', change: 'One entry changed, check codes left alone', caught: true,
+    apply: async (t) => { t[2].detail = { changed: true }; return t; } },
+  { id: 'edit-rehash', change: 'One entry changed, check codes worked out again from there on', caught: false,
+    apply: async (t) => { t[2].detail = { changed: true }; return rehashFrom(t, 2); } },
+  { id: 'tail', change: 'Newest entries removed', caught: false,
+    apply: async (t) => t.slice(0, -2) },
+  { id: 'middle', change: 'A middle entry removed, the rest renumbered and re-coded', caught: false,
+    apply: async (t) => { t.splice(2, 1); return rehashFrom(t, 2); } },
+  { id: 'empty', change: 'Trail emptied', caught: false,
+    apply: async () => [] },
+];

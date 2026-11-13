@@ -194,7 +194,7 @@ test('journey over HTTP: find a bed, propose it, a person accepts at the console
   const accepted = pick('agent.proposal-accepted');
   assert.equal(accepted.length, 1);
   assert.equal(accepted[0].actorType, 'human'); assert.equal(accepted[0].via, 'console'); assert.equal(accepted[0].actorRole, 'bed-manager');
-  assert.match(await site.consoleLine('audit'), /entries; the chain check passed\.[\s\S]*at this console/);
+  assert.match(await site.consoleLine('audit'), /^Audit trail: \d+ entries\. Self-check passed \(this does not show whether the newest entries were removed\)\.\n[\s\S]*at this console/);
 });
 
 test('journeys over HTTP: overdue work orders in one call; a process map in two, marked as untrusted text; a decline', async () => {

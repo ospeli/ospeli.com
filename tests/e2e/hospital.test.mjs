@@ -25,7 +25,7 @@ test('reset leaves the device empty, and the hospital can be loaded again', asyn
   const { context, page, errors } = await openPage(env, { path: '#/data' });
   page.on('dialog', (d) => d.accept());
   await page.click('text=Reset device data');
-  await page.waitForFunction(() => /Intact: 1 entries/.test(document.querySelector('[data-test="audit-status"]').textContent));
+  await page.waitForFunction(() => /^History replaced on /.test(document.querySelector('[data-test="audit-status"]').textContent) && /Self-check passed on the 1 entry here now/.test(document.querySelector('[data-test="audit-note"]').textContent));
   await page.goto(`${env.appUrl}#/home`);
   await page.reload();
   await page.waitForSelector('html[data-ready="true"]');

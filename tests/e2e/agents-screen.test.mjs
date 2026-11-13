@@ -128,7 +128,7 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
   // The trail: every change by a person, every agent call (allowed or refused) by an agent.
   await page.goto(`${env.appUrl}#/data`);
   await page.waitForSelector('[data-test="audit-status"]');
-  await page.waitForFunction(() => /^Intact/.test(document.querySelector('[data-test="audit-status"]').textContent));
+  await page.waitForFunction(() => /^Self-check passed: \d+ entries$/.test(document.querySelector('[data-test="audit-status"]').textContent));
   await page.selectOption('[data-test="audit-actor"]', 'agent');
   await page.waitForFunction(() => [...document.querySelectorAll('tbody td[data-actor-type]')].every((td) => td.dataset.actorType === 'agent'));
   // The table now says each action in words (issue #65); the raw action id is on the cell.
@@ -208,7 +208,7 @@ test('reset and a fresh copy switch agents off and say so, at 360 px (issue #51)
   await page.waitForSelector('[data-test="audit-status"]');
   dialogs.length = 0;
   await page.getByRole('button', { name: 'Reset device data' }).tap();
-  await page.waitForFunction(() => /Intact: 2 entries/.test(document.querySelector('[data-test="audit-status"]').textContent));
+  await page.waitForFunction(() => /^History replaced on /.test(document.querySelector('[data-test="audit-status"]').textContent) && /Self-check passed on the 2 entries here now/.test(document.querySelector('[data-test="audit-note"]').textContent));
   assert.match(dialogs[0], /AI agents will also be switched off/);
   const row = await page.evaluate(() => {
     const td = [...document.querySelectorAll('tbody td')].find((x) => /Agents switched off by reset/.test(x.textContent));

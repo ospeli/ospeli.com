@@ -126,12 +126,14 @@ test('export, refuse a tampered file, then import a good one', async () => {
   await page.waitForFunction(() => /Imported/.test(document.querySelector('[data-test="import-status"]').textContent));
   const n = await page.evaluate(async () => (await window.ospeli.core.events()).length);
   assert.equal(n, count, 'the event added after export is gone after import');
-  assert.match(await page.textContent('[data-test="audit-status"]'), /^Intact/);
+  // An import replaces the history, so the pill says so and is never a clean green state (issue #79).
+  assert.match(await page.textContent('[data-test="audit-status"]'), /^History replaced on /);
+  assert.equal(await page.locator('[data-test="audit-status"].pill-ok').count(), 0);
   assert.deepEqual(errors, []);
   await context.close();
 });
 
-test('two tabs on one device keep one intact audit trail (issue #2)', async () => {
+test('two tabs on one device keep one unbroken audit trail (issue #2)', async () => {
   const { context, page: a } = await openPage(env);
   const b = await context.newPage();
   await b.goto(env.appUrl);
@@ -144,7 +146,7 @@ test('two tabs on one device keep one intact audit trail (issue #2)', async () =
   await a.selectOption('#role-select', 'estates-tech');
   await a.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Estates tech');
   await a.goto(`${env.appUrl}#/data`);
-  await a.waitForFunction(() => /Intact/.test(document.querySelector('[data-test="audit-status"]')?.textContent || ''));
+  await a.waitForFunction(() => /^Self-check passed: \d+ entries$/.test(document.querySelector('[data-test="audit-status"]')?.textContent || ''));
   const audit = await a.evaluate(() => window.ospeli.core.auditLog());
   assert.equal(audit.length, before + 3);
   assert.deepEqual(audit.slice(-3).map((e) => e.detail.to), ['bed-manager', 'coo', 'estates-tech']);
@@ -201,3 +203,45 @@ test('Today at 390px: every role gets at least three shortcuts and all of them a
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #79: the words and the pill say what the check proves and no more.
+for (const width of [360, 390, 1280]) {
+  test(`audit trail at ${width} px: the pill says "Self-check passed", the limits are one tap away, and a reset never shows a clean state`, async () => {
+    const { context, page, errors } = await openPage(env, { path: '#/data', width, height: 800, touch: width < 1000 });
+    const act = (sel) => (width < 1000 ? page.tap(sel) : page.click(sel));
+    await page.waitForFunction(() => /^Self-check passed: \d+ entries$/.test(document.querySelector('[data-test="audit-status"]').textContent));
+    assert.equal(await page.locator('[data-test="audit-status"].pill-ok').count(), 1);
+    assert.match(await page.textContent('[data-test="audit-note"]'), /^No outside copy to compare with yet\.$/);
+    const section = page.locator('section[aria-labelledby="audit-h"]');
+    const words = await section.innerText();
+    assert.match(words, /catches accidental damage/);
+    assert.match(words, /does not yet show whether history was rewritten or shortened on purpose/);
+    assert.doesNotMatch(await page.locator('main').innerText(), /Intact|so edits show up|tamper|append-only/i);
+    // "What does this check?" opens the five published cases; only the first is caught.
+    const summary = page.locator('[data-test="audit-what"] > summary');
+    assert.ok((await summary.boundingBox()).height >= 44, 'the row is a 44 px tap target');
+    await act('[data-test="audit-what"] > summary');
+    const rows = await page.locator('[data-test="audit-what"] li').allInnerTexts();
+    assert.equal(rows.length, 5);
+    assert.deepEqual(rows.map((r) => /: Caught$/.test(r)), [true, false, false, false, false]);
+    assert.ok(rows.slice(1).every((r) => /: Not caught$/.test(r)));
+    if (width < 1000) {
+      const sizes = await page.evaluate(() => [...document.querySelectorAll('[data-test="audit-what"] li, [data-test="audit-what"] summary, [data-test="audit-note"], section[aria-labelledby="audit-h"] .page-head p')].map((n) => parseFloat(getComputedStyle(n).fontSize)));
+      assert.ok(sizes.every((px) => px >= 15), `new audit text is 15 px or more on a phone: ${sizes}`);
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0, 'no sideways scroll');
+    }
+    // After a reset the pill says the history was replaced, in a neutral colour, and stays so after a reload.
+    page.on('dialog', (d) => d.accept());
+    await page.getByRole('button', { name: 'Reset device data' }).scrollIntoViewIfNeeded();
+    await act('text=Reset device data');
+    await page.waitForFunction(() => /^History replaced on .*20\d\d$/.test(document.querySelector('[data-test="audit-status"]').textContent));
+    assert.equal(await page.locator('[data-test="audit-status"].pill-ok').count(), 0);
+    assert.match(await page.textContent('[data-test="audit-note"]'), /replaced by a reset or a fresh copy\. Self-check passed on the 1 entry here now\. No outside copy to compare with yet\./);
+    await Promise.all([page.waitForEvent('load'), act('text=Load a fresh copy')]);
+    await page.waitForSelector('html[data-ready="true"]');
+    await page.goto(`${env.appUrl}#/data`);
+    await page.waitForFunction(() => /^History replaced on .*20\d\d$/.test(document.querySelector('[data-test="audit-status"]')?.textContent || ''));
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}

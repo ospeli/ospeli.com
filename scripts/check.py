@@ -203,6 +203,29 @@ for name in AGENT_FILES:
             if rx.search(sentence) and not ABSOLUTE_OK.search(sentence):
                 errors.append(f"{name}: states \"{what}\" as fact; in the browser demo say \"designed to\" or name the site server (issue #64): {sentence.strip()[:120]}")
 
+# Honest public claims (issue #79): the audit trail is a plain chain of check codes with no secret
+# key, no signature and no copy kept off the device. It catches accidental damage. It does not
+# show a history that was rewritten or shortened on purpose, and it does not cover the event log.
+# So no public file (pages, app code, agent files, the site server and its README) may use these
+# words. Remove a word from this list only when the off-device checkpoint ships (issue #79 part 2).
+RECORD_WORDS = [(re.compile(r"tamper[- ]?(?:evident|evidence|proof)", re.I), "tamper-evident / tamper-proof"),
+                (re.compile(r"append[- ]only", re.I), "append-only"),
+                (re.compile(r"so edits show up", re.I), "so edits show up"),
+                (re.compile(r"\bintact\b", re.I), "Intact"),
+                (re.compile(r"chain check passed", re.I), "the chain check passed"),
+                (re.compile(r"any edit or deletion breaks the chain", re.I), "any edit or deletion breaks the chain")]
+record_files = [f for f in ROOT.rglob("*") if f.is_file() and f.suffix in (".html", ".js", ".mjs", ".md", ".txt", ".json", ".css")]
+record_files += [f for f in (ROOT.parent / "tools").rglob("*") if f.is_file() and f.suffix in (".mjs", ".js", ".md", ".json")]
+record_files += [ROOT.parent / "README.md"]
+for f in record_files:
+    if not f.exists():
+        continue
+    text = re.sub(r"\s+", " ", f.read_text(encoding="utf-8"))
+    for rx, what in RECORD_WORDS:
+        m = rx.search(text)
+        if m:
+            errors.append(f"{f.relative_to(ROOT.parent).as_posix()}: says \"{what}\", which is more than the audit check proves (issue #79): \"{text[max(0, m.start() - 40):m.end() + 40].strip()}\"")
+
 areas_file = ROOT / "areas" / "areas.json"
 if areas_file.exists():
     import json

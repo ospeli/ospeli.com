@@ -26,6 +26,15 @@ import {
 import { SqliteAdapter, StoreInUseError } from './store.mjs';
 import { buildOpenApi } from './openapi.mjs';
 
+// What the console may say about the trail (issue #79): a self-check on a plain chain of check
+// codes catches accidental damage. It cannot show removed or rewritten entries, so say so, and
+// never report a pass on an empty or replaced trail without saying that too.
+const auditLine = (check) => {
+  const replaced = check.replaced ? ` The history on this computer was replaced on ${String(check.replaced.at).slice(0, 10)}.` : '';
+  if (!check.entries) return `Audit trail: no entries yet, so there is nothing to check.${replaced}`;
+  return `Audit trail: ${check.entries} ${check.entries === 1 ? 'entry' : 'entries'}. Self-check passed (this does not show whether the newest entries were removed).${replaced}`;
+};
+
 export const SERVER_VERSION = '0.1.0';
 export const DEFAULT_PORT = 8787;
 const MAX_BODY = 64 * 1024;
@@ -462,9 +471,9 @@ export async function startServer({
       }
       if (low === 'audit') {
         const log = await core.auditLog();
-        const check = await core.verifyAudit();
+        const check = await core.auditCheck();
         const who = (e) => (e.actorType === 'agent' ? `agent ${e.agent}${e.via === 'api' ? ' (over the API)' : ''}` : e.actorType === 'system' ? 'system' : `person, ${roleById(e.actorRole)?.name || e.actorRole}${e.via === 'console' ? ' (at this console)' : ''}`);
-        return [check.ok ? `Audit trail: ${log.length} entries; the chain check passed.` : `Audit trail: BROKEN at entry ${check.at} (${check.reason}). Tell the person who looks after this server.`,
+        return [check.ok ? auditLine(check) : `Audit trail: BROKEN at entry ${check.at} (${check.reason}). Tell the person who looks after this server.`,
           ...log.slice(-8).map((e) => `  ${e.seq}  ${e.at.slice(0, 16).replace('T', ' ')}  ${who(e)}  ${e.action}${e.detail?.command ? ` ${e.detail.command}` : ''}`)].join('\n');
       }
       if ((m = /^backup (.+)$/i.exec(text))) {
