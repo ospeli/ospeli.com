@@ -454,3 +454,36 @@ test('desktop front page: captions and labels keep their desktop sizes (issue #1
   assert.deepEqual(m, DESKTOP15);
   await context.close();
 });
+
+// Issue #88: a row tagged Built opens the built module in the app, and says only what that module does.
+// Issue #22 (leftover): the sentence under the H1 names only what is built; other areas are previews.
+for (const width of [360, 1280]) {
+  test(`front page: every Built row opens the app, and the hero names only built modules (issues #88, #22, ${width}px)`, async () => {
+    const { context, page, errors } = await open(width);
+    const shownText = (sel) => page.evaluate((s) => [...document.querySelectorAll(s)].filter((e) => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0; }).map((e) => e.innerText.trim()).join(' '), sel);
+    const rows = await page.evaluate(() => [...document.querySelectorAll('#modules .modules .mod')].filter((c) => c.querySelector('.st').textContent.trim() === 'Built').map((c) => ({
+      name: c.querySelector('h3').textContent.trim(), href: c.querySelector('a').getAttribute('href'), link: c.querySelector('a').textContent.trim(), text: c.textContent })));
+    assert.deepEqual(rows.map((r) => [r.name, r.href, r.link]), [
+      ['Bed board', 'app/#/beds', 'Open the app'],
+      ['Medical equipment and maintenance', 'app/#/engineering', 'Open the app'],
+      ['Process mapping', 'app/#/process', 'Open the app'],
+    ]);
+    const beds = rows[0].text;
+    assert.doesNotMatch(beds, /declin/i, 'the built bed board has no decline step');
+    assert.match(beds, /find a bed with undo/i);
+    // The hero sentence: emergency department flow is a preview, so it is not listed as part of the system.
+    const lead = await shownText('.hero .lead');
+    assert.ok(lead.length > 40, 'a lead sentence is shown');
+    assert.doesNotMatch(lead.split(/previews? of/i)[0], /\bED flow\b|emergency department flow/i, 'ED flow is not listed as built');
+    assert.match(lead, /previews? of/i);
+    assert.doesNotMatch(lead, /prove what/i, 'no promised result');
+    // The link really opens the built module.
+    await page.locator('#modules .modules .mod a[href="app/#/beds"]').evaluate((a) => a.click());
+    await page.waitForSelector('html[data-ready="true"]');
+    assert.match(page.url(), /\/app\/#\/beds/);
+    await page.waitForFunction(() => /Ward A1/.test(document.body.innerText));
+    assert.doesNotMatch(await page.locator('body').innerText(), /4B · Adult medical/);
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}

@@ -146,6 +146,17 @@ for name in ("index.html", "llms.txt", "agents.md"):
         if PLANNED_TERMS.search(sentence) and not PLANNED_MARKERS.search(sentence):
             errors.append(f"{name}: unbuilt feature stated as fact (say planned / designed to / in development): {sentence.strip()[:120]}")
 
+# Issue #88: on the front page a row tagged "Built" must open the built module in the app
+# (a link into app/), never a stand-alone preview under demo/. And the old preview's
+# "reasons for declines" is not a feature of the built bed board, so no public page may list it.
+for _row in re.findall(r'<div class="mod[^"]*">\s*<span class="st built">Built</span>.*?</div>', home, re.S):
+    _name = re.search(r"<h3>(.*?)</h3>", _row, re.S)
+    _hrefs = re.findall(r'<a\b[^>]*href="([^"]+)"', _row)
+    if not _hrefs or any(not h.startswith("app/") for h in _hrefs):
+        errors.append(f"index.html: the Built row \"{_name.group(1) if _name else '?'}\" must link into app/ (found {_hrefs}); a preview is not the built module")
+if re.search(r"allocation with reasons for declines", visible_text(home), re.I):
+    errors.append("index.html: \"allocation with reasons for declines\" describes the old preview, not the built bed board")
+
 # Honest public claims (issue #43): no coverage, compliance or outcome claims on public pages.
 # - "covers 28 areas": most areas are previews, so a count of areas "covered" is not true.
 # - "Standards it follows": software does not follow or hold a standard; say what it is designed around.
