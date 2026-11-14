@@ -14,9 +14,10 @@
 // - Nothing leaves the site: the server listens on this computer only unless told otherwise,
 //   and it calls nobody.
 import { createServer } from 'node:http';
+import { createServer as createTlsServer } from 'node:https';
 import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { networkInterfaces } from 'node:os';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, chmodSync, statSync } from 'node:fs';
 import { readFile, stat } from 'node:fs/promises';
 import { dirname, resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,7 +51,12 @@ const KEY_SHAPE = /^osk_([0-9a-f]{8})_([A-Za-z0-9_-]{32})$/;
 // Devices: a phone or laptop a person connected at the console with a one-time code.
 const WEB_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'web');
 const STATIC_TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8' };
-const STATIC_HEADERS = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'Content-Security-Policy': "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" };
+// Every answer says: do not guess the type, do not show this inside another site's page, and
+// other sites may not load it. The app's pages may load only this server's own files; an API
+// answer is data and may load nothing at all. (docs/SECURITY.md in ospeli/ospeli, rows H1 to H3.)
+const SHARED_HEADERS = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'DENY', 'Cross-Origin-Resource-Policy': 'same-origin' };
+const STATIC_HEADERS = { ...SHARED_HEADERS, 'Cross-Origin-Opener-Policy': 'same-origin', 'Content-Security-Policy': "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" };
+const API_HEADERS = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', ...SHARED_HEADERS, 'Content-Security-Policy': "default-src 'none'; frame-ancestors 'none'" };
 export const SITE_MARKER = '<meta name="ospeli-site-server" content="1">';
 const CODE_LETTERS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0 O 1 I L: they are misread on a phone
 const CODE_MINUTES = 30;
@@ -86,10 +92,15 @@ class Limiter {
 export class StartError extends Error {}
 
 export async function startServer({
-  file, host = '127.0.0.1', port = DEFAULT_PORT, clock = () => new Date(), callsPerMinute = 120, allowHosts = [], end = null,
+  file, host = '127.0.0.1', port = DEFAULT_PORT, clock = () => new Date(), callsPerMinute = 120, allowHosts = [], end = null, tls = null,
 } = {}) {
   if (!file) throw new StartError('The server needs a data file.');
-  mkdirSync(dirname(resolve(file)), { recursive: true });
+  // tls: { cert, key } (PEM text the site supplies). With it the server answers over https only.
+  if (tls && !(tls.cert && tls.key)) throw new StartError('To use https give both files: --tls-cert FILE --tls-key FILE');
+  const secure = !!tls;
+  const scheme = secure ? 'https' : 'http';
+  // A folder Ospeli makes for its data is for the account that runs Ospeli only.
+  mkdirSync(dirname(resolve(file)), { recursive: true, mode: 0o700 });
   let adapter;
   try {
     adapter = SqliteAdapter.open(file);
@@ -97,6 +108,12 @@ export async function startServer({
     if (err instanceof StoreInUseError) throw new StartError(`Ospeli is already running on this data file (${file}). Use the window it is running in, or close it first.`);
     throw err;
   }
+  // The data file holds the site's records and the hashes of keys and device tokens, so only the
+  // account that runs Ospeli may read it; the same goes for every copy "backup" saves. A disk
+  // that has no such setting keeps its own, and the start screen then says so.
+  const ownerOnly = (path) => { try { chmodSync(path, 0o600); } catch { /* reported by openToOthers */ } };
+  const openToOthers = (path) => { try { return process.platform !== 'win32' && (statSync(path).mode & 0o077) !== 0; } catch { return false; } };
+  ownerOnly(file);
   const core = await Core.open({ adapter, clock });
   // Synthetic data only in this version: an empty (or half-loaded) store gets the made-up hospital.
   if ((await core.listEntities()).length === 0 || await setupUnfinished(core)) {
@@ -206,7 +223,8 @@ export async function startServer({
     }
     return null;
   };
-  const deviceCookie = (token, maxAge) => `${DEVICE_COOKIE}=${token}; Path=/api/v1; HttpOnly; SameSite=Strict; Max-Age=${maxAge}`;
+  // Over https the cookie is marked Secure, so the browser never sends it over plain http.
+  const deviceCookie = (token, maxAge) => `${DEVICE_COOKIE}=${token}; Path=/api/v1; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
   // Returns { device } or { fail: reason }. Nothing a caller sends besides the cookie counts.
   async function authenticateDevice(req) {
     const value = cookieOf(req);
@@ -230,7 +248,7 @@ export async function startServer({
   // anything must come from a page this server served (Origin's host equals the Host it was
   // called by, which hostAllowed has already checked). A missing or "null" Origin is refused.
   const sameOrigin = (req) => {
-    try { return new URL(String(req.headers.origin)).host.toLowerCase() === String(req.headers.host || '').toLowerCase(); } catch { return false; }
+    try { const o = new URL(String(req.headers.origin)); return o.protocol === `${scheme}:` && o.host.toLowerCase() === String(req.headers.host || '').toLowerCase(); } catch { return false; }
   };
 
   // ---- what a connected device is sent: the site's data, never a key, a token or their hashes ----
@@ -297,7 +315,7 @@ export async function startServer({
   };
   async function send(res, status, body, headers = {}) {
     const text = JSON.stringify({ ...body, synthetic: await synthetic() });
-    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...headers });
+    res.writeHead(status, { ...API_HEADERS, ...headers });
     res.end(text);
   }
   const fail = (res, code, message, fix, extra = {}, headers = {}) => send(res, STATUS[code] || 400, { ok: false, error: { code, message, fix, ...extra } }, headers);
@@ -504,14 +522,23 @@ export async function startServer({
     }
   }
 
-  const server = createServer((req, res) => {
+  const onRequest = (req, res) => {
     handle(req, res).catch((err) => {
-      // Never the Authorization header, never the body: only what went wrong.
+      // Never the Authorization header, never the body: only what went wrong. The caller is told
+      // nothing about the inside of the server.
       process.stderr.write(`ospeli-server: ${err?.stack || err}\n`);
-      if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      if (!res.headersSent) res.writeHead(500, API_HEADERS);
       res.end(JSON.stringify({ ok: false, error: { code: 'server-error', message: 'The server could not finish this call.', fix: 'Try again. If it keeps happening, tell the person who looks after this server.' } }));
     });
-  });
+  };
+  let server;
+  try {
+    // https with the site's own certificate (TLS 1.2 or newer, Node's standard library), or plain http.
+    server = secure ? createTlsServer({ cert: tls.cert, key: tls.key, minVersion: 'TLSv1.2' }, onRequest) : createServer(onRequest);
+  } catch {
+    await adapter.close();
+    throw new StartError('Ospeli could not use the certificate and key files. Check that --tls-cert is the certificate, --tls-key is its own key, and both are PEM files.');
+  }
   server.requestTimeout = 15000;
   server.headersTimeout = 10000;
   try {
@@ -524,8 +551,8 @@ export async function startServer({
   }
   const actualPort = server.address().port;
   const lan = Object.values(networkInterfaces()).flat().find((a) => a && a.family === 'IPv4' && !a.internal)?.address;
-  const url = `http://${host === '0.0.0.0' || host === '::' ? '127.0.0.1' : host}:${actualPort}`;
-  const shareUrl = host === '127.0.0.1' || host === 'localhost' ? null : `http://${host === '0.0.0.0' || host === '::' ? (lan || '<this computer>') : host}:${actualPort}`;
+  const url = `${scheme}://${host === '0.0.0.0' || host === '::' ? '127.0.0.1' : host}:${actualPort}`;
+  const shareUrl = host === '127.0.0.1' || host === 'localhost' ? null : `${scheme}://${host === '0.0.0.0' || host === '::' ? (lan || '<this computer>') : host}:${actualPort}`;
 
   // ---- the console: where people act (recorded as a person, via "console") ----
   const wardsList = async () => (await core.listEntities('ward')).sort((a, b) => (a.name < b.name ? -1 : 1));
@@ -583,7 +610,8 @@ export async function startServer({
       'Ospeli is running on this computer. Leave this window open.',
       `Data: DEMO (${HOSPITAL_NAME}, made up; no real patients). Do not load real records.`,
       shareUrl ? `Address for other computers here: ${shareUrl}` : `Address: ${url} (this computer only)`,
-      ...(shareUrl ? ['Warning: keys and device links travel unencrypted on your network. Use this only on a network you trust.'] : []),
+      ...(shareUrl ? [secure ? 'The link uses https with the certificate you gave. Each phone or computer must already trust that certificate.' : 'Warning: keys and device links travel unencrypted on your network. Use this only on a network you trust.'] : []),
+      ...(openToOthers(file) ? ['Warning: other accounts on this computer can read the data file. Keep this computer for the people who look after Ospeli.'] : []),
       access.allowed ? `Bots and scripts: ON for ${live} bot${live === 1 ? '' : 's'}. They read and suggest; a person here says yes or no.` : 'Bots and scripts: OFF. No bot or script can read or suggest yet.',
       `Data file: ${resolve(file)}`,
       'Type a word below and press Enter:',
@@ -606,7 +634,7 @@ export async function startServer({
       : ['Phones and other computers cannot reach Ospeli yet: it was started for this computer only.', `  To try it here: open a browser on this computer, go to ${appUrl} and type the code.`,
         '  To let phones in: press Ctrl and C, then start again with:  node tools/ospeli-server/server.mjs --host 0.0.0.0', '  (then type add device again; that link is not encrypted, so use a network you trust)']),
     `The code works once, for ${CODE_MINUTES} minutes. What is done on that device is recorded as a person in that role, from "${out.label}".`,
-    ...(shareUrl ? ['Warning: this network link is not encrypted. Use it only on a network you trust.'] : []),
+    ...(shareUrl && !secure ? ['Warning: this network link is not encrypted. Use it only on a network you trust.'] : []),
   ].join('\n');
 
   let wizard = null; // the "setup agent" and "add device" questions, one line at a time
@@ -734,7 +762,7 @@ export async function startServer({
       }
       if ((m = /^backup (.+)$/i.exec(text))) {
         const to = resolve(m[1]);
-        try { adapter.backupTo(to); } catch (err) { return `The copy could not be saved to ${to} (${/exist/i.test(err.message) ? 'a file with that name is already there; give a new name' : err.message}).`; }
+        try { adapter.backupTo(to); ownerOnly(to); } catch (err) { return `The copy could not be saved to ${to} (${/exist/i.test(err.message) ? 'a file with that name is already there; give a new name' : err.message}).`; }
         await core.recordAs(person(CONSOLE_ADMIN), 'data.backup', null, null);
         return `Saved a copy of all data to ${to}. To use it later, start Ospeli with: --data ${to}`;
       }

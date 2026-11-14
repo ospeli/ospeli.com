@@ -29,6 +29,12 @@ Phones and other computers can reach Ospeli only if you start it like this:
 
 That link is not encrypted: synthetic data, on a network you trust.
 
+If your IT person has a certificate and its key for this computer (two PEM files), Ospeli can answer over https instead:
+
+    node tools/ospeli-server/server.mjs --host 0.0.0.0 --tls-cert FILE --tls-key FILE
+
+It then answers over https only (TLS 1.2 or newer) and a device's cookie is sent only over https. Ospeli does not make a certificate for you, and each phone or computer must already trust the one you give; an easy way to set that up is not built yet. Over plain http on a network address a phone's browser also switches off some features: the app does not open without a connection there, and the audit self-check does not run on the phone.
+
 ## Stop everything
 Type `stop agents`. Every bot is shut out at once. `start agents` lets the listed bots in again.
 
@@ -49,7 +55,8 @@ Press Ctrl and C together. Your data is saved in one file (`tools/ospeli-server/
 - A device added with `add device` acts as a person in the role chosen for it, marked `via: app` with the device's label. This is not a named sign-in: anyone holding that device can act in that role, so give devices to places, not to the public, and remove one that is lost. The code works once, for 30 minutes, and is cancelled after five wrong tries. The device keeps a random token in a cookie that page scripts cannot read; the server keeps only its hash. A request that changes anything must come from a page this server served.
 - People also act in the server window. Those entries are recorded as a person in a role, marked `via: console`. This is not a named sign-in: anyone who can use the server's window can act there, so keep that computer's login to the people who should.
 - It listens on this computer only. `--host 0.0.0.0` lets other computers on your network reach it; keys then travel unencrypted, so use it only on a network you trust.
-- One server per data file. Other options: `--port 8787`, `--data FILE`.
+- The data file, and every copy `backup` saves, can be read only by the computer account that runs Ospeli (on Windows, by whoever that folder already allows). The file itself is not encrypted: anyone who can sign in as that account, or who takes the disk, can read it.
+- One server per data file. Other options: `--port 8787`, `--data FILE`, `--tls-cert FILE --tls-key FILE`.
 
 ### What the audit self-check proves
 The `audit` word at the console runs a self-check on the audit trail. Each entry carries a check code worked out from the entry before it. There is no secret key, no signature and no copy kept off this computer yet, so the check catches accidental damage and nothing more. It does not cover the event log. It runs when someone types `audit`, not at start-up.
