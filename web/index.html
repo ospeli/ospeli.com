@@ -419,6 +419,19 @@ details.acc > summary::-webkit-details-marker { display: none; }
   #roadmap { padding-block: 16px; }
   .hero .wrap { padding-block: 24px 28px; }
   .timeline .short { font-size: 0.95rem; }
+
+  /* Readable captions (issue #15): every caption and label is at least 15 px on phones; only the
+     small section eyebrows stay smaller. Tighter letter spacing keeps the labels on one line. */
+  .op-k, .sample { font-size: 15px; letter-spacing: 0.04em; }
+  .timeline .wk { font-size: 15px; letter-spacing: 0.04em; }
+  .swipe-hint, .steps .short, .pb .io, .timeline.road p, .contact small, footer .wrap { font-size: 15px; }
+  /* Paid for with slightly tighter spacing, so the phone page is no longer than before. */
+  section { padding-block: 30px; }
+  .steps { gap: 12px 14px; }
+  .steps li { padding-top: 10px; }
+  .ops { padding: 10px; }
+  .hero .wrap { padding-block: 24px 24px; }
+  .contact { gap: 10px; }
 }
 </style>
 
