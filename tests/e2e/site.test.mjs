@@ -371,3 +371,86 @@ for (const width of [320, 360, 375, 390]) {
     await context.close();
   });
 }
+
+// Issue #15, last part: every tap target on the phone front page is at least 44 px tall and every
+// caption is at least 15 px, with every tap-to-open row closed and then with all of them open.
+// Two narrow exemptions, and no others:
+//  - tap targets: a link that sits inside a sentence, meaning an <a> whose parent is a <p> that also
+//    holds words outside any link. A line of running text cannot be 44 px tall. Today that is only
+//    the three links inside the roadmap paragraphs.
+//  - text size: the small uppercase section eyebrows (.eyebrow), which the issue excepts as decoration.
+const sizes15 = (page) => page.evaluate(() => {
+  const seen = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && el.checkVisibility({ contentVisibilityAuto: true, visibilityProperty: true }); };
+  const inSentence = (a) => a.tagName === 'A' && a.parentElement.tagName === 'P'
+    && [...a.parentElement.childNodes].some((n) => n.nodeType === 3 && /\w/.test(n.textContent));
+  const taps = [...document.querySelectorAll('a, button, summary')].filter(seen)
+    .map((el) => ({ t: el.innerText.trim() || el.getAttribute('aria-label'), h: el.getBoundingClientRect().height, exempt: inSentence(el) }));
+  const text = [];
+  const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let n; (n = tw.nextNode());) {
+    const e = n.parentElement;
+    if (!n.textContent.trim() || e.closest('script, style, .eyebrow') || !seen(e)) continue;
+    text.push({ t: n.textContent.trim().slice(0, 30), fs: parseFloat(getComputedStyle(e).fontSize) });
+  }
+  const cut = [...document.querySelectorAll('.op-k, .sample, .timeline .wk')].filter(seen).filter((e) => { const b = e.getBoundingClientRect(); const p = e.parentElement.getBoundingClientRect(); return b.right > p.right + 0.5; }).map((e) => e.textContent);
+  return { taps, text, cut, screens: document.documentElement.scrollHeight / innerHeight, sideways: document.documentElement.scrollWidth - innerWidth };
+});
+
+for (const width of [360, 390]) {
+  test(`phone front page: every tap target is 44 px and every caption 15 px, rows closed and open (issue #15, ${width}px)`, async () => {
+    const { context, page, errors } = await open(width);
+    for (const state of ['closed', 'open']) {
+      if (state === 'open') await page.evaluate(() => document.querySelectorAll('details').forEach((d) => { d.open = true; }));
+      const m = await sizes15(page);
+      const short = m.taps.filter((x) => !x.exempt && x.h < 44);
+      assert.ok(m.taps.length > 20, `${m.taps.length} tap targets found`);
+      assert.deepEqual(short.map((x) => `${x.t} ${Math.round(x.h)}px`), [], `tap targets under 44 px (${state})`);
+      assert.ok(m.taps.filter((x) => x.exempt).length <= 3, 'the in-sentence exemption stays narrow');
+      const small = m.text.filter((x) => x.fs < 15);
+      assert.ok(m.text.length > 40, `${m.text.length} pieces of text found`);
+      assert.deepEqual(small.map((x) => `${x.t} ${x.fs.toFixed(1)}px`), [], `text under 15 px (${state})`);
+      assert.deepEqual(m.cut, [], 'bigger labels still fit their tiles');
+      assert.ok(m.sideways <= 0, `scrolls sideways by ${m.sideways}px`);
+      if (state === 'closed') assert.ok(m.screens < 6.85, `page is ${m.screens.toFixed(2)} screens; the bigger captions must not lengthen it`);
+    }
+    // The named items from the issue, by name.
+    const named = await page.evaluate(() => Object.fromEntries(['.op-k', '.sample', '.steps .short', '.contact small', '.pb .io', '.swipe-hint', '.timeline .wk', 'footer .wrap > span']
+      .map((s) => [s, parseFloat(getComputedStyle(document.querySelector(s)).fontSize)])));
+    for (const [sel, fs] of Object.entries(named)) assert.ok(fs >= 15, `${sel} is ${fs}px`);
+    assert.equal(await page.locator('.board .sample').innerText(), 'ILLUSTRATION', 'the example-data badge stays');
+    assert.ok(await page.locator('.board .sample').isVisible());
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}
+
+test('phone front page at 320px: the bigger labels fit and nothing scrolls sideways (issue #15)', async () => {
+  const { context, page } = await open(320);
+  const m = await sizes15(page);
+  assert.deepEqual(m.cut, []);
+  assert.ok(m.sideways <= 0, `scrolls sideways by ${m.sideways}px`);
+  await context.close();
+});
+
+// Measured on main before the phone fix; the fix lives only inside max-width 640px rules.
+const DESKTOP15 = {
+  fs: { '.op-k': 11.52, '.sample': 10.88, '.op-l': 12.8, '.steps .long': 15.68, '.contact small': 14.17, '.pb .io': 14.72, '.timeline .wk': 12.8, '.timeline.road p': 15.68, 'footer .wrap': 14.72 },
+  spacing: ['1.3824px', '1.28px'],
+  pad: ['72px', '16px', '72px', '16px', '20px', '18px'],
+  hidden: ['none', 'none'],
+};
+test('desktop front page: captions and labels keep their desktop sizes (issue #15)', async () => {
+  const { context, page } = await open(1280);
+  const m = await page.evaluate(() => {
+    const q = (s) => document.querySelector(s);
+    const fs = (s) => +parseFloat(getComputedStyle(q(s)).fontSize).toFixed(2);
+    return {
+      fs: Object.fromEntries(['.op-k', '.sample', '.op-l', '.steps .long', '.contact small', '.pb .io', '.timeline .wk', '.timeline.road p', 'footer .wrap'].map((s) => [s, fs(s)])),
+      spacing: [getComputedStyle(q('.op-k')).letterSpacing, getComputedStyle(q('.timeline .wk')).letterSpacing],
+      pad: [getComputedStyle(q('#how')).paddingTop, getComputedStyle(q('.ops')).paddingTop, getComputedStyle(q('.hero .wrap')).paddingBottom, getComputedStyle(q('.contact')).rowGap, getComputedStyle(q('.steps')).rowGap, getComputedStyle(q('.steps li')).paddingTop],
+      hidden: ['.swipe-hint', '.steps .short'].map((s) => getComputedStyle(q(s)).display),
+    };
+  });
+  assert.deepEqual(m, DESKTOP15);
+  await context.close();
+});
