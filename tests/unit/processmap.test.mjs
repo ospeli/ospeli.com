@@ -153,7 +153,7 @@ test('agents read and propose; a person accepts; every change is audited', async
   assert.equal(p.status, 'proposed');
   assert.equal(p.mapId, 'map-001');
   assert.equal((await run(core, 'ospeli_maps_get', { mapId: 'map-001' })).changed, false, 'nothing changes until a person accepts');
-  await assert.rejects(run(core, 'ospeli_maps_guide_set', { on: false }, agent('ops-manager')), code('agents-off'));
+  await assert.rejects(run(core, 'ospeli_maps_guide_set', { on: false }, agent('ops-manager')), code('forbidden')); // agents are on: people only (issue #89)
 
   const acc = await run(core, 'ospeli_proposals_accept', { id: p.proposal.id }, human('ops-manager'));
   assert.equal(acc.status, 'accepted');

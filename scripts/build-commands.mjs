@@ -35,7 +35,7 @@ const spec = {
     browser: 'window.ospeli.commands(), window.ospeli.describe(name), await window.ospeli.run(name, input, { agent: "your-agent-name", role: "bed-manager" })',
     names: 'Command names are ospeli_<module>_<action>. The dotted names used before 12 Nov 2026 still work in this build; each is listed as deprecatedName. The audit trail and the proposal queue always record the new name. Use the new names.',
     lists: 'List reads take a limit and return total and truncated; most take format: "short". Start with the task-shaped reads: ospeli_beds_find_free, ospeli_workorders_list (overdue, locationId) and ospeli_maps_summary.',
-    errors: 'A refused call throws an error with .code: invalid-input, unknown-command, forbidden, not-found, conflict or agents-off.',
+    errors: 'A refused call throws an error with .code: invalid-input, unknown-command, forbidden, not-found, conflict or agents-off. agents-off means only that agent access is switched off, for the hospital or for that ward. forbidden covers the rest: a people-only command (a person does it on screen), an agent that is not on the site\'s list or is past its end date, or a role that cannot run the command. A missing input is read as {}; an input that is not a JSON object is invalid-input.',
   },
   commands,
 };

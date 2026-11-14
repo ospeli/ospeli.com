@@ -91,7 +91,7 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
   assert.deepEqual([r2.ok, r2.wards], [true, ['ward-a1']]);
   assert.equal((await asAgent(page, 'ospeli_beds_board', {}, { agent: 'night-flow-helper', role: 'coo' })).code, 'forbidden', 'cannot claim another role');
   assert.equal((await asAgent(page, 'ospeli_beds_board', { wardId: 'ward-b1' }, helper)).code, 'agents-off', 'a ward that is off stays off');
-  assert.equal((await asAgent(page, 'ospeli_agents_add', { name: 'self-made', role: 'coo', days: 90 }, helper)).code, 'agents-off', 'an agent cannot add agents');
+  assert.equal((await asAgent(page, 'ospeli_agents_add', { name: 'self-made', role: 'coo', days: 90 }, helper)).code, 'forbidden', 'an agent cannot add agents (agents are on, so the code is forbidden: issue #89)');
   assert.equal((await asAgent(page, 'ospeli_beds_board', {}, { agent: 'stranger', role: 'coo' })).code, 'forbidden');
 
   // Controls are at least 44 px tall and nothing runs off the side of a 360 px phone.

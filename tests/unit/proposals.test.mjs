@@ -50,7 +50,7 @@ test('an agent proposes, a patient flow coordinator accepts: the command runs as
   assert.equal((await runCommand(core, 'ospeli_proposals_list', {}, agent('bed-manager', 'other-bot'))).proposals.length, 0, 'an agent sees only its own');
 
   // Agents can't decide; a role that can't run the command can't either.
-  await assert.rejects(runCommand(core, 'ospeli_proposals_accept', { id: prop.proposal.id }, agent('bed-manager')), code('agents-off'));
+  await assert.rejects(runCommand(core, 'ospeli_proposals_accept', { id: prop.proposal.id }, agent('bed-manager')), code('forbidden')); // agents are on: people only (issue #89)
   await assert.rejects(runCommand(core, 'ospeli_proposals_accept', { id: prop.proposal.id }, human('coo')), code('forbidden'));
   assert.equal(await core.eventCount(), before, 'nothing has changed yet');
 

@@ -1357,6 +1357,12 @@ async function runChecked(core, name, input, actor, opts = {}) {
   // From here on the command goes by its one real name, whatever name it was called by.
   const calledAs = name !== cmd.name ? { calledAs: cmd.deprecatedName } : {};
   name = cmd.name;
+  // A missing input is an empty one; anything that is not an object is refused with an example,
+  // before any command code sees it (issue #89).
+  if (input == null) input = {};
+  if (typeof input !== 'object' || Array.isArray(input)) {
+    refuse('invalid-input', `The input must be a JSON object, for example ${JSON.stringify(cmd.example?.input ?? {})}.`, { example: cmd.example?.input ?? {} });
+  }
   let who;
   try { who = normaliseActor(actor); } catch (err) { err.refusal = true; err.reason = 'actor'; throw err; }
   if (who.type === 'human') {
@@ -1369,8 +1375,13 @@ async function runChecked(core, name, input, actor, opts = {}) {
 
   // Agents: off by default, per hospital and per ward; only agents on the site's list, in the
   // role they were listed for; reads are audited; writes become proposals.
-  if (cmd.agents === false) refuse('agents-off', 'This command is for people only.', null, 'people-only');
   const access = await agentAccess(core);
+  // "agents-off" means agent access is switched off and nothing else (issue #89): while agents
+  // are on, a people-only command is "forbidden" and says who does it.
+  if (cmd.agents === false) {
+    if (!access.allowed) refuse('agents-off', 'Agent access is off for this hospital, and this command is for people only.', null, 'people-only');
+    refuse('forbidden', `People only: an agent cannot run ${name}. A person does this on screen (a proposal is accepted or declined where it is shown; agent access is changed on the Agents screen).`, null, 'people-only');
+  }
   if (!access.allowed) refuse('agents-off', 'Agent access is off for this hospital.', null, 'dial-off');
   const listed = (await agentList(core)).find((r) => agentKey(r.name) === agentKey(who.agent));
   if (!listed) refuse('forbidden', `Agent ${who.agent} is not on this site's list. ${AGENT_ADMINS.map((r) => roleById(r).name).join(' or ')} can add it on the Agents screen.`, null, 'not-listed');

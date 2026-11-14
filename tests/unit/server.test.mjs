@@ -433,3 +433,26 @@ test('lead review fixes: no smuggled fields, odd addresses, big bodies, and stop
   assert.ok(log.filter((e) => e.actorType === 'human').every((e) => e.via === 'console'));
   assert.ok(log.filter((e) => e.via === 'api').every((e) => e.actorType === 'agent'));
 });
+
+// ospeli/ospeli#89 on the HTTP door: "agents-off" only when agent access is off; a people-only
+// command with agents on is "forbidden"; a null input is an empty one; a non-object input is a 400 with a fix.
+test('#89 over HTTP: people-only is forbidden while agents are on, agents-off only when they are off; null and non-object inputs', async () => {
+  const { site, cmd, call } = await start();
+  const { key } = await letIn(site);
+  const on = await cmd(key, 'ospeli_proposals_accept', { id: 'prop-0001' });
+  assert.deepEqual([on.status, on.json.error.code], [403, 'forbidden']); hasNextStep(on);
+  assert.equal(on.json.error.message, 'This action is for a person. An agent cannot do it over the API.');
+  const nul = await call('POST', '/api/v1/commands/ospeli_beds_find_free', { key, body: { input: null } });
+  assert.deepEqual([nul.status, nul.json.ok], [200, true]);
+  const none = await call('POST', '/api/v1/commands/ospeli_beds_find_free', { key, body: {} });
+  assert.deepEqual([none.status, none.json.ok], [200, true]);
+  for (const bad of ['ward-a1', 7, ['ward-a1']]) {
+    const r = await call('POST', '/api/v1/commands/ospeli_beds_find_free', { key, body: { input: bad } });
+    assert.deepEqual([r.status, r.json.error.code], [400, 'invalid-input'], JSON.stringify(bad)); hasNextStep(r);
+    assert.match(r.json.error.message, /must be a JSON object/);
+    assert.doesNotMatch(JSON.stringify(r.json), /TypeError|at .*\.js/);
+  }
+  await site.consoleLine('stop agents');
+  const off = await cmd(key, 'ospeli_proposals_accept', { id: 'prop-0001' });
+  assert.deepEqual([off.status, off.json.error.code], [403, 'agents-off']);
+});

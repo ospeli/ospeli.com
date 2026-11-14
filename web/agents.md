@@ -30,6 +30,8 @@ await window.ospeli.run('ospeli_beds_board', { wardId: 'ward-a1' }, { agent: 'fl
 - Command names are `ospeli_<module>_<action>`. The dotted names used before 12 November 2026 (`beds.board`, `bed.allocate`) still work in this build and are listed as `deprecatedName` in `commands.json`; the audit trail records the new name. Use the new names.
 - Pass `expectedState` with a write when you know the bed's state; a stale request is refused with `conflict` instead of acting on old data.
 - A refused call throws an error with `.code`: `invalid-input`, `unknown-command`, `forbidden`, `not-found`, `conflict` or `agents-off`.
+- `agents-off` means only that agent access is switched off, for the hospital or for that ward: stop, and tell your user. `forbidden` covers the rest: a people-only command (a person does it on screen, for example accepting a proposal), an agent that is not on the site's list or is past its end date, or a role that cannot run the command.
+- A missing input is read as `{}`. An input that is not a JSON object is refused with `invalid-input` and an example.
 - Use the commands through `window.ospeli`: in the browser demo that is the only supported way in. Do not import the app's modules or open its storage yourself; a call made that way skips the access rules and is not recorded as an agent's.
 
 Every command, with its schema, roles and whether agents may call it (the list here is not complete; that file is generated from the code): [app/api/README.md](app/api/README.md) and the JSON schemas in [app/api/commands.json](app/api/commands.json).

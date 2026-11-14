@@ -187,7 +187,7 @@ test('one real name per command: old names still run, and the trail and the queu
   assert.equal(p.proposal.command, 'ospeli_beds_flag_expected_discharge');
   assert.equal(p.proposal.calledAs, 'bed.flag-expected-discharge');
   // A refusal by an old name is collapsed and recorded under the new one.
-  await assert.rejects(agent('agents.set-access', { allowed: true }), code('agents-off'));
+  await assert.rejects(agent('agents.set-access', { allowed: true }), code('forbidden')); // agents are on: people only (issue #89)
   const refused = (await core.auditLog()).filter((e) => e.action === 'agent.refused').pop();
   assert.deepEqual([refused.detail.command, refused.detail.calledAs], ['ospeli_agents_set_access', 'agents.set-access']);
   // An unknown name: nothing typed is stored.

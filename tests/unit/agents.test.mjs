@@ -91,7 +91,7 @@ test('an agent stops at its end date, when removed, and when anyone presses stop
   // Stop all: any role may stop; agents may not; only the two operations roles start again.
   await runCommand(core, 'ospeli_agents_add', { name: 'ward-helper', role: 'ward-nurse', wards: ['ward-a1'], days: 7 }, human('coo'));
   await runCommand(core, 'ospeli_beds_board', {}, agent('ward-nurse', 'ward-helper'));
-  await assert.rejects(runCommand(core, 'ospeli_agents_stop_all', {}, agent('ward-nurse', 'ward-helper')), code('agents-off'));
+  await assert.rejects(runCommand(core, 'ospeli_agents_stop_all', {}, agent('ward-nurse', 'ward-helper')), code('forbidden')); // agents are on: people only (issue #89)
   const stop = await runCommand(core, 'ospeli_agents_stop_all', {}, human('estates-tech'));
   ok('ospeli_agents_stop_all', stop);
   assert.deepEqual(stop, { status: 'done', dial: 'off', wasOn: true });
@@ -245,4 +245,48 @@ test('audit labels: an agent read, a refusal and a proposal are said in words (i
   // Anything else keeps its action id; entries without detail are not guessed at.
   assert.equal(actionLabel(e('role.changed', null), places), 'role.changed');
   assert.equal(actionLabel(e('agent.read', null), places), 'agent.read');
+});
+
+// Issue #89: "agents-off" means agent access is switched off, and nothing else. A people-only
+// command called while agents are on answers "forbidden" and says who does it; a missing input is
+// an empty one; an input that is not an object is refused with an example, never a raw error.
+test('issue #89: people-only commands answer forbidden while agents are on; null input is an empty input; a non-object input is refused with an example', async () => {
+  const { core } = await setup();
+  const helper = agent('bed-manager', 'flow-helper');
+  // Dial off: everything, people-only or not, is agents-off.
+  await assert.rejects(runCommand(core, 'ospeli_agents_set_access', { allowed: true }, helper), code('agents-off'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_find_free', {}, helper), code('agents-off'));
+  await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: { 'ward-a1': true } }, human('coo'));
+  await runCommand(core, 'ospeli_agents_add', { name: 'flow-helper', role: 'bed-manager', wards: ['ward-a1'], days: 30 }, human('coo'));
+  // Dial on: people-only is forbidden, in words that say who can do it.
+  const peopleOnly = (e) => e instanceof CommandError && e.code === 'forbidden' && e.reason === 'people-only' && /people only/i.test(e.message) && /a person/i.test(e.message) && !/agents-off|switched off/.test(e.message);
+  for (const [name, input] of [['ospeli_proposals_accept', { id: 'prop-0001' }], ['ospeli_agents_set_access', { allowed: false }], ['ospeli_agents_add', { name: 'x', role: 'coo', days: 1 }],
+    ['ospeli_agents_stop_all', {}], ['ospeli_maps_guide_set', { on: false }], ['ospeli_agents_list', {}]]) {
+    await assert.rejects(runCommand(core, name, input, helper), peopleOnly, name);
+  }
+  // An agent not on the list learns nothing more from a people-only command than from any other.
+  await assert.rejects(runCommand(core, 'ospeli_agents_set_access', { allowed: false }, agent('coo', 'stranger')), code('forbidden'));
+  assert.equal((await runCommand(core, 'ospeli_agents_list', {}, human('coo'))).dial, 'advise', 'nothing changed');
+  // Each refusal is in the trail once, with its reason.
+  const reasons = (await refusals(core)).map((e) => e.detail.reason);
+  assert.equal(reasons.filter((r) => r === 'people-only').length, 8, 'one with the dial off, six with it on, one from an agent not on the list');
+
+  // null and undefined inputs are {} for commands with no required fields, for agents and people.
+  const a = await runCommand(core, 'ospeli_beds_find_free', null, helper);
+  const b = await runCommand(core, 'ospeli_beds_find_free', undefined, helper);
+  const c = await runCommand(core, 'ospeli_beds_find_free', {}, helper);
+  // The test clock moves a second per call, so compare the beds offered, not the minutes.
+  const same = (x) => x.beds.map((bed) => bed.bedId);
+  assert.deepEqual(same(a), same(c)); assert.deepEqual(same(b), same(c));
+  assert.ok(c.beds.length > 0);
+  ok('ospeli_kpi_list', await runCommand(core, 'ospeli_kpi_list', null, human('coo')));
+  // A required field missing from a null input is an ordinary invalid-input.
+  await assert.rejects(runCommand(core, 'ospeli_beds_get', null, helper), code('invalid-input'));
+  // Anything that is not an object is refused with an example of a valid input.
+  for (const bad of ['ward-a1', 7, true, ['ward-a1']]) {
+    for (const actor of [helper, human('bed-manager')]) {
+      await assert.rejects(runCommand(core, 'ospeli_beds_find_free', bad, actor), (e) => e instanceof CommandError && e.code === 'invalid-input' && /must be a JSON object/.test(e.message) && /for example \{/.test(e.message), `${JSON.stringify(bad)} as ${actor.type}`);
+    }
+  }
+  assert.deepEqual(await core.verifyAudit(), { ok: true });
 });
