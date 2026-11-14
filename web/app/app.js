@@ -213,6 +213,53 @@ async function bootOnSite() {
   }
 }
 
+// Issue #87: a browser can clear a site's storage by itself (low space, long disuse). The app
+// keeps a small marker outside its database, in localStorage and in Cache Storage: only the time
+// the data was last seen here, nothing from the data. If the database comes back empty while a
+// marker is still there, the data was cleared and the app says so. A wipe of every kind of
+// storage at once cannot be told from a first visit.
+const MARKER_KEY = 'ospeli-device-marker';
+const MARKER_URL = './__device-marker';
+async function readMarker() {
+  const found = [];
+  try { found.push(JSON.parse(localStorage.getItem(MARKER_KEY))); } catch { /* blocked or not JSON */ }
+  try {
+    const hit = await (await caches.open(MARKER_KEY)).match(MARKER_URL);
+    if (hit) found.push(await hit.json());
+  } catch { /* no Cache Storage here */ }
+  const times = found.map((m) => m?.lastSeen).filter((x) => typeof x === 'string' && !Number.isNaN(Date.parse(x))).sort();
+  return times.length ? { lastSeen: times.at(-1) } : null;
+}
+async function writeMarker(lastSeen) {
+  const body = JSON.stringify({ lastSeen });
+  try { localStorage.setItem(MARKER_KEY, body); } catch { /* blocked */ }
+  try { await (await caches.open(MARKER_KEY)).put(MARKER_URL, new Response(body, { headers: { 'Content-Type': 'application/json' } })); } catch { /* no Cache Storage here */ }
+}
+const dayAndTime = (iso) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+// The notice sits in the top bar, in the page (not a toast), until a person closes it.
+async function showDataLost(core) {
+  const lost = await core.getMeta('data-lost', null);
+  if (!lost || document.querySelector('[data-test="data-lost"]')) return;
+  const bar = document.createElement('div');
+  bar.className = 'site-bar device-notice';
+  bar.setAttribute('role', 'alert');
+  bar.dataset.test = 'data-lost';
+  const text = document.createElement('span');
+  text.textContent = `The browser cleared the data saved on this device. It was last here on ${dayAndTime(lost.lastSeen)}. A fresh example copy was loaded; anything entered on this device before is gone.`;
+  const ok = document.createElement('button');
+  ok.type = 'button'; ok.className = 'btn btn-ghost'; ok.textContent = 'OK';
+  const top = () => document.documentElement.style.setProperty('--top', `${$('.topbar').offsetHeight}px`);
+  ok.addEventListener('click', async () => {
+    await core.setMeta('data-lost', null);
+    bar.remove();
+    document.documentElement.style.removeProperty('--top');
+    main.focus();
+  });
+  bar.append(text, ok);
+  $('.topbar').append(bar);
+  top();
+}
+
 async function boot() {
   if (ON_SITE_SERVER) return bootOnSite();
   const adapter = await openStorage('ospeli');
@@ -220,13 +267,23 @@ async function boot() {
   // First run on this device: load the synthetic Example General Hospital.
   // If an earlier setup was interrupted, start it again so the hospital is never half loaded.
   const unfinished = await setupUnfinished(core);
-  if (unfinished || (!(await core.getMeta('firstRunDone')) && (await core.listEntities('site')).length === 0)) {
+  const emptyStore = !(await core.getMeta('firstRunDone')) && (await core.listEntities('site')).length === 0;
+  // An empty database with a marker left behind: the browser cleared it (issue #87). A reset a
+  // person chose keeps "firstRunDone", so it never lands here.
+  const marker = adapter.kind === 'indexeddb' && emptyStore && !unfinished ? await readMarker() : null;
+  if (unfinished || emptyStore) {
     main.innerHTML = '<p class="loading">Setting up Example General Hospital (synthetic data)…</p>';
     if (unfinished) await core.reset();
     await loadSyntheticHospital(core, { end: currentHour() });
     if (unfinished) await core.record('system', 'setup.restarted', null, { reason: 'previous setup did not finish' });
+    if (marker) {
+      await core.record('system', 'data.lost', null, { cause: 'browser storage cleared', lastSeen: marker.lastSeen });
+      await core.setMeta('history-replaced', { at: core.now(), by: 'storage-cleared' });
+      await core.setMeta('data-lost', { at: core.now(), lastSeen: marker.lastSeen });
+    }
   }
   await core.setMeta('firstRunDone', true);
+  if (adapter.kind === 'indexeddb') await writeMarker(core.now());
   const saved = await core.getMeta('role');
   const ctx = { core, role: roleById(saved) ? saved : 'ward-nurse', storage: adapter.kind, routed: false };
   // People act through the same commands an agent would (backlog A2).
@@ -247,9 +304,12 @@ async function boot() {
   await showSynthetic(core);
   core.onChange(({ kind }) => { if (kind === 'reset' || kind === 'entities') showSynthetic(core); });
 
-  $('#storage-status').textContent = adapter.kind === 'indexeddb'
-    ? 'Saved on this device'
-    : 'Not saved: this browser blocks storage';
+  // Ask the browser to keep this site's data, and say what it answered (issue #87).
+  let kept = false;
+  try { kept = adapter.kind === 'indexeddb' && !!(await navigator.storage?.persist?.()); } catch { kept = false; }
+  $('#storage-status').textContent = adapter.kind !== 'indexeddb' ? 'Not saved: this browser blocks storage'
+    : kept ? 'Saved on this device' : 'Saved on this device. The browser may clear it: export a backup.';
+  await showDataLost(core);
   buildNav();
   buildRoles(ctx);
   $('#menu-btn').addEventListener('click', () => setMenu(!$('#nav').classList.contains('open')));

@@ -480,6 +480,11 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .role-fixed { font-weight: 700; font-size: .9375rem; color: #0B2F4E; padding: .5rem .75rem; border: 1px solid #c9d3dc; border-radius: 10px; background: #fff; max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .site-bar { order: 9; flex: 0 0 100%; margin: 0; padding: .5rem .75rem; background: #fdf1d7; border-left: 4px solid #EE9B00; border-radius: 6px; color: #0B2F4E; font-weight: 700; font-size: .9375rem; line-height: 1.35; }
 .site-bar[hidden] { display: none; }
+.last-export { margin: 10px 0 0; font-size: .9375rem; color: var(--ink-soft); }
+.last-export[data-old="true"] { color: var(--ink); font-weight: 700; border-left: 4px solid #EE9B00; padding-left: 8px; }
+.device-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: .9375rem; }
+.device-notice span { flex: 1 1 240px; min-width: 0; }
+.device-notice .btn { min-height: 44px; min-width: 64px; }
 .connect .meta { font-size: .9375rem; }
 html[data-site="connect"] .role, html[data-site="connect"] .menu-btn, html[data-site="connect"] .hospital, html[data-site="connect"] .nav { display: none; }
 html[data-site="connect"] .layout { display: block; }

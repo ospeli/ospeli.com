@@ -112,7 +112,7 @@ export async function render(el, ctx) {
     } else if (res.replaced) {
       chain.className = 'pill';
       chain.textContent = `History replaced on ${new Date(res.replaced.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}`;
-      chainNote.textContent = `The earlier history on this device was replaced by ${res.replaced.by === 'import' ? 'an import' : 'a reset or a fresh copy'}. ${res.entries ? `Self-check passed on the ${n} here now. ` : ''}${NO_COPY}`;
+      chainNote.textContent = `The earlier history on this device was replaced ${res.replaced.by === 'storage-cleared' ? 'after the browser cleared this device\'s storage. Nobody chose it' : res.replaced.by === 'import' ? 'by an import' : 'by a reset or a fresh copy'}. ${res.entries ? `Self-check passed on the ${n} here now. ` : ''}${NO_COPY}`;
     } else if (!res.entries) {
       chain.className = 'pill';
       chain.textContent = 'No entries yet';
@@ -121,6 +121,16 @@ export async function render(el, ctx) {
       chain.className = 'pill pill-ok';
       chain.textContent = `Self-check passed: ${n}`;
       chainNote.textContent = NO_COPY;
+    }
+    const exported = log.filter((e) => e.action === 'data.exported').at(-1);
+    if (!exported) {
+      lastExport.textContent = 'This data has not been exported yet. An export is the only backup.';
+      lastExport.dataset.old = 'false';
+    } else {
+      const days = Math.floor((Date.parse(core.now()) - Date.parse(exported.at)) / 864e5);
+      const when = new Date(exported.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+      lastExport.dataset.old = String(days >= NUDGE_DAYS);
+      lastExport.textContent = days >= NUDGE_DAYS ? `Last export: ${when}, ${days} days ago. Export a new backup.` : `Last export: ${when}.`;
     }
     const want = actorFilter.value;
     const recent = log.filter((e) => want === 'all' || actorTypeOf(e) === want).slice(-50).reverse();
@@ -152,6 +162,10 @@ export async function render(el, ctx) {
     }
   });
 
+  // When this data was last exported, read from the audit trail (issue #87): an export is the
+  // only backup of a stand-alone device, so the page says how old it is.
+  const lastExport = h('p', { class: 'last-export', 'data-test': 'last-export', 'data-old': 'false' }, '');
+  const NUDGE_DAYS = 7;
   const exportBtn = h('button', { class: 'btn', type: 'button', onclick: async () => {
     // Record the export first, so the file carries its own audit entry.
     const [entities, events] = await Promise.all([core.listEntities(), core.events()]);
@@ -212,7 +226,8 @@ export async function render(el, ctx) {
       h('div', { class: 'card' },
         h('h2', {}, 'Export'),
         h('p', {}, 'Download everything as one JSON file: the hospital model, the event log and the audit trail.'),
-        h('div', { class: 'actions' }, exportBtn)),
+        h('div', { class: 'actions' }, exportBtn),
+        lastExport),
       h('div', { class: 'card' },
         h('h2', {}, 'Import'),
         h('p', {}, 'Load an Ospeli export file. It is checked first, including the audit trail; a bad file changes nothing.'),
