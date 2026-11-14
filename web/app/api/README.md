@@ -23,7 +23,7 @@ Every action in the app is a named command. The screens call these commands, and
 - An agent's write returns `{ status: "proposed", proposal: { id } }`. A person accepts or declines it on the bed board (`ospeli_proposals_accept`, `ospeli_proposals_decline`); the agent reads the outcome with `ospeli_proposals_list` (accepted, declined, or expired if the bed changed first).
 - More for agents: [/agents.md](../../agents.md) and [/llms.txt](../../llms.txt).
 
-## Commands (42)
+## Commands (44)
 | Command | Kind | Roles | Agents: needs a person | What it does |
 |---|---|---|---|---|
 | `ospeli_beds_board` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | no | Live bed state for every ward (or one ward), the waiting-for-a-bed list and any conflicting events, derived from the event log. To find a free bed for a waiting patient use ospeli_beds_find_free instead: it answers in one short call. Read-only. |
@@ -54,6 +54,8 @@ Every action in the app is a named command. The screens call these commands, and
 | `ospeli_workorders_list` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | no | The work-order queue: open (or completed) work orders with priority, team, due time, overdue flag and repeat-fault count (failed again after a fix), overdue and most urgent first. For "what is overdue on this ward" pass overdue: true and locationId. Read-only. |
 | `ospeli_workorders_report_fault` | write | ward-nurse, bed-manager, ae-nic, estates-tech, ops-manager | yes (agents propose) | Report a fault on an asset. Opens a work order with a priority and an SLA due time, and says if it is a repeat fault (failed again after a fix). If a work order is already open for the same fault on the same asset, nothing new is opened: the answer is a conflict that names it in detail.existing. |
 | `ospeli_workorders_assign` | write | estates-tech, ops-manager | yes (agents propose) | Assign (or re-assign) an open work order to a team. Teams, not named people. |
+| `ospeli_workorders_start` | write | estates-tech, ops-manager | yes (agents propose) | Start work on an open work order: it shows as In progress, so the rest of the team can see someone is on it. The log keeps the role, never a person. A job in progress can still be assigned to another team or closed. Starting a job that is already in progress, or completed, is refused. |
+| `ospeli_workorders_next` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | no | What should this team do next? The suggested work order for a team, by a fixed rule (not AI): highest priority first, then the most late, then the oldest report. The answer says why, and its place in the line ("1 of 7"). skip moves on through the same line ("Pick another"). Jobs in progress are listed apart and never suggested. A person decides which job to start. Read-only. |
 | `ospeli_workorders_complete` | write | estates-tech | yes (agents propose) | Close a work order with its outcome: fixed, escalated or no fault found. |
 | `ospeli_maps_list` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | no | The process maps on this device, with steps and start-to-finish time for Today and Proposed, plus the example processes a new map can start from. Read-only. |
 | `ospeli_maps_get` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | no | One process map: its steps (Today and Proposed) and the numbers for each: start to finish, hands-on time, waiting, handoffs and the biggest wait. Use "short" for the numbers only. Read-only. |

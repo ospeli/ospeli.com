@@ -2775,7 +2775,7 @@
               "completed",
               "all"
             ],
-            "description": "open (default) means reported or assigned."
+            "description": "open (default) means reported, assigned or in progress."
           },
           "overdue": {
             "type": "boolean",
@@ -2897,6 +2897,7 @@
                   "enum": [
                     "open",
                     "assigned",
+                    "started",
                     "completed"
                   ]
                 },
@@ -2908,6 +2909,19 @@
                   "type": "string"
                 },
                 "assignedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "startedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "When the job was started (state started, shown as In progress). No person is recorded, only the role."
+                },
+                "startedByRole": {
                   "type": [
                     "string",
                     "null"
@@ -3069,6 +3083,7 @@
             "enum": [
               "open",
               "assigned",
+              "started",
               "completed"
             ]
           },
@@ -3134,6 +3149,7 @@
             "enum": [
               "open",
               "assigned",
+              "started",
               "completed"
             ],
             "description": "The state the caller last saw. If the work order has changed since, the command is refused (conflict)."
@@ -3162,6 +3178,7 @@
             "enum": [
               "open",
               "assigned",
+              "started",
               "completed"
             ]
           },
@@ -3185,6 +3202,458 @@
       "example": {
         "input": {
           "workOrderId": "wo-00001",
+          "team": "estates"
+        }
+      }
+    },
+    {
+      "name": "ospeli_workorders_start",
+      "summary": "Start work on an open work order: it shows as In progress, so the rest of the team can see someone is on it. The log keeps the role, never a person. A job in progress can still be assigned to another team or closed. Starting a job that is already in progress, or completed, is refused.",
+      "kind": "write",
+      "roles": [
+        "estates-tech",
+        "ops-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "workOrderId"
+        ],
+        "properties": {
+          "workOrderId": {
+            "type": "string",
+            "pattern": "^wo-[0-9]{5}$"
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "open",
+              "assigned",
+              "started",
+              "completed"
+            ],
+            "description": "The state the caller last saw. If the work order has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "workOrderId": {
+            "type": "string",
+            "pattern": "^wo-[0-9]{5}$"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "assigned",
+              "started",
+              "completed"
+            ]
+          },
+          "repeat": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Failed again after a fix: how many earlier work orders for the same fault on the same asset were closed as Fixed in the 30 days before this report. 1 or more is a repeat fault. Not counted: a work order closed as No fault found or Escalated, a different fault, \"Other fault\", and a second report while a work order is still open (a duplicate)."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "workOrderId": "wo-00001"
+        }
+      }
+    },
+    {
+      "name": "ospeli_workorders_next",
+      "summary": "What should this team do next? The suggested work order for a team, by a fixed rule (not AI): highest priority first, then the most late, then the oldest report. The answer says why, and its place in the line (\"1 of 7\"). skip moves on through the same line (\"Pick another\"). Jobs in progress are listed apart and never suggested. A person decides which job to start. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "team": {
+            "type": "string",
+            "enum": [
+              "estates",
+              "biomed",
+              "contractor"
+            ],
+            "description": "The team to suggest for: estates is the facilities team, biomed the medical equipment team, contractor the external contractor. Leave out for the team of the caller's role (the facilities team for the facilities technician, and for roles with no team of their own)."
+          },
+          "skip": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 500,
+            "description": "How many jobs to pass over, in the order of the rule. 0 (default) is the suggestion; 1 is the next one. After the last job it starts again at the first."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "team",
+          "teamName",
+          "rule",
+          "workOrder",
+          "reason",
+          "position",
+          "total",
+          "positionText",
+          "inProgress"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "team": {
+            "type": "string",
+            "enum": [
+              "estates",
+              "biomed",
+              "contractor"
+            ]
+          },
+          "teamName": {
+            "type": "string"
+          },
+          "rule": {
+            "type": "string",
+            "description": "The rule in plain words. It is fixed; it is not AI."
+          },
+          "workOrder": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "required": [
+              "id",
+              "assetId",
+              "title",
+              "priority",
+              "state",
+              "reportedAt",
+              "dueAt",
+              "overdue",
+              "repeat"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^wo-[0-9]{5}$"
+              },
+              "assetId": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 64
+              },
+              "assetName": {
+                "type": "string"
+              },
+              "locationId": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 64
+              },
+              "locationName": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "team": {
+                "type": "string",
+                "enum": [
+                  "estates",
+                  "biomed",
+                  "contractor"
+                ]
+              },
+              "priority": {
+                "type": "string",
+                "enum": [
+                  "urgent",
+                  "high",
+                  "routine"
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "assigned",
+                  "started",
+                  "completed"
+                ]
+              },
+              "reportedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "reportedByRole": {
+                "type": "string"
+              },
+              "assignedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "startedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "When the job was started (state started, shown as In progress). No person is recorded, only the role."
+              },
+              "startedByRole": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "completedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "outcome": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "dueAt": {
+                "type": "string",
+                "format": "date-time",
+                "description": "Reported time plus the response target for its priority (urgent 4 h, high 24 h, routine 72 h; examples, set locally)."
+              },
+              "overdue": {
+                "type": "boolean"
+              },
+              "overdueByMinutes": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Minutes past the due time; 0 when not overdue."
+              },
+              "metSla": {
+                "type": [
+                  "boolean",
+                  "null"
+                ]
+              },
+              "repeat": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Failed again after a fix: how many earlier work orders for the same fault on the same asset were closed as Fixed in the 30 days before this report. 1 or more is a repeat fault. Not counted: a work order closed as No fault found or Escalated, a different fault, \"Other fault\", and a second report while a work order is still open (a duplicate)."
+              }
+            },
+            "description": "The suggested work order, or null when nothing is waiting for this team."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Why this one, in plain words."
+          },
+          "priorityName": {
+            "type": "string",
+            "description": "The priority in words, for example Urgent."
+          },
+          "lateText": {
+            "type": "string",
+            "description": "How late it is against its target, in words: \"Late by 2 d 3 h\" or \"Due in 3 h\". Targets are examples, set locally."
+          },
+          "position": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "The place of this job in the line, from 1. 0 when the line is empty."
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many jobs are waiting for this team (open, not in progress)."
+          },
+          "positionText": {
+            "type": "string",
+            "description": "For example \"2 of 7\"."
+          },
+          "inProgress": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "assetId",
+                "title",
+                "priority",
+                "state",
+                "reportedAt",
+                "dueAt",
+                "overdue",
+                "repeat"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^wo-[0-9]{5}$"
+                },
+                "assetId": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
+                },
+                "assetName": {
+                  "type": "string"
+                },
+                "locationId": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
+                },
+                "locationName": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "team": {
+                  "type": "string",
+                  "enum": [
+                    "estates",
+                    "biomed",
+                    "contractor"
+                  ]
+                },
+                "priority": {
+                  "type": "string",
+                  "enum": [
+                    "urgent",
+                    "high",
+                    "routine"
+                  ]
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "open",
+                    "assigned",
+                    "started",
+                    "completed"
+                  ]
+                },
+                "reportedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "reportedByRole": {
+                  "type": "string"
+                },
+                "assignedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "startedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "When the job was started (state started, shown as In progress). No person is recorded, only the role."
+                },
+                "startedByRole": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "completedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "outcome": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "dueAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "Reported time plus the response target for its priority (urgent 4 h, high 24 h, routine 72 h; examples, set locally)."
+                },
+                "overdue": {
+                  "type": "boolean"
+                },
+                "overdueByMinutes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Minutes past the due time; 0 when not overdue."
+                },
+                "metSla": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ]
+                },
+                "repeat": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Failed again after a fix: how many earlier work orders for the same fault on the same asset were closed as Fixed in the 30 days before this report. 1 or more is a repeat fault. Not counted: a work order closed as No fault found or Escalated, a different fault, \"Other fault\", and a second report while a work order is still open (a duplicate)."
+                }
+              }
+            },
+            "description": "Jobs this team has started and not closed, the one started first at the top. The role that started each is kept, never a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
           "team": "estates"
         }
       }
@@ -3225,6 +3694,7 @@
             "enum": [
               "open",
               "assigned",
+              "started",
               "completed"
             ],
             "description": "The state the caller last saw. If the work order has changed since, the command is refused (conflict)."
@@ -3253,6 +3723,7 @@
             "enum": [
               "open",
               "assigned",
+              "started",
               "completed"
             ]
           },

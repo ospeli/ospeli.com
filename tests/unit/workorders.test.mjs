@@ -65,7 +65,7 @@ test('report, assign and complete a fault; the SLA clock and the KPIs follow the
   assert.equal(mine.team, 'estates');
   assert.equal(Date.parse(mine.dueAt) - Date.parse(mine.reportedAt), 4 * 3600e3, 'urgent: 4 h target');
   assert.match(slaText(mine, core.now()), /^Due in (3 h 59 min|4 h)$/);
-  assert.match(slaText({ ...mine, dueAt: new Date(Date.parse(core.now()) - 90 * 60e3).toISOString() }, core.now()), /^Overdue by 1 h 30 min$/);
+  assert.match(slaText({ ...mine, dueAt: new Date(Date.parse(core.now()) - 90 * 60e3).toISOString() }, core.now()), /^Late by 1 h 30 min$/);
 
   await assert.rejects(runCommand(core, 'ospeli_workorders_assign', { workOrderId: rep.workOrderId, team: 'biomed' }, human('ward-nurse')), code('forbidden'));
   const asg = await runCommand(core, 'ospeli_workorders_assign', { workOrderId: rep.workOrderId, team: 'contractor', expectedState: 'open' }, human('estates-tech'));

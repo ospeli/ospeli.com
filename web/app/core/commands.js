@@ -16,6 +16,7 @@ import { BED_STATES, OUT_OF_SERVICE_REASONS, deriveBoard, bedActions, actionEven
 import { KPIS, kpiById, computeKpi } from './kpi.js';
 import {
   PRIORITIES, TEAMS, OUTCOMES, WO_STATES, ALL_FAULTS, faultsFor, teamFor, deriveWorkOrders, nextWorkOrderId, openDuplicate, agoText,
+  suggestNext, slaText, teamOfRole, SUGGEST_RULE,
 } from './workorders.js';
 import {
   EXAMPLES as MAP_EXAMPLES, VERSIONS as MAP_VERSIONS, MAX_STEPS, MAX_MINUTES, newMap, analyse, suggest, applyChange, personalDetailIn, personNameIn, NAME_ADVICE,
@@ -584,7 +585,9 @@ const WO_SCHEMA = {
     id: WO_ID, assetId: ID, assetName: { type: 'string' }, locationId: ID, locationName: { type: 'string' },
     title: { type: 'string' }, team: { type: 'string', enum: Object.keys(TEAMS) }, priority: { type: 'string', enum: Object.keys(PRIORITIES) },
     state: { type: 'string', enum: Object.keys(WO_STATES) }, reportedAt: TIME, reportedByRole: { type: 'string' },
-    assignedAt: { type: ['string', 'null'] }, completedAt: { type: ['string', 'null'] }, outcome: { type: ['string', 'null'] },
+    assignedAt: { type: ['string', 'null'] },
+    startedAt: { type: ['string', 'null'], description: 'When the job was started (state started, shown as In progress). No person is recorded, only the role.' }, startedByRole: { type: ['string', 'null'] },
+    completedAt: { type: ['string', 'null'] }, outcome: { type: ['string', 'null'] },
     dueAt: { ...TIME, description: 'Reported time plus the response target for its priority (urgent 4 h, high 24 h, routine 72 h; examples, set locally).' },
     overdue: { type: 'boolean' }, overdueByMinutes: { type: 'integer', minimum: 0, description: 'Minutes past the due time; 0 when not overdue.' }, metSla: { type: ['boolean', 'null'] },
     repeat: { type: 'integer', minimum: 0, description: REPEAT_WORDS },
@@ -630,7 +633,7 @@ function woOut(w, assets, places, now, short = false) {
   return { id, assetId, assetName, locationName, title, team, priority, state, reportedAt, dueAt, overdue, overdueByMinutes, repeat };
 }
 
-function workOrderWrite({ name, summary, roles, to, extra, required, build }) {
+function workOrderWrite({ name, summary, roles, to, extra = {}, required = [], build, guard }) {
   return {
     name, summary, kind: 'write', roles, approval: true,
     input: {
@@ -650,6 +653,7 @@ function workOrderWrite({ name, summary, roles, to, extra, required, build }) {
         if (!w) throw new CommandError('not-found', `No work order ${input.workOrderId}.`);
         if (input.expectedState && w.state !== input.expectedState) throw new CommandError('conflict', 'This work order changed since you opened it.', { state: w.state });
         if (w.state === 'completed') throw new CommandError('conflict', 'This work order is already completed.', { state: w.state });
+        if (guard) guard(w);
         return [build(w, input, actor.role, core.now())];
       });
       return { status: 'done', workOrderId: input.workOrderId, state: to, events: recs.map((r) => r.seq) };
@@ -688,7 +692,7 @@ COMMAND_LIST.push(
     summary: 'The work-order queue: open (or completed) work orders with priority, team, due time, overdue flag and repeat-fault count (failed again after a fix), overdue and most urgent first. For "what is overdue on this ward" pass overdue: true and locationId. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, properties: {
-      state: { type: 'string', enum: ['open', 'completed', 'all'], description: 'open (default) means reported or assigned.' },
+      state: { type: 'string', enum: ['open', 'completed', 'all'], description: 'open (default) means reported, assigned or in progress.' },
       overdue: { type: 'boolean', description: 'true: only open work orders past their due time. Only with state open (the default).' },
       locationId: { ...ID, description: 'The id of the ward, department or building the asset is in, for example ward-a1. Matches that place only, not the places inside it.' },
       assetId: { ...ID, description: 'One asset, for example asset-a1-sink-1.' },
@@ -766,6 +770,56 @@ COMMAND_LIST.push(
       build: (w, input, role, at) => ({ type: 'workorder.assigned', subject: w.id, actorRole: role, at, data: { asset: w.assetId, trade: input.team } }),
     }),
     example: { input: { workOrderId: 'wo-00001', team: 'estates' } },
+  },
+  {
+    // Issue #83: "Start job". The log keeps the role that started it, never a person.
+    ...workOrderWrite({
+      name: 'ospeli_workorders_start',
+      summary: 'Start work on an open work order: it shows as In progress, so the rest of the team can see someone is on it. The log keeps the role, never a person. A job in progress can still be assigned to another team or closed. Starting a job that is already in progress, or completed, is refused.',
+      roles: ['estates-tech', 'ops-manager'], to: 'started',
+      build: (w, input, role, at) => ({ type: 'workorder.started', subject: w.id, actorRole: role, at, data: { asset: w.assetId } }),
+      guard: (w) => {
+        if (w.state === 'started') throw new CommandError('conflict', `${w.id.toUpperCase()} is already in progress. Close it with an outcome when the work is done, or assign it to another team.`, { state: w.state });
+      },
+    }),
+    example: { input: { workOrderId: 'wo-00001' } },
+  },
+  {
+    // Issue #83: "what should I do next?" The answer is a fixed rule, not AI, and says why.
+    name: 'ospeli_workorders_next',
+    summary: 'What should this team do next? The suggested work order for a team, by a fixed rule (not AI): highest priority first, then the most late, then the oldest report. The answer says why, and its place in the line ("1 of 7"). skip moves on through the same line ("Pick another"). Jobs in progress are listed apart and never suggested. A person decides which job to start. Read-only.',
+    kind: 'read', roles: ALL_ROLES, approval: false,
+    input: { type: 'object', additionalProperties: false, properties: {
+      team: { type: 'string', enum: Object.keys(TEAMS), description: 'The team to suggest for: estates is the facilities team, biomed the medical equipment team, contractor the external contractor. Leave out for the team of the caller\'s role (the facilities team for the facilities technician, and for roles with no team of their own).' },
+      skip: { type: 'integer', minimum: 0, maximum: 500, description: 'How many jobs to pass over, in the order of the rule. 0 (default) is the suggestion; 1 is the next one. After the last job it starts again at the first.' } } },
+    output: { type: 'object', required: ['asOf', 'synthetic', 'team', 'teamName', 'rule', 'workOrder', 'reason', 'position', 'total', 'positionText', 'inProgress'], properties: {
+      asOf: TIME, synthetic: SYNTHETIC, team: { type: 'string', enum: Object.keys(TEAMS) }, teamName: { type: 'string' },
+      rule: { type: 'string', description: 'The rule in plain words. It is fixed; it is not AI.' },
+      workOrder: { ...WO_SCHEMA, type: ['object', 'null'], description: 'The suggested work order, or null when nothing is waiting for this team.' },
+      reason: { type: 'string', description: 'Why this one, in plain words.' },
+      priorityName: { type: 'string', description: 'The priority in words, for example Urgent.' },
+      lateText: { type: 'string', description: 'How late it is against its target, in words: "Late by 2 d 3 h" or "Due in 3 h". Targets are examples, set locally.' },
+      position: { type: 'integer', minimum: 0, description: 'The place of this job in the line, from 1. 0 when the line is empty.' },
+      total: { ...TOTAL, description: 'How many jobs are waiting for this team (open, not in progress).' },
+      positionText: { type: 'string', description: 'For example "2 of 7".' },
+      inProgress: { type: 'array', items: WO_SCHEMA, description: 'Jobs this team has started and not closed, the one started first at the top. The role that started each is kept, never a person.' } } },
+    async run(core, input, { actor, wards: allowed }) {
+      const now = core.now();
+      const team = input.team || teamOfRole(actor.role) || 'estates';
+      const [events, assetList, places] = await Promise.all([core.events(), core.listEntities('asset'), placesById(core)]);
+      const assets = new Map(assetList.map((a) => [a.id, a]));
+      const all = [...deriveWorkOrders(events, now).values()].filter((w) => !allowed || allowed.has(assets.get(w.assetId)?.parentId));
+      const next = suggestNext(all, { team, skip: input.skip || 0, now });
+      const w = next.workOrder;
+      return {
+        asOf: now, synthetic: (await core.getMeta('synthetic', false)) === true, team, teamName: TEAMS[team], rule: SUGGEST_RULE,
+        workOrder: w ? woOut(w, assets, places, now) : null, reason: next.reason,
+        ...(w ? { priorityName: PRIORITIES[w.priority]?.name || w.priority, lateText: slaText(w, now) } : {}),
+        position: next.position, total: next.total, positionText: `${next.position} of ${next.total}`,
+        inProgress: all.filter((x) => x.state === 'started' && x.team === team).sort((a, b) => (a.startedAt < b.startedAt ? -1 : 1)).map((x) => woOut(x, assets, places, now)),
+      };
+    },
+    example: { input: { team: 'estates' } },
   },
   {
     ...workOrderWrite({
