@@ -157,6 +157,9 @@ export async function render(el, ctx) {
     const keep = card.contains(document.activeElement) ? document.activeElement.dataset.k || 'main' : null;
     const started = ui.view === 'auto' && inProgress.length ? inProgress.find((w) => w.id === ui.mine) || inProgress[ui.shown % inProgress.length] : null;
     const w = started || n.workOrder;
+    // "How did it end?" belongs to the job it was asked for. If that job is no longer the one on
+    // the card (closed or handed on from somewhere else), the question goes away with it.
+    if (ui.closing && started?.id !== ui.closing) ui.closing = false;
     card.className = `next-card${w ? ` pr-${w.priority}` : ''}`;
     card.dataset.mode = started ? 'started' : w ? 'suggest' : 'empty';
     if (w) card.dataset.job = w.id; else delete card.dataset.job;
@@ -183,7 +186,7 @@ export async function render(el, ctx) {
               onclick: () => act('ospeli_workorders_complete', w, { outcome: id }, () => { ui.closing = false; ui.mine = null; ui.skip = 0; ui.view = 'auto'; }),
             }, name)),
             h('button', { class: 'linkish', type: 'button', 'data-k': 'back', onclick: () => { ui.closing = false; draw(); focusCard('main'); } }, 'Not finished yet'))
-          : h('button', { class: 'btn btn-big', type: 'button', 'data-test': 'close-job', 'data-k': 'main', onclick: () => { ui.closing = true; draw(); focusCard('main'); } }, 'Close job'),
+          : h('button', { class: 'btn btn-big', type: 'button', 'data-test': 'close-job', 'data-k': 'main', onclick: () => { ui.closing = w.id; draw(); focusCard('main'); } }, 'Close job'),
         ui.closing ? null : h('p', { class: 'next-more' },
           others > 0 ? h('button', { class: 'linkish', type: 'button', 'data-k': 'other', onclick: () => { ui.mine = null; ui.shown += 1; draw(); focusCard('other'); } }, `Show another job in progress (${others} more)`) : null,
           n.workOrder ? h('button', { class: 'linkish', type: 'button', 'data-k': 'suggest', 'data-test': 'see-suggestion', onclick: () => { ui.view = 'suggest'; draw(); focusCard('main'); } }, 'See the next suggested job') : null),

@@ -32,9 +32,11 @@ export function findIdentifierFields(data) {
 // own name can still carry a person. Every string value in the entities and in the events' data
 // goes through the same check as process-map free text (a titled name, a phone, record or ID
 // number, an email address, a date of birth); an entity's name is also refused when it reads as a
-// person's name. Ids and time stamps are skipped. A list cannot catch every name: an untitled
-// name inside a sentence passes. The answer names the place, never the value.
-const ID_OR_TIME_KEY = /^(id|type|kind|at|ts|seq|prev|hash|version|start|end)$|(Id|At)$/;
+// person's name. A time stamp is skipped by its shape, never by its key: a key that sounds like
+// an id or a time (kind, end, seenAt) can still carry a person. Only hashes are skipped by key.
+// An event's subject is read too. A list cannot catch every name: an untitled name inside a
+// sentence passes. The answer names the place, never the value.
+const HASH_KEY = /^(prev|hash)$/;
 const ISO_TIME = /^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:?\d{2})?)?$/;
 export function findIdentifierValues(data) {
   const hits = [];
@@ -49,12 +51,15 @@ export function findIdentifierValues(data) {
     for (const [k, val] of Object.entries(v)) {
       if (hits.length >= 10) return;
       const here = Array.isArray(v) ? `${path}[${k}]` : `${path}.${k}`;
-      if (typeof val === 'string') { if (Array.isArray(v) || !ID_OR_TIME_KEY.test(k)) check(val, here, top && k === 'name'); }
+      if (typeof val === 'string') { if (Array.isArray(v) || !HASH_KEY.test(k)) check(val, here, top && k === 'name'); }
       else walk(val, here);
     }
   };
   (data.entities || []).forEach((e, i) => walk(e, `entities[${i}]`, true));
-  (data.events || []).forEach((e, i) => walk(e?.data, `events[${i}].data`));
+  (data.events || []).forEach((e, i) => {
+    if (hits.length < 10 && typeof e?.subject === 'string') check(e.subject, `events[${i}].subject`);
+    walk(e?.data, `events[${i}].data`);
+  });
   return hits;
 }
 export const EXPORT_VERSION = 1;

@@ -82,12 +82,13 @@ export function newMap({ id, from = 'blank', title, at, role }) {
 // A record number is a label (MRN, ID, No., record or hospital number) followed by six or more
 // digits; a short phone number is a calling word followed by six or more digits (issue #38).
 const RECORD_NUMBER = /\b(?:MRN|NHS|ID|IDs|No|Nr|Num|Number|Ref|Reference|Record|Chart|Case|Account|Policy|Insurance)\b[\s.:#-]*(?:(?:no|nr|num|number)\b[\s.:#-]*)?\d{6,}\b/i;
-const CALL_NUMBER = /\b(?:phone|call|ring|tel|telephone|text|page|fax|ext|extension|mobile|cell|whatsapp)\b\D{0,12}(\d[\d\s().-]{4,}\d)/i;
+const CALL_NUMBER = /\b(?:phone|call|ring|tel|telephone|text|page|fax|ext|extension|mobile|cell|whatsapp)\b\D{0,12}(\d[\d\s().-]{4,}\d)/gi;
 const PERSONAL = [
   [/[\w.+-]+@[\w-]+\.[\w.]+/, 'an email address'],
   [RECORD_NUMBER, 'a record or ID number'],
   [/\+?\d[\d\s().-]{7,}\d/, 'a phone or ID number'],
-  [{ test: (t) => { const m = CALL_NUMBER.exec(t); return !!m && m[1].replace(/\D/g, '').length >= 6; } }, 'a phone or ID number'],
+  // Every calling word is tried: a short extension first must not hide a phone number after it.
+  [{ test: (t) => [...String(t).matchAll(CALL_NUMBER)].some((m) => m[1].replace(/\D/g, '').length >= 6) }, 'a phone or ID number'],
   [/\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b/, 'a date'],
 ];
 // Maps measure flows, never people (issue #38): a title followed by a name ("Dr Sarah Jones",

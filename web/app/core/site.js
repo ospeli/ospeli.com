@@ -103,6 +103,12 @@ export class SiteLink {
     if (!this.pulling) this.pulling = this._pull().finally(() => { this.pulling = null; });
     return this.pulling;
   }
+  // After a change: a sync that began before the change may not hold it, so wait for that one
+  // to end and then ask again.
+  async pullAfterChange() {
+    if (this.pulling) await this.pulling.catch(() => false);
+    return this.pull();
+  }
   async _pull() {
     for (let round = 0; round < 2; round += 1) {
       const st = await this.mirror.syncState();
@@ -128,10 +134,10 @@ export class SiteLink {
     if (r.status === 0) { this._set(false); throw new CommandError('offline', OFFLINE); }
     if (r.status === 401) { await this.mirror.wipe(); this._set(false, 'needs-code'); throw new CommandError('forbidden', 'This device is not connected any more. Ask for a new code.'); }
     if (!r.ok) {
-      await this.pull(); // the refusal may mean this device's copy was behind
+      await this.pullAfterChange(); // the refusal may mean this device's copy was behind
       throw new CommandError(r.body.error?.code || 'error', r.body.error?.message || 'Not saved.', r.body.error?.detail ?? null);
     }
-    await this.pull();
+    await this.pullAfterChange();
     return r.body.result;
   }
 }
