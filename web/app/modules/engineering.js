@@ -2,24 +2,28 @@
 // assign to a team, close with an outcome, and repeat faults flagged. Every control runs a named
 // command (core/commands.js), the same one an agent would. Deep link per asset:
 // #/engineering/report/<assetId> (the address a QR label on the asset points to).
+// Issue #83: the facilities technician sees a "do next" card first: one suggested job (a fixed
+// rule, not AI), Start job, Pick another, then Close job. Lateness is a number and a small bar.
 import { h, fmtTime, setKids } from './ui.js';
 import { roleById } from '../core/model.js';
 import { commandByName } from '../core/commands.js';
-import { PRIORITIES, TEAMS, OUTCOMES, WO_STATES, slaText, repeatText, repeatBadge } from '../core/workorders.js';
+import {
+  PRIORITIES, TEAMS, OUTCOMES, WO_STATES, WO_SORTS, slaText, lateMinutes, lateBar, sortWorkOrders, teamOfRole, repeatText, repeatBadge,
+} from '../core/workorders.js';
 import { kpiContext, kpiTiles } from './kpi-tiles.js';
 import { proposalsCard } from './proposals.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
 const FILTERS = [
   ['open', 'Open'],
-  ['overdue', 'Overdue'],
+  ['overdue', 'Late'],
   ['repeat', 'Repeat faults'],
   ['completed', 'Completed'],
 ];
 
 export async function render(el, ctx) {
   const { core } = ctx;
-  const ui = { filter: 'open', busy: false };
+  const ui = { filter: 'open', sort: 'priority', busy: false, skip: 0, view: 'auto', closing: false, mine: null, shown: 0 };
   const assetData = await ctx.run('ospeli_assets_list', { limit: 1000 });
   if (!assetData.assets.length) {
     el.append(h('div', { class: 'page-head' }, h('div', {}, h('p', { class: 'eyebrow' }, 'Engineering'), h('h1', {}, 'Engineering'))),
@@ -95,34 +99,111 @@ export async function render(el, ctx) {
   });
 
   // ---- the queue ----
-  const counts = h('div', { class: 'stats', 'data-test': 'wo-counts' });
+  const ownTeam = teamOfRole(ctx.role) || 'estates';
+  const doNext = ctx.role === 'estates-tech' && !deepAsset; // the "do next" card (issue #83)
+  const counts = h('p', { class: 'wo-summary', 'data-test': 'wo-counts' });
+  const sortRow = h('div', { class: 'seg', role: 'group', 'aria-label': 'Sort the list by' });
   const filterRow = h('div', { class: 'chips', role: 'group', 'aria-label': 'Show work orders' });
-  const list = h('ul', { class: 'wo-list', 'data-test': 'wo-list' });
+  const list = h('div', { class: 'wo-groups', 'data-test': 'wo-list' });
+  const card = h('section', { class: 'next-card', 'data-test': 'next-card', 'aria-labelledby': 'next-h' });
   const kpiBox = h('div');
   const dialog = h('dialog', { class: 'kpi-dialog wo-dialog', 'aria-labelledby': 'wo-dlg-h' });
   dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
-  let data = { open: null, completed: null };
+  let data = { open: null, completed: null, next: null };
 
   async function load() {
-    const [open, completed] = await Promise.all([ctx.run('ospeli_workorders_list', { state: 'open', limit: 500 }), ctx.run('ospeli_workorders_list', { state: 'completed', limit: 500 })]);
-    data = { open, completed };
+    const [open, completed, next] = await Promise.all([
+      ctx.run('ospeli_workorders_list', { state: 'open', limit: 500 }),
+      ctx.run('ospeli_workorders_list', { state: 'completed', limit: 500 }),
+      doNext ? ctx.run('ospeli_workorders_next', { skip: ui.skip }) : null,
+    ]);
+    data = { open, completed, next };
     draw();
   }
 
-  async function act(cmd, w, extra) {
+  const DONE_WORDS = { ospeli_workorders_start: () => 'started', ospeli_workorders_assign: (x) => `assigned to ${TEAMS[x.team]}`, ospeli_workorders_complete: (x) => OUTCOMES[x.outcome] };
+  async function act(cmd, w, extra = {}, after) {
     if (ui.busy) return;
     ui.busy = true;
     try {
       await ctx.run(cmd, { workOrderId: w.id, expectedState: w.state, ...extra });
-      ctx.toast(`${w.id.toUpperCase()}: ${cmd === 'ospeli_workorders_assign' ? `assigned to ${TEAMS[extra.team]}` : OUTCOMES[extra.outcome]}`);
+      ctx.toast(`${w.id.toUpperCase()}: ${DONE_WORDS[cmd](extra)}`);
+      if (after) { after(); await load(); }
     } catch (err) {
       ctx.toast(`Not saved. ${err.message}`);
       await load();
     } finally {
       ui.busy = false;
-      list.querySelector(`[data-wo="${w.id}"]`)?.focus();
+      if (!after) list.querySelector(`[data-wo="${w.id}"]`)?.focus();
     }
   }
+
+  // Lateness: the number in words, and a small bar that is the share of the most late job in view.
+  // The bar is decoration for the eye; the words carry the meaning (issue #83).
+  const lateness = (w, now, max, lead) => h('span', { class: 'wo-late' },
+    h('span', { class: 'late-n' }, lead ? `${lead} · ` : null, slaText(w, now)),
+    w.state === 'completed' ? null : h('span', { class: 'late-bar', 'aria-hidden': 'true' }, h('i', { style: `width:${lateBar(w, now, max)}%` })));
+  // Tags only for what changes what the reader does: in progress, another team, a repeat fault.
+  const tags = (w) => [
+    w.state === 'started' ? h('span', { class: 'chip wo-started' }, WO_STATES.started) : null,
+    w.state !== 'completed' && w.team !== ownTeam ? h('span', { class: 'chip wo-team' }, TEAMS[w.team] || w.team) : null,
+    w.repeat ? h('span', { class: 'chip repeat' }, repeatBadge(w.repeat)) : null,
+  ].filter(Boolean);
+
+  // ---- the "do next" card: the suggestion, or the job in progress ----
+  function drawCard(now, max) {
+    const n = data.next;
+    const inProgress = n.inProgress;
+    const keep = card.contains(document.activeElement) ? document.activeElement.dataset.k || 'main' : null;
+    const started = ui.view === 'auto' && inProgress.length ? inProgress.find((w) => w.id === ui.mine) || inProgress[ui.shown % inProgress.length] : null;
+    const w = started || n.workOrder;
+    card.className = `next-card${w ? ` pr-${w.priority}` : ''}`;
+    card.dataset.mode = started ? 'started' : w ? 'suggest' : 'empty';
+    if (w) card.dataset.job = w.id; else delete card.dataset.job;
+    const body = (label, side) => [
+      h('p', { class: 'next-label' }, h('span', {}, label), side),
+      h('h3', { id: 'next-h' }, w.title),
+      h('p', { class: 'next-where' }, `${w.assetName} · ${w.locationName}`),
+      h('p', { class: 'next-facts' }, h('span', { class: `chip pr-${w.priority}` }, PRIORITIES[w.priority].name), lateness(w, now, max), w.repeat ? h('span', { class: 'chip repeat' }, repeatBadge(w.repeat)) : null),
+    ];
+    if (!w) {
+      setKids(card,
+        h('p', { class: 'next-label' }, h('span', {}, 'Suggested next job')),
+        h('h3', { id: 'next-h' }, `No job is waiting for the ${n.teamName}.`),
+        h('p', { class: 'next-why' }, 'New faults show here when they are reported. Jobs for other teams are in the list below.'));
+    } else if (started) {
+      const others = inProgress.length - 1;
+      setKids(card,
+        body('Job in progress', h('span', { class: 'next-tag' }, n.teamName)),
+        ui.closing
+          ? h('div', { class: 'next-outcomes', role: 'group', 'aria-labelledby': 'next-out-l', 'data-test': 'outcomes' },
+            h('p', { id: 'next-out-l', class: 'next-ask' }, 'How did it end?'),
+            Object.entries(OUTCOMES).map(([id, name], i) => h('button', {
+              class: `btn btn-big${i ? ' btn-ghost' : ''}`, type: 'button', 'data-cmd': 'ospeli_workorders_complete', 'data-outcome': id, 'data-k': i ? `out-${id}` : 'main',
+              onclick: () => act('ospeli_workorders_complete', w, { outcome: id }, () => { ui.closing = false; ui.mine = null; ui.skip = 0; ui.view = 'auto'; }),
+            }, name)),
+            h('button', { class: 'linkish', type: 'button', 'data-k': 'back', onclick: () => { ui.closing = false; draw(); focusCard('main'); } }, 'Not finished yet'))
+          : h('button', { class: 'btn btn-big', type: 'button', 'data-test': 'close-job', 'data-k': 'main', onclick: () => { ui.closing = true; draw(); focusCard('main'); } }, 'Close job'),
+        ui.closing ? null : h('p', { class: 'next-more' },
+          others > 0 ? h('button', { class: 'linkish', type: 'button', 'data-k': 'other', onclick: () => { ui.mine = null; ui.shown += 1; draw(); focusCard('other'); } }, `Show another job in progress (${others} more)`) : null,
+          n.workOrder ? h('button', { class: 'linkish', type: 'button', 'data-k': 'suggest', 'data-test': 'see-suggestion', onclick: () => { ui.view = 'suggest'; draw(); focusCard('main'); } }, 'See the next suggested job') : null),
+        ui.closing ? null : h('p', { class: 'next-rule' }, `Started as ${roleById(w.startedByRole)?.name || 'the team'}. The log keeps the role, never a person.`));
+    } else {
+      setKids(card,
+        body('Suggested next job', h('span', { class: 'next-tag', 'data-test': 'you-decide' }, 'You decide')),
+        h('p', { class: 'next-why', 'data-test': 'next-why' }, n.reason),
+        h('button', { class: 'btn btn-big', type: 'button', 'data-cmd': 'ospeli_workorders_start', 'data-k': 'main',
+          onclick: () => act('ospeli_workorders_start', w, {}, () => { ui.mine = w.id; ui.view = 'auto'; ui.skip = 0; ui.closing = false; }) }, 'Start job'),
+        h('p', { class: 'next-more' },
+          n.total > 1 ? h('button', { class: 'linkish', type: 'button', 'data-cmd': 'ospeli_workorders_next', 'data-k': 'pick', 'data-test': 'pick-another',
+            onclick: async () => { ui.skip = n.position % n.total; await load(); focusCard('pick'); } }, 'Pick another') : null,
+          h('span', { class: 'next-pos', 'data-test': 'next-pos' }, `${n.positionText} for your team`),
+          inProgress.length ? h('button', { class: 'linkish', type: 'button', 'data-k': 'back', onclick: () => { ui.view = 'auto'; draw(); focusCard('main'); } }, `Back to the job in progress (${inProgress.length})`) : null),
+        h('p', { class: 'next-rule', 'data-test': 'next-rule' }, n.rule));
+    }
+    if (keep) focusCard(keep);
+  }
+  function focusCard(k) { (card.querySelector(`[data-k="${k}"]`) || card.querySelector('[data-k="main"]'))?.focus({ preventScroll: true }); }
 
   // Open one work order by its id, from fresh data (used by "Already reported").
   async function showWorkOrder(id) {
@@ -141,13 +222,14 @@ export async function render(el, ctx) {
     const outSel = h('select', { id: 'wo-outcome' }, Object.entries(OUTCOMES).map(([id, t]) => new Option(t, id)));
     const open = w.state !== 'completed';
     const mayAssign = open && can(ctx.role, 'ospeli_workorders_assign');
+    const mayStart = open && w.state !== 'started' && can(ctx.role, 'ospeli_workorders_start');
     const mayClose = open && can(ctx.role, 'ospeli_workorders_complete');
     const row = (k, v) => h('div', { class: 'def-row' }, h('dt', {}, k), h('dd', {}, v));
     setKids(dialog,
       h('h2', { id: 'wo-dlg-h' }, `${w.id.toUpperCase()} · ${w.title}`),
       h('p', {}, h('span', { class: `chip pr-${w.priority}` }, PRIORITIES[w.priority].name), ' ',
         h('span', { class: `chip wo-${w.state}` }, WO_STATES[w.state]), ' ',
-        h('span', { class: `sla${w.overdue ? ' sla-over' : ''}` }, slaText(w, now))),
+        h('span', { class: 'sla' }, slaText(w, now))),
       h('dl', {},
         row('Asset', `${w.assetName}, ${w.locationName}`),
         row('Reported', `${fmtTime(w.reportedAt)} by ${roleById(w.reportedByRole)?.name || w.reportedByRole}`),
@@ -158,9 +240,10 @@ export async function render(el, ctx) {
         w.completedAt ? row('Closed', `${fmtTime(w.completedAt)}: ${OUTCOMES[w.outcome] || w.outcome}`) : null),
       mayAssign ? h('div', { class: 'field' }, h('label', { for: 'wo-team' }, 'Team'), teamSel) : null,
       mayClose ? h('div', { class: 'field' }, h('label', { for: 'wo-outcome' }, 'Outcome'), outSel) : null,
-      h('p', { class: 'meta' }, mayAssign || mayClose ? `Each change is saved to the event log as ${roleById(ctx.role).name}.`
+      h('p', { class: 'meta' }, mayAssign || mayClose || mayStart ? `Each change is saved to the event log as ${roleById(ctx.role).name}.`
         : open ? `${roleById(ctx.role).name} can see this work order but not change it.` : 'This work order is closed.'),
       h('div', { class: 'actions' },
+        mayStart ? h('button', { class: 'btn btn-ghost', type: 'button', 'data-cmd': 'ospeli_workorders_start', onclick: () => { dialog.close(); act('ospeli_workorders_start', w); } }, 'Start job') : null,
         mayAssign ? h('button', { class: 'btn btn-ghost', type: 'button', 'data-cmd': 'ospeli_workorders_assign', onclick: () => { dialog.close(); act('ospeli_workorders_assign', w, { team: teamSel.value }); } }, 'Assign') : null,
         mayClose ? h('button', { class: 'btn', type: 'button', 'data-cmd': 'ospeli_workorders_complete', onclick: () => { dialog.close(); act('ospeli_workorders_complete', w, { outcome: outSel.value }); } }, 'Close work order') : null,
         h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => dialog.close() }, 'Close')));
@@ -170,28 +253,39 @@ export async function render(el, ctx) {
   function draw() {
     if (!data.open) return;
     const c = data.open.counts;
-    const stat = (n, label, test) => h('div', { class: 'stat', 'data-test': test }, h('b', {}, n), h('span', {}, label));
-    counts.replaceChildren(stat(c.open, 'Open', 'wo-open'), stat(c.overdue, 'Overdue', 'wo-overdue'), stat(c.repeat, 'Repeat faults open', 'wo-repeat'));
+    // One line instead of three tiles. The numbers are the same ones the KPI tiles below use.
+    const part = (n, label, test) => h('span', { 'data-test': test }, h('b', {}, n), ` ${label}`);
+    setKids(counts, part(c.open, 'open', 'wo-open'), ' · ', part(c.overdue, 'late', 'wo-overdue'), ' · ', part(c.repeat, c.repeat === 1 ? 'repeat fault' : 'repeat faults', 'wo-repeat'));
+    sortRow.replaceChildren(...Object.entries(WO_SORTS).map(([id, label]) => h('button', {
+      type: 'button', class: 'seg-btn', 'aria-pressed': String(ui.sort === id), 'data-sort': id, onclick: () => { ui.sort = id; draw(); sortRow.querySelector(`[data-sort="${id}"]`)?.focus(); },
+    }, label)));
     filterRow.replaceChildren(...FILTERS.map(([id, label]) => h('button', {
-      type: 'button', class: 'chip-btn', 'aria-pressed': String(ui.filter === id), 'data-filter': id, onclick: () => { ui.filter = id; draw(); },
+      type: 'button', class: 'chip-btn', 'aria-pressed': String(ui.filter === id), 'data-filter': id, onclick: () => { ui.filter = id; draw(); filterRow.querySelector(`[data-filter="${id}"]`)?.focus(); },
     }, label)));
     const now = new Date().toISOString();
-    let rows = ui.filter === 'completed' ? data.completed.workOrders.slice(0, 30) : data.open.workOrders;
+    const done = ui.filter === 'completed';
+    let rows = done ? data.completed.workOrders.slice(0, 30) : data.open.workOrders;
     if (ui.filter === 'overdue') rows = rows.filter((w) => w.overdue);
     if (ui.filter === 'repeat') rows = rows.filter((w) => w.repeat > 0);
-    list.replaceChildren(...(rows.length ? rows.map((w) => h('li', {},
+    const max = Math.max(0, ...data.open.workOrders.map((w) => lateMinutes(w, now)));
+    sortRow.hidden = done;
+    const row = (w, lead) => h('li', {},
       h('button', {
-        type: 'button', class: `wo pr-${w.priority}${w.overdue ? ' is-over' : ''}`, 'data-wo': w.id, 'data-cmd': 'ospeli_workorders_list',
-        'aria-label': `${w.id.toUpperCase()}, ${w.title}, ${w.assetName}, ${w.locationName}, ${PRIORITIES[w.priority].name}, ${slaText(w, now)}${w.repeat ? ', repeat fault, failed again after a fix' : ''}`,
+        type: 'button', class: `wo pr-${w.priority}`, 'data-wo': w.id, 'data-cmd': 'ospeli_workorders_list',
+        'aria-label': `${w.id.toUpperCase()}, ${w.title}, ${w.assetName}, ${w.locationName}, ${PRIORITIES[w.priority].name}, ${done ? `${OUTCOMES[w.outcome] || 'Completed'}, ` : ''}${slaText(w, now)}${w.state === 'started' ? ', in progress' : ''}${!done && w.team !== ownTeam ? `, ${TEAMS[w.team]}` : ''}${w.repeat ? ', repeat fault, failed again after a fix' : ''}`,
         onclick: () => openWorkOrder(w),
       },
-        h('span', { class: 'wo-top' }, h('b', {}, w.title), h('span', { class: `sla${w.overdue ? ' sla-over' : ''}` }, slaText(w, now))),
+        h('b', { class: 'wo-title' }, w.title),
         h('span', { class: 'wo-where' }, `${w.assetName} · ${w.locationName}`),
-        h('span', { class: 'wo-tags' },
-          h('span', { class: `chip pr-${w.priority}` }, PRIORITIES[w.priority].name),
-          h('span', { class: `chip wo-${w.state}` }, w.state === 'completed' ? OUTCOMES[w.outcome] || 'Completed' : WO_STATES[w.state]),
-          w.state !== 'open' ? h('span', { class: 'meta' }, TEAMS[w.team]) : null,
-          w.repeat ? h('span', { class: 'chip repeat' }, repeatBadge(w.repeat)) : null)))) : [h('li', { class: 'meta' }, 'No work orders here.')]));
+        lateness(w, now, max, done ? OUTCOMES[w.outcome] || 'Completed' : lead ? PRIORITIES[w.priority].name : null),
+        tags(w).length ? h('span', { class: 'wo-tags' }, tags(w)) : null));
+    // Completed work orders stay in the order they were closed, newest first.
+    const groups = done ? (rows.length ? [{ id: 'done', name: null, items: rows }] : []) : sortWorkOrders(rows, ui.sort);
+    setKids(list, groups.length ? groups.map((g) => [
+      g.name ? h('h3', { class: 'wo-group', 'data-group': g.id }, g.name, h('span', {}, ` ${g.items.length}`)) : null,
+      h('ul', { class: 'wo-list' }, g.items.map((w) => row(w, done ? false : ui.sort !== 'priority'))),
+    ]) : h('p', { class: 'meta' }, 'No work orders here.'));
+    if (doNext && data.next) drawCard(now, max);
   }
 
   async function renderKpis() {
@@ -202,22 +296,27 @@ export async function render(el, ctx) {
     match: (p) => p.command.startsWith('ospeli_workorders_'),
     describe: (p) => (p.command === 'ospeli_workorders_report_fault'
       ? `Report: ${p.input.fault}, ${assets.get(p.input.assetId)?.name || p.input.assetId} (${PRIORITIES[p.input.priority]?.name || p.input.priority})`
-      : `${p.input.workOrderId?.toUpperCase()}: ${p.command === 'ospeli_workorders_assign' ? `assign to ${TEAMS[p.input.team]}` : `close as ${OUTCOMES[p.input.outcome]}`}`),
+      : `${p.input.workOrderId?.toUpperCase()}: ${p.command === 'ospeli_workorders_assign' ? `assign to ${TEAMS[p.input.team]}` : p.command === 'ospeli_workorders_start' ? 'start the job' : `close as ${OUTCOMES[p.input.outcome]}`}`),
   });
 
   const queueFirst = ctx.role === 'estates-tech' && !deepAsset;
-  const queue = h('section', { class: 'section', 'aria-labelledby': 'queue-h' },
+  const rules = h('p', { class: 'meta', 'data-test': 'queue-rules' }, 'Grouped by priority, the most late first. "Late" is time past the target. Targets: urgent 4 h, high 24 h, routine 72 h (examples; set locally). A repeat fault is the same fault on the same asset that came back within 30 days of being closed as Fixed. Not counted: "No fault found", a different fault, and a second report of a fault that is still open.');
+  // data-role lets a test (and a browser agent) see which role this queue was drawn for.
+  const queue = h('section', { class: 'section wo-queue', 'aria-labelledby': 'queue-h', 'data-test': 'wo-queue', 'data-role': ctx.role },
     h('h2', { id: 'queue-h' }, 'Work-order queue'),
-    h('p', { class: 'meta' }, 'Overdue first, then by urgency and due time. Targets: urgent 4 h, high 24 h, routine 72 h (examples; set locally). A repeat fault is the same fault on the same asset that came back within 30 days of being closed as Fixed. Not counted: "No fault found", a different fault, and a second report of a fault that is still open.'),
-    counts, filterRow, list);
+    counts,
+    doNext ? card : rules,
+    h('div', { class: 'wo-controls' }, sortRow, filterRow),
+    list,
+    doNext ? rules : null);
   const reportSection = canReport ? h('section', { class: 'section' }, form)
     : h('p', { class: 'meta' }, `${roleById(ctx.role).name} can see the queue but not report faults here.`);
-  el.append(
+  el.append(h('div', { class: `eng${doNext ? ' eng-next' : ''}` },
     h('div', { class: 'page-head' },
       h('div', {},
         h('p', { class: 'eyebrow' }, 'Engineering'),
         h('h1', {}, 'Faults and work orders'),
-        h('p', {}, 'Report a fault in three taps. The facilities and equipment teams work the queue from the same log.'))),
+        doNext ? null : h('p', {}, 'Report a fault in three taps. The facilities and equipment teams work the queue from the same log.'))),
     props.el,
     queueFirst ? queue : reportSection,
     queueFirst ? reportSection : queue,
@@ -225,7 +324,7 @@ export async function render(el, ctx) {
       h('h2', { id: 'eng-kpi-h' }, 'Engineering numbers'),
       h('p', { class: 'meta' }, 'Calculated from the same event log. Tap a number to see how it is defined.'),
       kpiBox),
-    dialog);
+    dialog));
   await Promise.all([load(), props.load(), renderKpis()]);
   // The page is rendered off-screen and swapped in after render() returns, so focus afterwards.
   if (deepAsset) setTimeout(() => { if (faultSel.isConnected) faultSel.focus(); }, 0);
