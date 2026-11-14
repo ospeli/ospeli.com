@@ -3,6 +3,7 @@
 // Teams, not people, are assigned (rule 3: measure flows, never people).
 
 import { WORK_ORDER_SLA_HOURS } from './kpi.js';
+import { currentWords } from './model.js';
 
 const HOUR = 3600e3;
 const DAY = 24 * HOUR;
@@ -23,7 +24,7 @@ export const FAULT_TYPES = {
   'infusion-pump': [['IV pump alarm', 'biomed'], ['IV pump will not power on', 'biomed']],
   suction: [['Suction unit not pulling', 'biomed']],
   'o2-flowmeter': [['Oxygen flowmeter check', 'biomed'], ['Oxygen flowmeter leaking', 'biomed']],
-  'call-bell': [['Call bell not working', 'estates']],
+  'call-bell': [['Nurse call not working', 'estates']],
   ac: [['AC filter blocked', 'estates'], ['AC not cooling', 'estates']],
   sink: [['Blocked sink', 'estates'], ['Tap leaking', 'estates']],
   'door-closer': [['Door closer broken', 'estates'], ['Door will not latch', 'estates']],
@@ -51,6 +52,8 @@ export const slaHours = (priority) => WORK_ORDER_SLA_HOURS[priority] ?? WORK_ORD
 // A work order closed as "No fault found" or "Escalated" fixed nothing, a different fault is a
 // different fault, and two "Other fault" reports cannot be told to be the same one, so none of
 // those counts (issue #75).
+// A fault stored under a word that has since changed (issue #82) is read with the current word, so
+// the title on screen is current and an old report and a new one of the same fault still match.
 export function deriveWorkOrders(events, now) {
   const orders = new Map();
   const fixes = new Map(); // asset and fault -> times an earlier work order for it was closed as Fixed
@@ -58,9 +61,10 @@ export function deriveWorkOrders(events, now) {
   for (const e of events) {
     if (e.type === 'asset.fault-reported' && e.data?.workOrder) {
       const at = ms(e.at);
-      const prior = e.data.title === OTHER_FAULT ? [] : (fixes.get(key(e.subject, e.data.title)) || []).filter((t) => t <= at && at - t <= REPEAT_WINDOW_DAYS * DAY);
+      const title = currentWords(e.data.title);
+      const prior = title === OTHER_FAULT ? [] : (fixes.get(key(e.subject, title)) || []).filter((t) => t <= at && at - t <= REPEAT_WINDOW_DAYS * DAY);
       orders.set(e.data.workOrder, {
-        id: e.data.workOrder, assetId: e.subject, title: e.data.title, team: e.data.trade || 'estates',
+        id: e.data.workOrder, assetId: e.subject, title, team: e.data.trade || 'estates',
         priority: e.data.priority || 'routine', state: 'open', reportedAt: e.at, reportedByRole: e.actorRole,
         assignedAt: null, completedAt: null, outcome: null,
         dueAt: new Date(at + slaHours(e.data.priority) * HOUR).toISOString(),

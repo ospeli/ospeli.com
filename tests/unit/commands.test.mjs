@@ -161,7 +161,7 @@ test('agents: off by default, audited as agents, read only allowed wards, and on
   assert.equal(log.at(-1).agent, 'unlisted');
   assert.equal(log.at(-1).actorRole, 'bed-manager');
 
-  // Only people (ops manager or COO) can switch agents on.
+  // Only people (operations manager or COO) can switch agents on.
   await assert.rejects(runCommand(core, 'ospeli_agents_set_access', { allowed: true }, agent('coo')), code('agents-off'));
   await assert.rejects(runCommand(core, 'ospeli_agents_set_access', { allowed: true }, human('ward-nurse')), code('forbidden'));
   await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: { 'ward-a1': true } }, human('coo'));

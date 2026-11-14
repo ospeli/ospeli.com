@@ -11,7 +11,7 @@
 // - Nothing leaves the device: commands run against the local core only.
 
 import { validate } from './schema.js';
-import { ROLES, roleById } from './model.js';
+import { ROLES, roleById, currentWords } from './model.js';
 import { BED_STATES, OUT_OF_SERVICE_REASONS, deriveBoard, bedActions, actionEvents, countStates } from './beds.js';
 import { KPIS, kpiById, computeKpi } from './kpi.js';
 import {
@@ -623,7 +623,7 @@ async function wardOfWorkOrder(core, input) {
 
 function woOut(w, assets, places, now, short = false) {
   const a = assets.get(w.assetId); const loc = a ? places.get(a.parentId) : null;
-  const full = { ...w, assetName: a?.name ?? w.assetId, locationId: a?.parentId ?? null, locationName: loc?.name ?? '',
+  const full = { ...w, assetName: currentWords(a?.name ?? w.assetId), locationId: a?.parentId ?? null, locationName: currentWords(loc?.name ?? ''),
     overdueByMinutes: w.overdue ? Math.max(0, Math.round((Date.parse(now) - Date.parse(w.dueAt)) / 60000)) : 0 };
   if (!short) return full;
   const { id, assetId, assetName, locationName, title, team, priority, state, reportedAt, dueAt, overdue, overdueByMinutes, repeat } = full;
@@ -677,8 +677,8 @@ COMMAND_LIST.push(
       const locIds = new Set(keep.map((a) => a.parentId));
       return {
         total: cut.total, truncated: cut.truncated,
-        locations: [...places.values()].filter((p) => locIds.has(p.id)).map((p) => ({ id: p.id, name: p.name, type: p.type })),
-        assets: keep.map((a) => ({ id: a.id, name: a.name, kind: a.kind, locationId: a.parentId, ...(input.format === 'short' ? {} : { faults: faultsFor(a.kind) }) })),
+        locations: [...places.values()].filter((p) => locIds.has(p.id)).map((p) => ({ id: p.id, name: currentWords(p.name), type: p.type })),
+        assets: keep.map((a) => ({ id: a.id, name: currentWords(a.name), kind: a.kind, locationId: a.parentId, ...(input.format === 'short' ? {} : { faults: faultsFor(a.kind) }) })),
       };
     },
     example: { input: { locationId: 'ward-a1' } },
@@ -709,7 +709,7 @@ COMMAND_LIST.push(
       const state = input.state || 'open';
       if (input.overdue && state !== 'open') throw new CommandError('invalid-input', 'overdue: true only works with open work orders. For example { "state": "open", "overdue": true }.', { example: { state: 'open', overdue: true } });
       if (input.locationId && !places.has(input.locationId)) {
-        const can = [...places.values()].filter((pl) => !allowed || allowed.has(pl.id)).map((pl) => ({ id: pl.id, name: pl.name }));
+        const can = [...places.values()].filter((pl) => !allowed || allowed.has(pl.id)).map((pl) => ({ id: pl.id, name: currentWords(pl.name) }));
         throw new CommandError('not-found', `No place ${input.locationId}. ${can.length ? `Use one of: ${idsHint(can)}.` : 'No place is open to this caller.'}`, { locations: can.slice(0, 50) });
       }
       const pick = state === 'all' ? all : state === 'open' ? open.filter((w) => !input.overdue || w.overdue) : all.filter((w) => w.state === 'completed');
@@ -746,7 +746,7 @@ COMMAND_LIST.push(
       const recs = await core.appendChecked(async (events) => {
         const a = await core.getEntity(input.assetId);
         if (!a || a.type !== 'asset') throw new CommandError('not-found', `No asset ${input.assetId}.`);
-        if (!faultsFor(a.kind).includes(input.fault)) throw new CommandError('invalid-input', `"${input.fault}" is not a fault for ${a.name}.`, { faults: faultsFor(a.kind) });
+        if (!faultsFor(a.kind).includes(input.fault)) throw new CommandError('invalid-input', `"${input.fault}" is not a fault for ${currentWords(a.name)}.`, { faults: faultsFor(a.kind) });
         const dup = alreadyOpen(events, input, core.now());
         if (dup) throw dup;
         id = nextWorkOrderId(events);

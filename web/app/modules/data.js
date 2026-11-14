@@ -1,6 +1,6 @@
 // Data and audit: export, import and reset this device's data; view and verify the audit trail.
 import { h, fmtTime } from './ui.js';
-import { roleById } from '../core/model.js';
+import { roleById, currentWords } from '../core/model.js';
 import { loadSyntheticHospital, currentHour, HOSPITAL_NAME } from '../core/generator.js';
 import { commandByName } from '../core/commands.js';
 import { KPIS } from '../core/kpi.js';
@@ -43,7 +43,7 @@ function whereWords(command, input, places) {
     const p = places.get(id);
     if (!p) return id;
     const parent = p.type === 'bed' && places.get(p.parentId);
-    return parent ? `${shortName(parent.name)}, ${p.name}` : shortName(p.name);
+    return currentWords(parent ? `${shortName(parent.name)}, ${p.name}` : shortName(p.name)); // names stored before issue #82 read with today's words
   };
   for (const k of ['wardId', 'locationId', 'bedId', 'assetId']) if (typeof input?.[k] === 'string') out.push(place(input[k]));
   if (command === 'ospeli_kpi_get' && input?.id) out.push(KPIS.find((k) => k.id === input.id)?.name || input.id);

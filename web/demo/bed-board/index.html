@@ -454,7 +454,7 @@ a.ghost { color: var(--ink); text-decoration: none; }
       body.push(el('button', { type: 'button', class: 'act-btn', onclick: function () {
         if (!op.sel.value) { op.sel.focus(); op.sel.setAttribute('aria-invalid', 'true'); return; }
         closeSheet(); setState(b, 'out_of_service', op.sel.value);
-        log('Work order raised for ' + b.ward + ' ' + b.no + ': ' + op.sel.value + '. Sent to Estates.'); save(); renderLog();
+        log('Work order raised for ' + b.ward + ' ' + b.no + ': ' + op.sel.value + '. Sent to Facilities.'); save(); renderLog();
       } }, [chip('out_of_service'), 'Take out of service and raise work order']));
     }
     if (b.state === 'available') body.unshift(el('p', { class: 'note', text: 'To fill this bed, choose a patient under "Waiting for a bed" and press "Find a bed".' }));

@@ -31,15 +31,15 @@ for (const width of [360, 390, 1024, 1280]) {
 test('every role can be chosen; the choice persists and is audited', async () => {
   const { context, page, errors } = await openPage(env);
   const options = await page.locator('#role-select option').allTextContents();
-  assert.deepEqual(options, ['Ward nurse', 'Bed manager', 'Estates tech', 'A&E nurse in charge', 'Ops manager', 'COO']);
+  assert.deepEqual(options, ['Ward nurse', 'Patient flow coordinator', 'Facilities technician', 'Emergency department nurse in charge', 'Operations manager', 'COO']);
   await page.selectOption('#role-select', 'estates-tech');
-  await page.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Estates tech');
+  await page.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Facilities technician');
   const first = await page.locator('[data-test="role-shortcuts"] h3').first().textContent();
   assert.match(first, /^Engineering/);
   await page.reload();
   await page.waitForSelector('html[data-ready="true"]');
   assert.equal(await page.inputValue('#role-select'), 'estates-tech');
-  assert.equal(await page.locator('main h1').textContent(), 'Estates tech');
+  assert.equal(await page.locator('main h1').textContent(), 'Facilities technician');
   const audit = await page.evaluate(() => window.ospeli.core.auditLog());
   assert.equal(audit.at(-1).action, 'role.changed');
   assert.equal(audit.at(-1).actorRole, 'estates-tech');
@@ -52,9 +52,9 @@ test('phone menu opens the module list and marks the current page', async () => 
   assert.equal(await page.locator('#nav').isVisible(), false);
   await page.click('#menu-btn');
   assert.equal(await page.getAttribute('#menu-btn', 'aria-expanded'), 'true');
-  // A module not built yet (Engineering was built on night 4, so A&E flow stands in).
+  // A module not built yet (Engineering was built on night 4, so Emergency department flow stands in).
   await page.click('#nav a[data-module="ae"]');
-  await page.waitForFunction(() => document.querySelector('main h1')?.textContent === 'A&E flow');
+  await page.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Emergency department flow');
   assert.equal(await page.locator('#nav').isVisible(), false);
   assert.equal(await page.getAttribute('#nav a[data-module="ae"]', 'aria-current'), 'page');
   assert.match(await page.locator('main').textContent(), /Planned, not built yet/); // was "Coming in week 2" (issue #53: no build-month labels)
@@ -140,11 +140,11 @@ test('two tabs on one device keep one unbroken audit trail (issue #2)', async ()
   await b.waitForSelector('html[data-ready="true"]');
   const before = await a.evaluate(async () => (await window.ospeli.core.auditLog()).length);
   await a.selectOption('#role-select', 'bed-manager');
-  await a.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Bed manager');
+  await a.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Patient flow coordinator');
   await b.selectOption('#role-select', 'coo');
   await b.waitForFunction(() => document.querySelector('main h1')?.textContent === 'COO');
   await a.selectOption('#role-select', 'estates-tech');
-  await a.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Estates tech');
+  await a.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Facilities technician');
   await a.goto(`${env.appUrl}#/data`);
   await a.waitForFunction(() => /^Self-check passed: \d+ entries$/.test(document.querySelector('[data-test="audit-status"]')?.textContent || ''));
   const audit = await a.evaluate(() => window.ospeli.core.auditLog());

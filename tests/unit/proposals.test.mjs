@@ -29,7 +29,7 @@ async function setup() {
   return { core, board: { ...board, waiting: all.waiting }, ward };
 }
 
-test('an agent proposes, a bed manager accepts: the command runs as the person and the trail links them', async () => {
+test('an agent proposes, a patient flow coordinator accepts: the command runs as the person and the trail links them', async () => {
   const { core, board, ward } = await setup();
   const bed = board.beds.find((b) => b.state === 'available');
   const wait = board.waiting.find((w) => !w.allocatedBed);

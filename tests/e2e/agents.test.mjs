@@ -58,7 +58,7 @@ test('issue #16: without the test flag a page script gets no core and cannot cha
   await context.close();
 });
 
-test('issue #17: an agent proposes, the bed manager accepts on the board, and the audit shows who did what', async () => {
+test('issue #17: an agent proposes, the patient flow coordinator accepts on the board, and the audit shows who did what', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, path: '#/beds' });
   await page.waitForSelector('.bed');
   // COO switches agents on for a ward with a free bed; the agent proposes an allocation.
@@ -77,12 +77,12 @@ test('issue #17: an agent proposes, the bed manager accepts on the board, and th
   });
   assert.equal(prop.status, 'pending');
 
-  // The ward nurse role is the default; switch to bed manager and see the proposal at the top.
+  // The ward nurse role is the default; switch to patient flow coordinator and see the proposal at the top.
   await page.selectOption('#role-select', 'bed-manager');
   const item = page.locator(`[data-proposal="${prop.id}"]`);
   await item.waitFor();
   assert.match(await page.locator('#prop-h').textContent(), /Agent proposals \(1\)/);
-  assert.match(await item.textContent(), /Agent flow-bot for Bed manager/);
+  assert.match(await item.textContent(), /Agent flow-bot for Patient flow coordinator/);
   const box = await item.locator('[data-cmd="ospeli_proposals_accept"]').boundingBox();
   assert.ok(box.height >= 44, 'Accept is a full-size tap target');
   assert.ok(box.y < 1400, 'the proposal is near the top of the board');

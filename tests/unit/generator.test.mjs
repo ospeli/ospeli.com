@@ -72,7 +72,7 @@ test('no bed ever holds two patients, and each discharge follows an admission', 
   assert.ok(occupancy > 0.75 && occupancy <= 1, `occupancy at end ${occupancy}`);
 });
 
-test('A&E journeys run in order: arrived, triaged, seen, decision', () => {
+test('Emergency department journeys run in order: arrived, triaged, seen, decision', () => {
   const steps = ['ae.arrived', 'ae.triaged', 'ae.seen'];
   const byEnc = new Map();
   for (const ev of g.events) if (ev.type.startsWith('ae.')) {
@@ -82,7 +82,7 @@ test('A&E journeys run in order: arrived, triaged, seen, decision', () => {
   let complete = 0;
   for (const seq of byEnc.values()) {
     if (seq[0] !== 'ae.arrived') continue;
-    // Patients still in A&E at the end time have a partial journey; it must still be in order.
+    // Patients still in the emergency department at the end time have a partial journey; it must still be in order.
     assert.deepEqual(seq.slice(0, 3), steps.slice(0, Math.min(3, seq.length)));
     if (seq.length >= 4) {
       assert.match(seq[3], /^ae\.decision-to-(admit|discharge)$/);

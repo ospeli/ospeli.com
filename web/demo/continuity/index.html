@@ -314,7 +314,7 @@ var CONTACTS = [
   ['Switchboard', 'Ext 0', 'Ext 9'],
   ['Stores on call', 'Bleep 2275', 'Ext 4455'],
   ['Pharmacy on call', 'Bleep 2290', 'Ext 4520'],
-  ['Bed manager', 'Bleep 2205', 'Ext 4101']
+  ['Patient flow coordinator', 'Bleep 2205', 'Ext 4101']
 ];
 // Critical stock as at last sync: [item, on hand, usual level]
 var STOCK = [
@@ -342,7 +342,7 @@ var INCIDENTS = {
   surge: { name: 'Surge of arrivals', affects: ['ed', 'cc', 'w1', 'th'], note: 'Clinicians decide care and the order of treatment. This card covers the operational steps only.', steps: [
     ['Open the surge plan and confirm who is incident commander', 'Incident commander'],
     ['Start the staff call-down list', 'Switchboard'],
-    ['Open the surge beds agreed in the plan', 'Bed manager'],
+    ['Open the surge beds agreed in the plan', 'Patient flow coordinator'],
     ['Check critical stock in the receiving areas', 'Stores lead'],
     ['Set up one information point for families and visitors', 'Operations lead'],
     ['Set the next update time', 'Incident commander']] }

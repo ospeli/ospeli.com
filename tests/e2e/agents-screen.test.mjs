@@ -36,7 +36,7 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
   // Default role (ward nurse): sees the state, cannot change it, and is told who can.
   assert.equal(await page.getAttribute('[data-test="agents-dial"]', 'data-dial-now'), 'off');
   assert.equal(await page.isDisabled('[data-dial="advise"]'), true);
-  assert.match(await page.textContent('[data-test="agents-readonly"]'), /Only the Ops manager or COO can change these settings/);
+  assert.match(await page.textContent('[data-test="agents-readonly"]'), /Only the Operations manager or COO can change these settings/);
   assert.equal(await page.locator('[data-test="agents-stop"]').count(), 0, 'nothing to stop while off');
 
   await page.selectOption('#role-select', 'ops-manager');
@@ -83,7 +83,7 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
   await c.tap('[data-cmd="ospeli_agents_add"]');
   await page.waitForFunction(() => /already on the list/.test(document.querySelector('.ag-err')?.textContent || ''));
   await page.locator('.ag-dialog button:has-text("Cancel")').tap();
-  assert.match(await page.textContent('[data-agent="night-flow-helper"]'), /Works for Bed manager · Ward A1 \(acute medicine\) · ends .*Not used in the last 7 days/s);
+  assert.match(await page.textContent('[data-agent="night-flow-helper"]'), /Works for Patient flow coordinator · Ward A1 \(acute medicine\) · ends .*Not used in the last 7 days/s);
   assert.match(await page.textContent('[data-test="agents-strangers"]'), /Not on the list.*1 refused/s, 'the call made before it was listed is counted, without a name');
 
   // The agent journey the issue could not complete: a read works, scoped to its ward and role.

@@ -32,11 +32,11 @@ for (const width of [360, 390, 1024, 1280]) {
   });
 }
 
-test('bed manager allocates a waiting patient, the nurse admits, discharges and cleans: all from the event log', async () => {
+test('patient flow coordinator allocates a waiting patient, the nurse admits, discharges and cleans: all from the event log', async () => {
   const { context, page, errors } = await openPage(env, { clock: CLOCK, width: 390, path: '#/beds' });
   await page.selectOption('#role-select', 'bed-manager');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
-  await page.reload(); // start from a settled render as the bed manager
+  await page.reload(); // start from a settled render as the patient flow coordinator
   await page.waitForSelector('html[data-ready="true"]');
   await page.waitForSelector('[data-find]');
   const waitingBefore = await stat(page, 'sum-waiting');
@@ -272,7 +272,7 @@ for (const [width, height] of [[360, 780], [390, 800]]) {
     await page.goto(`${env.appUrl}#/beds`);
     await page.waitForSelector('[data-test="change-ward"]', { state: 'detached' }); // the board redraws for the new role
     await page.waitForSelector('[data-test="bed-grid"] .bed');
-    assert.ok(await page.evaluate(() => document.querySelector('[data-test="waiting"]').getBoundingClientRect().top < document.querySelector('.ward-tabs').getBoundingClientRect().top), 'bed manager: waiting list first');
+    assert.ok(await page.evaluate(() => document.querySelector('[data-test="waiting"]').getBoundingClientRect().top < document.querySelector('.ward-tabs').getBoundingClientRect().top), 'patient flow coordinator: waiting list first');
     assert.match(await page.textContent('#ward-h'), /^Ward A1/);
     assert.deepEqual(errors, []);
     await context.close();

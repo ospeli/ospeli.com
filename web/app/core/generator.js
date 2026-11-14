@@ -60,7 +60,7 @@ const DEPARTMENTS = [
   { id: 'dept-women-children', name: 'Women and children', parentId: 'bld-main-a' },
   { id: 'dept-emergency', name: 'Emergency department', parentId: 'bld-main-b' },
   { id: 'dept-theatres', name: 'Theatres', parentId: 'bld-main-b' },
-  { id: 'dept-estates', name: 'Estates and facilities', parentId: 'bld-main-plant' },
+  { id: 'dept-estates', name: 'Facilities', parentId: 'bld-main-plant' },
   { id: 'dept-outpatients', name: 'Outpatients', parentId: 'bld-north-1' },
   { id: 'dept-primary-care', name: 'Primary care', parentId: 'bld-north-1' },
   { id: 'dept-imaging', name: 'Imaging', parentId: 'bld-east-1' },
@@ -79,7 +79,7 @@ const BEDS_PER_WARD = 20;
 
 const WARD_ASSETS = [
   ['infusion-pump', 'Infusion pump', 4], ['suction', 'Suction unit', 2], ['o2-flowmeter', 'Oxygen flowmeter', 4],
-  ['call-bell', 'Call bell panel', 1], ['ac', 'Air-conditioning unit', 2], ['sink', 'Clinical hand-wash sink', 2],
+  ['call-bell', 'Nurse call panel', 1], ['ac', 'Air-conditioning unit', 2], ['sink', 'Clinical hand-wash sink', 2],
   ['door-closer', 'Fire door closer', 2], ['light', 'Light fitting bank', 2],
 ];
 const PLANT_ASSETS = [
@@ -94,7 +94,7 @@ const PLANT_ASSETS = [
 ];
 const FAULTS = {
   'infusion-pump': ['IV pump alarm', 'biomed'], suction: ['Suction unit not pulling', 'biomed'], 'o2-flowmeter': ['Oxygen flowmeter check', 'biomed'],
-  'call-bell': ['Call bell not working', 'estates'], ac: ['AC filter blocked', 'estates'], sink: ['Blocked sink', 'estates'],
+  'call-bell': ['Nurse call not working', 'estates'], ac: ['AC filter blocked', 'estates'], sink: ['Blocked sink', 'estates'],
   'door-closer': ['Door closer broken', 'estates'], light: ['Light fitting out', 'estates'], bed: ['Bed brake faulty', 'estates'],
   generator: ['Generator test fault', 'estates'], chiller: ['Chiller high temperature', 'estates'], lift: ['Lift out of service', 'estates'],
   boiler: ['Boiler pressure low', 'estates'], imaging: ['X-ray detector error', 'biomed'], lab: ['Analyser calibration error', 'biomed'],
@@ -117,7 +117,7 @@ export function buildModel() {
     }
   }
   for (const [id, name, parentId, kind] of PLANT_ASSETS) entities.push({ id, type: 'asset', name, parentId, kind });
-  for (const r of [['ward-nurse', 'Ward nurse'], ['bed-manager', 'Bed manager'], ['estates-tech', 'Estates tech'], ['ae-nic', 'A&E nurse in charge'], ['ops-manager', 'Ops manager'], ['coo', 'COO']]) {
+  for (const r of [['ward-nurse', 'Ward nurse'], ['bed-manager', 'Patient flow coordinator'], ['estates-tech', 'Facilities technician'], ['ae-nic', 'Emergency department nurse in charge'], ['ops-manager', 'Operations manager'], ['coo', 'COO']]) {
     entities.push({ id: `role-${r[0]}`, type: 'role', name: r[1], roleId: r[0] });
   }
   entities.push({ id: 'shift-day', type: 'shift', name: 'Day shift', start: '07:00', end: '19:00' });
@@ -225,7 +225,7 @@ export function generateHospital({ seed = DEFAULT_SEED, end, days = 30 } = {}) {
     }
   }
 
-  // A&E attendances that go home (more than are admitted).
+  // Emergency department attendances that go home (more than are admitted).
   for (let day = 0; day < days; day++) {
     const n = r.int(55, 80);
     for (let k = 0; k < n; k++) {
@@ -267,7 +267,7 @@ export function generateHospital({ seed = DEFAULT_SEED, end, days = 30 } = {}) {
     }
   }
 
-  // A few A&E patients decided for admission in the last hours, still waiting for a bed.
+  // A few emergency department patients decided for admission in the last hours, still waiting for a bed.
   const waitingNow = r.int(3, 6);
   for (let k = 0; k < waitingNow; k++) {
     const encId = `enc-${pad(++enc, 6)}`;

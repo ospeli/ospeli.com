@@ -17,7 +17,7 @@ const tree = [
 ];
 
 test('the six build-month roles exist', () => {
-  assert.deepEqual(ROLES.map((r) => r.name), ['Ward nurse', 'Bed manager', 'Estates tech', 'A&E nurse in charge', 'Ops manager', 'COO']);
+  assert.deepEqual(ROLES.map((r) => r.name), ['Ward nurse', 'Patient flow coordinator', 'Facilities technician', 'Emergency department nurse in charge', 'Operations manager', 'COO']);
 });
 
 test('entity validation rejects bad ids, types and names', () => {

@@ -56,7 +56,7 @@ test('discharges before noon uses local time', () => {
   assert.equal(val('discharges-before-noon', { ...opts, utcOffsetMinutes: 180 }), 0);
 });
 
-test('decision to bed is the median for A&E admissions only', () => {
+test('decision to bed is the median for emergency department admissions only', () => {
   assert.equal(val('decision-to-bed'), 4); // median of 2 h and 6 h; the elective is excluded
   assert.equal(computeKpi('decision-to-bed', E, opts).denominator, 2);
 });

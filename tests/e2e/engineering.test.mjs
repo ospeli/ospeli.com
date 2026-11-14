@@ -1,5 +1,5 @@
 // Engineering (backlog item 7): report a fault from a label link, work the queue as the
-// estates technician, and keep the KPIs in step. Phone and desktop.
+// facilities technician, and keep the KPIs in step. Phone and desktop.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startApp, openPage } from './helpers.mjs';
@@ -38,14 +38,14 @@ for (const width of [390, 1280]) {
   });
 }
 
-test('estates tech sees the queue first, assigns and closes a work order; the KPI tile follows', async () => {
+test('facilities technician sees the queue first, assigns and closes a work order; the KPI tile follows', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, path: '#/engineering' });
   await page.selectOption('#role-select', 'estates-tech');
   await page.waitForFunction(() => document.querySelector('main h2')?.textContent === 'Work-order queue');
   await page.waitForSelector('[data-test="wo-list"] [data-wo]');
   await page.waitForFunction(() => document.querySelector('[data-kpi="open-work-orders"]'));
   const order = await page.evaluate(() => [...document.querySelectorAll('main h2')].map((x) => x.textContent));
-  assert.ok(order.indexOf('Work-order queue') < order.indexOf('Report a fault'), `queue first for the estates tech: ${order.join(' / ')}`);
+  assert.ok(order.indexOf('Work-order queue') < order.indexOf('Report a fault'), `queue first for the facilities technician: ${order.join(' / ')}`);
   const before = await openCount(page);
   assert.equal(Number(await page.locator('[data-kpi="open-work-orders"] .kpi-value').textContent()), before, 'KPI tile equals the queue count');
 

@@ -177,7 +177,7 @@ test('journey over HTTP: find a bed, propose it, a person accepts at the console
   assert.equal((await person('bed-manager', 'ospeli_beds_get', { bedId: pair.bedId })).bed.state, 'available');
   const waiting = await site.consoleLine('proposals');
   assert.match(waiting, /1 waiting for a person/);
-  assert.match(waiting, /^ {2}1 {2}night-helper \(for Bed manager\) asks:/m);
+  assert.match(waiting, /^ {2}1 {2}night-helper \(for Patient flow coordinator\) asks:/m);
   assert.match(waiting, /accept NUMBER {2}or {2}decline NUMBER/);
   assert.match(await site.consoleLine('accept 1'), /Done\. Proposal 1 was accepted/);
   assert.notEqual((await person('bed-manager', 'ospeli_beds_get', { bedId: pair.bedId })).bed.state, 'available');
