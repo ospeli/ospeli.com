@@ -418,7 +418,9 @@ export async function startServer({
       if (!deviceLimiter.take(d.id).ok) return fail(res, 'rate-limited', 'Too many calls from this device in a minute.', 'Wait a minute, then go on.', {}, { 'Retry-After': '60' });
       if (path === '/api/v1/session') {
         if (req.method !== 'GET') return fail(res, 'invalid-input', 'session takes GET.', 'Send a GET request.');
-        return send(res, 200, { ok: true, device: { label: d.label, role: d.role, roleName: roleById(d.role).name }, site: HOSPITAL_NAME });
+        // Opening the app renews the cookie, so a device in daily use is not asked for a code
+        // again; one left unused for 30 days is.
+        return send(res, 200, { ok: true, device: { label: d.label, role: d.role, roleName: roleById(d.role).name }, site: HOSPITAL_NAME }, { 'Set-Cookie': deviceCookie(cookieOf(req), DEVICE_IDLE_DAYS * 86400) });
       }
       if (path === '/api/v1/sync') {
         if (req.method !== 'GET') return fail(res, 'invalid-input', 'sync takes GET.', 'Send a GET request.');
@@ -600,8 +602,9 @@ export async function startServer({
     '',
     `    ${out.code}`,
     '',
-    'On the phone or laptop:',
-    ...(shareUrl ? ['  1. Join the same Wi-Fi or network as this computer.', `  2. Open a browser and go to: ${appUrl}`, '  3. Type the code.'] : [`  1. Open a browser on this computer and go to: ${appUrl}`, '  2. Type the code.', '  (Other devices cannot reach Ospeli yet. To let them, start it with: --host 0.0.0.0)']),
+    ...(shareUrl ? ['On the phone or laptop:', '  1. Join the same Wi-Fi or network as this computer.', `  2. Open a browser and go to: ${appUrl}`, '  3. Type the code.']
+      : ['Phones and other computers cannot reach Ospeli yet: it was started for this computer only.', `  To try it here: open a browser on this computer, go to ${appUrl} and type the code.`,
+        '  To let phones in: press Ctrl and C, then start again with:  node tools/ospeli-server/server.mjs --host 0.0.0.0', '  (then type add device again; that link is not encrypted, so use a network you trust)']),
     `The code works once, for ${CODE_MINUTES} minutes. What is done on that device is recorded as a person in that role, from "${out.label}".`,
     ...(shareUrl ? ['Warning: this network link is not encrypted. Use it only on a network you trust.'] : []),
   ].join('\n');

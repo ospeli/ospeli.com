@@ -184,7 +184,7 @@ async function bootOnSite() {
   bar.setAttribute('role', 'status');
   bar.dataset.test = 'site-status';
   $('.topbar').append(bar); // in the top bar, which stays on screen while the page scrolls
-  const hhmm = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const hhmm = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
   const showLink = ({ connected, reason } = { connected: link.connected }) => {
     if (reason === 'needs-code') { location.reload(); return; }
     document.documentElement.dataset.site = connected ? 'connected' : 'offline';
@@ -193,7 +193,7 @@ async function bootOnSite() {
     // The menu column starts under the top bar, which is taller while the line shows.
     if (connected) document.documentElement.style.removeProperty('--top');
     else document.documentElement.style.setProperty('--top', `${$('.topbar').offsetHeight}px`);
-    $('#storage-status').textContent = connected ? `Connected. Changes are saved. ${who.device.label}.` : `Not connected. ${who.device.label}.`;
+    $('#storage-status').textContent = connected ? `Connected. Changes are saved · ${who.device.label}` : `Not connected · ${who.device.label}`;
   };
   link.onState(showLink);
   showLink();

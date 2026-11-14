@@ -38,18 +38,22 @@ export function proposalsCard(ctx, { describe, match = () => true }) {
     box.replaceChildren(h('section', { class: 'card proposals', 'aria-labelledby': 'prop-h' },
       h('h2', { id: 'prop-h' }, `Agent proposals (${list.length})`),
       h('p', { class: 'meta' }, mine.length
-        ? 'An agent suggested these. Nothing changes until you accept. Accepting runs it as you.'
+        ? 'An agent suggested these. Nothing changes until you accept. If you accept, it is recorded as done by you.'
         : `An agent suggested these. ${roleById(ctx.role).name} cannot decide on them.`),
       h('ul', { class: 'proposal-list' }, list.map((p) => {
-        const sel = h('select', { 'aria-label': `Reason to decline: ${describe(p)}` }, DECLINE_REASONS.map((r) => new Option(r, r)));
+        // Accept stands alone. The reason belongs to Decline, so it sits with it under a visible label.
+        const selId = `why-${p.id}`;
+        const sel = h('select', { id: selId, 'aria-label': `Reason to decline: ${describe(p)}` }, DECLINE_REASONS.map((r) => new Option(r, r)));
         return h('li', { class: 'proposal-item', 'data-proposal': p.id },
           h('div', {},
             h('b', {}, describe(p)),
             h('div', { class: 'meta' }, `Agent ${p.agent} for ${roleById(p.role)?.name || p.role} · ${since(p.at, now)} ago`)),
           p.canDecide ? h('div', { class: 'proposal-actions' },
-            h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_proposals_accept', 'aria-label': `Accept: ${describe(p)}`, onclick: () => decide(p, 'accept') }, 'Accept'),
-            sel,
-            h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_proposals_decline', 'aria-label': `Decline: ${describe(p)}`, onclick: () => decide(p, 'decline', sel.value) }, 'Decline')) : null);
+            h('button', { class: 'btn btn-small proposal-yes', type: 'button', 'data-cmd': 'ospeli_proposals_accept', 'aria-label': `Accept: ${describe(p)}`, onclick: () => decide(p, 'accept') }, 'Accept'),
+            h('div', { class: 'proposal-no' },
+              h('label', { for: selId }, 'If no, why?'),
+              sel,
+              h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_proposals_decline', 'aria-label': `Decline: ${describe(p)}`, onclick: () => decide(p, 'decline', sel.value) }, 'Decline'))) : null);
       }))));
   }
 

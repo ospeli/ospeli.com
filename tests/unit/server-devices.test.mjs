@@ -68,7 +68,12 @@ test('a person connects a device with a code from the console; it is then a pers
   const { code, out } = await addDevice(s.site);
   assert.match(out, /Code for "front desk tablet" \(Patient flow coordinator\)/);
   assert.match(out, /works once, for 30 minutes/);
-  assert.match(out, /\/app\/$/m, 'the address to open is printed');
+  assert.match(out, /\/app\/ and type the code\.$/m, 'the address to open is printed');
+  assert.match(out, /To let phones in: press Ctrl and C, then start again with: {2}node tools\/ospeli-server\/server\.mjs --host 0\.0\.0\.0/, 'started for this computer only: the window says how to let phones in');
+  const lan = await start({ host: '0.0.0.0' });
+  const shared = (await addDevice(lan.site)).out;
+  assert.match(shared, /1\. Join the same Wi-Fi or network as this computer\.\n {2}2\. Open a browser and go to: http:\/\/\S+\/app\/\n {2}3\. Type the code\./);
+  assert.match(shared, /not encrypted/);
   // Lower case and no dash is the same code.
   const r = await s.call('POST', '/api/v1/devices/pair', { body: { code: code.toLowerCase().replace('-', ' ') } });
   assert.equal(r.status, 200);
@@ -80,6 +85,7 @@ test('a person connects a device with a code from the console; it is then a pers
   const me = await s.call('GET', '/api/v1/session', { cookie });
   assert.equal(me.status, 200);
   assert.equal(me.json.device.role, 'bed-manager');
+  assert.equal(me.headers.get('set-cookie'), setCookie, 'opening the app renews the cookie for another 30 days');
   // The server keeps the token's hash only.
   const stored = await s.site.core.getMeta('devices');
   assert.equal(stored.length, 1);
@@ -245,7 +251,7 @@ test('what a device is sent: the site\'s data and no key, token or hash; then on
   assert.equal(first.audit.length, (await s.audit()).length);
   assert.deepEqual(Object.keys(first.meta).sort(), [...SITE_META].sort());
   const sent = JSON.stringify(first);
-  assert.ok(!sent.includes(key) && !sent.includes(key.split('_')[2]), 'no agent key');
+  assert.ok(!sent.includes(key) && !sent.includes(key.slice(13)), 'no agent key');
   assert.ok(!sent.includes(cookie.split('=')[1]), 'no device token');
   for (const secret of [...(await s.site.core.getMeta('agent-keys')), ...(await s.site.core.getMeta('devices'))]) assert.ok(!sent.includes(secret.hash), 'no hash of a key or token');
   const q = (x) => `?epoch=${x.epoch}&rev=${x.rev}&events=${x.events.at(-1)?.seq ?? 0}&audit=${x.audit.at(-1)?.seq ?? 0}`;

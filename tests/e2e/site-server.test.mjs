@@ -11,6 +11,7 @@ import { join } from 'node:path';
 const emit = process.emitWarning;
 process.emitWarning = (w, ...rest) => (/SQLite/i.test(String(w?.message || w)) ? undefined : emit.call(process, w, ...rest));
 const { startServer } = await import('../../tools/ospeli-server/site-server.mjs');
+const { runCommand } = await import('../../web/app/core/commands.js');
 const { chromium } = createRequire(import.meta.url)('playwright');
 
 const dir = mkdtempSync(join(tmpdir(), 'ospeli-site-e2e-'));
@@ -94,6 +95,16 @@ test('first-time user at 360 px: connect the phone with the code and answer an a
   await page.waitForSelector('[data-test="proposals"] [data-cmd="ospeli_proposals_accept"]');
   const accept = await page.locator('[data-test="proposals"] [data-cmd="ospeli_proposals_accept"]').first().boundingBox();
   assert.ok(accept.height >= 44, `Accept is ${accept.height}px tall`);
+  // Accept stands alone; the reason sits with Decline under a label, so nobody declines "Not needed" by accident.
+  const row = await page.evaluate(() => {
+    const box = document.querySelector('[data-test="proposals"] .proposal-actions');
+    const r = (el) => el.getBoundingClientRect();
+    const yes = r(box.querySelector('[data-cmd="ospeli_proposals_accept"]')); const sel = r(box.querySelector('select')); const no = r(box.querySelector('[data-cmd="ospeli_proposals_decline"]'));
+    const label = box.querySelector('label');
+    return { label: label.textContent, labelFor: label.htmlFor === box.querySelector('select').id, selBelowYes: sel.top >= yes.bottom, noBelowYes: no.top >= yes.bottom, heights: [yes.height, sel.height, no.height].map(Math.round), labelPx: parseFloat(getComputedStyle(label).fontSize) };
+  });
+  assert.deepEqual({ label: row.label, labelFor: row.labelFor, selBelowYes: row.selBelowYes, noBelowYes: row.noBelowYes }, { label: 'If no, why?', labelFor: true, selBelowYes: true, noBelowYes: true });
+  assert.ok(row.heights.every((x) => x >= 44) && row.labelPx >= 15, JSON.stringify(row));
   await tap('[data-test="proposals"] [data-cmd="ospeli_proposals_accept"]');
   await page.waitForFunction(() => /^Accepted:/.test(document.querySelector('#toast').textContent));
   assert.equal(taps(), 2, 'connect, then accept');
@@ -169,6 +180,8 @@ test('no connection at 360 px: the phone says so, still shows the last informati
 
 for (const width of [390, 1280]) {
   test(`connected device at ${width} px: the role's home opens, a change made on the device is saved on the server, no sideways scroll`, async () => {
+    // A job is waiting for the facilities team whatever the hour the made-up site was generated at.
+    await runCommand(site.core, 'ospeli_workorders_report_fault', { assetId: 'asset-a1-sink-1', fault: width === 390 ? 'Tap leaking' : 'Blocked sink', priority: 'urgent' }, { type: 'human', role: 'ward-nurse', via: 'console' });
     const code = await codeFor(`desk ${width}`, 3);
     const { context, page, errors } = await phone({ width, height: 860 });
     await page.goto(`${site.url}/app/`);
@@ -189,7 +202,7 @@ for (const width of [390, 1280]) {
     // Close it, so the job is done from start to finish on the device.
     await page.locator('[data-test="close-job"]').tap();
     await page.locator('[data-test="outcomes"] [data-outcome="fixed"]').tap();
-    await page.waitForSelector('[data-cmd="ospeli_workorders_start"]');
+    await page.waitForFunction(() => !document.querySelector('[data-test="close-job"]') && !document.querySelector('[data-test="outcomes"]'));
     assert.equal(await site.core.eventCount(), before + 2);
     assert.equal((await site.core.events({ type: 'workorder.completed' })).at(-1).subject, ev.subject);
     assert.equal(await page.evaluate(() => window.ospeli.core === undefined), true, 'no test hook: this is the page as a visitor gets it');

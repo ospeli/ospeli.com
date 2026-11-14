@@ -387,7 +387,7 @@ export async function render(el, ctx) {
     h('div', {},
       h('p', { class: 'eyebrow' }, 'Bed board'),
       h('h1', {}, 'Bed board'),
-      h('p', {}, 'Live bed state from the event log. Tap a bed to move it on: discharge, clean, allocate.')));
+      h('p', {}, 'Beds as they are now. Tap a bed to move it on: discharge, clean, allocate.')));
   const waitSection = h('section', { class: 'section', 'aria-labelledby': 'wait-h' },
     h('h2', { id: 'wait-h' }, 'Waiting for a bed'),
     h('p', { class: 'meta' }, 'Longest wait first. Waits count from the decision to admit.'),

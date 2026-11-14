@@ -23,7 +23,11 @@ On the phone or laptop, open that address in a browser and type the code. You do
 That device now shows your site's information, opens on its role's own screen, and can say yes or no to what a bot suggests.
 With no connection it shows the last information it had, says so, and refuses changes. They are not kept for later yet.
 `devices` lists the connected devices; `remove device 1` disconnects one. A device not used for 30 days asks for a new code.
-Other computers can reach Ospeli only if you start it with `--host 0.0.0.0`. That link is not encrypted: synthetic data, on a network you trust.
+Phones and other computers can reach Ospeli only if you start it like this:
+
+    node tools/ospeli-server/server.mjs --host 0.0.0.0
+
+That link is not encrypted: synthetic data, on a network you trust.
 
 ## Stop everything
 Type `stop agents`. Every bot is shut out at once. `start agents` lets the listed bots in again.

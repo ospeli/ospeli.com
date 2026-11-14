@@ -482,3 +482,9 @@ html[data-site="connect"] .layout { display: block; }
 @media (max-width: 760px) {
   .role-fixed { margin-left: auto; max-width: 46vw; white-space: normal; text-align: right; line-height: 1.2; padding: .375rem .625rem; }
 }
+.proposal-actions { display: grid; gap: 10px; }
+.proposal-actions .proposal-yes { min-height: 44px; justify-self: start; min-width: 8rem; }
+.proposal-no { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.proposal-no label { font-size: .9375rem; font-weight: 700; flex: 0 0 100%; }
+.proposal-no select { font: inherit; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: 10px; min-height: 44px; padding: 6px 10px; flex: 1 1 10rem; min-width: 0; }
+.proposal-no .btn { min-height: 44px; }

@@ -144,9 +144,9 @@ export async function render(el, ctx) {
       const agentsOn = await core.agentAccessInUse();
       if (!confirm(`Replace all data on this device with ${data.entities.length} records and ${data.events.length} events from this file?${agentsOn ? AGENTS_OFF_TOO : ''}`)) return;
       const res = await core.importData(data, ctx.role);
+      await refresh(); // the trail and its pill first, so "Imported" is never shown beside the old state
       status.textContent = `Imported ${res.entities} records and ${res.events} events.${agentsOn ? ' Agents are off.' : ''}`;
       ctx.toast(agentsOn ? 'Import complete. Agents are off.' : 'Import complete');
-      await refresh();
     } catch (err) {
       status.textContent = `Import refused. Nothing was changed. ${err.message}`;
     }

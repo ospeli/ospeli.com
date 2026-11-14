@@ -111,9 +111,10 @@ test('a person lets one bot in with four answers; whoami says what the key may d
   assert.match(w.canDo, /propose/);
   // The key is stored as a hash, and the trail says a person at the console did the setup.
   const stored = JSON.stringify(await site.core.getMeta('agent-keys'));
-  assert.ok(!stored.includes(key) && !stored.includes(key.split('_')[2]));
+  // key.slice(13) is the whole secret after "osk_<8 hex>_". (A piece of it cut at an underscore can be one or two letters long and turn up anywhere by chance: that was a test that failed about one run in ten.)
+  assert.ok(!stored.includes(key) && !stored.includes(key.slice(13)));
   const log = await audit();
-  assert.ok(!JSON.stringify(log).includes(key.split('_')[2]));
+  assert.ok(!JSON.stringify(log).includes(key.slice(13)));
   const setup = log.filter((e) => ['agents.agent-added', 'agents.access-changed', 'agents.key-issued'].includes(e.action));
   assert.equal(setup.length, 3);
   assert.ok(setup.every((e) => e.actorType === 'human' && e.via === 'console'));
