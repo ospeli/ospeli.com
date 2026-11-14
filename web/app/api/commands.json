@@ -4639,6 +4639,10 @@
             "minLength": 1,
             "maxLength": 140,
             "description": "The map's name, e.g. \"Discharge from ward 3\". Defaults to the example's title."
+          },
+          "notAName": {
+            "type": "boolean",
+            "description": "Send true only after the command asked whether the text holds a person's name and it does not (for example \"Yellow Sticker\"). Maps are shared; never use it to keep a real name."
           }
         }
       },
@@ -4758,6 +4762,10 @@
             "type": "integer",
             "minimum": 1,
             "description": "1 = first. Default: last."
+          },
+          "notAName": {
+            "type": "boolean",
+            "description": "Send true only after the command asked whether the text holds a person's name and it does not (for example \"Yellow Sticker\"). Maps are shared; never use it to keep a real name."
           },
           "expectedRevision": {
             "type": "integer",
@@ -4881,6 +4889,10 @@
           },
           "par": {
             "type": "boolean"
+          },
+          "notAName": {
+            "type": "boolean",
+            "description": "Send true only after the command asked whether the text holds a person's name and it does not (for example \"Yellow Sticker\"). Maps are shared; never use it to keep a real name."
           },
           "expectedRevision": {
             "type": "integer",

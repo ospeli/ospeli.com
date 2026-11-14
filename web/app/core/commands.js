@@ -19,7 +19,7 @@ import {
   suggestNext, slaText, teamOfRole, SUGGEST_RULE,
 } from './workorders.js';
 import {
-  EXAMPLES as MAP_EXAMPLES, VERSIONS as MAP_VERSIONS, MAX_STEPS, MAX_MINUTES, newMap, analyse, suggest, applyChange, personalDetailIn, personNameIn, NAME_ADVICE,
+  EXAMPLES as MAP_EXAMPLES, VERSIONS as MAP_VERSIONS, MAX_STEPS, MAX_MINUTES, newMap, analyse, suggest, applyChange, personalDetailIn, personNameIn, possibleNameIn, nameQuestion, NAME_ADVICE,
 } from './processmap.js';
 
 export class CommandError extends Error {
@@ -899,8 +899,12 @@ function checkText(input) {
     if (what) throw new CommandError('invalid-input', `${k} looks like it holds ${what}. Describe the step and the role only; never personal details.`);
     if (personNameIn(input[k], { roleField: k === 'role' })) throw new CommandError('invalid-input', `${k} looks like it names a person. ${NAME_ADVICE}`);
     if (!String(input[k]).trim()) throw new CommandError('invalid-input', `${k} cannot be empty.`);
+    // A name with no title cannot be told from ordinary words, so ask once instead of refusing (issue #38).
+    const maybe = input.notAName === true ? null : possibleNameIn(input[k]);
+    if (maybe) throw new CommandError('invalid-input', nameQuestion(k, maybe), { confirm: 'notAName', field: k, looksLike: maybe });
   }
 }
+const NOT_A_NAME = { type: 'boolean', description: 'Send true only after the command asked whether the text holds a person\'s name and it does not (for example "Yellow Sticker"). Maps are shared; never use it to keep a real name.' };
 
 // One shape for every map write: check, change the map inside the write queue, audit (ids only,
 // no free text), and bump the revision.
@@ -1049,7 +1053,7 @@ COMMAND_LIST.push(
     kind: 'write', roles: ALL_ROLES, approval: true,
     input: { type: 'object', additionalProperties: false, required: ['from'], properties: {
       from: { type: 'string', enum: MAP_SOURCES, description: 'An example process to start from, or "blank".' },
-      title: { ...STEP_TEXT, description: 'The map\'s name, e.g. "Discharge from ward 3". Defaults to the example\'s title.' } } },
+      title: { ...STEP_TEXT, description: 'The map\'s name, e.g. "Discharge from ward 3". Defaults to the example\'s title.' }, notAName: NOT_A_NAME } },
     output: MAP_WRITE_OUTPUT,
     check: checkText,
     async run(core, input, { actor }) {
@@ -1077,7 +1081,7 @@ COMMAND_LIST.push(
       role: { ...STEP_TEXT, description: 'Who does it, e.g. "Housekeeping". A role, never a person\'s name.' },
       wait: { ...MINUTES, description: 'Minutes waiting before this step starts. Default 0.' }, work: { ...MINUTES, description: 'Hands-on minutes. Default 0.' },
       msg: { type: 'boolean', description: 'True if the step only passes on information.' }, par: { type: 'boolean', description: 'True if it starts alongside the step before.' },
-      position: { type: 'integer', minimum: 1, description: '1 = first. Default: last.' } },
+      position: { type: 'integer', minimum: 1, description: '1 = first. Default: last.' }, notAName: NOT_A_NAME },
     example: { version: 'today', name: 'Bed cleaned', role: 'Housekeeping', wait: 30, work: 20 },
     mutate(map, input) {
       const v = input.version || 'today'; const list = map[v];
@@ -1093,7 +1097,7 @@ COMMAND_LIST.push(
     name: 'ospeli_maps_step_update', audit: 'map.step-updated',
     summary: 'Change a step in one version of a map: its wording, who does it, its times or its flags. Only the fields given change.',
     required: ['stepId'],
-    props: { version: VERSION, stepId: STEP_ID, name: STEP_TEXT, role: STEP_TEXT, wait: MINUTES, work: MINUTES, msg: { type: 'boolean' }, par: { type: 'boolean' } },
+    props: { version: VERSION, stepId: STEP_ID, name: STEP_TEXT, role: STEP_TEXT, wait: MINUTES, work: MINUTES, msg: { type: 'boolean' }, par: { type: 'boolean' }, notAName: NOT_A_NAME },
     example: { version: 'proposed', stepId: 'map-001-s3', wait: 60 },
     mutate(map, input) {
       const v = input.version || 'today'; const s = map[v][stepIndex(map, v, input.stepId)];

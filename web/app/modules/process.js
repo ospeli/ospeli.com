@@ -234,7 +234,8 @@ export async function render(el, ctx) {
     const roles = [...new Set([...m.today.steps, ...m.proposed.steps].map((x) => x.role))];
     const form = h('form', { class: 'card step-form', 'data-test': 'step-form', 'aria-labelledby': 'st-h' },
       h('h3', { id: 'st-h' }, s ? `Change step ${steps.indexOf(s) + 1}` : `Add a step to ${ui.version === 'proposed' ? 'Proposed' : 'Today'}`),
-      h('div', { class: 'field' }, h('label', { for: 'st-name' }, 'What happens'), h('input', { id: 'st-name', maxlength: '140', required: true, value: s?.name || '', placeholder: 'e.g. Bed cleaned' })),
+      h('div', { class: 'field' }, h('label', { for: 'st-name' }, 'What happens'), h('input', { id: 'st-name', maxlength: '140', required: true, value: s?.name || '', placeholder: 'e.g. Bed cleaned', 'aria-describedby': 'st-shared' }),
+        h('p', { class: 'field-note', id: 'st-shared', 'data-test': 'shared-note' }, 'No names or numbers of patients or staff. A map is shared with everyone who uses this site\'s data.')),
       h('div', { class: 'field' }, h('label', { for: 'st-role' }, 'Who does it (a role, never a name)'), h('input', { id: 'st-role', maxlength: '140', required: true, list: 'st-roles', value: s?.role || '', placeholder: 'e.g. Housekeeping' }),
         h('datalist', { id: 'st-roles' }, roles.map((r) => h('option', { value: r })))),
       h('div', { class: 'two' }, num('st-wait', 'Waiting before (min)', s?.wait), num('st-work', 'Hands-on (min)', s?.work)),
@@ -251,9 +252,37 @@ export async function render(el, ctx) {
       const input = { mapId: m.id, version: ui.version, name: val('st-name').value.trim(), role: val('st-role').value.trim(),
         wait: Math.max(0, Math.round(+val('st-wait').value || 0)), work: Math.max(0, Math.round(+val('st-work').value || 0)),
         msg: val('st-msg').checked, par: val('st-par').checked, expectedRevision: m.revision };
-      const out = s ? await run('ospeli_maps_step_update', { ...input, stepId: s.id }) : await run('ospeli_maps_step_add', input);
-      if (out) { ctx.toast(s ? 'Step saved.' : 'Step added.'); ui.editing = null; await drawMap(); }
+      // A change sends only the wording that changed, so a step already saved is not asked about again.
+      if (s) { if (input.name === s.name) delete input.name; if (input.role === s.role) delete input.role; }
+      const send = async (extra = {}) => {
+        if (ui.busy) return;
+        ui.busy = true;
+        let out = null;
+        try {
+          out = s ? await ctx.run('ospeli_maps_step_update', { ...input, ...extra, stepId: s.id }) : await ctx.run('ospeli_maps_step_add', { ...input, ...extra });
+        } catch (err) {
+          // The command asks once when the text may hold a name with no title (issue #38).
+          const looks = err.detail?.confirm === 'notAName' ? err.detail.looksLike : (/"notAName": true/.test(err.message) ? (/\("([^"]+)"\)/.exec(err.message) || [])[1] : null);
+          if (looks) askAboutName(looks, send); else ctx.toast(`Not saved. ${err.message}`);
+          return;
+        } finally { ui.busy = false; }
+        if (out) { ctx.toast(s ? 'Step saved.' : 'Step added.'); ui.editing = null; await drawMap(); }
+      };
+      await send();
     });
+    // The question sits in the form, above the buttons: nothing is saved until one is chosen.
+    function askAboutName(looks, send) {
+      form.querySelector('[data-test="name-question"]')?.remove();
+      const close = () => box.remove();
+      const box = h('div', { class: 'name-question', role: 'alert', 'data-test': 'name-question' },
+        h('p', {}, h('b', {}, `Is \u201c${looks}\u201d a person's name?`)),
+        h('p', {}, 'A map is shared, and Ospeli times steps, never people. Use a role instead, for example Doctor, Charge nurse or Pharmacy.'),
+        h('div', { class: 'form-actions' },
+          h('button', { type: 'button', class: 'btn', 'data-test': 'name-change', onclick: () => { close(); const f = form.querySelector('#st-name'); f.focus(); f.scrollIntoView({ block: 'center' }); } }, 'Change the wording'),
+          h('button', { type: 'button', class: 'btn btn-ghost', 'data-test': 'name-keep', onclick: () => { close(); send({ notAName: true }); } }, 'Not a name. Save it')));
+      form.insertBefore(box, form.querySelector('.form-actions'));
+      box.scrollIntoView({ block: 'center' });
+    }
     return form;
   }
 

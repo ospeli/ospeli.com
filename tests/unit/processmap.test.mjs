@@ -7,7 +7,7 @@ import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
 import { runCommand, commandByName, CommandError } from '../../web/app/core/commands.js';
 import { validate } from '../../web/app/core/schema.js';
-import { analyse, suggest, applyChange, stepsFromExample, EXAMPLES, personalDetailIn } from '../../web/app/core/processmap.js';
+import { analyse, suggest, applyChange, stepsFromExample, EXAMPLES, personalDetailIn, possibleNameIn } from '../../web/app/core/processmap.js';
 
 const NOW = '2026-11-10T09:00:00.000Z';
 const clockFrom = (iso) => { let t = Date.parse(iso); return () => new Date(t += 1000); };
@@ -207,4 +207,61 @@ test('maps time steps, never people: a named person is refused as a step, a role
   await run(core, 'ospeli_agents_add', { name: 'map-helper', role: 'ops-manager', days: 30 }, human('ops-manager'));
   await assert.rejects(run(core, 'ospeli_maps_step_add', { ...step, role: 'Sister Mary Brown' }, agent('ops-manager')), named);
   assert.equal((await run(core, 'ospeli_proposals_list', {})).proposals.length, 0);
+});
+
+// Issue #38 (the cases left on night 10): record numbers and short phone numbers are refused;
+// a name with no title cannot be told from ordinary words by a list, so the command asks once.
+test('issue #38: record numbers and short phone numbers in free text are refused', () => {
+  assert.equal(personalDetailIn('MRN 00123456 checked'), 'a record or ID number');
+  assert.equal(personalDetailIn('Check ID no. 204881'), 'a record or ID number');
+  assert.equal(personalDetailIn('Hospital number: 4471203'), 'a record or ID number');
+  assert.equal(personalDetailIn('Phone 555 0134 for transport'), 'a phone or ID number');
+  assert.equal(personalDetailIn('Call 555-0199 for bed'), 'a phone or ID number');
+  for (const fine of ['Bed 12 cleaned', 'Wait 30 min for transport', 'Patient 2943 moved to Ward A1', 'Call ward 4 for a bed', 'Step 3 of 12 signed', 'Order 2 units']) {
+    assert.equal(personalDetailIn(fine), null, fine);
+  }
+});
+
+test('issue #38: a possible name with no title is spotted; roles, places and the example maps are not', () => {
+  assert.equal(possibleNameIn('Sarah Jones signs the form'), 'Sarah Jones');
+  assert.equal(possibleNameIn('Bed 12 patient John Smith moved'), 'John Smith');
+  assert.equal(possibleNameIn('Mary Brown checks the bed'), 'Mary Brown');
+  assert.equal(possibleNameIn('Check with Anita'), 'Anita');
+  assert.equal(possibleNameIn('Ask Maria in pharmacy for the medicines'), 'Maria');
+  assert.equal(possibleNameIn('Phone Sarah'), 'Sarah');
+  for (const fine of ['Charge Nurse reviews', 'Doctor On Call reviews', 'Patient moved to Ward A1', 'Bed cleaned', 'Call Pharmacy for the medicines',
+    'Family told the time to collect', 'Ask Security to open the door', 'Sent to Imaging', 'Discharge from ward 3', 'Hand over to Night shift', 'My process']) {
+    assert.equal(possibleNameIn(fine), null, fine);
+  }
+  for (const [key, ex] of Object.entries(EXAMPLES)) {
+    assert.equal(possibleNameIn(ex.title), null, `${key} title`);
+    for (const st of ex.steps) { assert.equal(possibleNameIn(st[0]), null, `${key}: ${st[0]}`); assert.equal(possibleNameIn(st[1]), null, `${key}: ${st[1]}`); }
+  }
+});
+
+test('issue #38: a step or title that may hold a name is asked about once, for people and agents; nothing is saved until confirmed', async () => {
+  const core = await fresh();
+  await run(core, 'ospeli_maps_create', { from: 'blank' });
+  const asks = (e) => e.code === 'invalid-input' && e.detail?.confirm === 'notAName' && e.detail.looksLike === 'Sarah Jones'
+    && /shared/.test(e.message) && /role/.test(e.message) && /"notAName": true/.test(e.message);
+  await assert.rejects(run(core, 'ospeli_maps_step_add', { mapId: 'map-001', name: 'Sarah Jones signs the form', role: 'Doctor' }), asks);
+  await run(core, 'ospeli_agents_set_access', { allowed: true }, human('ops-manager'));
+  await run(core, 'ospeli_agents_add', { name: 'map-helper', role: 'ops-manager', days: 30 }, human('ops-manager'));
+  await assert.rejects(run(core, 'ospeli_maps_step_add', { mapId: 'map-001', name: 'Sarah Jones signs the form', role: 'Doctor' }, agent('ops-manager')), asks);
+  assert.equal((await run(core, 'ospeli_maps_get', { mapId: 'map-001' })).today.steps.length, 0, 'nothing saved');
+  // A record number is refused outright; saying "not a name" does not let it through.
+  await assert.rejects(run(core, 'ospeli_maps_step_add', { mapId: 'map-001', name: 'MRN 00123456 checked', role: 'Clerk', notAName: true }), (e) => e.code === 'invalid-input' && /record or ID number/.test(e.message));
+  // A titled name is still refused outright.
+  await assert.rejects(run(core, 'ospeli_maps_step_add', { mapId: 'map-001', name: 'Dr Sarah Jones signs', role: 'Doctor', notAName: true }), (e) => e.code === 'invalid-input' && /names a person/.test(e.message));
+  // Confirmed: saved.
+  const add = await run(core, 'ospeli_maps_step_add', { mapId: 'map-001', name: 'Yellow Sticker put on the chart', role: 'Laboratory', notAName: true });
+  ok('ospeli_maps_step_add', add);
+  // The same question on update and on a map's title.
+  await assert.rejects(run(core, 'ospeli_maps_step_update', { mapId: 'map-001', stepId: add.stepId, name: 'Check with Anita' }), (e) => e.detail?.confirm === 'notAName' && e.detail.looksLike === 'Anita');
+  await assert.rejects(run(core, 'ospeli_maps_create', { from: 'blank', title: 'John Smith discharge' }), (e) => e.detail?.confirm === 'notAName');
+  // Times-only updates of a confirmed step are not asked again.
+  await run(core, 'ospeli_maps_step_update', { mapId: 'map-001', stepId: add.stepId, wait: 5 });
+  const m = await run(core, 'ospeli_maps_get', { mapId: 'map-001' });
+  assert.equal(m.today.steps[0].name, 'Yellow Sticker put on the chart');
+  assert.equal(JSON.stringify(m).includes('notAName'), false, 'the answer is not stored on the map');
 });

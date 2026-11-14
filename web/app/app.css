@@ -359,6 +359,10 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .step-form h3 { margin: 0; }
 .step-form .field { display: grid; gap: 4px; min-width: 0; }
 .step-form .field label { font-weight: 700; }
+.step-form .field-note { margin: 0; font-size: .9375rem; color: var(--ink-soft); }
+.name-question { border: 1.5px solid var(--line-strong); border-left: 5px solid #EE9B00; border-radius: 10px; padding: 10px 12px; background: var(--surface); display: grid; gap: 6px; }
+.name-question p { margin: 0; }
+.name-question .btn { min-height: 44px; }
 .step-form input:not([type="checkbox"]) { font: inherit; min-height: 44px; padding: 8px 10px; border: 1.5px solid var(--line-strong); border-radius: 10px; width: 100%; min-width: 0; color: var(--ink); background: var(--surface); }
 .step-form .two { display: grid; gap: 8px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .step-form .check { display: flex; gap: 8px; align-items: center; min-height: 44px; }

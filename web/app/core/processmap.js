@@ -79,9 +79,15 @@ export function newMap({ id, from = 'blank', title, at, role }) {
 
 // Free text is needed (steps and roles in the site's own words), so refuse anything that looks
 // like a personal detail: phone numbers, email addresses, long ID numbers, dates of birth.
+// A record number is a label (MRN, ID, No., record or hospital number) followed by six or more
+// digits; a short phone number is a calling word followed by six or more digits (issue #38).
+const RECORD_NUMBER = /\b(?:MRN|NHS|ID|IDs|No|Nr|Num|Number|Ref|Reference|Record|Chart|Case|Account|Policy|Insurance)\b[\s.:#-]*(?:(?:no|nr|num|number)\b[\s.:#-]*)?\d{6,}\b/i;
+const CALL_NUMBER = /\b(?:phone|call|ring|tel|telephone|text|page|fax|ext|extension|mobile|cell|whatsapp)\b\D{0,12}(\d[\d\s().-]{4,}\d)/i;
 const PERSONAL = [
   [/[\w.+-]+@[\w-]+\.[\w.]+/, 'an email address'],
+  [RECORD_NUMBER, 'a record or ID number'],
   [/\+?\d[\d\s().-]{7,}\d/, 'a phone or ID number'],
+  [{ test: (t) => { const m = CALL_NUMBER.exec(t); return !!m && m[1].replace(/\D/g, '').length >= 6; } }, 'a phone or ID number'],
   [/\b\d{1,2}[/.-]\d{1,2}[/.-]\d{2,4}\b/, 'a date'],
 ];
 // Maps measure flows, never people (issue #38): a title followed by a name ("Dr Sarah Jones",
@@ -107,6 +113,27 @@ export function personNameIn(text, { roleField = false } = {}) {
   }
   return false;
 }
+// A name with no title cannot be told from ordinary words by a list (issue #38), so this only
+// finds text that MAY be a name, and the command asks once instead of refusing:
+// - two capitalised words in a row, neither a role or place word ("Sarah Jones signs the form");
+// - one capitalised word straight after a word that usually comes before a person ("Check with Anita").
+// Returns the words that look like a name, or null. Names typed in lower case are not found.
+const NOT_NAMES = new Set(`bed beds bay bays room rooms recovery home blood bank lab labs imaging x-ray scan ward wards unit units
+  monday tuesday wednesday thursday friday saturday sunday january february march april may june july august september october
+  november december today tomorrow day night morning evening shift example hospital clinic site stores store kitchen laundry
+  mortuary main north south east west block floor level wing entrance exit car park helpdesk it hr my our their process map step
+  form forms list lists chart charts order orders request requests result results sample samples medicine medicines oxygen`.split(/\s+/));
+const BEFORE_A_PERSON = new Set('patient with ask asks asked tell tells told call calls phone phones ring rings by from see find page text email contact inform notify'.split(' '));
+const CAP_WORD = /^[A-Z][a-z'’-]+$/;
+const plainWord = (w) => w.replace(/^[^A-Za-z]+|[^A-Za-z'’-]+$/g, '');
+const nameLike = (w) => CAP_WORD.test(w) && !isJobWord(w) && !NOT_NAMES.has(w.toLowerCase()) && !BEFORE_A_PERSON.has(w.toLowerCase());
+export function possibleNameIn(text) {
+  const words = String(text).trim().split(/\s+/).map(plainWord).filter(Boolean);
+  for (let i = 0; i < words.length - 1; i++) if (nameLike(words[i]) && nameLike(words[i + 1])) return `${words[i]} ${words[i + 1]}`;
+  for (let i = 0; i < words.length - 1; i++) if (BEFORE_A_PERSON.has(words[i].toLowerCase()) && nameLike(words[i + 1])) return words[i + 1];
+  return null;
+}
+export const nameQuestion = (field, looksLike) => `${field} may hold a person's name ("${looksLike}"). A map is shared with everyone who uses this site's data, and Ospeli times steps, never people. Use a role instead (for example Doctor, Charge nurse, Pharmacy). If it is not a person's name, send the same input again with "notAName": true.`;
 export const NAME_ADVICE = 'Use a role, not a person\'s name (for example Doctor, Charge nurse, Pharmacy). Ospeli times steps, never people.';
 
 export function personalDetailIn(text) {
