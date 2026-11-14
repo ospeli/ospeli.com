@@ -226,6 +226,70 @@ for f in record_files:
         if m:
             errors.append(f"{f.relative_to(ROOT.parent).as_posix()}: says \"{what}\", which is more than the audit check proves (issue #79): \"{text[max(0, m.start() - 40):m.end() + 40].strip()}\"")
 
+# One vocabulary (issue #82): the words people see are Patient flow coordinator, Facilities
+# technician, Emergency department (ED), Operations manager and Nurse call. The old words may not
+# appear in the visible text of a public page, in a text a person or an agent reads (llms.txt,
+# agents.md, READMEs, areas.json, commands.json) or in a string in the app's or the site server's
+# code. Internal ids keep their old spelling so stored data still loads, and they never match:
+# they are lower case and hyphenated (bed-manager, estates-tech, ae-nic, ops-manager, call-bell)
+# or the bare lower-case trade id 'estates'. Code comments are not checked.
+OLD_WORDS = [(re.compile(r"\bbed managers?\b", re.I), "Bed manager", "Patient flow coordinator"),
+             (re.compile(r"\bestates tech(?:nician)?s?\b", re.I), "Estates tech / Estates technician", "Facilities technician"),
+             (re.compile(r"\bA\s*(?:&|&amp;|\\u0026)\s*E\b", re.I), "A&E", "Emergency department, then ED"),
+             (re.compile(r"\bops managers?\b", re.I), "Ops manager", "Operations manager"),
+             (re.compile(r"\bcall bells?\b", re.I), "Call bell", "Nurse call"),
+             (re.compile(r"\bEstates\b(?!-)"), "Estates", "Facilities")]
+
+def js_strings(src):
+    """The string and template literals of a script, joined; comments and code are left out."""
+    out, i, n = [], 0, len(src)
+    while i < n:
+        c, two = src[i], src[i:i + 2]
+        if two == "//":
+            j = src.find("\n", i); i = n if j < 0 else j
+        elif two == "/*":
+            j = src.find("*/", i + 2); i = n if j < 0 else j + 2
+        elif c in "'\"`":
+            j = i + 1
+            while j < n and src[j] != c:
+                if src[j] == "\\":
+                    j += 1
+                elif src[j] == "\n" and c != "`":
+                    break  # not a string after all (an apostrophe in a regular expression)
+                j += 1
+            out.append(src[i + 1:j]); i = j + 1
+        else:
+            i += 1
+    return " \n ".join(out)
+
+def page_words(html):
+    """What a person can meet on a page: its text, its attribute values and the strings in its scripts."""
+    scripts = re.findall(r"<script\b[^>]*>(.*?)</script>", html, flags=re.S | re.I)
+    attrs = re.findall(r"\b(?:aria-label|title|alt|placeholder|content|value|label)\s*=\s*\"([^\"]*)\"", re.sub(r"<(script|style)\b.*?</\1>", " ", html, flags=re.S | re.I))
+    return " \n ".join([visible_text(html)] + attrs + [js_strings(s) for s in scripts])
+
+def old_word_hits(text):
+    hits = []
+    for rx, old, new in OLD_WORDS:
+        for m in rx.finditer(text):
+            hits.append((old, new, re.sub(r"\s+", " ", text[max(0, m.start() - 30):m.end() + 30]).strip()))
+    return hits
+
+vocab_files = [f for f in ROOT.rglob("*") if f.is_file() and f.suffix in (".html", ".js", ".mjs", ".md", ".txt", ".json", ".webmanifest")]
+vocab_files += [f for f in (ROOT.parent / "tools").rglob("*") if f.is_file() and f.suffix in (".mjs", ".js", ".md", ".json")]
+vocab_files += [ROOT.parent / "README.md"]
+old_word_count = 0
+for f in vocab_files:
+    if not f.exists():
+        continue
+    text = f.read_text(encoding="utf-8")
+    text = page_words(text) if f.suffix == ".html" else js_strings(text) if f.suffix in (".js", ".mjs") else text
+    for old, new, where in old_word_hits(text):
+        old_word_count += 1
+        errors.append(f"{f.relative_to(ROOT.parent).as_posix()}: says \"{old}\"; the word is now \"{new}\" (issue #82): \"{where}\"")
+if "--old-words" in sys.argv:
+    print(f"Old words (issue #82): {old_word_count}")
+
 areas_file = ROOT / "areas" / "areas.json"
 if areas_file.exists():
     import json
