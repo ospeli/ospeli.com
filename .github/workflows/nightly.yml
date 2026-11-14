@@ -7,10 +7,10 @@ on:
     - cron: "17 6 * * *"   # nightly, 06:17 UTC
   workflow_dispatch:
 
+# Least access: the test job only reads the code. Only the deploy job may publish the site,
+# so a test tool downloaded during the check can never publish anything.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -41,6 +41,10 @@ jobs:
   deploy:
     needs: check
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
