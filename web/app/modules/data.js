@@ -12,7 +12,9 @@ export function actorLabel(e) {
   const type = e.actorType || (e.actorRole === 'system' ? 'system' : 'human');
   if (type === 'agent') return `Agent ${e.agent} for ${roleName(e.actorRole)}`;
   if (type === 'system' || e.actorRole === 'system') return 'System';
-  return `Person · ${roleName(e.actorRole)}`;
+  // On a site server: where the person acted (issue A8). Not a named sign-in.
+  const door = e.via === 'app' && e.device ? ` (on ${e.device})` : e.via === 'console' ? ' (at the server)' : '';
+  return `Person · ${roleName(e.actorRole)}${door}`;
 }
 const actorTypeOf = (e) => e.actorType || (e.actorRole === 'system' ? 'system' : 'human');
 
@@ -183,7 +185,22 @@ export async function render(el, ctx) {
     location.reload();
   } }, 'Load a fresh copy');
 
-  el.append(
+  // A device connected to its site's server keeps a copy it cannot change: export, import and
+  // reset belong to the server, so they are not offered here.
+  const onSite = ctx.storage === 'site';
+  if (onSite) {
+    el.append(
+      h('div', { class: 'page-head' },
+        h('div', {},
+          h('p', { class: 'eyebrow' }, 'Data and audit'),
+          h('h1', {}, 'Your data stays on your site'),
+          h('p', {}, 'This device shows the information kept on your site\'s own computer. Every change you make is saved there. With no connection you see the last information this device had, and changes are refused.'))),
+      h('div', { class: 'card', 'data-test': 'site-device-card' },
+        h('h2', {}, 'This device'),
+        h('p', {}, `${ctx.device.label} · ${roleName(ctx.role)}. What is done here is recorded as a person in this role, from this device. It is not a personal sign-in.`),
+        h('p', { class: 'meta' }, 'Backups, and disconnecting this device, are done at the computer that runs Ospeli.')));
+  }
+  if (!onSite) el.append(
     h('div', { class: 'page-head' },
       h('div', {},
         h('p', { class: 'eyebrow' }, 'Data and audit'),
@@ -209,7 +226,8 @@ export async function render(el, ctx) {
       h('div', { class: 'card' },
         h('h2', {}, 'Reset'),
         h('p', {}, 'Clear all data on this device. This cannot be undone.'),
-        h('div', { class: 'actions' }, resetBtn))),
+        h('div', { class: 'actions' }, resetBtn))));
+  el.append(
     h('section', { class: 'section', 'aria-labelledby': 'audit-h' },
       h('div', { class: 'page-head' },
         h('div', {}, h('h2', { id: 'audit-h' }, 'Audit trail'),

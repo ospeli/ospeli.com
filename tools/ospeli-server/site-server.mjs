@@ -3,19 +3,23 @@
 // HTTP API so the site's own bots and scripts can read and propose.
 //
 // The rules this file keeps:
-// - Who is calling comes from the key and nothing else. Everything that arrives over HTTP is
-//   recorded as an agent, with via "api". No HTTP route can be recorded as a person.
-// - People act at the server's own console (the window it runs in). Those entries are recorded
-//   as a person in a role, with via "console": typed at the server, not a named sign-in.
+// - Who is calling comes from the key or the device cookie and nothing else. A call made with
+//   an agent key is recorded as that agent, with via "api", and can never be recorded as a person.
+// - People act at the server's own console (the window it runs in), recorded as a person in a
+//   role with via "console", or from a device a person connected at that console with a one-time
+//   code, recorded as a person in that device's role with via "app" and the device's label.
+//   Neither is a named sign-in.
 // - Agent access is Off until a person switches it on. Agents read and propose; a person
 //   accepts or declines. Refused calls are recorded without storing what the agent typed.
 // - Nothing leaves the site: the server listens on this computer only unless told otherwise,
 //   and it calls nobody.
 import { createServer } from 'node:http';
-import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
+import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { networkInterfaces } from 'node:os';
 import { mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { readFile, stat } from 'node:fs/promises';
+import { dirname, resolve, extname, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Core } from '../../web/app/core/core.js';
 import { canonical } from '../../web/app/core/audit.js';
 import { ROLES, roleById } from '../../web/app/core/model.js';
@@ -23,6 +27,8 @@ import { loadSyntheticHospital, setupUnfinished, currentHour, HOSPITAL_NAME } fr
 import {
   runCommand, commandByName, describeCommand, listCommands, agentAccess, agentList, auditRefusal, CommandError, DECLINE_REASONS, MAX_AGENT_DAYS,
 } from '../../web/app/core/commands.js';
+import { personNameIn, personalDetailIn } from '../../web/app/core/processmap.js';
+import { SITE_META } from '../../web/app/core/site.js';
 import { SqliteAdapter, StoreInUseError } from './store.mjs';
 import { buildOpenApi } from './openapi.mjs';
 
@@ -41,11 +47,24 @@ const MAX_BODY = 64 * 1024;
 const IDEMPOTENCY_MS = 24 * 3600 * 1000;
 const IDEMPOTENCY_KEY = /^[A-Za-z0-9._:-]{8,128}$/;
 const KEY_SHAPE = /^osk_([0-9a-f]{8})_([A-Za-z0-9_-]{32})$/;
+// Devices: a phone or laptop a person connected at the console with a one-time code.
+const WEB_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..', 'web');
+const STATIC_TYPES = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json', '.webmanifest': 'application/manifest+json', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8' };
+const STATIC_HEADERS = { 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'Content-Security-Policy': "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'" };
+export const SITE_MARKER = '<meta name="ospeli-site-server" content="1">';
+const CODE_LETTERS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // no 0 O 1 I L: they are misread on a phone
+const CODE_MINUTES = 30;
+const CODE_WRONG_TRIES = 5;
+const DEVICE_IDLE_DAYS = 30;
+const DEVICE_COOKIE = 'ospeli_device';
+const DEVICE_SHAPE = /^osd_([0-9a-f]{8})_([A-Za-z0-9_-]{43})$/;
+const DEVICE_LABEL = /^[A-Za-z0-9][A-Za-z0-9 ._-]{1,30}$/;
+const cleanCode = (text) => String(text ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 const CONSOLE_ADMIN = 'ops-manager'; // the role console actions on agent access are recorded under
 
 const sha = (text) => createHash('sha256').update(text).digest('hex');
 const agentKey = (name) => String(name).trim().toLowerCase();
-const STATUS = { 'invalid-input': 400, unauthorized: 401, forbidden: 403, 'agents-off': 403, 'unknown-command': 404, 'not-found': 404, conflict: 409, 'idempotency-key-reused': 409, 'rate-limited': 429 };
+const STATUS = { 'code-wrong': 403, 'code-old': 410, 'not-connected': 401, 'invalid-input': 400, unauthorized: 401, forbidden: 403, 'agents-off': 403, 'unknown-command': 404, 'not-found': 404, conflict: 409, 'idempotency-key-reused': 409, 'rate-limited': 429 };
 
 // A fixed window per minute, per key (or per address for calls without a valid key).
 class Limiter {
@@ -85,6 +104,8 @@ export async function startServer({
     await loadSyntheticHospital(core, { end: end || currentHour(clock().getTime()) });
   }
   const keyLimiter = new Limiter(callsPerMinute, clock);
+  const deviceLimiter = new Limiter(600, clock);
+  const pairLimiter = new Limiter(10, clock);
   const anonLimiter = new Limiter(30, clock);
   const synthetic = async () => (await core.getMeta('synthetic', true)) !== false;
   const person = (role) => ({ type: 'human', role, via: 'console' });
@@ -125,6 +146,137 @@ export async function startServer({
     const listed = (await agentList(core)).find((r) => agentKey(r.name) === rec.agent);
     if (!listed || listed.addedAt !== rec.agentAddedAt) return { fail: 'removed' };
     return { rec, listed };
+  }
+
+  // ---- devices: a one-time code typed at the console connects a phone or laptop ----
+  // The code lives in memory only, one at a time, for 30 minutes, and is cancelled after five
+  // wrong tries from anywhere. The device then holds a random token in a cookie scripts cannot
+  // read; the server keeps only the token's hash. A device unused for 30 days must connect again.
+  const devices = async () => (await core.getMeta('devices', [])) || [];
+  const liveDevices = async () => (await devices()).filter((d) => !d.removedAt);
+  let pending = null; // { hash, label, role, expiresAt, wrong }
+  async function deviceCode({ label, role }) {
+    const all = await liveDevices();
+    const name = (label || '').trim() || `Device ${(await devices()).length + 1}`;
+    if (!DEVICE_LABEL.test(name)) throw new CommandError('invalid-input', 'Give the device a short label that says where it is, for example front desk tablet (letters, digits, spaces, dots, dashes).');
+    if (personNameIn(name) || personNameIn(name, { roleField: true }) || personalDetailIn(name)) throw new CommandError('invalid-input', 'That label looks like it names a person. Say where the device is or what it is for, for example front desk tablet.');
+    if (all.some((d) => d.label.toLowerCase() === name.toLowerCase())) throw new CommandError('conflict', `There is already a device called ${name}. Pick another label, or type: devices`);
+    if (!roleById(role)) throw new CommandError('invalid-input', 'Unknown role.');
+    let code = '';
+    for (let i = 0; i < 8; i += 1) code += CODE_LETTERS[randomInt(CODE_LETTERS.length)];
+    pending = { hash: sha(code), label: name, role, expiresAt: Date.parse(core.now()) + CODE_MINUTES * 60000, wrong: 0 };
+    await core.recordAs(person(CONSOLE_ADMIN), 'devices.code-issued', null, { device: name, role });
+    return { code: `${code.slice(0, 4)}-${code.slice(4)}`, label: name, role };
+  }
+  // Returns { device, cookie } or throws a CommandError with code 'code-wrong' or 'code-old'.
+  async function pairDevice(codeText) {
+    const now = Date.parse(core.now());
+    if (!pending || now > pending.expiresAt) {
+      pending = null;
+      throw new CommandError('code-old', 'That code is too old. Ask for a new one.');
+    }
+    const given = Buffer.from(sha(cleanCode(codeText)), 'hex');
+    if (!timingSafeEqual(given, Buffer.from(pending.hash, 'hex'))) {
+      pending.wrong += 1;
+      if (pending.wrong >= CODE_WRONG_TRIES) pending = null; // the code is cancelled; a person asks for a new one
+      throw new CommandError('code-wrong', 'That code is not right. Check it and try again.');
+    }
+    const { label, role } = pending;
+    pending = null; // single use
+    const id = randomBytes(4).toString('hex');
+    const token = `osd_${id}_${randomBytes(32).toString('base64url')}`;
+    const at = core.now();
+    await core.updateMeta('devices', (raw) => [...(raw || []), { id, label, role, hash: sha(token), addedAt: at, lastSeenAt: at, removedAt: null }], []);
+    await core.recordAs({ type: 'human', role, via: 'app', device: label }, 'devices.connected', null, { device: label, deviceId: id });
+    return { device: { id, label, role }, token };
+  }
+  async function removeDevice(which) {
+    const all = await liveDevices();
+    const d = /^\d+$/.test(which) ? all[Number(which) - 1] : all.find((x) => x.label.toLowerCase() === String(which).trim().toLowerCase());
+    if (!d) throw new CommandError('not-found', `There is no device ${which}. To see the list, type: devices`);
+    const at = core.now();
+    await core.updateMeta('devices', (raw) => (raw || []).map((x) => (x.id === d.id ? { ...x, removedAt: at } : x)), []);
+    await core.recordAs(person(CONSOLE_ADMIN), 'devices.removed', null, { device: d.label, deviceId: d.id });
+    return d;
+  }
+  const cookieOf = (req) => {
+    for (const part of String(req.headers.cookie || '').split(';')) {
+      const i = part.indexOf('=');
+      if (i > 0 && part.slice(0, i).trim() === DEVICE_COOKIE) return part.slice(i + 1).trim();
+    }
+    return null;
+  };
+  const deviceCookie = (token, maxAge) => `${DEVICE_COOKIE}=${token}; Path=/api/v1; HttpOnly; SameSite=Strict; Max-Age=${maxAge}`;
+  // Returns { device } or { fail: reason }. Nothing a caller sends besides the cookie counts.
+  async function authenticateDevice(req) {
+    const value = cookieOf(req);
+    if (!value) return { fail: 'missing' };
+    const parts = DEVICE_SHAPE.exec(value);
+    if (!parts) return { fail: 'unknown' };
+    const rec = (await devices()).find((d) => d.id === parts[1]);
+    const given = Buffer.from(sha(value), 'hex');
+    const stored = Buffer.from(rec ? rec.hash : sha('no such device'), 'hex');
+    if (!timingSafeEqual(given, stored) || !rec) return { fail: 'unknown' };
+    if (rec.removedAt) return { fail: 'removed' };
+    const now = Date.parse(core.now());
+    if (now - Date.parse(rec.lastSeenAt) > DEVICE_IDLE_DAYS * 864e5) return { fail: 'idle' };
+    if (now - Date.parse(rec.lastSeenAt) > 3600e3) {
+      const at = core.now();
+      await core.updateMeta('devices', (raw) => (raw || []).map((x) => (x.id === rec.id ? { ...x, lastSeenAt: at } : x)), []);
+    }
+    return { device: rec };
+  }
+  // A page on another site must not be able to make this browser act: a request that changes
+  // anything must come from a page this server served (Origin's host equals the Host it was
+  // called by, which hostAllowed has already checked). A missing or "null" Origin is refused.
+  const sameOrigin = (req) => {
+    try { return new URL(String(req.headers.origin)).host.toLowerCase() === String(req.headers.host || '').toLowerCase(); } catch { return false; }
+  };
+
+  // ---- what a connected device is sent: the site's data, never a key, a token or their hashes ----
+  const bootId = randomBytes(6).toString('hex');
+  let resets = 0; let rev = 1;
+  core.onChange(({ kind }) => { rev += 1; if (kind === 'reset') resets += 1; });
+  async function syncAnswer(query) {
+    const epoch = `${bootId}.${resets}`;
+    const same = query.get('epoch') === epoch;
+    if (same && Number(query.get('rev')) === rev) return { ok: true, epoch, rev, unchanged: true };
+    const after = (name) => { const n = Number(query.get(name)); return same && Number.isInteger(n) && n > 0 ? n : 0; };
+    const [ev, au] = [after('events'), after('audit')];
+    const atRev = rev;
+    const meta = {};
+    for (const id of SITE_META) meta[id] = await core.getMeta(id, null);
+    if (Array.isArray(meta['agent-proposals'])) meta['agent-proposals'] = meta['agent-proposals'].map(({ request, ...p }) => p);
+    return {
+      ok: true, epoch, rev: atRev, full: !same,
+      entities: await core.listEntities(),
+      events: (await core.events()).filter((e) => e.seq > ev),
+      audit: (await core.auditLog()).filter((e) => e.seq > au),
+      meta,
+    };
+  }
+
+  // ---- the app's own files, so a phone can open it from this computer ----
+  async function serveStatic(req, res, path) {
+    const plain = (status, text, headers = {}) => { res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8', ...STATIC_HEADERS, ...headers }); res.end(text); };
+    if (req.method !== 'GET' && req.method !== 'HEAD') return plain(405, 'This address takes GET.');
+    if (path === '/' || path === '/app') return plain(302, 'The app is at /app/', { Location: '/app/' });
+    let rel;
+    try { rel = decodeURIComponent(path); } catch { return plain(400, 'Bad address.'); }
+    if (rel.includes('\0') || rel.split('/').some((seg) => seg === '..' || seg.startsWith('.'))) return plain(404, 'Not found.');
+    if (rel.endsWith('/')) rel += 'index.html';
+    const file = resolve(WEB_ROOT, `.${rel}`);
+    const allowed = ['app', 'brand'].some((d) => file.startsWith(resolve(WEB_ROOT, d) + sep)) || ['favicon.svg', 'favicon.ico'].some((f) => file === resolve(WEB_ROOT, f));
+    const type = STATIC_TYPES[extname(file)];
+    if (!allowed || !type) return plain(404, 'Not found.');
+    const info = await stat(file).catch(() => null);
+    if (!info?.isFile()) return plain(404, 'Not found.');
+    let body = await readFile(file);
+    // The app's page is told it came from a site server, so it asks for a code instead of
+    // loading the made-up hospital into the browser (web/app/app.js).
+    if (file === resolve(WEB_ROOT, 'app', 'index.html')) body = Buffer.from(body.toString('utf8').replace('<meta charset="utf-8">', `<meta charset="utf-8">\n${SITE_MARKER}`));
+    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-cache', ...STATIC_HEADERS });
+    res.end(req.method === 'HEAD' ? undefined : body);
   }
 
   // ---- answers ----
@@ -235,6 +387,57 @@ export async function startServer({
     });
   }
 
+  // Calls from a connected device: a person in the device's role, via "app".
+  async function handleDevice(req, res, path, m, from) {
+    const notConnected = (reason) => fail(res, 'not-connected', 'This device is not connected.', 'Ask the person who looks after Ospeli here for a code (they type: add device).', { reason }, reason === 'missing' ? {} : { 'Set-Cookie': deviceCookie('gone', 0) });
+    const jsonBody = async () => {
+      if (!/^application\/json\b/i.test(req.headers['content-type'] || '')) throw new CommandError('invalid-input', 'The body must be JSON, with the header Content-Type: application/json.');
+      let body;
+      try { body = JSON.parse(await readBody(req) || '{}'); } catch (err) { throw err instanceof CommandError ? err : new CommandError('invalid-input', 'The body is not valid JSON.'); }
+      if (!body || typeof body !== 'object' || Array.isArray(body)) throw new CommandError('invalid-input', 'The body must be a JSON object.');
+      return body;
+    };
+    try {
+      if (path === '/api/v1/devices/pair') {
+        if (req.method !== 'POST') return fail(res, 'invalid-input', 'This address takes POST.', 'Open the app in a browser and type the code there.');
+        if (!sameOrigin(req)) return fail(res, 'forbidden', 'This call did not come from the Ospeli app on this server.', 'Open the app from the address the server printed.');
+        const slot = pairLimiter.take(`pair|${from}`);
+        if (!slot.ok) return fail(res, 'rate-limited', 'Too many tries. Wait a minute, then try again.', `Wait ${slot.retryAfter} seconds.`, {}, { 'Retry-After': String(slot.retryAfter) });
+        const body = await jsonBody();
+        if (typeof body.code !== 'string' || Object.keys(body).length !== 1) throw new CommandError('invalid-input', 'Send { "code": "…" } and nothing else.');
+        const { device, token } = await pairDevice(body.code);
+        return send(res, 200, { ok: true, device: { label: device.label, role: device.role, roleName: roleById(device.role).name } }, { 'Set-Cookie': deviceCookie(token, DEVICE_IDLE_DAYS * 86400) });
+      }
+      const auth = await authenticateDevice(req);
+      if (auth.fail) {
+        const slot = anonLimiter.take(`nodevice|${from}`);
+        if (!slot.ok) return fail(res, 'rate-limited', 'Too many calls from a device that is not connected.', `Wait ${slot.retryAfter} seconds.`, {}, { 'Retry-After': String(slot.retryAfter) });
+        return notConnected(auth.fail);
+      }
+      const d = auth.device;
+      if (!deviceLimiter.take(d.id).ok) return fail(res, 'rate-limited', 'Too many calls from this device in a minute.', 'Wait a minute, then go on.', {}, { 'Retry-After': '60' });
+      if (path === '/api/v1/session') {
+        if (req.method !== 'GET') return fail(res, 'invalid-input', 'session takes GET.', 'Send a GET request.');
+        return send(res, 200, { ok: true, device: { label: d.label, role: d.role, roleName: roleById(d.role).name }, site: HOSPITAL_NAME });
+      }
+      if (path === '/api/v1/sync') {
+        if (req.method !== 'GET') return fail(res, 'invalid-input', 'sync takes GET.', 'Send a GET request.');
+        return send(res, 200, await syncAnswer(new URL(req.url, 'http://site').searchParams));
+      }
+      if (req.method !== 'POST') return fail(res, 'invalid-input', 'Commands take POST.', 'Send POST with a JSON body like { "input": { } }.');
+      if (!sameOrigin(req)) return fail(res, 'forbidden', 'This call did not come from the Ospeli app on this server.', 'Open the app from the address the server printed.');
+      const body = await jsonBody();
+      // Who is acting comes from the cookie. A body that says anything else is refused.
+      if (Object.keys(body).some((k) => k !== 'input')) throw new CommandError('invalid-input', 'The body may hold only "input". Who is acting comes from the connected device.');
+      const who = { type: 'human', role: d.role, via: 'app', device: d.label };
+      const result = await runCommand(core, m[1], body.input ?? {}, who);
+      return send(res, 200, { ok: true, command: commandByName(m[1])?.name || m[1], result });
+    } catch (err) {
+      if (!(err instanceof CommandError)) throw err;
+      return fail(res, err.code, err.message, err.code === 'code-old' || err.code === 'code-wrong' ? 'Ask the person who looks after Ospeli here for a code (they type: add device).' : 'Nothing was changed.', err.detail && typeof err.detail === 'object' ? { detail: err.detail } : {});
+    }
+  }
+
   const openapi = () => buildOpenApi(listCommands(), { serverVersion: SERVER_VERSION });
 
   async function handle(req, res) {
@@ -252,7 +455,19 @@ export async function startServer({
       }
       return send(res, 200, open[path]());
     }
+    // The app's own files (and nothing else on this computer): /, /app/…, /brand/…, the icon.
+    let rawPath = null;
+    try { rawPath = new URL(req.url, 'http://site').pathname; } catch { /* an address the parser rejects: the plain 404 below */ }
+    if (rawPath !== null && (rawPath === '/' || rawPath === '/app' || rawPath.startsWith('/app/') || rawPath.startsWith('/brand/') || /^\/favicon\.(svg|ico)$/.test(rawPath))) return serveStatic(req, res, rawPath);
     const m = /^\/api\/v1\/commands\/([^/]{1,80})$/.exec(path);
+    const hasKey = req.headers.authorization !== undefined;
+    const hasCookie = cookieOf(req) !== null;
+    if (['/api/v1/devices/pair', '/api/v1/session', '/api/v1/sync'].includes(path) || (m && hasCookie)) {
+      // One door per call: an agent key and a device cookie together are refused, so a call can
+      // never be read as both an agent and a person.
+      if (hasKey) return fail(res, 'invalid-input', hasCookie ? 'This call carries an agent key and a device cookie. Send one of them.' : 'This address is for a connected device, not an agent key.', 'Agents use GET /api/v1/whoami and POST /api/v1/commands/<name> with their key, and no cookie.');
+      return handleDevice(req, res, path, m, from);
+    }
     if (path !== '/api/v1/whoami' && !m) return fail(res, 'not-found', 'There is nothing at this address.', 'Start with GET /api/v1/health, then GET /api/v1/whoami with your key.');
 
     // The key decides who is calling. Calls without a valid key are limited per address before
@@ -349,6 +564,9 @@ export async function startServer({
     '  agents               the bots on this site\'s list',
     '  new key NAME         a new key for a bot (the old one stops working)',
     '  remove agent NAME    take a bot off the list',
+    '  add device           connect a phone or laptop (2 questions, then a code to type on it)',
+    '  devices              the phones and laptops connected to this site',
+    '  remove device 2      disconnect device 2 on that list',
     '  audit                check the audit trail and show the last entries',
     '  backup FILE          save a copy of all data to FILE',
     '  status               the address and whether bots are on',
@@ -363,11 +581,13 @@ export async function startServer({
       'Ospeli is running on this computer. Leave this window open.',
       `Data: DEMO (${HOSPITAL_NAME}, made up; no real patients). Do not load real records.`,
       shareUrl ? `Address for other computers here: ${shareUrl}` : `Address: ${url} (this computer only)`,
-      ...(shareUrl ? ['Warning: keys travel unencrypted on your network. Use this only on a network you trust.'] : []),
+      ...(shareUrl ? ['Warning: keys and device links travel unencrypted on your network. Use this only on a network you trust.'] : []),
       access.allowed ? `Bots and scripts: ON for ${live} bot${live === 1 ? '' : 's'}. They read and suggest; a person here says yes or no.` : 'Bots and scripts: OFF. No bot or script can read or suggest yet.',
+      `On a phone or laptop: ${appUrl} (first type here: add device)`,
       `Data file: ${resolve(file)}`,
       '',
       'Type a word below and press Enter:',
+      '  add device    connect a phone or laptop to this site',
       '  setup agent   let one bot in (4 questions)',
       '  proposals     see changes waiting for a person',
       '  stop agents   shut out every bot now',
@@ -376,11 +596,36 @@ export async function startServer({
     ].join('\n');
   }
 
-  let wizard = null; // the "setup agent" questions, one line at a time
+  const appUrl = `${shareUrl || url}/app/`;
+  const deviceText = (out) => [
+    `Code for "${out.label}" (${roleById(out.role).name}):`,
+    '',
+    `    ${out.code}`,
+    '',
+    'On the phone or laptop:',
+    ...(shareUrl ? ['  1. Join the same Wi-Fi or network as this computer.', `  2. Open a browser and go to: ${appUrl}`, '  3. Type the code.'] : [`  1. Open a browser on this computer and go to: ${appUrl}`, '  2. Type the code.', '  (Other devices cannot reach Ospeli yet. To let them, start it with: --host 0.0.0.0)']),
+    `The code works once, for ${CODE_MINUTES} minutes. What is done on that device is recorded as a person in that role, from "${out.label}".`,
+    ...(shareUrl ? ['Warning: this network link is not encrypted. Use it only on a network you trust.'] : []),
+  ].join('\n');
+
+  let wizard = null; // the "setup agent" and "add device" questions, one line at a time
   async function wizardStep(line) {
     const w = wizard; const text = line.trim();
     if (/^stop (agents|bots)$/i.test(text)) { wizard = null; return consoleLine('stop agents'); }
     if (/^(cancel|stop|quit)$/i.test(text)) { wizard = null; return 'Cancelled. Nothing was changed.'; }
+    if (w.step === 'device-label') {
+      if (text && (!DEVICE_LABEL.test(text) || personNameIn(text) || personNameIn(text, { roleField: true }))) return 'Say where the device is or what it is for, not whose it is, for example front desk tablet (letters, digits, spaces, dots, dashes). Or press Enter to skip.';
+      if (text && (await liveDevices()).some((d) => d.label.toLowerCase() === text.toLowerCase())) return `There is already a device called ${text}. Pick another label, or press Enter to skip.`;
+      w.label = text; w.step = 'device-role';
+      return `2 of 2. Which role will use it? It can see and do what that role can.\n${ROLES.map((r, i) => `  ${i + 1}  ${r.name}`).join('\n')}\nType a number.`;
+    }
+    if (w.step === 'device-role') {
+      const r = ROLES[Number(text) - 1];
+      if (!r) return `Type a number from 1 to ${ROLES.length}. Or type: cancel`;
+      wizard = null;
+      const out = await deviceCode({ label: w.label, role: r.id });
+      return deviceText(out);
+    }
     if (w.step === 'name') {
       if (!/^[A-Za-z0-9][A-Za-z0-9 ._-]{1,40}$/.test(text)) return 'Give the bot a short name that says what it does, for example night-helper (letters, digits, spaces, dots, dashes). Or type: cancel';
       if ((await agentList(core)).some((r) => agentKey(r.name) === agentKey(text))) return `There is already a bot called ${text}. Pick another name, or type cancel and then: remove agent ${text}`;
@@ -411,7 +656,7 @@ export async function startServer({
       // "bot" and "agent" are the same word here.
       const text = line.trim().replace(/\s+/g, ' ').replace(/^(setup|stop|start|remove) bots?\b/i, (m0, v) => `${v} agent${/^(stop|start)$/i.test(v) ? 's' : ''}`).replace(/^bots$/i, 'agents');
       const low = text.toLowerCase();
-      const bare = { accept: 'Type accept and the number, for example: accept 1', decline: 'Type decline and the number, for example: decline 1', 'new key': 'Type new key and the bot\'s name, for example: new key night-helper', 'remove agent': 'Type remove agent and the bot\'s name, for example: remove agent night-helper', backup: 'Type backup and a file name, for example: backup ospeli-copy.db' }[low];
+      const bare = { accept: 'Type accept and the number, for example: accept 1', decline: 'Type decline and the number, for example: decline 1', 'new key': 'Type new key and the bot\'s name, for example: new key night-helper', 'remove agent': 'Type remove agent and the bot\'s name, for example: remove agent night-helper', 'remove device': 'Type remove device and its number on the list, for example: remove device 1. To see the list, type: devices', backup: 'Type backup and a file name, for example: backup ospeli-copy.db' }[low];
       if (bare) return bare;
       if (!text) return '';
       if (low === 'help' || low === '?') return HELP;
@@ -440,6 +685,16 @@ export async function startServer({
         }), out.allowed ? 'To shut every bot out now, type: stop agents' : 'To let them in again, type: start agents'].join('\n');
       }
       let m;
+      if (low === 'add device' || low === 'add a device') { wizard = { step: 'device-label' }; return '1 of 2. Where is this device, or what is it for? For example: front desk tablet. (Press Enter to skip. Type cancel to stop.)'; }
+      if (low === 'devices') {
+        const all = await liveDevices();
+        if (!all.length) return 'No phone or laptop is connected. To connect one, type: add device';
+        return ['Connected devices:', ...all.map((d, i) => `  ${i + 1}  ${d.label} · ${roleById(d.role)?.name || d.role} · last used ${ago(d.lastSeenAt)}`), 'To disconnect one, type: remove device NUMBER'].join('\n');
+      }
+      if ((m = /^remove device (.+)$/i.exec(text))) {
+        const d = await removeDevice(m[1]);
+        return `"${d.label}" is disconnected. It will ask for a new code.`;
+      }
       if ((m = /^new key (.+)$/i.exec(text))) {
         const { key, agent } = await issueKey(m[1]);
         return `New key for "${agent.name}". The old one no longer works. Copy it now; it cannot be shown again:\n  ${key}`;
@@ -472,7 +727,7 @@ export async function startServer({
       if (low === 'audit') {
         const log = await core.auditLog();
         const check = await core.auditCheck();
-        const who = (e) => (e.actorType === 'agent' ? `agent ${e.agent}${e.via === 'api' ? ' (over the API)' : ''}` : e.actorType === 'system' ? 'system' : `person, ${roleById(e.actorRole)?.name || e.actorRole}${e.via === 'console' ? ' (at this console)' : ''}`);
+        const who = (e) => (e.actorType === 'agent' ? `agent ${e.agent}${e.via === 'api' ? ' (over the API)' : ''}` : e.actorType === 'system' ? 'system' : `person, ${roleById(e.actorRole)?.name || e.actorRole}${e.via === 'console' ? ' (at this console)' : e.via === 'app' ? ` (on ${e.device})` : ''}`);
         return [check.ok ? auditLine(check) : `Audit trail: BROKEN at entry ${check.at} (${check.reason}). Tell the person who looks after this server.`,
           ...log.slice(-8).map((e) => `  ${e.seq}  ${e.at.slice(0, 16).replace('T', ' ')}  ${who(e)}  ${e.action}${e.detail?.command ? ` ${e.detail.command}` : ''}`)].join('\n');
       }
@@ -492,7 +747,7 @@ export async function startServer({
 
   return {
     core, url, shareUrl, port: actualPort, file,
-    banner, consoleLine, addAgent, issueKey, openapi,
+    banner, consoleLine, addAgent, issueKey, openapi, deviceCode, appUrl,
     async close() {
       await new Promise((r) => { server.close(r); server.closeAllConnections?.(); });
       await core.queue;

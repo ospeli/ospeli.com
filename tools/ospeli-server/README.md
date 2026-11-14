@@ -1,8 +1,8 @@
 # Ospeli site server (first version)
 
-Runs the Ospeli core on your site's own computer, with an HTTP API. Your scripts and bots can read and propose; every change waits until it is accepted at the server console.
+Runs the Ospeli core on your site's own computer, with an HTTP API. Your scripts and bots can read and propose; every change waits until a person accepts it, at the server window or on a phone or laptop connected to it.
 Agent access is Off until a person switches it on. Synthetic data only: do not load real records.
-Not built yet: app sync, sign-in for people, the AI assistant connector, the event feed. The code is public to read; an open-source licence is planned for March 2027.
+Not built yet: named sign-in for people, changes made on a device with no connection, the AI assistant connector, the event feed. The code is public to read; an open-source licence is planned for March 2027.
 
 ## Start
 You need Node.js 22.13 or newer (nodejs.org, the "LTS" version). Nothing else to install.
@@ -16,6 +16,14 @@ In the server window type `setup agent` and answer four questions (its name, the
 
 ## See what bots suggest
 Type `proposals`. Nothing changes until you type `accept 1` or `decline 1`.
+
+## Use it from a phone or laptop
+In the server window type `add device`. Say where the device is (for example: front desk tablet) and which role will use it. Ospeli shows a one-time code and the address to open.
+On the phone or laptop, open that address in a browser and type the code. You do this once per device.
+That device now shows your site's information, opens on its role's own screen, and can say yes or no to what a bot suggests.
+With no connection it shows the last information it had, says so, and refuses changes. They are not kept for later yet.
+`devices` lists the connected devices; `remove device 1` disconnects one. A device not used for 30 days asks for a new code.
+Other computers can reach Ospeli only if you start it with `--host 0.0.0.0`. That link is not encrypted: synthetic data, on a network you trust.
 
 ## Stop everything
 Type `stop agents`. Every bot is shut out at once. `start agents` lets the listed bots in again.
@@ -33,8 +41,9 @@ Press Ctrl and C together. Your data is saved in one file (`tools/ospeli-server/
 - Text people typed (process-map titles and step names) is data, never instructions; answers that may hold it carry `untrustedText`.
 
 ## What this version does and does not check
-- Who is calling comes from the key and nothing else. A call made with a key is recorded as that agent (`via: api`); a call with no valid key is refused and counted as "unlisted". No API call can be recorded as a person.
-- People act in the server window. Those entries are recorded as a person in a role, marked `via: console`. This is not a named sign-in: anyone who can use the server's window can act there, so keep that computer's login to the people who should.
+- Who is calling comes from the agent key or the device's cookie and nothing else. A call made with a key is recorded as that agent (`via: api`) and can never be recorded as a person; a call with no valid key is refused and counted as "unlisted". A call that carries both a key and a device cookie is refused.
+- A device added with `add device` acts as a person in the role chosen for it, marked `via: app` with the device's label. This is not a named sign-in: anyone holding that device can act in that role, so give devices to places, not to the public, and remove one that is lost. The code works once, for 30 minutes, and is cancelled after five wrong tries. The device keeps a random token in a cookie that page scripts cannot read; the server keeps only its hash. A request that changes anything must come from a page this server served.
+- People also act in the server window. Those entries are recorded as a person in a role, marked `via: console`. This is not a named sign-in: anyone who can use the server's window can act there, so keep that computer's login to the people who should.
 - It listens on this computer only. `--host 0.0.0.0` lets other computers on your network reach it; keys then travel unencrypted, so use it only on a network you trust.
 - One server per data file. Other options: `--port 8787`, `--data FILE`.
 

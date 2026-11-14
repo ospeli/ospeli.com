@@ -124,7 +124,97 @@ function testHookAllowed() {
   return window.__OSPELI_TEST__ === true && ['127.0.0.1', 'localhost', '[::1]'].includes(location.hostname);
 }
 
+// Opened from a site's own server (tools/ospeli-server marks the page): this device shows that
+// site's information and sends every change to it. The role is the one chosen for this device
+// at the server. Nothing is loaded into the browser from the made-up hospital.
+const ON_SITE_SERVER = !!document.querySelector('meta[name="ospeli-site-server"]');
+
+async function bootOnSite() {
+  const { MirrorAdapter, SiteLink } = await import('./core/site.js');
+  const { renderConnect } = await import('./modules/connect.js');
+  const mirror = new MirrorAdapter(await openStorage('ospeli-site'));
+  const link = new SiteLink({ mirror });
+  let who = await link.session();
+  if (who.needsCode) {
+    await mirror.wipe(); // nothing from an earlier connection stays on a device that must ask again
+    document.documentElement.dataset.site = 'connect'; // one task on this screen: no menu, no role, no badge
+    document.documentElement.dataset.ready = 'connect';
+    who = await renderConnect(main, link);
+    main.innerHTML = '<p class="loading">Opening Ospeli…</p>';
+    delete document.documentElement.dataset.site;
+  }
+  const remembered = await mirror.get('meta', 'site-device');
+  if (who.offline) {
+    if (!remembered?.value || !(await mirror.syncState())) {
+      main.innerHTML = '<div class="card notice" data-test="site-unreachable"><h2>Not connected</h2><p>This device cannot reach Ospeli on your site right now. Check the Wi-Fi, then try again.</p><p class="actions"><button class="btn" type="button" id="site-retry">Try again</button></p></div>';
+      $('#site-retry').addEventListener('click', () => location.reload());
+      document.documentElement.dataset.ready = 'offline';
+      return;
+    }
+    who = { device: remembered.value };
+  } else {
+    await mirror.put('meta', { id: 'site-device', value: who.device });
+  }
+  const core = await Core.open({ adapter: mirror });
+  link.core = core;
+  if (link.connected) await link.pull();
+  const ctx = { core, role: who.device.role, storage: 'site', routed: false, site: link, device: who.device };
+  ctx.run = (name, input) => link.run(name, input, ctx.role);
+  // Agents do not come in through the page here: they use their own key over the site's API.
+  const api = {
+    version: '0.4.0',
+    commands: () => listCommands(),
+    describe: (name) => describeCommand(name),
+    run: async () => { throw new Error('On a site server, an agent uses its own key over the API (GET /api/v1/whoami). The page has no agent door.'); },
+  };
+  if (testHookAllowed()) api.core = core;
+  Object.defineProperty(window, 'ospeli', { value: Object.freeze(api), writable: false, configurable: false, enumerable: true });
+  await showSynthetic(core);
+  core.onChange(({ kind }) => { if (kind === 'reset' || kind === 'entities') showSynthetic(core); });
+
+  // The role was chosen for this device at the server, so there is nothing to pick here.
+  const fixed = document.createElement('span');
+  fixed.className = 'role-fixed';
+  fixed.dataset.test = 'device-role';
+  fixed.textContent = roleById(ctx.role).name;
+  $('#role-select').closest('label').replaceWith(fixed);
+
+  const bar = document.createElement('p');
+  bar.className = 'site-bar';
+  bar.setAttribute('role', 'status');
+  bar.dataset.test = 'site-status';
+  $('.topbar').append(bar); // in the top bar, which stays on screen while the page scrolls
+  const hhmm = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const showLink = ({ connected, reason } = { connected: link.connected }) => {
+    if (reason === 'needs-code') { location.reload(); return; }
+    document.documentElement.dataset.site = connected ? 'connected' : 'offline';
+    bar.hidden = connected;
+    bar.textContent = connected ? '' : `Not connected. You see the information from ${link.lastAt ? hhmm(link.lastAt) : 'the last time this device was connected'}. You cannot save changes now.`;
+    // The menu column starts under the top bar, which is taller while the line shows.
+    if (connected) document.documentElement.style.removeProperty('--top');
+    else document.documentElement.style.setProperty('--top', `${$('.topbar').offsetHeight}px`);
+    $('#storage-status').textContent = connected ? `Connected. Changes are saved. ${who.device.label}.` : `Not connected. ${who.device.label}.`;
+  };
+  link.onState(showLink);
+  showLink();
+  buildNav();
+  $('#menu-btn').addEventListener('click', () => setMenu(!$('#nav').classList.contains('open')));
+  window.addEventListener('hashchange', () => route(ctx));
+  // A connected device opens on its role's own screen: the job is one tap away, not a menu away.
+  if (!location.hash || location.hash === '#/') history.replaceState(null, '', `#/${roleById(ctx.role).home}`);
+  await route(ctx);
+  document.documentElement.dataset.ready = 'true';
+  // Keep the copy fresh while the page is in view, and at once when the device comes back.
+  setInterval(() => { if (document.visibilityState === 'visible') link.pull(); }, 4000);
+  window.addEventListener('online', () => link.pull());
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') link.pull(); });
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* the app still works online */ });
+  }
+}
+
 async function boot() {
+  if (ON_SITE_SERVER) return bootOnSite();
   const adapter = await openStorage('ospeli');
   const core = await Core.open({ adapter });
   // First run on this device: load the synthetic Example General Hospital.

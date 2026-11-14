@@ -463,3 +463,22 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .late-bar i { display: block; height: 100%; background: var(--mango); border-radius: 4px 0 0 4px; }
 .chip.wo-started { background: #DDF1EA; color: #0B4A3A; }
 .chip.wo-team { background: #fff; color: var(--navy); box-shadow: inset 0 0 0 1.5px var(--navy); }
+
+/* ---- a device connected to its site's own server (app.js bootOnSite, modules/connect.js) ---- */
+.connect { max-width: 26rem; margin: 1.5rem auto; display: grid; gap: .75rem; }
+.connect h1 { margin: 0; font-size: 1.5rem; }
+.connect p { margin: 0; font-size: 1rem; }
+.connect input { font-size: 1.5rem; font-weight: 700; letter-spacing: .12em; text-align: center; min-height: 56px; width: 100%; text-transform: uppercase; }
+.connect input::placeholder { color: #8a99a8; font-weight: 400; }
+.connect-btn { min-height: 52px; width: 100%; font-size: 1.125rem; }
+.connect-msg { color: #0B2F4E; font-weight: 700; min-height: 1.5em; }
+.connect-msg:not(:empty) { background: #fdf1d7; border-left: 4px solid #EE9B00; padding: .5rem .75rem; border-radius: 6px; }
+.role-fixed { font-weight: 700; font-size: .9375rem; color: #0B2F4E; padding: .5rem .75rem; border: 1px solid #c9d3dc; border-radius: 10px; background: #fff; max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.site-bar { order: 9; flex: 0 0 100%; margin: 0; padding: .5rem .75rem; background: #fdf1d7; border-left: 4px solid #EE9B00; border-radius: 6px; color: #0B2F4E; font-weight: 700; font-size: .9375rem; line-height: 1.35; }
+.site-bar[hidden] { display: none; }
+.connect .meta { font-size: .9375rem; }
+html[data-site="connect"] .role, html[data-site="connect"] .menu-btn, html[data-site="connect"] .hospital, html[data-site="connect"] .nav { display: none; }
+html[data-site="connect"] .layout { display: block; }
+@media (max-width: 760px) {
+  .role-fixed { margin-left: auto; max-width: 46vw; white-space: normal; text-align: right; line-height: 1.2; padding: .375rem .625rem; }
+}

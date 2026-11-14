@@ -1,7 +1,7 @@
 // Ospeli app service worker: precache the shell so the app opens offline.
 // Strategy: serve from cache at once, refresh the cache from the network in the background.
 // Bump VERSION when the precache list changes. scripts/check.py checks that every file exists.
-const VERSION = 'ospeli-app-v15';
+const VERSION = 'ospeli-app-v16';
 const PRECACHE = [
   './',
   'index.html',
@@ -19,6 +19,7 @@ const PRECACHE = [
   'core/commands.js',
   'core/workorders.js',
   'core/processmap.js',
+  'core/site.js',
   'modules/registry.js',
   'modules/ui.js',
   'modules/soon.js',
@@ -30,6 +31,7 @@ const PRECACHE = [
   'modules/beds.js',
   'modules/process.js',
   'modules/agents.js',
+  'modules/connect.js',
   'fonts/nunito-latin-400-normal.woff2',
   'fonts/nunito-latin-600-normal.woff2',
   'fonts/nunito-latin-700-normal.woff2',
@@ -53,6 +55,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  // A site server's live answers (/api/v1/…) are never served from the cache.
+  if (new URL(req.url).pathname.startsWith('/api/')) return;
   event.respondWith((async () => {
     const cache = await caches.open(VERSION);
     const key = req.mode === 'navigate' ? new URL('./', self.location).href : req;

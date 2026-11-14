@@ -84,6 +84,12 @@ export class Core {
     }
   }
 
+  // The storage was filled from outside the core (a device showing its site server's data, see
+  // core/site.js): read the tails again and tell the views.
+  reloaded(kind = 'events', detail = null) {
+    return this._serial(async () => { await this._loadTails(); this._emitLocal(kind, detail); });
+  }
+
   now() { return this.clock().toISOString(); }
 
   // Writes run one at a time so sequence numbers and the hash chain stay consistent.
@@ -104,7 +110,7 @@ export class Core {
     const who = typeof actor === 'string' ? { role: actor } : { ...actor };
     if (who.type !== 'agent') who.type = who.role === 'system' ? 'system' : 'human';
     const [entry] = await this._appendLog('audit', 'lastAudit', async (tail) => [await makeEntry(tail, {
-      at, actorRole: who.role, actorType: who.type, agent: who.agent, via: who.via, action, target, detail,
+      at, actorRole: who.role, actorType: who.type, agent: who.agent, via: who.via, device: who.device, action, target, detail,
     })]);
     return entry;
   }

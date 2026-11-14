@@ -1267,7 +1267,10 @@ function normaliseActor(actor) {
     throw new CommandError('forbidden', 'An agent must give its name.');
   }
   // via: which door of the site server the call came through. Only the server sets it.
-  const via = actor.via === 'console' || actor.via === 'api' ? { via: actor.via } : {};
+  // "app" (a device a person connected at the server's console) is for people only, and carries
+  // the device's label; an agent can never come through that door.
+  const via = actor.via === 'console' || actor.via === 'api' ? { via: actor.via }
+    : actor.via === 'app' && type === 'human' && typeof actor.device === 'string' && actor.device ? { via: 'app', device: actor.device } : {};
   return type === 'agent' ? { type, role: actor.role, agent: actor.agent, ...via } : { type, role: actor.role, ...via };
 }
 

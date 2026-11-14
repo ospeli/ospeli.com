@@ -23,11 +23,12 @@ export async function sha256(text) {
 
 // actorType is "human", "agent" or "system" (issue #17); agent is only on agent entries.
 // via says which door the call came through on the site server: "console" (typed at the server
-// itself) or "api" (over HTTP with an agent key). The browser app does not set it.
+// itself), "api" (over HTTP with an agent key) or "app" (from a device a person connected at the
+// console; `device` is then that device's label). The browser app on its own does not set it.
 // Undefined keys are left out of the hash, so entries written before this still verify.
-const body = (e) => ({ seq: e.seq, at: e.at, actorRole: e.actorRole, actorType: e.actorType, agent: e.agent, via: e.via, action: e.action, target: e.target, detail: e.detail, prev: e.prev });
+const body = (e) => ({ seq: e.seq, at: e.at, actorRole: e.actorRole, actorType: e.actorType, agent: e.agent, via: e.via, device: e.device, action: e.action, target: e.target, detail: e.detail, prev: e.prev });
 
-export async function makeEntry(prevEntry, { at, actorRole, actorType, agent, via, action, target = null, detail = null }) {
+export async function makeEntry(prevEntry, { at, actorRole, actorType, agent, via, device, action, target = null, detail = null }) {
   const entry = {
     seq: prevEntry ? prevEntry.seq + 1 : 1,
     at, actorRole, action, target, detail,
@@ -35,7 +36,8 @@ export async function makeEntry(prevEntry, { at, actorRole, actorType, agent, vi
   };
   if (actorType === 'agent') { entry.actorType = 'agent'; entry.agent = agent; }
   else if (actorType === 'human' || actorType === 'system') entry.actorType = actorType;
-  if (via === 'console' || via === 'api') entry.via = via;
+  if (via === 'console' || via === 'api' || via === 'app') entry.via = via;
+  if (via === 'app' && typeof device === 'string' && device) entry.device = device;
   entry.hash = await sha256(canonical(body(entry)));
   return entry;
 }
