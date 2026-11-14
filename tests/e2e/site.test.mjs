@@ -238,7 +238,7 @@ test('front page hero card: labelled an illustration, and its numbers are a stat
   const states = [];
   for (let hr = 0; hr < 24; hr++) {
     const end = `2026-11-12T${String(hr).padStart(2, '0')}:00:00.000Z`;
-    const core = await Core.open({ adapter: new MemoryAdapter(), now: () => end });
+    const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(end) });
     await loadSyntheticHospital(core, { end });
     const who = { type: 'human', role: 'coo' };
     const b = await runCommand(core, 'ospeli_beds_board', { format: 'short' }, who);
