@@ -4,6 +4,7 @@
 import { MemoryAdapter } from './db.js';
 import { ENTITY_TYPES, validateEntity, validateEvent, roleById } from './model.js';
 import { makeEntry, verifyChain } from './audit.js';
+import { personalDetailIn, personNameIn } from './processmap.js';
 
 export const EXPORT_FORMAT = 'ospeli-export';
 
@@ -24,6 +25,35 @@ export function findIdentifierFields(data) {
     }
   };
   (data.entities || []).forEach((e, i) => walk(e, `entities[${i}]`, ENTITY_OWN_KEYS));
+  (data.events || []).forEach((e, i) => walk(e?.data, `events[${i}].data`));
+  return hits;
+}
+// The values are read too (issue #19): a neutral key such as note, title, label or an entity's
+// own name can still carry a person. Every string value in the entities and in the events' data
+// goes through the same check as process-map free text (a titled name, a phone, record or ID
+// number, an email address, a date of birth); an entity's name is also refused when it reads as a
+// person's name. Ids and time stamps are skipped. A list cannot catch every name: an untitled
+// name inside a sentence passes. The answer names the place, never the value.
+const ID_OR_TIME_KEY = /^(id|type|kind|at|ts|seq|prev|hash|version|start|end)$|(Id|At)$/;
+const ISO_TIME = /^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:?\d{2})?)?$/;
+export function findIdentifierValues(data) {
+  const hits = [];
+  const check = (val, path, entityName) => {
+    if (ISO_TIME.test(val)) return;
+    if (personalDetailIn(val) || personNameIn(val) || (entityName && personNameIn(val, { roleField: true }))) hits.push(path);
+  };
+  const walk = (v, path, top = false) => {
+    if (hits.length >= 10 || v == null) return;
+    if (typeof v === 'string') return;
+    if (typeof v !== 'object') return;
+    for (const [k, val] of Object.entries(v)) {
+      if (hits.length >= 10) return;
+      const here = Array.isArray(v) ? `${path}[${k}]` : `${path}.${k}`;
+      if (typeof val === 'string') { if (Array.isArray(v) || !ID_OR_TIME_KEY.test(k)) check(val, here, top && k === 'name'); }
+      else walk(val, here);
+    }
+  };
+  (data.entities || []).forEach((e, i) => walk(e, `entities[${i}]`, true));
   (data.events || []).forEach((e, i) => walk(e?.data, `events[${i}].data`));
   return hits;
 }
@@ -350,6 +380,8 @@ export class Core {
     if (errs.length) return errs;
     const ids = findIdentifierFields(data);
     if (ids.length) return [`This file has fields that look like personal details (${ids.slice(0, 3).join(', ')}). This build accepts synthetic data only.`];
+    const vals = findIdentifierValues(data);
+    if (vals.length) return [`This file has text that looks like personal details (a name with a title, a phone, record or ID number, an email address or a date) at ${vals.slice(0, 3).join(', ')}. This build accepts synthetic data only.`];
     const byId = new Map();
     for (const e of data.entities) {
       const v = validateEntity(e);
@@ -390,7 +422,7 @@ export class Core {
       await this._clearAgentAccess(actorRole, 'import', was);
       await this._audit(actorRole, 'data.imported', null, {
         entities: data.entities.length, events: data.events.length, exportedAt: data.exportedAt ?? null,
-        checks: { markedSynthetic: true, identifierFields: 0 },
+        checks: { markedSynthetic: true, identifierFields: 0, identifierValues: 0 },
       });
       this._emit('reset', null);
       return { entities: data.entities.length, events: data.events.length };

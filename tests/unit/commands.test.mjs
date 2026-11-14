@@ -1,7 +1,7 @@
 // The command layer (backlog A2) runs without the UI: people and agents use the same commands.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { Core, findIdentifierFields } from '../../web/app/core/core.js';
+import { Core, findIdentifierFields, findIdentifierValues } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
 import { loadSyntheticHospital } from '../../web/app/core/generator.js';
 import { runCommand, listCommands, describeCommand, commandByName, ACTION_COMMANDS, CommandError } from '../../web/app/core/commands.js';
@@ -232,8 +232,46 @@ test('issue #5: import refuses files not marked synthetic or with personal-detai
 
   await target.importData(structuredClone(dump), 'coo');
   assert.equal(await target.getMeta('synthetic'), true);
-  assert.deepEqual((await target.auditLog()).at(-1).detail.checks, { markedSynthetic: true, identifierFields: 0 });
+  assert.deepEqual((await target.auditLog()).at(-1).detail.checks, { markedSynthetic: true, identifierFields: 0, identifierValues: 0 });
   await target.reset();
   assert.equal(await target.getMeta('synthetic'), null, 'after a reset nothing claims to be synthetic');
   assert.equal(await target.getMeta('generator'), null);
+});
+
+// Issue #19: the import check also reads the values. A name with a title, a phone number, an email
+// address, a record number or a person-style entity name under a neutral key is refused.
+test('issue #19: import refuses personal details in values (titles, notes, labels, entity names), and the synthetic hospital passes', async () => {
+  const core = await hospital();
+  const dump = await core.exportData();
+  assert.deepEqual(findIdentifierValues(dump), [], 'the synthetic hospital has no personal-detail values');
+  const target = await Core.open({ adapter: new MemoryAdapter(), clock: clockFrom(END) });
+  const withTitle = dump.events.findIndex((e) => e.data && typeof e.data.title === 'string');
+  assert.ok(withTitle >= 0, 'a work order with a title exists');
+  const cases = [
+    ['note', 'Mrs Jane Placeholder, 07700 900000'],
+    ['title', 'Nurse Jane Placeholder to call 07700 900000'],
+    ['comment', 'send to jane.placeholder@example.org'],
+    ['label', 'MRN 00123456'],
+    ['reason', 'born 12/03/1970'],
+    ['title', 'Dr Placeholder asked for it'],
+  ];
+  for (const [key, value] of cases) {
+    const f = structuredClone(dump);
+    f.events[withTitle].data = { ...f.events[withTitle].data, [key]: value };
+    await assert.rejects(target.importData(f, 'coo'), new RegExp(`personal details.*events\\[${withTitle}\\]\\.data\\.${key}`), `${key}: ${value}`);
+    assert.equal(JSON.stringify(await target.validateImport(f)).includes(value), false, 'the refusal does not repeat the value');
+  }
+  const ward = dump.entities.findIndex((e) => e.type === 'ward');
+  for (const name of ['Jane Placeholder', 'Sister Jane Placeholder', 'Ward 07700 900000']) {
+    const f = structuredClone(dump);
+    f.entities[ward].name = name;
+    await assert.rejects(target.importData(f, 'coo'), new RegExp(`personal details.*entities\\[${ward}\\]\\.name`), name);
+  }
+  const nested = structuredClone(dump);
+  nested.events[withTitle].data.extra = { list: ['fine', { deep: 'Mr Placeholder rang' }] };
+  await assert.rejects(target.importData(nested, 'coo'), /personal details/);
+  assert.equal((await target.listEntities()).length, 0, 'nothing was imported');
+
+  await target.importData(structuredClone(dump), 'coo');
+  assert.deepEqual((await target.auditLog()).at(-1).detail.checks, { markedSynthetic: true, identifierFields: 0, identifierValues: 0 });
 });

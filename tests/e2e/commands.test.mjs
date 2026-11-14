@@ -135,6 +135,13 @@ test('issue #5: import refuses non-synthetic files and personal-detail fields; t
   const withName = structuredClone(dump);
   withName.events[0].data = { ...(withName.events[0].data || {}), patientName: 'placeholder' };
   await tryFile('with-name', withName, 'Import refused.*personal details.*patientName');
+  // Issue #19: the same for a made-up name and phone number in a work-order title (a value, not a field name).
+  const inValue = structuredClone(dump);
+  const wo = inValue.events.findIndex((e) => e.data && typeof e.data.title === 'string');
+  inValue.events[wo].data.title = 'Nurse Jane Placeholder to call 07700 900000';
+  await tryFile('in-value', inValue, `Import refused.*text that looks like personal details.*events\\[${wo}\\]\\.data\\.title`);
+  assert.doesNotMatch(await page.textContent('[data-test="import-status"]'), /Placeholder|07700/, 'the refusal does not repeat the value');
+  assert.equal(await page.textContent('[data-test="synthetic-badge"]'), 'Synthetic data');
   assert.equal(await page.evaluate(() => window.ospeli.core.eventCount()), dump.events.length, 'nothing changed');
 
   page.once('dialog', (d) => d.accept());
