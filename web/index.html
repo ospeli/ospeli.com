@@ -184,6 +184,12 @@ nav.links a.btn-primary { color: #FFFFFF; }
   #modules .mod p.short { display: block; grid-column: 1 / -1; grid-row: 2; font-size: 15px; line-height: 1.35; }
   #modules .mod a { grid-column: 1; grid-row: 3; justify-self: start; min-height: 44px; font-size: 1rem; }
   .pv-wrap { display: block; margin: 6px 0 0; }
+  /* Phones (ospeli/ospeli#70): the opened previews row keeps the kit's colours (no browser tap tint), and each preview carries a small tag to match "Built". */
+  .pv-wrap > summary.acc-sum, .pv-list a { -webkit-tap-highlight-color: transparent; }
+  .pv-wrap[open] > summary.acc-sum { background: var(--sand, #F6F1E7); border-color: #94D2BD; box-shadow: inset 4px 0 0 #94D2BD; }
+  .pv-wrap > summary.acc-sum:focus:not(:focus-visible) { outline: none; }
+  .pv-list a:not(:last-child) { justify-content: space-between; gap: 10px; }
+  .pv-list a:not(:last-child)::after { content: "Preview"; flex: none; font-size: 15px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; background: var(--wash); color: var(--ink); }
   .pv-list a { display: flex; align-items: center; min-height: 46px; padding: 8px 16px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font-weight: 700; font-size: 1rem; text-decoration: none; }
 }
 .modules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
