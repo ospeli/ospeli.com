@@ -438,7 +438,8 @@ test('issue #106: map and fault proposals show their title, and the reasons to d
     // The same request again is the proposal already waiting, not a new one.
     const again = await window.ospeli.run('ospeli_maps_create', { title: 'Clinic visit 2', from: 'blank' }, bot);
     const assets = await runCommand(core, 'ospeli_assets_list', {}, coo);
-    await window.ospeli.run('ospeli_workorders_report_fault', { assetId: assets.assets[0].id, fault: 'Blocked sink', priority: 'routine' }, { agent: 'ward-bot', role: 'ward-nurse' });
+    // A fault this asset can have: one it cannot have is refused before it is queued (15 Nov).
+    await window.ospeli.run('ospeli_workorders_report_fault', { assetId: assets.assets[0].id, fault: assets.assets[0].faults[0], priority: 'routine' }, { agent: 'ward-bot', role: 'ward-nurse' });
     await window.ospeli.run('ospeli_beds_mark_vacated', { bedId: board.beds.find((b) => b.state === 'occupied').id }, { agent: 'ward-bot', role: 'ward-nurse' });
     return { ids: out.map((o) => o.proposal.id), again: { id: again.proposal.id, existing: again.existing }, pending: (await core.proposals()).filter((p) => p.status === 'pending').length };
   });
