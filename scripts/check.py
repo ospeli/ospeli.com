@@ -154,6 +154,29 @@ for _row in re.findall(r'<div class="mod[^"]*">\s*<span class="st built">Built</
     _hrefs = re.findall(r'<a\b[^>]*href="([^"]+)"', _row)
     if not _hrefs or any(not h.startswith("app/") for h in _hrefs):
         errors.append(f"index.html: the Built row \"{_name.group(1) if _name else '?'}\" must link into app/ (found {_hrefs}); a preview is not the built module")
+# Issue #100: the roadmap's "now" entry says the same as the Built rows. It names every Built
+# module, opens each in the app, and never links a built module to its retired preview
+# (every link in the entry opens the app).
+_built_names = [re.sub(r"\s+", " ", n).strip() for n in re.findall(r'<div class="mod[^"]*">\s*<span class="st built">Built</span>\s*<h3>(.*?)</h3>', home, re.S)]
+_now = re.search(r'<li><span class="wk">[^<]*\bnow</span>.*?</li>', home, re.S | re.I)
+if not _now:
+    errors.append("index.html: the roadmap has no entry marked \"now\"")
+else:
+    _now_html = _now.group(0)
+    _now_text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", _now_html)).lower()
+    _now_hrefs = re.findall(r'<a\b[^>]*href="([^"]+)"', _now_html)
+    for _n in _built_names:
+        if _n.lower() not in _now_text:
+            errors.append(f"index.html: the roadmap's \"now\" entry does not name the Built module \"{_n}\"")
+    _built_hrefs = re.findall(r'<div class="mod[^"]*">\s*<span class="st built">Built</span>.*?<a\b[^>]*href="([^"]+)"', home, re.S)
+    for _h in _built_hrefs:
+        if _h not in _now_hrefs:
+            errors.append(f"index.html: the roadmap's \"now\" entry must link to {_h}, as its Built row does")
+    for _h in _now_hrefs:
+        if not _h.startswith("app/"):
+            errors.append(f"index.html: the roadmap's \"now\" entry links to {_h}; a built module opens in app/, never in a preview under demo/")
+    if re.search(r"live previews? of", _now_text):
+        errors.append("index.html: the roadmap's \"now\" entry calls built modules \"live previews\"")
 if re.search(r"allocation with reasons for declines", visible_text(home), re.I):
     errors.append("index.html: \"allocation with reasons for declines\" describes the old preview, not the built bed board")
 

@@ -477,6 +477,20 @@ for (const width of [360, 1280]) {
     assert.doesNotMatch(lead.split(/previews? of/i)[0], /\bED flow\b|emergency department flow/i, 'ED flow is not listed as built');
     assert.match(lead, /previews? of/i);
     assert.doesNotMatch(lead, /prove what/i, 'no promised result');
+    // Issue #100: the roadmap's "now" entry says the same as the Built rows and opens the app, never a retired preview.
+    const now = await page.evaluate(() => {
+      const li = [...document.querySelectorAll('#roadmap .timeline.road li')].find((x) => /now/i.test(x.querySelector('.wk').textContent));
+      return { text: li.textContent, hrefs: [...li.querySelectorAll('a')].map((a) => a.getAttribute('href')) };
+    });
+    for (const r of rows) {
+      assert.ok(now.text.toLowerCase().includes(r.name.toLowerCase()), `the roadmap's "now" entry names "${r.name}"`);
+      assert.ok(now.hrefs.includes(r.href), `the roadmap's "now" entry opens ${r.href}`);
+    }
+    assert.deepEqual(now.hrefs.filter((x) => !x.startsWith('app/')), [], 'every link in the entry opens the app');
+    assert.doesNotMatch(now.text, /live previews? of/i);
+    // One name for the maintenance module: the hero uses the Built row's words, not "engineering".
+    assert.doesNotMatch(lead, /engineering/i);
+    assert.match(lead, /maintenance/i);
     // The link really opens the built module.
     await page.locator('#modules .modules .mod a[href="app/#/beds"]').evaluate((a) => a.click());
     await page.waitForSelector('html[data-ready="true"]');
