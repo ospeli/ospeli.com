@@ -44,13 +44,13 @@ const pad = (n, w = 2) => String(n).padStart(w, '0');
 
 const SITES = [
   { id: 'site-main', name: 'Main site' },
-  { id: 'site-north', name: 'North health centre' },
+  { id: 'site-north', name: 'North clinic' },
   { id: 'site-east', name: 'East diagnostics campus' },
 ];
 const BUILDINGS = [
-  { id: 'bld-main-a', name: 'Block A (inpatients)', parentId: 'site-main' },
-  { id: 'bld-main-b', name: 'Block B (emergency and theatres)', parentId: 'site-main' },
-  { id: 'bld-main-plant', name: 'Energy centre', parentId: 'site-main' },
+  { id: 'bld-main-a', name: 'Building A (inpatients)', parentId: 'site-main' },
+  { id: 'bld-main-b', name: 'Building B (emergency and operating rooms)', parentId: 'site-main' },
+  { id: 'bld-main-plant', name: 'Utilities building', parentId: 'site-main' },
   { id: 'bld-north-1', name: 'Clinic building', parentId: 'site-north' },
   { id: 'bld-east-1', name: 'Imaging and laboratory', parentId: 'site-east' },
 ];
@@ -86,8 +86,8 @@ const PLANT_ASSETS = [
   ['asset-generator-1', 'Standby generator 1', 'bld-main-plant', 'generator'],
   ['asset-generator-2', 'Standby generator 2', 'bld-main-plant', 'generator'],
   ['asset-chiller-1', 'Chiller 1', 'bld-main-plant', 'chiller'],
-  ['asset-lift-a', 'Bed lift, Block A', 'bld-main-a', 'lift'],
-  ['asset-lift-b', 'Bed lift, Block B', 'bld-main-b', 'lift'],
+  ['asset-lift-a', 'Bed lift, Building A', 'bld-main-a', 'lift'],
+  ['asset-lift-b', 'Bed lift, Building B', 'bld-main-b', 'lift'],
   ['asset-boiler-1', 'Steam boiler 1', 'bld-main-plant', 'boiler'],
   ['asset-xray-1', 'General X-ray room 1', 'dept-imaging', 'imaging'],
   ['asset-analyser-1', 'Chemistry analyser 1', 'dept-laboratory', 'lab'],

@@ -131,3 +131,21 @@ test('currentWords swaps old words in stored names only, never ids', () => {
   assert.equal(currentWords('Ward A1 (acute medicine)'), 'Ward A1 (acute medicine)');
   assert.equal(currentWords(null), null);
 });
+
+// Issue #91: the example site's buildings and rooms use words any health system would use, and
+// names stored on a device before the change read with the current words.
+test('issue #91: example site names are system-neutral; stored old names read with the new words', async () => {
+  const { currentWords } = await import('../../web/app/core/model.js');
+  const gen = await import('../../web/app/core/generator.js');
+  const fs = await import('node:fs');
+  const src = fs.readFileSync(new URL('../../web/app/core/generator.js', import.meta.url), 'utf8')
+    + fs.readFileSync(new URL('../../web/app/core/processmap.js', import.meta.url), 'utf8')
+    + fs.readFileSync(new URL('../../web/app/modules/beds.js', import.meta.url), 'utf8');
+  for (const old of [/Block [AB]\b/, /Energy centre/i, /North health centre/i, /Bay bed/i, /Side room/i, /(Senior|Junior) doctor/i]) assert.doesNotMatch(src, old);
+  assert.ok(gen);
+  assert.equal(currentWords(['Block', 'A (inpatients)'].join(' ')), 'Building A (inpatients)');
+  assert.equal(currentWords(['Block B (emergency and', 'theatres)'].join(' ')), 'Building B (emergency and operating rooms)');
+  assert.equal(currentWords(['Energy', 'centre'].join(' ')), 'Utilities building');
+  assert.equal(currentWords(['Bed lift,', 'Block', 'A'].join(' ')), 'Bed lift, Building A');
+  assert.equal(currentWords(['North health', 'centre'].join(' ')), 'North clinic');
+});

@@ -179,7 +179,7 @@ export async function render(el, ctx) {
         bed.encounter ? h('div', { class: 'def-row' }, h('dt', {}, bed.state === 'allocated' ? 'Held for' : 'Patient'), h('dd', {}, encounterLabel(bed.encounter))) : null,
         bed.expectedAt ? h('div', { class: 'def-row' }, h('dt', {}, 'Expected to leave'), h('dd', {}, new Date(bed.expectedAt).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' }))) : null,
         bed.reason ? h('div', { class: 'def-row' }, h('dt', {}, 'Reason'), h('dd', {}, bed.reason)) : null,
-        h('div', { class: 'def-row' }, h('dt', {}, 'Bed'), h('dd', {}, info.sideRoom ? 'Side room' : 'Bay bed'))),
+        h('div', { class: 'def-row' }, h('dt', {}, 'Bed'), h('dd', {}, info.sideRoom ? 'Single room' : 'Shared room'))),
       ...body,
       h('p', { class: 'meta' }, actions.length
         ? `Each change is saved to the event log as ${roleById(ctx.role).name}.`
@@ -356,7 +356,7 @@ export async function render(el, ctx) {
         h('span', { class: 'bed-row' }, h('b', { class: 'bed-no' }, info.name.replace('Bed ', '')), h('span', { class: 'bed-age' }, since(b.since, now))),
         h('span', { class: `chip st-${b.state}` }, BED_STATES[b.state].short),
         who ? h('span', { class: 'bed-who' }, who) : null,
-        info.sideRoom ? h('span', { class: 'bed-tag' }, 'Side room') : null);
+        info.sideRoom ? h('span', { class: 'bed-tag' }, 'Single room') : null);
     }) : [h('p', { class: 'meta' }, 'No beds in this ward match this filter.')]));
   }
 

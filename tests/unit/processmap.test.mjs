@@ -171,7 +171,7 @@ test('agents read and propose; a person accepts; every change is audited', async
   for (const a of ['human:map.created', 'agent:agent.read', 'agent:agent.proposed', 'human:map.suggestion-tried', 'human:map.step-updated', 'agent:agent.refused']) {
     assert.ok(actions.includes(a), `audit has ${a}`);
   }
-  assert.ok(!JSON.stringify(audit).includes('Senior doctor'), 'the audit holds ids, not free text');
+  assert.ok(!JSON.stringify(audit).includes('confirms the patient can go home'), 'the audit holds ids, not free text');
   assert.equal((await core.verifyAudit()).ok, true);
 });
 

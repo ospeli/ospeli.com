@@ -10,10 +10,10 @@
 export const EXAMPLES = {
   discharge: {
     title: 'Discharge home from a medical ward',
-    start: 'Senior doctor decides the patient can go home',
+    start: 'The doctor decides the patient can go home',
     steps: [
-      ['Senior doctor confirms the patient can go home', 'Doctor', 0, 5],
-      ['Junior doctor writes the discharge letter and take-home prescription', 'Doctor', 95, 25],
+      ['Doctor confirms the patient can go home', 'Doctor', 0, 5],
+      ['Doctor writes the discharge letter and take-home prescription', 'Doctor', 95, 25],
       ['Pharmacy checks and dispenses take-home medicines', 'Pharmacy', 130, 20],
       ['Medicines collected from pharmacy and brought to the ward', 'Patient transport', 35, 10],
       ['Nurse explains medicines and gives advice', 'Nurse', 40, 15],

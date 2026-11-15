@@ -249,7 +249,15 @@ OLD_WORDS = [(re.compile(r"\bbed managers?\b", re.I), "Bed manager", "Patient fl
              (re.compile(r"\bA\s*(?:&|&amp;|\\u0026)\s*E\b", re.I), "A&E", "Emergency department, then ED"),
              (re.compile(r"\bops managers?\b", re.I), "Ops manager", "Operations manager"),
              (re.compile(r"\bcall bells?\b", re.I), "Call bell", "Nurse call"),
-             (re.compile(r"\bEstates\b(?!-)"), "Estates", "Facilities")]
+             (re.compile(r"\bEstates\b(?!-)"), "Estates", "Facilities"),
+             # Issue #91: room and building words that belong to one health system.
+             (re.compile(r"\bbay beds?\b", re.I), "Bay bed", "Shared room"),
+             (re.compile(r"\benergy centres?\b", re.I), "Energy centre", "Utilities building"),
+             (re.compile(r"\bBlock [A-Z]\b"), "Block A / Block B", "Building A / Building B"),
+             (re.compile(r"\bNorth health centre\b"), "North health centre", "North clinic"),
+             (re.compile(r"\bsluice(?: rooms?)?\b", re.I), "sluice room", "soiled utility room"),
+             (re.compile(r"\bstaff bases?\b", re.I), "staff base", "staff station"),
+             (re.compile(r"\b(?:senior|junior) doctors?\b", re.I), "Senior doctor / Junior doctor", "Doctor")]
 
 def js_strings(src):
     """The string and template literals of a script, joined; comments and code are left out."""
@@ -297,7 +305,7 @@ for f in vocab_files:
     text = page_words(text) if f.suffix == ".html" else js_strings(text) if f.suffix in (".js", ".mjs") else text
     for old, new, where in old_word_hits(text):
         old_word_count += 1
-        errors.append(f"{f.relative_to(ROOT.parent).as_posix()}: says \"{old}\"; the word is now \"{new}\" (issue #82): \"{where}\"")
+        errors.append(f"{f.relative_to(ROOT.parent).as_posix()}: says \"{old}\"; the word is now \"{new}\" (issues #82, #91): \"{where}\"")
 if "--old-words" in sys.argv:
     print(f"Old words (issue #82): {old_word_count}")
 

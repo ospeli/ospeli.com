@@ -40,6 +40,11 @@ const WORD_CHANGES = [
   [/\bOps manager\b/g, 'Operations manager'],
   [/\bA&E\b/g, 'Emergency department'],
   [/\bEstates\b(?!-)/g, 'Facilities'],
+  // Issue #91: building and site names stored before the example site was renamed.
+  [/\bBlock ([AB])\b/g, 'Building $1'],
+  [/\bemergency and theatres\b/g, 'emergency and operating rooms'],
+  [/\bEnergy centre\b/g, 'Utilities building'],
+  [/\bNorth health centre\b/g, 'North clinic'],
 ];
 export const currentWords = (text) => (typeof text === 'string' ? WORD_CHANGES.reduce((s, [old, now]) => s.replace(old, now), text) : text);
 
