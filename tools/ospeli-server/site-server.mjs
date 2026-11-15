@@ -588,6 +588,7 @@ export async function startServer({
     '  proposals            see changes waiting for a person',
     '  accept 3             say yes to proposal 3',
     `  decline 3            say no to proposal 3 (add a reason number: ${DECLINE_REASONS.map((r, i) => `${i + 1} ${r}`).join(', ')})`,
+    '  decline all NAME     say no to everything one bot has waiting',
     '  stop agents          shut out every bot now',
     '  start agents         let the listed bots in again',
     '  agents               the bots on this site\'s list',
@@ -737,7 +738,15 @@ export async function startServer({
         const out = await asPerson('ospeli_proposals_list', { status: 'pending', limit: 20 });
         if (!out.total) return 'Nothing is waiting for a person.';
         return [`${out.total} waiting for a person${out.truncated ? ' (first 20 shown)' : ''}:`, ...out.proposals.map((p) => `  ${propNumber(p.id)}  ${p.agent} (for ${roleById(p.role)?.name}) asks: ${commandByName(p.command)?.summary.split('. ')[0] || p.command}\n     ${JSON.stringify(p.input)} · ${ago(p.at)}${p.agentOnList ? '' : ' · this bot is no longer on the list'}`),
-          'Nothing changes until you say so. Type: accept NUMBER  or  decline NUMBER'].join('\n');
+          'Nothing changes until you say so. Type: accept NUMBER  or  decline NUMBER  or  decline all NAME'].join('\n');
+      }
+      // Issue #72: one line clears everything one bot has waiting (a confused bot can ask for a lot).
+      if ((m = /^decline all (.+)$/i.exec(text))) {
+        const name = m[1].trim().toLowerCase();
+        const theirs = (await core.proposals()).filter((x) => x.status === 'pending' && x.agent.toLowerCase() === name);
+        if (!theirs.length) return `Nothing from "${m[1].trim().slice(0, 40)}" is waiting. To see what is waiting, type: proposals`;
+        for (const x of theirs) await asPerson('ospeli_proposals_decline', { id: x.id, reason: DECLINE_REASONS[0] }, x.role);
+        return `${theirs.length} ${theirs.length === 1 ? 'proposal' : 'proposals'} from "${theirs[0].agent}" ${theirs.length === 1 ? 'was' : 'were'} declined (${DECLINE_REASONS[0]}). Nothing was changed.`;
       }
       if ((m = /^(accept|decline) #?(\d+)(?: (\d))?$/i.exec(text))) {
         const id = propId(m[2]);

@@ -238,7 +238,13 @@ test('dry run: every check runs, the answer says what would happen, nothing is r
   assert.deepEqual(Object.keys(read.json.result).sort(), ['changed', 'command', 'status', 'would']);
   assert.match(read.json.result.would, /read/);
   const board = await runCommand(site.core, 'ospeli_beds_board', { wardId: 'ward-a1' }, { type: 'human', role: 'bed-manager' });
-  const write = await cmd(key, 'ospeli_beds_start_clean', { bedId: board.beds[0].id }, { dryRun: true });
+  // Issue #72: a dry run runs the checks a real proposal passes, so the action must be possible
+  // for the bed's state; an impossible one is refused, not "would be queued".
+  const POSSIBLE = { occupied: 'ospeli_beds_mark_vacated', 'expected-discharge': 'ospeli_beds_mark_vacated', vacated: 'ospeli_beds_start_clean', cleaning: 'ospeli_beds_finish_clean', available: 'ospeli_beds_take_out_of_service', allocated: 'ospeli_beds_admit', 'out-of-service': 'ospeli_beds_return_to_service' };
+  const b0 = board.beds[0];
+  const write = await cmd(key, POSSIBLE[b0.state], { bedId: b0.id, ...(b0.state === 'available' ? { reason: 'Electrical' } : {}) }, { dryRun: true });
+  const impossible = await cmd(key, b0.state === 'allocated' ? 'ospeli_beds_start_clean' : 'ospeli_beds_admit', { bedId: b0.id }, { dryRun: true });
+  assert.equal(impossible.status, 409);
   assert.equal(write.json.result.status, 'dry-run');
   assert.match(write.json.result.would, /proposal for a person/);
   assert.equal((await site.core.proposals()).length, 0);
@@ -455,4 +461,29 @@ test('#89 over HTTP: people-only is forbidden while agents are on, agents-off on
   await site.consoleLine('stop agents');
   const off = await cmd(key, 'ospeli_proposals_accept', { id: 'prop-0001' });
   assert.deepEqual([off.status, off.json.error.code], [403, 'agents-off']);
+});
+
+// Issue #72 on the site server: an impossible proposal is refused over HTTP before it is queued,
+// the same call twice makes one row, and a person can clear one bot's queue with one line.
+test('issue #72: over HTTP an impossible proposal is refused, a repeat makes one row, and "decline all NAME" clears a bot', async () => {
+  const { site, cmd } = await start();
+  const { key } = await letIn(site);
+  const noBed = await cmd(key, 'ospeli_beds_start_clean', { bedId: 'ward-zz-bed-99' });
+  assert.equal(noBed.status, 404);
+  assert.equal((await site.core.proposals()).length, 0);
+  await runCommand(site.core, 'ospeli_maps_create', { from: 'blank', title: 'Queue test' }, { type: 'human', role: 'ops-manager' });
+  const step = (n) => ({ mapId: 'map-001', name: `Step number ${n}`, role: 'Nurse', wait: 0, work: n });
+  const first = await cmd(key, 'ospeli_maps_step_add', step(1));
+  assert.equal(first.status, 200, JSON.stringify(first.json));
+  const again = await cmd(key, 'ospeli_maps_step_add', step(1));
+  assert.equal(again.json.result.proposal.id, first.json.result.proposal.id);
+  assert.equal(again.json.result.existing, true);
+  await cmd(key, 'ospeli_maps_step_add', step(2));
+  await cmd(key, 'ospeli_maps_step_add', step(3));
+  assert.equal((await site.core.proposals()).filter((p) => p.status === 'pending').length, 3);
+  assert.match(await site.consoleLine('decline all nobody-here'), /Nothing from "nobody-here" is waiting/);
+  assert.match(await site.consoleLine('decline all Night-Helper'), /^3 proposals from "night-helper" were declined \(Not needed\)\. Nothing was changed\.$/);
+  assert.equal((await site.core.proposals()).filter((p) => p.status === 'pending').length, 0);
+  assert.equal((await site.core.proposals()).filter((p) => p.status === 'declined').length, 3);
+  assert.match(await site.consoleLine('help'), /decline all NAME/);
 });

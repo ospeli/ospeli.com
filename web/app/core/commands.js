@@ -120,6 +120,25 @@ async function wardOfBed(core, input) {
   return bed?.type === 'bed' ? bed.parentId : null;
 }
 
+async function checkBedWrite(core, w, input, events) {
+  const info = await core.getEntity(input.bedId);
+  if (!info || info.type !== 'bed') throw new CommandError('not-found', `No bed ${input.bedId}.`);
+  const { board } = await loadBoard(core, events);
+  const bed = board.beds.get(info.id);
+  if (input.expectedState && bed.state !== input.expectedState) {
+    throw new CommandError('conflict', 'This bed changed since you opened it.', { state: bed.state });
+  }
+  if (!bedActions(bed).includes(w.action)) {
+    throw new CommandError('conflict', `A bed that is ${BED_STATES[bed.state].name.toLowerCase()} cannot do that.`, { state: bed.state });
+  }
+  if (w.action === 'allocate') {
+    const wait = board.waiting.find((x) => x.encounter === input.encounter);
+    if (!wait) throw new CommandError('conflict', 'That patient is not waiting for a bed.');
+    if (wait.allocatedBed) throw new CommandError('conflict', 'That patient already has a bed held.', { bedId: wait.allocatedBed });
+  }
+  return { info, bed };
+}
+
 function bedWriteCommand(w) {
   return {
     name: w.name,
@@ -142,23 +161,12 @@ function bedWriteCommand(w) {
       const { board } = await loadBoard(core);
       return { seenState: input.expectedState ?? board.beds.get(input.bedId)?.state ?? null };
     },
+    // The checks a person's action passes. An agent's proposal passes the same ones before it
+    // is queued, and so does a dry run (issue #72).
+    async precheck(core, input) { await checkBedWrite(core, w, input); },
     async run(core, input, { actor }) {
       const recs = await core.appendChecked(async (events) => {
-        const info = await core.getEntity(input.bedId);
-        if (!info || info.type !== 'bed') throw new CommandError('not-found', `No bed ${input.bedId}.`);
-        const { board } = await loadBoard(core, events);
-        const bed = board.beds.get(info.id);
-        if (input.expectedState && bed.state !== input.expectedState) {
-          throw new CommandError('conflict', 'This bed changed since you opened it.', { state: bed.state });
-        }
-        if (!bedActions(bed).includes(w.action)) {
-          throw new CommandError('conflict', `A bed that is ${BED_STATES[bed.state].name.toLowerCase()} cannot do that.`, { state: bed.state });
-        }
-        if (w.action === 'allocate') {
-          const wait = board.waiting.find((x) => x.encounter === input.encounter);
-          if (!wait) throw new CommandError('conflict', 'That patient is not waiting for a bed.');
-          if (wait.allocatedBed) throw new CommandError('conflict', 'That patient already has a bed held.', { bedId: wait.allocatedBed });
-        }
+        const { info, bed } = await checkBedWrite(core, w, input, events);
         return actionEvents(w.action, bed, info.parentId, actor.role, core.now(), input);
       });
       return { status: 'done', bedId: input.bedId, state: w.to, events: recs.map((r) => r.seq) };
@@ -634,6 +642,15 @@ function woOut(w, assets, places, now, short = false) {
 }
 
 function workOrderWrite({ name, summary, roles, to, extra = {}, required = [], build, guard }) {
+  // One set of checks for a person's action, an agent's proposal and a dry run (issue #72).
+  const check = (events, input, now) => {
+    const w = deriveWorkOrders(events, now).get(input.workOrderId);
+    if (!w) throw new CommandError('not-found', `No work order ${input.workOrderId}.`);
+    if (input.expectedState && w.state !== input.expectedState) throw new CommandError('conflict', 'This work order changed since you opened it.', { state: w.state });
+    if (w.state === 'completed') throw new CommandError('conflict', 'This work order is already completed.', { state: w.state });
+    if (guard) guard(w);
+    return w;
+  };
   return {
     name, summary, kind: 'write', roles, approval: true,
     input: {
@@ -647,13 +664,10 @@ function workOrderWrite({ name, summary, roles, to, extra = {}, required = [], b
       const w = deriveWorkOrders(await core.events(), core.now()).get(input.workOrderId);
       return { seenState: input.expectedState ?? w?.state ?? null };
     },
+    async precheck(core, input) { check(await core.events(), input, core.now()); },
     async run(core, input, { actor }) {
       const recs = await core.appendChecked(async (events) => {
-        const w = deriveWorkOrders(events, core.now()).get(input.workOrderId);
-        if (!w) throw new CommandError('not-found', `No work order ${input.workOrderId}.`);
-        if (input.expectedState && w.state !== input.expectedState) throw new CommandError('conflict', 'This work order changed since you opened it.', { state: w.state });
-        if (w.state === 'completed') throw new CommandError('conflict', 'This work order is already completed.', { state: w.state });
-        if (guard) guard(w);
+        const w = check(events, input, core.now());
         return [build(w, input, actor.role, core.now())];
       });
       return { status: 'done', workOrderId: input.workOrderId, state: to, events: recs.map((r) => r.seq) };
@@ -919,13 +933,18 @@ function mapWrite({ name, summary, required = [], props, example, mutate, audit 
       const m = store.maps.find((x) => x.id === input.mapId);
       return { seenRevision: input.expectedRevision ?? m?.revision ?? null };
     },
+    async precheck(core, input) {
+      const m = mapStore(await core.getMeta(MAPS_KEY, null)).maps.find((x) => x.id === input.mapId);
+      if (!m) throw new CommandError('not-found', `No map ${input.mapId}. It may have been removed.`, { fix: 'ospeli_maps_list shows the maps on this device.' });
+      if (input.expectedRevision && m.revision !== input.expectedRevision) throw new CommandError('conflict', 'This map changed since you opened it. Open it again and retry.', { revision: m.revision, fix: 'Read it again with ospeli_maps_get.' });
+    },
     async run(core, input, { actor }) {
       checkText(input);
       let out = {};
       await core.updateMeta(MAPS_KEY, async (raw) => {
         const store = mapStore(raw);
         const i = store.maps.findIndex((m) => m.id === input.mapId);
-        if (i < 0) throw new CommandError('not-found', `No map ${input.mapId}. Use ospeli_maps_list to see the maps on this device.`);
+        if (i < 0) throw new CommandError('not-found', `No map ${input.mapId}. It may have been removed.`, { fix: 'ospeli_maps_list shows the maps on this device.' });
         const map = JSON.parse(JSON.stringify(store.maps[i]));
         if (input.expectedRevision && map.revision !== input.expectedRevision) {
           throw new CommandError('conflict', 'This map changed since you opened it. Open it again (ospeli_maps_get) and retry.', { revision: map.revision });
@@ -1296,7 +1315,9 @@ export async function auditRefusal(core, name, input, actor, err) {
   const command = known ? cmd.name : '(unknown)';
   const detail = {
     command, code: err.code, reason: err.reason || err.code,
-    why: err.code === 'invalid-input' ? 'The input did not match what the command accepts.' : err.code === 'unknown-command' ? 'There is no such command.' : err.message,
+    why: err.code === 'invalid-input' ? 'The input did not match what the command accepts.' : err.code === 'unknown-command' ? 'There is no such command.'
+      : err.reason === 'target' ? (err.code === 'not-found' ? 'The bed, work order or map it named does not exist.' : 'The bed, patient, work order or map was not in a state that allows this.')
+        : err.reason === 'duplicate' ? 'The same agent already has a proposal waiting for the same bed or work order.' : err.message,
     claimedRole: role === 'system' ? '(unknown)' : role,
     fields: input && typeof input === 'object' ? Object.keys(input).filter((k) => ownFields.has(k)).slice(0, 12) : [],
     ...(known && name !== cmd.name ? { calledAs: cmd.deprecatedName } : {}),
@@ -1333,6 +1354,11 @@ async function auditInput(core, cmd, input, succeeded) {
   }
   return out;
 }
+
+// The most proposals one agent may have waiting for a person (issue #72). Example setting, not a standard.
+export const MAX_PENDING_PER_AGENT = 20;
+// The same input in any key order reads the same.
+const stableJson = (v) => JSON.stringify(v, (k, x) => (x && typeof x === 'object' && !Array.isArray(x) ? Object.fromEntries(Object.keys(x).sort().map((key) => [key, x[key]])) : x));
 
 // Run a command. `actor` is { type: 'human', role } or { type: 'agent', agent, role }.
 // opts.dryRun: every check runs and the answer says what would happen; nothing is read, queued
@@ -1403,13 +1429,38 @@ async function runChecked(core, name, input, actor, opts = {}) {
   if (ward && !listed.wards.includes(ward)) refuse('forbidden', `Agent ${who.agent} is not allowed on ward ${ward}.`, null, 'ward-not-listed');
   const allowedWards = new Set(listed.wards.filter((id) => access.wards[id] === true));
   who.agent = listed.name; // the name as a person wrote it on the list
+  // Issue #72: a queue worth reading. Before a write is queued (or a dry run says it would be):
+  // the bed, patient, work order or map exists and its state allows the action (the checks a
+  // person's action passes); the same proposal from this agent is returned, not queued again;
+  // one bed or work order has one open proposal per command per agent; and one agent has at
+  // most MAX_PENDING_PER_AGENT proposals waiting for a person.
+  let same = null;
+  if (cmd.kind !== 'read') {
+    try {
+      if (cmd.precheck) await cmd.precheck(core, input);
+    } catch (err) {
+      if (err instanceof CommandError) { err.refusal = true; err.reason = 'target'; }
+      throw err;
+    }
+    const mine = (await core.proposals()).filter((p) => p.status === 'pending' && agentKey(p.agent) === agentKey(who.agent));
+    const canon = stableJson(input);
+    same = mine.find((p) => p.command === name && stableJson(p.input) === canon) || null;
+    if (!same) {
+      const target = input.bedId ?? input.workOrderId ?? null;
+      const clash = target ? mine.find((p) => p.command === name && (p.input?.bedId ?? p.input?.workOrderId) === target) : null;
+      if (clash) refuse('conflict', `${clash.id} from this agent is already waiting for a person for the same ${input.bedId ? 'bed' : 'work order'}. Wait for their answer before proposing it again.`, { existing: clash.id }, 'duplicate');
+      if (mine.length >= MAX_PENDING_PER_AGENT) refuse('conflict', `Agent ${who.agent} already has ${MAX_PENDING_PER_AGENT} proposals waiting for a person, which is the most one agent may have. Wait until some are answered (ospeli_proposals_list shows them).`, { pending: mine.length, limit: MAX_PENDING_PER_AGENT }, 'queue-full');
+    }
+  }
   if (opts.dryRun) {
     // A write is also checked against the state it would be proposed on (a duplicate, a changed bed).
     if (cmd.kind !== 'read' && cmd.snapshot) await cmd.snapshot(core, input);
     await core.recordAs(who, 'agent.dry-run', null, { command: name, kind: cmd.kind, ...calledAs });
     return {
       status: 'dry-run', command: name,
-      would: cmd.kind === 'read' ? 'run as a read and be recorded in the audit trail' : 'be queued as a proposal for a person to accept or decline',
+      would: cmd.kind === 'read' ? 'run as a read and be recorded in the audit trail'
+        : same ? `return ${same.id}, the same proposal from this agent, which is already waiting for a person; nothing new would be queued`
+          : 'be queued as a proposal for a person to accept or decline',
       changed: 'Nothing was read, queued or changed.',
     };
   }
@@ -1427,8 +1478,14 @@ async function runChecked(core, name, input, actor, opts = {}) {
     await core.recordAs(who, 'agent.read', null, { command: name, input: await auditInput(core, cmd, input, true), ...size, ...calledAs });
     return out;
   }
+  const ids = { ...(input.bedId ? { bedId: input.bedId } : {}), ...(input.workOrderId ? { workOrderId: input.workOrderId } : {}), ...(input.mapId ? { mapId: input.mapId } : {}) };
+  if (same) {
+    // Asked again: the answer is the proposal already waiting. The call still leaves a trace.
+    await core.recordAs(who, 'agent.proposed-again', same.id, { command: name, ...calledAs });
+    return { status: 'proposed', existing: true, ...ids, proposal: same };
+  }
   const extra = cmd.snapshot ? await cmd.snapshot(core, input) : {};
   const request = opts.request?.tag ? { request: { tag: String(opts.request.tag), bodyHash: String(opts.request.bodyHash || '') } } : {};
   const proposal = await core.propose(who, name, input, { wardId: ward, ...extra, ...calledAs, ...request });
-  return { status: 'proposed', ...(input.bedId ? { bedId: input.bedId } : {}), ...(input.workOrderId ? { workOrderId: input.workOrderId } : {}), ...(input.mapId ? { mapId: input.mapId } : {}), proposal };
+  return { status: 'proposed', ...ids, proposal };
 }

@@ -90,7 +90,10 @@ test('a stale proposal expires instead of running, and a decline changes nothing
   assert.equal(await core.eventCount(), before, 'an out-of-date proposal writes nothing');
   assert.equal((await core.auditLog()).at(-1).action, 'agent.proposal-expired');
 
-  const p2 = await runCommand(core, 'ospeli_beds_flag_expected_discharge', { bedId: free[0].id }, agent('ward-nurse', 'ward-bot'));
+  // (Issue #72: a proposal must be possible when it is made. The bed is now out of service, so the
+  // agent proposes returning it; before #72 this line queued an impossible "expected discharge".)
+  await assert.rejects(runCommand(core, 'ospeli_beds_flag_expected_discharge', { bedId: free[0].id }, agent('ward-nurse', 'ward-bot')), code('conflict'));
+  const p2 = await runCommand(core, 'ospeli_beds_return_to_service', { bedId: free[0].id }, agent('ward-nurse', 'ward-bot'));
   await assert.rejects(runCommand(core, 'ospeli_proposals_decline', { id: p2.proposal.id, reason: 'Free text is not allowed' }, human('ward-nurse')), code('invalid-input'));
   const d = await runCommand(core, 'ospeli_proposals_decline', { id: p2.proposal.id, reason: 'Not needed' }, human('ward-nurse'));
   assert.equal(d.proposal.status, 'declined');
@@ -112,4 +115,83 @@ test('every audit entry says whether a person, an agent or the system acted', as
   assert.ok(log.some((e) => e.actorType === 'system'));
   assert.ok(log.some((e) => e.actorType === 'agent' && e.agent === 'flow-bot'));
   assert.deepEqual(await core.verifyAudit(), { ok: true });
+});
+
+// Issue #72: a queue worth reading. A proposal is checked before it is queued, an identical one
+// is not queued twice, one agent cannot fill the queue, and a dry run runs the same checks.
+test('issue #72: a proposal for a bed, patient or work order that cannot take it is refused before it is queued', async () => {
+  const { core, board } = await setup();
+  const count = async () => (await core.proposals()).length;
+  const bed = board.beds.find((b) => b.state === 'available');
+  const occupied = board.beds.find((b) => b.state === 'occupied');
+  const wait = board.waiting.find((w) => !w.allocatedBed);
+  const A = agent('bed-manager');
+  // No such bed; no such waiting patient; a state that does not allow the action.
+  await assert.rejects(runCommand(core, 'ospeli_beds_allocate', { bedId: 'ward-zz-bed-99', encounter: wait.encounter }, A), code('not-found'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_allocate', { bedId: bed.id, encounter: 'enc-999999' }, A), code('conflict'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_start_clean', { bedId: occupied.id }, agent('ward-nurse', 'ward-bot')), code('conflict'));
+  // The same checks in a dry run: it does not say "would be queued" for something impossible.
+  await assert.rejects(runCommand(core, 'ospeli_beds_allocate', { bedId: 'ward-zz-bed-99', encounter: wait.encounter }, A, { dryRun: true }), code('not-found'));
+  await assert.rejects(runCommand(core, 'ospeli_beds_start_clean', { bedId: occupied.id }, agent('ward-nurse', 'ward-bot'), { dryRun: true }), code('conflict'));
+  // A map that does not exist.
+  await assert.rejects(runCommand(core, 'ospeli_maps_reset_proposed', { mapId: 'map-999' }, A), code('not-found'));
+  assert.equal(await count(), 0, 'nothing was queued');
+  // Each refusal is in the trail, and nothing the agent typed is.
+  const refused = (await core.auditLog()).filter((a) => a.action === 'agent.refused');
+  assert.ok(refused.some((a) => a.detail.reason === 'target'), 'refusals are recorded with the reason "target"');
+  assert.ok(!JSON.stringify(refused).includes('ward-zz-bed-99') && !JSON.stringify(refused).includes('enc-999999'), 'typed ids are not stored');
+  assert.equal((await core.verifyAudit()).ok, true);
+});
+
+test('issue #72: a work order that does not exist, or is closed, is refused before it is queued', async () => {
+  const { core } = await setup();
+  await runCommand(core, 'ospeli_agents_add', { name: 'fix-bot', role: 'estates-tech', days: 30 }, human('coo'));
+  const F = agent('estates-tech', 'fix-bot');
+  await assert.rejects(runCommand(core, 'ospeli_workorders_complete', { workOrderId: 'wo-99999', outcome: 'fixed' }, F), code('not-found'));
+  await assert.rejects(runCommand(core, 'ospeli_workorders_complete', { workOrderId: 'wo-99999', outcome: 'fixed' }, F, { dryRun: true }), code('not-found'));
+  assert.equal((await core.proposals()).length, 0);
+});
+
+test('issue #72: the same proposal is returned, not queued again; one target has one open proposal per agent; 20 at most wait per agent', async () => {
+  const { core, board } = await setup();
+  const free = board.beds.filter((b) => b.state === 'available');
+  const waits = board.waiting.filter((w) => !w.allocatedBed);
+  const A = agent('bed-manager');
+  const input = { bedId: free[0].id, encounter: waits[0].encounter };
+  const first = await runCommand(core, 'ospeli_beds_allocate', input, A);
+  const again = await runCommand(core, 'ospeli_beds_allocate', { encounter: waits[0].encounter, bedId: free[0].id }, A);
+  const third = await runCommand(core, 'ospeli_beds_allocate', input, A);
+  assert.equal(again.status, 'proposed');
+  assert.equal(again.existing, true);
+  assert.equal(again.proposal.id, first.proposal.id);
+  assert.equal(third.proposal.id, first.proposal.id);
+  assert.equal((await core.proposals()).length, 1, 'three identical calls make one row');
+  // A dry run of the same call says so.
+  const dry = await runCommand(core, 'ospeli_beds_allocate', input, A, { dryRun: true });
+  assert.match(dry.would, new RegExp(first.proposal.id));
+  // Same command and bed, another patient: refused, and the answer names the one that is waiting.
+  if (waits[1]) {
+    await assert.rejects(runCommand(core, 'ospeli_beds_allocate', { bedId: free[0].id, encounter: waits[1].encounter }, A),
+      (err) => err.code === 'conflict' && err.detail?.existing === first.proposal.id && /waiting for a person/.test(err.message));
+  }
+  // Another agent may still propose for the same bed: the limit is per agent.
+  const other = await runCommand(core, 'ospeli_beds_allocate', input, agent('bed-manager', 'other-bot'));
+  assert.notEqual(other.proposal.id, first.proposal.id);
+  // Once a person has answered, the agent may ask again.
+  await runCommand(core, 'ospeli_proposals_decline', { id: first.proposal.id, reason: 'Not needed' }, human('bed-manager'));
+  const fresh = await runCommand(core, 'ospeli_beds_allocate', input, A);
+  assert.notEqual(fresh.proposal.id, first.proposal.id);
+  // No more than 20 waiting per agent. Maps are an easy way to make many different valid proposals.
+  await runCommand(core, 'ospeli_maps_create', { from: 'blank', title: 'Queue test' }, human('ops-manager'));
+  const step = (n) => ({ mapId: 'map-001', name: `Step number ${n}`, role: 'Nurse', wait: 0, work: n });
+  let queued = (await core.proposals()).filter((p) => p.status === 'pending' && p.agent === 'flow-bot').length;
+  let n = 1;
+  for (; queued < 20; queued++, n++) assert.equal((await runCommand(core, 'ospeli_maps_step_add', step(n), A)).status, 'proposed');
+  await assert.rejects(runCommand(core, 'ospeli_maps_step_add', step(n), A),
+    (err) => err.code === 'conflict' && /20/.test(err.message) && err.reason === 'queue-full');
+  await assert.rejects(runCommand(core, 'ospeli_maps_step_add', step(n), A, { dryRun: true }), code('conflict'));
+  assert.equal((await core.proposals()).filter((p) => p.status === 'pending' && p.agent === 'flow-bot').length, 20);
+  // The other agent is not held back by the first one's queue.
+  assert.equal((await runCommand(core, 'ospeli_maps_step_add', step(99), agent('bed-manager', 'other-bot'))).status, 'proposed');
+  assert.equal((await core.verifyAudit()).ok, true);
 });

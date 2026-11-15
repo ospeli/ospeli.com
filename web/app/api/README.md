@@ -7,6 +7,7 @@ Every action in the app is a named command. The screens call these commands, and
 
 ## Rules for agents
 - People decide, Ospeli suggests: an agent may read, and its write commands become proposals that wait for a person.
+- A proposal is checked before it is queued: the bed, patient, work order or map must exist and be in a state that allows the action, or the call is refused (not-found or conflict). The same call again returns the proposal already waiting (existing: true). One agent may have one open proposal per command for a bed or work order, and at most 20 proposals waiting in all; 20 is an example setting, not a standard.
 - Agent access is off by default, for the hospital and for each ward (ospeli_agents_set_access, people only).
 - Only agents on the site's list may call (ospeli_agents_add, people only): each has one role, its wards and an end date of 90 days at most. An agent that is not listed, is past its end date or claims another role is refused. Agents are named, not verified: the browser app has no secret keys; the first version of the site server gives each agent one.
 - Anyone on site can stop every agent at once (ospeli_agents_stop_all); only the operations manager or chief operating officer can switch agents on again.

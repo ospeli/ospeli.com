@@ -236,3 +236,46 @@ test('issue #65: the audit table names what an agent read, proposed and was refu
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #72: a queue worth reading. The card says how many are waiting, shows the newest three,
+// and the rest are one tap away. An impossible proposal never reaches the card.
+test('issue #72: five proposals show a count, the newest three and "See all"; an impossible one is refused (390px)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, path: '#/beds' });
+  await page.waitForSelector('.bed');
+  const out = await page.evaluate(async () => {
+    const { runCommand } = await import('./core/commands.js');
+    const core = window.ospeli.core;
+    const coo = { type: 'human', role: 'coo' };
+    const all = await runCommand(core, 'ospeli_beds_board', {}, coo);
+    const ward = all.wards.find((w) => all.beds.filter((b) => b.wardId === w.id && b.state === 'occupied').length >= 5).id;
+    await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: { [ward]: true } }, coo);
+    await runCommand(core, 'ospeli_agents_add', { name: 'flow-bot', role: 'ward-nurse', wards: [ward], days: 30 }, coo);
+    const who = { agent: 'flow-bot', role: 'ward-nurse' };
+    const beds = all.beds.filter((b) => b.wardId === ward && b.state === 'occupied').slice(0, 5);
+    const ids = [];
+    for (const b of beds) ids.push((await window.ospeli.run('ospeli_beds_flag_expected_discharge', { bedId: b.id }, who)).proposal.id);
+    const twice = (await window.ospeli.run('ospeli_beds_flag_expected_discharge', { bedId: beds[0].id }, who)).proposal.id;
+    const impossible = await window.ospeli.run('ospeli_beds_start_clean', { bedId: beds[0].id }, who).then(() => 'queued', (e) => e.code);
+    const noBed = await window.ospeli.run('ospeli_beds_start_clean', { bedId: 'ward-zz-bed-99' }, who).then(() => 'queued', (e) => e.code);
+    return { ids, twice, impossible, noBed, pending: (await core.proposals()).filter((p) => p.status === 'pending').length };
+  });
+  assert.equal(out.twice, out.ids[0], 'the same proposal comes back');
+  assert.equal(out.impossible, 'conflict');
+  assert.equal(out.noBed, 'not-found');
+  assert.equal(out.pending, 5);
+  await page.reload();
+  await page.waitForSelector('[data-proposal]');
+  assert.match(await page.locator('#prop-h').textContent(), /Agent proposals \(5\)/);
+  assert.equal(await page.locator('[data-proposal]').count(), 3, 'the newest three');
+  assert.deepEqual(await page.locator('[data-proposal]').evaluateAll((els) => els.map((e) => e.dataset.proposal)), out.ids.slice(-3).reverse());
+  const more = page.locator('[data-test="proposals-more"]');
+  assert.match(await more.textContent(), /^See all 5$/);
+  const box = await more.boundingBox();
+  assert.ok(box.height >= 44, `"See all" is a 44 px target (${box.height})`);
+  await more.click();
+  await page.waitForFunction(() => document.querySelectorAll('[data-proposal]').length === 5);
+  const o = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  assert.ok(o <= 0, 'no sideways scroll');
+  assert.deepEqual(errors, []);
+  await context.close();
+});

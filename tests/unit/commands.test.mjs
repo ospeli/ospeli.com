@@ -177,7 +177,15 @@ test('agents: off by default, audited as agents, read only allowed wards, and on
   await assert.rejects(runCommand(core, 'ospeli_beds_board', { wardId: 'ward-b1' }, agent('bed-manager')), code('agents-off'));
   await assert.rejects(runCommand(core, 'ospeli_beds_get', { bedId: 'ward-b1-bed-01' }, agent('bed-manager')), code('agents-off'));
 
-  const bed = read.beds.find((b) => b.state === 'available') || read.beds[0];
+  // Issue #72: a proposal must be possible when it is made, so the bed has to be free. If the
+  // seeded ward has no free bed, a person empties and cleans one first.
+  let bed = read.beds.find((b) => b.state === 'available');
+  if (!bed) {
+    bed = read.beds.find((b) => b.state === 'occupied');
+    await runCommand(core, 'ospeli_beds_mark_vacated', { bedId: bed.id }, human('ward-nurse'));
+    await runCommand(core, 'ospeli_beds_finish_clean', { bedId: bed.id }, human('ward-nurse'));
+    bed = { ...bed, state: 'available' };
+  }
   const eventsBefore = await core.eventCount();
   const out = await runCommand(core, 'ospeli_beds_take_out_of_service', { bedId: bed.id, reason: 'Electrical' }, agent('ward-nurse', 'night-helper'));
   assert.equal(out.status, 'proposed');

@@ -216,7 +216,13 @@ test('issue #24: an agent gets the same answer, before a proposal is queued and 
   const input = { assetId: a.id, fault: 'Blocked sink', priority: 'routine' };
   // Two proposals for the same fault while nothing is open: both wait for a person.
   const p1 = await runCommand(core, 'ospeli_workorders_report_fault', input, bot);
-  const p2 = await runCommand(core, 'ospeli_workorders_report_fault', input, bot);
+  // (Issue #72: the same agent asking twice gets its first proposal back, so the second
+  // proposal here comes from a second agent.)
+  await runCommand(core, 'ospeli_agents_add', { name: 'ward-bot-two', role: 'ward-nurse', wards: ['ward-a1'], days: 30 }, human('ops-manager'));
+  const again = await runCommand(core, 'ospeli_workorders_report_fault', input, bot);
+  assert.equal(again.proposal.id, p1.proposal.id);
+  const p2 = await runCommand(core, 'ospeli_workorders_report_fault', input, agent('ward-nurse', 'ward-bot-two'));
+  assert.notEqual(p2.proposal.id, p1.proposal.id);
   assert.deepEqual([p1.status, p2.status], ['proposed', 'proposed']);
   const acc = await runCommand(core, 'ospeli_proposals_accept', { id: p1.proposal.id }, human('ward-nurse'));
   assert.equal(acc.status, 'accepted');

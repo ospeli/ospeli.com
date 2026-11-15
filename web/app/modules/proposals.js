@@ -5,14 +5,17 @@ import { roleById } from '../core/model.js';
 import { since } from '../core/beds.js';
 import { DECLINE_REASONS } from '../core/commands.js';
 
+const SHOW_FIRST = 3;
+
 // describe(p) -> one line in plain words; match(p) -> whether this page shows it.
 export function proposalsCard(ctx, { describe, match = () => true }) {
   const box = h('div', { 'data-test': 'proposals' });
   let list = [];
   let busy = false;
+  let showAll = false; // issue #72: the newest three first; the rest one tap away
 
   async function load() {
-    try { list = (await ctx.run('ospeli_proposals_list', { status: 'pending', limit: 200 })).proposals.filter(match); } catch { list = []; }
+    try { list = (await ctx.run('ospeli_proposals_list', { status: 'pending', limit: 200 })).proposals.filter(match).sort((a, b) => Date.parse(b.at) - Date.parse(a.at) || (a.id < b.id ? 1 : -1)); } catch { list = []; }
     render();
   }
 
@@ -32,7 +35,8 @@ export function proposalsCard(ctx, { describe, match = () => true }) {
   }
 
   function render() {
-    if (!list.length) { box.replaceChildren(); return; }
+    if (!list.length) { showAll = false; box.replaceChildren(); return; }
+    const shown = showAll ? list : list.slice(0, SHOW_FIRST);
     const mine = list.filter((p) => p.canDecide);
     const now = Date.now();
     box.replaceChildren(h('section', { class: 'card proposals', 'aria-labelledby': 'prop-h' },
@@ -40,7 +44,7 @@ export function proposalsCard(ctx, { describe, match = () => true }) {
       h('p', { class: 'meta' }, mine.length
         ? 'An agent suggested these. Nothing changes until you accept. If you accept, it is recorded as done by you.'
         : `An agent suggested these. ${roleById(ctx.role).name} cannot decide on them.`),
-      h('ul', { class: 'proposal-list' }, list.map((p) => {
+      h('ul', { class: 'proposal-list' }, shown.map((p) => {
         // Accept stands alone. The reason belongs to Decline, so it sits with it under a visible label.
         const selId = `why-${p.id}`;
         const sel = h('select', { id: selId, 'aria-label': `Reason to decline: ${describe(p)}` }, DECLINE_REASONS.map((r) => new Option(r, r)));
@@ -54,7 +58,9 @@ export function proposalsCard(ctx, { describe, match = () => true }) {
               h('label', { for: selId }, 'If no, why?'),
               sel,
               h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_proposals_decline', 'aria-label': `Decline: ${describe(p)}`, onclick: () => decide(p, 'decline', sel.value) }, 'Decline'))) : null);
-      }))));
+      })),
+      list.length > SHOW_FIRST ? h('button', { class: 'btn btn-ghost btn-small proposal-more', type: 'button', 'data-test': 'proposals-more', 'aria-expanded': String(showAll), onclick: () => { showAll = !showAll; render(); } },
+        showAll ? `Show the newest ${SHOW_FIRST} only` : `See all ${list.length}`) : null));
   }
 
   return { el: box, load };
