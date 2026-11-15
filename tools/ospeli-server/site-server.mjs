@@ -18,7 +18,7 @@ import { createServer as createTlsServer } from 'node:https';
 import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { networkInterfaces } from 'node:os';
 import { mkdirSync, chmodSync, statSync } from 'node:fs';
-import { readFile, stat } from 'node:fs/promises';
+import { readFile, stat, realpath } from 'node:fs/promises';
 import { dirname, resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Core } from '../../web/app/core/core.js';
@@ -73,19 +73,26 @@ const agentKey = (name) => String(name).trim().toLowerCase();
 const STATUS = { 'code-wrong': 403, 'code-old': 410, 'not-connected': 401, 'invalid-input': 400, unauthorized: 401, forbidden: 403, 'agents-off': 403, 'unknown-command': 404, 'not-found': 404, conflict: 409, 'idempotency-key-reused': 409, 'rate-limited': 429 };
 
 // A fixed window per minute, per key (or per address for calls without a valid key).
-class Limiter {
-  constructor(perMinute, clock) { this.per = perMinute; this.clock = clock; this.seen = new Map(); }
+// The table never forgets a caller inside the minute: when it is full, callers from earlier
+// minutes are dropped, and if it is still full a caller it has not seen waits for the next
+// minute. So a flood from many addresses cannot wipe anyone's count (issue #96).
+export class Limiter {
+  constructor(perMinute, clock, max = 5000) { this.per = perMinute; this.clock = clock; this.max = max; this.seen = new Map(); }
   take(id) {
     const now = this.clock().getTime();
     const win = Math.floor(now / 60000);
+    const wait = { ok: false, retryAfter: Math.max(1, Math.ceil(((win + 1) * 60000 - now) / 1000)) };
     const rec = this.seen.get(id);
-    if (!rec || rec.win !== win) {
-      if (this.seen.size > 5000) this.seen.clear();
-      this.seen.set(id, { win, n: 1 });
-      return { ok: true };
+    if (rec && rec.win === win) {
+      rec.n += 1;
+      return rec.n <= this.per ? { ok: true } : wait;
     }
-    rec.n += 1;
-    return rec.n <= this.per ? { ok: true } : { ok: false, retryAfter: Math.max(1, Math.ceil(((win + 1) * 60000 - now) / 1000)) };
+    if (!rec && this.seen.size >= this.max) {
+      for (const [k, r] of this.seen) if (r.win !== win) this.seen.delete(k);
+      if (this.seen.size >= this.max) return wait;
+    }
+    this.seen.set(id, { win, n: 1 });
+    return { ok: true };
   }
 }
 
@@ -93,6 +100,10 @@ export class StartError extends Error {}
 
 export async function startServer({
   file, host = '127.0.0.1', port = DEFAULT_PORT, clock = () => new Date(), callsPerMinute = 120, allowHosts = [], end = null, tls = null,
+  // At most this many connections open at once, and this many from one address, so slow or idle
+  // connections cannot use the server up. notify(text): a line for the person at the console
+  // about something that happened on the network. webRoot: where the app's files are (tests).
+  maxConnections = 200, maxPerAddress = 40, notify = () => {}, webRoot = WEB_ROOT,
 } = {}) {
   if (!file) throw new StartError('The server needs a data file.');
   // tls: { cert, key } (PEM text the site supplies). With it the server answers over https only.
@@ -186,7 +197,7 @@ export async function startServer({
     return { code: `${code.slice(0, 4)}-${code.slice(4)}`, label: name, role };
   }
   // Returns { device, cookie } or throws a CommandError with code 'code-wrong' or 'code-old'.
-  async function pairDevice(codeText) {
+  async function pairDevice(codeText, from = 'unknown') {
     const now = Date.parse(core.now());
     if (!pending || now > pending.expiresAt) {
       pending = null;
@@ -195,7 +206,14 @@ export async function startServer({
     const given = Buffer.from(sha(cleanCode(codeText)), 'hex');
     if (!timingSafeEqual(given, Buffer.from(pending.hash, 'hex'))) {
       pending.wrong += 1;
-      if (pending.wrong >= CODE_WRONG_TRIES) pending = null; // the code is cancelled; a person asks for a new one
+      if (pending.wrong >= CODE_WRONG_TRIES) {
+        // The code is cancelled; a person asks for a new one. The trail and the console say so,
+        // with the address the last wrong try came from, so guessing on the network is seen.
+        const { label } = pending;
+        pending = null;
+        await core.recordAs({ role: 'system', via: 'app' }, 'devices.code-cancelled', null, { device: label, wrongTries: CODE_WRONG_TRIES, from });
+        notify(`The code for "${label}" was cancelled after ${CODE_WRONG_TRIES} wrong tries; the last came from ${from}. No device was connected. If that was not you, someone on your network is guessing. For a new code, type: add device`);
+      }
       throw new CommandError('code-wrong', 'That code is not right. Check it and try again.');
     }
     const { label, role } = pending;
@@ -235,9 +253,9 @@ export async function startServer({
     const given = Buffer.from(sha(value), 'hex');
     const stored = Buffer.from(rec ? rec.hash : sha('no such device'), 'hex');
     if (!timingSafeEqual(given, stored) || !rec) return { fail: 'unknown' };
-    if (rec.removedAt) return { fail: 'removed' };
+    if (rec.removedAt) return { fail: 'removed', was: rec };
     const now = Date.parse(core.now());
-    if (now - Date.parse(rec.lastSeenAt) > DEVICE_IDLE_DAYS * 864e5) return { fail: 'idle' };
+    if (now - Date.parse(rec.lastSeenAt) > DEVICE_IDLE_DAYS * 864e5) return { fail: 'idle', was: rec };
     if (now - Date.parse(rec.lastSeenAt) > 3600e3) {
       const at = core.now();
       await core.updateMeta('devices', (raw) => (raw || []).map((x) => (x.id === rec.id ? { ...x, lastSeenAt: at } : x)), []);
@@ -250,6 +268,23 @@ export async function startServer({
   const sameOrigin = (req) => {
     try { const o = new URL(String(req.headers.origin)); return o.protocol === `${scheme}:` && o.host.toLowerCase() === String(req.headers.host || '').toLowerCase(); } catch { return false; }
   };
+
+  // ---- a refused call from a device leaves a trace (issue #96) ----
+  // Recorded: the device's label and role, the command's own name when it is a real one, and a
+  // fixed reason. Never what was typed. The same refusal within a minute is counted, and the
+  // count is written on the next entry, so a loop cannot flood the trail.
+  const refusedSeen = new Map(); // key -> { at, suppressed, first, last }
+  async function deviceRefused(actor, key, detail) {
+    const at = core.now(); const now = Date.parse(at);
+    const rec = refusedSeen.get(key);
+    if (rec && now - rec.at < 60000) { rec.suppressed += 1; rec.first = rec.first || at; rec.last = at; return; }
+    if (!rec && refusedSeen.size >= 2000) {
+      for (const [k, r] of refusedSeen) if (now - r.at >= 60000 && !r.suppressed) refusedSeen.delete(k);
+      if (refusedSeen.size >= 2000) return;
+    }
+    refusedSeen.set(key, { at: now, suppressed: 0 });
+    await core.recordAs(actor, 'device.refused', null, rec?.suppressed ? { ...detail, repeats: { count: rec.suppressed, first: rec.first, last: rec.last } } : detail);
+  }
 
   // ---- what a connected device is sent: the site's data, never a key, a token or their hashes ----
   const bootId = randomBytes(6).toString('hex');
@@ -283,16 +318,21 @@ export async function startServer({
     try { rel = decodeURIComponent(path); } catch { return plain(400, 'Bad address.'); }
     if (rel.includes('\0') || rel.split('/').some((seg) => seg === '..' || seg.startsWith('.'))) return plain(404, 'Not found.');
     if (rel.endsWith('/')) rel += 'index.html';
-    const file = resolve(WEB_ROOT, `.${rel}`);
-    const allowed = ['app', 'brand'].some((d) => file.startsWith(resolve(WEB_ROOT, d) + sep)) || ['favicon.svg', 'favicon.ico'].some((f) => file === resolve(WEB_ROOT, f));
+    const file = resolve(webRoot, `.${rel}`);
+    const inApp = (root, f) => ['app', 'brand'].some((d) => f.startsWith(resolve(root, d) + sep)) || ['favicon.svg', 'favicon.ico'].some((n) => f === resolve(root, n));
+    const allowed = inApp(webRoot, file);
     const type = STATIC_TYPES[extname(file)];
     if (!allowed || !type) return plain(404, 'Not found.');
     const info = await stat(file).catch(() => null);
     if (!info?.isFile()) return plain(404, 'Not found.');
-    let body = await readFile(file);
+    // A link placed inside the app's folder must not lead out of it: where the file really is
+    // must also be inside the app's folders (issue #96).
+    const [realFile, realRoot] = await Promise.all([realpath(file).catch(() => null), realpath(webRoot).catch(() => null)]);
+    if (!realFile || !realRoot || !inApp(realRoot, realFile)) return plain(404, 'Not found.');
+    let body = await readFile(realFile);
     // The app's page is told it came from a site server, so it asks for a code instead of
     // loading the made-up hospital into the browser (web/app/app.js).
-    if (file === resolve(WEB_ROOT, 'app', 'index.html')) body = Buffer.from(body.toString('utf8').replace('<meta charset="utf-8">', `<meta charset="utf-8">\n${SITE_MARKER}`));
+    if (file === resolve(webRoot, 'app', 'index.html')) body = Buffer.from(body.toString('utf8').replace('<meta charset="utf-8">', `<meta charset="utf-8">\n${SITE_MARKER}`));
     res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-cache', ...STATIC_HEADERS });
     res.end(req.method === 'HEAD' ? undefined : body);
   }
@@ -408,13 +448,17 @@ export async function startServer({
   // Calls from a connected device: a person in the device's role, via "app".
   async function handleDevice(req, res, path, m, from) {
     const notConnected = (reason) => fail(res, 'not-connected', 'This device is not connected.', 'Ask the person who looks after Ospeli here for a code (they type: add device).', { reason }, reason === 'missing' ? {} : { 'Set-Cookie': deviceCookie('gone', 0) });
+    const badBody = (message) => Object.assign(new CommandError('invalid-input', message), { refusal: true, reason: 'body' });
     const jsonBody = async () => {
-      if (!/^application\/json\b/i.test(req.headers['content-type'] || '')) throw new CommandError('invalid-input', 'The body must be JSON, with the header Content-Type: application/json.');
+      if (!/^application\/json\b/i.test(req.headers['content-type'] || '')) throw badBody('The body must be JSON, with the header Content-Type: application/json.');
       let body;
-      try { body = JSON.parse(await readBody(req) || '{}'); } catch (err) { throw err instanceof CommandError ? err : new CommandError('invalid-input', 'The body is not valid JSON.'); }
-      if (!body || typeof body !== 'object' || Array.isArray(body)) throw new CommandError('invalid-input', 'The body must be a JSON object.');
+      try { body = JSON.parse(await readBody(req) || '{}'); } catch (err) { throw badBody(err instanceof CommandError ? err.message : 'The body is not valid JSON.'); }
+      if (!body || typeof body !== 'object' || Array.isArray(body)) throw badBody('The body must be a JSON object.');
       return body;
     };
+    let d = null; // the connected device, once the cookie has been checked
+    const commandName = () => (m ? commandByName(m[1])?.name || '(unknown)' : '(none)');
+    const asDevice = () => ({ type: 'human', role: d.role, via: 'app', device: d.label });
     try {
       if (path === '/api/v1/devices/pair') {
         if (req.method !== 'POST') return fail(res, 'invalid-input', 'This address takes POST.', 'Open the app in a browser and type the code there.');
@@ -423,16 +467,19 @@ export async function startServer({
         if (!slot.ok) return fail(res, 'rate-limited', 'Too many tries. Wait a minute, then try again.', `Wait ${slot.retryAfter} seconds.`, {}, { 'Retry-After': String(slot.retryAfter) });
         const body = await jsonBody();
         if (typeof body.code !== 'string' || Object.keys(body).length !== 1) throw new CommandError('invalid-input', 'Send { "code": "…" } and nothing else.');
-        const { device, token } = await pairDevice(body.code);
+        const { device, token } = await pairDevice(body.code, from);
         return send(res, 200, { ok: true, device: { label: device.label, role: device.role, roleName: roleById(device.role).name } }, { 'Set-Cookie': deviceCookie(token, DEVICE_IDLE_DAYS * 86400) });
       }
       const auth = await authenticateDevice(req);
       if (auth.fail) {
         const slot = anonLimiter.take(`nodevice|${from}`);
         if (!slot.ok) return fail(res, 'rate-limited', 'Too many calls from a device that is not connected.', `Wait ${slot.retryAfter} seconds.`, {}, { 'Retry-After': String(slot.retryAfter) });
+        // A made-up cookie, or one from a device that was removed or left unused, is recorded
+        // (a browser that simply has no cookie yet is not: that is every first visit).
+        if (auth.fail !== 'missing') await deviceRefused({ role: 'system', via: 'app' }, `cookie|${auth.fail}|${auth.was?.id || from}`, { reason: `device-${auth.fail}`, ...(auth.was ? { device: auth.was.label, deviceId: auth.was.id } : {}) });
         return notConnected(auth.fail);
       }
-      const d = auth.device;
+      d = auth.device;
       if (!deviceLimiter.take(d.id).ok) return fail(res, 'rate-limited', 'Too many calls from this device in a minute.', 'Wait a minute, then go on.', {}, { 'Retry-After': '60' });
       if (path === '/api/v1/session') {
         if (req.method !== 'GET') return fail(res, 'invalid-input', 'session takes GET.', 'Send a GET request.');
@@ -445,15 +492,20 @@ export async function startServer({
         return send(res, 200, await syncAnswer(new URL(req.url, 'http://site').searchParams));
       }
       if (req.method !== 'POST') return fail(res, 'invalid-input', 'Commands take POST.', 'Send POST with a JSON body like { "input": { } }.');
-      if (!sameOrigin(req)) return fail(res, 'forbidden', 'This call did not come from the Ospeli app on this server.', 'Open the app from the address the server printed.');
+      if (!sameOrigin(req)) {
+        await deviceRefused(asDevice(), `${d.id}|other-site`, { command: commandName(), code: 'forbidden', reason: 'other-site' });
+        return fail(res, 'forbidden', 'This call did not come from the Ospeli app on this server.', 'Open the app from the address the server printed.');
+      }
       const body = await jsonBody();
       // Who is acting comes from the cookie. A body that says anything else is refused.
-      if (Object.keys(body).some((k) => k !== 'input')) throw new CommandError('invalid-input', 'The body may hold only "input". Who is acting comes from the connected device.');
-      const who = { type: 'human', role: d.role, via: 'app', device: d.label };
-      const result = await runCommand(core, m[1], body.input ?? {}, who);
+      if (Object.keys(body).some((k) => k !== 'input')) throw badBody('The body may hold only "input". Who is acting comes from the connected device.');
+      const result = await runCommand(core, m[1], body.input ?? {}, asDevice());
       return send(res, 200, { ok: true, command: commandByName(m[1])?.name || m[1], result });
     } catch (err) {
       if (!(err instanceof CommandError)) throw err;
+      // A call turned away at the door (wrong role, no such command, input the command does not
+      // accept) is recorded; an ordinary "that bed is taken" answer is not a refusal.
+      if (d && m && err.refusal) await deviceRefused(asDevice(), `${d.id}|${commandName()}|${err.code}|${err.reason || ''}`, { command: commandName(), code: err.code, reason: err.reason || err.code });
       return fail(res, err.code, err.message, err.code === 'code-old' || err.code === 'code-wrong' ? 'Ask the person who looks after Ospeli here for a code (they type: add device).' : 'Nothing was changed.', err.detail && typeof err.detail === 'object' ? { detail: err.detail } : {});
     }
   }
@@ -539,6 +591,17 @@ export async function startServer({
     await adapter.close();
     throw new StartError('Ospeli could not use the certificate and key files. Check that --tls-cert is the certificate, --tls-key is its own key, and both are PEM files.');
   }
+  // Connection caps (issue #96): the time-outs below end a slow request; these stop any number
+  // of idle connections being held open, in all and from one address.
+  server.maxConnections = maxConnections;
+  const openFrom = new Map();
+  server.on('connection', (socket) => {
+    const a = socket.remoteAddress || 'unknown';
+    const n = (openFrom.get(a) || 0) + 1;
+    if (n > maxPerAddress) { socket.destroy(); return; }
+    openFrom.set(a, n);
+    socket.once('close', () => { const left = (openFrom.get(a) || 1) - 1; if (left > 0) openFrom.set(a, left); else openFrom.delete(a); });
+  });
   server.requestTimeout = 15000;
   server.headersTimeout = 10000;
   try {

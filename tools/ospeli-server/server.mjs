@@ -43,6 +43,8 @@ try {
     host: opt('host', '127.0.0.1'), port,
     allowHosts: opt('allow-host', '') ? opt('allow-host', '').split(',') : [],
     tls,
+    // Something on the network a person here should know about (a cancelled device code).
+    notify: (text) => console.log(`\n${text}`),
   });
 } catch (err) {
   if (err instanceof StartError) { console.error(err.message); process.exit(1); }
