@@ -48,7 +48,10 @@ test('window.ospeli lists and describes commands; agents are off by default and 
 });
 
 test('an agent with access switched on reads one ward and its change waits for a person', async () => {
-  const { context, page, errors } = await openPage(env, { path: '#/beds/ward-a1' });
+  // A fixed clock: the example hospital is made from the current hour, and since issue #72 a bed
+  // that is not free is refused before it is queued. On the real clock this test failed between
+  // 14:00 and 21:00 UTC, when ward A1 has no free bed (audit, 15 Nov).
+  const { context, page, errors } = await openPage(env, { path: '#/beds/ward-a1', clock: '2026-11-09T10:30:00Z' });
   await page.waitForSelector('.bed');
   const out = await page.evaluate(async () => {
     const core = window.ospeli.core;
@@ -58,7 +61,7 @@ test('an agent with access switched on reads one ward and its change waits for a
     await runCommand(core, 'ospeli_agents_add', { name: 'e2e-agent', role: 'bed-manager', wards: ['ward-a1'], days: 30 }, { type: 'human', role: 'coo' });
     await runCommand(core, 'ospeli_agents_add', { name: 'e2e-ward-agent', role: 'ward-nurse', wards: ['ward-a1'], days: 30 }, { type: 'human', role: 'coo' });
     const board = await window.ospeli.run('ospeli_beds_board', {}, { agent: 'e2e-agent', role: 'bed-manager' });
-    const bed = board.beds.find((b) => b.state === 'available' || b.state === 'vacated' || b.state === 'cleaning') || board.beds[0];
+    const bed = board.beds.find((b) => b.state === 'available');
     const before = await core.eventCount();
     const res = await window.ospeli.run('ospeli_beds_take_out_of_service', { bedId: bed.id, reason: 'Electrical' }, { agent: 'e2e-ward-agent', role: 'ward-nurse' });
     return { wards: board.wards.map((w) => w.id), res, same: before === await core.eventCount(), last: (await core.auditLog()).at(-1) };
