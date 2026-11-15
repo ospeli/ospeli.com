@@ -6,6 +6,7 @@ import { MODULES, moduleById, parseRoute } from './modules/registry.js';
 import { renderSoon } from './modules/soon.js';
 import { loadSyntheticHospital, currentHour, setupUnfinished } from './core/generator.js';
 import { runCommand, listCommands, describeCommand, CommandError } from './core/commands.js';
+import { waitingDecisions, proposalWords } from './modules/proposals.js';
 
 const $ = (sel) => document.querySelector(sel);
 const main = $('#main');
@@ -39,6 +40,23 @@ function buildNav() {
     li.append(a);
     return li;
   }));
+}
+
+// Issue #52: the menu says where an agent's proposal is waiting for this role. Redrawn after
+// every page change (a role change routes too) and whenever a proposal is made or decided.
+let countToken = 0;
+async function showWaiting(ctx) {
+  const token = ++countToken;
+  const { pages } = await waitingDecisions(ctx);
+  if (token !== countToken) return;
+  for (const a of document.querySelectorAll('#nav-list a')) {
+    const n = pages.find((x) => x.id === a.dataset.module)?.count || 0;
+    let tag = a.querySelector('.nav-count');
+    if (!n) { tag?.remove(); continue; }
+    if (!tag) { tag = document.createElement('span'); tag.className = 'nav-count'; a.append(tag); }
+    tag.textContent = String(n);
+    tag.setAttribute('aria-label', `${proposalWords(n)} waiting for your decision`);
+  }
 }
 
 function buildRoles(ctx) {
@@ -101,6 +119,7 @@ async function route(ctx) {
   }
   cleanup = pageCleanup;
   main.replaceChildren(...page.childNodes);
+  showWaiting(ctx);
   if (ctx.routed) main.focus({ preventScroll: true });
   ctx.routed = true;
   window.scrollTo(0, 0);
@@ -171,6 +190,7 @@ async function bootOnSite() {
   Object.defineProperty(window, 'ospeli', { value: Object.freeze(api), writable: false, configurable: false, enumerable: true });
   await showSynthetic(core);
   core.onChange(({ kind }) => { if (kind === 'reset' || kind === 'entities') showSynthetic(core); });
+  core.onChange(({ kind }) => { if (kind === 'proposals' || kind === 'reset') showWaiting(ctx); });
 
   // The role was chosen for this device at the server, so there is nothing to pick here.
   const fixed = document.createElement('span');
@@ -321,6 +341,7 @@ async function boot() {
   Object.defineProperty(window, 'ospeli', { value: Object.freeze(api), writable: false, configurable: false, enumerable: true });
   await showSynthetic(core);
   core.onChange(({ kind }) => { if (kind === 'reset' || kind === 'entities') showSynthetic(core); });
+  core.onChange(({ kind }) => { if (kind === 'proposals' || kind === 'reset') showWaiting(ctx); });
 
   // Ask the browser to keep this site's data, and say what it answered (issue #87).
   let kept = false;

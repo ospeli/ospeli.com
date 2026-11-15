@@ -77,6 +77,12 @@ export async function render(el, ctx) {
     const now = Date.now();
     const onCount = wards.filter((w) => view.wards[w.id] === true).length;
     const seen = new Map(view.recent.map((r) => [r.agent.toLowerCase(), r]));
+    // Issue #52: how many of each agent's proposals are still waiting for a person, so whoever
+    // switched agents on can see whether anyone is answering them.
+    const waiting = new Map();
+    try {
+      for (const p of (await ctx.run('ospeli_proposals_list', { status: 'pending', limit: 200 })).proposals) waiting.set(p.agent.toLowerCase(), (waiting.get(p.agent.toLowerCase()) || 0) + 1);
+    } catch { /* the list still shows */ }
 
     const dialBtn = (id, label, text) => h('button', {
       type: 'button', class: 'ag-dial-btn', 'data-dial': id, 'aria-pressed': String(view.dial === id), disabled: !can && view.dial !== id,
@@ -117,7 +123,8 @@ export async function render(el, ctx) {
         h('div', {},
           h('b', {}, a.name, a.ended ? h('span', { class: 'pill pill-bad' }, 'Ended') : null),
           h('span', {}, `Works for ${a.roleName} · ${a.wards.length ? a.wards.map((id) => `${wardName(id)}${view.wards[id] === true ? '' : ' (ward off)'}`).join(', ') : 'no wards'} · ${a.ended ? 'ended' : 'ends'} ${day(a.until)}`),
-          h('span', {}, did)),
+          h('span', {}, did),
+          waiting.get(a.name.toLowerCase()) ? h('span', { 'data-test': 'agent-waiting' }, `${plural(waiting.get(a.name.toLowerCase()), 'proposal')} waiting for a person`) : null),
         can ? h('button', { type: 'button', class: 'btn btn-ghost btn-small', 'data-cmd': 'ospeli_agents_remove', 'aria-label': `Remove ${a.name}`,
           onclick: () => { if (confirm(`Remove ${a.name}? It stops at once.`)) act('ospeli_agents_remove', { name: a.name }, `${a.name} removed. It is refused from now on.`); } }, 'Remove') : null);
     });

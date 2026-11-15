@@ -344,3 +344,77 @@ test('issue #101: a dry run through window.ospeli queues nothing, an unknown opt
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #52: the person who has to decide is told on the first screen they open, and in the menu.
+for (const width of [360, 390, 1280]) {
+  test(`issue #52: Today and the menu say when an agent's proposal is waiting for this role (${width}px)`, async () => {
+    const { context, page, errors } = await openPage(env, { width, path: '#/home', clock: '2026-11-10T10:00:00Z', touch: width < 500 });
+    const card = page.locator('[data-test="decisions-waiting"]');
+    const menuCounts = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#nav-list a')].filter((a) => a.querySelector('.nav-count')).map((a) => [a.dataset.module, { n: a.querySelector('.nav-count').textContent.trim(), spoken: a.querySelector('.nav-count').getAttribute('aria-label') }])));
+    // Nothing waiting: no card, no count.
+    assert.equal(await card.count(), 0);
+    assert.deepEqual(await menuCounts(), {});
+    // Three agents propose: a bed action, a work-order action and a new map.
+    await page.evaluate(async () => {
+      const { runCommand } = await import('./core/commands.js');
+      const core = window.ospeli.core;
+      const coo = { type: 'human', role: 'coo' };
+      const board = await runCommand(core, 'ospeli_beds_board', {}, coo);
+      const wards = board.wards.map((w) => w.id);
+      await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: Object.fromEntries(wards.map((id) => [id, true])) }, coo);
+      for (const [name, role] of [['flow-bot', 'bed-manager'], ['fix-bot', 'estates-tech'], ['map-bot', 'ops-manager']]) await runCommand(core, 'ospeli_agents_add', { name, role, wards, days: 30 }, coo);
+      const beds = board.beds.filter((b) => b.state === 'occupied');
+      await window.ospeli.run('ospeli_beds_mark_vacated', { bedId: beds[0].id }, { agent: 'flow-bot', role: 'bed-manager' });
+      await window.ospeli.run('ospeli_beds_mark_vacated', { bedId: beds[1].id }, { agent: 'flow-bot', role: 'bed-manager' });
+      const open = await runCommand(core, 'ospeli_workorders_list', { state: 'open' }, { type: 'human', role: 'estates-tech' });
+      await window.ospeli.run('ospeli_workorders_complete', { workOrderId: open.workOrders[0].id, outcome: 'fixed' }, { agent: 'fix-bot', role: 'estates-tech' });
+      await window.ospeli.run('ospeli_maps_create', { from: 'discharge' }, { agent: 'map-bot', role: 'ops-manager' });
+    });
+    // Today updates without a reload. The ward nurse (the role on first open) can decide the two bed proposals and the map.
+    await card.waitFor();
+    const read = async () => ({
+      heading: (await card.locator('h2').innerText()).trim(),
+      links: await card.locator('a').evaluateAll((as) => as.map((a) => [a.getAttribute('href'), a.innerText.replace(/\s+/g, ' ').trim(), Math.round(a.getBoundingClientRect().height), parseFloat(getComputedStyle(a).fontSize)])),
+    });
+    let c = await read();
+    assert.equal(c.heading, 'Waiting for your decision (3)');
+    assert.deepEqual(c.links.map((l) => l.slice(0, 2)), [['#/beds', 'Bed board: 2 proposals'], ['#/process', 'Process maps: 1 proposal']]);
+    for (const l of c.links) { assert.ok(l[2] >= 44, `tap target ${l[2]} px`); assert.ok(l[3] >= 15, `text ${l[3]} px`); }
+    // The card is the first thing on the page after the heading, on the first screen.
+    const top = await card.evaluate((e) => e.getBoundingClientRect().top);
+    assert.ok(top < (width < 500 ? 780 : 860) * 0.6, `the card starts at ${Math.round(top)} px`);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), 0, 'no sideways scroll');
+    assert.deepEqual(await menuCounts(), { beds: { n: '2', spoken: '2 proposals waiting for your decision' }, process: { n: '1', spoken: '1 proposal waiting for your decision' } });
+    // The facilities technician sees their share: the work order and the map.
+    await page.selectOption('#role-select', 'estates-tech');
+    await page.waitForFunction(() => /Facilities technician/.test(document.querySelector('main h1')?.textContent || ''));
+    await card.waitFor();
+    c = await read();
+    assert.equal(c.heading, 'Waiting for your decision (2)');
+    assert.deepEqual(c.links.map((l) => l.slice(0, 2)), [['#/engineering', 'Engineering: 1 proposal'], ['#/process', 'Process maps: 1 proposal']]);
+    assert.deepEqual(Object.keys(await menuCounts()), ['engineering', 'process']);
+    // The Agents screen says, for each agent, how many of its proposals nobody has answered yet.
+    await page.evaluate(() => { location.hash = '#/agents'; });
+    await page.waitForSelector('.ag-agent[data-agent="flow-bot"] [data-test="agent-waiting"]');
+    assert.deepEqual(await page.locator('.ag-agent').evaluateAll((rows) => rows.map((r) => [r.dataset.agent, r.querySelector('[data-test="agent-waiting"]')?.textContent || null])),
+      [['flow-bot', '2 proposals waiting for a person'], ['fix-bot', '1 proposal waiting for a person'], ['map-bot', '1 proposal waiting for a person']]);
+    await page.evaluate(() => { location.hash = '#/home'; });
+    await card.waitFor();
+    // One tap goes to the place it is decided; declining it there takes it off the menu and off Today.
+    await card.locator('a[href="#/engineering"]').evaluate((a) => a.click());
+    await page.waitForSelector('[data-test="proposals"] .proposal-item');
+    await page.locator('[data-test="proposals"] [data-cmd="ospeli_proposals_decline"]').first().evaluate((b) => b.click());
+    await page.waitForFunction(() => !document.querySelector('#nav-list a[data-module="engineering"] .nav-count'));
+    await page.evaluate(() => { location.hash = '#/home'; });
+    await card.waitFor();
+    assert.equal((await read()).heading, 'Waiting for your decision (1)');
+    // Nothing shows once nothing is waiting.
+    await page.evaluate(async () => {
+      const { runCommand } = await import('./core/commands.js');
+      for (const p of (await window.ospeli.core.proposals()).filter((x) => x.status === 'pending')) await runCommand(window.ospeli.core, 'ospeli_proposals_decline', { id: p.id, reason: 'Not needed' }, { type: 'human', role: p.command.startsWith('ospeli_beds_') ? 'bed-manager' : 'ops-manager' });
+    });
+    await page.waitForFunction(() => !document.querySelector('[data-test="decisions-waiting"]') && !document.querySelector('#nav-list .nav-count'));
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}

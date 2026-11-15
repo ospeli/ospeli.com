@@ -65,3 +65,14 @@ export function proposalsCard(ctx, { describe, match = () => true }) {
 
   return { el: box, load };
 }
+
+// Issue #52: which proposals wait for this role, by the page where each is decided. One read
+// (ospeli_proposals_list already says canDecide); Today and the menu both use it.
+const DECIDED_ON = [['ospeli_beds_', 'beds'], ['ospeli_workorders_', 'engineering'], ['ospeli_maps_', 'process']];
+export async function waitingDecisions(ctx) {
+  let list = [];
+  try { list = (await ctx.run('ospeli_proposals_list', { status: 'pending', limit: 200 })).proposals.filter((p) => p.canDecide); } catch { list = []; }
+  const pages = DECIDED_ON.map(([prefix, id]) => ({ id, count: list.filter((p) => p.command.startsWith(prefix)).length })).filter((x) => x.count > 0);
+  return { total: pages.reduce((n, x) => n + x.count, 0), pages };
+}
+export const proposalWords = (n) => `${n} proposal${n === 1 ? '' : 's'}`;

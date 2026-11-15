@@ -1,11 +1,12 @@
 // Today: the role's shortcuts (built pages only), the other built pages, what is planned, then
 // what is on this device.
 import { h } from './ui.js';
-import { MODULES, shortcutsFor } from './registry.js';
+import { MODULES, shortcutsFor, moduleById } from './registry.js';
 import { roleById } from '../core/model.js';
 import { loadSyntheticHospital, currentHour } from '../core/generator.js';
 import { kpiContext, kpiTiles } from './kpi-tiles.js';
 import { KPIS } from '../core/kpi.js';
+import { waitingDecisions, proposalWords } from './proposals.js';
 
 const card = (m) => h('a', { class: `card${m.load ? '' : ' is-soon'}`, href: `#/${m.id}` },
   h('h3', {}, m.name, m.load ? null : h('span', { class: 'pill pill-soon' }, 'Planned')),
@@ -34,6 +35,21 @@ export async function render(el, ctx) {
     h('div', { class: 'grid', 'data-test': 'role-shortcuts' }, mine.map(card)),
   ];
 
+  // Issue #52: a decision an agent is waiting for is the first thing on Today, with one tap to
+  // the page where it is made. Nothing is drawn when nothing waits for this role.
+  const waitingBox = h('div', {});
+  const drawWaiting = async () => {
+    const { total, pages } = await waitingDecisions(ctx);
+    if (!total) { waitingBox.replaceChildren(); return; }
+    waitingBox.replaceChildren(h('section', { class: 'card decisions', 'data-test': 'decisions-waiting', 'aria-labelledby': 'dec-h' },
+      h('h2', { id: 'dec-h' }, `Waiting for your decision (${total})`),
+      h('p', { class: 'meta' }, 'An agent suggested these. Nothing changes until a person accepts or declines.'),
+      h('ul', { class: 'decision-list' }, pages.map((x) => h('li', {},
+        h('a', { href: `#/${x.id}` }, `${moduleById(x.id).name}: ${proposalWords(x.count)}`))))));
+  };
+  await drawWaiting();
+  const off = ctx.core.onChange(({ kind }) => { if (kind === 'proposals' || kind === 'reset') drawWaiting(); });
+
   // Element.append would print a null child as the word "null" (issue #7), so drop them.
   el.append(...[
     h('div', { class: 'page-head' },
@@ -41,6 +57,7 @@ export async function render(el, ctx) {
         h('p', { class: 'eyebrow' }, 'Today'),
         h('h1', {}, `${role.name}`),
         h('p', {}, 'Your shortcuts for this role. Change role at the top of the screen.'))),
+    waitingBox,
     ...(phone ? [...shortcuts, keyNumbers] : [keyNumbers, ...shortcuts]),
     h('section', { class: 'section', 'aria-labelledby': 'all-h' },
       h('h2', { id: 'all-h' }, 'Settings and data'),
@@ -66,4 +83,5 @@ export async function render(el, ctx) {
           location.reload();
         } }, 'Load Example General Hospital'))),
   ].filter(Boolean));
+  return off;
 }
