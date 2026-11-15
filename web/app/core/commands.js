@@ -760,6 +760,12 @@ COMMAND_LIST.push(
       priority: { type: 'string', enum: Object.keys(PRIORITIES) } } },
     output: WO_WRITE_OUTPUT,
     wardOf: (core, input) => wardOfAsset(core, input.assetId),
+    // The checks a person's report passes, before an agent's proposal is queued or a dry run answers.
+    async precheck(core, input) {
+      const a = await core.getEntity(input.assetId);
+      if (!a || a.type !== 'asset') throw new CommandError('not-found', 'No such asset. ospeli_assets_list shows the assets.');
+      if (!faultsFor(a.kind).includes(input.fault)) throw new CommandError('invalid-input', `"${input.fault}" is not a fault for ${currentWords(a.name)}.`, { faults: faultsFor(a.kind) });
+    },
     // An agent gets the same answer before its proposal is queued, so a duplicate never waits for a person.
     async snapshot(core, input) {
       const dup = alreadyOpen(await core.events(), input, core.now());
@@ -948,6 +954,7 @@ function mapWrite({ name, summary, required = [], props, example, mutate, audit 
       const m = mapStore(await core.getMeta(MAPS_KEY, null)).maps.find((x) => x.id === input.mapId);
       if (!m) throw new CommandError('not-found', `No map ${input.mapId}. It may have been removed.`, { fix: 'ospeli_maps_list shows the maps on this device.' });
       if (input.expectedRevision && m.revision !== input.expectedRevision) throw new CommandError('conflict', 'This map changed since you opened it. Open it again and retry.', { revision: m.revision, fix: 'Read it again with ospeli_maps_get.' });
+      if (input.stepId) stepIndex(m, input.version || 'today', input.stepId); // not-found when the version has no such step
     },
     async run(core, input, { actor }) {
       checkText(input);
@@ -1631,10 +1638,19 @@ const stableJson = (v) => JSON.stringify(v, (k, x) => (x && typeof x === 'object
 // opts.dryRun: every check runs and the answer says what would happen; nothing is read, queued
 // or changed. opts.request: { tag, bodyHash } stored on an agent's proposal, so the site server
 // can answer a repeated request (same Idempotency-Key) with the proposal it already queued.
+// An agent's write is checked against the queue and then queued. Those two steps run one call at
+// a time for each core, so calls that arrive together cannot all pass the check first.
+const agentWrites = new WeakMap();
+function oneAtATime(core, fn) {
+  const run = (agentWrites.get(core) || Promise.resolve()).then(fn, fn);
+  agentWrites.set(core, run.catch(() => {}));
+  return run;
+}
 export async function runCommand(core, name, input = {}, actor, opts = {}) {
   if (actor?.type !== 'agent') return runChecked(core, name, input, actor, opts);
+  const checked = () => runChecked(core, name, input, actor, opts);
   try {
-    return await runChecked(core, name, input, actor, opts);
+    return await (commandByName(name)?.kind === 'read' ? checked() : oneAtATime(core, checked));
   } catch (err) {
     if (err instanceof CommandError && err.refusal) await auditRefusal(core, name, input, actor, err);
     throw err;
