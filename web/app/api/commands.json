@@ -3840,6 +3840,14 @@
                 "updatedAt": {
                   "type": "string",
                   "format": "date-time"
+                },
+                "walk": {
+                  "type": "boolean",
+                  "description": "The map was made from one walk; its times were measured once."
+                },
+                "elapsedSecToday": {
+                  "type": "integer",
+                  "description": "Start to finish in seconds, for a map made from a walk."
                 }
               }
             }
@@ -3944,6 +3952,28 @@
               "type": "string"
             }
           },
+          "walk": {
+            "type": "object",
+            "description": "Present when the map was made from one walk (ospeli_walks_finish). One walk is one observation, not a measurement of the process.",
+            "required": [
+              "id",
+              "startedAt",
+              "finishedAt"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "startedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "finishedAt": {
+                "type": "string",
+                "format": "date-time"
+              }
+            }
+          },
           "today": {
             "type": "object",
             "required": [
@@ -4003,6 +4033,10 @@
                   }
                 }
               },
+              "statsSec": {
+                "type": "object",
+                "description": "For a map made from a walk: the same numbers in seconds, from the measured times."
+              },
               "steps": {
                 "type": "array",
                 "items": {
@@ -4050,6 +4084,24 @@
                     "par": {
                       "type": "boolean",
                       "description": "Starts alongside the step before instead of after it."
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "On a map made from a walk: the measured wait in seconds. Absent once the minutes were changed by hand."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "On a map made from a walk: the measured hands-on time in seconds."
+                    },
+                    "interrupted": {
+                      "type": "boolean",
+                      "description": "On a walk, the work stopped before the step was finished."
+                    },
+                    "edited": {
+                      "type": "boolean",
+                      "description": "A measured time on this step was changed by hand."
                     }
                   }
                 }
@@ -4115,6 +4167,9 @@
                   }
                 }
               },
+              "statsSec": {
+                "type": "object"
+              },
               "steps": {
                 "type": "array",
                 "items": {
@@ -4162,6 +4217,24 @@
                     "par": {
                       "type": "boolean",
                       "description": "Starts alongside the step before instead of after it."
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "On a map made from a walk: the measured wait in seconds. Absent once the minutes were changed by hand."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "description": "On a map made from a walk: the measured hands-on time in seconds."
+                    },
+                    "interrupted": {
+                      "type": "boolean",
+                      "description": "On a walk, the work stopped before the step was finished."
+                    },
+                    "edited": {
+                      "type": "boolean",
+                      "description": "A measured time on this step was changed by hand."
                     }
                   }
                 }
@@ -5439,6 +5512,1396 @@
         "input": {
           "on": false
         }
+      }
+    },
+    {
+      "name": "ospeli_walks_get",
+      "summary": "The walk in progress on this device (or one walk by id): its state (waiting or a step running), the steps timed so far in seconds, and short lists of step names and roles to offer. Read-only. walk is null when none is in progress.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "walkId": {
+            "type": "string",
+            "pattern": "^walk-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "walk",
+          "stepChips",
+          "roleChips"
+        ],
+        "properties": {
+          "walk": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "now": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stepChips": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Up to 6 step names to offer: ones used on this device first, then example ones."
+          },
+          "roleChips": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Up to 6 roles to offer: the ones used in this walk first."
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
+      "name": "ospeli_walks_start",
+      "summary": "Start a walk: follow one patient visit or one item from start to finish and time each step as it happens. The clock starts now, and the walk begins in \"waiting\". One walk at a time on a device. People only: a walk is a person's own observation on site, so this command is for people, not for agents.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 80,
+            "description": "What is being followed, e.g. \"Morning clinic visit\". Never a person's name. Defaults to \"Walk 1\", \"Walk 2\"…"
+          },
+          "notAName": {
+            "type": "boolean",
+            "description": "Send true only after the command asked whether the text holds a person's name and it does not (for example \"Yellow Sticker\"). Maps are shared; never use it to keep a real name."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "walk"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done"
+            ]
+          },
+          "walk": {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "status",
+              "state",
+              "startedAt",
+              "since",
+              "steps",
+              "totals"
+            ],
+            "description": "A walk. Times are whole seconds between taps, recomputed from the stored tap times.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^walk-[0-9]{3,}$",
+                "maxLength": 16,
+                "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "walking",
+                  "finished",
+                  "discarded"
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "step"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up."
+              },
+              "startedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "finishedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "since": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began."
+              },
+              "mapId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The map this walk became, once finished."
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "role",
+                    "waitSec",
+                    "workSec",
+                    "named"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "msg": {
+                      "type": "boolean"
+                    },
+                    "interrupted": {
+                      "type": "boolean"
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "Seconds from the end of the step before (or the start of the walk) to this step starting."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Seconds from \"step starts\" to \"step done\"."
+                    },
+                    "named": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              },
+              "totals": {
+                "type": "object",
+                "required": [
+                  "steps",
+                  "workSec",
+                  "waitSec",
+                  "elapsedSec"
+                ],
+                "properties": {
+                  "steps": {
+                    "type": "integer"
+                  },
+                  "workSec": {
+                    "type": "integer"
+                  },
+                  "waitSec": {
+                    "type": "integer"
+                  },
+                  "elapsedSec": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
+          },
+          "undone": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "title": "Morning clinic visit"
+        }
+      }
+    },
+    {
+      "name": "ospeli_walks_step_start",
+      "summary": "A step starts now: someone begins doing something to or for the patient or item being followed. The wait before it ends at this moment. People only: a walk is a person's own observation on site, so this command is for people, not for agents.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "walkId": {
+            "type": "string",
+            "pattern": "^walk-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "walk"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done"
+            ]
+          },
+          "walk": {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "status",
+              "state",
+              "startedAt",
+              "since",
+              "steps",
+              "totals"
+            ],
+            "description": "A walk. Times are whole seconds between taps, recomputed from the stored tap times.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^walk-[0-9]{3,}$",
+                "maxLength": 16,
+                "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "walking",
+                  "finished",
+                  "discarded"
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "step"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up."
+              },
+              "startedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "finishedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "since": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began."
+              },
+              "mapId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The map this walk became, once finished."
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "role",
+                    "waitSec",
+                    "workSec",
+                    "named"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "msg": {
+                      "type": "boolean"
+                    },
+                    "interrupted": {
+                      "type": "boolean"
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "Seconds from the end of the step before (or the start of the walk) to this step starting."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Seconds from \"step starts\" to \"step done\"."
+                    },
+                    "named": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              },
+              "totals": {
+                "type": "object",
+                "required": [
+                  "steps",
+                  "workSec",
+                  "waitSec",
+                  "elapsedSec"
+                ],
+                "properties": {
+                  "steps": {
+                    "type": "integer"
+                  },
+                  "workSec": {
+                    "type": "integer"
+                  },
+                  "waitSec": {
+                    "type": "integer"
+                  },
+                  "elapsedSec": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
+          },
+          "undone": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
+      "name": "ospeli_walks_step_done",
+      "summary": "The running step ends now, and waiting starts again from this moment. Send interrupted: true when the work stopped before it was finished. Name the step afterwards with ospeli_walks_step_name, or leave it for later. People only: a walk is a person's own observation on site, so this command is for people, not for agents.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "walkId": {
+            "type": "string",
+            "pattern": "^walk-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+          },
+          "interrupted": {
+            "type": "boolean",
+            "description": "The work stopped before the step was finished."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "walk"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done"
+            ]
+          },
+          "walk": {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "status",
+              "state",
+              "startedAt",
+              "since",
+              "steps",
+              "totals"
+            ],
+            "description": "A walk. Times are whole seconds between taps, recomputed from the stored tap times.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^walk-[0-9]{3,}$",
+                "maxLength": 16,
+                "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "walking",
+                  "finished",
+                  "discarded"
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "step"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up."
+              },
+              "startedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "finishedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "since": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began."
+              },
+              "mapId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The map this walk became, once finished."
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "role",
+                    "waitSec",
+                    "workSec",
+                    "named"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "msg": {
+                      "type": "boolean"
+                    },
+                    "interrupted": {
+                      "type": "boolean"
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "Seconds from the end of the step before (or the start of the walk) to this step starting."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Seconds from \"step starts\" to \"step done\"."
+                    },
+                    "named": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              },
+              "totals": {
+                "type": "object",
+                "required": [
+                  "steps",
+                  "workSec",
+                  "waitSec",
+                  "elapsedSec"
+                ],
+                "properties": {
+                  "steps": {
+                    "type": "integer"
+                  },
+                  "workSec": {
+                    "type": "integer"
+                  },
+                  "waitSec": {
+                    "type": "integer"
+                  },
+                  "elapsedSec": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
+          },
+          "undone": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "interrupted": false
+        }
+      }
+    },
+    {
+      "name": "ospeli_walks_step_name",
+      "summary": "Say what happened in the step that just ended and which role did it (a role, never a person's name). nextStarted: true when the next step began the moment this one ended, so there is no wait between them. People only: a walk is a person's own observation on site, so this command is for people, not for agents.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "walkId": {
+            "type": "string",
+            "pattern": "^walk-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 140,
+            "description": "What happened, e.g. \"Checked in at reception\"."
+          },
+          "role": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60,
+            "description": "Which role did it, e.g. \"Reception\"."
+          },
+          "msg": {
+            "type": "boolean",
+            "description": "The step only passed on information (a call, message or form)."
+          },
+          "nextStarted": {
+            "type": "boolean",
+            "description": "The next step started the moment this one ended."
+          },
+          "notAName": {
+            "type": "boolean",
+            "description": "Send true only after the command asked whether the text holds a person's name and it does not (for example \"Yellow Sticker\"). Maps are shared; never use it to keep a real name."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "walk"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done"
+            ]
+          },
+          "walk": {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "status",
+              "state",
+              "startedAt",
+              "since",
+              "steps",
+              "totals"
+            ],
+            "description": "A walk. Times are whole seconds between taps, recomputed from the stored tap times.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^walk-[0-9]{3,}$",
+                "maxLength": 16,
+                "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "walking",
+                  "finished",
+                  "discarded"
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "step"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up."
+              },
+              "startedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "finishedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "since": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began."
+              },
+              "mapId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The map this walk became, once finished."
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "role",
+                    "waitSec",
+                    "workSec",
+                    "named"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "msg": {
+                      "type": "boolean"
+                    },
+                    "interrupted": {
+                      "type": "boolean"
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "Seconds from the end of the step before (or the start of the walk) to this step starting."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Seconds from \"step starts\" to \"step done\"."
+                    },
+                    "named": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              },
+              "totals": {
+                "type": "object",
+                "required": [
+                  "steps",
+                  "workSec",
+                  "waitSec",
+                  "elapsedSec"
+                ],
+                "properties": {
+                  "steps": {
+                    "type": "integer"
+                  },
+                  "workSec": {
+                    "type": "integer"
+                  },
+                  "waitSec": {
+                    "type": "integer"
+                  },
+                  "elapsedSec": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
+          },
+          "undone": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "name": "Checked in at reception",
+          "role": "Reception"
+        }
+      }
+    },
+    {
+      "name": "ospeli_walks_undo",
+      "summary": "Take back the last tap on the walk in progress: a step that just started goes back to waiting; a step that just ended runs again as if it had not been marked done. People only: a walk is a person's own observation on site, so this command is for people, not for agents.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "walkId": {
+            "type": "string",
+            "pattern": "^walk-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "walk"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done"
+            ]
+          },
+          "walk": {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "status",
+              "state",
+              "startedAt",
+              "since",
+              "steps",
+              "totals"
+            ],
+            "description": "A walk. Times are whole seconds between taps, recomputed from the stored tap times.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^walk-[0-9]{3,}$",
+                "maxLength": 16,
+                "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "walking",
+                  "finished",
+                  "discarded"
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "step"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up."
+              },
+              "startedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "finishedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "since": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began."
+              },
+              "mapId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The map this walk became, once finished."
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "role",
+                    "waitSec",
+                    "workSec",
+                    "named"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "msg": {
+                      "type": "boolean"
+                    },
+                    "interrupted": {
+                      "type": "boolean"
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "Seconds from the end of the step before (or the start of the walk) to this step starting."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Seconds from \"step starts\" to \"step done\"."
+                    },
+                    "named": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              },
+              "totals": {
+                "type": "object",
+                "required": [
+                  "steps",
+                  "workSec",
+                  "waitSec",
+                  "elapsedSec"
+                ],
+                "properties": {
+                  "steps": {
+                    "type": "integer"
+                  },
+                  "workSec": {
+                    "type": "integer"
+                  },
+                  "waitSec": {
+                    "type": "integer"
+                  },
+                  "elapsedSec": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
+          },
+          "undone": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
+      "name": "ospeli_walks_discard",
+      "summary": "Delete the walk in progress without making a map. Its taps are not kept. People only: a walk is a person's own observation on site, so this command is for people, not for agents.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "walkId": {
+            "type": "string",
+            "pattern": "^walk-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "walk"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done"
+            ]
+          },
+          "walk": {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "status",
+              "state",
+              "startedAt",
+              "since",
+              "steps",
+              "totals"
+            ],
+            "description": "A walk. Times are whole seconds between taps, recomputed from the stored tap times.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^walk-[0-9]{3,}$",
+                "maxLength": 16,
+                "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "walking",
+                  "finished",
+                  "discarded"
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "step"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up."
+              },
+              "startedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "finishedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "since": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began."
+              },
+              "mapId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The map this walk became, once finished."
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "role",
+                    "waitSec",
+                    "workSec",
+                    "named"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "msg": {
+                      "type": "boolean"
+                    },
+                    "interrupted": {
+                      "type": "boolean"
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "Seconds from the end of the step before (or the start of the walk) to this step starting."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Seconds from \"step starts\" to \"step done\"."
+                    },
+                    "named": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              },
+              "totals": {
+                "type": "object",
+                "required": [
+                  "steps",
+                  "workSec",
+                  "waitSec",
+                  "elapsedSec"
+                ],
+                "properties": {
+                  "steps": {
+                    "type": "integer"
+                  },
+                  "workSec": {
+                    "type": "integer"
+                  },
+                  "waitSec": {
+                    "type": "integer"
+                  },
+                  "elapsedSec": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
+          },
+          "undone": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
+      "name": "ospeli_walks_finish",
+      "summary": "Finish the walk in progress and make a process map from it: each step with its measured waiting and hands-on time. The map says it was measured on one walk: one observation, not a measurement of the process. A step with no name yet is called \"Step 3\" with the role \"Not set\"; change it on the map. People only: a walk is a person's own observation on site, so this command is for people, not for agents.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "walkId": {
+            "type": "string",
+            "pattern": "^walk-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "walk"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done"
+            ]
+          },
+          "walk": {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "status",
+              "state",
+              "startedAt",
+              "since",
+              "steps",
+              "totals"
+            ],
+            "description": "A walk. Times are whole seconds between taps, recomputed from the stored tap times.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^walk-[0-9]{3,}$",
+                "maxLength": 16,
+                "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "walking",
+                  "finished",
+                  "discarded"
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "step"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up."
+              },
+              "startedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "finishedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "since": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began."
+              },
+              "mapId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The map this walk became, once finished."
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "role",
+                    "waitSec",
+                    "workSec",
+                    "named"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "msg": {
+                      "type": "boolean"
+                    },
+                    "interrupted": {
+                      "type": "boolean"
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "Seconds from the end of the step before (or the start of the walk) to this step starting."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Seconds from \"step starts\" to \"step done\"."
+                    },
+                    "named": {
+                      "type": "boolean"
+                    }
+                  }
+                }
+              },
+              "totals": {
+                "type": "object",
+                "required": [
+                  "steps",
+                  "workSec",
+                  "waitSec",
+                  "elapsedSec"
+                ],
+                "properties": {
+                  "steps": {
+                    "type": "integer"
+                  },
+                  "workSec": {
+                    "type": "integer"
+                  },
+                  "waitSec": {
+                    "type": "integer"
+                  },
+                  "elapsedSec": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
+          },
+          "undone": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {}
       }
     }
   ]
