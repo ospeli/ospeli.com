@@ -1,7 +1,7 @@
 // Ospeli app service worker: precache the shell so the app opens offline.
 // Strategy: serve from cache at once, refresh the cache from the network in the background.
 // Bump VERSION when the precache list changes. scripts/check.py checks that every file exists.
-const VERSION = 'ospeli-app-v24';
+const VERSION = 'ospeli-app-v25';
 const PRECACHE = [
   './',
   'index.html',
@@ -44,6 +44,9 @@ const PRECACHE = [
   '../brand/icons/ospeli_app_192.png',
 ];
 
+const APP_PAGE = new URL('./', self.location).pathname;
+const APP_PAGES = [APP_PAGE, `${APP_PAGE}index.html`];
+
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(VERSION).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
 });
@@ -59,6 +62,10 @@ self.addEventListener('fetch', (event) => {
   if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
   // A site server's live answers (/api/v1/…) are never served from the cache.
   if (new URL(req.url).pathname.startsWith('/api/')) return;
+  // Only the app's own page is kept as "the app page". Any other address typed or linked to
+  // under /app/ (one of the app's files, or a page that does not exist) is answered by the
+  // network, so it can never be saved in the app page's place.
+  if (req.mode === 'navigate' && !APP_PAGES.includes(new URL(req.url).pathname)) return;
   event.respondWith((async () => {
     const cache = await caches.open(VERSION);
     const key = req.mode === 'navigate' ? new URL('./', self.location).href : req;
