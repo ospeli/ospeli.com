@@ -173,7 +173,7 @@ export async function render(el, ctx) {
     }, ACTION_LABELS[a]));
     dialog.replaceChildren(
       h('h2', { id: 'bed-dlg-h' }, `${shortWard(ward)} · ${info.name}`),
-      h('p', { class: 'bed-dlg-state' }, h('span', { class: `chip st-${bed.state}` }, BED_STATES[bed.state].name),
+      h('p', { class: 'bed-dlg-state' }, h('span', { class: `chip st-${bed.state}` }, BED_STATES[bed.state].short),
         bed.since ? h('span', { class: 'meta' }, ` for ${since(bed.since, Date.now())}, since ${fmtClock(bed.since)}`) : null),
       h('dl', {},
         bed.encounter ? h('div', { class: 'def-row' }, h('dt', {}, bed.state === 'allocated' ? 'Held for' : 'Patient'), h('dd', {}, encounterLabel(bed.encounter))) : null,
@@ -350,7 +350,8 @@ export async function render(el, ctx) {
       const who = b.state === 'out-of-service' ? b.reason : b.encounter ? (b.state === 'allocated' ? `For ${encounterLabel(b.encounter)}` : encounterLabel(b.encounter)) : '';
       return h('button', {
         type: 'button', class: `bed st-${b.state}${match ? ' match' : ''}${picking && !match ? ' dim' : ''}`, 'data-bed': b.id, 'data-cmd': 'ospeli_beds_get',
-        'aria-label': `${info.name}, ${BED_STATES[b.state].name}${b.since ? `, for ${since(b.since, now)}` : ''}${match ? ', available to allocate' : ''}`,
+        // The spoken name is built from the words on the tile, with who is in the bed (issue #90).
+        'aria-label': `${info.name}, ${BED_STATES[b.state].short}${b.since ? `, for ${since(b.since, now)}` : ''}${who ? `, ${who}` : ''}${info.sideRoom ? ', Single room' : ''}${match ? ', available to allocate' : ''}`,
         onclick: () => openBed(b.id),
       },
         h('span', { class: 'bed-row' }, h('b', { class: 'bed-no' }, info.name.replace('Bed ', '')), h('span', { class: 'bed-age' }, since(b.since, now))),

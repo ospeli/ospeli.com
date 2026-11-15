@@ -258,7 +258,11 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .bed-age, .bed-who, .bed-tag { font-size: .8rem; color: var(--ink-soft); overflow-wrap: anywhere; }
 .bed-tag { font-weight: 700; }
 .bed.match { outline: 3px solid var(--sea); outline-offset: 1px; background: #E8F6F5; }
-.bed.dim { opacity: .55; }
+/* Find a bed: a bed that is not a match steps back with a flat sand tile and a plain edge, not
+   opacity. It is still a live button, so its text keeps 4.5:1 or better (issue #90). */
+.bed.dim { background: #F1EDE4; border-color: var(--line); border-left-color: var(--line-strong); box-shadow: none; }
+.bed.dim .bed-no, .bed.dim .bed-age, .bed.dim .bed-who, .bed.dim .bed-tag { color: #4A5968; }
+.bed.dim .chip { background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); color: #3A4A5A; }
 .chip { display: inline-block; font-size: .76rem; font-weight: 800; padding: 2px 8px; border-radius: 999px; white-space: nowrap; color: var(--navy); background: #EEF2F5; }
 .chip.st-occupied { background: #DCE6EF; }
 .chip.st-expected-discharge { background: #FDE9C4; color: #5C3B00; }

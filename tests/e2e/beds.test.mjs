@@ -344,3 +344,94 @@ for (const [width, height] of [[360, 780], [390, 844]]) {
     await context.close();
   });
 }
+
+// Issue #90: what a screen reader or voice control hears is what the screen shows.
+// Every piece of text on the button is in its spoken name (WCAG 2.5.3), the bed's name includes
+// who is in it, one word per bed state on the tile and in the dialog, and a bed that is not a
+// match in Find a bed is still a live button, so its text stays at 4.5:1 or better.
+const spokenVsShown = (page, sel) => page.evaluate((s) => [...document.querySelectorAll(s)].map((el) => {
+  const shown = []; const tw = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  for (let n; (n = tw.nextNode());) { if (n.textContent.trim() && !n.parentElement.closest('.sr-only')) shown.push(n.textContent.trim()); }
+  const name = (el.getAttribute('aria-label') ?? el.textContent).replace(/\s+/g, ' ');
+  return { name, shown, missing: shown.filter((t) => !name.toLowerCase().includes(t.replace(/\s+/g, ' ').toLowerCase())) };
+}), sel);
+
+test('issue #90: bed and work-order buttons are announced with the words on them, including the patient reference; one word per bed state', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, path: '#/beds', clock: CLOCK });
+  await page.waitForSelector('.bed');
+  // Every state on one ward, so each state's word is checked.
+  await page.evaluate(async () => {
+    const { runCommand, ACTION_COMMANDS } = await import('./core/commands.js');
+    const core = window.ospeli.core; const p = { type: 'human', role: 'bed-manager' };
+    const board = await runCommand(core, 'ospeli_beds_board', {}, p);
+    const ward = document.querySelector('.bed').dataset.bed.replace(/-bed-\d+$/, '');
+    const occ = board.beds.filter((b) => b.wardId === ward && b.state === 'occupied');
+    const go = async (bed, ...actions) => { for (const a of actions) await runCommand(core, ACTION_COMMANDS[a], { bedId: bed.id, ...(a === 'expect-discharge' ? { expectedAt: new Date(Date.now() + 3 * 3600e3).toISOString() } : a === 'out-of-service' ? { reason: 'Electrical' } : {}) }, p); };
+    await go(occ[0], 'expect-discharge'); await go(occ[1], 'vacate'); await go(occ[2], 'vacate', 'start-clean'); await go(occ[3], 'vacate', 'finish-clean', 'out-of-service');
+  });
+  await page.waitForFunction(() => document.querySelector('.bed.st-out-of-service') && document.querySelector('.bed.st-cleaning') && document.querySelector('.bed.st-expected-discharge'));
+  const beds = await spokenVsShown(page, '.bed');
+  assert.ok(beds.length >= 10);
+  assert.deepEqual(beds.filter((b) => b.missing.length).map((b) => `${b.name} | not spoken: ${b.missing.join(', ')}`), []);
+  for (const b of beds) assert.match(b.name, /^Bed \d+/, b.name);
+  assert.ok(beds.some((b) => /Patient \d+/.test(b.name)), 'the patient reference is in the spoken name');
+  assert.ok(beds.some((b) => /Going home/.test(b.name)) && beds.some((b) => /To clean/.test(b.name)));
+  // One word per state: the dialog's chip says what the tile's chip says.
+  for (const st of ['expected-discharge', 'vacated', 'cleaning', 'out-of-service', 'occupied']) {
+    const tile = page.locator(`.bed.st-${st}`).first();
+    const word = (await tile.locator('.chip').innerText()).trim();
+    await tile.evaluate((b) => b.click());
+    await page.waitForSelector('dialog.bed-dialog[open]');
+    assert.equal((await page.locator('dialog.bed-dialog .bed-dlg-state .chip').innerText()).trim(), word, `the dialog for a ${st} bed`);
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('dialog.bed-dialog[open]', { state: 'detached' }).catch(() => page.waitForFunction(() => !document.querySelector('dialog.bed-dialog[open]')));
+  }
+  // Work orders: the same rule.
+  await page.evaluate(() => { location.hash = '#/engineering'; });
+  await page.waitForSelector('button[data-wo]');
+  const rows = await spokenVsShown(page, 'button[data-wo]');
+  assert.ok(rows.length >= 3);
+  assert.deepEqual(rows.filter((b) => b.missing.length).map((b) => `${b.name} | not spoken: ${b.missing.join(', ')}`), []);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+for (const width of [390, 1280]) {
+  test(`issue #90: in Find a bed, beds that are not a match stay readable at 4.5:1 and are not faded (${width}px)`, async () => {
+    const { context, page, errors } = await openPage(env, { width, height: 844, path: '#/beds', clock: CLOCK });
+    await page.selectOption('#role-select', 'bed-manager');
+    await page.waitForSelector('[data-find]');
+    await page.locator('[data-find]').first().evaluate((b) => b.click());
+    await page.waitForSelector('.bed.dim');
+    const worst = await page.evaluate(() => {
+      const rgb = (c) => (c.match(/[\d.]+/g) || []).map(Number);
+      const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }; return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b); };
+      const over = (fg, bg, a) => fg.slice(0, 3).map((v, i) => v * a + bg[i] * (1 - a));
+      // The colour behind a node: the nearest ancestor with a solid background.
+      const behind = (el) => { for (let e = el; e; e = e.parentElement) { const c = rgb(getComputedStyle(e).backgroundColor); if (c.length === 3 || c[3] === 1) return c.slice(0, 3); } return [255, 255, 255]; };
+      const page = behind(document.querySelector('.bed-grid'));
+      let low = { ratio: 99 };
+      for (const bed of document.querySelectorAll('.bed.dim')) {
+        const fade = parseFloat(getComputedStyle(bed).opacity);
+        for (const el of bed.querySelectorAll('.bed-no, .bed-age, .chip, .bed-who, .bed-tag')) {
+          if (!el.textContent.trim()) continue;
+          // Opacity on the tile fades text and background together into the page behind it.
+          const bg = over(behind(el), page, fade); const fg = over(rgb(getComputedStyle(el).color), page, fade);
+          const [a, b] = [lum(fg), lum(bg)].sort((x, y) => y - x);
+          const ratio = (a + 0.05) / (b + 0.05);
+          if (ratio < low.ratio) low = { ratio: Math.round(ratio * 100) / 100, what: el.className, text: el.textContent.trim(), fade };
+        }
+      }
+      return { low, dim: document.querySelectorAll('.bed.dim').length, match: document.querySelectorAll('.bed.match').length };
+    });
+    assert.ok(worst.dim > 0);
+    assert.ok(worst.low.ratio >= 4.5, `lowest contrast on a bed that is not a match: ${JSON.stringify(worst.low)}`);
+    // A match still stands out from the rest.
+    if (worst.match) {
+      const [m, d] = await page.evaluate(() => [getComputedStyle(document.querySelector('.bed.match')).backgroundColor, getComputedStyle(document.querySelector('.bed.dim')).backgroundColor]);
+      assert.notEqual(m, d);
+    }
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}

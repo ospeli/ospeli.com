@@ -272,16 +272,23 @@ export async function render(el, ctx) {
     if (ui.filter === 'repeat') rows = rows.filter((w) => w.repeat > 0);
     const max = Math.max(0, ...data.open.workOrders.map((w) => lateMinutes(w, now)));
     sortRow.hidden = done;
-    const row = (w, lead) => h('li', {},
-      h('button', {
-        type: 'button', class: `wo pr-${w.priority}`, 'data-wo': w.id, 'data-cmd': 'ospeli_workorders_list',
-        'aria-label': `${w.id.toUpperCase()}, ${w.title}, ${w.assetName}, ${w.locationName}, ${PRIORITIES[w.priority].name}, ${done ? `${OUTCOMES[w.outcome] || 'Completed'}, ` : ''}${slaText(w, now)}${w.state === 'started' ? ', in progress' : ''}${!done && w.team !== ownTeam ? `, ${TEAMS[w.team]}` : ''}${w.repeat ? ', repeat fault, failed again after a fix' : ''}`,
-        onclick: () => openWorkOrder(w),
-      },
-        h('b', { class: 'wo-title' }, w.title),
-        h('span', { class: 'wo-where' }, `${w.assetName} · ${w.locationName}`),
-        lateness(w, now, max, done ? OUTCOMES[w.outcome] || 'Completed' : lead ? PRIORITIES[w.priority].name : null),
-        tags(w).length ? h('span', { class: 'wo-tags' }, tags(w)) : null));
+    // The text in the nodes a row shows, piece by piece.
+    const leaves = (nodes) => nodes.flatMap((n) => { const out = []; const tw = document.createTreeWalker(n, NodeFilter.SHOW_TEXT); for (let t; (t = tw.nextNode());) if (t.textContent.trim()) out.push(t.textContent.trim()); return out; });
+    const row = (w, lead) => {
+      // After the title and the place: how late it is (or how it ended), then the tags.
+      const rest = [lateness(w, now, max, done ? OUTCOMES[w.outcome] || 'Completed' : lead ? PRIORITIES[w.priority].name : null), tags(w).length ? h('span', { class: 'wo-tags' }, tags(w)) : null].filter(Boolean);
+      // The spoken name holds every piece of text on the row, in the row's own words (issue #90).
+      const said = [...new Set([PRIORITIES[w.priority].name, ...leaves(rest)])];
+      return h('li', {},
+        h('button', {
+          type: 'button', class: `wo pr-${w.priority}`, 'data-wo': w.id, 'data-cmd': 'ospeli_workorders_list',
+          'aria-label': `${w.id.toUpperCase()}, ${w.title}, ${w.assetName} · ${w.locationName}, ${said.join(', ')}${w.repeat ? ', failed again after a fix' : ''}`,
+          onclick: () => openWorkOrder(w),
+        },
+          h('b', { class: 'wo-title' }, w.title),
+          h('span', { class: 'wo-where' }, `${w.assetName} · ${w.locationName}`),
+          ...rest));
+    };
     // Completed work orders stay in the order they were closed, newest first.
     const groups = done ? (rows.length ? [{ id: 'done', name: null, items: rows }] : []) : sortWorkOrders(rows, ui.sort);
     setKids(list, groups.length ? groups.map((g) => [
