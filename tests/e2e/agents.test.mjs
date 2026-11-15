@@ -279,3 +279,68 @@ test('issue #72: five proposals show a count, the newest three and "See all"; an
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #101: an agent that believes it is rehearsing must not write to a person's queue. The
+// browser door passes dryRun on, and refuses an option it does not know instead of dropping it.
+test('issue #101: a dry run through window.ospeli queues nothing, an unknown option is refused, and every published example runs or says what it needs', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, path: '#/beds', clock: '2026-11-10T10:00:00Z' });
+  await page.waitForSelector('.bed');
+  const out = await page.evaluate(async () => {
+    const { runCommand } = await import('./core/commands.js');
+    const core = window.ospeli.core;
+    const coo = { type: 'human', role: 'coo' };
+    const board = await runCommand(core, 'ospeli_beds_board', {}, coo);
+    const wards = board.wards.map((w) => w.id);
+    await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: Object.fromEntries(wards.map((id) => [id, true])) }, coo);
+    await runCommand(core, 'ospeli_agents_add', { name: 'rehearsal-bot', role: 'ward-nurse', wards, days: 30 }, coo);
+    const who = { agent: 'rehearsal-bot', role: 'ward-nurse' };
+    const bed = board.beds.find((b) => b.state === 'occupied');
+    const pending = async () => (await core.proposals()).filter((p) => p.status === 'pending').length;
+    const r = { before: await pending() };
+    r.dry = await window.ospeli.run('ospeli_beds_mark_vacated', { bedId: bed.id }, { ...who, dryRun: true });
+    r.afterDry = await pending();
+    const refused = async (options) => { try { await window.ospeli.run('ospeli_beds_mark_vacated', { bedId: bed.id }, options); return 'ran'; } catch (e) { return { code: e.code, message: e.message, allowed: e.detail?.allowed }; } };
+    r.unknown = await refused({ ...who, dryrun: true });
+    r.notBoolean = await refused({ ...who, dryRun: 'yes' });
+    r.notObject = await refused('dryRun');
+    r.afterRefused = await pending();
+    r.real = await window.ospeli.run('ospeli_beds_mark_vacated', { bedId: bed.id }, { ...who, dryRun: false });
+    r.afterReal = await pending();
+    // With no options the call is made as before: as the unlisted default agent, which is refused for that reason alone.
+    r.plain = await window.ospeli.run('ospeli_kpi_list').then(() => 'ran', (e) => e.code);
+    return r;
+  });
+  assert.equal(out.dry.status, 'dry-run');
+  assert.match(out.dry.changed, /Nothing was read, queued or changed/);
+  assert.equal(out.afterDry, out.before, 'a dry run queues nothing');
+  assert.equal(out.unknown.code, 'invalid-input');
+  assert.match(out.unknown.message, /dryrun/);
+  assert.deepEqual(out.unknown.allowed, ['agent', 'role', 'dryRun']);
+  assert.equal(out.notBoolean.code, 'invalid-input');
+  assert.equal(out.notObject.code, 'invalid-input');
+  assert.equal(out.afterRefused, out.before, 'a refused call queues nothing');
+  assert.equal(out.real.status, 'proposed');
+  assert.equal(out.afterReal, out.before + 1);
+  assert.equal(out.plain, 'forbidden');
+
+  // Every example from the published commands.json, as written, through the door an agent uses
+  // (people-only commands are for people; they are covered in tests/unit/examples.test.mjs).
+  const spec = await (await page.request.get(`${env.appUrl}api/commands.json`)).json();
+  assert.match(spec.howToCall.browser, /dryRun/);
+  const results = await page.evaluate(async (commands) => {
+    const { runCommand } = await import('./core/commands.js');
+    const core = window.ospeli.core;
+    const res = [];
+    for (const c of commands) {
+      const name = `example-${c.roles[0]}`;
+      await runCommand(core, 'ospeli_agents_add', { name, role: c.roles[0], wards: (await core.listEntities('ward')).map((w) => w.id), days: 30 }, { type: 'human', role: 'coo' }).catch(() => {});
+      try { await window.ospeli.run(c.name, c.example.input, { agent: name, role: c.roles[0] }); res.push({ name: c.name, ok: true }); } catch (e) { res.push({ name: c.name, ok: false, code: e.code, needs: c.example.needs || null }); }
+    }
+    return res;
+  }, spec.commands.filter((c) => c.agentsMayCall));
+  assert.ok(results.length >= 30);
+  assert.deepEqual(results.filter((r) => !r.ok && !(r.needs && ['conflict', 'not-found'].includes(r.code))).map((r) => `${r.name}: ${r.code}`), [], 'refused with no "needs" line');
+  assert.ok(results.filter((r) => r.ok).length >= 15);
+  assert.deepEqual(errors, []);
+  await context.close();
+});

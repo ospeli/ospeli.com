@@ -1419,6 +1419,53 @@ for (const c of COMMAND_LIST) {
   if (!c.example) c.example = { input: { bedId: 'ward-a1-bed-01', ...(EXAMPLE_BED[c.name] || {}) } };
 }
 
+// Issue #101: what an example needs before it runs. The ids in the examples are examples: on a
+// fresh site there is no map, walk or proposal yet, and a bed or work order moves on with the
+// clock. Each line names the state the target must be in and the read that finds one, so an
+// agent that copies an example is told what to do first instead of being refused with no reason.
+// tests/unit/examples.test.mjs runs every example on a fresh example hospital, and again with
+// the need in place.
+const NEED_MAP = 'A map on this device; a new site has none. map-001 is an example id: ospeli_maps_list shows the maps, and ospeli_maps_create starts one and returns its id.';
+const NEED_STEP = `${NEED_MAP} map-001-s3 is an example step id: ospeli_maps_get lists the steps of each version with their ids.`;
+const NEED_SUGGESTION = `${NEED_MAP} The suggestion ids for a map come from ospeli_maps_suggest.`;
+const NEED_WORK_ORDER = 'An open work order. wo-00001 is an example id: ospeli_workorders_list with { "state": "open" } lists the open ones.';
+const NEED_PROPOSAL = 'A proposal that is waiting for a person. prop-0001 is an example id: ospeli_proposals_list with { "status": "pending" } lists them.';
+const NEED_WALK = 'A walk in progress on this device: ospeli_walks_start starts one (ospeli_walks_get shows whether one is open).';
+const EXAMPLE_NEEDS = {
+  ospeli_agents_remove: 'An agent with that name on the site\'s list: ospeli_agents_list shows the list, and ospeli_agents_add adds one.',
+  ospeli_proposals_accept: NEED_PROPOSAL,
+  ospeli_proposals_decline: NEED_PROPOSAL,
+  ospeli_workorders_assign: NEED_WORK_ORDER,
+  ospeli_workorders_start: `${NEED_WORK_ORDER} It must not already be in progress.`,
+  ospeli_workorders_complete: NEED_WORK_ORDER,
+  ospeli_maps_get: NEED_MAP,
+  ospeli_maps_summary: NEED_MAP,
+  ospeli_maps_suggest: NEED_MAP,
+  ospeli_maps_step_add: NEED_MAP,
+  ospeli_maps_step_update: NEED_STEP,
+  ospeli_maps_step_move: NEED_STEP,
+  ospeli_maps_step_remove: NEED_STEP,
+  ospeli_maps_try_suggestion: NEED_SUGGESTION,
+  ospeli_maps_hide_suggestion: NEED_SUGGESTION,
+  ospeli_maps_reset_proposed: NEED_MAP,
+  ospeli_walks_step_start: `${NEED_WALK} No step may be running.`,
+  ospeli_walks_step_done: `${NEED_WALK} A step must be running: ospeli_walks_step_start starts it.`,
+  ospeli_walks_step_name: `${NEED_WALK} At least one step must have ended (ospeli_walks_step_start, then ospeli_walks_step_done).`,
+  ospeli_walks_undo: `${NEED_WALK} There must be a tap to undo: a step started or ended.`,
+  ospeli_walks_discard: NEED_WALK,
+  ospeli_walks_finish: `${NEED_WALK} At least one step must have ended, and none may be running.`,
+};
+for (const w of BED_WRITES) {
+  const c = COMMAND_LIST.find((x) => x.name === w.name);
+  const states = Object.keys(BED_STATES).filter((state) => bedActions({ state }).includes(w.action));
+  c.example = { ...c.example, needsState: states,
+    needs: `A bed whose state is ${states.join(' or ')}. ward-a1-bed-01 is an example id, and a bed's state changes through the day: ospeli_beds_board lists every bed with its state.${w.action === 'allocate' ? ' And a patient waiting for a bed: enc-000123 is an example id; ospeli_beds_find_free lists who is waiting and the free beds.' : ''}` };
+}
+for (const [name, needs] of Object.entries(EXAMPLE_NEEDS)) {
+  const c = COMMAND_LIST.find((x) => x.name === name);
+  c.example = { ...c.example, needs };
+}
+
 const BY_NAME = new Map(COMMAND_LIST.map((c) => [c.name, c]));
 // Process maps hold text people typed (titles, step names). Answers from these commands are
 // marked so an agent treats that text as data, never as instructions.

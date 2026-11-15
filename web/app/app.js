@@ -5,7 +5,7 @@ import { ROLES, roleById } from './core/model.js';
 import { MODULES, moduleById, parseRoute } from './modules/registry.js';
 import { renderSoon } from './modules/soon.js';
 import { loadSyntheticHospital, currentHour, setupUnfinished } from './core/generator.js';
-import { runCommand, listCommands, describeCommand } from './core/commands.js';
+import { runCommand, listCommands, describeCommand, CommandError } from './core/commands.js';
 
 const $ = (sel) => document.querySelector(sel);
 const main = $('#main');
@@ -297,7 +297,25 @@ async function boot() {
     version: '0.4.0',
     commands: () => listCommands(),
     describe: (name) => describeCommand(name),
-    run: (name, input = {}, { agent = 'browser-agent', role = ctx.role } = {}) => runCommand(core, name, input, { type: 'agent', agent, role }),
+    // The third argument holds { agent, role, dryRun } and nothing else. An option this door does
+    // not know is refused, never dropped: an agent that asks for a dry run and misspells it must
+    // not write to a person's queue (issue #101).
+    run: async (name, input = {}, options = {}) => {
+      const allowed = ['agent', 'role', 'dryRun'];
+      const example = '{ agent: "your-agent-name", role: "bed-manager", dryRun: true }';
+      if (options === null || typeof options !== 'object' || Array.isArray(options)) {
+        throw new CommandError('invalid-input', `The third argument must be an object of options, for example ${example}.`, { allowed });
+      }
+      const unknown = Object.keys(options).filter((k) => !allowed.includes(k));
+      if (unknown.length) {
+        throw new CommandError('invalid-input', `Unknown option${unknown.length > 1 ? 's' : ''}: ${unknown.map((k) => String(k).slice(0, 40)).join(', ')}. The options are ${allowed.join(', ')}, for example ${example}. Nothing was run.`, { allowed });
+      }
+      if (options.dryRun !== undefined && typeof options.dryRun !== 'boolean') {
+        throw new CommandError('invalid-input', `dryRun must be true or false, for example ${example}. Nothing was run.`, { allowed });
+      }
+      const { agent = 'browser-agent', role = ctx.role, dryRun = false } = options;
+      return runCommand(core, name, input, { type: 'agent', agent, role }, dryRun ? { dryRun: true } : {});
+    },
   };
   if (testHookAllowed()) api.core = core;
   Object.defineProperty(window, 'ospeli', { value: Object.freeze(api), writable: false, configurable: false, enumerable: true });
