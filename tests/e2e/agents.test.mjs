@@ -418,3 +418,65 @@ for (const width of [360, 390, 1280]) {
     await context.close();
   });
 }
+
+// Issue #106: a person can tell proposals apart, and is offered reasons that fit what is proposed.
+test('issue #106: map and fault proposals show their title, and the reasons to decline fit the kind of proposal (390px)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, path: '#/home', clock: '2026-11-10T10:00:00Z' });
+  const made = await page.evaluate(async () => {
+    const { runCommand } = await import('./core/commands.js');
+    const core = window.ospeli.core;
+    const coo = { type: 'human', role: 'coo' };
+    const board = await runCommand(core, 'ospeli_beds_board', {}, coo);
+    const wards = board.wards.map((w) => w.id);
+    await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: Object.fromEntries(wards.map((id) => [id, true])) }, coo);
+    await runCommand(core, 'ospeli_agents_add', { name: 'map-bot', role: 'ops-manager', wards, days: 30 }, coo);
+    await runCommand(core, 'ospeli_agents_add', { name: 'ward-bot', role: 'ward-nurse', wards, days: 30 }, coo);
+    const bot = { agent: 'map-bot', role: 'ops-manager' };
+    const out = [];
+    for (const n of [1, 2, 3]) out.push(await window.ospeli.run('ospeli_maps_create', { from: 'blank', title: `Clinic visit ${n}` }, bot));
+    out.push(await window.ospeli.run('ospeli_maps_create', { from: 'discharge' }, bot));
+    // The same request again is the proposal already waiting, not a new one.
+    const again = await window.ospeli.run('ospeli_maps_create', { title: 'Clinic visit 2', from: 'blank' }, bot);
+    const assets = await runCommand(core, 'ospeli_assets_list', {}, coo);
+    await window.ospeli.run('ospeli_workorders_report_fault', { assetId: assets.assets[0].id, fault: 'Blocked sink', priority: 'routine' }, { agent: 'ward-bot', role: 'ward-nurse' });
+    await window.ospeli.run('ospeli_beds_mark_vacated', { bedId: board.beds.find((b) => b.state === 'occupied').id }, { agent: 'ward-bot', role: 'ward-nurse' });
+    return { ids: out.map((o) => o.proposal.id), again: { id: again.proposal.id, existing: again.existing }, pending: (await core.proposals()).filter((p) => p.status === 'pending').length };
+  });
+  assert.equal(made.again.existing, true);
+  assert.equal(made.again.id, made.ids[1]);
+  assert.equal(made.pending, 6);
+  const cardOn = async (route, n) => {
+    await page.evaluate((r) => { location.hash = r; }, route);
+    // The new page is in place (something only that page has), then its card.
+    const own = { '#/process': '[data-test="walk-card"]', '#/engineering': '[data-test="wo-queue"]', '#/beds': '.bed' }[route];
+    await page.waitForFunction(([want, sel]) => document.querySelector(`main ${sel}`)
+      && [...document.querySelectorAll('main [data-test="proposals"] h2')].some((x) => x.textContent.trim() === `Agent proposals (${want})`), [n, own]);
+    const more = page.locator('[data-test="proposals-more"]');
+    if (await more.count()) await more.evaluate((b) => b.click());
+    return page.evaluate(() => ({
+      lines: [...document.querySelectorAll('[data-test="proposals"] .proposal-item b')].map((b) => b.textContent.trim()),
+      reasons: [...new Set([...document.querySelectorAll('[data-test="proposals"] select')].map((s) => [...s.options].map((o) => o.value).join(' | ')))],
+    }));
+  };
+  await page.selectOption('#role-select', 'ops-manager');
+  const maps = await cardOn('#/process', 4);
+  assert.deepEqual([...maps.lines].sort(), [
+    'Start a blank map called "Clinic visit 1"', 'Start a blank map called "Clinic visit 2"', 'Start a blank map called "Clinic visit 3"',
+    'Start a map from the example "Discharge home from a medical ward"',
+  ]);
+  assert.equal(new Set(maps.lines).size, maps.lines.length, 'every line is different');
+  assert.deepEqual(maps.reasons, ['Not needed | Already done | Needs a conversation first | Other']);
+  const faults = await cardOn('#/engineering', 1);
+  assert.equal(faults.lines.length, 1);
+  assert.deepEqual(faults.reasons, ['Not needed | Already done | Needs a conversation first | Other']);
+  await page.selectOption('#role-select', 'ward-nurse');
+  const beds = await cardOn('#/beds', 1);
+  assert.deepEqual(beds.reasons, ['Not needed | Wrong bed or patient | Already done | Needs a conversation first | Other']);
+  // Declining a map proposal with one of its own reasons works.
+  await page.selectOption('#role-select', 'ops-manager');
+  await cardOn('#/process', 4);
+  await page.locator('[data-test="proposals"] [data-cmd="ospeli_proposals_decline"]').first().evaluate((b) => b.click());
+  await page.waitForFunction(() => document.querySelectorAll('[data-test="proposals"] .proposal-item').length === 3);
+  assert.deepEqual(errors, []);
+  await context.close();
+});

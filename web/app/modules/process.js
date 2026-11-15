@@ -6,7 +6,7 @@
 // opens here as a map whose times are shown in seconds and labelled as measured on one walk.
 // Deep link: #/process/<mapId>. The guide is rule-based, says why, and has an off switch.
 import { h } from './ui.js';
-import { fmtMinutes } from '../core/processmap.js';
+import { fmtMinutes, EXAMPLES } from '../core/processmap.js';
 import { fmtSeconds, stepsInSeconds } from '../core/walk.js';
 import { renderWalk } from './walk.js';
 import { proposalsCard } from './proposals.js';
@@ -31,7 +31,8 @@ export async function render(el, ctx) {
     match: (p) => p.command.startsWith('ospeli_maps_'),
     describe: (p) => {
       const what = {
-        'ospeli_maps_create': `Start a map from ${p.input.from}`, 'ospeli_maps_step_add': `Add step "${p.input.name}"`, 'ospeli_maps_step_update': `Change step ${p.input.stepId}`,
+        // Issue #106: the title the agent gave and the example's own name, so two proposals can be told apart.
+        'ospeli_maps_create': `${EXAMPLES[p.input.from] ? `Start a map from the example "${EXAMPLES[p.input.from].title}"` : 'Start a blank map'}${p.input.title ? ` called "${p.input.title}"` : ''}`, 'ospeli_maps_step_add': `Add step "${p.input.name}"`, 'ospeli_maps_step_update': `Change step ${p.input.stepId}`,
         'ospeli_maps_step_move': `Move step ${p.input.stepId} ${p.input.direction}`, 'ospeli_maps_step_remove': `Remove step ${p.input.stepId}`,
         'ospeli_maps_try_suggestion': `Try in Proposed: ${p.input.suggestionId}`, 'ospeli_maps_hide_suggestion': `Hide suggestion ${p.input.suggestionId}`,
         'ospeli_maps_reset_proposed': 'Reset Proposed',

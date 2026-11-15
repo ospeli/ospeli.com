@@ -3,7 +3,7 @@
 import { h } from './ui.js';
 import { roleById } from '../core/model.js';
 import { since } from '../core/beds.js';
-import { DECLINE_REASONS } from '../core/commands.js';
+import { declineReasonsFor } from '../core/commands.js';
 
 const SHOW_FIRST = 3;
 
@@ -47,7 +47,7 @@ export function proposalsCard(ctx, { describe, match = () => true }) {
       h('ul', { class: 'proposal-list' }, shown.map((p) => {
         // Accept stands alone. The reason belongs to Decline, so it sits with it under a visible label.
         const selId = `why-${p.id}`;
-        const sel = h('select', { id: selId, 'aria-label': `Reason to decline: ${describe(p)}` }, DECLINE_REASONS.map((r) => new Option(r, r)));
+        const sel = h('select', { id: selId, 'aria-label': `Reason to decline: ${describe(p)}` }, declineReasonsFor(p.command).map((r) => new Option(r, r)));
         return h('li', { class: 'proposal-item', 'data-proposal': p.id },
           h('div', {},
             h('b', {}, describe(p)),

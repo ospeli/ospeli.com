@@ -516,6 +516,9 @@ const PROPOSAL = {
   },
 };
 export const DECLINE_REASONS = ['Not needed', 'Wrong bed or patient', 'Already done', 'Needs a conversation first', 'Other'];
+// The reasons a person is offered fit what is proposed (issue #106): "Wrong bed or patient" is
+// a reason for a bed proposal, not for a map or a fault report.
+export const declineReasonsFor = (command) => (String(command).startsWith('ospeli_beds_') ? DECLINE_REASONS : DECLINE_REASONS.filter((r) => r !== 'Wrong bed or patient'));
 
 // Proposals queued under an old command name (before issue #39) read back under the new one.
 const proposalsOf = async (core) => (await core.proposals()).map((p) => ({ ...p, command: canonicalName(p.command) || p.command }));
