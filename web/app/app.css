@@ -497,3 +497,14 @@ html[data-site="connect"] .layout { display: block; }
 .proposal-no label { font-size: .9375rem; font-weight: 700; flex: 0 0 100%; }
 .proposal-no select { font: inherit; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: 10px; min-height: 44px; padding: 6px 10px; flex: 1 1 10rem; min-width: 0; }
 .proposal-no .btn { min-height: 44px; }
+
+/* Issue #13: a long unbroken word (a pasted web address) wraps inside its box in process maps;
+   it may never widen the page. Role names in the swimlane keep to their 120 px column. */
+.pm-step, .pm-list .what, .pm-list .wait, .changed-note, .lanename, .sg, .bar-label, .map-head h2, .pm-stat, .step-form .field-note, .name-question { overflow-wrap: anywhere; min-width: 0; }
+.cell, .pm-list li { min-width: 0; }
+/* Issue #13: on a phone, text a person acts on is never under 15 px. */
+@media (max-width: 640px) {
+  .bed-age, .bed-who, .bed-tag, .chip, .pill, .badge, .eyebrow, .kpi-target, .kpi-dialog dt, .card .meta, .stat span, .board-summary .stat span,
+  th, td code, .ward-tab-counts, .nav .soon-tag, .nav-foot, .pm-step .n, .pm-step .t, .choice .tag, .label-link { font-size: .9375rem; }
+  .eyebrow { letter-spacing: .12em; }
+}

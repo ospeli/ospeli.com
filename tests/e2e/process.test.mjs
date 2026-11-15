@@ -213,3 +213,38 @@ for (const width of [360, 390, 1280]) {
     await context.close();
   });
 }
+
+// Issue #13 (long word part): a step name may be 140 characters with no space (a pasted web
+// address). It must wrap inside its card; the page may not grow sideways or zoom out.
+test('a 140-character word as a step name and role wraps on a phone, list and swimlanes (390px)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, path: '#/process', clock: CLOCK });
+  await page.waitForSelector('[data-test="map-chooser"]');
+  await page.click('[data-from="blank"]');
+  await page.waitForSelector('#st-name');
+  const word = 'Dischargesummaryandtakehomemedicinesready'.repeat(4).slice(0, 140);
+  assert.equal(word.length, 140);
+  await page.fill('#st-name', word);
+  await page.fill('#st-role', 'Recordsandregistrationdesk'.repeat(3).slice(0, 60));
+  await page.fill('#st-work', '5');
+  await page.click('[data-cmd="ospeli_maps_step_add"]');
+  await page.waitForSelector('[data-test="step-list"] li');
+  assert.ok(await noSideways(page) <= 0, 'list view: no sideways scroll');
+  const fits = await page.evaluate(() => { const r = document.querySelector('[data-test="step-list"] .what b').getBoundingClientRect(); return r.right <= window.innerWidth && r.left >= 0; });
+  assert.ok(fits, 'the step name stays inside the screen');
+  await page.click('[data-test="view-map"]');
+  await page.waitForSelector('.pm-step');
+  assert.ok(await noSideways(page) <= 0, 'swimlanes: no sideways scroll');
+  const card = await page.evaluate(() => { const c = document.querySelector('.pm-step'); const cell = c.parentElement.getBoundingClientRect(); return { over: c.scrollWidth - c.clientWidth, wide: c.getBoundingClientRect().width - cell.width, lane: document.querySelector('.lanename').getBoundingClientRect().width }; });
+  assert.ok(card.over <= 0 && card.wide <= 0, `the step card holds its text (${JSON.stringify(card)})`);
+  assert.ok(card.lane <= 121, `the role column keeps its width (${card.lane})`);
+  // The editor is still reachable: the next step can be added by tapping.
+  await page.click('[data-test="view-list"]');
+  await page.waitForSelector('[data-test="step-list"] li');
+  await page.fill('#st-name', 'Next step');
+  await page.fill('#st-role', 'Nurse');
+  await page.fill('#st-work', '5');
+  await page.click('[data-cmd="ospeli_maps_step_add"]');
+  await page.waitForFunction(() => document.querySelectorAll('[data-test="step-list"] li').length === 2);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
