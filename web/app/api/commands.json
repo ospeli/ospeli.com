@@ -33,7 +33,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -250,7 +253,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -368,7 +374,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1561,7 +1570,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1633,7 +1645,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1770,7 +1785,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1907,7 +1925,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -2009,7 +2030,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": false,
@@ -2239,7 +2263,10 @@
               "coo",
               "patient-liaison",
               "receptionist",
-              "quality-lead"
+              "quality-lead",
+              "porter",
+              "cleaner",
+              "support-supervisor"
             ],
             "description": "The one role this agent works for. It is refused if it claims another."
           },
@@ -2401,7 +2428,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -2454,7 +2484,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -2611,7 +2644,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -2763,7 +2799,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -2920,7 +2959,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -3051,7 +3093,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -3602,7 +3647,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4070,7 +4118,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4197,7 +4248,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4575,7 +4629,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4890,7 +4947,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -5007,7 +5067,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5096,7 +5159,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5233,7 +5299,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5368,7 +5437,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5476,7 +5548,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5574,7 +5649,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5663,7 +5741,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5752,7 +5833,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5833,7 +5917,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -5890,7 +5977,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -5958,7 +6048,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6150,7 +6243,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6338,7 +6434,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6532,7 +6631,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6747,7 +6849,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6935,7 +7040,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7123,7 +7231,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7310,7 +7421,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -7454,7 +7568,10 @@
         "coo",
         "patient-liaison",
         "receptionist",
-        "quality-lead"
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -7755,7 +7872,9 @@
       "kind": "write",
       "roles": [
         "ward-nurse",
-        "bed-manager"
+        "bed-manager",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -7839,7 +7958,9 @@
       "kind": "write",
       "roles": [
         "ward-nurse",
-        "bed-manager"
+        "bed-manager",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -7923,7 +8044,9 @@
       "kind": "write",
       "roles": [
         "ward-nurse",
-        "bed-manager"
+        "bed-manager",
+        "cleaner",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -8019,7 +8142,8 @@
       "summary": "Move an open task to the front of its team's queue (urgent) or back to its place by waiting time (routine). For the people who balance the work; an agent may propose it with its reasons and a person decides. It changes the order only: nothing is started or assigned to anyone.",
       "kind": "write",
       "roles": [
-        "bed-manager"
+        "bed-manager",
+        "support-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
