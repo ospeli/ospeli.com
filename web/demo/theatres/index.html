@@ -775,7 +775,7 @@ function readinessSection(editable) {
     box.appendChild(el('div', { class: 'rrow ' + (gap ? 'gap' : 'ok') }, [el('div', { class: 'who' }, [el('b', { text: r.code + ' · ' + r.what }), el('span', { text: r.session + ' · ' + WARDS[r.ward] })]), items]));
   });
   frag.appendChild(box);
-  frag.appendChild(el('p', { class: 'fine', text: editable ? 'The coordinator confirms each item as wards, sterile services and the rota confirm it. Pre-op checklist means the paperwork and checks the organisation requires; it records done or not done only.' : 'The theatre coordinator updates these. Gaps show the day before so they can be fixed in time.' }));
+  frag.appendChild(el('p', { class: 'fine', text: editable ? 'The coordinator confirms each item as wards, sterile services and the staff roster confirm it. Pre-op checklist means the paperwork and checks the organisation requires; it records done or not done only.' : 'The theatre coordinator updates these. Gaps show the day before so they can be fixed in time.' }));
   return frag;
 }
 // --- manager ---

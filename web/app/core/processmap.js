@@ -145,7 +145,7 @@ const PLACE_OR_THING = new Set(`tablet tablets phone phones laptop laptops pc co
   corridor surgery surgeries building buildings plant cooler coolers room rooms theatre theatres suite centre center hall
   lounge garden pharmacy dispensary outpatients outpatient inpatient department dept service services storage storeroom
   boiler generator generators chiller pump pumps fridge freezer heater lift lifts elevator elevators ramp stairs door doors
-  gate machine machines monitor monitors trolley trolleys chair chairs couch sink sinks toilet toilets shower showers bath
+  gate machine machines monitor monitors cart carts stretcher stretchers chair chairs couch sink sinks toilet toilets shower showers bath
   water air gas power light lights lighting fan fans heating cooling ventilation alarm alarms panel cabinet cupboard locker
   steriliser sterilizer autoclave washer dryer utility macerator wheelchair wheelchairs hoist stretcher ultrasound radiology
   physiotherapy physio dental eye maternity paediatric pediatric surgical medical day upper lower ground first second

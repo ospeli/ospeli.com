@@ -295,7 +295,11 @@ OLD_WORDS = [(re.compile(r"\bbed managers?\b", re.I), "Bed manager", "Patient fl
              (re.compile(r"\bside[ -]rooms?\b", re.I), "side room", "single room"),
              (re.compile(r"\bkeyhole\b", re.I), "keyhole", "laparoscopic"),
              (re.compile(r"\bhealthcare assistants?\b", re.I), "Healthcare assistant", "Nursing assistant"),
-             (re.compile(r"\bward clerks?\b", re.I), "Ward clerk", "Unit clerk")]
+             (re.compile(r"\bward clerks?\b", re.I), "Ward clerk", "Unit clerk"),
+             # Issue #68: a programme word and two everyday words from one health system.
+             (re.compile(r"\bboard-round\b", re.I), "board-round", "patient-flow"),
+             (re.compile(r"\brotas?\b", re.I), "rota", "roster"),
+             (re.compile(r"\btrolleys?\b", re.I), "trolley", "cart (or stretcher for a patient)")]
 
 def js_strings(src):
     """The string and template literals of a script, joined; comments and code are left out."""

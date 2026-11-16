@@ -573,7 +573,7 @@ const NOTES = {
   communication: ['Was not told the appointment had moved', 'Discharge letter was hard to understand', 'Results took a long time to be explained'],
   environment: ['Toilets on the ground floor were not clean', 'Too noisy at night to sleep', 'Waiting area was very hot'],
   access: ['Phone line rang out several times', 'Could not book a follow-up before leaving', 'Hard to find the entrance from the car park'],
-  food: ['Meal arrived cold', 'No choice left by the time the trolley came'],
+  food: ['Meal arrived cold', 'No choice left by the time the meal cart came'],
   billing: ['Asked to fill in the same form twice', 'Invoice did not match what was explained'],
   attitude: ['Felt rushed at the front desk', 'Questions were brushed off'],
   other: ['Lost property was not followed up'],

@@ -311,7 +311,7 @@ var DOCS = [
     ['How a bed clean is requested and accepted.', 'The order of steps and the materials to use.', 'How the bed is marked ready on the bed board.']],
   ['D14', 'Sharps handling and disposal procedure', 'Procedure', 'sharps', 'Infection prevention lead', 'qs', 3, -1110, -15, ['nurse', 'doctor', 'hca', 'cleaner', 'porter'], 'sharps needle needles bin container disposal',
     ['Where sharps containers go and when they are closed.', 'How full containers are collected.', 'Who to tell after a sharps injury, and how fast.']],
-  ['D15', 'Moving and handling loads policy', 'Policy', 'handling', 'Health and safety adviser', 'hs', 2, -950, null, ['porter', 'cleaner', 'hca', 'nurse', 'tech'], 'moving handling lifting loads trolley heavy',
+  ['D15', 'Moving and handling loads policy', 'Policy', 'handling', 'Health and safety adviser', 'hs', 2, -950, null, ['porter', 'cleaner', 'hca', 'nurse', 'tech'], 'moving handling lifting loads cart heavy',
     ['How to plan a move of a heavy load.', 'Which aids to use and where they are kept.', 'How to report a handling injury.']],
   ['D16', 'Speaking up: raising a concern policy', 'Policy', 'concern', 'Head of workforce', 'qs', 2, -200, null, ALL, 'concern speaking up speak raise whistle worry',
     ['Ways to raise a concern, including without your name.', 'Who the speaking-up contacts are.', 'What happens after you raise it.']],
@@ -851,7 +851,7 @@ var formOpen = null;
 function decisionForm(m, it) {
   var key = m.id + it.id, open = formOpen === key;
   if (!open) return el('button', { type: 'button', class: 'small', id: 'dec-' + key, 'aria-expanded': 'false', onclick: function () { formOpen = key; render(); var t = document.getElementById('dtext-' + key); if (t) t.focus(); }, text: 'Record a decision' });
-  var txt = el('input', { type: 'text', id: 'dtext-' + key, placeholder: 'e.g. Fire warden rota to be refreshed' });
+  var txt = el('input', { type: 'text', id: 'dtext-' + key, placeholder: 'e.g. Fire warden roster to be refreshed' });
   var mk = el('input', { type: 'checkbox', id: 'dact-' + key }); mk.checked = true;
   var ow = el('select', { id: 'down-' + key }); OWNERS.forEach(function (o) { ow.appendChild(el('option', { value: o, text: o })); });
   var du = el('select', { id: 'ddue-' + key }); [[14, 'In 2 weeks'], [28, 'In 4 weeks'], [56, 'In 8 weeks']].forEach(function (x) { du.appendChild(el('option', { value: String(x[0]), text: x[1] })); });

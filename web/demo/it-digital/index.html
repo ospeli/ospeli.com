@@ -275,7 +275,7 @@ var SYSTEMS = [
   { id: 'wifiE', name: 'Staff Wi-Fi · East block', depts: ['Wards 5–7', 'Imaging', 'Theatres', 'Pharmacy'] },
   { id: 'print', name: 'Printing service', depts: ['All areas'] },
   { id: 'email', name: 'Email', depts: ['All areas'] },
-  { id: 'roster', name: 'Rostering', depts: ['All areas (rota managers)'] }
+  { id: 'roster', name: 'Rostering', depts: ['All areas (roster managers)'] }
 ];
 function sysById(id) { return SYSTEMS.filter(function (s) { return s.id === id; })[0]; }
 var ICON = {
@@ -367,7 +367,7 @@ function seed() {
     if (t.assigned && t.assigned > T - 6 * H) ev.push({ t: t.assigned, text: t.id + ' assigned to ' + t.team });
     if (t.resolved && t.resolved > T - 6 * H) ev.push({ t: t.resolved, text: t.id + ' resolved: ' + t.cause });
   });
-  ev.push({ t: T - 52 * M, text: 'Downtime started: Rostering (supplier fault). Rota managers told to use the printed rota.' });
+  ev.push({ t: T - 52 * M, text: 'Downtime started: Rostering (supplier fault). Roster managers told to use the printed roster.' });
   ev.push({ t: T - 48 * M, text: 'Staff Wi-Fi · East block marked slow or patchy by the service desk.' });
   ev.sort(function (a, b) { return b.t - a.t; });
   s.log = ev.slice(0, 30);

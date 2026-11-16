@@ -255,7 +255,7 @@ var TYPES = {
   move:      { label: 'Patient move',   kind: 'porter',  verb: ['Accept', 'Collected', 'Delivered'] },
   specimen:  { label: 'Specimen to lab', kind: 'porter', verb: ['Accept', 'Collected', 'Delivered'] },
   linen:     { label: 'Linen top-up',   kind: 'porter',  verb: ['Accept', 'Collected', 'Delivered'] },
-  meal:      { label: 'Meal trolley',   kind: 'porter',  verb: ['Accept', 'Collected', 'Delivered'] },
+  meal:      { label: 'Meal cart',      kind: 'porter',  verb: ['Accept', 'Collected', 'Delivered'] },
   bedclean:  { label: 'Bed clean',      kind: 'cleaner', verb: ['Accept', 'Start clean', 'Done, bed ready'] },
   areaclean: { label: 'Area clean',     kind: 'cleaner', verb: ['Accept', 'Start clean', 'Done'] }
 };
@@ -648,7 +648,7 @@ function board() {
 var targetsOpen = false;
 var REQ_TYPES = [
   ['move', 'Transport', 'patient move'], ['specimen', 'Transport', 'specimen to lab'], ['bedclean', 'Bed clean', 'after a patient leaves'],
-  ['areaclean', 'Area clean', 'spill or room'], ['linen', 'Linen', 'top-up delivery'], ['meal', 'Meal trolley', 'from the kitchen']
+  ['areaclean', 'Area clean', 'spill or room'], ['linen', 'Linen', 'top-up delivery'], ['meal', 'Meal cart', 'from the kitchen']
 ];
 var DEST = ['Imaging', 'Theatres', 'Discharge lounge', 'Another ward'];
 function bedWord(area) { return AREAS[area].bed || 'Bed'; }

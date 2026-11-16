@@ -13,7 +13,7 @@ export const KPIS = [
     id: 'occupancy', name: 'Bed occupancy', unit: '%', decimals: 0, direction: 'lower',
     numerator: 'Beds with a patient in them at the time shown (admitted and not yet discharged).',
     denominator: 'All inpatient beds in the hospital model.',
-    exclusions: 'Day-case and emergency department trolleys are not inpatient beds. Beds not yet cleaned count as empty.',
+    exclusions: 'Day-case and emergency department stretchers are not inpatient beds. Beds not yet cleaned count as empty.',
     source: 'General bed-occupancy definition (point-in-time census).',
     owner: 'bed-manager', target: 85, targetText: '85% or lower (example target; set locally)',
   },
@@ -30,7 +30,7 @@ export const KPIS = [
     numerator: 'Discharges in the period that happened before 12:00 local time.',
     denominator: 'All discharges in the period.',
     exclusions: 'Deaths and transfers are not yet separated in the synthetic data.',
-    source: 'Common flow measure used in board-round programmes.',
+    source: 'Common patient-flow measure (share of discharges before midday).',
     owner: 'ward-nurse', target: 33, targetText: '33% or higher (example target; set locally)',
   },
   {
