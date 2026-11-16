@@ -145,7 +145,7 @@ async function verifyLog(core, input, actor, events) {
   if (events) {
     // A double tap, or the same form sent from two tabs, is one record.
     const now = Date.parse(core.now());
-    const same = events.filter((e) => e.type === EVENT.logged && e.actorRole === actor.role && now - Date.parse(e.at) < DOUBLE_TAP_SECONDS * 1000).find((e) => {
+    const same = events.filter((e) => e.type === EVENT.logged && e.actorRole === actor.role && Math.abs(now - Date.parse(e.at)) < DOUBLE_TAP_SECONDS * 1000).find((e) => {
       const d = e.data || {};
       return d.kind === kind && d.serviceId === input.serviceId && d.channel === input.channel && (d.theme ?? null) === (input.theme ?? null)
         && (d.rating ?? null) === (input.rating ?? null) && (d.note ?? null) === (input.note ?? null);
@@ -371,7 +371,7 @@ export const COMMANDS = [
       const t = timing(r, now);
       const on = await guideOn(core);
       const svcName = svc.get(r.serviceId)?.name || r.serviceId;
-      const detail = (x) => (x.channel ? REPLY_CHANNELS[x.channel] || CHANNELS[x.channel] || x.channel : x.outcome ? OUTCOMES[x.outcome] || x.outcome
+      const detail = (x) => (x.channel ? (x.step === 'received' ? CHANNELS[x.channel] : REPLY_CHANNELS[x.channel]) || x.channel : x.outcome ? OUTCOMES[x.outcome] || x.outcome
         : x.ownerRole ? roleName(x.ownerRole) : x.actionId ? ACTION_KINDS[r.actions.find((a) => a.id === x.actionId)?.what] || x.actionId : null);
       const stepName = { received: 'Received', acknowledged: 'Acknowledged', replied: 'Reply sent', closed: 'Closed', 'owner-set': 'Owner set', 'clinical-review': 'Passed to clinical review', shared: 'Shared with the service', 'action-agreed': 'Action agreed', 'action-closed': 'Action closed' };
       return {

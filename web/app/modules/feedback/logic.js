@@ -309,7 +309,7 @@ export function guideReplyDue(records, now, settings = SETTINGS) {
     out.push({
       id: `reply-due-${r.id}`, rule: 'reply-due-soon', recordId: r.id, ownerRole: r.ownerRole, forRoles: [...new Set([r.ownerRole, 'patient-liaison'])],
       overdue: left < 0, daysLeft: round1(left),
-      title: left < 0 ? `${r.id.toUpperCase()}: reply ${d === 0 ? 'due today' : `${d} day${d === 1 ? '' : 's'} late`}` : `${r.id.toUpperCase()}: reply due in ${d === 0 ? 'less than a day' : `${d} day${d === 1 ? '' : 's'}`}`,
+      title: left < 0 ? `${r.id.toUpperCase()}: reply ${d === 0 ? 'less than a day' : `${d} day${d === 1 ? '' : 's'}`} late` : `${r.id.toUpperCase()}: reply due in ${d === 0 ? 'less than a day' : `${d} day${d === 1 ? '' : 's'}`}`,
       why: GUIDE_RULES[0].basis,
     });
   }
