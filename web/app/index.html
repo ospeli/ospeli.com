@@ -22,6 +22,8 @@
   <div class="hospital">
     <span class="hospital-name">Example General Hospital</span>
     <span class="badge" id="synthetic-badge" data-test="synthetic-badge">Checking data…</span>
+    <!-- Issue #37: short messages show over this row of the top bar, which holds no control, so they never cover one. -->
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
   </div>
   <label class="role">
     <span class="role-label">Role</span>
@@ -39,7 +41,6 @@
     <p class="loading">Loading…</p>
   </main>
 </div>
-<div id="toast" class="toast" role="status" aria-live="polite"></div>
 <script type="module" src="app.js"></script>
 </body>
 </html>
