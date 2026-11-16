@@ -1,4 +1,4 @@
-// Cleaning and portering (module support): its commands without the screen, every refusal, agent
+// Cleaning and transport (module support): its commands without the screen, every refusal, agent
 // proposals, attack tests, and each KPI recomputed from the event log with hand-checked numbers.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -35,15 +35,15 @@ const out = (name, value) => assert.deepEqual(validate(commandByName(name).outpu
 test('the pack adds its kinds of task to the shared task object; porter, cleaner and supervisor do them', async () => {
   const { run } = await site();
   const k = await run('ospeli_tasks_kinds', {}, 'porter');
-  assert.deepEqual(k.teams.map((x) => x.id).sort(), ['cleaning', 'portering']);
+  assert.deepEqual(k.teams.map((x) => x.id).sort(), ['cleaning', 'transport']);
   const kinds = Object.fromEntries(k.kinds.map((x) => [x.id, x]));
   assert.deepEqual(Object.keys(kinds).sort(), ['bed-clean', 'equipment-move', 'item-run', 'patient-move', 'room-clean']);
   // The first tap says "I am going" and claims the job; a clean keeps its own words.
-  assert.deepEqual([kinds['patient-move'].team, kinds['patient-move'].needsTo, kinds['patient-move'].startLabel, kinds['patient-move'].doneLabel], ['portering', true, 'On my way', 'Delivered']);
+  assert.deepEqual([kinds['patient-move'].team, kinds['patient-move'].needsTo, kinds['patient-move'].startLabel, kinds['patient-move'].doneLabel], ['transport', true, 'On my way', 'Delivered']);
   assert.deepEqual([kinds['room-clean'].startLabel, kinds['room-clean'].doneLabel], ['Start clean', 'Clean done']);
   assert.deepEqual(Object.keys(kinds).filter((id) => kinds[id].repeatable), ['patient-move'], 'two patients are two moves; a specimen run or an equipment move between the same places is one');
   assert.ok(k.releaseReasons.includes('Patient or item not ready'));
-  assert.deepEqual(kinds['patient-move'].details, ['Wheelchair', 'Bed', 'Trolley', 'Walking with help']);
+  assert.deepEqual(kinds['patient-move'].details, ['Wheelchair', 'Bed', 'Stretcher', 'Walking with help']);
   assert.ok(kinds['room-clean'].details.includes('Extra clean asked for by the ward'), 'the ward picks a neutral extra clean; Ospeli decides nothing clinical');
   assert.deepEqual(kinds['room-clean'].doRoles, ['cleaner', 'support-supervisor']);
   assert.ok(kinds['bed-clean'].doRoles.includes('cleaner'));
@@ -51,13 +51,13 @@ test('the pack adds its kinds of task to the shared task object; porter, cleaner
   for (const x of pack.TASK_KINDS) for (const d of x.details) assert.ok(d.length <= 40 && !/isolat|infect|diet/i.test(d), d);
 });
 
-test('a porter journey through the commands: asked for, collected, delivered; the measure counts it with hand-checked minutes', async () => {
+test('a transport assistant journey through the commands: asked for, collected, delivered; the measure counts it with hand-checked minutes', async () => {
   const { run, advance } = await site();
   const before = (await run('ospeli_support_overview', {}, 'porter')).kpis.find((x) => x.id === 'porter-request-to-done');
-  assert.ok(before.n > 100, 'the example hospital has portering history');
+  assert.ok(before.n > 100, 'the example hospital has transport history');
   const ask = await run('ospeli_tasks_request', { kind: 'patient-move', locationId: 'ward-a1-bed-04', toLocationId: 'dept-imaging', detail: 'Wheelchair' }, 'ward-nurse');
-  assert.deepEqual([ask.status, ask.team, ask.state], ['done', 'portering', 'requested']);
-  const q = await run('ospeli_tasks_list', { team: 'portering' }, 'porter');
+  assert.deepEqual([ask.status, ask.team, ask.state], ['done', 'transport', 'requested']);
+  const q = await run('ospeli_tasks_list', { team: 'transport' }, 'porter');
   const mine = q.tasks.find((t) => t.id === ask.taskId);
   assert.equal(mine.locationName, 'Ward A1 (acute medicine), Bed 04');
   assert.equal(q.tasks.at(-1).id, ask.taskId, 'a routine job joins the end of the queue (the newest wait is the shortest)');
@@ -77,17 +77,17 @@ test('a porter journey through the commands: asked for, collected, delivered; th
   // Asked at T, collected at T+5 min (+ clock ticks), delivered at T+30 min (+ ticks): 30 minutes to the nearest minute.
   const done = (await run('ospeli_tasks_list', { state: 'completed', kind: 'patient-move', limit: 1 }, 'porter')).tasks[0];
   assert.deepEqual([done.id, done.totalMinutes, done.waitMinutes], [ask.taskId, 30, 5]);
-  assert.equal(after.teams.find((x) => x.id === 'portering').open, q.counts.open - 1);
+  assert.equal(after.teams.find((x) => x.id === 'transport').open, q.counts.open - 1);
 });
 
 test('refused by role: a role outside a kind\'s lists cannot ask for, do or reorder it, and the command layer says who can', async () => {
   const { core, run } = await site();
   const move = { kind: 'patient-move', locationId: 'ward-a1', toLocationId: 'dept-imaging', detail: 'Bed' };
-  await assert.rejects(run('ospeli_tasks_request', move, 'porter'), code('forbidden'), 'a porter does jobs, the ward asks');
+  await assert.rejects(run('ospeli_tasks_request', move, 'porter'), code('forbidden'), 'a transport assistant does jobs, the ward asks');
   await assert.rejects(run('ospeli_tasks_request', move, 'coo'), code('forbidden'));
   const { taskId } = await run('ospeli_tasks_request', move, 'ward-nurse');
-  await assert.rejects(run('ospeli_tasks_start', { taskId }, 'cleaner'), code('forbidden'), 'a cleaner cannot take a porter job');
-  await assert.rejects(run('ospeli_tasks_set_priority', { taskId, priority: 'urgent' }, 'porter'), code('forbidden'), 'the porter works the queue; the supervisor orders it');
+  await assert.rejects(run('ospeli_tasks_start', { taskId }, 'cleaner'), code('forbidden'), 'a cleaner cannot take a transport job');
+  await assert.rejects(run('ospeli_tasks_set_priority', { taskId, priority: 'urgent' }, 'porter'), code('forbidden'), 'the transport assistant works the queue; the supervisor orders it');
   await assert.rejects(run('ospeli_support_audit_record', { locationId: 'ward-a1', riskCategory: 'high', passed: ['floor'] }, 'cleaner'), code('forbidden'), 'no self-audit');
   await assert.rejects(run('ospeli_support_audit_record', { locationId: 'ward-a1', riskCategory: 'high', passed: ['floor'] }, 'porter'), code('forbidden'));
   await assert.rejects(run('ospeli_support_guide_set', { on: false }, 'porter'), code('forbidden'));
@@ -96,7 +96,7 @@ test('refused by role: a role outside a kind\'s lists cannot ask for, do or reor
   await assert.rejects(run('ospeli_tasks_start', { taskId: room.taskId }, 'porter'), code('forbidden'));
   await run('ospeli_tasks_start', { taskId: room.taskId }, 'cleaner');
   await run('ospeli_tasks_set_priority', { taskId, priority: 'urgent' }, 'support-supervisor');
-  assert.equal((await run('ospeli_tasks_list', { team: 'portering' }, 'porter')).tasks.find((t) => t.id === taskId).priority, 'urgent');
+  assert.equal((await run('ospeli_tasks_list', { team: 'transport' }, 'porter')).tasks.find((t) => t.id === taskId).priority, 'urgent');
   assert.equal((await core.events({ type: 'support.audit-recorded' })).filter((e) => e.at > END).length, 0, 'nothing was recorded by the refused calls');
 });
 
@@ -148,7 +148,7 @@ test('attack: an audit takes picks only; made-up places are not echoed; wrong sh
   await assert.rejects(sup({ ...ok, locationId: 'ward-a1; drop' }), code('invalid-input'));
   await assert.rejects(run('ospeli_support_audits_list', { locationId: 'ward-zz' }, 'coo'), (err) => code('not-found')(err) && !err.message.includes('ward-zz'));
   await assert.rejects(run('ospeli_support_overview', { days: 365 }, 'coo'), code('invalid-input'));
-  await assert.rejects(run('ospeli_support_overview', { team: 'portering' }, 'coo'), code('invalid-input'), 'a field the command does not know');
+  await assert.rejects(run('ospeli_support_overview', { team: 'transport' }, 'coo'), code('invalid-input'), 'a field the command does not know');
   await assert.rejects(run('ospeli_support_guide_set', { on: 'no' }, 'support-supervisor'), code('invalid-input'));
   await assert.rejects(run('ospeli_support_overview', {}, { type: 'robot', role: 'coo' }), code('forbidden'));
   // A job carries no typed text either: a name or phone in the detail is refused by the task command.
@@ -239,7 +239,7 @@ test('the guide switch: off means no suggestions and everything else the same; o
 const ev = (type, subject, at, data = null, actorRole = 'ward-nurse') => ({ type, subject, actorRole, at: `2026-11-06T${at}:00.000Z`, data });
 const PERIOD = { since: '2026-11-06T08:00:00.000Z', until: '2026-11-06T18:00:00.000Z' };
 
-test('KPI porter request to completion, hand-checked: median of 30, 50 and 10 minutes is 30; cancelled, open and earlier jobs left out', () => {
+test('KPI transport request to completion, hand-checked: median of 30, 50 and 10 minutes is 30; cancelled, open and earlier jobs left out', () => {
   const ask = (id, at, kind) => ev('task.requested', id, at, { kind, locationId: 'ward-a1', toLocationId: 'dept-imaging', priority: 'routine', detail: 'Bed' });
   const events = [
     ask('task-00001', '07:00', 'patient-move'), ev('task.completed', 'task-00001', '07:40', null, 'porter'), // done before the period
@@ -248,7 +248,7 @@ test('KPI porter request to completion, hand-checked: median of 30, 50 and 10 mi
     ask('task-00004', '11:00', 'item-run'), ev('task.completed', 'task-00004', '11:10', null, 'porter'), // 10
     ask('task-00005', '11:00', 'equipment-move'), ev('task.cancelled', 'task-00005', '11:20', { reason: 'Other' }), // cancelled
     ask('task-00006', '12:00', 'patient-move'), ev('task.started', 'task-00006', '12:10', null, 'porter'), // open
-    ev('task.requested', 'task-00007', '12:00', { kind: 'room-clean', locationId: 'ward-a1', priority: 'routine', detail: 'Spill' }), ev('task.completed', 'task-00007', '12:05', null, 'cleaner'), // not portering
+    ev('task.requested', 'task-00007', '12:00', { kind: 'room-clean', locationId: 'ward-a1', priority: 'routine', detail: 'Spill' }), ev('task.completed', 'task-00007', '12:05', null, 'cleaner'), // not transport
   ];
   const k = porterRequestToDone(events, PERIOD);
   assert.deepEqual([k.value, k.n], [30, 3]);
@@ -312,9 +312,9 @@ test('guide rule "which cleans first": one clean per patient with no bed, the lo
 });
 
 test('guide rule "a team is busier than usual": above the example level, with the numbers; names a quieter team; advice only', () => {
-  const teams = [{ id: 'portering', name: 'Portering', waiting: 7, longestWaitMinutes: 42 }, { id: 'cleaning', name: 'Cleaning', waiting: 1, longestWaitMinutes: 10 }];
+  const teams = [{ id: 'transport', name: 'Transport', waiting: 7, longestWaitMinutes: 42 }, { id: 'cleaning', name: 'Cleaning', waiting: 1, longestWaitMinutes: 10 }];
   const [s] = ruleTeamBusy(teams);
-  assert.equal(s.text, 'Portering is busier than usual: 7 jobs waiting, the longest for 42 min.');
+  assert.equal(s.text, 'Transport is busier than usual: 7 jobs waiting, the longest for 42 min.');
   assert.equal(s.why, 'The usual level set here is up to 5 waiting and 30 min (example setting, not a standard). Cleaning has 1 job waiting: look at whether someone there can help.');
   assert.equal(s.action, null);
   assert.equal(ruleTeamBusy([{ ...teams[0], waiting: 5, longestWaitMinutes: 30 }, teams[1]]).length, 0, 'at the level is not above it');
@@ -405,20 +405,20 @@ test('synthetic jobs: valid kinds, places and roles; ids unique and in time orde
     }
   }
   const { run } = await site();
-  const porter = await run('ospeli_tasks_list', { team: 'portering' }, 'porter');
+  const porter = await run('ospeli_tasks_list', { team: 'transport' }, 'porter');
   assert.ok(porter.counts.waiting >= 3 && porter.counts.inProgress >= 1 && porter.counts.urgent >= 1, JSON.stringify(porter.counts));
   assert.equal(porter.tasks[0].priority, 'urgent', 'the urgent job is first');
   const cleaner = await run('ospeli_tasks_list', { team: 'cleaning' }, 'cleaner');
   assert.ok(cleaner.tasks.some((t) => t.kind === 'room-clean' && t.state === 'requested') && cleaner.tasks.some((t) => t.kind === 'room-clean' && t.state === 'started'));
   const ov = await run('ospeli_support_overview', {}, 'support-supervisor');
   const k = ov.kpis.find((x) => x.id === 'porter-request-to-done');
-  assert.ok(k.value > 10 && k.value < 90 && k.n > 200, `porter request to completion ${k.value} min from ${k.n}`);
+  assert.ok(k.value > 10 && k.value < 90 && k.n > 200, `transport request to completion ${k.value} min from ${k.n}`);
   assert.ok(k.breakdown.every((b) => b.n > 0 && b.value > 0));
-  // At the end time the seeded portering queue is within the usual level. (This test's clock ticks on
+  // At the end time the seeded transport queue is within the usual level. (This test's clock ticks on
   // while the hospital loads, so the waits are worked out at the end time itself.)
-  const waiting = deriveTasks(events).all.filter((t) => t.state === 'requested' && pack.TASK_KINDS.find((x) => x.id === t.kind).team === 'portering');
+  const waiting = deriveTasks(events).all.filter((t) => t.state === 'requested' && pack.TASK_KINDS.find((x) => x.id === t.kind).team === 'transport');
   const longest = Math.max(...waiting.map((t) => (Date.parse(END) - Date.parse(t.requestedAt)) / 60000));
-  assert.deepEqual(ruleTeamBusy([{ id: 'portering', name: 'Portering', waiting: waiting.length, longestWaitMinutes: longest }]), [], `${waiting.length} waiting, longest ${longest} min`);
+  assert.deepEqual(ruleTeamBusy([{ id: 'transport', name: 'Transport', waiting: waiting.length, longestWaitMinutes: longest }]), [], `${waiting.length} waiting, longest ${longest} min`);
   // A person's next request follows the seeded ids.
   const next = await run('ospeli_tasks_request', { kind: 'equipment-move', locationId: 'ward-a1', toLocationId: 'ward-c1', detail: 'Empty bed' }, 'ward-nurse');
   assert.equal(next.taskId, `task-${String(asks.length + 1).padStart(5, '0')}`);
@@ -444,9 +444,9 @@ test('a started job handed back goes back in its old place with its reason; the 
   const { taskId } = await run('ospeli_tasks_request', { kind: 'equipment-move', locationId: 'ward-a1', toLocationId: 'ward-c1', detail: 'Empty bed' }, 'ward-nurse');
   advance(3);
   await run('ospeli_tasks_start', { taskId }, 'porter');
-  await assert.rejects(run('ospeli_tasks_release', { taskId, reason: 'Patient or item not ready' }, 'cleaner'), code('forbidden'), 'a cleaner cannot hand back a porter job');
+  await assert.rejects(run('ospeli_tasks_release', { taskId, reason: 'Patient or item not ready' }, 'cleaner'), code('forbidden'), 'a cleaner cannot hand back a transport job');
   await run('ospeli_tasks_release', { taskId, reason: 'Patient or item not ready', expectedState: 'started' }, 'porter');
-  const t = (await run('ospeli_tasks_list', { team: 'portering', limit: 200 }, 'porter')).tasks.find((x) => x.id === taskId);
+  const t = (await run('ospeli_tasks_list', { team: 'transport', limit: 200 }, 'porter')).tasks.find((x) => x.id === taskId);
   assert.deepEqual([t.state, t.releases, t.lastReleaseReason], ['requested', 1, 'Patient or item not ready']);
   advance(10);
   await run('ospeli_tasks_start', { taskId }, 'porter');
@@ -477,7 +477,7 @@ test('the overview tells a ward\'s urgent ask from a job moved to the front, and
   assert.equal(ov.bedDemand.length, 6);
 });
 
-test('honest measures: beds used again or taken out of service before a clean are counted apart; porter jobs urgent and normal apart', () => {
+test('honest measures: beds used again or taken out of service before a clean are counted apart; transport jobs urgent and normal apart', () => {
   const beds = new Map([['ward-a1-bed-01', 'ward-a1'], ['ward-a1-bed-02', 'ward-a1'], ['ward-a1-bed-03', 'ward-a1']]);
   const events = [
     ev('bed.vacated', 'ward-a1-bed-01', '09:00'), ev('bed.cleaned', 'ward-a1-bed-01', '09:40', null, 'cleaner'), // 40

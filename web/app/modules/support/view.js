@@ -1,4 +1,4 @@
-// Cleaning and portering: the screens. Every read and write goes through ctx.run, the same
+// Cleaning and transport: the screens. Every read and write goes through ctx.run, the same
 // commands an agent would use, so the page works the same on a site's own server.
 //   #/support/jobs   My team's jobs (porter, cleaner): the next job and one big button
 //   #/support/board  Task board (supervisor, patient flow coordinator, wards): every open job by area
@@ -12,9 +12,9 @@ import { proposalsCard } from '../proposals.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
 const roleNames = (ids) => ids.map((r) => roleById(r)?.name || r).join(', ');
-const TEAM_OF_ROLE = { porter: 'portering', cleaner: 'cleaning' };
+const TEAM_OF_ROLE = { porter: 'transport', cleaner: 'cleaning' };
 const TITLES = { jobs: 'My team\'s jobs', board: 'Task board', ask: 'Ask for help', audit: 'Cleaning audit' };
-// Porters and cleaners get their own queue and nothing that balances the work between teams.
+// Transport assistants and cleaners get their own queue and nothing that balances the work between teams.
 function screensFor(role) {
   if (role === 'porter') return ['jobs'];
   if (role === 'cleaner') return ['jobs', 'audit'];
@@ -46,13 +46,13 @@ export async function render(el, ctx) {
   const screens = screensFor(ctx.role);
   const screen = screens.includes(ctx.rest[0]) ? ctx.rest[0] : screens[0];
   const places = await ctx.run('ospeli_support_places', { limit: 500 });
-  const head = h('div', { class: 'page-head' }, h('div', {}, h('p', { class: 'eyebrow' }, 'Cleaning and portering'), h('h1', {}, TITLES[screen])));
+  const head = h('div', { class: 'page-head' }, h('div', {}, h('p', { class: 'eyebrow' }, 'Cleaning and transport'), h('h1', {}, TITLES[screen])));
   if (!places.wards.length && !places.departments.length) {
     el.append(h('div', { class: 'mod-support sup' }, head), h('div', { class: 'card notice' }, h('p', {}, 'No hospital is loaded on this device. Load Example General Hospital on the ', h('a', { href: '#/data' }, 'Data and audit'), ' page.')));
     return null;
   }
   const names = placeNames(places);
-  const tabs = screens.length > 1 ? h('nav', { class: 'sup-tabs', 'aria-label': 'Cleaning and portering' },
+  const tabs = screens.length > 1 ? h('nav', { class: 'sup-tabs', 'aria-label': 'Cleaning and transport' },
     screens.map((s) => h('a', { href: `#/support/${s}`, 'data-screen': s, 'aria-current': s === screen ? 'page' : null }, TITLES[s]))) : null;
   const view = { jobs: jobsScreen, board: boardScreen, ask: askScreen, audit: auditScreen }[screen](ctx, { places, names });
   // The shell moves the page's children into <main>, so the module's class goes on its own wrapper too.
@@ -482,7 +482,7 @@ function askScreen(ctx, { places, names }) {
     const more = k.repeatable ? ' For a different patient, choose their own bed or the whole ward.' : ' It is one job: no second one was opened.';
     return `Not sent: ${job} is already open, ${lower(queuePosition(id))}.${more}`;
   }
-  // "Second of 5 waiting for Portering": the job's place among its team's open jobs, in working order.
+  // "Second of 5 waiting for Transport": the job's place among its team's open jobs, in working order.
   function queuePosition(taskId) {
     const t = data.list.tasks.find((x) => x.id === taskId);
     if (!t) return null;

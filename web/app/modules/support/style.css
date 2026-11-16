@@ -1,5 +1,5 @@
-/* Cleaning and portering. Every rule starts with .mod-support. Shell colours only (brand kit v3.1).
-   Phone first for porters and cleaners: text 15 px or more, every control at least 44 px tall,
+/* Cleaning and transport. Every rule starts with .mod-support. Shell colours only (brand kit v3.1).
+   Phone first for transport assistants and cleaners: text 15 px or more, every control at least 44 px tall,
    the job's one button 64 px tall and full width, readable at arm's length with gloves on. */
 .mod-support.sup { font-size: 1rem; }
 .mod-support .meta, .mod-support .chip, .mod-support .chip-btn, .mod-support .stat span { font-size: .9375rem; }

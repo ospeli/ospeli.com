@@ -7594,7 +7594,7 @@
             "type": "string",
             "enum": [
               "cleaning",
-              "portering"
+              "transport"
             ],
             "description": "One team's queue. Leave out for every team."
           },
@@ -7703,7 +7703,7 @@
                   "type": "string",
                   "enum": [
                     "cleaning",
-                    "portering"
+                    "transport"
                   ]
                 },
                 "teamName": {
@@ -9959,7 +9959,7 @@
     },
     {
       "name": "ospeli_support_overview",
-      "summary": "Cleaning and portering at a glance, in one call: the three measures with their definitions and sources (bed turnaround, porter request to completion, cleanliness audit score), open jobs per team with the longest wait, and the guide's suggestions with their reasons and basis (empty while the guide is off). Linen and meal measures are listed as planned, with no value. Measures jobs and waits, never people. Read-only.",
+      "summary": "Cleaning and transport at a glance, in one call: the three measures with their definitions and sources (bed turnaround, transport request to completion, cleanliness audit score), open jobs per team with the longest wait, and the guide's suggestions with their reasons and basis (empty while the guide is off). Linen and meal measures are listed as planned, with no value. Measures jobs and waits, never people. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -10470,7 +10470,7 @@
     },
     {
       "name": "ospeli_support_guide_set",
-      "summary": "Switch the cleaning and portering guide on or off for this site. The guide is a set of fixed rules that suggest which cleans to do first, when a team is busier than usual and when an area should be audited again; a person decides. With it off everything else works the same. People only.",
+      "summary": "Switch the cleaning and transport guide on or off for this site. The guide is a set of fixed rules that suggest which cleans to do first, when a team is busier than usual and when an area should be audited again; a person decides. With it off everything else works the same. People only.",
       "kind": "write",
       "roles": [
         "support-supervisor",

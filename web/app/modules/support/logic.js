@@ -1,4 +1,4 @@
-// Cleaning and portering: the module's fixed lists and its pure functions. Everything here reads
+// Cleaning and transport: the module's fixed lists and its pure functions. Everything here reads
 // the event log and nothing else: no screen, no storage, no clock (the caller passes `now`), so
 // the queue, the KPIs, the audits and the guide give the same answer in the browser, in a test
 // and on a site's own server.
@@ -15,16 +15,16 @@ import { deriveTasks, completionStats, BED_CLEAN } from '../../core/tasks.js';
 const ASK = ['ward-nurse', 'ae-nic', 'bed-manager', 'support-supervisor'];
 const LEADS = ['support-supervisor', 'bed-manager']; // who may move a job to the front, as for a bed clean
 // The first tap says "I am going" (it claims the job for the team, so nobody else goes too).
-const MOVE = { team: 'portering', needsTo: true, placeTypes: ['ward', 'department', 'bed'], startLabel: 'On my way', startedName: 'On the way', doneLabel: 'Delivered',
+const MOVE = { team: 'transport', needsTo: true, placeTypes: ['ward', 'department', 'bed'], startLabel: 'On my way', startedName: 'On the way', doneLabel: 'Delivered',
   requestRoles: ASK, doRoles: ['porter', 'support-supervisor'], leadRoles: LEADS };
-export const TEAMS = { portering: 'Portering' };
+export const TEAMS = { transport: 'Transport' };
 export const KINDS = [
   // Two patients on one ward are two moves, so a second identical ask for a ward is a new job; for
   // one bed it is still a double ask. Two specimen runs or equipment moves between the same places
   // are one run: those stay one open job at a time.
-  { ...MOVE, id: 'patient-move', name: 'Patient move', repeatable: true, details: ['Wheelchair', 'Bed', 'Trolley', 'Walking with help'] },
+  { ...MOVE, id: 'patient-move', name: 'Patient move', repeatable: true, details: ['Wheelchair', 'Bed', 'Stretcher', 'Walking with help'] },
   { ...MOVE, id: 'item-run', name: 'Specimen or item run', details: ['Specimen', 'Medicines', 'Supplies', 'Other item'] },
-  { ...MOVE, id: 'equipment-move', name: 'Equipment move', details: ['Empty bed', 'Wheelchair or trolley', 'Other equipment'] },
+  { ...MOVE, id: 'equipment-move', name: 'Equipment move', details: ['Empty bed', 'Wheelchair or stretcher', 'Other equipment'] },
   { id: 'room-clean', name: 'Room or area clean', team: 'cleaning', placeTypes: ['ward', 'department', 'bed'],
     details: ['Routine clean', 'Spill', 'After a patient leaves a room', 'Extra clean asked for by the ward'],
     startLabel: 'Start clean', startedName: 'Cleaning', doneLabel: 'Clean done',
@@ -33,7 +33,7 @@ export const KINDS = [
 export const TEAM_OF = Object.fromEntries([BED_CLEAN, ...KINDS].map((k) => [k.id, k.team]));
 export const KIND_NAME = Object.fromEntries([BED_CLEAN, ...KINDS].map((k) => [k.id, k.name]));
 export const TEAM_NAMES = { cleaning: 'Cleaning', ...TEAMS };
-export const PORTERING_KINDS = KINDS.filter((k) => k.team === 'portering').map((k) => k.id);
+export const PORTERING_KINDS = KINDS.filter((k) => k.team === 'transport').map((k) => k.id);
 
 // ---- cleaning audits: an example set, set locally, not a standard ----
 // A site replaces these with the elements and risk categories of its own cleanliness standard.
@@ -65,7 +65,7 @@ export const PASS_MARK = 85; // per cent, for the guide's "failed twice" rule an
 export const REAUDIT_DAYS = 7; // the guide's suggested re-audit date: this many days after the last audit
 export const BED_TURNAROUND_TARGET = 60; // minutes, the same example target as the bed board
 export const SEVERAL_CLEANS = 2; // "several beds wait for a clean"
-export const TEAM_LEVELS = { portering: { waiting: 5, longestMinutes: 30 }, cleaning: { waiting: 6, longestMinutes: 60 } };
+export const TEAM_LEVELS = { transport: { waiting: 5, longestMinutes: 30 }, cleaning: { waiting: 6, longestMinutes: 60 } };
 
 const inPeriod = (at, since, until) => at < until && (since == null || at >= since);
 
@@ -137,8 +137,8 @@ export function bedTurnaround(events, { since, until, beds }) {
     leftOut: { total: gone.length, usedAgain: count('Bed in use again'), outOfService: count('Bed taken out of service') } };
 }
 
-// Porter request to completion: asked for -> delivered, median minutes, for each kind and for all
-// portering jobs finished in the period. Cancelled and open jobs are left out.
+// Transport request to completion: asked for -> delivered, median minutes, for each kind and for all
+// transport jobs finished in the period. Cancelled and open jobs are left out.
 export function porterRequestToDone(events, { since, until, tasks = null }) {
   const all = tasks ?? deriveTasks(events).all;
   const stat = (pick) => completionStats(all, { since, until, pick });
@@ -176,7 +176,7 @@ export const GUIDE_RULES = [
   { id: 'cleans-first', name: 'Which cleans first',
     basis: `Example setting, not a standard: a fixed rule. When ${SEVERAL_CLEANS} or more beds wait for a clean and the bed board shows patients waiting for a bed on a ward with no free bed, the cleans on that ward come first, the longest wait first, one for each patient who has no bed.` },
   { id: 'team-busy', name: 'A team is busier than usual',
-    basis: `Example setting, not a standard: the usual level is set locally (here up to ${TEAM_LEVELS.portering.waiting} jobs waiting and ${TEAM_LEVELS.portering.longestMinutes} min for portering, ${TEAM_LEVELS.cleaning.waiting} and ${TEAM_LEVELS.cleaning.longestMinutes} min for cleaning). Advice only.` },
+    basis: `Example setting, not a standard: the usual level is set locally (here up to ${TEAM_LEVELS.transport.waiting} jobs waiting and ${TEAM_LEVELS.transport.longestMinutes} min for transport, ${TEAM_LEVELS.cleaning.waiting} and ${TEAM_LEVELS.cleaning.longestMinutes} min for cleaning). Advice only.` },
   { id: 'audit-failed-twice', name: 'An area failed its audit twice',
     basis: `Example setting, not a standard: the last two audits of an area both scored under the example pass mark of ${PASS_MARK}%, set locally. The suggested re-audit date is ${REAUDIT_DAYS} days after the last audit, also an example setting. Advice only.` },
 ];

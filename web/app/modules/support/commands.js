@@ -1,4 +1,4 @@
-// Cleaning and portering: the module's pack (see core/modules.js for the contract).
+// Cleaning and transport: the module's pack (see core/modules.js for the contract).
 // Plain data and pure functions; no screen code, so the same file runs in the browser, in tests
 // and on a site's own server.
 //
@@ -34,9 +34,9 @@ export const KPIS = [
     leavesOut: 'Beds still waiting for a clean or being cleaned; a bed used again or taken out of service before a clean was recorded (counted apart as leftOut).',
     source: 'local definition (the same as the bed board\'s bed turnaround)',
     target: BED_TURNAROUND_TARGET, targetText: `${BED_TURNAROUND_TARGET} minutes or less (example setting, not a standard; set locally)` },
-  { id: 'porter-request-to-done', name: 'Porter request to completion', unit: 'minutes',
-    definition: 'Median minutes from a porter job being asked for to it being delivered, for each kind of job, for urgent and normal jobs, and for all portering jobs. A job that was handed back keeps the time it was first asked for.',
-    counts: 'Portering jobs delivered in the period.', outOf: 'None (a median).',
+  { id: 'porter-request-to-done', name: 'Transport request to completion', unit: 'minutes',
+    definition: 'Median minutes from a transport job being asked for to it being delivered, for each kind of job, for urgent and normal jobs, and for all transport jobs. A job that was handed back keeps the time it was first asked for.',
+    counts: 'Transport jobs delivered in the period.', outOf: 'None (a median).',
     leavesOut: 'Cancelled jobs and jobs still open.',
     source: 'local definition', target: null, targetText: 'No target set: track the trend.' },
   { id: 'cleanliness-audit-score', name: 'Cleanliness audit score', unit: '%',
@@ -151,7 +151,7 @@ async function overview(core, input, wards) {
   return {
     asOf: now, synthetic: await synth(core), period: { since, until: now, days }, kpis, planned: PLANNED_KPIS.map((x) => ({ ...x })), teams, bedDemand, marks,
     guide: { on, rules: GUIDE_RULES.map((r) => ({ ...r })), suggestions },
-    note: 'Measures jobs and waits, never individual cleaners or porters. Does not set isolation or infection decisions or patient diets.',
+    note: 'Measures jobs and waits, never individual cleaners or transport assistants. Does not set isolation or infection decisions or patient diets.',
   };
 }
 
@@ -192,7 +192,7 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_support_overview',
-    summary: 'Cleaning and portering at a glance, in one call: the three measures with their definitions and sources (bed turnaround, porter request to completion, cleanliness audit score), open jobs per team with the longest wait, and the guide\'s suggestions with their reasons and basis (empty while the guide is off). Linen and meal measures are listed as planned, with no value. Measures jobs and waits, never people. Read-only.',
+    summary: 'Cleaning and transport at a glance, in one call: the three measures with their definitions and sources (bed turnaround, transport request to completion, cleanliness audit score), open jobs per team with the longest wait, and the guide\'s suggestions with their reasons and basis (empty while the guide is off). Linen and meal measures are listed as planned, with no value. Measures jobs and waits, never people. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, properties: {
       days: { type: 'integer', minimum: 1, maximum: 30, description: 'The period for the measures: the last this many days. Default 7.' },
@@ -278,7 +278,7 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_support_guide_set',
-    summary: 'Switch the cleaning and portering guide on or off for this site. The guide is a set of fixed rules that suggest which cleans to do first, when a team is busier than usual and when an area should be audited again; a person decides. With it off everything else works the same. People only.',
+    summary: 'Switch the cleaning and transport guide on or off for this site. The guide is a set of fixed rules that suggest which cleans to do first, when a team is busier than usual and when an area should be audited again; a person decides. With it off everything else works the same. People only.',
     kind: 'write', roles: ['support-supervisor', 'ops-manager', 'coo'], approval: true, agents: false,
     input: { type: 'object', additionalProperties: false, required: ['on'], properties: { on: { type: 'boolean', description: 'true: show the guide\'s suggestions. false: none.' } } },
     output: { type: 'object', required: ['status', 'on'], properties: { status: WRITE_STATUS, on: { type: 'boolean' }, events: EVENT_SEQS } },
@@ -301,7 +301,7 @@ export const COMMANDS = [
 // Generic patterns only, entirely fictional: busier by day, longer waits around shift change, most
 // audit elements pass while high surfaces and curtains fail more often, and one ward (B2) fails its
 // last two audits so the guide has something real to say. A handful of jobs are left open at the
-// end so a porter and a cleaner who open the app see a real queue.
+// end so a transport assistant and a cleaner who open the app see a real queue.
 const AUDITED = [['ward-a1', 'high'], ['ward-a2', 'high'], ['ward-a3', 'high'], ['ward-b1', 'high'], ['ward-b2', 'high'], ['ward-c1', 'high'],
   ['dept-emergency', 'high'], ['dept-theatres', 'very-high'], ['dept-imaging', 'moderate'], ['dept-outpatients', 'moderate']];
 const WEAK = { 'high-surfaces': 0.18, curtains: 0.12 }; // fail more often than the rest (generic pattern)
@@ -363,14 +363,14 @@ function seedTasks(r, startMs, endMs, entities, localHour) {
       const fromEd = r.chance(0.2);
       const from = fromEd ? ED : r.chance(0.75) ? r.pick(bedsOf(ward)) : ward;
       const to = fromEd ? ward : r.weighted([[IMAGING, 40], [THEATRES || IMAGING, 25], [otherWard(ward), 35]]);
-      return { kind, from, to, detail: r.weighted([['Wheelchair', 40], ['Bed', 30], ['Trolley', 20], ['Walking with help', 10]]), role: fromEd ? 'ae-nic' : r.chance(0.15) ? 'bed-manager' : 'ward-nurse' };
+      return { kind, from, to, detail: r.weighted([['Wheelchair', 40], ['Bed', 30], ['Stretcher', 20], ['Walking with help', 10]]), role: fromEd ? 'ae-nic' : r.chance(0.15) ? 'bed-manager' : 'ward-nurse' };
     }
     if (kind === 'item-run') {
       const detail = r.weighted([['Specimen', 60], ['Medicines', 15], ['Supplies', 15], ['Other item', 10]]);
       const from = r.chance(0.2) ? ED : ward;
       return { kind, from, to: detail === 'Specimen' ? LAB : r.chance(0.5) ? otherWard(ward) : IMAGING, detail, role: from === ED ? 'ae-nic' : 'ward-nurse' };
     }
-    return { kind, from: ward, to: otherWard(ward), detail: r.weighted([['Empty bed', 40], ['Wheelchair or trolley', 40], ['Other equipment', 20]]), role: r.chance(0.3) ? 'support-supervisor' : 'ward-nurse' };
+    return { kind, from: ward, to: otherWard(ward), detail: r.weighted([['Empty bed', 40], ['Wheelchair or stretcher', 40], ['Other equipment', 20]]), role: r.chance(0.3) ? 'support-supervisor' : 'ward-nurse' };
   }
   function cleanJob() {
     const inWard = r.chance(0.65);
@@ -382,29 +382,29 @@ function seedTasks(r, startMs, endMs, entities, localHour) {
   const jobs = [];
   for (let h = startMs; h < endMs - 2 * HOUR; h += HOUR) {
     const lh = localHour(h);
-    for (const [rate, make, team] of [[PORTER_PER_HOUR[lh], porterJob, 'portering'], [CLEAN_PER_HOUR[lh], cleanJob, 'cleaning']]) {
+    for (const [rate, make, team] of [[PORTER_PER_HOUR[lh], porterJob, 'transport'], [CLEAN_PER_HOUR[lh], cleanJob, 'cleaning']]) {
       const n = Math.floor(rate) + (r.chance(rate % 1) ? 1 : 0);
       for (let k = 0; k < n; k++) {
         const job = make();
         const at = h + r.int(0, 59) * MIN;
         const urgent = r.chance(job.detail === 'Specimen' ? 0.15 : 0.07);
         const slow = SHIFT_CHANGE.includes(localHour(at)) ? 2 : 1;
-        const wait = urgent ? minutes(5, 0.5, 30) : minutes((team === 'portering' ? 12 : 25) * slow, 0.6, 90);
-        const work = minutes(team === 'portering' ? { 'patient-move': 20, 'item-run': 15, 'equipment-move': 18 }[job.kind] : 20, 0.4, 25);
+        const wait = urgent ? minutes(5, 0.5, 30) : minutes((team === 'transport' ? 12 : 25) * slow, 0.6, 90);
+        const work = minutes(team === 'transport' ? { 'patient-move': 20, 'item-run': 15, 'equipment-move': 18 }[job.kind] : 20, 0.4, 25);
         const cancelled = r.chance(0.04);
         jobs.push({ ...job, at, urgent, started: cancelled ? null : at + wait, done: cancelled ? null : at + wait + work,
-          cancelledAt: cancelled ? at + r.int(5, 40) * MIN : null, reason: cancelled ? r.pick(CANCEL) : null, doer: team === 'portering' ? 'porter' : 'cleaner' });
+          cancelledAt: cancelled ? at + r.int(5, 40) * MIN : null, reason: cancelled ? r.pick(CANCEL) : null, doer: team === 'transport' ? 'porter' : 'cleaner' });
       }
     }
   }
-  // Open at the end time: a real queue for the porter and the cleaner, waits under the guide's usual levels.
+  // Open at the end time: a real queue for the transport assistant and the cleaner, waits under the guide's usual levels.
   const open = (job, minsAgo, state, urgent = false) => jobs.push({ ...job, at: endMs - minsAgo * MIN, urgent,
     started: state === 'started' ? endMs - Math.floor(minsAgo / 2) * MIN : null, done: null, cancelledAt: null, reason: null, doer: job.kind === 'room-clean' ? 'cleaner' : 'porter' });
   const [w1, w2, w3, w4] = [wards[0], wards[1 % wards.length], wards[3 % wards.length], wards[4 % wards.length]];
   open({ kind: 'item-run', from: w3, to: LAB, detail: 'Specimen', role: 'ward-nurse' }, 9, 'requested', true);
   open({ kind: 'patient-move', from: bedsOf(w2)[6] || w2, to: IMAGING, detail: 'Bed', role: 'ward-nurse' }, 24, 'requested');
-  open({ kind: 'patient-move', from: ED, to: w1, detail: 'Trolley', role: 'ae-nic' }, 16, 'requested');
-  open({ kind: 'equipment-move', from: w4, to: w2, detail: 'Wheelchair or trolley', role: 'ward-nurse' }, 6, 'requested');
+  open({ kind: 'patient-move', from: ED, to: w1, detail: 'Stretcher', role: 'ae-nic' }, 16, 'requested');
+  open({ kind: 'equipment-move', from: w4, to: w2, detail: 'Wheelchair or stretcher', role: 'ward-nurse' }, 6, 'requested');
   open({ kind: 'patient-move', from: bedsOf(w1)[2] || w1, to: THEATRES || IMAGING, detail: 'Wheelchair', role: 'ward-nurse' }, 20, 'started');
   open({ kind: 'room-clean', from: w2, to: null, detail: 'Spill', role: 'ward-nurse' }, 18, 'requested');
   open({ kind: 'room-clean', from: IMAGING, to: null, detail: 'Routine clean', role: 'ward-nurse' }, 30, 'started');
