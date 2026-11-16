@@ -518,7 +518,12 @@ html[data-site="connect"] .layout { display: block; }
 @media (max-width: 640px) {
   .bed-age, .bed-who, .bed-tag, .chip, .pill, .badge, .eyebrow, .kpi-target, .kpi-dialog dt, .card .meta, .stat span, .board-summary .stat span,
   th, td code, .ward-tab-counts, .nav .soon-tag, .nav-foot, .pm-step .n, .pm-step .t, .choice .tag, .label-link { font-size: .9375rem; }
+  /* Issue #13, rest (fixer, night 12): the hospital name, KPI names, filter and guide chips, small
+     buttons, the waiting list, recent changes, meta lines, priority notes, example-card text and tables. */
+  .hospital-name, .kpi-name, .chip-btn, .btn-small, .waiting-item, ol.recent li, .meta, .prio-opt small, .choice span, table { font-size: .9375rem; }
   .eyebrow { letter-spacing: .12em; }
+  /* At 15 px the six bed filters took three rows at 360 px and pushed Find a bed's first match below the fold. */
+  .chips .chip-btn { padding: 6px 9px; }
   /* The top bar's "Synthetic data" label is not something a person acts on; at 15 px it pushed the bar onto a third row at 390 px. */
   .topbar .badge { font-size: .74rem; }
 }
