@@ -1145,7 +1145,7 @@
     "source": "local definition"
    },
    {
-    "name": "Overdue work orders",
+    "name": "Late work orders",
     "definition": "open work orders past their SLA due time / all open work orders",
     "source": "local definition"
    },

@@ -58,12 +58,12 @@ export const KPIS = [
     owner: 'estates-tech', target: null, targetText: 'Track the trend',
   },
   {
-    id: 'overdue-work-orders', name: 'Overdue work orders', unit: 'count', decimals: 0, direction: 'lower',
+    id: 'overdue-work-orders', name: 'Late work orders', unit: 'count', decimals: 0, direction: 'lower',
     numerator: 'Open work orders older than their response target: urgent 4 h, high 24 h, routine 72 h.',
     denominator: 'None (a count).',
     exclusions: 'Completed work orders.',
     source: 'General maintenance SLA measure. Response targets are examples; set locally.',
-    owner: 'estates-tech', target: 0, targetText: 'None overdue',
+    owner: 'estates-tech', target: 0, targetText: 'None late',
   },
 ];
 
