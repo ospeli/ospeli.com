@@ -4,6 +4,9 @@
 // Patterns (length of stay, discharge hours, turnaround times) are generic, not taken
 // from any real hospital.
 
+import { ROLES } from './model.js';
+import { MODULE_PACKS } from './modules.js';
+
 export const HOSPITAL_NAME = 'Example General Hospital';
 export const DEFAULT_SEED = 20261106;
 export const UTC_OFFSET_MINUTES = -240; // fictional local time, fixed offset, no daylight saving
@@ -36,6 +39,9 @@ export function rng(seed) {
     },
   };
 }
+
+// A small stable number from a module's id, to give it its own random stream.
+const hashOf = (text) => [...String(text)].reduce((h, ch) => (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0, 7);
 
 const HOUR = 3600e3;
 const MIN = 60e3;
@@ -119,6 +125,10 @@ export function buildModel() {
   for (const [id, name, parentId, kind] of PLANT_ASSETS) entities.push({ id, type: 'asset', name, parentId, kind });
   for (const r of [['ward-nurse', 'Ward nurse'], ['bed-manager', 'Patient flow coordinator'], ['estates-tech', 'Facilities technician'], ['ae-nic', 'Emergency department nurse in charge'], ['ops-manager', 'Operations manager'], ['coo', 'COO']]) {
     entities.push({ id: `role-${r[0]}`, type: 'role', name: r[1], roleId: r[0] });
+  }
+  // Roles a module added (core/model.js) follow the first six, in the order they were added.
+  for (const r of ROLES) {
+    if (!entities.some((e) => e.id === `role-${r.id}`)) entities.push({ id: `role-${r.id}`, type: 'role', name: r.name, roleId: r.id });
   }
   entities.push({ id: 'shift-day', type: 'shift', name: 'Day shift', start: '07:00', end: '19:00' });
   entities.push({ id: 'shift-night', type: 'shift', name: 'Night shift', start: '19:00', end: '07:00' });
@@ -275,6 +285,19 @@ export function generateHospital({ seed = DEFAULT_SEED, end, days = 30 } = {}) {
     const decision = endMs - Math.min(6, r.lognormal(1.5, 0.7)) * HOUR;
     aeJourney(encId, decision, true);
     push(Math.min(endMs, decision + r.lognormal(20, 0.5) * MIN), 'bed.requested', encId, 'ae-nic', { wardId: w.id });
+  }
+
+  // Each module adds its own synthetic history (core/modules.js). A module gets its own random
+  // stream, so adding one never changes the events above or another module's. It may only write
+  // its own kinds of event, and task.* for the shared task object.
+  for (const p of MODULE_PACKS) {
+    if (typeof p.seed !== 'function') continue;
+    const mine = p.seed({ r: rng((seed ^ hashOf(p.id)) >>> 0), startMs, endMs, days, entities, events: raw.map((e) => ({ ...e })) }) || [];
+    for (const e of mine) {
+      const ok = typeof e?.type === 'string' && (e.type.startsWith(p.EVENT_PREFIX) || (e.type.startsWith('task.') && Array.isArray(p.TASK_KINDS) && p.TASK_KINDS.length));
+      if (!ok) throw new Error(`module ${p.id}: a seed may only write ${p.EVENT_PREFIX}* events${p.TASK_KINDS?.length ? ' and task.* events' : ''}, not ${e?.type}`);
+      push(e.t, e.type, e.subject, e.actorRole, e.data ?? null);
+    }
   }
 
   raw.sort((a, b) => a.t - b.t || (a.type < b.type ? -1 : a.type > b.type ? 1 : 0) || (a.subject < b.subject ? -1 : 1));

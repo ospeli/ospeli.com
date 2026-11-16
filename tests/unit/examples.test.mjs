@@ -7,6 +7,7 @@ import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
 import { loadSyntheticHospital } from '../../web/app/core/generator.js';
 import { runCommand, listCommands, CommandError, ACTION_COMMANDS } from '../../web/app/core/commands.js';
+import { MODULE_PACKS } from '../../web/app/core/modules.js';
 
 const END = '2026-11-06T18:00:00.000Z';
 const human = (role) => ({ type: 'human', role });
@@ -34,7 +35,8 @@ test('every published example runs as written on a fresh example hospital, or sa
       await runCommand(core, c.name, structuredClone(c.example.input), callerFor(c));
       ran += 1;
       // A bed write that happens to run still says the state it needs: the example bed moves on with the clock.
-      if (c.example.needs) assert.ok(c.name.startsWith('ospeli_beds_'), `${c.name}: the example runs as written, so it should not say it needs anything`);
+      // The clean of a bed follows the bed, so the same holds for starting and finishing a task.
+      if (c.example.needs) assert.ok(c.name.startsWith('ospeli_beds_') || ['ospeli_tasks_start', 'ospeli_tasks_complete', 'ospeli_tasks_set_priority'].includes(c.name), `${c.name}: the example runs as written, so it should not say it needs anything`);
     } catch (err) {
       assert.ok(err instanceof CommandError, `${c.name}: ${err.stack}`);
       if (typeof c.example.needs !== 'string' || c.example.needs.length < 30) refused.push(`${c.name}: ${err.code} (${err.message.slice(0, 60)})`);
@@ -103,6 +105,22 @@ async function prepare(core, c) {
     await runCommand(core, 'ospeli_agents_add', { name: 'proposer', role: 'ward-nurse', wards: [bed.wardId], days: 30 }, human('coo'));
     const p = await runCommand(core, 'ospeli_beds_mark_vacated', { bedId: bed.id }, { type: 'agent', agent: 'proposer', role: 'ward-nurse' });
     return { id: p.proposal.id };
+  }
+  if (name.startsWith('ospeli_tasks_')) {
+    assert.match(c.example.needs, /ospeli_tasks_list/, `${name}: the needs line says where to find an open task`);
+    if (name === 'ospeli_tasks_cancel') {
+      // A task someone asked for: the request command's own example, run by a person.
+      const ask = listCommands().find((x) => x.name === 'ospeli_tasks_request');
+      return { taskId: (await runCommand(core, ask.name, structuredClone(ask.example.input), human(ask.roles[0]))).taskId };
+    }
+    const { bedId } = await bedIn(core, 'vacated'); // a vacated bed is a clean task
+    return { taskId: `clean-${bedId}` };
+  }
+  // A module's own commands: the module says how to put in place what its example needs.
+  const pack = MODULE_PACKS.find((p) => name.startsWith(p.PREFIX));
+  if (pack) {
+    assert.equal(typeof pack.prepareExample, 'function', `${name}: module ${pack.id} must export prepareExample(core, command, tools) for examples that need something`);
+    return (await pack.prepareExample(core, c, { run: (n, input, role) => runCommand(core, n, input, human(role)) })) || {};
   }
   if (name === 'ospeli_agents_remove') {
     assert.match(c.example.needs, /ospeli_agents_add/, `${name}: the needs line says how an agent gets on the list`);

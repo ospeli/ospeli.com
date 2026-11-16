@@ -4,6 +4,7 @@ import { h } from './ui.js';
 import { roleById } from '../core/model.js';
 import { since } from '../core/beds.js';
 import { declineReasonsFor } from '../core/commands.js';
+import { MODULES } from './registry.js';
 
 const SHOW_FIRST = 3;
 
@@ -68,7 +69,9 @@ export function proposalsCard(ctx, { describe, match = () => true }) {
 
 // Issue #52: which proposals wait for this role, by the page where each is decided. One read
 // (ospeli_proposals_list already says canDecide); Today and the menu both use it.
-const DECIDED_ON = [['ospeli_beds_', 'beds'], ['ospeli_workorders_', 'engineering'], ['ospeli_maps_', 'process']];
+// A module's page decides the proposals for its own commands (registry: `commands`, a prefix or a list of them).
+const DECIDED_ON = [['ospeli_beds_', 'beds'], ['ospeli_workorders_', 'engineering'], ['ospeli_maps_', 'process'],
+  ...MODULES.flatMap((m) => [].concat(m.commands || []).map((prefix) => [prefix, m.id]))];
 export async function waitingDecisions(ctx) {
   let list = [];
   try { list = (await ctx.run('ospeli_proposals_list', { status: 'pending', limit: 200 })).proposals.filter((p) => p.canDecide); } catch { list = []; }

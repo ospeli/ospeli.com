@@ -6968,6 +6968,690 @@
         "input": {},
         "needs": "A walk in progress on this device: ospeli_walks_start starts one (ospeli_walks_get shows whether one is open). At least one step must have ended, and none may be running."
       }
+    },
+    {
+      "name": "ospeli_tasks_kinds",
+      "summary": "The kinds of task this site can ask for (a clean, a move, a delivery), with the team that does each, the roles that may ask for and do it, and the details to pick from. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "teams",
+          "kinds",
+          "priorities",
+          "cancelReasons"
+        ],
+        "properties": {
+          "teams": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "kinds": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "team",
+                "askable"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "team": {
+                  "type": "string"
+                },
+                "askable": {
+                  "type": "boolean",
+                  "description": "false: nobody asks for it by hand. A bed clean starts by itself when a bed is vacated on the bed board."
+                },
+                "needsTo": {
+                  "type": "boolean",
+                  "description": "true: the task also needs a place to go to (toLocationId)."
+                },
+                "details": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "When present, pick one as the task's detail."
+                },
+                "placeTypes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "requestRoles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "doRoles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "startLabel": {
+                  "type": "string"
+                },
+                "doneLabel": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "priorities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "cancelReasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
+      "name": "ospeli_tasks_list",
+      "summary": "A team's queue: open tasks (cleans, moves, deliveries) with place, how long each has waited and its state, urgent first and then the longest wait. A vacated bed appears here as a clean task by itself. For \"what is waiting on this ward\" pass locationId. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "completed",
+              "cancelled",
+              "all"
+            ],
+            "description": "open (default) means waiting or in progress."
+          },
+          "team": {
+            "type": "string",
+            "enum": [
+              "cleaning"
+            ],
+            "description": "One team's queue. Leave out for every team."
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "bed-clean"
+            ]
+          },
+          "locationId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "A ward, department or bed id, for example ward-a1. A ward matches its beds too."
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Only tasks asked for at or after this time. Useful with completed."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: what, where, priority, state and wait. detailed (default): who asked (role only), times and labels too."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
+            "description": "At most this many tasks. Default 30, 500 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "tasks",
+          "counts",
+          "total",
+          "truncated"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          },
+          "tasks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "kind",
+                "kindName",
+                "team",
+                "locationId",
+                "priority",
+                "state",
+                "requestedAt",
+                "waitMinutes"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^(task-[0-9]{5,}|clean-[a-z0-9][a-z0-9-]*)$",
+                  "maxLength": 80,
+                  "description": "A task id from ospeli_tasks_list: task-00001 for a task someone asked for, clean-<bed id> for the clean of a vacated bed."
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "bed-clean"
+                  ]
+                },
+                "kindName": {
+                  "type": "string"
+                },
+                "team": {
+                  "type": "string",
+                  "enum": [
+                    "cleaning"
+                  ]
+                },
+                "teamName": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "task",
+                    "bed"
+                  ],
+                  "description": "bed: read from the bed board (a vacated bed is a clean task). task: someone asked for it."
+                },
+                "locationId": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
+                },
+                "locationName": {
+                  "type": "string"
+                },
+                "wardId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "toLocationId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "toLocationName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "priority": {
+                  "type": "string",
+                  "enum": [
+                    "urgent",
+                    "routine"
+                  ]
+                },
+                "detail": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "requested",
+                    "started",
+                    "completed",
+                    "cancelled"
+                  ]
+                },
+                "stateName": {
+                  "type": "string"
+                },
+                "requestedAt": {
+                  "type": "string",
+                  "format": "date-time"
+                },
+                "requestedByRole": {
+                  "type": "string",
+                  "description": "The role that asked. No person is recorded."
+                },
+                "startedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "completedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "cancelledAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "cancelReason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "waitMinutes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Minutes from asked-for to started (or to now while it waits)."
+                },
+                "totalMinutes": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Minutes from asked-for to done; null until it is done."
+                },
+                "startLabel": {
+                  "type": "string"
+                },
+                "doneLabel": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "counts": {
+            "type": "object",
+            "required": [
+              "open",
+              "waiting",
+              "inProgress",
+              "urgent",
+              "byTeam"
+            ],
+            "description": "Open tasks for the same filters, before the limit.",
+            "properties": {
+              "open": {
+                "type": "integer"
+              },
+              "waiting": {
+                "type": "integer"
+              },
+              "inProgress": {
+                "type": "integer"
+              },
+              "urgent": {
+                "type": "integer"
+              },
+              "longestWaitMinutes": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "The longest wait among tasks not yet started."
+              },
+              "byTeam": {
+                "type": "object",
+                "description": "Open tasks per team id."
+              }
+            }
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "state": "open"
+        }
+      }
+    },
+    {
+      "name": "ospeli_tasks_start",
+      "summary": "A team has started a task that was waiting (cleaning started, patient or goods collected). For the clean of a vacated bed, the bed board shows the bed as being cleaned.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "taskId"
+        ],
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "pattern": "^(task-[0-9]{5,}|clean-[a-z0-9][a-z0-9-]*)$",
+            "maxLength": 80,
+            "description": "A task id from ospeli_tasks_list: task-00001 for a task someone asked for, clean-<bed id> for the clean of a vacated bed."
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "started",
+              "completed",
+              "cancelled"
+            ],
+            "description": "The state the caller last saw. If the task has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "taskId": {
+            "type": "string",
+            "pattern": "^(task-[0-9]{5,}|clean-[a-z0-9][a-z0-9-]*)$",
+            "maxLength": 80,
+            "description": "A task id from ospeli_tasks_list: task-00001 for a task someone asked for, clean-<bed id> for the clean of a vacated bed."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "started",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "taskId": "clean-ward-a1-bed-01"
+        },
+        "needs": "An open task. clean-ward-a1-bed-01 is an example id (the clean of a bed that has just been vacated), and beds move on through the day: ospeli_tasks_list with { \"state\": \"open\" } lists the open tasks with their ids. It must still be waiting, not in progress."
+      }
+    },
+    {
+      "name": "ospeli_tasks_complete",
+      "summary": "A task is done (clean finished, patient or goods delivered). For the clean of a vacated bed, the bed board shows the bed as ready. A task that was never marked started is recorded as started and done at the same moment.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "taskId"
+        ],
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "pattern": "^(task-[0-9]{5,}|clean-[a-z0-9][a-z0-9-]*)$",
+            "maxLength": 80,
+            "description": "A task id from ospeli_tasks_list: task-00001 for a task someone asked for, clean-<bed id> for the clean of a vacated bed."
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "started",
+              "completed",
+              "cancelled"
+            ],
+            "description": "The state the caller last saw. If the task has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "taskId": {
+            "type": "string",
+            "pattern": "^(task-[0-9]{5,}|clean-[a-z0-9][a-z0-9-]*)$",
+            "maxLength": 80,
+            "description": "A task id from ospeli_tasks_list: task-00001 for a task someone asked for, clean-<bed id> for the clean of a vacated bed."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "started",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "taskId": "clean-ward-a1-bed-01"
+        },
+        "needs": "An open task. clean-ward-a1-bed-01 is an example id (the clean of a bed that has just been vacated), and beds move on through the day: ospeli_tasks_list with { \"state\": \"open\" } lists the open tasks with their ids."
+      }
+    },
+    {
+      "name": "ospeli_tasks_set_priority",
+      "summary": "Move an open task to the front of its team's queue (urgent) or back to its place by waiting time (routine). For the people who balance the work; an agent may propose it with its reasons and a person decides. It changes the order only: nothing is started or assigned to anyone.",
+      "kind": "write",
+      "roles": [
+        "bed-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "taskId",
+          "priority"
+        ],
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "pattern": "^(task-[0-9]{5,}|clean-[a-z0-9][a-z0-9-]*)$",
+            "maxLength": 80,
+            "description": "A task id from ospeli_tasks_list: task-00001 for a task someone asked for, clean-<bed id> for the clean of a vacated bed."
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "urgent",
+              "routine"
+            ],
+            "description": "urgent: to the front of the queue. routine: back to its place by waiting time."
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "started",
+              "completed",
+              "cancelled"
+            ],
+            "description": "The state the caller last saw. If the task has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "taskId": {
+            "type": "string",
+            "pattern": "^(task-[0-9]{5,}|clean-[a-z0-9][a-z0-9-]*)$",
+            "maxLength": 80,
+            "description": "A task id from ospeli_tasks_list: task-00001 for a task someone asked for, clean-<bed id> for the clean of a vacated bed."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "started",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "taskId": "clean-ward-a1-bed-01",
+          "priority": "urgent"
+        },
+        "needs": "An open task. clean-ward-a1-bed-01 is an example id (the clean of a bed that has just been vacated), and beds move on through the day: ospeli_tasks_list with { \"state\": \"open\" } lists the open tasks with their ids."
+      }
     }
   ]
 }

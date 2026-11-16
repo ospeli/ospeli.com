@@ -11,6 +11,9 @@
 // - Nothing leaves the device: commands run against the local core only.
 
 import { validate } from './schema.js';
+import { CommandError, ALL_ROLES, ID, TIME, SYNTHETIC, LIMIT, TOTAL, TRUNCATED, FORMAT, page, idsHint } from './kit.js';
+import { MODULE_PACKS, MODULE_COMMANDS } from './modules.js';
+import { taskCommands } from './task-commands.js';
 import { ROLES, roleById, currentWords } from './model.js';
 import { BED_STATES, OUT_OF_SERVICE_REASONS, deriveBoard, bedActions, actionEvents, countStates } from './beds.js';
 import { KPIS, kpiById, computeKpi } from './kpi.js';
@@ -26,30 +29,12 @@ import {
   mapStepsFromWalk, stepsInSeconds, dropStaleSeconds, suggestWalk,
 } from './walk.js';
 
-export class CommandError extends Error {
-  constructor(code, message, detail = null) {
-    super(message);
-    this.name = 'CommandError';
-    this.code = code; // invalid-input | unknown-command | forbidden | not-found | conflict | agents-off
-    this.detail = detail;
-  }
-}
+// CommandError and the schema pieces every command shares live in kit.js, so a module's own
+// command file can use them without importing this file (which imports the modules).
+export { CommandError };
 
-const ALL_ROLES = ROLES.map((r) => r.id);
 const FLOOR = ['ward-nurse', 'bed-manager'];
-const ID = { type: 'string', pattern: '^[a-z0-9][a-z0-9-]*$', maxLength: 64 };
 const STATE = { type: 'string', enum: Object.keys(BED_STATES) };
-const TIME = { type: 'string', format: 'date-time' };
-const SYNTHETIC = { type: 'boolean', description: 'True while the data on this device is synthetic.' };
-
-// List reads never dump a whole table (tool-design rule, issue #39): each takes a limit, and says
-// how many there are in all and whether the answer was cut short. Counts are worked out before the cut.
-const LIMIT = (def, max, what) => ({ type: 'integer', minimum: 1, maximum: max, description: `At most this many ${what}. Default ${def}, ${max} at most. "total" and "truncated" in the answer say if there are more.` });
-const TOTAL = { type: 'integer', minimum: 0, description: 'How many there are in all, before the limit.' };
-const TRUNCATED = { type: 'boolean', description: 'True when the limit cut the list short. Narrow the filters or raise the limit.' };
-const FORMAT = (short, detailed) => ({ type: 'string', enum: ['short', 'detailed'], description: `short: ${short}. detailed (default): ${detailed}.` });
-const page = (list, limit, def) => ({ items: list.slice(0, limit ?? def), total: list.length, truncated: list.length > (limit ?? def) });
-const idsHint = (list, n = 8) => list.slice(0, n).map((x) => x.id).join(', ') + (list.length > n ? ', …' : '');
 
 const BED_STATE_SCHEMA = {
   type: 'object',
@@ -1424,6 +1409,17 @@ COMMAND_LIST.push(
   },
 );
 
+// The shared task object (core/tasks.js), with the kinds of task the modules add, and then each
+// module's own commands (core/modules.js). A name may be used once.
+COMMAND_LIST.push(...taskCommands(MODULE_PACKS), ...MODULE_COMMANDS);
+{
+  const seen = new Set();
+  for (const c of COMMAND_LIST) {
+    if (seen.has(c.name)) throw new Error(`command ${c.name} is defined twice`);
+    seen.add(c.name);
+  }
+}
+
 const EXAMPLE_BED = { 'ospeli_beds_allocate': { encounter: 'enc-000123' }, 'ospeli_beds_take_out_of_service': { reason: 'Electrical' }, 'ospeli_beds_flag_expected_discharge': { expectedAt: '2026-11-08T15:00:00.000Z' } };
 for (const c of COMMAND_LIST) {
   if (!c.example) c.example = { input: { bedId: 'ward-a1-bed-01', ...(EXAMPLE_BED[c.name] || {}) } };
@@ -1590,8 +1586,8 @@ export async function auditRefusal(core, name, input, actor, err) {
   const detail = {
     command, code: err.code, reason: err.reason || err.code,
     why: err.code === 'invalid-input' ? 'The input did not match what the command accepts.' : err.code === 'unknown-command' ? 'There is no such command.'
-      : err.reason === 'target' ? (err.code === 'not-found' ? 'The bed, work order or map it named does not exist.' : 'The bed, patient, work order or map was not in a state that allows this.')
-        : err.reason === 'duplicate' ? 'The same agent already has a proposal waiting for the same bed or work order.' : err.message,
+      : err.reason === 'target' ? (err.code === 'not-found' ? 'The bed, work order, map, task or record it named does not exist.' : 'The bed, patient, work order, map, task or record was not in a state that allows this.')
+        : err.reason === 'duplicate' ? 'The same agent already has a proposal waiting for the same bed, work order, task or record.' : err.message,
     claimedRole: role === 'system' ? '(unknown)' : role,
     fields: input && typeof input === 'object' ? Object.keys(input).filter((k) => ownFields.has(k)).slice(0, 12) : [],
     ...(known && name !== cmd.name ? { calledAs: cmd.deprecatedName } : {}),
@@ -1720,7 +1716,7 @@ async function runChecked(core, name, input, actor, opts = {}) {
   let same = null;
   if (cmd.kind !== 'read') {
     try {
-      if (cmd.precheck) await cmd.precheck(core, input);
+      if (cmd.precheck) await cmd.precheck(core, input, { actor: who });
     } catch (err) {
       if (err instanceof CommandError) { err.refusal = true; err.reason = 'target'; }
       throw err;
@@ -1729,9 +1725,11 @@ async function runChecked(core, name, input, actor, opts = {}) {
     const canon = stableJson(input);
     same = mine.find((p) => p.command === name && stableJson(p.input) === canon) || null;
     if (!same) {
-      const target = input.bedId ?? input.workOrderId ?? null;
-      const clash = target ? mine.find((p) => p.command === name && (p.input?.bedId ?? p.input?.workOrderId) === target) : null;
-      if (clash) refuse('conflict', `${clash.id} from this agent is already waiting for a person for the same ${input.bedId ? 'bed' : 'work order'}. Wait for their answer before proposing it again.`, { existing: clash.id }, 'duplicate');
+      // What the proposal is about: a bed, a work order, or what the command itself names (a task).
+      const about = (c, x) => (c.target ? c.target(x || {}) : x?.bedId ? { id: x.bedId, word: 'bed' } : x?.workOrderId ? { id: x.workOrderId, word: 'work order' } : null);
+      const target = about(cmd, input);
+      const clash = target?.id ? mine.find((p) => p.command === name && about(cmd, p.input)?.id === target.id) : null;
+      if (clash) refuse('conflict', `${clash.id} from this agent is already waiting for a person for the same ${target.word}. Wait for their answer before proposing it again.`, { existing: clash.id }, 'duplicate');
       if (mine.length >= MAX_PENDING_PER_AGENT) refuse('conflict', `Agent ${who.agent} already has ${MAX_PENDING_PER_AGENT} proposals waiting for a person, which is the most one agent may have. Wait until some are answered (ospeli_proposals_list shows them).`, { pending: mine.length, limit: MAX_PENDING_PER_AGENT }, 'queue-full');
     }
   }
@@ -1761,7 +1759,7 @@ async function runChecked(core, name, input, actor, opts = {}) {
     await core.recordAs(who, 'agent.read', null, { command: name, input: await auditInput(core, cmd, input, true), ...size, ...calledAs });
     return out;
   }
-  const ids = { ...(input.bedId ? { bedId: input.bedId } : {}), ...(input.workOrderId ? { workOrderId: input.workOrderId } : {}), ...(input.mapId ? { mapId: input.mapId } : {}) };
+  const ids = { ...(input.bedId ? { bedId: input.bedId } : {}), ...(input.workOrderId ? { workOrderId: input.workOrderId } : {}), ...(input.mapId ? { mapId: input.mapId } : {}), ...(input.taskId ? { taskId: input.taskId } : {}) };
   if (same) {
     // Asked again: the answer is the proposal already waiting. The call still leaves a trace.
     await core.recordAs(who, 'agent.proposed-again', same.id, { command: name, ...calledAs });
