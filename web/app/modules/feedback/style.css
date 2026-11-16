@@ -164,3 +164,10 @@
   .mod-feedback .fb-quick { grid-template-columns: minmax(0, 1fr); }
 }
 .mod-feedback tbody th { text-transform: none; letter-spacing: 0; font-size: .92rem; font-weight: 700; color: var(--ink); background: var(--surface); }
+/* On a phone the hand-over button comes first (one tap), then the form, then the service's numbers. */
+@media (max-width: 899px) {
+  .mod-feedback .fb-quick { display: flex; flex-direction: column; }
+  .mod-feedback .fb-side { display: contents; }
+  .mod-feedback .fb-handover { order: -1; }
+  .mod-feedback .fb-numbers { order: 1; }
+}

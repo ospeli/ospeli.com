@@ -248,7 +248,7 @@ test('the guide switch: off hides the reminders and the template reply; the queu
 test('the quality lead\'s themes board at 1280px: compliments beside complaints, counts only, every KPI with its source', async () => {
   const { context, page, errors } = await open(1280, 'quality-lead');
   await page.waitForSelector('[data-test="by-theme"]');
-  assert.deepEqual(await page.locator('[data-test="by-theme"] thead th').allTextContents(), ['Theme', 'Complaints', 'Concerns', 'Compliments', 'Cards (1–2 faces)', 'Actions agreed', 'Actions closed']);
+  assert.deepEqual(await page.locator('[data-test="by-theme"] thead th').allTextContents(), ['Theme', 'Complaints', 'Concerns', 'Compliments', 'Cards (very poor or poor)', 'Actions agreed', 'Actions closed']);
   assert.match(await page.locator('[data-test="method"]').textContent(), /Counts only/);
   for (const k of await page.locator('[data-kpi]').all()) assert.match(await k.textContent(), /Source: local definition/);
   const all = Number(await page.locator('[data-test="totals"] [data-n="cards"] b').textContent());

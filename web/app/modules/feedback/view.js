@@ -367,7 +367,7 @@ async function queueScreen(box, ctx, { opt }) {
       onclick: async () => { ui.view = id; await load(); chips.querySelector(`[data-view="${id}"]`)?.focus(); },
     }, id === 'mine' ? `${label} (${q.counts.mine})` : label)));
     const c = q.counts;
-    setKids(counts, h('b', { 'data-test': 'count-open' }, c.open), ' open · ', h('b', { 'data-test': 'count-overdue' }, c.overdue), ' overdue · ',
+    setKids(counts, 'Whole site: ', h('b', { 'data-test': 'count-open' }, c.open), ' open · ', h('b', { 'data-test': 'count-overdue' }, c.overdue), ' overdue · ',
       h('b', {}, c.dueSoon), ' due soon · ', h('b', {}, c.clinicalReview), ' at clinical review');
     setKids(list, q.records.length
       ? h('ul', { class: 'fb-rows' }, q.records.map(recordRow))
@@ -394,8 +394,8 @@ async function queueScreen(box, ctx, { opt }) {
   const ownerFirst = role === 'ward-nurse' || role === 'ops-manager';
   setKids(box, h('div', { class: 'fb-queue', 'data-role': role },
     ownerFirst ? null : kpis,
-    h('section', { class: 'section', 'aria-labelledby': 'fb-q-h' }, h('h2', { id: 'fb-q-h' }, ownerFirst ? 'Complaints for your role' : 'Open complaints and concerns'), counts, chips, list),
     guide,
+    h('section', { class: 'section', 'aria-labelledby': 'fb-q-h' }, h('h2', { id: 'fb-q-h' }, ownerFirst ? 'Complaints for your role' : 'Open complaints and concerns'), counts, chips, list),
     ownerFirst ? kpis : null,
     h('p', { class: 'meta fb-notfor' }, 'Ospeli does not score or rank staff and does not judge clinical care. It holds no names or contact details and sends nothing.')));
   await load();
@@ -426,16 +426,16 @@ async function recordScreen(box, ctx, { opt, recordId }) {
   function draw(d) {
     const r = d.record;
     const timed = r.kind === 'complaint' || r.kind === 'concern';
-    const step = (name, label, control, extra) => h('div', { class: 'fb-step' }, control ? h('div', { class: 'fb-field' }, control.label, control.el) : null,
-      h('button', { class: 'btn', type: 'button', 'data-cmd': C.update, 'data-step': name, onclick: () => act(C.update, { recordId: r.id, step: name, expectedState: r.stage, ...extra() }, `${ref(r.id)}: ${label.toLowerCase()}`) }, label));
+    const step = (name, label, control, extra, main = false) => h('div', { class: 'fb-step' }, control ? h('div', { class: 'fb-field' }, control.label, control.el) : null,
+      h('button', { class: main ? 'btn' : 'btn btn-ghost', type: 'button', 'data-cmd': C.update, 'data-step': name, onclick: () => act(C.update, { recordId: r.id, step: name, expectedState: r.stage, ...extra() }, `${ref(r.id)}: ${label.toLowerCase()}`) }, label));
     const next = new Set(d.next);
     const controls = [];
-    if (next.has('acknowledge')) { const s = sel('fb-ack-ch', opt.replyChannels, 'letter'); controls.push(step('acknowledge', 'Record acknowledgement', { label: h('label', { for: 'fb-ack-ch' }, 'Acknowledged by'), el: s }, () => ({ channel: s.value }))); }
-    if (next.has('reply')) { const s = sel('fb-reply-ch', opt.replyChannels, 'letter'); controls.push(step('reply', 'Record reply sent', { label: h('label', { for: 'fb-reply-ch' }, 'Full reply sent by'), el: s }, () => ({ channel: s.value }))); }
+    if (next.has('acknowledge')) { const s = sel('fb-ack-ch', opt.replyChannels, 'letter'); controls.push(step('acknowledge', 'Record acknowledgement', { label: h('label', { for: 'fb-ack-ch' }, 'Acknowledged by'), el: s }, () => ({ channel: s.value }), true)); }
+    if (next.has('reply')) { const s = sel('fb-reply-ch', opt.replyChannels, 'letter'); controls.push(step('reply', 'Record reply sent', { label: h('label', { for: 'fb-reply-ch' }, 'Full reply sent by'), el: s }, () => ({ channel: s.value }), true)); }
     if (next.has('set-owner')) { const s = sel('fb-owner', opt.ownerRoles.filter((x) => x.id !== r.ownerRole)); controls.push(step('set-owner', 'Change owner', { label: h('label', { for: 'fb-owner' }, 'Owner role'), el: s }, () => ({ ownerRole: s.value }))); }
     if (next.has('close')) {
       const s = sel('fb-outcome', r.stage === 'replied' ? opt.outcomes : opt.outcomes.filter((o) => o.id === 'withdrawn'));
-      controls.push(step('close', r.stage === 'replied' ? 'Close' : 'Close as withdrawn', { label: h('label', { for: 'fb-outcome' }, 'Outcome'), el: s }, () => ({ outcome: s.value })));
+      controls.push(step('close', r.stage === 'replied' ? 'Close' : 'Close as withdrawn', { label: h('label', { for: 'fb-outcome' }, 'Outcome'), el: s }, () => ({ outcome: s.value }), r.stage === 'replied'));
     }
     if (next.has('clinical-review')) controls.push(step('clinical-review', 'Pass to clinical review', null, () => ({})));
     if (next.has('share')) controls.push(step('share', 'Mark as shared with the service', null, () => ({})));
@@ -519,7 +519,7 @@ async function themesScreen(box, ctx, { opt, base }) {
           h('span', { class: 'fb-bar', 'aria-hidden': 'true' }, h('i', { style: `width:${Math.round((100 * t.ratings[i]) / maxR)}%` })), h('b', {}, t.ratings[i]))))),
       h('section', { class: 'section', 'aria-labelledby': 'fb-th-h' }, h('h2', { id: 'fb-th-h' }, 'By theme'),
         themeRows.length || t.themeNotGiven.cards ? h('div', { class: 'table-wrap' }, h('table', { 'data-test': 'by-theme' },
-          h('thead', {}, h('tr', {}, ['Theme', 'Complaints', 'Concerns', 'Compliments', 'Cards (1–2 faces)', 'Actions agreed', 'Actions closed'].map((c) => h('th', { scope: 'col' }, c)))),
+          h('thead', {}, h('tr', {}, ['Theme', 'Complaints', 'Concerns', 'Compliments', 'Cards (very poor or poor)', 'Actions agreed', 'Actions closed'].map((c) => h('th', { scope: 'col' }, c)))),
           h('tbody', {}, themeRows.map((r) => h('tr', { 'data-theme': r.theme }, h('th', { scope: 'row' }, r.themeName.replace(/ \(.*\)$/, '')), num(r.complaints), num(r.concerns), num(r.compliments),
             h('td', { class: 'fb-n' }, r.cards ? `${r.cards} (${r.cardsPoor})` : '·'), num(r.actionsAgreed), num(r.actionsClosed))),
           t.themeNotGiven.cards ? h('tr', {}, h('th', { scope: 'row' }, 'Card, no theme picked'), num(0), num(0), num(0), h('td', { class: 'fb-n' }, `${t.themeNotGiven.cards} (${t.themeNotGiven.cardsPoor})`), num(0), num(0)) : null)))
