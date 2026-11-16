@@ -24,9 +24,13 @@ const ordinal = (n) => `${n}${n % 10 === 1 && n % 100 !== 11 ? 'st' : n % 10 ===
 const minsSince = (iso, now) => Math.max(0, Math.round((Date.parse(now) - Date.parse(iso)) / 60000));
 const fmtKpi = (k) => (k.value == null ? 'None yet' : k.unit === '%' ? `${Math.round(k.value)}%` : `${Math.round(k.value)} min`);
 
-// Remembered on this device only, while the app is open: the job this phone started (so its card
-// stays on top) and the place last asked from. Never stored, never sent, never about a person.
-let mine = null;
+// Remembered on this device only: the job this phone started, so its card stays on top after the
+// app is reopened (a task id, kept in this browser and never sent), and the place last asked from
+// (while the app is open). Nothing here is about a person.
+const MINE_KEY = 'ospeli-support-mine';
+const readMine = () => { try { return localStorage.getItem(MINE_KEY); } catch { return null; } };
+const keepMine = (id) => { try { if (id) localStorage.setItem(MINE_KEY, id); else localStorage.removeItem(MINE_KEY); } catch { /* the card still works for this visit */ } };
+let mine = readMine();
 let lastPlace = null;
 
 export async function render(el, ctx) {
@@ -123,7 +127,7 @@ function jobsScreen(ctx) {
     onclick: async (e) => {
       e.currentTarget.disabled = true;
       const start = t.state === 'requested';
-      await act(start ? 'ospeli_tasks_start' : 'ospeli_tasks_complete', t, {}, start ? t.startLabel : t.doneLabel, () => { mine = start ? t.id : null; });
+      await act(start ? 'ospeli_tasks_start' : 'ospeli_tasks_complete', t, {}, start ? t.startLabel : t.doneLabel, () => { mine = start ? t.id : null; keepMine(mine); });
     },
   }, t.state === 'started' ? t.doneLabel : t.startLabel) : h('p', { class: 'meta' }, `Done by: ${roleNames(data.kinds.get(t.kind)?.doRoles || [])}`));
 
@@ -133,7 +137,7 @@ function jobsScreen(ctx) {
     const waiting = list.tasks.filter((t) => t.state === 'requested');
     const started = list.tasks.filter((t) => t.state === 'started');
     const current = started.find((t) => t.id === mine) || null;
-    if (!current) mine = null;
+    if (!current && mine) { mine = null; keepMine(null); }
     const next = current || waiting[0] || null;
     const c = list.counts;
     const card = h('section', { class: `sup-card${next?.priority === 'urgent' ? ' is-urgent' : ''}${current ? ' is-mine' : ''}`, 'data-test': 'next-job', 'data-task': next?.id || null, 'aria-labelledby': 'sup-next-h' },
@@ -219,7 +223,7 @@ function boardScreen(ctx, { names }) {
   function row(t, now) {
     const k = data.kindById.get(t.kind);
     const mayDo = k?.doRoles.includes(ctx.role);
-    const mayLead = can(ctx.role, 'ospeli_tasks_set_priority');
+    const mayLead = t.state === 'requested' && can(ctx.role, 'ospeli_tasks_set_priority'); // the queue order matters only before a job starts
     const mayCancel = t.source === 'task' && k && [...k.requestRoles, ...k.doRoles].includes(ctx.role);
     const reason = h('select', { 'aria-label': `Reason to cancel: ${t.kindName}, ${t.locationName}` }, data.kinds.cancelReasons.map((r) => new Option(r, r)));
     return h('li', { class: `sup-row${t.priority === 'urgent' ? ' is-urgent' : ''}`, 'data-task': t.id, 'data-team': t.team },

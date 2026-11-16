@@ -84,6 +84,11 @@ test('a ward asks for a move in a few taps; a porter takes it from waiting to do
   await page.waitForFunction(() => document.querySelector('[data-test="main-action"]')?.textContent === 'Delivered');
   assert.match(await card.textContent(), /Your job now.*On the way/s);
   assert.match(await counts(), /^0 waiting · 1 in progress/);
+  // The phone is locked and the app opened again: the job this phone started is still on top.
+  await page.reload();
+  await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForFunction(() => document.querySelector('[data-test="main-action"]')?.textContent === 'Delivered');
+  assert.match(await page.locator('[data-test="next-job"]').textContent(), /Your job now/);
   await page.locator('[data-test="main-action"]').tap();
   await page.waitForSelector('[data-test="queue-empty"]');
   await page.waitForFunction((n) => Number(document.querySelector('[data-test="team-measure"]')?.dataset.n) === n + 1, n0);
@@ -168,6 +173,10 @@ test('the supervisor\'s board at 1280 px: teams, the guide with its reasons and 
   await row.locator('[data-test="to-front"]').click();
   await page.waitForFunction(() => document.querySelector('[data-test="board"] [data-team="portering"] [data-test="to-front"]')?.textContent === 'Back in order');
   assert.match(await page.locator('[data-test="board"] [data-team="portering"]').first().textContent(), /Urgent/);
+  // A job already in progress has no "move to the front": the order matters only while it waits.
+  await page.locator('[data-test="board"] [data-team="portering"] [data-cmd="ospeli_tasks_start"]').first().click();
+  await page.waitForFunction(() => document.querySelector('[data-test="board"] [data-team="portering"] [data-cmd="ospeli_tasks_complete"]'));
+  assert.equal(await page.locator('[data-test="board"] [data-team="portering"] [data-test="to-front"]').count(), 0);
   await page.click('[data-test="guide-switch"]');
   await page.waitForSelector('[data-test="suggestion"]');
   assert.ok(await noSideways(page) <= 0);
