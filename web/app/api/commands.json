@@ -7044,6 +7044,10 @@
                   "type": "boolean",
                   "description": "true: the task also needs a place to go to (toLocationId)."
                 },
+                "repeatable": {
+                  "type": "boolean",
+                  "description": "true: the same job may be open more than once for a ward or department (two patients both need moving). For one bed, a second identical request is still refused."
+                },
                 "details": {
                   "type": [
                     "array",
@@ -7092,6 +7096,13 @@
             "items": {
               "type": "string"
             }
+          },
+          "releaseReasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Reasons to pick from when a started task is handed back to the queue."
           }
         }
       },
@@ -7344,6 +7355,17 @@
                 },
                 "doneLabel": {
                   "type": "string"
+                },
+                "releases": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "How many times it was started and then put back in the queue."
+                },
+                "lastReleaseReason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
                 }
               }
             }
@@ -7558,6 +7580,102 @@
           "taskId": "clean-ward-a1-bed-01"
         },
         "needs": "An open task. clean-ward-a1-bed-01 is an example id (the clean of a bed that has just been vacated), and beds move on through the day: ospeli_tasks_list with { \"state\": \"open\" } lists the open tasks with their ids."
+      }
+    },
+    {
+      "name": "ospeli_tasks_release",
+      "summary": "Put a task that was started back in its team's queue, with a reason from the list (patient or item not ready, needs a second person, started by mistake). It goes back to its old place: the time it was asked for does not change, so the wait is still counted in full. For the clean of a bed, the bed board shows the bed as waiting for its clean again.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "taskId",
+          "reason"
+        ],
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "pattern": "^(task-[0-9]{5,}|clean-[a-z0-9][a-z0-9-]*)$",
+            "maxLength": 80,
+            "description": "A task id from ospeli_tasks_list: task-00001 for a task someone asked for, clean-<bed id> for the clean of a vacated bed."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "Patient or item not ready",
+              "Needs a second person",
+              "Wrong place or details",
+              "Called to an urgent job",
+              "Started by mistake"
+            ]
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "started",
+              "completed",
+              "cancelled"
+            ],
+            "description": "The state the caller last saw. If the task has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "taskId": {
+            "type": "string",
+            "pattern": "^(task-[0-9]{5,}|clean-[a-z0-9][a-z0-9-]*)$",
+            "maxLength": 80,
+            "description": "A task id from ospeli_tasks_list: task-00001 for a task someone asked for, clean-<bed id> for the clean of a vacated bed."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "started",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "taskId": "clean-ward-a1-bed-01",
+          "reason": "Started by mistake"
+        },
+        "needs": "An open task. clean-ward-a1-bed-01 is an example id (the clean of a bed that has just been vacated), and beds move on through the day: ospeli_tasks_list with { \"state\": \"open\" } lists the open tasks with their ids. It must be in progress: ospeli_tasks_start starts it."
       }
     },
     {

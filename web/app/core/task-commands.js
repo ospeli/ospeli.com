@@ -11,7 +11,7 @@ import {
 } from './kit.js';
 import { roleById, currentWords } from './model.js';
 import {
-  TASK_STATES, TASK_PRIORITIES, CANCEL_REASONS, TASK_ID_PATTERN, taskCatalogue, deriveTasks, nextTaskId, openDuplicate, taskTimes, sortQueue,
+  TASK_STATES, TASK_PRIORITIES, CANCEL_REASONS, RELEASE_REASONS, TASK_ID_PATTERN, taskCatalogue, deriveTasks, nextTaskId, openDuplicate, taskTimes, sortQueue,
   bedOfCleanId,
 } from './tasks.js';
 
@@ -42,6 +42,8 @@ export function taskCommands(packs = []) {
       waitMinutes: { type: 'integer', minimum: 0, description: 'Minutes from asked-for to started (or to now while it waits).' },
       totalMinutes: { type: ['integer', 'null'], description: 'Minutes from asked-for to done; null until it is done.' },
       startLabel: { type: 'string' }, doneLabel: { type: 'string' },
+      releases: { type: 'integer', minimum: 0, description: 'How many times it was started and then put back in the queue.' },
+      lastReleaseReason: { type: ['string', 'null'] },
     },
   };
   const WRITE_OUT = {
@@ -74,11 +76,11 @@ export function taskCommands(packs = []) {
       priority: t.priority, detail: t.detail, state: t.state, stateName: t.state === 'started' ? k.startedName : TASK_STATES[t.state].name,
       requestedAt: t.requestedAt, requestedByRole: t.requestedByRole, startedAt: t.startedAt, completedAt: t.completedAt,
       cancelledAt: t.cancelledAt, cancelReason: t.cancelReason, waitMinutes: times.waitMinutes, totalMinutes: times.totalMinutes,
-      startLabel: k.startLabel, doneLabel: k.doneLabel,
+      startLabel: k.startLabel, doneLabel: k.doneLabel, releases: t.releases || 0, lastReleaseReason: t.lastReleaseReason ?? null,
     };
     if (!short) return full;
-    const { id, kind, kindName, team, locationId, locationName, toLocationName, priority, detail, state, stateName, requestedAt, waitMinutes } = full;
-    return { id, kind, kindName, team, locationId, locationName, toLocationName, priority, detail, state, stateName, requestedAt, waitMinutes };
+    const { id, kind, kindName, team, locationId, locationName, toLocationName, priority, detail, state, stateName, requestedAt, waitMinutes, releases } = full;
+    return { id, kind, kindName, team, locationId, locationName, toLocationName, priority, detail, state, stateName, requestedAt, waitMinutes, releases };
   }
 
   // The open task a write names, checked the same way for a person, an agent's proposal and a dry run.
@@ -124,7 +126,7 @@ export function taskCommands(packs = []) {
           return events(t, input, actor.role, core.now());
         });
         // `to` is the state the task is left in; a change of priority leaves the state as it was.
-        await core.recordAs(actor, `task.${to || 'prioritised'}`, input.taskId, { kind, ...(to ? {} : { priority: input.priority }) });
+        await core.recordAs(actor, verb === 'hand back' ? 'task.released' : `task.${to || 'prioritised'}`, input.taskId, { kind, ...(to ? {} : { priority: input.priority }), ...(verb === 'hand back' ? { reason: input.reason } : {}) });
         return { status: 'done', taskId: input.taskId, state: to || was, events: recs.map((r) => r.seq) };
       },
       example,
@@ -152,6 +154,9 @@ export function taskCommands(packs = []) {
     if (k.details) {
       if (!k.details.includes(input.detail)) throw new CommandError('invalid-input', `detail must be one of: ${k.details.join(', ')}.`, { details: k.details });
     } else if (input.detail != null) throw new CommandError('invalid-input', `A ${k.name.toLowerCase()} takes no detail: leave it out.`);
+    // A kind that can repeat (two patients on one ward both need moving) is only checked for a
+    // duplicate when the request names one bed: then a second identical request is a double ask.
+    if (k.repeatable && (await placeOrNull(core, input.locationId))?.type !== 'bed') return;
     const tasks = await load(core, events);
     const dup = openDuplicate(tasks.open, input);
     if (dup) throw new CommandError('conflict', `${dup.id} is already open for the same job at the same place. No new task was opened.`, { existing: dup.id });
@@ -169,16 +174,18 @@ export function taskCommands(packs = []) {
           id: { type: 'string' }, name: { type: 'string' }, team: { type: 'string' },
           askable: { type: 'boolean', description: 'false: nobody asks for it by hand. A bed clean starts by itself when a bed is vacated on the bed board.' },
           needsTo: { type: 'boolean', description: 'true: the task also needs a place to go to (toLocationId).' },
+          repeatable: { type: 'boolean', description: 'true: the same job may be open more than once for a ward or department (two patients both need moving). For one bed, a second identical request is still refused.' },
           details: { type: ['array', 'null'], items: { type: 'string' }, description: 'When present, pick one as the task\'s detail.' },
           placeTypes: { type: 'array', items: { type: 'string' } }, requestRoles: { type: 'array', items: { type: 'string' } }, doRoles: { type: 'array', items: { type: 'string' } },
           startLabel: { type: 'string' }, doneLabel: { type: 'string' } } } },
-        priorities: { type: 'array', items: { type: 'string' } }, cancelReasons: { type: 'array', items: { type: 'string' } } } },
+        priorities: { type: 'array', items: { type: 'string' } }, cancelReasons: { type: 'array', items: { type: 'string' } },
+        releaseReasons: { type: 'array', items: { type: 'string' }, description: 'Reasons to pick from when a started task is handed back to the queue.' } } },
       async run() {
         return {
           teams: Object.entries(teams).map(([id, name]) => ({ id, name })),
-          kinds: kindList.map((k) => ({ id: k.id, name: k.name, team: k.team, askable: !k.derived, needsTo: !!k.needsTo, details: k.details || null,
+          kinds: kindList.map((k) => ({ id: k.id, name: k.name, team: k.team, askable: !k.derived, needsTo: !!k.needsTo, repeatable: !!k.repeatable, details: k.details || null,
             placeTypes: k.derived ? ['bed'] : k.placeTypes, requestRoles: [...k.requestRoles], doRoles: [...k.doRoles], startLabel: k.startLabel, doneLabel: k.doneLabel })),
-          priorities: Object.keys(TASK_PRIORITIES), cancelReasons: [...CANCEL_REASONS],
+          priorities: Object.keys(TASK_PRIORITIES), cancelReasons: [...CANCEL_REASONS], releaseReasons: [...RELEASE_REASONS],
         };
       },
       example: { input: {} },
@@ -248,6 +255,14 @@ export function taskCommands(packs = []) {
         ? [...(t.state === 'requested' ? [ev('bed.clean-started', t.locationId, role, at)] : []), ev('bed.cleaned', t.locationId, role, at)]
         : [...(t.state === 'requested' ? [ev('task.started', t.id, role, at)] : []), ev('task.completed', t.id, role, at)]),
       example: { input: { taskId: 'clean-ward-a1-bed-01' }, needs: NEED_OPEN },
+    }),
+    taskWrite({
+      name: 'ospeli_tasks_release', verb: 'hand back', to: 'requested',
+      summary: 'Put a task that was started back in its team\'s queue, with a reason from the list (patient or item not ready, needs a second person, started by mistake). It goes back to its old place: the time it was asked for does not change, so the wait is still counted in full. For the clean of a bed, the bed board shows the bed as waiting for its clean again.',
+      extra: { reason: { type: 'string', enum: RELEASE_REASONS } }, required: ['reason'],
+      guard: (t) => { if (t.state !== 'started') throw new CommandError('conflict', 'Only a task that is in progress can be handed back. This one is still waiting.', { state: t.state }); },
+      events: (t, input, role, at) => [t.source === 'bed' ? ev('bed.clean-stopped', t.locationId, role, at, { reason: input.reason }) : ev('task.released', t.id, role, at, { reason: input.reason })],
+      example: { input: { taskId: 'clean-ward-a1-bed-01', reason: RELEASE_REASONS[4] }, needs: `${NEED_OPEN} It must be in progress: ospeli_tasks_start starts it.` },
     }),
     taskWrite({
       name: 'ospeli_tasks_set_priority', verb: 'reorder', to: null,

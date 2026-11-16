@@ -11,8 +11,9 @@
 // Two sources, one list:
 // - asked-for tasks: task.requested -> task.started -> task.completed (or task.cancelled);
 //   task.prioritised moves an open task to the front of its team's queue, or back;
+//   task.released puts a started task back in the queue, in its old place, with a reason;
 // - bed cleans: a bed that is vacated IS a clean task. It is read from the bed's own events
-//   (bed.vacated -> bed.clean-started -> bed.cleaned), so the bed board and
+//   (bed.vacated -> bed.clean-started -> bed.cleaned; bed.clean-stopped puts it back to waiting), so the bed board and
 //   the cleaning queue can never disagree and no one has to tell cleaning that a bed is empty.
 
 export const TASK_STATES = {
@@ -23,6 +24,8 @@ export const TASK_STATES = {
 };
 export const TASK_PRIORITIES = { urgent: { name: 'Urgent' }, routine: { name: 'Routine' } };
 // No free text on a task: a reason is picked from a list, so no personal detail can be typed.
+// Why a job that was started went back to the queue. A pick list, like every reason on a task.
+export const RELEASE_REASONS = ['Patient or item not ready', 'Needs a second person', 'Wrong place or details', 'Called to an urgent job', 'Started by mistake'];
 export const CANCEL_REASONS = ['No longer needed', 'Asked for by mistake', 'Done another way', 'Other'];
 
 // Built into the core: the bed clean, because it is read from bed events. Every other kind
@@ -64,6 +67,7 @@ export function taskCatalogue(packs = [], roleIds = []) {
         for (const r of k[list]) if (!roleIds.includes(r)) bad(`unknown role ${r} in ${list}`);
       }
       if (k.leadRoles != null && !(Array.isArray(k.leadRoles) && k.leadRoles.length && k.leadRoles.every((r) => roleIds.includes(r)))) bad('leadRoles must be a list of real roles');
+      if (k.repeatable != null && typeof k.repeatable !== 'boolean') bad('repeatable is true or false');
       if (k.details && !(Array.isArray(k.details) && k.details.every((d) => typeof d === 'string' && d.trim() && d.length <= 60))) bad('details must be a list of short strings');
       kinds.set(k.id, {
         startLabel: 'Start', startedName: 'In progress', doneLabel: 'Done', needsTo: false, details: null, ...k,
@@ -92,8 +96,10 @@ export function deriveTasks(events, { beds = null } = {}) {
   const base = (id, kind, source, at, role, extra) => ({
     id, kind, source, locationId: null, toLocationId: null, priority: 'routine', detail: null, state: 'requested',
     requestedAt: at, requestedByRole: role, startedAt: null, startedByRole: null, completedAt: null, completedByRole: null,
-    cancelledAt: null, cancelReason: null, ...extra,
+    cancelledAt: null, cancelReason: null, releases: 0, lastReleaseReason: null, ...extra,
   });
+  // Back to waiting, in its old place: the time it was asked for does not change.
+  const release = (t, reason) => Object.assign(t, { state: 'requested', startedAt: null, startedByRole: null, releases: t.releases + 1, lastReleaseReason: reason ?? null });
   const add = (t) => { all.push(t); open.set(t.id, t); return t; };
   const close = (t, state, at, role, reason = null) => {
     if (state === 'completed') Object.assign(t, { state, completedAt: at, completedByRole: role });
@@ -115,6 +121,11 @@ export function deriveTasks(events, { beds = null } = {}) {
       case 'task.started': {
         const t = open.get(e.subject);
         if (t && t.source === 'task' && t.state === 'requested') Object.assign(t, { state: 'started', startedAt: e.at, startedByRole: e.actorRole });
+        break;
+      }
+      case 'task.released': {
+        const t = open.get(e.subject);
+        if (t && t.source === 'task' && t.state === 'started') release(t, d.reason);
         break;
       }
       case 'task.completed': {
@@ -145,6 +156,11 @@ export function deriveTasks(events, { beds = null } = {}) {
       case 'bed.clean-started': {
         const t = open.get(bedCleanId(e.subject));
         if (t && t.state === 'requested') Object.assign(t, { state: 'started', startedAt: e.at, startedByRole: e.actorRole });
+        break;
+      }
+      case 'bed.clean-stopped': {
+        const t = open.get(bedCleanId(e.subject));
+        if (t && t.state === 'started') release(t, d.reason);
         break;
       }
       case 'bed.cleaned': {

@@ -97,6 +97,10 @@ export function deriveBoard(bedEntities, events) {
       case 'bed.clean-started':
         if (beds.get(e.subject)?.state !== 'allocated' && !clash(e, e.subject)) set(e.subject, 'cleaning', e.at);
         break;
+      // Cleaning was started by mistake or had to stop: the bed waits for its clean again.
+      case 'bed.clean-stopped':
+        if (beds.get(e.subject)?.state === 'cleaning') set(e.subject, 'vacated', e.at);
+        break;
       case 'bed.cleaned':
         if (beds.get(e.subject)?.state !== 'allocated' && !clash(e, e.subject)) set(e.subject, 'available', e.at);
         break;

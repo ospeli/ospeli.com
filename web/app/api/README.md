@@ -25,7 +25,7 @@ Every action in the app is a named command. The screens call these commands, and
 - An agent's write returns `{ status: "proposed", proposal: { id } }`. A person accepts or declines it on the bed board (`ospeli_proposals_accept`, `ospeli_proposals_decline`); the agent reads the outcome with `ospeli_proposals_list` (accepted, declined, or expired if the bed changed first).
 - More for agents: [/agents.md](../../agents.md) and [/llms.txt](../../llms.txt).
 
-## Commands (57)
+## Commands (58)
 | Command | Kind | Roles | Agents: needs a person | What it does |
 |---|---|---|---|---|
 | `ospeli_beds_board` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | no | Live bed state for every ward (or one ward), the waiting-for-a-bed list and any conflicting events, derived from the event log. To find a free bed for a waiting patient use ospeli_beds_find_free instead: it answers in one short call. Read-only. |
@@ -84,4 +84,5 @@ Every action in the app is a named command. The screens call these commands, and
 | `ospeli_tasks_list` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo | no | A team's queue: open tasks (cleans, moves, deliveries) with place, how long each has waited and its state, urgent first and then the longest wait. A vacated bed appears here as a clean task by itself. For "what is waiting on this ward" pass locationId. Read-only. |
 | `ospeli_tasks_start` | write | ward-nurse, bed-manager | yes (agents propose) | A team has started a task that was waiting (cleaning started, patient or goods collected). For the clean of a vacated bed, the bed board shows the bed as being cleaned. |
 | `ospeli_tasks_complete` | write | ward-nurse, bed-manager | yes (agents propose) | A task is done (clean finished, patient or goods delivered). For the clean of a vacated bed, the bed board shows the bed as ready. A task that was never marked started is recorded as started and done at the same moment. |
+| `ospeli_tasks_release` | write | ward-nurse, bed-manager | yes (agents propose) | Put a task that was started back in its team's queue, with a reason from the list (patient or item not ready, needs a second person, started by mistake). It goes back to its old place: the time it was asked for does not change, so the wait is still counted in full. For the clean of a bed, the bed board shows the bed as waiting for its clean again. |
 | `ospeli_tasks_set_priority` | write | bed-manager | yes (agents propose) | Move an open task to the front of its team's queue (urgent) or back to its place by waiting time (routine). For the people who balance the work; an agent may propose it with its reasons and a person decides. It changes the order only: nothing is started or assigned to anyone. |

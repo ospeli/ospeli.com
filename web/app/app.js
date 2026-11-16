@@ -59,6 +59,13 @@ async function showWaiting(ctx) {
   }
 }
 
+// The page a role opens on by itself: only for roles marked startsOnHome (core/model.js) whose
+// home page is built. The first six roles open on Today, as before.
+function homePage(roleId) {
+  const role = roleById(roleId);
+  return role?.startsOnHome && moduleById(role.home)?.load ? `#/${role.home}` : null;
+}
+
 function buildRoles(ctx) {
   const sel = $('#role-select');
   sel.replaceChildren(...ROLES.map((r) => new Option(r.name, r.id)));
@@ -71,6 +78,9 @@ function buildRoles(ctx) {
     await ctx.core.setMeta('role', to);
     await ctx.core.record(to, 'role.changed', null, { from, to });
     toast(`Role: ${roleById(to).name}`);
+    // A role whose whole job is on one page opens on it (its job is one tap away, not a menu away).
+    const home = homePage(to);
+    if (home && location.hash !== home) { location.hash = home; return; }
     route(ctx);
   });
 }
@@ -353,6 +363,7 @@ async function boot() {
   buildRoles(ctx);
   $('#menu-btn').addEventListener('click', () => setMenu(!$('#nav').classList.contains('open')));
   window.addEventListener('hashchange', () => route(ctx));
+  if ((!location.hash || location.hash === '#/') && homePage(ctx.role)) history.replaceState(null, '', homePage(ctx.role));
   await route(ctx);
   document.documentElement.dataset.ready = 'true';
 

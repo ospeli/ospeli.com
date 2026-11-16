@@ -36,7 +36,7 @@ test('every published example runs as written on a fresh example hospital, or sa
       ran += 1;
       // A bed write that happens to run still says the state it needs: the example bed moves on with the clock.
       // The clean of a bed follows the bed, so the same holds for starting and finishing a task.
-      if (c.example.needs) assert.ok(c.name.startsWith('ospeli_beds_') || ['ospeli_tasks_start', 'ospeli_tasks_complete', 'ospeli_tasks_set_priority'].includes(c.name), `${c.name}: the example runs as written, so it should not say it needs anything`);
+      if (c.example.needs) assert.ok(c.name.startsWith('ospeli_beds_') || ['ospeli_tasks_start', 'ospeli_tasks_complete', 'ospeli_tasks_set_priority', 'ospeli_tasks_release'].includes(c.name), `${c.name}: the example runs as written, so it should not say it needs anything`);
     } catch (err) {
       assert.ok(err instanceof CommandError, `${c.name}: ${err.stack}`);
       if (typeof c.example.needs !== 'string' || c.example.needs.length < 30) refused.push(`${c.name}: ${err.code} (${err.message.slice(0, 60)})`);
@@ -113,7 +113,7 @@ async function prepare(core, c) {
       const ask = listCommands().find((x) => x.name === 'ospeli_tasks_request');
       return { taskId: (await runCommand(core, ask.name, structuredClone(ask.example.input), human(ask.roles[0]))).taskId };
     }
-    const { bedId } = await bedIn(core, 'vacated'); // a vacated bed is a clean task
+    const { bedId } = await bedIn(core, name === 'ospeli_tasks_release' ? 'cleaning' : 'vacated'); // a vacated bed is a clean task
     return { taskId: `clean-${bedId}` };
   }
   // A module's own commands: the module says how to put in place what its example needs.

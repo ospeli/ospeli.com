@@ -25,7 +25,7 @@ const PACK = {
   id: 'testmod',
   TASK_TEAMS: { moving: 'Moving team' },
   TASK_KINDS: [
-    { id: 'test-move', name: 'Patient move', team: 'moving', needsTo: true, details: ['Wheelchair', 'Bed', 'Walking'], startLabel: 'Collected', startedName: 'On the way', doneLabel: 'Delivered',
+    { id: 'test-move', name: 'Patient move', team: 'moving', needsTo: true, repeatable: true, details: ['Wheelchair', 'Bed', 'Walking'], startLabel: 'Collected', startedName: 'On the way', doneLabel: 'Delivered',
       requestRoles: ['ward-nurse', 'ae-nic'], doRoles: ['estates-tech'] },
     { id: 'test-room-clean', name: 'Room clean', team: 'cleaning', placeTypes: ['ward', 'department'], requestRoles: ['ward-nurse'], doRoles: ['bed-manager'], leadRoles: ['coo'] },
   ],
@@ -171,11 +171,11 @@ test('asking for a task: it joins the team queue, urgent first; a second request
   // A module may have given the example hospital some task history: ids carry on from it.
   const n0 = Number(nextTaskId(await core.events()).slice(5));
   const tid = (k) => `task-${String(n0 + k).padStart(5, '0')}`;
-  const a = await run(core, 'ospeli_tasks_request', { kind: 'test-move', locationId: 'ward-a1', toLocationId: 'dept-imaging', detail: 'Wheelchair' }, 'ward-nurse');
+  const a = await run(core, 'ospeli_tasks_request', { kind: 'test-move', locationId: 'ward-a1-bed-03', toLocationId: 'dept-imaging', detail: 'Wheelchair' }, 'ward-nurse');
   assert.deepEqual([a.status, a.taskId, a.state, a.team], ['done', tid(0), 'requested', 'moving']);
   const b = await run(core, 'ospeli_tasks_request', { kind: 'test-move', locationId: 'ward-b1', toLocationId: 'dept-imaging', detail: 'Bed', priority: 'urgent' }, 'ae-nic');
   assert.equal(b.taskId, tid(1));
-  await assert.rejects(run(core, 'ospeli_tasks_request', { kind: 'test-move', locationId: 'ward-a1', toLocationId: 'dept-imaging', detail: 'Wheelchair' }, 'ward-nurse'),
+  await assert.rejects(run(core, 'ospeli_tasks_request', { kind: 'test-move', locationId: 'ward-a1-bed-03', toLocationId: 'dept-imaging', detail: 'Wheelchair' }, 'ward-nurse'),
     (err) => code('conflict')(err) && err.detail.existing === tid(0));
   const q = await run(core, 'ospeli_tasks_list', { team: 'moving' }, 'estates-tech');
   assert.deepEqual(q.tasks.map((t) => t.id), [tid(1), tid(0)], 'urgent first');
@@ -195,7 +195,7 @@ test('asking for a task: it joins the team queue, urgent first; a second request
   assert.ok(done.tasks.every((t) => t.startedAt && t.completedAt && t.totalMinutes >= 0));
   assert.equal((await run(core, 'ospeli_tasks_list', { team: 'moving' }, 'coo')).total, 0);
   // The same job can be asked for again once the first is done.
-  assert.equal((await run(core, 'ospeli_tasks_request', { kind: 'test-move', locationId: 'ward-a1', toLocationId: 'dept-imaging', detail: 'Wheelchair' }, 'ward-nurse')).taskId, tid(2));
+  assert.equal((await run(core, 'ospeli_tasks_request', { kind: 'test-move', locationId: 'ward-a1-bed-03', toLocationId: 'dept-imaging', detail: 'Wheelchair' }, 'ward-nurse')).taskId, tid(2));
   const cancelled = await run(core, 'ospeli_tasks_cancel', { taskId: tid(2), reason: 'Asked for by mistake' }, 'ward-nurse');
   assert.equal(cancelled.state, 'cancelled');
   const gone = await run(core, 'ospeli_tasks_list', { team: 'moving', state: 'cancelled' }, 'coo');
@@ -332,6 +332,57 @@ test('moving a task to the front: only the roles that balance the work, for aske
   await runCommand(core, 'ospeli_tasks_set_priority', { taskId: id, priority: 'urgent' }, human('bed-manager'));
   const q = await runCommand(core, 'ospeli_tasks_list', { team: 'cleaning', kind: 'bed-clean' }, human('bed-manager'));
   assert.deepEqual([q.tasks[0].id, q.tasks[0].priority], [id, 'urgent'], 'at the front of the cleaning queue');
+  await runCommand(core, 'ospeli_tasks_complete', { taskId: id }, human('bed-manager'));
+  assert.equal((await runCommand(core, 'ospeli_beds_get', { bedId: bed.id }, human('bed-manager'))).bed.state, 'available');
+});
+
+test('a kind that can repeat: two patients on one ward can both be moved; for one bed a second identical ask is refused', async () => {
+  const core = await site();
+  const move = { kind: 'test-move', locationId: 'ward-a2', toLocationId: 'dept-imaging', detail: 'Wheelchair' };
+  const a = await run(core, 'ospeli_tasks_request', move, 'ward-nurse');
+  const b = await run(core, 'ospeli_tasks_request', move, 'ward-nurse');
+  assert.notEqual(a.taskId, b.taskId, 'the second patient is not lost as a duplicate');
+  // A kind that cannot repeat (a room clean) still names the open one.
+  await run(core, 'ospeli_tasks_request', { kind: 'test-room-clean', locationId: 'ward-a2' }, 'ward-nurse');
+  await assert.rejects(run(core, 'ospeli_tasks_request', { kind: 'test-room-clean', locationId: 'ward-a2' }, 'ward-nurse'), code('conflict'));
+  assert.equal(CMDS.ospeli_tasks_kinds && (await run(core, 'ospeli_tasks_kinds', {}, 'coo')).kinds.find((k) => k.id === 'test-move').repeatable, true);
+});
+
+test('handing a started task back: it returns to its old place with a reason, the wait still counted from when it was asked for', async () => {
+  const core = await site();
+  const a = await run(core, 'ospeli_tasks_request', { kind: 'test-move', locationId: 'ward-a1-bed-05', toLocationId: 'dept-imaging', detail: 'Bed' }, 'ward-nurse');
+  const b = await run(core, 'ospeli_tasks_request', { kind: 'test-move', locationId: 'ward-a1-bed-06', toLocationId: 'dept-imaging', detail: 'Bed' }, 'ward-nurse');
+  const get = async (id) => (await run(core, 'ospeli_tasks_list', { team: 'moving', state: 'all', limit: 500 }, 'coo')).tasks.find((t) => t.id === id);
+  await assert.rejects(run(core, 'ospeli_tasks_release', { taskId: a.taskId, reason: 'Started by mistake' }, 'estates-tech'), code('conflict'), 'a waiting task cannot be handed back');
+  await run(core, 'ospeli_tasks_start', { taskId: a.taskId }, 'estates-tech');
+  const asked = (await get(a.taskId)).requestedAt;
+  await assert.rejects(run(core, 'ospeli_tasks_release', { taskId: a.taskId, reason: 'Started by mistake' }, 'ward-nurse'), code('forbidden'), 'only a role that does the job');
+  await assert.rejects(run(core, 'ospeli_tasks_release', { taskId: a.taskId, reason: 'because I say so' }, 'estates-tech'), code('invalid-input'), 'the reason is a pick, not typed');
+  await assert.rejects(run(core, 'ospeli_tasks_release', { taskId: a.taskId }, 'estates-tech'), code('invalid-input'));
+  const out = await run(core, 'ospeli_tasks_release', { taskId: a.taskId, reason: 'Patient or item not ready' }, 'estates-tech');
+  assert.deepEqual([out.status, out.state], ['done', 'requested']);
+  const t = await get(a.taskId);
+  assert.deepEqual([t.state, t.startedAt, t.releases, t.lastReleaseReason, t.requestedAt], ['requested', null, 1, 'Patient or item not ready', asked]);
+  const q = await run(core, 'ospeli_tasks_list', { team: 'moving' }, 'coo');
+  assert.deepEqual(q.tasks.filter((x) => [a.taskId, b.taskId].includes(x.id)).map((x) => x.id), [a.taskId, b.taskId], 'back in its old place, ahead of the later ask');
+  const entry = (await core.auditLog()).filter((x) => x.action === 'task.released').at(-1);
+  assert.deepEqual([entry.target, entry.actorRole, entry.detail.reason], [a.taskId, 'estates-tech', 'Patient or item not ready']);
+  // It can be started and finished afterwards, and the whole time from the first ask is counted.
+  await run(core, 'ospeli_tasks_complete', { taskId: a.taskId }, 'estates-tech');
+  const done = await get(a.taskId);
+  assert.equal(done.state, 'completed');
+  assert.ok(done.totalMinutes >= 0 && done.requestedAt === asked);
+
+  // A bed clean started by mistake: the bed waits for its clean again on the bed board.
+  const bed = await occupiedBed(core);
+  const id = bedCleanId(bed.id);
+  await runCommand(core, 'ospeli_beds_mark_vacated', { bedId: bed.id }, human('ward-nurse'));
+  await runCommand(core, 'ospeli_tasks_start', { taskId: id }, human('bed-manager'));
+  assert.equal((await runCommand(core, 'ospeli_beds_get', { bedId: bed.id }, human('bed-manager'))).bed.state, 'cleaning');
+  await runCommand(core, 'ospeli_tasks_release', { taskId: id, reason: 'Started by mistake' }, human('bed-manager'));
+  assert.equal((await runCommand(core, 'ospeli_beds_get', { bedId: bed.id }, human('bed-manager'))).bed.state, 'vacated');
+  const again = (await runCommand(core, 'ospeli_tasks_list', { locationId: bed.id }, human('bed-manager'))).tasks[0];
+  assert.deepEqual([again.id, again.state, again.releases], [id, 'requested', 1]);
   await runCommand(core, 'ospeli_tasks_complete', { taskId: id }, human('bed-manager'));
   assert.equal((await runCommand(core, 'ospeli_beds_get', { bedId: bed.id }, human('bed-manager'))).bed.state, 'available');
 });
