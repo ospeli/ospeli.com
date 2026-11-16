@@ -299,7 +299,11 @@ OLD_WORDS = [(re.compile(r"\bbed managers?\b", re.I), "Bed manager", "Patient fl
              # Issue #68: a programme word and two everyday words from one health system.
              (re.compile(r"\bboard-round\b", re.I), "board-round", "patient-flow"),
              (re.compile(r"\brotas?\b", re.I), "rota", "roster"),
-             (re.compile(r"\btrolleys?\b", re.I), "trolley", "cart (or stretcher for a patient)")]
+             (re.compile(r"\btrolleys?\b", re.I), "trolley", "cart (or stretcher for a patient)"),
+             # Issue #67: framing that assumes a paper-run site on a tight budget.
+             (re.compile(r"\bwalking, phoning and paper\b", re.I), "walking, phoning and paper", "walking, phoning, paper and spreadsheets"),
+             (re.compile(r"\btight budgets?\b", re.I), "tight budgets", "hardware you already have"),
+             (re.compile(r"\ba mini PC and a UPS\b", re.I), "a mini PC and a UPS", "the tablets, phones and PCs you already have")]
 
 def js_strings(src):
     """The string and template literals of a script, joined; comments and code are left out."""
