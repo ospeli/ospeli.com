@@ -48,7 +48,7 @@ export async function render(el, ctx) {
   el.classList.add('mod-feedback');
   // The shell moves the page's children into <main> and drops the page element itself, so the
   // module's class goes on a root of its own as well.
-  const root = h('div', { class: 'mod-feedback' });
+  const root = h('div', { class: 'mod-feedback', 'data-role': ctx.role });
   el.append(root);
   el = root;
   const head = (title, lead) => h('div', { class: 'page-head' }, h('div', {}, h('p', { class: 'eyebrow' }, 'Patient feedback'), h('h1', {}, title), lead ? h('p', {}, lead) : null));
@@ -386,7 +386,7 @@ async function queueScreen(box, ctx, { opt }) {
         : [
           q.suggestions.length ? h('ul', { class: 'fb-sugg', 'data-test': 'suggestions' }, q.suggestions.map((s) => h('li', { class: `fb-sg${s.overdue ? ' is-over' : ''}`, 'data-suggestion': s.id },
             h('a', { href: `#/feedback/record/${s.recordId}` }, s.title), h('span', {}, ` ${s.serviceName} · owner ${s.ownerName}. No reply recorded yet.`))))
-            : h('p', { class: 'meta' }, `No reply is due within ${opt.settings.remindDaysBefore} days for ${roleById(role).name}.`),
+            : h('p', { class: 'meta' }, role === 'patient-liaison' ? `No reply is due within ${opt.settings.remindDaysBefore} days.` : `No reply owned by ${roleById(role).name} is due within ${opt.settings.remindDaysBefore} days. Reminders go to the owner role and the Patient liaison officer.`),
           h('p', { class: 'meta' }, `Rule: ${t.guide.rules[0].words} ${t.guide.rules[0].basis}`),
         ]);
     setKids(kpis, h('h2', { id: 'fb-kpi-h' }, 'Response measures, last 30 days'), kpiRow(t.kpis, 'Calculated from the same event log. Tap "How it is counted" under a number. Nothing here is a score of a person.'));
