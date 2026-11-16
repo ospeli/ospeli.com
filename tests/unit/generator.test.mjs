@@ -1,3 +1,4 @@
+import { ROLES } from '../../web/app/core/model.js';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { generateHospital, loadSyntheticHospital, rng, HOSPITAL_NAME, currentHour, setupUnfinished } from '../../web/app/core/generator.js';
@@ -31,7 +32,8 @@ test('Example General Hospital: 3 sites, 6 wards, 120 beds, assets, roles and sh
   assert.equal(count('bed'), 120);
   assert.ok(count('department') >= 8);
   assert.ok(count('asset') >= 60);
-  assert.equal(count('role'), 6);
+  assert.equal(count('role'), ROLES.length, 'one role entity for each role, the first six and any a module added');
+  assert.ok(ROLES.length >= 6);
   assert.equal(count('shift'), 2);
   assert.equal(g.entities.find((e) => e.id === 'site-main').hospital, HOSPITAL_NAME);
   for (const e of g.entities) assert.deepEqual(validateEntity(e), [], e.id);

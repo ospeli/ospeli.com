@@ -106,3 +106,23 @@ test('a module\'s synthetic history is valid, repeatable, inside the window and 
     for (const e of mine) assert.ok(ROLE_IDS.includes(e.actorRole) || e.actorRole === 'system', `${p.id}: ${e.type} is by a real role`);
   }
 });
+
+test('roles a module added: after the first six, each with a plain id, a name and a home page that exists', () => {
+  assert.deepEqual(ROLES.slice(0, 6).map((r) => r.id), ['ward-nurse', 'bed-manager', 'estates-tech', 'ae-nic', 'ops-manager', 'coo']);
+  assert.equal(new Set(ROLES.map((r) => r.id)).size, ROLES.length, 'no role id twice');
+  assert.equal(new Set(ROLES.map((r) => r.name)).size, ROLES.length, 'no role name twice');
+  for (const r of ROLES.slice(6)) {
+    assert.match(r.id, /^[a-z][a-z0-9-]{1,30}$/);
+    assert.ok(typeof r.name === 'string' && r.name.trim() && r.name.length <= 40, `${r.id} has a short name`);
+    assert.ok(MODULES.some((m) => m.id === r.home && typeof m.load === 'function'), `${r.id}: its home page ${r.home} is a built module`);
+  }
+});
+
+test('a module\'s KPIs each have a written definition and a source', () => {
+  for (const p of MODULE_PACKS) {
+    for (const k of p.KPIS || []) {
+      for (const key of ['id', 'name', 'unit', 'definition', 'source']) assert.ok(typeof k[key] === 'string' && k[key].trim(), `${p.id}: KPI ${k.id || '?'} has ${key}`);
+      assert.ok(k.source.length >= 10, `${p.id}: KPI ${k.id} names its source (a standard, a paper with DOI or PMID, or "local definition")`);
+    }
+  }
+});

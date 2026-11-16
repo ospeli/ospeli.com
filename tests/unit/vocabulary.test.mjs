@@ -44,7 +44,8 @@ async function oldDevice() {
 }
 
 test('every role shows its new name and keeps its id', () => {
-  assert.deepEqual(ROLES.map((r) => [r.id, r.name]), [
+  // The first six, in their place. Roles a module adds follow them (tests/unit/module-packs.test.mjs).
+  assert.deepEqual(ROLES.slice(0, 6).map((r) => [r.id, r.name]), [
     ['ward-nurse', 'Ward nurse'],
     ['bed-manager', 'Patient flow coordinator'],
     ['estates-tech', 'Facilities technician'],
