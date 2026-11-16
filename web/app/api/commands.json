@@ -7593,16 +7593,21 @@
           "team": {
             "type": "string",
             "enum": [
-              "cleaning"
+              "cleaning",
+              "portering"
             ],
             "description": "One team's queue. Leave out for every team."
           },
           "kind": {
             "type": "string",
             "enum": [
-              "bed-clean"
+              "bed-clean",
+              "patient-move",
+              "item-run",
+              "equipment-move",
+              "room-clean"
             ],
-            "description": "One kind of task: bed-clean. Leave out for every kind."
+            "description": "One kind of task: bed-clean, patient-move, item-run, equipment-move, room-clean. Leave out for every kind."
           },
           "locationId": {
             "type": "string",
@@ -7684,7 +7689,11 @@
                 "kind": {
                   "type": "string",
                   "enum": [
-                    "bed-clean"
+                    "bed-clean",
+                    "patient-move",
+                    "item-run",
+                    "equipment-move",
+                    "room-clean"
                   ]
                 },
                 "kindName": {
@@ -7693,7 +7702,8 @@
                 "team": {
                   "type": "string",
                   "enum": [
-                    "cleaning"
+                    "cleaning",
+                    "portering"
                   ]
                 },
                 "teamName": {
@@ -7873,6 +7883,7 @@
       "roles": [
         "ward-nurse",
         "bed-manager",
+        "porter",
         "cleaner",
         "support-supervisor"
       ],
@@ -7959,6 +7970,7 @@
       "roles": [
         "ward-nurse",
         "bed-manager",
+        "porter",
         "cleaner",
         "support-supervisor"
       ],
@@ -8045,6 +8057,7 @@
       "roles": [
         "ward-nurse",
         "bed-manager",
+        "porter",
         "cleaner",
         "support-supervisor"
       ],
@@ -8229,6 +8242,216 @@
           "priority": "urgent"
         },
         "needs": "An open task. clean-ward-a1-bed-01 is an example id (the clean of a bed that has just been vacated), and beds move on through the day: ospeli_tasks_list with { \"state\": \"open\" } lists the open tasks with their ids."
+      }
+    },
+    {
+      "name": "ospeli_tasks_request",
+      "summary": "Ask a team to do a job at a place: patient move, specimen or item run, equipment move, room or area clean. It joins that team's queue. If the same job is already open for the same place, nothing new is opened: the answer is a conflict that names it in detail.existing. A bed clean is never asked for here: it starts by itself when a bed is vacated.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "ae-nic",
+        "support-supervisor"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "locationId"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "patient-move",
+              "item-run",
+              "equipment-move",
+              "room-clean"
+            ],
+            "description": "What is needed. ospeli_tasks_kinds lists each kind with the details to pick from."
+          },
+          "locationId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "Where the job is, or where to collect from: a ward, department or bed id, for example ward-a1."
+          },
+          "toLocationId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "Where to take the patient or goods. Only for kinds that need a destination."
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "urgent",
+              "routine"
+            ],
+            "description": "routine (default) or urgent. Urgent goes to the front of the team's queue."
+          },
+          "detail": {
+            "type": "string",
+            "maxLength": 60,
+            "description": "Pick one from the kind's details list (ospeli_tasks_kinds). No free text, so no personal details."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "taskId": {
+            "type": "string",
+            "pattern": "^(task-[0-9]{5,}|clean-[a-z0-9][a-z0-9-]*)$",
+            "maxLength": 80,
+            "description": "A task id from ospeli_tasks_list: task-00001 for a task someone asked for, clean-<bed id> for the clean of a vacated bed."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "started",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "team": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "kind": "patient-move",
+          "locationId": "ward-a1",
+          "toLocationId": "dept-imaging",
+          "detail": "Wheelchair"
+        }
+      }
+    },
+    {
+      "name": "ospeli_tasks_cancel",
+      "summary": "Cancel an open task that someone asked for, with a reason from the list. A bed clean cannot be cancelled here: it follows the bed board.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "ae-nic",
+        "porter",
+        "cleaner",
+        "support-supervisor"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "taskId",
+          "reason"
+        ],
+        "properties": {
+          "taskId": {
+            "type": "string",
+            "pattern": "^(task-[0-9]{5,}|clean-[a-z0-9][a-z0-9-]*)$",
+            "maxLength": 80,
+            "description": "A task id from ospeli_tasks_list: task-00001 for a task someone asked for, clean-<bed id> for the clean of a vacated bed."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "No longer needed",
+              "Asked for by mistake",
+              "Done another way",
+              "Other"
+            ]
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "started",
+              "completed",
+              "cancelled"
+            ],
+            "description": "The state the caller last saw. If the task has changed since, the command is refused (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "taskId": {
+            "type": "string",
+            "pattern": "^(task-[0-9]{5,}|clean-[a-z0-9][a-z0-9-]*)$",
+            "maxLength": 80,
+            "description": "A task id from ospeli_tasks_list: task-00001 for a task someone asked for, clean-<bed id> for the clean of a vacated bed."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "started",
+              "completed",
+              "cancelled"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "taskId": "task-00001",
+          "reason": "No longer needed"
+        },
+        "needs": "An open task that someone asked for. task-00001 is an example id: ospeli_tasks_list with { \"state\": \"open\" } lists the open tasks, and ospeli_tasks_request opens one."
       }
     },
     {
@@ -9630,6 +9853,667 @@
       "example": {
         "input": {
           "on": true
+        }
+      }
+    },
+    {
+      "name": "ospeli_support_places",
+      "summary": "The places a job can be asked for or a cleaning audit recorded: each ward with its beds, and the departments, with ids and plain names. Use the ids with ospeli_tasks_request (locationId, toLocationId) and ospeli_support_audit_record. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
+            "description": "At most this many wards and departments. Default 100, 500 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "wards",
+          "departments",
+          "total",
+          "truncated"
+        ],
+        "properties": {
+          "wards": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "beds"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
+                },
+                "name": {
+                  "type": "string"
+                },
+                "beds": {
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "departments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]*$",
+                  "maxLength": 64
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
+      "name": "ospeli_support_overview",
+      "summary": "Cleaning and portering at a glance, in one call: the three measures with their definitions and sources (bed turnaround, porter request to completion, cleanliness audit score), open jobs per team with the longest wait, and the guide's suggestions with their reasons and basis (empty while the guide is off). Linen and meal measures are listed as planned, with no value. Measures jobs and waits, never people. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 30,
+            "description": "The period for the measures: the last this many days. Default 7."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: the values without their definitions. detailed (default): each value with its definition, source and breakdown."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "period",
+          "kpis",
+          "planned",
+          "teams",
+          "guide"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "period": {
+            "type": "object"
+          },
+          "kpis": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "unit",
+                "value"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "null when nothing was counted in the period."
+                },
+                "numerator": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "denominator": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "n": {
+                  "type": "integer",
+                  "description": "How many jobs or audits the value is from."
+                },
+                "target": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "targetText": {
+                  "type": "string"
+                },
+                "breakdown": {
+                  "type": "array",
+                  "description": "By kind of job or by risk category."
+                },
+                "definition": {
+                  "type": "string"
+                },
+                "counts": {
+                  "type": "string"
+                },
+                "outOf": {
+                  "type": "string"
+                },
+                "leavesOut": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "planned": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "status"
+              ]
+            }
+          },
+          "teams": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "open",
+                "waiting",
+                "inProgress",
+                "urgent",
+                "longestWaitMinutes"
+              ]
+            }
+          },
+          "guide": {
+            "type": "object",
+            "required": [
+              "on",
+              "rules",
+              "suggestions"
+            ],
+            "properties": {
+              "on": {
+                "type": "boolean"
+              },
+              "rules": {
+                "type": "array"
+              },
+              "suggestions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "rule",
+                    "id",
+                    "text",
+                    "why",
+                    "basis"
+                  ],
+                  "properties": {
+                    "rule": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "why": {
+                      "type": "string"
+                    },
+                    "basis": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "The commands a person may run to follow the suggestion (each one, for an agent, a proposal). null: advice only."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "days": 7,
+          "format": "short"
+        }
+      }
+    },
+    {
+      "name": "ospeli_support_audits_list",
+      "summary": "Cleaning audit results: each audit with its score (elements passed / elements audited) and the elements that failed and need action, newest first; a line per area with its last score; and the checklist in use (an example set, set locally, not a standard). Filter by locationId or riskCategory. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "locationId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "One ward or department, for example ward-a1."
+          },
+          "riskCategory": {
+            "type": "string",
+            "enum": [
+              "very-high",
+              "high",
+              "moderate",
+              "low"
+            ],
+            "description": "The risk category of the area, from the site's list (this example: very-high, high, moderate, low)."
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Only audits recorded at or after this time."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: audits without the checklist. detailed (default): the checklist too."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "description": "At most this many audits. Default 20, 200 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "audits",
+          "areas",
+          "total",
+          "truncated"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          },
+          "audits": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "locationId",
+                "riskCategory",
+                "at",
+                "audited",
+                "passed",
+                "score",
+                "failed"
+              ]
+            }
+          },
+          "areas": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "locationId",
+                "locationName",
+                "audits",
+                "last"
+              ]
+            }
+          },
+          "checklist": {
+            "type": "object",
+            "description": "Risk categories, elements and the pass mark in use."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "locationId": "ward-a1",
+          "limit": 5
+        }
+      }
+    },
+    {
+      "name": "ospeli_support_audit_record",
+      "summary": "Record a cleaning audit of a ward or department: its risk category and each element checked, pass or fail (pick lists only, nothing typed). The score is elements passed / elements audited; failed elements are listed as needing action. The checklist is an example set, set locally, not a standard: ospeli_support_audits_list returns it. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "support-supervisor"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "locationId",
+          "riskCategory"
+        ],
+        "properties": {
+          "locationId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "The ward or department audited, for example ward-a1."
+          },
+          "riskCategory": {
+            "type": "string",
+            "enum": [
+              "very-high",
+              "high",
+              "moderate",
+              "low"
+            ],
+            "description": "The risk category of the area, from the site's list (this example: very-high, high, moderate, low)."
+          },
+          "passed": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "floor",
+                "bed-frame",
+                "bedside",
+                "high-touch",
+                "hand-wash",
+                "toilet",
+                "bins",
+                "curtains",
+                "high-surfaces",
+                "dispensers"
+              ]
+            },
+            "maxItems": 10,
+            "description": "Element ids that passed. Leave an element out of both lists if it was not checked."
+          },
+          "failed": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "floor",
+                "bed-frame",
+                "bedside",
+                "high-touch",
+                "hand-wash",
+                "toilet",
+                "bins",
+                "curtains",
+                "high-surfaces",
+                "dispensers"
+              ]
+            },
+            "maxItems": 10,
+            "description": "Element ids that failed and need action."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "auditId": {
+            "type": "string",
+            "pattern": "^aud-[0-9]{5,}$",
+            "maxLength": 20
+          },
+          "score": {
+            "type": "number"
+          },
+          "audited": {
+            "type": "integer"
+          },
+          "passed": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "array"
+          },
+          "belowPassMark": {
+            "type": "boolean"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "locationId": "ward-a1",
+          "riskCategory": "high",
+          "passed": [
+            "floor",
+            "bed-frame",
+            "bedside",
+            "high-touch",
+            "hand-wash",
+            "toilet",
+            "bins",
+            "curtains",
+            "dispensers"
+          ],
+          "failed": [
+            "high-surfaces"
+          ]
+        }
+      }
+    },
+    {
+      "name": "ospeli_support_guide_set",
+      "summary": "Switch the cleaning and portering guide on or off for this site. The guide is a set of fixed rules that suggest which cleans to do first, when a team is busier than usual and when an area should be audited again; a person decides. With it off everything else works the same. People only.",
+      "kind": "write",
+      "roles": [
+        "support-supervisor",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "on"
+        ],
+        "properties": {
+          "on": {
+            "type": "boolean",
+            "description": "true: show the guide's suggestions. false: none."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "on"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "on": {
+            "type": "boolean"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "on": false
         }
       }
     }
