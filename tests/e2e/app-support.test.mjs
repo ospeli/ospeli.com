@@ -15,14 +15,23 @@ after(async () => { await env.close(); });
 
 const CLOCK = '2026-11-10T14:00:00Z';
 const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+// Choose a role in the picker, then open the module's page (or one screen of it) by its address:
+// the picker only jumps to a role's own page from Today, so the test never relies on that. Each
+// step waits for the state it needs: the role saved, then a fresh drawing of the page for it.
 async function asRole(page, role, screen = '') {
   await page.selectOption('#role-select', role);
-  await page.waitForFunction((r) => document.querySelector('.sup')?.dataset.role === r, role);
-  if (screen) {
-    // The page is drawn again for the new address; wait for that drawing, not the one before it.
-    await page.evaluate((s) => { if (location.hash !== `#/support/${s}`) { document.querySelector('.sup').dataset.stale = 'true'; location.hash = `#/support/${s}`; } }, screen);
-    await page.waitForFunction(([r, s]) => { const x = document.querySelector('.sup'); return x && !x.dataset.stale && x.dataset.role === r && x.dataset.screen === s; }, [role, screen]);
-  }
+  await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
+  const hash = screen ? `#/support/${screen}` : '#/support';
+  await page.evaluate((target) => {
+    const sup = document.querySelector('.sup');
+    if (location.hash === target) return; // the page is drawn again for the new role by the picker
+    if (sup) sup.dataset.stale = 'true';
+    location.hash = target;
+  }, hash);
+  await page.waitForFunction(([r, s]) => {
+    const x = document.querySelector('.sup');
+    return x && !x.dataset.stale && x.dataset.role === r && (!s || x.dataset.screen === s);
+  }, [role, screen]);
 }
 // Phone rules for the front-line view: every control at least 44 px tall, every piece of text at least 15 px.
 const phoneProblems = (page) => page.evaluate(() => {
@@ -62,7 +71,12 @@ const counts = async (page) => (await page.locator('[data-test="queue-counts"]')
 
 test('a porter opens the app on a 390 px touch screen and takes the first job from waiting to done; a quick second tap cannot finish it; the queue and the measure change', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
-  await asRole(page, 'porter');
+  // A porter's phone: the role is saved, and opening the app with no address opens the module, not Today.
+  await page.selectOption('#role-select', 'porter');
+  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'porter');
+  await page.goto(env.appUrl);
+  await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForFunction(() => document.querySelector('.sup')?.dataset.role === 'porter');
   assert.equal(await page.evaluate(() => location.hash), '#/support', 'the porter opens on the module, not on Today');
   assert.equal(await page.locator('.sup-tabs').count(), 0, 'one screen: the team\'s jobs, nothing that balances the work');
   const card = page.locator('[data-test="next-job"]');
