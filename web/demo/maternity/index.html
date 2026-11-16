@@ -268,7 +268,7 @@ var STATES = { occ: 'Occupied', ready: 'Ready', clean: 'Cleaning', closed: 'Clos
 var SITES = ['Partner site A', 'Partner site B'];
 var T_REASONS = { cap: 'No bed or cot free here (capacity)', svc: 'Service not offered on this site', home: 'Return to home hospital', other: 'Other non-clinical reason' };
 var C_REASONS = ['All staffed places full', 'Staffing short', 'Cleaning or infection control', 'Equipment or building issue', 'Other'];
-var DECIDERS = ['Midwife in charge', 'Neonatal nurse in charge', 'Children\'s ward charge nurse', 'Site manager on call', 'Clinical lead on call'];
+var DECIDERS = ['Midwife in charge', 'Neonatal nurse in charge', 'Children\'s ward charge nurse', 'Operations lead on call', 'Clinical lead on call'];
 var FROM = ['Front desk arrival', 'Planned admission', 'From the emergency department', 'From the antenatal clinic'];
 var ROLE_NAME = { nic: 'Midwife or nurse in charge', flow: 'Flow coordinator', ops: 'Operations manager' };
 // Example settings for this demo only, not a standard: each organisation sets its own.
@@ -322,8 +322,8 @@ function seed() {
   });
   // Closures and diverts: one open now, others earlier this month.
   s.closures.push({ id: 'K1', unit: 'neo', kind: 'closed', start: t('07:10'), end: null, reason: 'All staffed places full', by: 'Neonatal nurse in charge', reviewedAt: null });
-  [[2, '14:10', 5.5, 'neo', 'closed', 'All staffed places full', 'Neonatal nurse in charge'], [4, '16:00', 2, 'lab', 'divert', 'Staffing short', 'Site manager on call'],
-   [5, '09:30', 3, 'neo', 'closed', 'All staffed places full', 'Site manager on call'], [8, '08:15', 6, 'pn', 'closed', 'Staffing short', 'Midwife in charge']].forEach(function (x, i) {
+  [[2, '14:10', 5.5, 'neo', 'closed', 'All staffed places full', 'Neonatal nurse in charge'], [4, '16:00', 2, 'lab', 'divert', 'Staffing short', 'Operations lead on call'],
+   [5, '09:30', 3, 'neo', 'closed', 'All staffed places full', 'Operations lead on call'], [8, '08:15', 6, 'pn', 'closed', 'Staffing short', 'Midwife in charge']].forEach(function (x, i) {
     var st = ago(x[0], x[1]);
     if (sameMonth(st, s.clock)) s.closures.push({ id: 'K' + (i + 2), unit: x[3], kind: x[4], start: st, end: st + x[2] * H, reason: x[5], by: x[6], reviewedAt: null });
   });
@@ -463,7 +463,7 @@ function suggest() {
       title: 'Transfer of ' + x.code + ' waiting ' + fmt(tWait(x)) + ' with no acceptance',
       text: (x.dir === 'out' ? unitOf(x.unit).name + ' to ' + x.site : x.site + ' to the ' + unitOf(x.unit).name.toLowerCase()) + ', requested ' + hhmm(x.req) + ' (' + T_REASONS[x.reason].toLowerCase() + '). The set time is ' + S.transferLimitH + ' h.',
       why: 'Time since the request was logged, and nothing else. The limit is an example setting, not a standard.',
-      acts: [{ label: 'Propose: escalate to the site manager on call', primary: true, fn: function () { propose({ id: id3, owner: 'flow', kind: 'esc', transfer: x.id, text: 'Escalate the transfer of ' + x.code + ' (waiting ' + fmt(tWait(x)) + ') to the site manager on call.' }); } }] });
+      acts: [{ label: 'Propose: escalate to the operations lead on call', primary: true, fn: function () { propose({ id: id3, owner: 'flow', kind: 'esc', transfer: x.id, text: 'Escalate the transfer of ' + x.code + ' (waiting ' + fmt(tWait(x)) + ') to the operations lead on call.' }); } }] });
   });
   // 4. The same unit has closed three or more times this month for the same reason.
   var seen = {};
@@ -735,7 +735,7 @@ function locate(code) { var m = state.places.filter(function (x) { return x.code
 function closureForm(px, fixedUnit) {
   var kind = sel(px + '-kind', [['closed', 'Closed to admissions'], ['divert', 'Divert to another site']]);
   var unitSel = fixedUnit ? null : sel(px + '-unit', UNITS.filter(function (u) { return !openClosure(u.id); }).map(function (u) { return [u.id, u.name]; }));
-  var reason = sel(px + '-reason', C_REASONS), by = sel(px + '-by', DECIDERS, fixedUnit ? unitOf(fixedUnit).lead : 'Site manager on call');
+  var reason = sel(px + '-reason', C_REASONS), by = sel(px + '-by', DECIDERS, fixedUnit ? unitOf(fixedUnit).lead : 'Operations lead on call');
   var fields = [el('label', { for: px + '-kind' }, ['What', kind])];
   if (unitSel) fields.push(el('label', { for: px + '-unit' }, ['Unit', unitSel]));
   fields.push(el('label', { for: px + '-reason' }, ['Reason', reason]), el('label', { for: px + '-by' }, ['Decided by (role)', by]));

@@ -100,13 +100,13 @@ test('the flow coordinator moves transfers through stages and logs a closure wit
   await page.locator('#logclose summary').click();
   await page.selectOption('#cf-unit', 'ch');
   await page.selectOption('#cf-reason', 'Staffing short');
-  await page.selectOption('#cf-by', 'Site manager on call');
+  await page.selectOption('#cf-by', 'Operations lead on call');
   await page.click('#cf-ok');
   const k2 = await api(page, 'kpis');
   assert.equal(k2.unitsClosedNow, before.unitsClosedNow + 1);
   const c = (await api(page, 'get')).closures.find((x) => x.unit === 'ch' && x.open);
   assert.equal(c.reason, 'Staffing short');
-  assert.equal(c.decidedBy, 'Site manager on call');
+  assert.equal(c.decidedBy, 'Operations lead on call');
   await page.click('#end-' + (await page.locator('#closures button[id^="end-"]').last().getAttribute('id')).slice(4));
   assert.equal((await api(page, 'kpis')).unitsClosedNow, before.unitsClosedNow);
   assert.deepEqual(errors, []);

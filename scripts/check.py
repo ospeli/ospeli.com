@@ -287,7 +287,15 @@ OLD_WORDS = [(re.compile(r"\bbed managers?\b", re.I), "Bed manager", "Patient fl
              (re.compile(r"\b[Pp]ortering\b|\bPorters?\b|\bporters\b|\b(?:a|the|to) porter\b|\bporter (?:requests?|requested|jobs?|tasks?|rounds?)\b"), "Porter / portering", "Transport assistant / patient transport"),
              # Issue #41: a local job-place term and one country's service name for a ward.
              (re.compile(r"\b(?:bed|allocation) desk\b", re.I), "bed desk / allocation desk", "patient flow team"),
-             (re.compile(r"\bcare of (?:the )?older people\b", re.I), "care of older people", "older adults")]
+             (re.compile(r"\bcare of (?:the )?older people\b", re.I), "care of older people", "older adults"),
+             # Issue #78: seven more words that point to one health system.
+             (re.compile(r"\bbleeps?\b", re.I), "Bleep", "Pager"),
+             (re.compile(r"\bsite managers? on call\b", re.I), "site manager on call", "operations lead on call"),
+             (re.compile(r"\bdelayed transfers?\b", re.I), "delayed transfer", "discharge delay"),
+             (re.compile(r"\bside[ -]rooms?\b", re.I), "side room", "single room"),
+             (re.compile(r"\bkeyhole\b", re.I), "keyhole", "laparoscopic"),
+             (re.compile(r"\bhealthcare assistants?\b", re.I), "Healthcare assistant", "Nursing assistant"),
+             (re.compile(r"\bward clerks?\b", re.I), "Ward clerk", "Unit clerk")]
 
 def js_strings(src):
     """The string and template literals of a script, joined; comments and code are left out."""

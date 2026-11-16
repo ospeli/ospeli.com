@@ -239,7 +239,7 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
     <span class="clocknow" id="clocknow" aria-live="off"></span>
     <b>Demo tools:</b>
     <button type="button" class="small" id="t-clock">Move clock on 15 min</button>
-    <button type="button" class="small" id="t-leave">A patient leaves a side room</button>
+    <button type="button" class="small" id="t-leave">A patient leaves a single room</button>
     <button type="button" class="small" id="t-reset">Reset example</button>
   </div>
 
@@ -301,12 +301,12 @@ function seed() {
     form: { needs: 'any', code: null }, audit: { tab: 'hh', taps: [], items: {} } };
   function room(id, area, name, lobby, status, since, patient, note) { return { id: id, area: area, name: name, lobby: lobby, status: status, since: since, patient: patient || null, heldFor: null, note: note || '' }; }
   s.rooms = [
-    room('W1-1', 'W1', 'Side room 1', false, 'occupied', -2100, 'P-1043'), room('W1-2', 'W1', 'Side room 2', false, 'ready', 595),
-    room('W2-1', 'W2', 'Side room 1', false, 'occupied', 520, 'P-2876'), room('W2-2', 'W2', 'Side room 2', true, 'cleaning', 580),
-    room('W3-1', 'W3', 'Side room 1', true, 'occupied', -400, 'P-0415'), room('W3-2', 'W3', 'Side room 2', false, 'out', 460, null, 'Door closer fault · work order raised'),
-    room('W4-1', 'W4', 'Side room 1', false, 'occupied', -1700, 'P-3390'), room('W4-2', 'W4', 'Side room 2', false, 'occupied', 552, 'P-1187'),
-    room('W5-1', 'W5', 'Side room 1', false, 'occupied', -900, 'P-2741'), room('W5-2', 'W5', 'Side room 2', false, 'cleaning', 600),
-    room('W6-1', 'W6', 'Side room 1', false, 'occupied', -300, 'P-0638'), room('W6-2', 'W6', 'Side room 2', false, 'cleaning', 525),
+    room('W1-1', 'W1', 'Single room 1', false, 'occupied', -2100, 'P-1043'), room('W1-2', 'W1', 'Single room 2', false, 'ready', 595),
+    room('W2-1', 'W2', 'Single room 1', false, 'occupied', 520, 'P-2876'), room('W2-2', 'W2', 'Single room 2', true, 'cleaning', 580),
+    room('W3-1', 'W3', 'Single room 1', true, 'occupied', -400, 'P-0415'), room('W3-2', 'W3', 'Single room 2', false, 'out', 460, null, 'Door closer fault · work order raised'),
+    room('W4-1', 'W4', 'Single room 1', false, 'occupied', -1700, 'P-3390'), room('W4-2', 'W4', 'Single room 2', false, 'occupied', 552, 'P-1187'),
+    room('W5-1', 'W5', 'Single room 1', false, 'occupied', -900, 'P-2741'), room('W5-2', 'W5', 'Single room 2', false, 'cleaning', 600),
+    room('W6-1', 'W6', 'Single room 1', false, 'occupied', -300, 'P-0638'), room('W6-2', 'W6', 'Single room 2', false, 'cleaning', 525),
     room('CC-1', 'CC', 'Isolation room 1', true, 'occupied', -2600, 'P-1922'), room('CC-2', 'CC', 'Isolation room 2', true, 'occupied', 475, 'P-0962'),
     room('ED-1', 'ED', 'Isolation room', false, 'occupied', 562, 'P-4410')
   ];
@@ -330,20 +330,20 @@ function seed() {
   s.actions = [{ id: 'A1', area: 'W6', text: 'Sharps bin below the fill line: failed', at: 470, done: null }];
   var ev = [
     [455, 'Critical care asked for an isolation room with a lobby (P-0962).'],
-    [460, 'Ward 3 side room 2 out of service: door closer fault. Work order raised with facilities.'],
+    [460, 'Ward 3 single room 2 out of service: door closer fault. Work order raised with facilities.'],
     [470, 'Cleaning audit, Ward 6: 9 of 10 items passed. 1 action created.'],
     [475, 'P-0962 moved into Critical care isolation room 2. Time to isolation room: 20 min.'],
     [482, 'Emergency department asked for an isolation room (P-2876).'],
     [495, 'Ward 5 closure: stock check done (action card).'],
     [500, 'Ward 4 asked for an isolation room (P-1187).'],
-    [520, 'P-2876 moved into Ward 2 side room 1. Time to isolation room: 38 min.'],
-    [525, 'Ward 6 side room 2: patient left. Deep clean requested.'],
+    [520, 'P-2876 moved into Ward 2 single room 1. Time to isolation room: 38 min.'],
+    [525, 'Ward 6 single room 2: patient left. Deep clean requested.'],
     [545, 'Hand hygiene audit, Ward 4: 18 of 20 opportunities (90%).'],
-    [552, 'P-1187 moved into Ward 4 side room 2. Time to isolation room: 52 min.'],
-    [580, 'Ward 2 side room 2: patient left. Deep clean requested.'],
+    [552, 'P-1187 moved into Ward 4 single room 2. Time to isolation room: 52 min.'],
+    [580, 'Ward 2 single room 2: patient left. Deep clean requested.'],
     [585, 'Emergency department asked for an isolation room (P-2210).'],
-    [595, 'Ward 1 side room 2: deep clean done. Room ready.'],
-    [600, 'Ward 5 side room 2: patient left. Deep clean requested.'],
+    [595, 'Ward 1 single room 2: deep clean done. Room ready.'],
+    [600, 'Ward 5 single room 2: patient left. Deep clean requested.'],
     [608, 'Ward 4 asked for an isolation room with a lobby (P-3054).']
   ];
   s.log = ev.reverse().map(function (e) { return { t: e[0], text: e[1] }; });
@@ -579,7 +579,7 @@ function reopenClosure(c) {
 
 // ---------- Render ----------
 var HINTS = {
-  nurse: 'A ward nurse\'s phone. See your side rooms, tell everyone when a room is free or cleaned, ask for an isolation room, and log a quick audit. One thumb, big buttons.',
+  nurse: 'A ward nurse\'s phone. See your single rooms, tell everyone when a room is free or cleaned, ask for an isolation room, and log a quick audit. One thumb, big buttons.',
   ipc: 'The IPC team\'s board. Every isolation room by status and time in status, requests waiting, audit compliance by area this month, and closure mode for a ward.',
   ops: 'The operations manager\'s view. Beds lost to closures and isolation today, rooms waiting for a deep clean, and the hand hygiene trend.'
 };
@@ -620,7 +620,7 @@ function roomCard(r) {
   var mine = waiting().filter(function (q) { return q.area === r.area && fits(r, q) && (!r.heldFor || r.heldFor === q.id); })[0];
   var kids = [
     el('div', { class: 'top' }, [
-      el('div', {}, [el('p', { class: 'nm', text: r.name }), el('p', { class: 'feat', text: r.lobby ? 'With lobby' : 'Standard side room' })]),
+      el('div', {}, [el('p', { class: 'nm', text: r.name }), el('p', { class: 'feat', text: r.lobby ? 'With lobby' : 'Standard single room' })]),
       el('div', { class: 'inst' }, [statusChip(r), el('small', { 'data-since': r.id, text: 'for ' + fmt(inState(r)) })])
     ])
   ];
@@ -650,7 +650,7 @@ function nurseView() {
   pills.push(el('span', { class: 'pill', text: 'Site: ' + site.roomsReady + ' isolation room' + (site.roomsReady === 1 ? '' : 's') + ' ready' }));
   if (inRound(w)) pills.push(el('span', { class: 'pill', text: 'Audit due this week' }));
   frag.appendChild(el('div', { class: 'summary' }, pills));
-  frag.appendChild(el('h3', { class: 'sec', text: 'Side rooms on ' + AREAS[w].name }));
+  frag.appendChild(el('h3', { class: 'sec', text: 'Single rooms on ' + AREAS[w].name }));
   var list = el('div', { class: 'rooms', id: 'my-rooms' });
   state.rooms.filter(function (r) { return r.area === w; }).forEach(function (r) { list.appendChild(roomCard(r)); });
   frag.appendChild(list);
@@ -662,7 +662,7 @@ function nurseView() {
   p.appendChild(el('p', { class: 'fine', style: 'margin:0 0 12px', text: 'An anonymous code from the ward list. No names, no reason recorded here.' }));
   p.appendChild(el('p', { class: 'stepq', text: 'Room needed (as the clinical team decides)' }));
   var ch = el('div', { class: 'choices', role: 'group', 'aria-label': 'Room needed' });
-  [['any', 'Any isolation room', 'standard side room is fine'], ['lobby', 'Room with a lobby', 'lobby or anteroom']].forEach(function (o) {
+  [['any', 'Any isolation room', 'standard single room is fine'], ['lobby', 'Room with a lobby', 'lobby or anteroom']].forEach(function (o) {
     ch.appendChild(el('button', { type: 'button', class: 'choice', id: 'n-' + o[0], 'aria-pressed': String(f.needs === o[0]), onclick: function () { f.needs = o[0]; render(); } }, [o[1], el('small', { text: o[2] })]));
   });
   p.appendChild(ch);
@@ -928,7 +928,7 @@ document.getElementById('guide-on').addEventListener('change', function (e) { st
 document.getElementById('t-clock').addEventListener('click', function () { state.offset = (state.offset || 0) + 15; addLog('Demo: clock moved on 15 minutes.'); render(); toast('Clock moved on 15 minutes. Waits and cleans have moved on.'); });
 document.getElementById('t-leave').addEventListener('click', function () {
   var occ = state.rooms.filter(function (r) { return r.status === 'occupied'; });
-  if (!occ.length) return toast('No side room is occupied.');
+  if (!occ.length) return toast('No single room is occupied.');
   patientLeft(occ[(state.seq + state.log.length) % occ.length]);
 });
 document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; render(); toast('Example reset to the start of the demo.'); });

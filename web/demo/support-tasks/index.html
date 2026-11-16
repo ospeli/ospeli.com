@@ -669,7 +669,7 @@ function wardView() {
     if (r.type === 'bedclean' || r.type === 'areaclean') {
       q2 = r.type === 'bedclean' ? 'Which ' + bedWord(w).toLowerCase() + '?' : 'Where?';
       c2 = el('div', { class: 'choices' + (r.type === 'bedclean' ? ' beds' : ''), role: 'group', 'aria-label': q2 });
-      var opts = r.type === 'bedclean' ? range(12).map(function (n) { return bedWord(w) + ' ' + n; }) : ['Bay', 'Side room', 'Corridor', 'Bathroom'];
+      var opts = r.type === 'bedclean' ? range(12).map(function (n) { return bedWord(w) + ' ' + n; }) : ['Bay', 'Single room', 'Corridor', 'Bathroom'];
       opts.forEach(function (o, i) { c2.appendChild(el('button', { type: 'button', class: 'choice', id: 'w-' + i, 'aria-pressed': String(r.where === o), onclick: function () { r.where = o; render(); }, text: r.type === 'bedclean' ? o.split(' ')[1] : o, 'aria-label': o })); });
     } else if (r.type === 'move') {
       q2 = 'To where?';

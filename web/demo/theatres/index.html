@@ -305,11 +305,11 @@ function seed() {
   // cases: [code, what, booked min, ward, sent, anae, knife, out, rec, checklist, cancelled reason, cancelled at, ready flags bed/transport/paperwork]
   var S = [
     ['T1', 'Theatre 1', 'General surgery', '08:30', '17:30', false, null, [
-      ['P-2041', 'Gallbladder removal (keyhole)', 75, 'W6', '08:05', '08:41', '09:02', '09:58', '10:45', true],
+      ['P-2041', 'Gallbladder removal (laparoscopic)', 75, 'W6', '08:05', '08:41', '09:02', '09:58', '10:45', true],
       ['P-2187', 'Hernia repair', 60, 'DSU', '09:45', '10:16', '10:31', '11:12', null, true],
-      ['P-2230', 'Bowel operation (keyhole)', 180, 'W6', '11:05'],
+      ['P-2230', 'Bowel operation (laparoscopic)', 180, 'W6', '11:05'],
       ['P-2302', 'Hernia repair', 60, 'DSU', null, null, null, null, null, null, null, null, '111'],
-      ['P-2355', 'Gallbladder removal (keyhole)', 75, 'W6', null, null, null, null, null, null, null, null, '101']]],
+      ['P-2355', 'Gallbladder removal (laparoscopic)', 75, 'W6', null, null, null, null, null, null, null, null, '101']]],
     ['T2', 'Theatre 2', 'Orthopaedics', '08:30', '17:30', false, 'Kit or tray not ready', [
       ['P-3104', 'Hip replacement', 120, 'W5', '08:00', '08:58', '09:35', '11:02', null, true],
       ['P-3150', 'Knee replacement', 120, 'W5', null, null, null, null, null, null, null, null, '101'],
@@ -318,7 +318,7 @@ function seed() {
       ['P-3291', 'Wrist fracture fixation', 60, 'W5', null, null, null, null, null, null, null, null, '001']]],
     ['T3a', 'Theatre 3', 'Gynaecology', '08:30', '12:30', false, null, [
       ['P-4012', 'Hysteroscopy', 30, 'DSU', '08:00', '08:34', '08:45', '09:10', '09:55', true],
-      ['P-4033', 'Ovarian cyst removal (keyhole)', 75, 'W6', '09:05', '09:31', '09:50', '10:52', null, false],
+      ['P-4033', 'Ovarian cyst removal (laparoscopic)', 75, 'W6', '09:05', '09:31', '09:50', '10:52', null, false],
       ['P-4058', 'Vaginal hysterectomy', 90, 'W6', null, null, null, null, null, null, 'No bed available', '07:40', '011'],
       ['P-4071', 'Hysteroscopy', 30, 'DSU', '10:40', '11:09', '11:16']]],
     ['T3p', 'Theatre 3', 'Urology', '13:30', '17:30', false, null, [
@@ -345,9 +345,9 @@ function seed() {
     s.sessions.push(sess);
   });
   // Tomorrow's lists: [code, session label, theatre, what, ward, bed, kit, staff, check]  (1 ready, 0 gap)
-  [['P-6011', 'Theatre 1 · General surgery · all day', 'Gallbladder removal (keyhole)', 'W6', '0111'],
+  [['P-6011', 'Theatre 1 · General surgery · all day', 'Gallbladder removal (laparoscopic)', 'W6', '0111'],
    ['P-6024', 'Theatre 1 · General surgery · all day', 'Hernia repair', 'DSU', '1110'],
-   ['P-6038', 'Theatre 1 · General surgery · all day', 'Bowel operation (keyhole)', 'W6', '0111'],
+   ['P-6038', 'Theatre 1 · General surgery · all day', 'Bowel operation (laparoscopic)', 'W6', '0111'],
    ['P-6102', 'Theatre 2 · Orthopaedics · all day', 'Hip replacement', 'W5', '1011'],
    ['P-6115', 'Theatre 2 · Orthopaedics · all day', 'Knee replacement', 'W5', '0111'],
    ['P-6127', 'Theatre 2 · Orthopaedics · all day', 'Knee arthroscopy', 'DSU', '1111'],

@@ -262,7 +262,7 @@
     "does": "Matches bed requests to ready beds and proposes moves for the ward to accept."
    },
    {
-    "role": "Ward clerk",
+    "role": "Unit clerk",
     "does": "Records admissions, transfers and discharges with event times."
    },
    {
@@ -505,7 +505,7 @@
   "withOspeli": "Requests, specimens and scans carry timestamps at each handoff. Wards see status without phoning, downtime is posted on the board, and turnaround is measured per test and step.",
   "people": [
    {
-    "role": "Ward clerk",
+    "role": "Unit clerk",
     "does": "Sees request status by patient code: collected, received, done, reported."
    },
    {
@@ -961,7 +961,7 @@
   "name": "Mental health and long-stay beds",
   "group": "Patient flow and clinical services",
   "month": "Jan 2027",
-  "oneLine": "Tracks mental health and long-stay beds, delayed transfers and placements.",
+  "oneLine": "Tracks mental health and long-stay beds, discharge delays and placements.",
   "today": "Patients can stay weeks after they are ready because a placement, home support or funding is not arranged. Beds are often found far away by phone, and the days lost are rarely counted.",
   "todaySystem": "The record system shows the stay, but placement steps happen across several organisations and are often tracked in spreadsheets and email.",
   "withOspeli": "A board shows mental health, rehabilitation and long-stay beds. Ready-to-leave dates, delay reasons and placement requests are logged, so lost bed-days and their causes are visible.",
@@ -993,7 +993,7 @@
     "shows": "Beds by unit and type: occupied, ready, closed; days since ready to leave."
    },
    {
-    "name": "Delayed transfers",
+    "name": "Discharge delays",
     "shows": "Patients ready to leave, days waiting and the reason category, by ward."
    },
    {
@@ -1015,7 +1015,7 @@
   ],
   "kpis": [
    {
-    "name": "Delayed transfer days",
+    "name": "Discharge delay days",
     "definition": "days from ready to leave → departure, summed per period",
     "source": "local definition"
    },
@@ -1046,7 +1046,7 @@
    "When a local bed frees up, flags patients placed far away for the flow coordinator to consider a return."
   ],
   "playbooks": [
-   "Delayed transfers review: list delays by reason, output actions with owners.",
+   "Discharge delays review: list delays by reason, output actions with owners.",
    "Placement walk: map a request to move, output slowest step."
   ],
   "methods": [],
@@ -1206,7 +1206,7 @@
   "withOspeli": "Any room or plant item has a QR label for fault reports. One work-order queue covers building and plant jobs. Utility checks and outages are logged, so trends and gaps show early.",
   "people": [
    {
-    "role": "Ward clerk",
+    "role": "Unit clerk",
     "does": "Scans a room QR label to report a leak, light or door fault."
    },
    {
@@ -2032,7 +2032,7 @@
   "withOspeli": "Each policy has an owner, version and review date; staff acknowledge changes by phone. Audits run on a schedule. Standards link to evidence, so readiness is visible all year.",
   "people": [
    {
-    "role": "Ward clerk",
+    "role": "Unit clerk",
     "does": "Finds the current version of any policy from a phone in seconds."
    },
    {
