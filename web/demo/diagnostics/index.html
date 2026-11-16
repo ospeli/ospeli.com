@@ -209,7 +209,7 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
   <div class="tools" role="group" aria-label="Demo tools">
     <b>Demo tools:</b>
     <button type="button" class="small" id="t-clock">Move clock on 15 min</button>
-    <button type="button" class="small" id="t-batch">A porter round arrives</button>
+    <button type="button" class="small" id="t-batch">A transport round arrives</button>
     <button type="button" class="small" id="t-reset">Reset example</button>
   </div>
 
@@ -237,7 +237,7 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
       <div id="decide"></div>
     </aside>
   </div>
-  <p class="foot">Everything here is invented: Example General Hospital, its wards, patient codes, samples, scans and times. Patients appear only as anonymous codes. Ospeli tracks requests, samples and turnaround; it does not show or interpret results, choose tests or put patients in clinical order, and it never times individual scientists or radiographers. Turnaround times and other limits are example settings, not a standard. CT is computed tomography; MRI is magnetic resonance imaging. Coming next (Jan 2027): critical-result phone-call times, missing-sample alerts from porter jobs, analyser queues, and diagnostic waits that hold discharges, theatres or the emergency department. <a href="../../areas/diagnostics-imaging-lab/">About this area</a> · <a href="../">All demos</a></p>
+  <p class="foot">Everything here is invented: Example General Hospital, its wards, patient codes, samples, scans and times. Patients appear only as anonymous codes. Ospeli tracks requests, samples and turnaround; it does not show or interpret results, choose tests or put patients in clinical order, and it never times individual scientists or radiographers. Turnaround times and other limits are example settings, not a standard. CT is computed tomography; MRI is magnetic resonance imaging. Coming next (Jan 2027): critical-result phone-call times, missing-sample alerts from transport jobs, analyser queues, and diagnostic waits that hold discharges, theatres or the emergency department. <a href="../../areas/diagnostics-imaging-lab/">About this area</a> · <a href="../">All demos</a></p>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -456,8 +456,8 @@ function suggest() {
     out.push({ id: 'transit-' + late.map(function (x) { return x.id; }).join(''), kind: 'time', by: 'lab',
       title: late.length + (late.length > 1 ? ' samples were' : ' sample was') + ' collected but not received in the lab',
       list: late.slice(0, 4).map(function (x) { return GROUPS[x.grp] + ', ' + WARDS[x.ward] + ', ' + x.code + ': collected ' + fmt(mins(x.coll)) + ' ago'; }),
-      why: 'Collected longer ago than the transport time in Settings (' + state.set.transit + ' min, an example setting, not a standard). It may be waiting for a porter, in a bag on the ward, or lost.',
-      acts: [{ label: 'Propose: ask ' + wl.join(' and ') + ' and lab reception to check', primary: true, p: { kind: 'check', ids: late.map(function (x) { return x.id; }), text: 'Ask ' + wl.join(' and ') + ', the porters and lab reception to look for ' + late.length + ' sample' + (late.length > 1 ? 's' : '') + ' (' + late.map(function (x) { return x.code; }).join(', ') + ').' } }] });
+      why: 'Collected longer ago than the transport time in Settings (' + state.set.transit + ' min, an example setting, not a standard). It may be waiting for transport, in a bag on the ward, or lost.',
+      acts: [{ label: 'Propose: ask ' + wl.join(' and ') + ' and lab reception to check', primary: true, p: { kind: 'check', ids: late.map(function (x) { return x.id; }), text: 'Ask ' + wl.join(' and ') + ', transport assistants and lab reception to look for ' + late.length + ' sample' + (late.length > 1 ? 's' : '') + ' (' + late.map(function (x) { return x.code; }).join(', ') + ').' } }] });
   }
   // 2. Repeated rejections for one reason from one area.
   var rc = rejCounts();
@@ -620,7 +620,7 @@ function specCard(x, opts) {
   var chips = [el('span', { text: GROUPS[x.grp] }), el('span', { class: 'chip st-' + st, text: WORD[st] })];
   if (x.urgent) chips.push(el('span', { class: 'chip urgent', title: 'Set by the requester', text: 'Urgent' }));
   if (st === 'requested') { clock = [fmt(mins(x.req)), 'since asked']; notes.push(el('p', { class: 'note warn', text: 'Waiting to be collected on the ward' + (x.of ? ' (new sample after a rejection)' : '') + '.' })); }
-  else if (st === 'collected') { clock = [fmt(mins(x.coll)), 'since collected']; notes.push(el('p', { class: 'note' + (stuck ? ' hot' : ''), text: stuck ? 'Stuck: collected ' + fmt(mins(x.coll)) + ' ago, not received in the lab (limit ' + state.set.transit + ' min).' : 'On the way to the lab.' })); if (x.checkAt) notes.push(el('p', { class: 'note ok', text: 'Check asked for at ' + hhmm(x.checkAt) + ': ward, porters and lab reception are looking.' })); }
+  else if (st === 'collected') { clock = [fmt(mins(x.coll)), 'since collected']; notes.push(el('p', { class: 'note' + (stuck ? ' hot' : ''), text: stuck ? 'Stuck: collected ' + fmt(mins(x.coll)) + ' ago, not received in the lab (limit ' + state.set.transit + ' min).' : 'On the way to the lab.' })); if (x.checkAt) notes.push(el('p', { class: 'note ok', text: 'Check asked for at ' + hhmm(x.checkAt) + ': ward, transport assistants and lab reception are looking.' })); }
   else if (st === 'received') { clock = [fmt(mins(x.recv)), 'in the lab']; notes.push(el('p', { class: 'note' + (slow ? ' warn' : ''), text: slow ? 'In the lab longer than the ' + state.set.tat[x.grp] + ' min example target.' : 'In the lab. Received ' + hhmm(x.recv) + '.' })); }
   else if (st === 'rejected') { clock = [hhmm(x.rej.t), 'rejected']; notes.push(el('p', { class: 'note hot', text: 'Rejected: ' + REASON[x.rej.reason].toLowerCase() + '. ' + (x.again ? 'New sample requested.' : 'A new sample is needed.') })); }
   else { clock = [hhmm(x.val), 'reported']; notes.push(el('p', { class: 'note ok', text: 'Reported. See the result in your usual system.' })); }
@@ -943,8 +943,8 @@ document.getElementById('guide-on').addEventListener('change', function (e) { st
 document.getElementById('t-clock').addEventListener('click', function () { state.offset = (state.offset || 0) + 15 * M; addLog('Demo: clock moved on 15 minutes.'); render(); toast('Clock moved on 15 minutes. Waits have grown.'); });
 document.getElementById('t-batch').addEventListener('click', function () {
   var n = 0, list = state.specs.filter(function (x) { return sst(x) === 'requested'; }).sort(function (a, b) { return a.req - b.req; }).slice(0, 3);
-  list.forEach(function (x) { x.coll = now(); addLog(specText(x, 'coll') + ' (porter round)'); n++; });
-  render(); toast(n ? n + ' samples collected on the porter round; lab reception sees them on the way.' : 'No samples waiting to be collected.');
+  list.forEach(function (x) { x.coll = now(); addLog(specText(x, 'coll') + ' (transport round)'); n++; });
+  render(); toast(n ? n + ' samples collected on the transport round; lab reception sees them on the way.' : 'No samples waiting to be collected.');
 });
 document.getElementById('t-reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; render(); toast('Example reset to the start of the demo.'); });
 

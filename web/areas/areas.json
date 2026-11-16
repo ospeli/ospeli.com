@@ -342,8 +342,8 @@
    "Long-stay review: list 21-day-plus stays by delay reason, output actions."
   ],
   "methods": [
-   "SAFER patient flow bundle",
-   "Red2Green bed days"
+   "Daily senior review with an expected discharge date for every patient (discharge-planning bundle)",
+   "Delay-day review (days that move care on versus days spent waiting)"
   ],
   "standards": [
    {
@@ -1319,24 +1319,24 @@
  {
   "id": "B3",
   "slug": "support-services",
-  "name": "Cleaning, portering and support services",
+  "name": "Cleaning, transport and support services",
   "group": "Infrastructure and support",
   "month": "Jan 2027",
   "oneLine": "Turns bed cleans, patient moves, linen and meal requests into tracked tasks.",
-  "today": "A bed can be empty but not cleaned because cleaning was not told. Porter requests often go by phone and can be missed. Linen can run out on the night shift. Audits often sit in folders.",
+  "today": "A bed can be empty but not cleaned because cleaning was not told. Transport requests often go by phone and can be missed. Linen can run out on the night shift. Audits often sit in folders.",
   "todaySystem": "A task or helpdesk system handles some requests, but it is often not linked to bed state, so a discharge does not start a clean.",
-  "withOspeli": "A discharge on the bed board creates a clean task automatically. Porter, linen and meal requests become tracked tasks for the team. Cleaning audits are done on a phone and scored.",
+  "withOspeli": "A discharge on the bed board creates a clean task automatically. Transport, linen and meal requests become tracked tasks for the team. Cleaning audits are done on a phone and scored.",
   "people": [
    {
     "role": "Charge nurse",
-    "does": "Requests a porter or clean in two taps and sees when it will happen."
+    "does": "Requests transport or a clean in two taps and sees when it will happen."
    },
    {
     "role": "Cleaner",
     "does": "Gets clean tasks on a phone, marks started and done, bed shows ready."
    },
    {
-    "role": "Porter",
+    "role": "Transport assistant",
     "does": "Takes the next task from the team queue, marks collected and delivered."
    },
    {
@@ -1345,13 +1345,13 @@
    },
    {
     "role": "Patient flow coordinator",
-    "does": "Sees beds waiting for a clean and transfers waiting for a porter."
+    "does": "Sees beds waiting for a clean and transfers waiting for transport."
    }
   ],
   "screens": [
    {
     "name": "My team's tasks (phone)",
-    "shows": "Clean, porter and delivery tasks in order, with location, request time and status."
+    "shows": "Clean, transport and delivery tasks in order, with location, request time and status."
    },
    {
     "name": "Task board",
@@ -1369,7 +1369,7 @@
   "captures": [
    "Bed vacated to clean requested: links discharge to cleaning.",
    "Clean started and finished, bed ready: drives bed turnaround.",
-   "Porter requested, collected, delivered: shows transfer delays.",
+   "Transport requested, collected, delivered: shows transfer delays.",
    "Cleaning audit result by room and risk category: shows standards met.",
    "Linen count below top-up level: warns before running out.",
    "Meals ordered, delivered and returned uneaten: measures waste.",
@@ -1382,8 +1382,8 @@
     "source": "local definition"
    },
    {
-    "name": "Porter request to completion",
-    "definition": "porter requested → task delivered, median by task type",
+    "name": "Transport request to completion",
+    "definition": "transport requested → task delivered, median by task type",
     "source": "local definition"
    },
    {
@@ -1404,7 +1404,7 @@
   ],
   "guide": [
    "When several beds wait for a clean and patients wait for beds, suggests which cleans to do first, by bed-board demand.",
-   "When porter requests queue beyond the usual level, suggests moving staff from a quieter team, citing current waits.",
+   "When transport requests queue beyond the usual level, suggests moving staff from a quieter team, citing current waits.",
    "When an area's cleaning audit fails twice, suggests a re-audit date and actions for the supervisor."
   ],
   "playbooks": [
@@ -1431,7 +1431,7 @@
    "B5",
    "C3"
   ],
-  "notFor": "Does not set isolation or infection decisions or patient diets. Measures tasks and waits, never individual cleaners or porters."
+  "notFor": "Does not set isolation or infection decisions or patient diets. Measures tasks and waits, never individual cleaners or transport assistants."
  },
  {
   "id": "B4",

@@ -230,7 +230,7 @@ function seed() {
     [15, 'secur', 'Emergency department', 'Door to the staff rest area was propped open overnight.', 1, 1, 2, 'Fix locally', 'T-2'],
     [13, 'equip', 'Ward 5 (surgical)', 'Blood pressure machine missing from its charging point at handover.', 1, 0, 2, 'Fix locally'],
     [12, 'slip', 'Main entrance', 'A visitor slipped on the wet entrance floor; first aid was given.', 0, 0, 1, 'Learning review', 'T-1'],
-    [11, 'hand', 'Ward 7 (older people)', 'Porter request for a transfer went to the wrong team and was not picked up.', 0, 0, 2, 'Discuss at safety huddle'],
+    [11, 'hand', 'Ward 7 (older people)', 'Transport request for a transfer went to the wrong team and was not picked up.', 0, 0, 2, 'Discuss at safety huddle'],
     [9, 'equip', 'Ward 7 (older people)', 'Second hoist out of service with no label saying why or since when.', 1, 0, 2, 'Fix locally', 'T-3'],
     [8, 'waste', 'Theatres', 'Sharps bin overfilled and not collected at the end of the list.', 1, 1, 6, 'Fix locally'],
     [7, 'hand', 'Ward 5 (surgical)', 'Message that transport was booked was not passed on, so the transport left empty.', 0, 0, 5, 'Learning review'],
@@ -287,7 +287,7 @@ function seed() {
     ['Aggression towards staff at the emergency department front desk', 3, 4, 'Security lead', 20, 'Security on site at night; panic button at reception.', ['secur'], [5]],
     ['Everyday ward supplies running out', 3, 3, 'Supplies manager', 10, 'Weekly stock count; emergency stock in main stores.', ['supply'], [2]],
     ['Moving and handling equipment not available when needed', 3, 3, 'Facilities manager', 5, 'Equipment register; repair contract.', ['equip'], [9]],
-    ['Messages lost between teams at handover', 3, 3, 'Quality and safety lead', 25, 'Handover sheet; porter request line.', ['hand'], [8, 11]],
+    ['Messages lost between teams at handover', 3, 3, 'Quality and safety lead', 25, 'Handover sheet; transport request line.', ['hand'], [8, 11]],
     ['Bed status screens or phones going down', 2, 4, 'IT service lead', 35, 'Whiteboard backup; out-of-hours IT on call.', ['it'], [1, 15]],
     ['Cold room failure out of hours', 2, 3, 'Facilities manager', 40, 'Temperature alarm; daily log.', ['env'], []]
   ];
@@ -493,7 +493,7 @@ function staffForm() {
   ta.value = f.what;
   var cnt = el('div', { class: 'count', id: 'f-what-c', text: f.what.length + ' / 300' });
   var warn = el('div', { id: 'f-what-w', 'aria-live': 'polite' });
-  function checkWhat() { cnt.textContent = ta.value.length + ' / 300'; warn.textContent = ''; if (looksIdentifying(ta.value)) warn.appendChild(el('p', { class: 'alert', text: 'This may include a name or a record number. Please describe roles instead (“a visitor”, “the porter”) and leave numbers out.' })); }
+  function checkWhat() { cnt.textContent = ta.value.length + ' / 300'; warn.textContent = ''; if (looksIdentifying(ta.value)) warn.appendChild(el('p', { class: 'alert', text: 'This may include a name or a record number. Please describe roles instead (“a visitor”, “the transport assistant”) and leave numbers out.' })); }
   ta.addEventListener('input', function () { f.what = ta.value; checkWhat(); });
   wt.appendChild(ta); wt.appendChild(cnt); wt.appendChild(warn); form.appendChild(wt); checkWhat();
   var dn = el('div', { class: 'field' }, [el('label', { for: 'f-done' }, ['What was done straight away? ', el('small', { style: 'font-weight:600;color:var(--soft)', text: '(optional)' })])]);

@@ -89,7 +89,7 @@ test('a guide proposal changes nothing until the supervisor confirms', async () 
   await page.click('#r-supervisor');
   const staff = () => api(page, 'get').then((g) => Object.fromEntries(g.teams.map((t) => [t.id, t.staff])));
   const s0 = await staff();
-  await page.getByRole('button', { name: /Propose: move 1 porter/ }).click();
+  await page.getByRole('button', { name: /Propose: move 1 transport assistant/ }).click();
   assert.deepEqual(await staff(), s0, 'proposing changes nothing');
   assert.equal((await api(page, 'get')).pendingDecisions.length, 1);
   await page.locator('#pending').getByRole('button', { name: 'Confirm' }).click();

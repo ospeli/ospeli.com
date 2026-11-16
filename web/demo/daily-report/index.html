@@ -278,7 +278,7 @@ var TRACERS = ['Sterile gloves (medium)', 'Examination gloves (medium)', 'IV giv
 var ACTIONS = [
   { id: 'a1', text: 'Agree weekend discharge cover with the medical wards', owner: 'Operations manager', due: -5 },
   { id: 'a2', text: 'Fix missing “left department” times in emergency department records', owner: 'Data owner, emergency department', due: -3 },
-  { id: 'a3', text: 'Review porter task routing at the 10:00–12:00 peak', owner: 'Support services manager', due: -2 },
+  { id: 'a3', text: 'Review transport task routing at the 10:00–12:00 peak', owner: 'Support services manager', due: -2 },
   { id: 'a4', text: 'Confirm reorder levels for the tracer items list', owner: 'Stores manager', due: -1 },
   { id: 'a5', text: 'Agree a cleaning response time for beds freed by discharge', owner: 'Support services supervisor', due: 0 },
   { id: 'a6', text: 'Clear overdue planned maintenance on ward monitors', owner: 'Equipment manager', due: 0 },
@@ -290,7 +290,7 @@ var STEPS = [
   { id: 'ed-seen', name: 'Emergency department: triage to first seen', who: 'everyone who arrived' },
   { id: 'ed-decision', name: 'Emergency department: seen to decision', who: 'people who needed tests' },
   { id: 'ed-bed', name: 'Emergency department: decision to admit to leaving for a ward', who: 'people admitted' },
-  { id: 'ward-porter', name: 'Ward bed ready to porter arriving', who: 'people admitted' },
+  { id: 'ward-porter', name: 'Ward bed ready to transport arriving', who: 'people admitted' },
   { id: 'dis-letter', name: 'Discharge: waiting for the discharge letter', who: 'people discharged' },
   { id: 'dis-meds', name: 'Discharge: waiting for take-home medicines', who: 'people discharged with medicines' },
   { id: 'dis-transport', name: 'Discharge: waiting for transport home', who: 'people who needed transport' }
@@ -325,7 +325,7 @@ var DEFS = {
   woOver: ['Overdue work orders', 'Open work orders past their due date at the ' + SNAP + ' snapshot.', 'Equipment manager'],
   woOld: ['Oldest overdue work order', 'Days past its due date for the oldest open work order.', 'Equipment manager'],
   outs: ['Tracer stock-outs', 'Items on the fixed tracer list (' + TRACERS.length + ' items counted every morning) with no stock in central stores at the morning count.', 'Stores manager'],
-  supWait: ['Support tasks waiting', 'Porter and cleaning tasks requested but not started at the ' + SNAP + ' snapshot (today so far: at ' + SO_FAR + ').', 'Support services manager'],
+  supWait: ['Support tasks waiting', 'Transport and cleaning tasks requested but not started at the ' + SNAP + ' snapshot (today so far: at ' + SO_FAR + ').', 'Support services manager'],
   supOld: ['Oldest waiting task', 'Minutes since the oldest task that is still waiting was requested.', 'Support services manager'],
   sup30: ['Tasks that waited over 30 minutes', 'Tasks that waited more than 30 minutes from request to start, that day.', 'Support services manager'],
   below: ['Shifts below planned cover', 'Shifts where the number of staff on duty was lower than planned on the roster, counted per unit. Numbers only, never names.', 'Staffing manager'],
@@ -507,7 +507,7 @@ function decisions() {
     why: 'Oldest is ' + plural(day.woOld, 'day') + ' past due. 14-day median ' + mo + ' overdue.' });
   var mso = med14(function (d) { return d.supOld; });
   out.push({ id: 'support', area: 'support', score: score(day.supOld, mso, 'up') * 0.7,
-    title: 'Check support task cover this morning', text: 'Decide whether porters or cleaners should move to where tasks are waiting longest.',
+    title: 'Check support task cover this morning', text: 'Decide whether transport assistants or cleaners should move to where tasks are waiting longest.',
     why: 'Oldest waiting task ' + fmtMin(day.supOld) + ' (14-day median ' + fmtMin(mso) + ').' });
   out.push({ id: 'actions', area: 'actions', score: acts.length >= 3 ? acts.length - 2 : -1,
     title: 'Re-date or reassign ' + plural(acts.length, 'overdue action'), text: 'Decide for each: close, give a new date, or give it to a different role.',

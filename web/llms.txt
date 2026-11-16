@@ -6,7 +6,7 @@
 - [Live demo app](https://ospeli.com/app/): installable web app; works offline after the first load; synthetic data only.
 - [Process mapping demo](https://ospeli.com/demo/process-map/): map a process step by step and test changes with a rule-based guide; page object `window.ospeliProcessMap` (preview only, not the agent API); fictional data.
 - [Emergency department flow preview](https://ospeli.com/demo/ed-flow/): anonymous patient timeline, pressure levels set by the site, action cards; page object `window.ospeliEdFlowDemo` (preview only, not the agent API); fictional data.
-- [Cleaning and portering preview](https://ospeli.com/demo/support-tasks/): porter and cleaner task lists, ward requests, helpdesk by team; page object `window.ospeliSupportTasksDemo` (preview only, not the agent API); fictional data.
+- [Cleaning and patient transport preview](https://ospeli.com/demo/support-tasks/): transport and cleaning task lists, ward requests, helpdesk by team; page object `window.ospeliSupportTasksDemo` (preview only, not the agent API); fictional data.
 - [Incidents and actions preview](https://ospeli.com/demo/actions/): staff reports, learning review, one action tracker, risk register; page object `window.ospeliActionsDemo` (preview only, not the agent API); fictional data.
 - [Stores and stock preview](https://ospeli.com/demo/stores-stock/): ward stock reports, storekeeper pick list, supply view; page object `window.ospeliStoresDemo` (preview only, not the agent API); fictional data.
 - [Daily operations report preview](https://ospeli.com/demo/daily-report/): decisions for today, run charts, bottleneck finder, huddle list; page object `window.ospeliDailyReportDemo` (preview only, not the agent API); fictional data.
