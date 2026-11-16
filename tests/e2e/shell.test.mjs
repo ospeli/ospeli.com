@@ -31,7 +31,8 @@ for (const width of [360, 390, 1024, 1280]) {
 test('every role can be chosen; the choice persists and is audited', async () => {
   const { context, page, errors } = await openPage(env);
   const options = await page.locator('#role-select option').allTextContents();
-  assert.deepEqual(options, ['Ward nurse', 'Patient flow coordinator', 'Facilities technician', 'Emergency department nurse in charge', 'Operations manager', 'COO']);
+  // The first six keep their place; roles a module adds follow them (tests/unit/module-packs.test.mjs).
+  assert.deepEqual(options.slice(0, 6), ['Ward nurse', 'Patient flow coordinator', 'Facilities technician', 'Emergency department nurse in charge', 'Operations manager', 'COO']);
   await page.selectOption('#role-select', 'estates-tech');
   await page.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Facilities technician');
   const first = await page.locator('[data-test="role-shortcuts"] h3').first().textContent();

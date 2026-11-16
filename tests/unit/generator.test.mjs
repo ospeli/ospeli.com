@@ -111,7 +111,9 @@ test('patterns are plausible: few discharges before noon, turnaround under a few
 
 test('no person names: subjects are ids, and only roles act', () => {
   for (const ev of g.events) {
-    assert.match(ev.subject, /^(enc|wo|asset|ward)-[a-z0-9-]+$/);
+    // An id: lower-case words and digits joined by hyphens (enc-000123, wo-00001, ward-a1-bed-01, and a
+    // module's own record ids such as task-00001). Never a capital or a space, so never a written name.
+    assert.match(ev.subject, /^[a-z]+(-[a-z0-9]+)+$/);
     assert.ok(!('name' in (ev.data || {})));
   }
 });
