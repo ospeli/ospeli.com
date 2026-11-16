@@ -76,9 +76,10 @@ function buildRoles(ctx) {
     const from = ctx.role;
     ctx.role = to;
     // A role whose whole job is on one page opens on it (its job is one tap away, not a menu
-    // away). The address changes at once, before anything is saved, so nothing that happens
-    // next (a reload, another page) can be overtaken by a late jump.
-    const home = homePage(to);
+    // away): from Today only, so a person looking at another page stays on it. The address
+    // changes at once, before anything is saved, so nothing that happens next (a reload,
+    // another page) can be overtaken by a late jump.
+    const home = parseRoute(location.hash).id === 'home' ? homePage(to) : null;
     const moved = !!home && location.hash !== home;
     if (moved) location.hash = home;
     await ctx.core.setMeta('role', to);
