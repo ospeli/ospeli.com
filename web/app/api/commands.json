@@ -8215,6 +8215,20 @@
                     "null"
                   ]
                 },
+                "ownerText": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "Whose it is in words: the owner role and the service, for example \"Ward or department lead · Outpatients\"."
+                },
+                "clinicalSince": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "When it was passed to clinical review, while it is there."
+                },
                 "receivedAt": {
                   "type": "string",
                   "format": "date-time"
@@ -8495,6 +8509,20 @@
                   "null"
                 ]
               },
+              "ownerText": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "Whose it is in words: the owner role and the service, for example \"Ward or department lead · Outpatients\"."
+              },
+              "clinicalSince": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "When it was passed to clinical review, while it is there."
+              },
               "receivedAt": {
                 "type": "string",
                 "format": "date-time"
@@ -8693,6 +8721,7 @@
                 "set-owner",
                 "close",
                 "clinical-review",
+                "clinical-return",
                 "share"
               ]
             },
@@ -8727,7 +8756,7 @@
     },
     {
       "name": "ospeli_experience_record_update",
-      "summary": "Move a complaint or concern on, one step: acknowledge (with the channel used), reply (the site sent the full reply, by which channel; Ospeli sends nothing), set-owner (a role, never a person), close (with the outcome; before a reply only as withdrawn), clinical-review (mark it as passed to clinical review; nothing about the care is recorded). For a compliment or card: share (shared with the service). The owner role may acknowledge, reply and pass to clinical review on its own records; the patient liaison officer and the quality lead may take every step.",
+      "summary": "Move a complaint or concern on, one step: acknowledge (with the channel used), reply (the site sent the full reply, by which channel; Ospeli sends nothing), set-owner (a role, never a person), close (with the outcome; before a reply only as withdrawn), clinical-review (mark it as passed to clinical review; nothing about the care is recorded; the acknowledgement stays timed, the reply is not called overdue while it waits), clinical-return (it came back from clinical review). For a compliment or card: share (shared with the service). The owner role may acknowledge and reply on its own records; the patient liaison officer and the quality lead may take every step.",
       "kind": "write",
       "roles": [
         "patient-liaison",
@@ -8760,6 +8789,7 @@
               "set-owner",
               "close",
               "clinical-review",
+              "clinical-return",
               "share"
             ]
           },

@@ -10,6 +10,7 @@ import { h, setKids, fmtTime, moduleStyle } from '../ui.js';
 import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
+import { roleLabel } from './logic.js';
 
 const C = {
   log: 'ospeli_experience_complaint_log', queue: 'ospeli_experience_queue_list', get: 'ospeli_experience_record_get',
@@ -22,7 +23,10 @@ const PARTS = [['quick', 'Quick feedback', C.log], ['queue', 'Complaints queue',
 const ref = (id) => id.toUpperCase();
 const day = (iso) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
-const NOT_A_LOCK = 'The card screen hides the staff screen, but it is not a lock and not a separate sign-in: anyone holding the device can go back. Stay nearby.';
+// The card is a screen on a staff device, not a security boundary and not a separate sign-in: anyone
+// holding the device can get back to the staff screen. A patient's own-phone link needs the site
+// server and a restricted role (core work). The staff are told so in one plain line.
+const NOT_A_LOCK = 'Stay close. The patient can get back to your screen.';
 
 // ---- the five faces: simple drawn shapes (not the logo), each with its word under it ----
 const SVGNS = 'http://www.w3.org/2000/svg';
@@ -113,6 +117,7 @@ function kpiTile(k) {
   const of = k.unit === '%' ? `${k.numerator} of ${k.denominator}` : `median of ${plural(k.denominator, 'complaint')}`;
   return h('div', { class: 'stat fb-kpi', 'data-kpi': k.id },
     h('b', { class: 'fb-kpi-value' }, val), h('span', { class: 'fb-kpi-name' }, k.name), h('span', { class: 'fb-kpi-of' }, k.denominator ? of : 'None in this period'),
+    k.leftOutText ? h('span', { class: 'fb-kpi-of', 'data-test': 'left-out' }, k.leftOutText) : null,
     h('details', { class: 'fb-def' }, h('summary', {}, 'How it is counted'),
       h('p', {}, k.definition), h('p', {}, h('b', {}, 'Leaves out: '), k.leavesOut), h('p', {}, h('b', {}, 'Source: '), k.source), h('p', {}, k.targetText)));
 }
@@ -190,7 +195,8 @@ async function quickScreen(box, ctx, { opt }) {
       const out = await ctx.run(C.log, input);
       status.className = 'fb-status fb-ok';
       setKids(status, h('p', {}, h('b', {}, `Saved: ${ref(out.recordId)}. `),
-        `${opt.kinds.find((k) => k.id === kind).name}, ${serviceNames(opt).get(input.serviceId)}${out.stage === 'closed' ? ', closed as sorted out on the spot.' : out.replyDueAt ? `. Reply due by ${day(out.replyDueAt)} (example setting).` : '.'}`));
+        `${opt.kinds.find((k) => k.id === kind).name}, ${serviceNames(opt).get(input.serviceId)}${out.stage === 'closed' ? ', closed as sorted out on the spot.' : out.replyDueAt ? `. Reply due by ${day(out.replyDueAt)} (example setting).` : '.'}`),
+        h('p', {}, `If the person wants a reply, write ${ref(out.recordId)} on your contact note.`));
       ctx.toast(`Saved ${ref(out.recordId)}`);
       form.querySelectorAll('input[name="fb-kind"], input[name="fb-theme"]').forEach((x) => { x.checked = false; });
       note.value = ''; count.textContent = `0 of ${opt.noteMax}`; clinical.checked = false; resolved.checked = false; when.value = ''; showKind(null);
@@ -198,7 +204,7 @@ async function quickScreen(box, ctx, { opt }) {
     } catch (err) {
       status.className = 'fb-status fb-bad';
       if (err.detail?.confirm === 'notAName') {
-        setKids(status, h('p', {}, `The note may hold a person's name ("${err.detail.looksLike}"). Feedback is about the service, never a person.`),
+        setKids(status, h('p', {}, `The note may hold a person's name ("${err.detail.looksLike}"). Write what happened, not who.`),
           h('div', { class: 'actions' },
             h('button', { class: 'btn btn-ghost', type: 'button', 'data-test': 'not-a-name', onclick: () => send({ notAName: true }) }, 'It is not a name. Save'),
             h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => { setKids(status); note.focus(); } }, 'Change the note')));
@@ -239,6 +245,10 @@ const serviceNames = (opt) => new Map(opt.services.map((s) => [s.id, s.name]));
 // The hand-over feedback card: a full-screen dialog on a staff device. Not a security boundary.
 function feedbackCard(ctx, opt, serviceOf) {
   const dlg = h('dialog', { class: 'fb-card', 'aria-labelledby': 'fbc-h', 'data-test': 'card' });
+  // The browser's back button or a back swipe must not drop a patient on the staff screen: the card
+  // adds a history entry when it opens, and going back while it is open puts it back and asks the
+  // staff question instead. Closing the card properly takes that entry away again.
+  const onBack = () => { if (!dlg.open) return; history.pushState({ fbCard: true }, ''); s.leaving = true; draw(); dlg.querySelector('[data-test="card-exit-yes"]')?.focus(); };
   const s = { face: 0, theme: null, note: '', sent: null, leaving: false, ask: null, error: '', busy: false };
   let timer = null;
   // Escape would drop a patient back on the staff screen: the card leaves only through its own button.
@@ -259,8 +269,8 @@ function feedbackCard(ctx, opt, serviceOf) {
         svg('svg', { viewBox: '0 0 64 64', 'aria-hidden': 'true', class: 'fbc-tick' }, svg('circle', { cx: 32, cy: 32, r: 30, fill: '#0A9396' }),
           svg('path', { d: 'M19 33 L28 42 L46 23', fill: 'none', stroke: '#FFFFFF', 'stroke-width': 6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round' })),
         h('h2', { id: 'fbc-h', tabindex: '-1' }, 'Thank you'),
-        h('p', {}, 'We have your card. Your reference is ', h('b', { 'data-test': 'card-ref' }, ref(s.sent)), '.'),
-        h('p', {}, 'We read every card to see what to change. If you would like a reply, please ask at the desk.'),
+        h('p', {}, 'We have your card. Cards are read by the team.'),
+        h('p', {}, 'If you would like a reply, please ask at the desk.'),
         h('button', { class: 'btn fbc-send', type: 'button', 'data-test': 'card-again', onclick: () => { fresh(); draw(); dlg.querySelector('[data-face="1"]')?.focus(); } }, 'Leave another card'),
         leave));
       // The next person should not see the last one's thank-you: back to a fresh card after a while.
@@ -283,7 +293,7 @@ function feedbackCard(ctx, opt, serviceOf) {
     const sendBtn = h('button', { class: 'btn fbc-send', type: 'button', 'data-test': 'card-send', disabled: !s.face || s.busy, onclick: () => send() }, s.face ? 'Send' : 'Choose a face to send');
     setKids(dlg, h('div', { class: 'fbc-in' },
       h('p', { class: 'fbc-eyebrow' }, 'Your feedback'),
-      h('h2', { id: 'fbc-h' }, `How was your visit to ${svc}?`),
+      h('h2', { id: 'fbc-h' }, `How was your visit to ${/department$/i.test(svc) ? 'the ' : ''}${svc}?`),
       h('p', { class: 'fbc-sub' }, 'Three quick questions. We do not ask for your name.'),
       h('section', { class: 'fbc-q' }, h('h3', { id: 'fbc-q1' }, '1. How was it today?'), faces),
       h('section', { class: 'fbc-q' }, h('h3', { id: 'fbc-q2' }, '2. What was it mostly about? (optional)'), themes),
@@ -310,21 +320,32 @@ function feedbackCard(ctx, opt, serviceOf) {
     } catch (err) {
       s.busy = false;
       if (err.detail?.confirm === 'notAName') s.ask = err.detail.looksLike;
-      else s.error = err.code === 'invalid-input' && /note/.test(err.message)
-        ? 'Please take out any names, phone numbers, email addresses or record numbers, then send again.'
+      else s.error = err.code === 'invalid-input' && (err.detail?.field === 'note' || /note/i.test(err.message))
+        ? 'Please take out names and phone numbers, then send again.'
         : 'Sorry, the card was not sent. Please hand the device back to staff.';
     }
     draw();
   }
-  function open() { fresh(); draw(); if (!dlg.open) dlg.showModal(); dlg.querySelector('[data-face="1"]')?.focus(); }
-  function close() { clearTimeout(timer); if (dlg.open) dlg.close(); fresh(); document.querySelector('[data-test="hand-over"]')?.focus(); }
+  function open() {
+    fresh(); draw();
+    if (!dlg.open) { dlg.showModal(); history.pushState({ fbCard: true }, ''); window.addEventListener('popstate', onBack); }
+    dlg.querySelector('[data-face="1"]')?.focus();
+  }
+  function close() {
+    clearTimeout(timer);
+    window.removeEventListener('popstate', onBack);
+    if (dlg.open) dlg.close();
+    if (history.state?.fbCard) history.back(); // the entry the card added; the address does not change
+    fresh();
+    document.querySelector('[data-test="hand-over"]')?.focus();
+  }
   return { el: dlg, open, close };
 }
 
 // ---------------------------------------------------------------- the queue
 const VIEWS = [['mine', 'Mine'], ['open', 'All open'], ['overdue', 'Overdue'], ['clinical', 'Clinical review'], ['closed', 'Closed'], ['compliments', 'Compliments and cards']];
 function dueText(r) {
-  if (r.clinical && r.stage !== 'closed') return 'Passed to clinical review: not timed here';
+  if (r.clinical && r.stage !== 'closed' && !r.repliedAt) return `${r.overdue ? 'Not acknowledged in time · ' : ''}Waiting on clinical review · reply due ${day(r.replyDueAt)}`;
   if (r.kind === 'compliment' || r.kind === 'card') return r.sharedAt ? 'Shared with the service' : 'Recorded';
   if (r.stage === 'closed') return `Closed ${day(r.closedAt || r.receivedAt)}`;
   if (r.stage === 'replied') return `Replied ${day(r.repliedAt)}`;
@@ -338,13 +359,15 @@ function recordRow(r) {
   return h('li', {}, h('a', { class: cls, href: `#/feedback/record/${r.id}`, 'data-record': r.id, 'data-cmd': C.get },
     h('span', { class: 'fb-row-top' }, h('b', {}, `${ref(r.id)} · ${r.kindName}`), h('span', { class: `chip fb-st-${r.stage}` }, r.stageName)),
     h('span', { class: 'fb-row-what' }, `${r.serviceName}${r.themeName ? ` · ${r.themeName.replace(/ \(.*\)$/, '')}` : ''}`),
-    h('span', { class: 'fb-row-owner' }, r.ownerName ? `Owner: ${r.ownerName}` : `Received ${day(r.receivedAt)}`),
+    h('span', { class: 'fb-row-owner' }, r.ownerText ? `Owner: ${r.ownerText}` : `Received ${day(r.receivedAt)}`),
     h('span', { class: 'fb-row-due' }, dueText(r))));
 }
 
 async function queueScreen(box, ctx, { opt }) {
   const role = ctx.role;
   const ownsSome = opt.ownerRoles.some((r) => r.id === role);
+  // "Mine" is by role, so it is titled for everyone in the role, not as one person's own list.
+  const mineWho = `${roleLabel(role).toLowerCase()}s`;
   const ui = { view: role === 'ward-nurse' || role === 'ops-manager' ? 'mine' : 'open' };
   const views = VIEWS.filter(([id]) => id !== 'mine' || ownsSome);
   const chips = h('div', { class: 'chips fb-views', role: 'group', 'aria-label': 'Show' });
@@ -365,15 +388,15 @@ async function queueScreen(box, ctx, { opt }) {
     chips.replaceChildren(...views.map(([id, label]) => h('button', {
       type: 'button', class: 'chip-btn', 'aria-pressed': String(ui.view === id), 'data-view': id,
       onclick: async () => { ui.view = id; await load(); chips.querySelector(`[data-view="${id}"]`)?.focus(); },
-    }, id === 'mine' ? `${label} (${q.counts.mine})` : label)));
+    }, id === 'mine' ? `For ${mineWho} (${q.counts.mine})` : label)));
     const c = q.counts;
     setKids(counts, 'Whole site: ', h('b', { 'data-test': 'count-open' }, c.open), ' open · ', h('b', { 'data-test': 'count-overdue' }, c.overdue), ' overdue · ',
       h('b', {}, c.dueSoon), ' due soon · ', h('b', {}, c.clinicalReview), ' at clinical review');
     setKids(list, q.records.length
       ? h('ul', { class: 'fb-rows' }, q.records.map(recordRow))
-      : h('p', { class: 'fb-none' }, ui.view === 'mine' ? `Nothing open is owned by ${roleById(role).name} now.` : 'Nothing here.'),
+      : h('p', { class: 'fb-none' }, ui.view === 'mine' ? `Nothing open is owned by ${mineWho} now.` : 'Nothing here.'),
     q.truncated ? h('p', { class: 'meta' }, `Showing ${q.records.length} of ${q.total}.`) : null,
-    h('p', { class: 'meta fb-settings' }, `Due dates: ${q.settings} Records passed to clinical review are not timed here and never shown as overdue.`));
+    h('p', { class: 'meta fb-settings' }, `Due dates: ${q.settings} A record with clinical review keeps its acknowledgement due date; its reply is not called overdue here while it waits.`));
     const mayGuide = can(role, C.guide);
     const sw = mayGuide ? h('button', {
       type: 'button', class: 'chip-btn guide-switch', 'data-test': 'guide-switch', 'data-cmd': C.guide, 'aria-pressed': String(q.guideOn),
@@ -385,18 +408,17 @@ async function queueScreen(box, ctx, { opt }) {
       !q.guideOn ? h('p', { class: 'meta', 'data-test': 'guide-off' }, 'The guide is off. The queue, timers and records all work the same.')
         : [
           q.suggestions.length ? h('ul', { class: 'fb-sugg', 'data-test': 'suggestions' }, q.suggestions.map((s) => h('li', { class: `fb-sg${s.overdue ? ' is-over' : ''}`, 'data-suggestion': s.id },
-            h('a', { href: `#/feedback/record/${s.recordId}` }, s.title), h('span', {}, ` ${s.serviceName} · owner ${s.ownerName}. No reply recorded yet.`))))
-            : h('p', { class: 'meta' }, role === 'patient-liaison' ? `No reply is due within ${opt.settings.remindDaysBefore} days.` : `No reply owned by ${roleById(role).name} is due within ${opt.settings.remindDaysBefore} days. Reminders go to the owner role and the Patient liaison officer.`),
+            h('a', { href: `#/feedback/record/${s.recordId}` }, s.title), h('span', {}, ` Owner: ${s.ownerText}. No reply recorded yet.`))))
+            : h('p', { class: 'meta' }, role === 'patient-liaison' ? `No reply is due within ${opt.settings.remindDaysBefore} days.` : `No reply owned by ${mineWho} is due within ${opt.settings.remindDaysBefore} days. Reminders go to the owner role and the Patient liaison officer.`),
           h('p', { class: 'meta' }, `Rule: ${t.guide.rules[0].words} ${t.guide.rules[0].basis}`),
         ]);
     setKids(kpis, h('h2', { id: 'fb-kpi-h' }, 'Response measures, last 30 days'), kpiRow(t.kpis, 'Calculated from the same event log. Tap "How it is counted" under a number. Nothing here is a score of a person.'));
   }
   const ownerFirst = role === 'ward-nurse' || role === 'ops-manager';
+  // An owner role works its list on a phone: the list first, the reminders and measures below it.
+  const queue = h('section', { class: 'section', 'aria-labelledby': 'fb-q-h' }, h('h2', { id: 'fb-q-h' }, ownerFirst ? `Complaints owned by ${mineWho}` : 'Open complaints and concerns'), counts, chips, list);
   setKids(box, h('div', { class: 'fb-queue', 'data-role': role },
-    ownerFirst ? null : kpis,
-    guide,
-    h('section', { class: 'section', 'aria-labelledby': 'fb-q-h' }, h('h2', { id: 'fb-q-h' }, ownerFirst ? 'Complaints for your role' : 'Open complaints and concerns'), counts, chips, list),
-    ownerFirst ? kpis : null,
+    ownerFirst ? [queue, guide, kpis] : [kpis, guide, queue],
     h('p', { class: 'meta fb-notfor' }, 'Ospeli does not score or rank staff and does not judge clinical care. It holds no names or contact details and sends nothing.')));
   await load();
   return { refresh: load };
@@ -405,7 +427,8 @@ async function queueScreen(box, ctx, { opt }) {
 // ---------------------------------------------------------------- one record
 async function recordScreen(box, ctx, { opt, recordId }) {
   const role = ctx.role;
-  const ui = { busy: false };
+  // saved: the line that says what was just recorded; confirm: the step waiting for "yes".
+  const ui = { busy: false, saved: null, confirm: null };
   async function load() {
     let d;
     try { d = await ctx.run(C.get, { recordId }); } catch (err) {
@@ -417,82 +440,108 @@ async function recordScreen(box, ctx, { opt, recordId }) {
   }
   async function act(cmd, input, done) {
     if (ui.busy) return;
-    ui.busy = true;
-    try { await ctx.run(cmd, input); ctx.toast(done); } catch (err) { ctx.toast(`Not saved. ${err.message}`); } finally { ui.busy = false; await load(); }
+    ui.busy = true; ui.confirm = null;
+    try { await ctx.run(cmd, input); ui.saved = { ok: true, text: `Saved: ${done}. It is in the timeline below.` }; } catch (err) { ui.saved = { ok: false, text: `Not saved. ${err.message}` }; }
+    ui.busy = false;
+    await load();
+    box.querySelector('[data-test="saved"]')?.focus();
   }
-  const sel = (id, items, value) => { const s = h('select', { id, 'data-test': id }, items.map((x) => new Option(x.name, x.id))); if (value) s.value = value; return s; };
+  // A pick nobody has made yet: the select starts empty, and the button says what is missing.
+  const choose = (id, items, prompt, value = '') => {
+    const s = h('select', { id, 'data-test': id }, new Option(prompt, ''), items.map((x) => new Option(x.name, x.id)));
+    s.value = value;
+    return s;
+  };
   const row = (k, v) => (v == null || v === '' ? null : h('div', { class: 'def-row' }, h('dt', {}, k), h('dd', {}, v)));
 
   function draw(d) {
     const r = d.record;
     const timed = r.kind === 'complaint' || r.kind === 'concern';
-    const step = (name, label, control, extra, main = false) => h('div', { class: 'fb-step' }, control ? h('div', { class: 'fb-field' }, control.label, control.el) : null,
-      h('button', { class: main ? 'btn' : 'btn btn-ghost', type: 'button', 'data-cmd': C.update, 'data-step': name, onclick: () => act(C.update, { recordId: r.id, step: name, expectedState: r.stage, ...extra() }, `${ref(r.id)}: ${label.toLowerCase()}`) }, label));
+    const go = (name, label, extra = () => ({})) => act(C.update, { recordId: r.id, step: name, expectedState: r.stage, ...extra() }, `${ref(r.id)} ${label.toLowerCase()}`);
+    // A step with a pick: the button is off, and says what to pick, until the pick is made.
+    const step = (name, label, { id, items, prompt, missing, key, field }, main = false) => {
+      const s = choose(id, items, prompt);
+      const btn = h('button', { class: main ? 'btn' : 'btn btn-ghost', type: 'button', 'data-cmd': C.update, 'data-step': name, disabled: true, onclick: () => go(name, STEP_DONE[name], () => ({ [key]: s.value })) }, missing);
+      s.addEventListener('change', () => { btn.disabled = !s.value; btn.textContent = s.value ? label : missing; });
+      return h('div', { class: 'fb-step' }, h('div', { class: 'fb-field' }, h('label', { for: id }, field), s), btn);
+    };
+    const plain = (name, label, ask) => (ui.confirm === name
+      ? h('div', { class: 'fb-step fb-confirm', role: 'group', 'aria-label': ask }, h('p', {}, ask),
+        h('div', { class: 'actions' },
+          h('button', { class: 'btn', type: 'button', 'data-cmd': C.update, 'data-step': name, 'data-test': 'confirm-yes', onclick: () => go(name, STEP_DONE[name]) }, 'Yes'),
+          h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => { ui.confirm = null; draw(d); } }, 'No')))
+      : h('div', { class: 'fb-step' }, h('button', { class: 'btn btn-ghost', type: 'button', 'data-step-ask': name, onclick: ask ? () => { ui.confirm = name; draw(d); box.querySelector('[data-test="confirm-yes"]')?.focus(); } : () => go(name, STEP_DONE[name]) }, label)));
     const next = new Set(d.next);
     const controls = [];
-    if (next.has('acknowledge')) { const s = sel('fb-ack-ch', opt.replyChannels, 'letter'); controls.push(step('acknowledge', 'Record acknowledgement', { label: h('label', { for: 'fb-ack-ch' }, 'Acknowledged by'), el: s }, () => ({ channel: s.value }), true)); }
-    if (next.has('reply')) { const s = sel('fb-reply-ch', opt.replyChannels, 'letter'); controls.push(step('reply', 'Record reply sent', { label: h('label', { for: 'fb-reply-ch' }, 'Full reply sent by'), el: s }, () => ({ channel: s.value }), true)); }
-    if (next.has('set-owner')) { const s = sel('fb-owner', opt.ownerRoles.filter((x) => x.id !== r.ownerRole)); controls.push(step('set-owner', 'Change owner', { label: h('label', { for: 'fb-owner' }, 'Owner role'), el: s }, () => ({ ownerRole: s.value }))); }
+    if (next.has('acknowledge')) controls.push(step('acknowledge', 'Record acknowledgement', { id: 'fb-ack-ch', items: opt.replyChannels, prompt: 'Choose how', missing: 'Choose how it was acknowledged', key: 'channel', field: 'Acknowledged by' }, true));
+    if (next.has('reply')) controls.push(step('reply', 'Record reply sent', { id: 'fb-reply-ch', items: opt.replyChannels, prompt: 'Choose how', missing: 'Choose how you replied', key: 'channel', field: 'Full reply sent by' }, true));
     if (next.has('close')) {
-      const s = sel('fb-outcome', r.stage === 'replied' ? opt.outcomes : opt.outcomes.filter((o) => o.id === 'withdrawn'));
-      controls.push(step('close', r.stage === 'replied' ? 'Close' : 'Close as withdrawn', { label: h('label', { for: 'fb-outcome' }, 'Outcome'), el: s }, () => ({ outcome: s.value }), r.stage === 'replied'));
+      const replied = r.stage === 'replied';
+      controls.push(step('close', replied ? 'Close' : 'Close as withdrawn', { id: 'fb-outcome', items: replied ? opt.outcomes : opt.outcomes.filter((o) => o.id === 'withdrawn'), prompt: 'Choose the outcome', missing: 'Choose the outcome', key: 'outcome', field: replied ? 'Outcome' : 'Withdrawn before a reply' }, replied));
     }
-    if (next.has('clinical-review')) controls.push(step('clinical-review', 'Pass to clinical review', null, () => ({})));
-    if (next.has('share')) controls.push(step('share', 'Mark as shared with the service', null, () => ({})));
+    if (next.has('set-owner')) controls.push(step('set-owner', 'Change owner', { id: 'fb-owner', items: opt.ownerRoles.filter((x) => x.id !== r.ownerRole), prompt: 'Choose a role', missing: 'Choose the new owner role', key: 'ownerRole', field: 'Owner role' }));
+    if (next.has('clinical-review')) controls.push(plain('clinical-review', 'Pass to clinical review', `Pass ${ref(r.id)} to clinical review? Ospeli records only that it was passed. The acknowledgement stays timed; the reply is not called overdue while it waits.`));
+    if (next.has('clinical-return')) controls.push(plain('clinical-return', 'Back from clinical review', `Record that ${ref(r.id)} is back from clinical review? Its reply is timed again from now.`));
+    if (next.has('share')) controls.push(plain('share', 'Mark as shared with the service'));
 
     const due = d.due;
-    const dueRow = (label, at, late, doneAt) => h('li', { class: late ? 'is-late' : '' }, h('b', {}, `${label} by ${day(at)}`), ' · ',
-      doneAt ? (late ? 'done late' : 'done on time') : late ? 'late' : 'not yet');
+    const dueRow = (label, at, late, doneAt, waiting) => h('li', { class: late && !waiting ? 'is-late' : '' }, h('b', {}, `${label} by ${day(at)}`), ' · ',
+      doneAt ? (late ? 'done late' : 'done on time') : waiting ? 'waiting on clinical review (not called overdue here)' : late ? 'late' : 'not yet');
     const actions = d.actions.map((a) => h('li', { class: `fb-action${a.closedAt ? ' is-done' : a.late ? ' is-late' : ''}`, 'data-action': a.id },
       h('b', {}, a.whatName), h('span', {}, ` · ${a.ownerName} · due ${day(a.dueAt)} · ${a.closedAt ? `closed ${day(a.closedAt)}${a.late ? ' (late)' : ''}` : a.late ? 'late' : 'open'}`),
       a.note ? h('span', { class: 'fb-typed' }, a.note) : null,
       !a.closedAt && (d.mayAgreeActions || a.ownerRole === role) ? h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': C.action, 'data-close-action': a.id,
-        onclick: () => act(C.action, { op: 'close', recordId: r.id, actionId: a.id }, `${a.id} closed`) }, 'Mark done') : null));
+        onclick: () => act(C.action, { op: 'close', recordId: r.id, actionId: a.id }, `${a.id} done`) }, 'Mark done') : null));
     let agree = null;
     if (d.mayAgreeActions) {
-      const what = sel('fb-act-what', opt.actionKinds); const who = sel('fb-act-owner', opt.ownerRoles, r.ownerRole);
-      const when = sel('fb-act-due', opt.dueInDays.map((n) => ({ id: String(n), name: `In ${n} days` })), '30');
+      const what = choose('fb-act-what', opt.actionKinds, 'Choose what will change'); const who = choose('fb-act-owner', opt.ownerRoles, 'Choose a role', r.ownerRole);
+      const when = choose('fb-act-due', opt.dueInDays.map((n) => ({ id: String(n), name: `In ${n} days` })), 'Choose when', '30');
       const nt = h('input', { id: 'fb-act-note', type: 'text', maxlength: opt.noteMax, 'data-test': 'fb-act-note' });
-      agree = h('details', { class: 'fb-agree' }, h('summary', {}, 'Agree an action'),
+      const btn = h('button', { class: 'btn', type: 'button', 'data-cmd': C.action, 'data-test': 'agree-action', disabled: true,
+        onclick: () => act(C.action, { op: 'agree', recordId: r.id, what: what.value, ownerRole: who.value, dueInDays: Number(when.value), ...(nt.value.trim() ? { note: nt.value.trim() } : {}) }, 'action agreed') }, 'Choose what will change');
+      const check = () => { const miss = !what.value ? 'Choose what will change' : !who.value ? 'Choose the owner role' : !when.value ? 'Choose when it is due' : null; btn.disabled = !!miss; btn.textContent = miss || 'Agree action'; };
+      [what, who, when].forEach((x) => x.addEventListener('change', check));
+      agree = h('details', { class: 'fb-agree' }, h('summary', { class: 'btn btn-ghost' }, 'Agree an action'),
         h('div', { class: 'fb-field' }, h('label', { for: 'fb-act-what' }, 'What will change'), what),
         h('div', { class: 'fb-field' }, h('label', { for: 'fb-act-owner' }, 'Owner role'), who),
         h('div', { class: 'fb-field' }, h('label', { for: 'fb-act-due' }, 'Due'), when),
         h('div', { class: 'fb-field' }, h('label', { for: 'fb-act-note' }, 'Short note (optional, never a name)'), nt),
-        h('button', { class: 'btn', type: 'button', 'data-cmd': C.action, 'data-test': 'agree-action',
-          onclick: () => act(C.action, { op: 'agree', recordId: r.id, what: what.value, ownerRole: who.value, dueInDays: Number(when.value), ...(nt.value.trim() ? { note: nt.value.trim() } : {}) }, 'Action agreed') }, 'Agree action'));
+        btn);
     }
     const copy = d.replyTemplate ? h('button', { class: 'btn btn-ghost btn-small', type: 'button', onclick: async () => {
       try { await navigator.clipboard.writeText(d.replyTemplate.text); ctx.toast('Template copied. Edit it outside Ospeli.'); } catch { ctx.toast('Could not copy. Select the text instead.'); }
     } }, 'Copy template') : null;
 
-    setKids(box, h('div', { class: 'fb-record', 'data-test': 'record', 'data-record': r.id, 'data-stage': r.stage },
+    setKids(box, h('div', { class: 'fb-record', 'data-test': 'record', 'data-record': r.id, 'data-stage': r.stage, 'data-clinical': String(r.clinical) },
       h('p', {}, h('a', { class: 'fb-back', href: '#/feedback/queue' }, '‹ Complaints queue')),
       h('section', { class: 'card' },
         h('h2', {}, `${ref(r.id)} · ${r.kindName}`, ' ', h('span', { class: `chip fb-st-${r.stage}`, 'data-test': 'stage' }, r.stageName)),
-        r.clinical ? h('p', { class: 'fb-clinical-note', 'data-test': 'clinical-note' }, 'Passed to clinical review. Ospeli records only that it was passed; nothing about the care is kept here, and it is not timed in this module.') : null,
+        r.clinical ? h('p', { class: 'fb-clinical-note', 'data-test': 'clinical-note' }, `With clinical review since ${day(r.clinicalSince)}. Ospeli records only that it was passed; nothing about the care is kept here. The acknowledgement is timed as usual; the reply is not called overdue here while it waits, and the guide does not chase it.`) : null,
         h('dl', { class: 'fb-facts' },
-          row('Service', r.serviceName), row('About', r.themeName), row('Came in by', r.channelName), row('Rating', r.ratingName),
-          row('Received', fmtTime(r.receivedAt)), row('Owner', r.ownerName), row('Outcome', r.outcome ? opt.outcomes.find((o) => o.id === r.outcome)?.name : null)),
+          row('Owner', r.ownerText), row('About', r.themeName), row('Came in by', r.channelName), row('Rating', r.ratingName),
+          row('Received', fmtTime(r.receivedAt)), row('Outcome', r.outcome ? opt.outcomes.find((o) => o.id === r.outcome)?.name : null)),
         r.note ? h('div', { class: 'fb-note' }, h('p', { class: 'meta' }, 'Note, as typed (checked for personal details before it was kept)'), h('p', { class: 'fb-typed', 'data-test': 'record-note' }, r.note)) : null),
+      h('section', { class: 'card', 'aria-labelledby': 'fb-next-h', 'data-test': 'next' }, h('h3', { id: 'fb-next-h' }, 'Next step'),
+        ui.saved ? h('p', { class: `fb-saved ${ui.saved.ok ? 'fb-ok' : 'fb-bad'}`, role: 'status', tabindex: '-1', 'data-test': 'saved' }, ui.saved.text) : null,
+        controls.length ? controls : h('p', { class: 'meta', 'data-test': 'no-steps' }, r.stage === 'closed' ? 'This record is closed.'
+          : `${roleLabel(role)} can see this record but not move it on. Acknowledging and replying are for the owner (${r.ownerText || 'not set'}) or the Patient liaison officer; changing the owner, clinical review and closing are for the Patient liaison officer and the Quality lead.`),
+        timed ? h('p', { class: 'meta' }, 'Ospeli records that the site acknowledged or replied, and how. It sends nothing.') : null),
+      timed ? h('section', { class: 'card', 'aria-labelledby': 'fb-act-h', 'data-test': 'actions' }, h('h3', { id: 'fb-act-h' }, 'Agreed actions'),
+        actions.length ? h('ul', { class: 'fb-actions' }, actions) : h('p', { class: 'meta' }, 'No action agreed yet.'), agree) : null,
       timed ? h('section', { class: 'card', 'aria-labelledby': 'fb-due-h' }, h('h3', { id: 'fb-due-h' }, 'Due dates'),
-        due.timed ? h('ul', { class: 'fb-due' }, dueRow('Acknowledge', due.ackDueAt, due.ackLate, r.acknowledgedAt), dueRow('Reply', due.replyDueAt, due.replyLate, r.repliedAt)) : null,
-        h('p', { class: 'meta' }, due.timed ? d.settings : due.note)) : null,
+        h('ul', { class: 'fb-due', 'data-test': 'due' }, dueRow('Acknowledge', due.ackDueAt, due.ackLate, r.acknowledgedAt, false), dueRow('Reply', due.replyDueAt, due.replyLate, r.repliedAt, r.clinical)),
+        h('p', { class: 'meta' }, due.note)) : null,
       h('section', { class: 'card', 'aria-labelledby': 'fb-tl-h' }, h('h3', { id: 'fb-tl-h' }, 'Timeline'),
         h('ol', { class: 'fb-timeline', 'data-test': 'timeline' }, d.timeline.map((x) => h('li', { 'data-step': x.step },
           h('b', {}, x.stepName), h('span', {}, ` · ${fmtTime(x.at)} · ${x.roleName}${x.detail ? ` · ${x.detail}` : ''}`)))),
         h('p', { class: 'meta' }, 'The log keeps the role that acted, never a person.')),
-      h('section', { class: 'card', 'aria-labelledby': 'fb-next-h', 'data-test': 'next' }, h('h3', { id: 'fb-next-h' }, 'Next step'),
-        controls.length ? controls : h('p', { class: 'meta', 'data-test': 'no-steps' }, r.stage === 'closed' ? 'This record is closed.'
-          : `${roleById(role).name} can see this record but not move it on. Acknowledging and replying are for the owner role (${r.ownerName || 'not set'}) or the Patient liaison officer; changing the owner and closing are for the Patient liaison officer and the Quality lead.`),
-        timed ? h('p', { class: 'meta' }, 'Ospeli records that the site acknowledged or replied, and how. It sends nothing.') : null),
-      timed ? h('section', { class: 'card', 'aria-labelledby': 'fb-act-h', 'data-test': 'actions' }, h('h3', { id: 'fb-act-h' }, 'Agreed actions'),
-        actions.length ? h('ul', { class: 'fb-actions' }, actions) : h('p', { class: 'meta' }, 'No action agreed yet.'), agree) : null,
-      d.replyTemplate ? h('details', { class: 'card fb-template', 'data-test': 'reply-template' }, h('summary', {}, 'Template reply (guide)'),
+      d.replyTemplate ? h('details', { class: 'card fb-template', 'data-test': 'reply-template' }, h('summary', { class: 'btn btn-ghost' }, 'Template reply (guide)'),
         h('p', { class: 'meta' }, d.replyTemplate.label), h('pre', { class: 'fb-pre' }, d.replyTemplate.text), copy, h('p', { class: 'meta' }, d.replyTemplate.basis)) : null));
   }
   await load();
   return { refresh: load };
 }
+const STEP_DONE = { acknowledge: 'acknowledged', reply: 'reply recorded', close: 'closed', 'set-owner': 'owner changed', 'clinical-review': 'passed to clinical review', 'clinical-return': 'back from clinical review', share: 'shared with the service' };
 
 // ---------------------------------------------------------------- themes board
 async function themesScreen(box, ctx, { opt, base }) {

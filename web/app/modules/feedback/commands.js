@@ -11,11 +11,12 @@ import {
   CommandError, TIME, SYNTHETIC, LIMIT, TOTAL, TRUNCATED, FORMAT, page, WRITE_STATUS, PROPOSAL_OUT, EVENT_SEQS,
   NOT_A_NAME, checkTypedText, wardOfPlace, isSynthetic, DAY, HOUR, MIN,
 } from '../../core/kit.js';
-import { roleById, currentWords } from '../../core/model.js';
+import { currentWords } from '../../core/model.js';
+import { personalDetailIn, personNameIn } from '../../core/processmap.js';
 import {
   EVENT, RECORD_ID_PATTERN, ACTION_ID_PATTERN, NOTE_MAX, KINDS, CHANNELS, STAFF_CHANNELS, REPLY_CHANNELS, THEMES, FACES, STAGES, OUTCOMES,
   ACTION_KINDS, OWNER_ROLES, DUE_IN_DAYS, SETTINGS, settingsText, deriveRecords, nextRecordId, isTimed, isOpen, timing, sortQueue,
-  KPIS as KPI_LIST, KPI_FUNCTIONS, themesBoard, monthBounds, monthOf, GUIDE_RULES, GUIDE_LEFT_OUT, guideReplyDue, replyTemplate,
+  KPIS as KPI_LIST, KPI_FUNCTIONS, roleLabel, ownerText, leftOutText, themesBoard, monthBounds, monthOf, GUIDE_RULES, GUIDE_LEFT_OUT, guideReplyDue, replyTemplate,
 } from './logic.js';
 
 export const id = 'feedback';
@@ -31,28 +32,36 @@ const UPDATE_ROLES = ['patient-liaison', 'quality-lead', 'ward-nurse', 'ops-mana
 const LEADS = ['patient-liaison', 'quality-lead'];
 const GUIDE_ROLES = ['patient-liaison', 'quality-lead'];
 // Steps the owner role may take on its own records; the rest are for the liaison officer and the quality lead.
-const OWNER_STEPS = ['acknowledge', 'reply', 'clinical-review'];
+// Passing a record to clinical review after it was logged (and taking it back) is for the leads:
+// it changes how the reply is timed, so it is not left to the owner.
+const OWNER_STEPS = ['acknowledge', 'reply'];
 const STEPS = {
-  acknowledge: 'Acknowledged', reply: 'Reply sent', 'set-owner': 'Owner changed', close: 'Closed', 'clinical-review': 'Passed to clinical review', share: 'Shared with the service',
+  acknowledge: 'Acknowledged', reply: 'Reply sent', 'set-owner': 'Owner changed', close: 'Closed',
+  'clinical-review': 'Passed to clinical review', 'clinical-return': 'Returned from clinical review', share: 'Shared with the service',
 };
-const roleName = (r) => roleById(r)?.name || r;
+const roleName = roleLabel;
 const roleNames = (list) => list.map(roleName).join(', ');
 const stepRolesText = (step) => (OWNER_STEPS.includes(step) ? 'the owner role or the Patient liaison officer' : roleNames(LEADS));
 const LATEST_DAYS_BACK = 60;   // a received date further back than this is refused as a likely typing slip
-const DOUBLE_TAP_SECONDS = 10; // the same record from the same role within this time is one record
+const DOUBLE_TAP_SECONDS = 10; // the same staff record from the same role within this time is one record (not cards: see verifyLog)
 const MAX_ACTIONS = 20;
 
 const NOT_FOR = 'Ospeli holds no names or contact details and sends nothing. It does not score or rank staff, and it does not judge clinical care: a record about clinical care is marked as passed to clinical review.';
-const NOTE_ADVICE = 'Describe the service or what happened, never who. Ospeli holds no names or contact details: if the person wants a reply, take their details at the desk in the usual way.';
-// The note is checked before it is kept: a name with a title, a phone, record or ID number, an
-// email address or a date of birth is refused. Text that may be an untitled name is asked about once.
+// The note is checked before it is kept (kit.checkTypedText): a name with a title, a phone, record
+// or ID number, an email address or a date of birth is refused. Text that may be an untitled name is
+// asked about once. The refusal is short and says what to take out, in the words a desk uses.
+const TAKE_OUT = { 'an email address': 'the email address', 'a record or ID number': 'the record or ID number', 'a phone or ID number': 'the phone number', 'a date': 'the date' };
 function checkNote(input) {
   try {
-    checkTypedText(input, ['note'], { advice: NOTE_ADVICE });
+    checkTypedText(input, ['note']);
   } catch (err) {
-    if (err instanceof CommandError && err.detail?.confirm === 'notAName') {
-      throw new CommandError('invalid-input', `note may hold a person's name ("${err.detail.looksLike}"). Feedback describes a service or a process, never a person. If it is not a name, send the same input again with "notAName": true.`, err.detail);
+    if (!(err instanceof CommandError)) throw err;
+    if (err.detail?.confirm === 'notAName') {
+      throw new CommandError('invalid-input', `The note may hold a person's name ("${err.detail.looksLike}"). Write what happened, not who. If it is not a name, send the same input again with "notAName": true.`, err.detail);
     }
+    const what = personalDetailIn(input.note);
+    const word = what ? TAKE_OUT[what] || 'the personal detail' : personNameIn(input.note) ? 'the name' : null;
+    if (word) throw new CommandError('invalid-input', `Take out ${word}. Write what happened, not who.`, { field: 'note', personal: what || 'a name' });
     throw err;
   }
 }
@@ -70,6 +79,8 @@ const RECORD = {
     id: RECORD_ID, kind: enumOf(KINDS), kindName: { type: 'string' }, serviceId: { type: 'string' }, serviceName: { type: 'string' },
     theme: { type: ['string', 'null'] }, themeName: { type: ['string', 'null'] }, stage: STAGE, stageName: { type: 'string' },
     ownerRole: { type: ['string', 'null'], description: 'The role that owns the reply. Never a person.' }, ownerName: { type: ['string', 'null'] },
+    ownerText: { type: ['string', 'null'], description: 'Whose it is in words: the owner role and the service, for example "Ward or department lead · Outpatients".' },
+    clinicalSince: { type: ['string', 'null'], description: 'When it was passed to clinical review, while it is there.' },
     receivedAt: TIME, ackDueAt: { type: ['string', 'null'] }, replyDueAt: { type: ['string', 'null'], description: 'Due dates are example settings, set locally, not a standard.' },
     daysToReplyDue: { type: ['number', 'null'], description: 'Days until the reply is due; negative when late; null once replied or not timed.' },
     overdue: { type: 'boolean' }, dueSoon: { type: 'boolean' },
@@ -105,7 +116,8 @@ function out(r, svc, now, short = false) {
   const base = {
     id: r.id, kind: r.kind, kindName: KINDS[r.kind]?.name || r.kind, serviceId: r.serviceId, serviceName: svc.get(r.serviceId)?.name || r.serviceId,
     theme: r.theme, themeName: r.theme ? THEMES[r.theme]?.name || r.theme : null, stage: r.stage, stageName: STAGES[r.stage],
-    ownerRole: r.ownerRole, ownerName: r.ownerRole ? roleName(r.ownerRole) : null, receivedAt: r.receivedAt, replyDueAt: r.replyDueAt,
+    ownerRole: r.ownerRole, ownerName: r.ownerRole ? roleName(r.ownerRole) : null, ownerText: ownerText(r.ownerRole, svc.get(r.serviceId)?.name || r.serviceId),
+    clinicalSince: r.clinical ? r.clinicalAt : null, receivedAt: r.receivedAt, replyDueAt: r.replyDueAt,
     daysToReplyDue: t.daysToReplyDue, overdue: t.overdue, dueSoon: t.dueSoon, clinical: r.clinical,
   };
   if (short) return base;
@@ -145,7 +157,9 @@ async function verifyLog(core, input, actor, events) {
   if (events) {
     // A double tap, or the same form sent from two tabs, is one record.
     const now = Date.parse(core.now());
-    const same = events.filter((e) => e.type === EVENT.logged && e.actorRole === actor.role && Math.abs(now - Date.parse(e.at)) < DOUBLE_TAP_SECONDS * 1000).find((e) => {
+    // Not for cards: two visitors may leave the same simple card a moment apart, and both count.
+    // A double tap on the card screen is stopped by the screen itself.
+    const same = card ? null : events.filter((e) => e.type === EVENT.logged && e.actorRole === actor.role && Math.abs(now - Date.parse(e.at)) < DOUBLE_TAP_SECONDS * 1000).find((e) => {
       const d = e.data || {};
       return d.kind === kind && d.serviceId === input.serviceId && d.channel === input.channel && (d.theme ?? null) === (input.theme ?? null)
         && (d.rating ?? null) === (input.rating ?? null) && (d.note ?? null) === (input.note ?? null);
@@ -160,7 +174,7 @@ function verifyStep(records, input, role) {
   if (!r) throw notFound();
   if (input.expectedState && r.stage !== input.expectedState) throw new CommandError('conflict', `${r.id.toUpperCase()} changed since you opened it: it is now ${STAGES[r.stage].toLowerCase()}.`, { stage: r.stage });
   const step = input.step;
-  const extra = { acknowledge: ['channel'], reply: ['channel'], 'set-owner': ['ownerRole'], close: ['outcome'], 'clinical-review': [], share: [] }[step];
+  const extra = { acknowledge: ['channel'], reply: ['channel'], 'set-owner': ['ownerRole'], close: ['outcome'], 'clinical-review': [], 'clinical-return': [], share: [] }[step];
   for (const k of ['channel', 'ownerRole', 'outcome']) {
     if (extra.includes(k) && input[k] == null) throw new CommandError('invalid-input', `The step ${step} needs ${k}.`, { needs: extra });
     if (!extra.includes(k) && input[k] != null) throw new CommandError('invalid-input', `The step ${step} takes no ${k}: leave it out.`);
@@ -183,6 +197,7 @@ function verifyStep(records, input, role) {
   if (step === 'set-owner' && input.ownerRole === r.ownerRole) throw new CommandError('conflict', `${roleName(r.ownerRole)} already owns ${r.id.toUpperCase()}.`);
   if (step === 'close' && r.stage !== 'replied' && input.outcome !== 'withdrawn') throw new CommandError('conflict', `${r.id.toUpperCase()} has no reply recorded yet. Record the reply first, or close it as withdrawn if the person withdrew it.`, { stage: r.stage });
   if (step === 'clinical-review' && r.clinical) throw new CommandError('conflict', `${r.id.toUpperCase()} is already passed to clinical review.`);
+  if (step === 'clinical-return' && !r.clinical) throw new CommandError('conflict', `${r.id.toUpperCase()} is not with clinical review.`);
   return r;
 }
 function stepEvents(r, input, role, at) {
@@ -193,6 +208,7 @@ function stepEvents(r, input, role, at) {
   if (s === 'set-owner') return [ev(EVENT.ownerSet, r.id, role, at, { ownerRole: input.ownerRole })];
   if (s === 'close') return [ev(EVENT.closed, r.id, role, at, { outcome: input.outcome })];
   if (s === 'clinical-review') return [ev(EVENT.clinical, r.id, role, at)];
+  if (s === 'clinical-return') return [ev(EVENT.clinicalReturned, r.id, role, at)];
   return [ev(EVENT.shared, r.id, role, at)];
 }
 // The steps a role can take on a record now, so the screen shows only buttons that will work.
@@ -331,7 +347,7 @@ export const COMMANDS = [
       const cut = page(ordered, input.limit, 50);
       const on = await guideOn(core);
       const suggestions = on ? guideReplyDue(open, now).filter((s) => actor.role === 'patient-liaison' || s.forRoles.includes(actor.role))
-        .map((s) => ({ ...s, serviceName: svc.get(records.get(s.recordId).serviceId)?.name || null, ownerName: roleName(s.ownerRole) })) : [];
+        .map((s) => { const name = svc.get(records.get(s.recordId).serviceId)?.name || null; return { ...s, serviceName: name, ownerName: roleName(s.ownerRole), ownerText: ownerText(s.ownerRole, name) }; }) : [];
       return {
         asOf: now, synthetic: await isSynthetic(core),
         records: cut.items.map((r) => out(r, svc, now, input.format === 'short')), total: cut.total, truncated: cut.truncated,
@@ -373,11 +389,11 @@ export const COMMANDS = [
       const svcName = svc.get(r.serviceId)?.name || r.serviceId;
       const detail = (x) => (x.channel ? (x.step === 'received' ? CHANNELS[x.channel] : REPLY_CHANNELS[x.channel]) || x.channel : x.outcome ? OUTCOMES[x.outcome] || x.outcome
         : x.ownerRole ? roleName(x.ownerRole) : x.actionId ? ACTION_KINDS[r.actions.find((a) => a.id === x.actionId)?.what] || x.actionId : null);
-      const stepName = { received: 'Received', acknowledged: 'Acknowledged', replied: 'Reply sent', closed: 'Closed', 'owner-set': 'Owner set', 'clinical-review': 'Passed to clinical review', shared: 'Shared with the service', 'action-agreed': 'Action agreed', 'action-closed': 'Action closed' };
+      const stepName = { received: 'Received', acknowledged: 'Acknowledged', replied: 'Reply sent', closed: 'Closed', 'owner-set': 'Owner set', 'clinical-review': 'Passed to clinical review', 'clinical-review-returned': 'Returned from clinical review', shared: 'Shared with the service', 'action-agreed': 'Action agreed', 'action-closed': 'Action closed' };
       return {
         asOf: now, synthetic: await isSynthetic(core), record: out(r, svc, now),
         timeline: r.timeline.map((x) => ({ step: x.step, stepName: stepName[x.step] || x.step, at: x.at, role: x.role, roleName: roleName(x.role), detail: detail(x) })),
-        due: isTimed(r) ? { ackDueAt: r.ackDueAt, ackLate: t.ackLate, replyDueAt: r.replyDueAt, replyLate: t.replyLate, timed: !r.clinical, note: r.clinical ? 'Passed to clinical review: not timed in this module.' : SETTINGS.basis } : null,
+        due: isTimed(r) ? { ackDueAt: r.ackDueAt, ackLate: t.ackLate, replyDueAt: r.replyDueAt, replyLate: t.replyLate, timed: true, clinical: r.clinical, note: r.clinical ? `With clinical review: the acknowledgement is timed as usual; the reply is not called overdue here while it waits, and the guide does not chase it. ${SETTINGS.basis}` : SETTINGS.basis } : null,
         actions: r.actions.map((a) => ({ id: a.id, what: a.what, whatName: ACTION_KINDS[a.what] || a.what, ownerRole: a.ownerRole, ownerName: roleName(a.ownerRole), dueAt: a.dueAt, note: a.note, agreedAt: a.agreedAt, closedAt: a.closedAt, late: a.closedAt ? a.closedAt > a.dueAt : now > a.dueAt })),
         next: nextSteps(r, actor.role),
         mayAgreeActions: isTimed(r) && (LEADS.includes(actor.role) || actor.role === r.ownerRole),
@@ -390,7 +406,7 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_experience_record_update',
-    summary: 'Move a complaint or concern on, one step: acknowledge (with the channel used), reply (the site sent the full reply, by which channel; Ospeli sends nothing), set-owner (a role, never a person), close (with the outcome; before a reply only as withdrawn), clinical-review (mark it as passed to clinical review; nothing about the care is recorded). For a compliment or card: share (shared with the service). The owner role may acknowledge, reply and pass to clinical review on its own records; the patient liaison officer and the quality lead may take every step.',
+    summary: 'Move a complaint or concern on, one step: acknowledge (with the channel used), reply (the site sent the full reply, by which channel; Ospeli sends nothing), set-owner (a role, never a person), close (with the outcome; before a reply only as withdrawn), clinical-review (mark it as passed to clinical review; nothing about the care is recorded; the acknowledgement stays timed, the reply is not called overdue while it waits), clinical-return (it came back from clinical review). For a compliment or card: share (shared with the service). The owner role may acknowledge and reply on its own records; the patient liaison officer and the quality lead may take every step.',
     kind: 'write', roles: UPDATE_ROLES, approval: true,
     input: {
       type: 'object', additionalProperties: false, required: ['recordId', 'step'],
@@ -499,7 +515,7 @@ export const COMMANDS = [
       const board = themesBoard(all, { ...period, offsetMinutes });
       const keep = new Set(all.map((r) => r.id));
       const mine = events.filter((e) => e.type.startsWith(EVENT_PREFIX) && keep.has(e.subject));
-      const kpis = KPI_LIST.map((k) => ({ ...k, ...KPI_FUNCTIONS[k.id](mine, { since: period.since, until: period.until, now, offsetMinutes }) }));
+      const kpis = KPI_LIST.map((k) => { const v = KPI_FUNCTIONS[k.id](mine, { since: period.since, until: period.until, now, offsetMinutes }); return { ...k, ...v, leftOutText: leftOutText(v.leftOut) }; });
       const named = (row) => ({ ...row, serviceName: svc.get(row.serviceId)?.name || row.serviceId });
       const on = await guideOn(core);
       const result = {

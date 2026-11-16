@@ -8,6 +8,7 @@
 // never of a person.
 
 import { median, DAY, MIN } from '../../core/kit.js';
+import { roleById } from '../../core/model.js';
 
 export const EVENT = {
   logged: 'feedback.logged',
@@ -16,6 +17,7 @@ export const EVENT = {
   replied: 'feedback.replied',
   closed: 'feedback.closed',
   clinical: 'feedback.clinical-review',
+  clinicalReturned: 'feedback.clinical-review-returned',
   shared: 'feedback.shared',
   actionAgreed: 'feedback.action-agreed',
   actionClosed: 'feedback.action-closed',
@@ -69,6 +71,12 @@ export const ACTION_KINDS = {
   other: 'Other',
 };
 export const OWNER_ROLES = ['patient-liaison', 'ward-nurse', 'quality-lead', 'ops-manager'];
+// In this module the role "ward-nurse" stands for whoever leads the ward or department the
+// feedback is about. A display label only: the role id and the core's role name do not change.
+const ROLE_LABELS = { 'ward-nurse': 'Ward or department lead' };
+export const roleLabel = (id) => ROLE_LABELS[id] || roleById(id)?.name || id;
+// Whose a record is: the role, and the service it is about.
+export const ownerText = (role, serviceName) => (role ? `${roleLabel(role)} · ${serviceName}` : null);
 export const DUE_IN_DAYS = [7, 14, 30, 60, 90];
 
 // The due dates, in one place. Example settings, set locally, not a standard: ISO 10002 names the
@@ -110,7 +118,7 @@ export function deriveRecords(events, { offsetMinutes = 0, settings = SETTINGS }
       const receivedAt = d.receivedAt || e.at;
       map.set(e.subject, {
         id: e.subject, kind: d.kind, channel: d.channel, serviceId: d.serviceId, theme: d.theme ?? null, rating: d.rating ?? null,
-        note: d.note ?? null, clinical: false, clinicalAt: null, ownerRole: timed ? (d.ownerRole || 'patient-liaison') : null,
+        note: d.note ?? null, clinical: false, clinicalAt: null, clinicalPeriods: [], ownerRole: timed ? (d.ownerRole || 'patient-liaison') : null,
         receivedAt, loggedAt: e.at, loggedByRole: e.actorRole,
         acknowledgedAt: null, ackChannel: null, repliedAt: null, replyChannel: null, closedAt: null, outcome: null, sharedAt: null,
         stage: timed ? 'received' : 'recorded',
@@ -128,7 +136,8 @@ export function deriveRecords(events, { offsetMinutes = 0, settings = SETTINGS }
     else if (e.type === EVENT.replied) { r.repliedAt = e.at; r.replyChannel = d.channel ?? null; r.stage = 'replied'; line('replied', { channel: d.channel }); }
     else if (e.type === EVENT.closed) { r.closedAt = e.at; r.outcome = d.outcome ?? null; r.stage = 'closed'; line('closed', { outcome: d.outcome }); }
     else if (e.type === EVENT.ownerSet) { r.ownerRole = d.ownerRole; line('owner-set', { ownerRole: d.ownerRole }); }
-    else if (e.type === EVENT.clinical) { r.clinical = true; r.clinicalAt = e.at; line('clinical-review'); }
+    else if (e.type === EVENT.clinical && !r.clinical) { r.clinical = true; r.clinicalAt = e.at; r.clinicalPeriods.push({ from: e.at, to: null }); line('clinical-review'); }
+    else if (e.type === EVENT.clinicalReturned && r.clinical) { r.clinical = false; r.clinicalAt = null; r.clinicalPeriods.at(-1).to = e.at; line('clinical-review-returned'); }
     else if (e.type === EVENT.shared) { r.sharedAt = e.at; r.stage = 'shared'; line('shared'); }
     else if (e.type === EVENT.actionAgreed) {
       r.actions.push({ id: d.actionId, what: d.what, ownerRole: d.ownerRole, dueAt: d.dueAt, note: d.note ?? null, agreedAt: e.at, agreedByRole: e.actorRole, closedAt: null, closedByRole: null });
@@ -144,29 +153,35 @@ export function deriveRecords(events, { offsetMinutes = 0, settings = SETTINGS }
 export const isTimed = (r) => !!KINDS[r.kind]?.timed;
 export const isOpen = (r) => isTimed(r) && r.stage !== 'closed';
 
-// Where a record stands against its due dates at `now`. A record passed to clinical review is not
-// timed here: it is never "overdue" in this module (the clinical review has its own process).
+// Was the record with clinical review at this moment?
+export const withClinicalAt = (r, iso) => r.clinicalPeriods.some((p) => p.from <= iso && (!p.to || p.to > iso));
+
+// Where a record stands against its due dates at `now`. Clinical review does not take a complaint
+// out of the complaints process: the acknowledgement is timed as usual. Only the reply waits: while
+// the record is with clinical review its reply is not called overdue here and the guide does not chase it.
 export function timing(r, now, settings = SETTINGS) {
-  if (!isTimed(r)) return { timed: false, overdue: false, dueSoon: false, daysToReplyDue: null, ackLate: false, replyLate: false };
+  if (!isTimed(r)) return { timed: false, overdue: false, ackOverdue: false, replyOverdue: false, dueSoon: false, daysToReplyDue: null, ackLate: false, replyLate: false };
   const ackLate = r.acknowledgedAt ? r.acknowledgedAt > r.ackDueAt : now > r.ackDueAt;
   const replyLate = r.repliedAt ? r.repliedAt > r.replyDueAt : now > r.replyDueAt;
   const open = r.stage !== 'closed';
   const toDue = days(now, r.replyDueAt);
   const waitingReply = open && !r.repliedAt && r.outcome !== 'withdrawn';
-  const overdue = open && !r.clinical && ((!r.acknowledgedAt && now > r.ackDueAt) || (waitingReply && now > r.replyDueAt));
+  const ackOverdue = open && !r.acknowledgedAt && now > r.ackDueAt;
+  const replyOverdue = waitingReply && !r.clinical && now > r.replyDueAt;
+  const overdue = ackOverdue || replyOverdue;
   return {
-    timed: !r.clinical, overdue, ackLate, replyLate,
+    timed: true, overdue, ackOverdue, replyOverdue, ackLate, replyLate,
     dueSoon: waitingReply && !r.clinical && !overdue && toDue <= settings.remindDaysBefore,
     daysToReplyDue: waitingReply ? round1(toDue) : null,
   };
 }
 
-// The queue order: overdue first (the most overdue first), then the nearest reply due date; records
-// waiting on clinical review at the end, because they are not timed here.
+// The queue order: overdue first, then the nearest reply due date. A record with clinical review
+// keeps its place by its due date.
 export function sortQueue(list, now) {
   const key = (r) => {
     const t = timing(r, now);
-    return [r.clinical ? 2 : t.overdue ? 0 : 1, r.repliedAt ? Infinity : Date.parse(r.replyDueAt), Date.parse(r.receivedAt)];
+    return [t.overdue ? 0 : 1, r.repliedAt ? Infinity : Date.parse(r.replyDueAt), Date.parse(r.receivedAt)];
   };
   return [...list].sort((a, b) => {
     const ka = key(a); const kb = key(b);
@@ -178,27 +193,35 @@ export function sortQueue(list, now) {
 // ---- KPIs ----
 // Each is (events, { since, until, now, offsetMinutes }) -> { value, numerator, denominator }.
 // For a median, numerator is null and denominator is how many complaints the median is of.
-const LEAVE_OUT_CLINICAL = 'Complaints passed to clinical review are left out, because their timing follows the clinical review. Concerns, compliments and cards are left out.';
+// leftOut counts what the definition leaves out, by reason, so the screen can say it beside the number.
+//
+// Clinical review and the reply measures: a complaint is left out of response time and responses on
+// time only if it was with clinical review at its deciding moment: when the reply was sent, if that
+// was by the reply due date; otherwise at the reply due date. So a complaint passed to clinical review
+// after its due date had passed still counts as late, and nothing changes in a past period.
+export const replyDecidedAt = (r) => (r.repliedAt && r.repliedAt <= r.replyDueAt ? r.repliedAt : r.replyDueAt);
+const CLINICAL_RULE = 'A complaint is left out if it was with clinical review at its deciding moment: when the reply was sent, if that was by the reply due date; otherwise at the reply due date. A complaint passed to clinical review after its due date counts as late.';
+const NOT_COMPLAINTS = 'Concerns, compliments and cards are left out.';
 export const KPIS = [
   {
-    id: 'feedback-ack-time', name: 'Acknowledgement time', unit: 'days', decimals: 1,
-    definition: 'Median days from a complaint being received to the site acknowledging it, for complaints acknowledged in the period.',
-    counts: 'Days from received to acknowledged, for each complaint acknowledged in the period.', outOf: 'Complaints acknowledged in the period.',
-    leavesOut: LEAVE_OUT_CLINICAL, source: 'local definition', target: null,
+    id: 'feedback-ack-time', name: 'Acknowledgement time', unit: 'calendar days', decimals: 1,
+    definition: 'Median calendar days from a complaint being received to the site acknowledging it, for complaints acknowledged in the period. Complaints with clinical review count as usual.',
+    counts: 'Calendar days from received to acknowledged, for each complaint acknowledged in the period.', outOf: 'Complaints acknowledged in the period.',
+    leavesOut: NOT_COMPLAINTS, source: 'local definition', target: null,
     targetText: `No target. The acknowledgement due date (${SETTINGS.ackWorkingDays} working days) is an example setting, not a standard.`,
   },
   {
-    id: 'feedback-response-time', name: 'Response time', unit: 'days', decimals: 1,
-    definition: 'Median days from a complaint being received to the full reply being sent, for complaints replied to in the period.',
-    counts: 'Days from received to replied, for each complaint replied to in the period.', outOf: 'Complaints replied to in the period.',
-    leavesOut: LEAVE_OUT_CLINICAL, source: 'local definition', target: null,
+    id: 'feedback-response-time', name: 'Response time', unit: 'calendar days', decimals: 1,
+    definition: 'Median calendar days from a complaint being received to the full reply being sent, for complaints replied to in the period.',
+    counts: 'Calendar days from received to replied, for each complaint replied to in the period.', outOf: 'Complaints replied to in the period.',
+    leavesOut: `${CLINICAL_RULE} ${NOT_COMPLAINTS}`, source: 'local definition', target: null,
     targetText: `No target. The reply due date (${SETTINGS.replyWorkingDays} working days) is an example setting, not a standard.`,
   },
   {
     id: 'feedback-responses-on-time', name: 'Responses on time', unit: '%', decimals: 0,
     definition: 'Complaints replied to by their reply due date, out of complaints whose reply fell due in the period (up to now).',
     counts: 'Complaints replied to on or before the reply due date.', outOf: 'Complaints whose reply due date is in the period and has passed.',
-    leavesOut: `${LEAVE_OUT_CLINICAL} Complaints withdrawn before a reply are left out.`, source: 'local definition', target: null,
+    leavesOut: `${CLINICAL_RULE} Complaints withdrawn before a reply are left out. ${NOT_COMPLAINTS}`, source: 'local definition', target: null,
     targetText: `No target. The due date (${SETTINGS.replyWorkingDays} working days) is an example setting, not a standard.`,
   },
   {
@@ -211,31 +234,42 @@ export const KPIS = [
 ];
 export const kpiById = (id) => KPIS.find((k) => k.id === id) || null;
 
-const complaintsCounted = (events, opts) => [...deriveRecords(events, opts).values()].filter((r) => r.kind === 'complaint' && !r.clinical);
+const complaints = (events, opts) => [...deriveRecords(events, opts).values()].filter((r) => r.kind === 'complaint');
 const inPeriod = (iso, since, until) => !!iso && (!since || iso >= since) && (!until || iso < until);
+const atClinical = (r) => withClinicalAt(r, replyDecidedAt(r));
 
 export function kpiAckTime(events, { since, until, offsetMinutes } = {}) {
-  const xs = complaintsCounted(events, { offsetMinutes }).filter((r) => inPeriod(r.acknowledgedAt, since, until)).map((r) => days(r.receivedAt, r.acknowledgedAt));
-  return { value: round1(median(xs)), numerator: null, denominator: xs.length };
+  const xs = complaints(events, { offsetMinutes }).filter((r) => inPeriod(r.acknowledgedAt, since, until)).map((r) => days(r.receivedAt, r.acknowledgedAt));
+  return { value: round1(median(xs)), numerator: null, denominator: xs.length, leftOut: {} };
 }
 export function kpiResponseTime(events, { since, until, offsetMinutes } = {}) {
-  const xs = complaintsCounted(events, { offsetMinutes }).filter((r) => inPeriod(r.repliedAt, since, until)).map((r) => days(r.receivedAt, r.repliedAt));
-  return { value: round1(median(xs)), numerator: null, denominator: xs.length };
+  const replied = complaints(events, { offsetMinutes }).filter((r) => inPeriod(r.repliedAt, since, until));
+  const xs = replied.filter((r) => !atClinical(r)).map((r) => days(r.receivedAt, r.repliedAt));
+  return { value: round1(median(xs)), numerator: null, denominator: xs.length, leftOut: { clinical: replied.length - xs.length } };
 }
 const upTo = (until, now) => (until && now ? (until < now ? until : now) : until || now);
 export function kpiResponsesOnTime(events, { since, until, now, offsetMinutes } = {}) {
   const end = upTo(until, now);
-  const due = complaintsCounted(events, { offsetMinutes })
-    .filter((r) => inPeriod(r.replyDueAt, since, end))
-    .filter((r) => !(r.outcome === 'withdrawn' && !r.repliedAt));
+  const fell = complaints(events, { offsetMinutes }).filter((r) => inPeriod(r.replyDueAt, since, end));
+  const withdrawn = fell.filter((r) => r.outcome === 'withdrawn' && !r.repliedAt);
+  const clinical = fell.filter((r) => !withdrawn.includes(r) && atClinical(r));
+  const due = fell.filter((r) => !withdrawn.includes(r) && !clinical.includes(r));
   const ok = due.filter((r) => r.repliedAt && r.repliedAt <= r.replyDueAt).length;
-  return { value: due.length ? Math.round((100 * ok) / due.length) : null, numerator: ok, denominator: due.length };
+  return { value: due.length ? Math.round((100 * ok) / due.length) : null, numerator: ok, denominator: due.length, leftOut: { clinical: clinical.length, withdrawn: withdrawn.length } };
 }
 export function kpiActionsClosed(events, { since, until, now, offsetMinutes } = {}) {
   const end = upTo(until, now);
   const acts = [...deriveRecords(events, { offsetMinutes }).values()].filter(isTimed).flatMap((r) => r.actions).filter((a) => inPeriod(a.dueAt, since, end));
   const ok = acts.filter((a) => a.closedAt && a.closedAt <= a.dueAt).length;
-  return { value: acts.length ? Math.round((100 * ok) / acts.length) : null, numerator: ok, denominator: acts.length };
+  return { value: acts.length ? Math.round((100 * ok) / acts.length) : null, numerator: ok, denominator: acts.length, leftOut: {} };
+}
+// What the screen says beside a number about what was left out.
+export function leftOutText(leftOut = {}) {
+  const parts = [];
+  if (leftOut.clinical) parts.push(`${leftOut.clinical} with clinical review`);
+  if (leftOut.withdrawn) parts.push(`${leftOut.withdrawn} withdrawn before a reply`);
+  const n = (leftOut.clinical || 0) + (leftOut.withdrawn || 0);
+  return n ? `${n} left out: ${parts.join('; ')}` : null;
 }
 export const KPI_FUNCTIONS = {
   'feedback-ack-time': kpiAckTime, 'feedback-response-time': kpiResponseTime,
@@ -288,7 +322,7 @@ export function themesBoard(records, { since, until, offsetMinutes = 0 } = {}) {
 export const GUIDE_RULES = [
   {
     id: 'reply-due-soon',
-    words: `A complaint or concern is within ${SETTINGS.remindDaysBefore} days of its reply due date, or past it, and no reply is recorded: shown to the owner role and the patient liaison officer.`,
+    words: `A complaint or concern is within ${SETTINGS.remindDaysBefore} days of its reply due date, or past it, and no reply is recorded: shown to the owner role and the patient liaison officer. Not while it is with clinical review.`,
     basis: `Fixed rule. The ${SETTINGS.remindDaysBefore} days and the due dates are example settings, not a standard.`,
   },
   {
@@ -324,7 +358,7 @@ export function replyTemplate(r, { serviceName, actionName = (k) => ACTION_KINDS
   const lines = [
     `Reference ${r.id.toUpperCase()}`,
     '',
-    `Thank you for telling us about ${theme} at ${serviceName || 'our service'}. We are sorry it was not the experience you should have had.`,
+    `Thank you for telling us about ${theme} at ${serviceName || 'our service'}.`,
     'What we looked at: [what was checked, in plain words]',
     'What we found: [what happened, about the service and the process]',
   ];
@@ -332,7 +366,7 @@ export function replyTemplate(r, { serviceName, actionName = (k) => ACTION_KINDS
     lines.push('What we have agreed to do:');
     for (const a of r.actions) lines.push(`- ${actionName(a.what)}, by ${dateText(a.dueAt)}`);
   } else lines.push('What we will do: [the change agreed, and by when]');
-  if (r.clinical) lines.push('The part about clinical care has been passed to clinical review, who will reply on that part. [how and when]');
+  if (r.clinical || r.clinicalPeriods.length) lines.push('The part about clinical care has been passed to clinical review, who will reply on that part. [how and when]');
   lines.push('If you are not happy with this reply: [how to take it further at your organisation]');
   return lines.join('\n');
 }

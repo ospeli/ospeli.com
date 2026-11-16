@@ -171,3 +171,21 @@
   .mod-feedback .fb-handover { order: -1; }
   .mod-feedback .fb-numbers { order: 1; }
 }
+
+/* Record screen: what was just saved, a step waiting for "yes", and summaries that look like buttons. */
+.mod-feedback .fb-saved { margin: 0 0 8px; border-radius: 10px; padding: 10px 12px; border: 1px solid var(--line); background: var(--surface); font-weight: 700; }
+.mod-feedback .fb-confirm p { margin: 0 0 8px; font-weight: 700; flex-basis: 100%; }
+.mod-feedback summary.btn { display: inline-flex; width: auto; list-style: none; color: var(--navy); }
+.mod-feedback summary.btn::-webkit-details-marker { display: none; }
+.mod-feedback .fb-agree > summary.btn, .mod-feedback .fb-template > summary.btn { min-height: 44px; }
+.mod-feedback details[open] > summary.btn { margin-bottom: 8px; }
+.mod-feedback .btn:disabled { background: var(--surface); color: var(--ink-soft); border-color: var(--line-strong); cursor: not-allowed; }
+
+/* Text sizes: at least 13px on a laptop, at least 15px on a phone, everywhere in this module. */
+.mod-feedback .chip, .mod-feedback th, .mod-feedback .fb-facts dt, .mod-feedback .eyebrow { font-size: .8125rem; }
+.mod-feedback .meta, .mod-feedback .fb-def p, .mod-feedback .fb-def > summary, .mod-feedback .fb-kpi-of, .mod-feedback td, .mod-feedback .btn-small,
+.mod-feedback .guide-switch, .mod-feedback .proposals .meta { font-size: .875rem; }
+@media (max-width: 899px) {
+  .mod-feedback :is(.meta, .chip, .chip-btn, th, td, .btn-small, .eyebrow, small, summary, .fb-kpi-of, .fb-kpi-name, .fb-def p, .fb-facts dt, .fb-row,
+    .proposal-item, .proposals .meta, label, select, .stat span, .fb-hint) { font-size: .9375rem; }
+}

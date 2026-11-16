@@ -139,21 +139,21 @@ test('attacks on the log: roles, ids, unknown fields, long notes and every kind 
   await assert.rejects(run(core, LOG, complaint({ note: 'x'.repeat(141) }), 'receptionist'), code('invalid-input', /too long/));
   await assert.rejects(run(core, LOG, complaint({ note: '   ' }), 'receptionist'), code('invalid-input', /empty/));
   const personal = [
-    ['Dr Sarah Jones was rude', /names a person/],
-    ['Mrs Okafor waited three hours', /names a person/],
-    ['Please call back on 0123 456 7890', /phone or ID number/],
-    ['Call her on 555-0123456', /phone or ID number/],
-    ['Reply to someone@example.org', /email address/],
-    ['Record number 12345678 was wrong', /record or ID number/],
-    ['MRN: 4455667 asked for a copy', /record or ID number/],
-    ['Born 12/03/1980, waited long', /date/],
+    ['Dr Sarah Jones was rude', /^Take out the name\. Write what happened, not who\.$/],
+    ['Mrs Okafor waited three hours', /^Take out the name\./],
+    ['Please call back on 0123 456 7890', /^Take out the phone number\. Write what happened, not who\.$/],
+    ['Call her on 555-0123456', /^Take out the phone number\./],
+    ['Reply to someone@example.org', /^Take out the email address\./],
+    ['Record number 12345678 was wrong', /^Take out the record or ID number\./],
+    ['MRN: 4455667 asked for a copy', /^Take out the record or ID number\./],
+    ['Born 12/03/1980, waited long', /^Take out the date\./],
   ];
   for (const [note, re] of personal) {
     await assert.rejects(run(core, LOG, complaint({ note }), 'receptionist'), code('invalid-input', re), note);
     await assert.rejects(run(core, LOG, { kind: 'card', channel: 'card', serviceId: 'dept-emergency', rating: 1, note }, 'receptionist'), code('invalid-input'), `card: ${note}`);
   }
   // notAName cannot be used to keep a titled name or a number.
-  await assert.rejects(run(core, LOG, complaint({ note: 'Dr Sarah Jones was rude', notAName: true }), 'receptionist'), code('invalid-input', /names a person/));
+  await assert.rejects(run(core, LOG, complaint({ note: 'Dr Sarah Jones was rude', notAName: true }), 'receptionist'), code('invalid-input', /Take out the name/));
   assert.equal((await feedbackEvents(core)).length, n, 'nothing was saved');
   // An untitled name is asked about once; "not a name" saves the same note.
   const looks = 'Sarah Jones at the desk was rude';
@@ -173,6 +173,16 @@ test('a double tap (or the same form from two tabs) makes one record; the same d
   c.add(11e3);
   const b = await run(core, LOG, complaint(), 'receptionist');
   assert.notEqual(a.recordId, b.recordId);
+});
+
+test('two visitors may leave the same simple card a moment apart: both cards arrive', async () => {
+  const { core, c } = await site();
+  const card = { kind: 'card', channel: 'card', serviceId: 'dept-outpatients', rating: 4 };
+  const a = await run(core, LOG, card, 'receptionist');
+  c.add(3e3);
+  const b = await run(core, LOG, card, 'receptionist');
+  const c2 = await run(core, LOG, card, 'receptionist');
+  assert.equal(new Set([a.recordId, b.recordId, c2.recordId]).size, 3);
 });
 
 test('a complaint moves received, acknowledged, replied, closed; each step only from the right stage and by the right role', async () => {
@@ -234,25 +244,55 @@ test('a compliment or card is shared, not timed; made-up and badly formed ids ar
   await assert.rejects(run(core, UPD, { recordId: k.recordId, step: 'share' }, 'receptionist'), code('forbidden'));
 });
 
-test('clinical care: the record is only marked as passed to clinical review, and is never overdue here', async () => {
+test('clinical review does not take a complaint out of the process: acknowledgement stays timed, the reply is not called overdue, it keeps its place', async () => {
   const { core, c } = await site();
-  const a = await run(core, LOG, complaint({ clinical: true, serviceId: 'ward-a3' }), 'patient-liaison');
+  const a = await run(core, LOG, complaint({ clinical: true, serviceId: 'ward-a3' }), 'receptionist'); // a receptionist may tick it at logging
   const b = await run(core, LOG, complaint({ theme: 'communication', serviceId: 'ward-a3' }), 'patient-liaison');
-  c.add(30 * 864e5);
-  const q = await run(core, Q, { view: 'open', serviceId: 'ward-a3', limit: 500 }, 'patient-liaison');
-  const ra = q.records.find((r) => r.id === a.recordId); const rb = q.records.find((r) => r.id === b.recordId);
+  // Five days on: neither is acknowledged; both are past the 2-working-day acknowledgement date.
+  c.add(5 * 864e5);
+  let q = await run(core, Q, { view: 'open', serviceId: 'ward-a3', limit: 500 }, 'patient-liaison');
+  let ra = q.records.find((r) => r.id === a.recordId);
   assert.equal(ra.clinical, true);
+  assert.equal(ra.overdue, true, 'acknowledgement is overdue even while with clinical review');
+  assert.ok(ra.clinicalSince);
+  // Acknowledged; thirty days on, B's reply is overdue, A's reply is not called overdue and keeps its place by due date.
+  await run(core, UPD, { recordId: a.recordId, step: 'acknowledge', channel: 'letter' }, 'patient-liaison');
+  await run(core, UPD, { recordId: b.recordId, step: 'acknowledge', channel: 'letter' }, 'patient-liaison');
+  c.add(25 * 864e5);
+  q = await run(core, Q, { view: 'open', serviceId: 'ward-a3', limit: 500 }, 'patient-liaison');
+  ra = q.records.find((r) => r.id === a.recordId); const rb = q.records.find((r) => r.id === b.recordId);
   assert.equal(ra.overdue, false);
   assert.equal(rb.overdue, true);
-  assert.ok(q.records.indexOf(ra) > q.records.indexOf(rb), 'clinical review comes after the timed records');
+  assert.ok(ra.daysToReplyDue < 0, 'its reply due date is still shown');
+  const notOver = q.records.filter((r) => !r.overdue);
+  assert.deepEqual(notOver.map((r) => r.daysToReplyDue ?? Infinity), [...notOver.map((r) => r.daysToReplyDue ?? Infinity)].sort((x, y) => x - y), 'by due date, clinical or not');
   assert.ok(!q.suggestions.some((s) => s.recordId === a.recordId), 'the guide does not chase it');
-  assert.ok((await run(core, Q, { view: 'clinical', limit: 500 }, 'patient-liaison')).records.some((r) => r.id === a.recordId));
-  // Passing a record later: once only, and by the owner role or a lead.
-  await run(core, UPD, { recordId: b.recordId, step: 'clinical-review' }, 'quality-lead');
-  await assert.rejects(run(core, UPD, { recordId: b.recordId, step: 'clinical-review' }, 'quality-lead'), code('conflict', /already passed/));
-  const ev = (await feedbackEvents(core)).filter((e) => e.type === L.EVENT.clinical && e.subject === b.recordId);
-  assert.equal(ev.length, 1);
-  assert.equal(ev[0].data, null, 'nothing about the care is recorded');
+  assert.ok(q.suggestions.some((s) => s.recordId === b.recordId));
+  const g = await run(core, GET, { recordId: a.recordId }, 'patient-liaison');
+  assert.equal(g.due.clinical, true);
+  assert.match(g.due.note, /acknowledgement is timed as usual/);
+});
+
+test('after logging, only the liaison officer or the quality lead pass a record to clinical review, and they can take it back', async () => {
+  const { core, c } = await site();
+  const { recordId: id } = await run(core, LOG, complaint({ serviceId: 'ward-a1' }), 'patient-liaison');
+  await run(core, UPD, { recordId: id, step: 'set-owner', ownerRole: 'ward-nurse' }, 'patient-liaison');
+  await assert.rejects(run(core, UPD, { recordId: id, step: 'clinical-review' }, 'ward-nurse'), code('forbidden'), 'the owner cannot');
+  await assert.rejects(run(core, UPD, { recordId: id, step: 'clinical-review' }, 'receptionist'), code('forbidden'));
+  await assert.rejects(run(core, UPD, { recordId: id, step: 'clinical-return' }, 'patient-liaison'), code('conflict', /not with clinical review/));
+  assert.ok(!(await run(core, GET, { recordId: id }, 'ward-nurse')).next.includes('clinical-review'));
+  await run(core, UPD, { recordId: id, step: 'clinical-review' }, 'quality-lead');
+  await assert.rejects(run(core, UPD, { recordId: id, step: 'clinical-review' }, 'quality-lead'), code('conflict', /already passed/));
+  await assert.rejects(run(core, UPD, { recordId: id, step: 'clinical-return' }, 'ward-nurse'), code('forbidden'));
+  c.add(3600e3);
+  await run(core, UPD, { recordId: id, step: 'clinical-return' }, 'patient-liaison');
+  const g = await run(core, GET, { recordId: id }, 'patient-liaison');
+  assert.equal(g.record.clinical, false);
+  assert.deepEqual(g.timeline.map((x) => x.stepName).slice(-2), ['Passed to clinical review', 'Returned from clinical review']);
+  const evs = (await feedbackEvents(core)).filter((e) => e.subject === id && e.type.startsWith('feedback.clinical'));
+  assert.deepEqual(evs.map((e) => [e.type, e.data]), [['feedback.clinical-review', null], ['feedback.clinical-review-returned', null]], 'nothing about the care is recorded');
+  // Owner text names the role and the service.
+  assert.equal(g.record.ownerText, 'Ward or department lead · Ward A1 (acute medicine)');
 });
 
 test('actions: agree with a pick, an owner role and a due date; close; late is worked out from the due date', async () => {
@@ -262,7 +302,7 @@ test('actions: agree with a pick, an owner role and a due date; close; late is w
   await assert.rejects(run(core, ACT, { op: 'agree', recordId, what: 'process-change', ownerRole: 'ward-nurse', dueInDays: 30 }, 'receptionist'), code('forbidden'));
   await assert.rejects(run(core, ACT, { op: 'agree', recordId, what: 'process-change', ownerRole: 'ward-nurse' }, 'ward-nurse'), code('invalid-input', /dueInDays/));
   await assert.rejects(run(core, ACT, { op: 'agree', recordId, what: 'process-change', ownerRole: 'ward-nurse', dueInDays: 8 }, 'ward-nurse'), code('invalid-input'));
-  await assert.rejects(run(core, ACT, { op: 'agree', recordId, what: 'process-change', ownerRole: 'ward-nurse', dueInDays: 7, note: 'Nurse Smith to fix rota' }, 'ward-nurse'), code('invalid-input', /names a person/));
+  await assert.rejects(run(core, ACT, { op: 'agree', recordId, what: 'process-change', ownerRole: 'ward-nurse', dueInDays: 7, note: 'Nurse Smith to fix rota' }, 'ward-nurse'), code('invalid-input', /Take out the name/));
   const a1 = await run(core, ACT, { op: 'agree', recordId, what: 'information', ownerRole: 'ward-nurse', dueInDays: 7, note: 'New sign at the ward door' }, 'ward-nurse');
   assert.equal(a1.actionId, `${recordId}-a1`);
   assert.equal(Date.parse(a1.dueAt) - Date.parse(core.now()), 7 * 864e5);
@@ -387,72 +427,105 @@ test('the reads that return typed notes are marked freeText; the themes board re
 });
 
 // ---- KPIs, hand-checked. Site local time = UTC here (offset 0). Due dates: 2 and 10 working days.
-//  A fb-00001 complaint: received Mon 2 Nov 10:00, acknowledged Tue 3 Nov 10:00 (1.0 day), replied Tue 10 Nov 10:00 (8.0 days).
+// Clinical review rule: a complaint is left out of response time and responses on time only if it
+// was with clinical review at its deciding moment (when the reply was sent, if by the due date;
+// otherwise at the reply due date). Acknowledgement time counts every complaint.
+//  A fb-00001: received Mon 2 Nov 10:00, acknowledged Tue 3 Nov 10:00 (1.0 day), replied Tue 10 Nov 10:00 (8.0 days).
 //    Reply due Mon 16 Nov 10:00: on time. Action due 17 Nov, closed 15 Nov: on time.
-//  B fb-00002 complaint: received Wed 4 Nov 09:00, acknowledged Sat 7 Nov 09:00 (3.0 days; due Fri 6 Nov: late), replied Fri 20 Nov 09:00
+//  B fb-00002: received Wed 4 Nov 09:00, acknowledged Sat 7 Nov 09:00 (3.0 days), replied Fri 20 Nov 09:00
 //    (16.0 days; due Wed 18 Nov: late). Action due 25 Nov, not closed: late.
-//  C fb-00003 complaint passed to clinical review: left out of every KPI.
-//  D fb-00004 complaint: received Fri 13 Nov 08:00, acknowledged Mon 16 Nov 08:00 (3.0 days), no reply; reply due Fri 27 Nov 08:00 (passed).
-//    Action due 10 Dec: not yet due.
-//  E fb-00005 concern: left out of KPIs 1 to 3.
-//  F fb-00006 complaint: received Tue 3 Nov, withdrawn 5 Nov with no reply: left out of "responses on time".
+//  C fb-00003: received Mon 9 Nov 12:00, with clinical review from 12:05 and never back, acknowledged 18:00 (0.25 days).
+//    No reply; reply due Mon 23 Nov 12:00, with clinical review then: left out of on time.
+//  D fb-00004: received Fri 13 Nov 08:00, acknowledged Mon 16 Nov 08:00 (3.0 days), no reply; due Fri 27 Nov 08:00 (passed: late).
+//  E fb-00005: a concern: left out of KPIs 1 to 3.
+//  F fb-00006: received Tue 3 Nov, withdrawn 5 Nov with no reply: left out of on time (withdrawn).
+//  G fb-00007: received Mon 2 Nov 09:00, never acknowledged, due Mon 16 Nov 09:00; passed to clinical review on Wed 18 Nov,
+//    after its due date: it counts, as late.
+//  H fb-00008: received Tue 3 Nov 08:00, acknowledged Wed 4 Nov 08:00 (1.0 day), with clinical review 5 to 8 Nov and back,
+//    replied Thu 12 Nov 08:00 (9.0 days; due Tue 17 Nov 08:00: on time). Not with clinical review at its reply: it counts.
+//  I fb-00009: received Thu 5 Nov 10:00, acknowledged 16:00 (0.25 days), with clinical review from Fri 6 Nov,
+//    replied Thu 12 Nov 10:00 (by its due date, 19 Nov) while with clinical review: left out of both reply measures.
 // Period 1 to 30 Nov, now 30 Nov 12:00.
-//  Acknowledgement time: median of 1, 3, 3 = 3.0 days (3 complaints).
-//  Response time: median of 8, 16 = 12.0 days (2 complaints).
-//  Responses on time: A on time, B late, D not replied = 1 of 3 = 33%.
-//  Actions closed on time: A's on time, B's late (D's not due) = 1 of 2 = 50%.
+//  Acknowledgement time: 1, 3, 0.25, 3, 1, 0.25 -> sorted 0.25, 0.25, 1, 1, 3, 3 -> median 1.0 day (6 complaints).
+//  Response time: A 8, B 16, H 9 (I left out) -> median 9.0 days (3 complaints, 1 left out).
+//  Responses on time: A, B, D, G, H fell due and count; on time A and H = 2 of 5 = 40%. Left out: C and I (clinical), F (withdrawn).
+//  Actions closed on time: A's on time, B's late = 1 of 2 = 50%.
 const E = (type, subject, at, data = null, actorRole = 'patient-liaison') => ({ type, subject, at, data, actorRole });
 const logged = (id, kind, at, extra = {}) => E(L.EVENT.logged, id, at, { kind, channel: 'letter', serviceId: 'dept-outpatients', theme: 'waiting', rating: null, note: null, ownerRole: 'patient-liaison', receivedAt: at, ...extra });
 const KPI_LOG = [
   logged('fb-00001', 'complaint', '2026-11-02T10:00:00.000Z'),
+  logged('fb-00007', 'complaint', '2026-11-02T09:00:00.000Z'),
   logged('fb-00002', 'complaint', '2026-11-04T09:00:00.000Z'),
   logged('fb-00003', 'complaint', '2026-11-09T12:00:00.000Z'),
   E(L.EVENT.clinical, 'fb-00003', '2026-11-09T12:05:00.000Z'),
   logged('fb-00004', 'complaint', '2026-11-13T08:00:00.000Z'),
   logged('fb-00005', 'concern', '2026-11-02T11:00:00.000Z'),
   logged('fb-00006', 'complaint', '2026-11-03T10:00:00.000Z'),
+  logged('fb-00008', 'complaint', '2026-11-03T08:00:00.000Z'),
+  logged('fb-00009', 'complaint', '2026-11-05T10:00:00.000Z'),
   E(L.EVENT.acknowledged, 'fb-00005', '2026-11-02T12:00:00.000Z', { channel: 'phone' }),
   E(L.EVENT.acknowledged, 'fb-00001', '2026-11-03T10:00:00.000Z', { channel: 'letter' }),
+  E(L.EVENT.acknowledged, 'fb-00008', '2026-11-04T08:00:00.000Z', { channel: 'letter' }),
   E(L.EVENT.closed, 'fb-00006', '2026-11-05T10:00:00.000Z', { outcome: 'withdrawn' }),
+  E(L.EVENT.clinical, 'fb-00008', '2026-11-05T09:00:00.000Z'),
+  E(L.EVENT.acknowledged, 'fb-00009', '2026-11-05T16:00:00.000Z', { channel: 'email' }),
+  E(L.EVENT.clinical, 'fb-00009', '2026-11-06T09:00:00.000Z'),
   E(L.EVENT.acknowledged, 'fb-00002', '2026-11-07T09:00:00.000Z', { channel: 'letter' }),
+  E(L.EVENT.clinicalReturned, 'fb-00008', '2026-11-08T09:00:00.000Z'),
   E(L.EVENT.acknowledged, 'fb-00003', '2026-11-09T18:00:00.000Z', { channel: 'letter' }),
   E(L.EVENT.replied, 'fb-00001', '2026-11-10T10:00:00.000Z', { channel: 'letter' }),
   E(L.EVENT.actionAgreed, 'fb-00001', '2026-11-10T10:10:00.000Z', { actionId: 'fb-00001-a1', what: 'information', ownerRole: 'ward-nurse', dueAt: '2026-11-17T10:00:00.000Z', note: null }),
+  E(L.EVENT.replied, 'fb-00008', '2026-11-12T08:00:00.000Z', { channel: 'letter' }),
+  E(L.EVENT.replied, 'fb-00009', '2026-11-12T10:00:00.000Z', { channel: 'letter' }),
   E(L.EVENT.actionClosed, 'fb-00001', '2026-11-15T10:00:00.000Z', { actionId: 'fb-00001-a1' }),
   E(L.EVENT.acknowledged, 'fb-00004', '2026-11-16T08:00:00.000Z', { channel: 'email' }),
+  E(L.EVENT.clinical, 'fb-00007', '2026-11-18T09:00:00.000Z'),
   E(L.EVENT.replied, 'fb-00002', '2026-11-20T09:00:00.000Z', { channel: 'email' }),
   E(L.EVENT.actionAgreed, 'fb-00002', '2026-11-20T09:10:00.000Z', { actionId: 'fb-00002-a1', what: 'review', ownerRole: 'ward-nurse', dueAt: '2026-11-25T09:00:00.000Z', note: null }),
   E(L.EVENT.actionAgreed, 'fb-00004', '2026-11-26T09:00:00.000Z', { actionId: 'fb-00004-a1', what: 'other', ownerRole: 'ops-manager', dueAt: '2026-12-10T09:00:00.000Z', note: null }),
 ];
 const PERIOD = { since: '2026-11-01T00:00:00.000Z', until: '2026-12-01T00:00:00.000Z', now: '2026-11-30T12:00:00.000Z', offsetMinutes: 0 };
 
-test('KPIs from a hand-built event log match the numbers worked out by hand', () => {
+test('KPIs from a hand-built event log match the numbers worked out by hand, with the clinical review rule', () => {
   const recs = L.deriveRecords(KPI_LOG, { offsetMinutes: 0 });
   assert.equal(recs.get('fb-00002').ackDueAt, '2026-11-06T09:00:00.000Z');
   assert.equal(recs.get('fb-00002').replyDueAt, '2026-11-18T09:00:00.000Z');
   assert.equal(recs.get('fb-00004').replyDueAt, '2026-11-27T08:00:00.000Z');
-  assert.deepEqual(L.kpiAckTime(KPI_LOG, PERIOD), { value: 3, numerator: null, denominator: 3 });
-  assert.deepEqual(L.kpiResponseTime(KPI_LOG, PERIOD), { value: 12, numerator: null, denominator: 2 });
-  assert.deepEqual(L.kpiResponsesOnTime(KPI_LOG, PERIOD), { value: 33, numerator: 1, denominator: 3 });
-  assert.deepEqual(L.kpiActionsClosed(KPI_LOG, PERIOD), { value: 50, numerator: 1, denominator: 2 });
-  // Earlier "now": only what has fallen due by then counts (A due 16 Nov; B due 18 Nov not yet).
-  assert.deepEqual(L.kpiResponsesOnTime(KPI_LOG, { ...PERIOD, now: '2026-11-17T00:00:00.000Z' }), { value: 100, numerator: 1, denominator: 1 });
+  assert.equal(recs.get('fb-00003').replyDueAt, '2026-11-23T12:00:00.000Z');
+  assert.equal(recs.get('fb-00008').replyDueAt, '2026-11-17T08:00:00.000Z');
+  assert.equal(recs.get('fb-00009').replyDueAt, '2026-11-19T10:00:00.000Z');
+  assert.deepEqual(recs.get('fb-00008').clinicalPeriods, [{ from: '2026-11-05T09:00:00.000Z', to: '2026-11-08T09:00:00.000Z' }]);
+  assert.deepEqual(L.kpiAckTime(KPI_LOG, PERIOD), { value: 1, numerator: null, denominator: 6, leftOut: {} });
+  assert.deepEqual(L.kpiResponseTime(KPI_LOG, PERIOD), { value: 9, numerator: null, denominator: 3, leftOut: { clinical: 1 } });
+  assert.deepEqual(L.kpiResponsesOnTime(KPI_LOG, PERIOD), { value: 40, numerator: 2, denominator: 5, leftOut: { clinical: 2, withdrawn: 1 } });
+  assert.deepEqual(L.kpiActionsClosed(KPI_LOG, PERIOD), { value: 50, numerator: 1, denominator: 2, leftOut: {} });
+  assert.equal(L.leftOutText({ clinical: 2, withdrawn: 1 }), '3 left out: 2 with clinical review; 1 withdrawn before a reply');
+  assert.equal(L.leftOutText({ clinical: 0 }), null);
+  // No change to a past period: G was passed to clinical review after its due date. Measured on
+  // 17 Nov (before it was passed) and on 30 Nov (after), G counts as late both times.
+  const early = L.kpiResponsesOnTime(KPI_LOG, { ...PERIOD, until: '2026-11-17T00:00:00.000Z' });
+  assert.deepEqual(early, { value: 50, numerator: 1, denominator: 2, leftOut: { clinical: 0, withdrawn: 0 } }, 'up to 17 Nov: A on time, G late');
+  const later = L.kpiResponsesOnTime(KPI_LOG.filter((e) => !(e.subject === 'fb-00007' && e.type === L.EVENT.clinical)), PERIOD);
+  assert.deepEqual([later.numerator, later.denominator], [2, 5], 'passing G after its due date changed nothing');
   // A period with nothing in it gives no number, not zero.
-  assert.deepEqual(L.kpiAckTime(KPI_LOG, { ...PERIOD, since: '2026-10-01T00:00:00.000Z', until: '2026-11-01T00:00:00.000Z' }), { value: null, numerator: null, denominator: 0 });
+  assert.deepEqual(L.kpiAckTime(KPI_LOG, { ...PERIOD, since: '2026-10-01T00:00:00.000Z', until: '2026-11-01T00:00:00.000Z' }).value, null);
   // Timing at the end of the period.
   assert.equal(L.timing(recs.get('fb-00004'), PERIOD.now).overdue, true);
-  assert.equal(L.timing(recs.get('fb-00003'), PERIOD.now).overdue, false, 'clinical review is not timed here');
+  assert.equal(L.timing(recs.get('fb-00003'), PERIOD.now).overdue, false, 'C: acknowledged, and its reply is not called overdue while with clinical review');
+  assert.deepEqual([L.timing(recs.get('fb-00007'), PERIOD.now).ackOverdue, L.timing(recs.get('fb-00007'), PERIOD.now).replyOverdue], [true, false], 'G: the acknowledgement is still overdue');
   const g = L.guideReplyDue([...recs.values()], '2026-11-25T08:00:00.000Z');
   // E (a concern, reply due 16 Nov) is 9 days late and comes first; D is 2 days from its due date.
-  // A and B are replied, C is passed to clinical review, F is closed.
-  assert.deepEqual(g.map((s) => s.recordId), ['fb-00005', 'fb-00004']);
-  assert.deepEqual(g.map((s) => s.title), ['FB-00005: reply 9 days late', 'FB-00004: reply due in 2 days']);
+  // A, B, H and I are replied, C and G are with clinical review, F is closed.
+  assert.deepEqual(g.map((x) => x.recordId), ['fb-00005', 'fb-00004']);
+  assert.deepEqual(g.map((x) => x.title), ['FB-00005: reply 9 days late', 'FB-00004: reply due in 2 days']);
   for (const k of L.KPIS) {
     assert.equal(k.source, 'local definition');
     assert.ok(k.leavesOut && k.definition && k.targetText);
     assert.equal(k.target, null, 'no target without a source');
   }
-  assert.match(L.KPIS[0].leavesOut, /clinical review/);
+  assert.equal(L.KPIS[0].unit, 'calendar days');
+  assert.match(L.KPIS[1].leavesOut, /deciding moment/);
+  assert.match(L.KPIS[2].leavesOut, /passed to clinical review after its due date counts as late/);
 });
 
 test('the same KPIs through the commands: people do the steps on screen, the themes board gives the hand-checked numbers', async () => {
@@ -483,13 +556,15 @@ test('the same KPIs through the commands: people do the steps on screen, the the
   // The example site's local time is four hours behind UTC: November in local time is 1 Nov 04:00 to 1 Dec 04:00 UTC.
   const t = await run(core, TH, { month: '2026-11' }, 'quality-lead');
   const by = Object.fromEntries(t.kpis.map((k) => [k.id, [k.value, k.numerator, k.denominator]]));
-  // Acknowledgement: A 1.0, B 3.0, D 3.0 -> 3.0. Response: A 8.0, B 16.0 -> 12.0.
-  // On time (local time does not move any due date across the period edges): A of A, B, D = 33%.
+  // Acknowledgement counts every complaint: A 1.0, B 3.0, C2 0.25, D 3.0 -> median 2.0. Response: A 8.0, B 16.0 -> 12.0.
+  // On time (local time does not move any due date across the period edges): A of A, B, D = 33%; C2 was
+  // with clinical review at its due date (23 Nov), so it is left out and said so.
   // Actions: A's (due 17 Nov) on time; B's (due 27 Nov) not closed = 1 of 2.
   assert.deepEqual(by, {
-    'feedback-ack-time': [3, null, 3], 'feedback-response-time': [12, null, 2],
+    'feedback-ack-time': [2, null, 4], 'feedback-response-time': [12, null, 2],
     'feedback-responses-on-time': [33, 1, 3], 'feedback-actions-closed': [50, 1, 2],
   });
+  assert.equal(t.kpis.find((k) => k.id === 'feedback-responses-on-time').leftOutText, '2 left out: 1 with clinical review; 1 withdrawn before a reply');
   // The board counts: 5 complaints (A, B, C, D, F), 1 concern, 1 compliment, 2 cards (1 good, 1 poor).
   assert.deepEqual([t.totals.complaints, t.totals.concerns, t.totals.compliments, t.totals.cards, t.totals.cardsGood, t.totals.cardsPoor], [5, 1, 1, 2, 1, 1]);
   assert.deepEqual(t.ratings, [1, 0, 0, 0, 1]);
@@ -502,8 +577,8 @@ test('the same KPIs through the commands: people do the steps on screen, the the
   // The same numbers straight from the event log.
   const evs = await core.events();
   const since = '2026-11-01T04:00:00.000Z'; const until = '2026-12-01T04:00:00.000Z';
-  assert.deepEqual(L.kpiAckTime(evs, { since, until, offsetMinutes: -240 }).value, 3);
-  assert.deepEqual(L.kpiResponsesOnTime(evs, { since, until, now: core.now(), offsetMinutes: -240 }), { value: 33, numerator: 1, denominator: 3 });
+  assert.deepEqual(L.kpiAckTime(evs, { since, until, offsetMinutes: -240 }).value, 2);
+  assert.deepEqual(L.kpiResponsesOnTime(evs, { since, until, now: core.now(), offsetMinutes: -240 }), { value: 33, numerator: 1, denominator: 3, leftOut: { clinical: 1, withdrawn: 1 } });
 });
 
 test('a device with an older example hospital (no feedback history) gives honest empty answers', async () => {
