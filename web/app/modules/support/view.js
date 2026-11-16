@@ -37,7 +37,7 @@ export async function render(el, ctx) {
   const places = await ctx.run('ospeli_support_places', { limit: 500 });
   const head = h('div', { class: 'page-head' }, h('div', {}, h('p', { class: 'eyebrow' }, 'Cleaning and portering'), h('h1', {}, TITLES[screen])));
   if (!places.wards.length && !places.departments.length) {
-    el.append(h('div', { class: 'mod-support sup' }, head), h('div', { class: 'card notice' }, h('p', {}, 'No hospital is loaded on this device. Load Example General Hospital from ', h('a', { href: '#/data' }, 'Data and audit'), '.')));
+    el.append(h('div', { class: 'mod-support sup' }, head), h('div', { class: 'card notice' }, h('p', {}, 'No hospital is loaded on this device. Load Example General Hospital on the ', h('a', { href: '#/data' }, 'Data and audit'), ' page.')));
     return null;
   }
   const names = placeNames(places);
