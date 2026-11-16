@@ -134,6 +134,29 @@ export function possibleNameIn(text) {
   for (let i = 0; i < words.length - 1; i++) if (BEFORE_A_PERSON.has(words[i].toLowerCase()) && nameLike(words[i + 1])) return words[i + 1];
   return null;
 }
+// Place, asset and device names (issue #94): "Day Surgery", "Water Cooler" and "Night Tablet" are
+// two capitalised words with no job word, and are not people. A word that says what a thing is or
+// where it is ("Surgery", "Cooler", "Tablet") is set aside; what is left is judged as the role
+// field is: two or three capitalised words with no job word read as a name ("Jane Placeholder",
+// "Anita Khan Phone"). A titled name is refused as everywhere else. A list cannot know every
+// word: a place called after one unlisted word pair still reads as a name and is refused.
+const PLACE_OR_THING = new Set(`tablet tablets phone phones laptop laptops pc computer computers kiosk screen screens terminal
+  ipad device devices scanner scanners printer printers mobile handset desk front reception station nurses office offices
+  corridor surgery surgeries building buildings plant cooler coolers room rooms theatre theatres suite centre center hall
+  lounge garden pharmacy dispensary outpatients outpatient inpatient department dept service services storage storeroom
+  boiler generator generators chiller pump pumps fridge freezer heater lift lifts elevator elevators ramp stairs door doors
+  gate machine machines monitor monitors trolley trolleys chair chairs couch sink sinks toilet toilets shower showers bath
+  water air gas power light lights lighting fan fans heating cooling ventilation alarm alarms panel cabinet cupboard locker
+  steriliser sterilizer autoclave washer dryer utility macerator wheelchair wheelchairs hoist stretcher ultrasound radiology
+  physiotherapy physio dental eye maternity paediatric pediatric surgical medical day upper lower ground first second
+  third annex annexe wing tower house cottage lodge court yard depot workshop garage bay`.split(/\s+/));
+export function thingNameReadsAsPerson(name) {
+  const s = String(name);
+  if (personNameIn(s)) return true;
+  const rest = s.trim().split(/\s+/).filter((w) => !PLACE_OR_THING.has(w.toLowerCase()) && !NOT_NAMES.has(w.toLowerCase()));
+  return rest.length >= 2 && rest.length <= 3 && rest.every((w) => /^[A-Z][A-Za-z'’-]+$/.test(w)) && !rest.some(isJobWord);
+}
+export const deviceLabelNamesPerson = thingNameReadsAsPerson;
 export const nameQuestion = (field, looksLike) => `${field} may hold a person's name ("${looksLike}"). A map is shared with everyone who uses this site's data, and Ospeli times steps, never people. Use a role instead (for example Doctor, Charge nurse, Pharmacy). If it is not a person's name, send the same input again with "notAName": true.`;
 export const NAME_ADVICE = 'Use a role, not a person\'s name (for example Doctor, Charge nurse, Pharmacy). Ospeli times steps, never people.';
 

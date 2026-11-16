@@ -157,6 +157,19 @@ test('device labels say where a device is, never whose it is; labels are unique;
   assert.match(await s.site.consoleLine('remove device'), /remove device 1/);
 });
 
+// ospeli/ospeli#94: "Night Tablet" was refused as a person's name.
+test('a label that names a device or a place is accepted in title case; a bare name still is not', async () => {
+  const s = await start();
+  for (const label of ['Night Tablet', 'Maternity Tablet', 'Recovery Phone', 'Front Desk Laptop']) {
+    await s.site.consoleLine('add device');
+    assert.match(await s.site.consoleLine(label), /^2 of 2\./, `"${label}" was refused`);
+    assert.equal(await s.site.consoleLine('cancel'), 'Cancelled. Nothing was changed.');
+  }
+  await assert.doesNotReject(addDevice(s.site, { label: 'Night Tablet' }));
+  await s.site.consoleLine('add device');
+  for (const label of ['Sarah Jones', 'Anita Khan Phone', 'Dr Khan Tablet']) assert.match(await s.site.consoleLine(label), /not whose it is/, `"${label}" was let through`);
+});
+
 test('what a device does is recorded as a person via app; it can accept an agent\'s proposal; its role is the one set at the console', async () => {
   const s = await start();
   const key = await letBotIn(s.site);

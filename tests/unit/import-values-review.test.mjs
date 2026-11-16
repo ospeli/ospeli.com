@@ -36,3 +36,35 @@ test('a phone number after a calling word is found even when a shorter number co
   assert.equal(personalDetailIn('ring 555123'), 'a phone or ID number'); // the control
   assert.equal(personalDetailIn('Call ext 204 31 or ring 555123'), 'a phone or ID number');
 });
+
+// ospeli/ospeli#94: an ordinary place or asset name was refused as "a person's name".
+test('ordinary place and asset names do not stop an import', async () => {
+  for (const name of ['Day Surgery', 'Main Building', 'Blood Bank', 'Car Park', 'Plant Room', 'Water Cooler']) {
+    const { core, data } = await exported();
+    const e = data.entities.find((x) => x.type === (name === 'Water Cooler' ? 'asset' : 'department'));
+    e.name = name;
+    assert.deepEqual(await core.validateImport(data), [], `an entity called "${name}" is refused as a person's name`);
+  }
+  // every place and asset type, not only departments
+  for (const type of ['site', 'building', 'department', 'ward', 'bed', 'asset']) {
+    const { core, data } = await exported();
+    const e = data.entities.find((x) => x.type === type);
+    if (!e) continue;
+    e.name = 'Plant Room';
+    assert.deepEqual(await core.validateImport(data), [], `a ${type} called "Plant Room" is refused`);
+  }
+});
+
+test('a place still cannot carry a titled name or a phone number, and a role still cannot be a bare name', async () => {
+  const errsFor = async (type, name) => {
+    const { core, data } = await exported();
+    const e = data.entities.find((x) => x.type === type);
+    e.name = name;
+    return core.validateImport(data);
+  };
+  assert.ok((await errsFor('department', 'Dr Sarah Jones Suite')).some((x) => /personal details/.test(x)));
+  assert.ok((await errsFor('asset', 'Pump, call 07700 900123')).some((x) => /personal details/.test(x)));
+  assert.ok((await errsFor('role', 'Sarah Jones')).some((x) => /personal details/.test(x)));
+  assert.ok((await errsFor('department', 'Jane Placeholder')).some((x) => /personal details/.test(x)), 'a bare name on a place is still refused');
+  assert.ok((await errsFor('asset', 'Anita Khan Pump')).some((x) => /personal details/.test(x)), 'a name beside a thing word is still refused');
+});

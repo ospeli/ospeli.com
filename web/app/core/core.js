@@ -4,7 +4,7 @@
 import { MemoryAdapter } from './db.js';
 import { ENTITY_TYPES, validateEntity, validateEvent, roleById } from './model.js';
 import { makeEntry, verifyChain } from './audit.js';
-import { personalDetailIn, personNameIn } from './processmap.js';
+import { personalDetailIn, personNameIn, thingNameReadsAsPerson } from './processmap.js';
 
 export const EXPORT_FORMAT = 'ospeli-export';
 
@@ -32,17 +32,21 @@ export function findIdentifierFields(data) {
 // own name can still carry a person. Every string value in the entities and in the events' data
 // goes through the same check as process-map free text (a titled name, a phone, record or ID
 // number, an email address, a date of birth); an entity's name is also refused when it reads as a
-// person's name. A time stamp is skipped by its shape, never by its key: a key that sounds like
+// person's name. For a place or an asset (issue #94) words that say what or where it is are set
+// aside first, so "Day Surgery", "Blood Bank" and "Water Cooler" pass and "Jane Placeholder" does
+// not; see thingNameReadsAsPerson in processmap.js. A time stamp is skipped by its shape, never by its key: a key that sounds like
 // an id or a time (kind, end, seenAt) can still carry a person. Only hashes are skipped by key.
 // An event's subject is read too. A list cannot catch every name: an untitled name inside a
 // sentence passes. The answer names the place, never the value.
 const HASH_KEY = /^(prev|hash)$/;
+const PLACE_OR_ASSET = new Set(['site', 'building', 'department', 'ward', 'bed', 'asset']);
 const ISO_TIME = /^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:?\d{2})?)?$/;
 export function findIdentifierValues(data) {
   const hits = [];
   const check = (val, path, entityName) => {
     if (ISO_TIME.test(val)) return;
-    if (personalDetailIn(val) || personNameIn(val) || (entityName && personNameIn(val, { roleField: true }))) hits.push(path);
+    const nameRule = entityName === 'thing' ? thingNameReadsAsPerson(val) : entityName && personNameIn(val, { roleField: true });
+    if (personalDetailIn(val) || personNameIn(val) || nameRule) hits.push(path);
   };
   const walk = (v, path, top = false) => {
     if (hits.length >= 10 || v == null) return;
@@ -51,11 +55,11 @@ export function findIdentifierValues(data) {
     for (const [k, val] of Object.entries(v)) {
       if (hits.length >= 10) return;
       const here = Array.isArray(v) ? `${path}[${k}]` : `${path}.${k}`;
-      if (typeof val === 'string') { if (Array.isArray(v) || !HASH_KEY.test(k)) check(val, here, top && k === 'name'); }
+      if (typeof val === 'string') { if (Array.isArray(v) || !HASH_KEY.test(k)) check(val, here, k === 'name' && top); }
       else walk(val, here);
     }
   };
-  (data.entities || []).forEach((e, i) => walk(e, `entities[${i}]`, true));
+  (data.entities || []).forEach((e, i) => walk(e, `entities[${i}]`, PLACE_OR_ASSET.has(e?.type) ? 'thing' : true));
   (data.events || []).forEach((e, i) => {
     if (hits.length < 10 && typeof e?.subject === 'string') check(e.subject, `events[${i}].subject`);
     walk(e?.data, `events[${i}].data`);

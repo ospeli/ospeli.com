@@ -28,7 +28,7 @@ import { loadSyntheticHospital, setupUnfinished, currentHour, HOSPITAL_NAME } fr
 import {
   runCommand, commandByName, describeCommand, listCommands, agentAccess, agentList, auditRefusal, CommandError, DECLINE_REASONS, MAX_AGENT_DAYS,
 } from '../../web/app/core/commands.js';
-import { personNameIn, personalDetailIn } from '../../web/app/core/processmap.js';
+import { deviceLabelNamesPerson, personalDetailIn } from '../../web/app/core/processmap.js';
 import { SITE_META } from '../../web/app/core/site.js';
 import { SqliteAdapter, StoreInUseError } from './store.mjs';
 import { buildOpenApi } from './openapi.mjs';
@@ -187,7 +187,7 @@ export async function startServer({
     const all = await liveDevices();
     const name = (label || '').trim() || `Device ${(await devices()).length + 1}`;
     if (!DEVICE_LABEL.test(name)) throw new CommandError('invalid-input', 'Give the device a short label that says where it is, for example front desk tablet (letters, digits, spaces, dots, dashes).');
-    if (personNameIn(name) || personNameIn(name, { roleField: true }) || personalDetailIn(name)) throw new CommandError('invalid-input', 'That label looks like it names a person. Say where the device is or what it is for, for example front desk tablet.');
+    if (deviceLabelNamesPerson(name) || personalDetailIn(name)) throw new CommandError('invalid-input', 'That label looks like it names a person. Say where the device is or what it is for, for example front desk tablet.');
     if (all.some((d) => d.label.toLowerCase() === name.toLowerCase())) throw new CommandError('conflict', `There is already a device called ${name}. Pick another label, or type: devices`);
     if (!roleById(role)) throw new CommandError('invalid-input', 'Unknown role.');
     let code = '';
@@ -707,7 +707,7 @@ export async function startServer({
     if (/^stop (agents|bots)$/i.test(text)) { wizard = null; return consoleLine('stop agents'); }
     if (/^(cancel|stop|quit)$/i.test(text)) { wizard = null; return 'Cancelled. Nothing was changed.'; }
     if (w.step === 'device-label') {
-      if (text && (!DEVICE_LABEL.test(text) || personNameIn(text) || personNameIn(text, { roleField: true }))) return 'Say where the device is or what it is for, not whose it is, for example front desk tablet (letters, digits, spaces, dots, dashes). Or press Enter to skip.';
+      if (text && (!DEVICE_LABEL.test(text) || deviceLabelNamesPerson(text))) return 'Say where the device is or what it is for, not whose it is, for example front desk tablet (letters, digits, spaces, dots, dashes). Or press Enter to skip.';
       if (text && (await liveDevices()).some((d) => d.label.toLowerCase() === text.toLowerCase())) return `There is already a device called ${text}. Pick another label, or press Enter to skip.`;
       w.label = text; w.step = 'device-role';
       return `2 of 2. Which role will use it? It can see and do what that role can.\n${ROLES.map((r, i) => `  ${i + 1}  ${r.name}`).join('\n')}\nType a number.`;
