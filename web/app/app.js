@@ -100,7 +100,15 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && $('#nav').classList.contains('open')) setMenu(false, { focusButton: true });
 });
 
+// Issue #108 part 1: a new release took over while this page was open (sw.js). The files already
+// loaded are the old ones and the next page's file would be a new one, so the next change of page
+// starts the app again on the new release, before any new module is loaded. Nothing is lost:
+// what a person saved is in storage.
+let newRelease = false;
+if (navigator.serviceWorker?.controller) navigator.serviceWorker.addEventListener('controllerchange', () => { newRelease = true; });
+
 async function route(ctx) {
+  if (newRelease) { location.reload(); return; }
   const { id, rest } = parseRoute(location.hash);
   const mod = moduleById(id);
   for (const a of document.querySelectorAll('#nav-list a')) {

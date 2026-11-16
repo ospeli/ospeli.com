@@ -67,3 +67,51 @@ test('an address under /app/ that does not exist says so instead of showing the 
   assert.equal(res.status(), 404);
   await context.close(); await site.close();
 });
+
+// Issue #108 parts 1 and 3 (from the audit of 15 Nov, docs/audit/2026-11-15/audit-sw-offline.test.mjs).
+const src = (rel) => readFile(path.join(WEB, rel), 'utf8');
+const bump = async () => (await src('app/sw.js')).replace(/ospeli-app-v\d+/, 'ospeli-app-v999');
+// A newer release in which the Data page needs something new from the shared ui.js.
+async function release(site) {
+  site.swap.set('/app/modules/ui.js', `${await src('app/modules/ui.js')}\nexport const addedInNewRelease = 1;\n`);
+  site.swap.set('/app/modules/data.js', `import { addedInNewRelease } from './ui.js';\n${await src('app/modules/data.js')}`);
+  site.swap.set('/app/sw.js', await bump());
+}
+const newWorkerInCharge = (page) => page.evaluate(async () => {
+  const reg = await navigator.serviceWorker.getRegistration();
+  await reg.update();
+  for (let i = 0; i < 100; i += 1) {
+    const keys = (await caches.keys()).filter((k) => k.startsWith('ospeli-app-v'));
+    if (keys.length === 1 && keys[0].startsWith('ospeli-app-v999') && reg.active?.state === 'activated' && !reg.installing && !reg.waiting) return true;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return false;
+});
+const dataPageOpens = async (page) => {
+  await page.evaluate(() => { location.hash = '#/data'; });
+  const h = page.locator('main h1:text-is("Your data stays on this device"), main h2:text-is("Something went wrong")');
+  await h.first().waitFor({ timeout: 20000 });
+  return h.first().textContent();
+};
+
+test('issue #108 part 1: a new release that arrives while the app is open does not break the next page', async () => {
+  const site = await host();
+  const { context, page } = await openControlled(site);
+  await release(site);
+  assert.equal(await newWorkerInCharge(page), true, 'the new worker took over');
+  assert.equal(await dataPageOpens(page), 'Your data stays on this device');
+  await context.close(); await site.close();
+});
+
+test('issue #108 part 3: a new cache version holds the new files even when the host lets browsers keep files for ten minutes', async () => {
+  const site = await host({ cacheControl: 'max-age=600' });
+  const { context, page } = await openControlled(site);
+  await release(site);
+  assert.equal(await newWorkerInCharge(page), true, 'the new worker took over');
+  const saved = await page.evaluate(async () => {
+    const key = (await caches.keys()).find((k) => k.startsWith('ospeli-app-v999'));
+    return (await (await (await caches.open(key)).match('modules/data.js')).text()).includes('addedInNewRelease') ? 'new file' : 'old file';
+  });
+  assert.equal(saved, 'new file', 'what cache v999 holds for modules/data.js');
+  await context.close(); await site.close();
+});

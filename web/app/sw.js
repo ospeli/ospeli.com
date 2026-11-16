@@ -1,7 +1,7 @@
 // Ospeli app service worker: precache the shell so the app opens offline.
 // Strategy: serve from cache at once, refresh the cache from the network in the background.
 // Bump VERSION when the precache list changes. scripts/check.py checks that every file exists.
-const VERSION = 'ospeli-app-v29';
+const VERSION = 'ospeli-app-v30';
 const PRECACHE = [
   './',
   'index.html',
@@ -56,7 +56,9 @@ const APP_PAGE = new URL('./', self.location).pathname;
 const APP_PAGES = [APP_PAGE, `${APP_PAGE}index.html`];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(VERSION).then((c) => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
+  // 'reload': each file straight from the host, never a copy the browser kept from the release
+  // before (a static host may let browsers keep files for ten minutes; issue #108 part 3).
+  event.waitUntil(caches.open(VERSION).then((c) => c.addAll(PRECACHE.map((p) => new Request(p, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', (event) => {
