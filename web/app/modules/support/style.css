@@ -106,3 +106,4 @@
 .mod-support .chip.sup-ok { background: #DDF1EA; color: #0B4A3A; }
 .mod-support .sup-audit-list { margin: 0 0 10px; padding-left: 18px; display: grid; gap: 4px; }
 .mod-support .sup-audit .notice, .mod-support .sup-board .notice { margin: 10px 0; }
+.mod-support .btn-small { font-size: .9375rem; }

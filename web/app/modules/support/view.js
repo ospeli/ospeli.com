@@ -326,7 +326,9 @@ function askScreen(ctx, { places, names }) {
 
   const fillBeds = () => {
     const w = places.wards.find((x) => x.id === where.value);
+    const keep = bed.value;
     bed.replaceChildren(new Option('The whole ward', ''), ...(w ? w.beds.map((b) => new Option(b.name, b.id)) : []));
+    if (w?.beds.some((x) => x.id === keep)) bed.value = keep;
     bedField.hidden = !w || !data?.kindById.get(pick.kind)?.placeTypes.includes('bed');
   };
   where.addEventListener('change', () => { lastPlace = where.value || lastPlace; fillBeds(); drawOpen(); });
