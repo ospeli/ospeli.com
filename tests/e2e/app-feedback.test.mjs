@@ -229,8 +229,11 @@ test('the ward nurse on a phone sees the complaints its role owns, records the r
   await page.waitForSelector('[data-test="record"][data-stage="replied"]');
   assert.match(await page.locator('[data-test="saved"]').textContent(), /^Saved: FB-\d{5} reply recorded\. It is in the timeline below\.$/);
   assert.equal(await page.locator('[data-step="reply"]').count(), 0);
-  // Agreeing an action: the button waits for "what will change".
+  // Straight after the save, open "Agree an action": the redraw that follows the save keeps it open.
   await page.locator('.fb-agree > summary').tap();
+  await page.waitForTimeout(600);
+  assert.ok(await page.locator('.fb-agree').evaluate((d) => d.open), 'still open after the refresh');
+  assert.ok(await page.locator('#fb-act-what').isVisible());
   assert.ok(await page.locator('[data-test="agree-action"]').isDisabled());
   assert.equal(await page.locator('[data-test="agree-action"]').textContent(), 'Choose what will change');
   await page.selectOption('#fb-act-what', 'information');
@@ -394,7 +397,8 @@ test('two visitors leave the same card 3 seconds apart: both arrive; a double ta
 test('the liaison officer passes a complaint to clinical review (with a yes) and back; it keeps its place and its acknowledgement date', async () => {
   const { context, page, errors } = await open(390, 'patient-liaison', { path: '#/feedback/queue' });
   await page.waitForSelector('[data-test="queue-list"] [data-record]');
-  const id = await page.locator('[data-test="queue-list"] .fb-row:not(.is-clinical)').first().getAttribute('data-record');
+  // A record whose reply is not yet due, so clinical review pauses its reply.
+  const id = await page.locator('[data-test="queue-list"] .fb-row:not(.is-clinical):not(.is-over)').first().getAttribute('data-record');
   await page.locator(`[data-record="${id}"]`).tap();
   await page.waitForSelector('[data-test="record"]');
   await page.locator('[data-step-ask="clinical-review"]').tap();
@@ -425,6 +429,47 @@ test('at 1280 px no text in the module is under 13 px, and the KPI tiles say wha
     && [...n.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim()) && parseFloat(getComputedStyle(n).fontSize) < 13).map((n) => n.textContent.trim().slice(0, 30)));
   assert.deepEqual(tiny, []);
   assert.match(await page.locator('[data-kpi="feedback-response-time"] .fb-kpi-value').textContent(), /calendar days$/);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('a redraw keeps open what the person opened and keeps unsaved picks (record, queue and themes)', async () => {
+  const { context, page, errors } = await open(1280, 'patient-liaison', { path: '#/feedback/queue' });
+  await page.waitForSelector('[data-kpi="feedback-response-time"] .fb-def');
+  // Another tab or device writes to the log: the queue is drawn again.
+  // Each write is for a different service, so none is taken for a double tap of the one before.
+  const services = ['dept-imaging', 'dept-laboratory', 'dept-primary-care'];
+  const logElsewhere = () => page.evaluate(async (serviceId) => {
+    const { runCommand } = await import('./core/commands.js');
+    await runCommand(window.ospeli.core, 'ospeli_experience_complaint_log', { kind: 'concern', channel: 'phone', serviceId, theme: 'waiting' }, { type: 'human', role: 'receptionist' });
+  }, services.shift());
+  await page.click('[data-kpi="feedback-response-time"] .fb-def > summary');
+  const open0 = Number(await page.locator('[data-test="count-open"]').textContent());
+  await logElsewhere();
+  await page.waitForFunction((n) => Number(document.querySelector('[data-test="count-open"]').textContent) === n + 1, open0);
+  assert.ok(await page.locator('[data-kpi="feedback-response-time"] .fb-def').evaluate((d) => d.open), 'the KPI definition stays open');
+  // On a record: the action form, with a pick made and a note typed, survives a redraw.
+  await page.locator('[data-test="queue-list"] [data-record]').first().click();
+  await page.waitForSelector('[data-test="record"] .fb-agree');
+  await page.click('.fb-agree > summary');
+  await page.selectOption('#fb-act-what', 'review');
+  await page.fill('#fb-act-note', 'Check the signs');
+  const steps = await page.locator('[data-test="timeline"] li').count();
+  await logElsewhere();
+  await page.waitForTimeout(600);
+  assert.ok(await page.locator('.fb-agree').evaluate((d) => d.open));
+  assert.equal(await page.inputValue('#fb-act-what'), 'review');
+  assert.equal(await page.inputValue('#fb-act-note'), 'Check the signs');
+  assert.equal(await page.locator('[data-test="agree-action"]').textContent(), 'Agree action');
+  assert.equal(await page.locator('[data-test="timeline"] li').count(), steps);
+  // On the themes board.
+  await page.click('.fb-tabs a[data-tab="themes"]');
+  await page.waitForSelector('[data-test="themes"] [data-kpi="feedback-ack-time"]');
+  await page.click('[data-test="themes"] [data-kpi="feedback-ack-time"] .fb-def > summary');
+  const cards = Number(await page.locator('[data-test="totals"] .stat').nth(1).locator('b').textContent());
+  await logElsewhere();
+  await page.waitForFunction((n) => Number(document.querySelector('[data-test="totals"] .stat:nth-child(2) b').textContent) === n + 1, cards);
+  assert.ok(await page.locator('[data-test="themes"] [data-kpi="feedback-ack-time"] .fb-def').evaluate((d) => d.open));
   assert.deepEqual(errors, []);
   await context.close();
 });

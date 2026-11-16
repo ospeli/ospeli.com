@@ -111,6 +111,26 @@ export async function render(el, ctx) {
   return () => { off(); clearTimeout(t); view.cleanup?.(); };
 }
 
+// A redraw (after a save, or when another tab or device changes the log) must not snap shut a
+// disclosure the person opened, nor drop what they picked or typed and have not saved. `keep` false
+// is for the draw straight after this screen's own save, when the form should start clean.
+function keepState(root, keep, rebuild) {
+  if (!keep) { rebuild(); return; }
+  const open = new Set([...root.querySelectorAll('details[open][data-keep]')].map((d) => d.dataset.keep));
+  const values = [...root.querySelectorAll('select[id], input[id], textarea[id]')].filter((e) => e.type !== 'radio' && e.type !== 'checkbox').map((e) => [e.id, e.value]);
+  const active = root.contains(document.activeElement) ? document.activeElement : null;
+  const focusKey = active?.id ? `#${active.id}` : active?.tagName === 'SUMMARY' && active.parentElement?.dataset.keep ? `details[data-keep="${active.parentElement.dataset.keep}"] > summary` : null;
+  rebuild();
+  for (const d of root.querySelectorAll('details[data-keep]')) if (open.has(d.dataset.keep)) d.open = true;
+  for (const [id, v] of values) {
+    const e = root.querySelector(`#${CSS.escape(id)}`);
+    if (!e || e.value === v || (e.tagName === 'SELECT' && ![...e.options].some((o) => o.value === v))) continue;
+    e.value = v;
+    e.dispatchEvent(new Event('change'));
+  }
+  if (focusKey) root.querySelector(focusKey)?.focus({ preventScroll: true });
+}
+
 // A KPI as a tile, with how it is counted one tap away.
 function kpiTile(k) {
   const val = k.value == null ? '–' : k.unit === '%' ? `${k.value}%` : `${k.value} ${k.unit}`;
@@ -118,7 +138,7 @@ function kpiTile(k) {
   return h('div', { class: 'stat fb-kpi', 'data-kpi': k.id },
     h('b', { class: 'fb-kpi-value' }, val), h('span', { class: 'fb-kpi-name' }, k.name), h('span', { class: 'fb-kpi-of' }, k.denominator ? of : 'None in this period'),
     k.leftOutText ? h('span', { class: 'fb-kpi-of', 'data-test': 'left-out' }, k.leftOutText) : null,
-    h('details', { class: 'fb-def' }, h('summary', {}, 'How it is counted'),
+    h('details', { class: 'fb-def', 'data-keep': `def-${k.id}` }, h('summary', {}, 'How it is counted'),
       h('p', {}, k.definition), h('p', {}, h('b', {}, 'Leaves out: '), k.leavesOut), h('p', {}, h('b', {}, 'Source: '), k.source), h('p', {}, k.targetText)));
 }
 const kpiRow = (kpis, label) => h('div', { class: 'fb-kpis', 'data-test': 'kpis' }, kpis.map(kpiTile), label ? h('p', { class: 'meta fb-kpi-note' }, label) : null);
@@ -345,7 +365,7 @@ function feedbackCard(ctx, opt, serviceOf) {
 // ---------------------------------------------------------------- the queue
 const VIEWS = [['mine', 'Mine'], ['open', 'All open'], ['overdue', 'Overdue'], ['clinical', 'Clinical review'], ['closed', 'Closed'], ['compliments', 'Compliments and cards']];
 function dueText(r) {
-  if (r.clinical && r.stage !== 'closed' && !r.repliedAt) return `${r.overdue ? 'Not acknowledged in time · ' : ''}Waiting on clinical review · reply due ${day(r.replyDueAt)}`;
+  if (r.replyPaused && r.stage !== 'closed' && !r.repliedAt) return `${r.overdue ? 'Not acknowledged in time · ' : ''}Waiting on clinical review · reply due ${day(r.replyDueAt)}`;
   if (r.kind === 'compliment' || r.kind === 'card') return r.sharedAt ? 'Shared with the service' : 'Recorded';
   if (r.stage === 'closed') return `Closed ${day(r.closedAt || r.receivedAt)}`;
   if (r.stage === 'replied') return `Replied ${day(r.repliedAt)}`;
@@ -383,7 +403,8 @@ async function queueScreen(box, ctx, { opt }) {
     data = { q, t };
     draw();
   }
-  function draw() {
+  const draw = () => keepState(box, true, drawNow);
+  function drawNow() {
     const { q, t } = data;
     chips.replaceChildren(...views.map(([id, label]) => h('button', {
       type: 'button', class: 'chip-btn', 'aria-pressed': String(ui.view === id), 'data-view': id,
@@ -429,21 +450,21 @@ async function recordScreen(box, ctx, { opt, recordId }) {
   const role = ctx.role;
   // saved: the line that says what was just recorded; confirm: the step waiting for "yes".
   const ui = { busy: false, saved: null, confirm: null };
-  async function load() {
+  async function load(keep = true) {
     let d;
     try { d = await ctx.run(C.get, { recordId }); } catch (err) {
       setKids(box, h('div', { class: 'card notice', 'data-test': 'record-missing' }, h('p', {}, err.code === 'not-found' ? `There is no record ${ref(recordId)} on this device.` : `Could not open ${ref(recordId)}. ${err.message}`),
         h('p', {}, h('a', { href: '#/feedback/queue' }, 'Back to the complaints queue'))));
       return;
     }
-    draw(d);
+    draw(d, keep);
   }
   async function act(cmd, input, done) {
     if (ui.busy) return;
     ui.busy = true; ui.confirm = null;
     try { await ctx.run(cmd, input); ui.saved = { ok: true, text: `Saved: ${done}. It is in the timeline below.` }; } catch (err) { ui.saved = { ok: false, text: `Not saved. ${err.message}` }; }
     ui.busy = false;
-    await load();
+    await load(false);
     box.querySelector('[data-test="saved"]')?.focus();
   }
   // A pick nobody has made yet: the select starts empty, and the button says what is missing.
@@ -454,7 +475,7 @@ async function recordScreen(box, ctx, { opt, recordId }) {
   };
   const row = (k, v) => (v == null || v === '' ? null : h('div', { class: 'def-row' }, h('dt', {}, k), h('dd', {}, v)));
 
-  function draw(d) {
+  function draw(d, keep = true) {
     const r = d.record;
     const timed = r.kind === 'complaint' || r.kind === 'concern';
     const go = (name, label, extra = () => ({})) => act(C.update, { recordId: r.id, step: name, expectedState: r.stage, ...extra() }, `${ref(r.id)} ${label.toLowerCase()}`);
@@ -481,7 +502,7 @@ async function recordScreen(box, ctx, { opt, recordId }) {
     }
     if (next.has('set-owner')) controls.push(step('set-owner', 'Change owner', { id: 'fb-owner', items: opt.ownerRoles.filter((x) => x.id !== r.ownerRole), prompt: 'Choose a role', missing: 'Choose the new owner role', key: 'ownerRole', field: 'Owner role' }));
     if (next.has('clinical-review')) controls.push(plain('clinical-review', 'Pass to clinical review', `Pass ${ref(r.id)} to clinical review? Ospeli records only that it was passed. The acknowledgement stays timed; the reply is not called overdue while it waits.`));
-    if (next.has('clinical-return')) controls.push(plain('clinical-return', 'Back from clinical review', `Record that ${ref(r.id)} is back from clinical review? Its reply is timed again from now.`));
+    if (next.has('clinical-return')) controls.push(plain('clinical-return', 'Back from clinical review', `Record that ${ref(r.id)} is back from clinical review? Its reply is timed again against its original due date.`));
     if (next.has('share')) controls.push(plain('share', 'Mark as shared with the service'));
 
     const due = d.due;
@@ -501,7 +522,7 @@ async function recordScreen(box, ctx, { opt, recordId }) {
         onclick: () => act(C.action, { op: 'agree', recordId: r.id, what: what.value, ownerRole: who.value, dueInDays: Number(when.value), ...(nt.value.trim() ? { note: nt.value.trim() } : {}) }, 'action agreed') }, 'Choose what will change');
       const check = () => { const miss = !what.value ? 'Choose what will change' : !who.value ? 'Choose the owner role' : !when.value ? 'Choose when it is due' : null; btn.disabled = !!miss; btn.textContent = miss || 'Agree action'; };
       [what, who, when].forEach((x) => x.addEventListener('change', check));
-      agree = h('details', { class: 'fb-agree' }, h('summary', { class: 'btn btn-ghost' }, 'Agree an action'),
+      agree = h('details', { class: 'fb-agree', 'data-keep': 'agree' }, h('summary', { class: 'btn btn-ghost' }, 'Agree an action'),
         h('div', { class: 'fb-field' }, h('label', { for: 'fb-act-what' }, 'What will change'), what),
         h('div', { class: 'fb-field' }, h('label', { for: 'fb-act-owner' }, 'Owner role'), who),
         h('div', { class: 'fb-field' }, h('label', { for: 'fb-act-due' }, 'Due'), when),
@@ -512,11 +533,11 @@ async function recordScreen(box, ctx, { opt, recordId }) {
       try { await navigator.clipboard.writeText(d.replyTemplate.text); ctx.toast('Template copied. Edit it outside Ospeli.'); } catch { ctx.toast('Could not copy. Select the text instead.'); }
     } }, 'Copy template') : null;
 
-    setKids(box, h('div', { class: 'fb-record', 'data-test': 'record', 'data-record': r.id, 'data-stage': r.stage, 'data-clinical': String(r.clinical) },
+    keepState(box, keep, () => setKids(box, h('div', { class: 'fb-record', 'data-test': 'record', 'data-record': r.id, 'data-stage': r.stage, 'data-clinical': String(r.clinical) },
       h('p', {}, h('a', { class: 'fb-back', href: '#/feedback/queue' }, '‹ Complaints queue')),
       h('section', { class: 'card' },
         h('h2', {}, `${ref(r.id)} · ${r.kindName}`, ' ', h('span', { class: `chip fb-st-${r.stage}`, 'data-test': 'stage' }, r.stageName)),
-        r.clinical ? h('p', { class: 'fb-clinical-note', 'data-test': 'clinical-note' }, `With clinical review since ${day(r.clinicalSince)}. Ospeli records only that it was passed; nothing about the care is kept here. The acknowledgement is timed as usual; the reply is not called overdue here while it waits, and the guide does not chase it.`) : null,
+        r.clinical ? h('p', { class: 'fb-clinical-note', 'data-test': 'clinical-note' }, `With clinical review since ${day(r.clinicalSince)}. Ospeli records only that it was passed; nothing about the care is kept here. The acknowledgement is timed as usual; ${r.replyPaused ? 'the reply is not called overdue here while it waits, and the guide does not chase it.' : 'the reply was already late when it was passed, so it is still shown as late.'}`) : null,
         h('dl', { class: 'fb-facts' },
           row('Owner', r.ownerText), row('About', r.themeName), row('Came in by', r.channelName), row('Rating', r.ratingName),
           row('Received', fmtTime(r.receivedAt)), row('Outcome', r.outcome ? opt.outcomes.find((o) => o.id === r.outcome)?.name : null)),
@@ -529,14 +550,14 @@ async function recordScreen(box, ctx, { opt, recordId }) {
       timed ? h('section', { class: 'card', 'aria-labelledby': 'fb-act-h', 'data-test': 'actions' }, h('h3', { id: 'fb-act-h' }, 'Agreed actions'),
         actions.length ? h('ul', { class: 'fb-actions' }, actions) : h('p', { class: 'meta' }, 'No action agreed yet.'), agree) : null,
       timed ? h('section', { class: 'card', 'aria-labelledby': 'fb-due-h' }, h('h3', { id: 'fb-due-h' }, 'Due dates'),
-        h('ul', { class: 'fb-due', 'data-test': 'due' }, dueRow('Acknowledge', due.ackDueAt, due.ackLate, r.acknowledgedAt, false), dueRow('Reply', due.replyDueAt, due.replyLate, r.repliedAt, r.clinical)),
+        h('ul', { class: 'fb-due', 'data-test': 'due' }, dueRow('Acknowledge', due.ackDueAt, due.ackLate, r.acknowledgedAt, false), dueRow('Reply', due.replyDueAt, due.replyLate, r.repliedAt, r.replyPaused)),
         h('p', { class: 'meta' }, due.note)) : null,
       h('section', { class: 'card', 'aria-labelledby': 'fb-tl-h' }, h('h3', { id: 'fb-tl-h' }, 'Timeline'),
         h('ol', { class: 'fb-timeline', 'data-test': 'timeline' }, d.timeline.map((x) => h('li', { 'data-step': x.step },
           h('b', {}, x.stepName), h('span', {}, ` · ${fmtTime(x.at)} · ${x.roleName}${x.detail ? ` · ${x.detail}` : ''}`)))),
         h('p', { class: 'meta' }, 'The log keeps the role that acted, never a person.')),
-      d.replyTemplate ? h('details', { class: 'card fb-template', 'data-test': 'reply-template' }, h('summary', { class: 'btn btn-ghost' }, 'Template reply (guide)'),
-        h('p', { class: 'meta' }, d.replyTemplate.label), h('pre', { class: 'fb-pre' }, d.replyTemplate.text), copy, h('p', { class: 'meta' }, d.replyTemplate.basis)) : null));
+      d.replyTemplate ? h('details', { class: 'card fb-template', 'data-test': 'reply-template', 'data-keep': 'template' }, h('summary', { class: 'btn btn-ghost' }, 'Template reply (guide)'),
+        h('p', { class: 'meta' }, d.replyTemplate.label), h('pre', { class: 'fb-pre' }, d.replyTemplate.text), copy, h('p', { class: 'meta' }, d.replyTemplate.basis)) : null)));
   }
   await load();
   return { refresh: load };
@@ -557,7 +578,7 @@ async function themesScreen(box, ctx, { opt, base }) {
     const num = (n) => h('td', { class: 'fb-n' }, n || '·');
     const themeRows = t.byTheme.filter((r) => r.complaints + r.concerns + r.compliments + r.cards);
     const maxR = Math.max(1, ...t.ratings);
-    setKids(out,
+    keepState(out, true, () => setKids(out,
       h('div', { class: 'stats fb-stats', 'data-test': 'totals' },
         h('div', { class: 'stat' }, h('b', {}, x.complaints), h('span', {}, 'Complaints')),
         h('div', { class: 'stat' }, h('b', {}, x.concerns), h('span', {}, 'Concerns')),
@@ -581,7 +602,7 @@ async function themesScreen(box, ctx, { opt, base }) {
       h('p', { class: 'meta fb-method', 'data-test': 'method' }, t.method),
       h('section', { class: 'section', 'aria-labelledby': 'fb-tk-h' }, h('h2', { id: 'fb-tk-h' }, `Response measures, ${t.period.label.toLowerCase()}`),
         kpiRow(t.kpis, 'Each number is recalculated from the event log. Due dates are example settings, set locally, not a standard.')),
-      h('p', { class: 'meta fb-notfor' }, `Themes describe services and processes, never a person. ${t.guide.leftOut}`));
+      h('p', { class: 'meta fb-notfor' }, `Themes describe services and processes, never a person. ${t.guide.leftOut}`)));
   }
   setKids(box, h('div', { class: 'fb-themes' },
     h('div', { class: 'fb-filters' }, h('div', { class: 'fb-field' }, h('label', { for: 'fb-month' }, 'Period'), monthSel), h('div', { class: 'fb-field' }, h('label', { for: 'fb-t-service' }, 'Service'), svcSel)),

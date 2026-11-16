@@ -8229,6 +8229,10 @@
                   ],
                   "description": "When it was passed to clinical review, while it is there."
                 },
+                "replyPaused": {
+                  "type": "boolean",
+                  "description": "true while the reply waits on clinical review: passed there before the reply was due. A reply already late when passed stays late."
+                },
                 "receivedAt": {
                   "type": "string",
                   "format": "date-time"
@@ -8522,6 +8526,10 @@
                   "null"
                 ],
                 "description": "When it was passed to clinical review, while it is there."
+              },
+              "replyPaused": {
+                "type": "boolean",
+                "description": "true while the reply waits on clinical review: passed there before the reply was due. A reply already late when passed stays late."
               },
               "receivedAt": {
                 "type": "string",

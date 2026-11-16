@@ -15,7 +15,7 @@ import { currentWords } from '../../core/model.js';
 import { personalDetailIn, personNameIn } from '../../core/processmap.js';
 import {
   EVENT, RECORD_ID_PATTERN, ACTION_ID_PATTERN, NOTE_MAX, KINDS, CHANNELS, STAFF_CHANNELS, REPLY_CHANNELS, THEMES, FACES, STAGES, OUTCOMES,
-  ACTION_KINDS, OWNER_ROLES, DUE_IN_DAYS, SETTINGS, settingsText, deriveRecords, nextRecordId, isTimed, isOpen, timing, sortQueue,
+  ACTION_KINDS, OWNER_ROLES, DUE_IN_DAYS, SETTINGS, settingsText, deriveRecords, nextRecordId, isTimed, isOpen, timing, sortQueue, replyPaused,
   KPIS as KPI_LIST, KPI_FUNCTIONS, roleLabel, ownerText, leftOutText, themesBoard, monthBounds, monthOf, GUIDE_RULES, GUIDE_LEFT_OUT, guideReplyDue, replyTemplate,
 } from './logic.js';
 
@@ -81,6 +81,7 @@ const RECORD = {
     ownerRole: { type: ['string', 'null'], description: 'The role that owns the reply. Never a person.' }, ownerName: { type: ['string', 'null'] },
     ownerText: { type: ['string', 'null'], description: 'Whose it is in words: the owner role and the service, for example "Ward or department lead · Outpatients".' },
     clinicalSince: { type: ['string', 'null'], description: 'When it was passed to clinical review, while it is there.' },
+    replyPaused: { type: 'boolean', description: 'true while the reply waits on clinical review: passed there before the reply was due. A reply already late when passed stays late.' },
     receivedAt: TIME, ackDueAt: { type: ['string', 'null'] }, replyDueAt: { type: ['string', 'null'], description: 'Due dates are example settings, set locally, not a standard.' },
     daysToReplyDue: { type: ['number', 'null'], description: 'Days until the reply is due; negative when late; null once replied or not timed.' },
     overdue: { type: 'boolean' }, dueSoon: { type: 'boolean' },
@@ -117,7 +118,7 @@ function out(r, svc, now, short = false) {
     id: r.id, kind: r.kind, kindName: KINDS[r.kind]?.name || r.kind, serviceId: r.serviceId, serviceName: svc.get(r.serviceId)?.name || r.serviceId,
     theme: r.theme, themeName: r.theme ? THEMES[r.theme]?.name || r.theme : null, stage: r.stage, stageName: STAGES[r.stage],
     ownerRole: r.ownerRole, ownerName: r.ownerRole ? roleName(r.ownerRole) : null, ownerText: ownerText(r.ownerRole, svc.get(r.serviceId)?.name || r.serviceId),
-    clinicalSince: r.clinical ? r.clinicalAt : null, receivedAt: r.receivedAt, replyDueAt: r.replyDueAt,
+    clinicalSince: r.clinical ? r.clinicalAt : null, replyPaused: replyPaused(r), receivedAt: r.receivedAt, replyDueAt: r.replyDueAt,
     daysToReplyDue: t.daysToReplyDue, overdue: t.overdue, dueSoon: t.dueSoon, clinical: r.clinical,
   };
   if (short) return base;
@@ -393,7 +394,9 @@ export const COMMANDS = [
       return {
         asOf: now, synthetic: await isSynthetic(core), record: out(r, svc, now),
         timeline: r.timeline.map((x) => ({ step: x.step, stepName: stepName[x.step] || x.step, at: x.at, role: x.role, roleName: roleName(x.role), detail: detail(x) })),
-        due: isTimed(r) ? { ackDueAt: r.ackDueAt, ackLate: t.ackLate, replyDueAt: r.replyDueAt, replyLate: t.replyLate, timed: true, clinical: r.clinical, note: r.clinical ? `With clinical review: the acknowledgement is timed as usual; the reply is not called overdue here while it waits, and the guide does not chase it. ${SETTINGS.basis}` : SETTINGS.basis } : null,
+        due: isTimed(r) ? { ackDueAt: r.ackDueAt, ackLate: t.ackLate, replyDueAt: r.replyDueAt, replyLate: t.replyLate, timed: true, clinical: r.clinical, replyPaused: replyPaused(r),
+          note: replyPaused(r) ? `With clinical review: the acknowledgement is timed as usual; the reply is not called overdue here while it waits, and the guide does not chase it. ${SETTINGS.basis}`
+            : r.clinical ? `With clinical review, but the reply was already late when it was passed, so it is still shown as late. ${SETTINGS.basis}` : SETTINGS.basis } : null,
         actions: r.actions.map((a) => ({ id: a.id, what: a.what, whatName: ACTION_KINDS[a.what] || a.what, ownerRole: a.ownerRole, ownerName: roleName(a.ownerRole), dueAt: a.dueAt, note: a.note, agreedAt: a.agreedAt, closedAt: a.closedAt, late: a.closedAt ? a.closedAt > a.dueAt : now > a.dueAt })),
         next: nextSteps(r, actor.role),
         mayAgreeActions: isTimed(r) && (LEADS.includes(actor.role) || actor.role === r.ownerRole),

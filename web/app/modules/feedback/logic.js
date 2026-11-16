@@ -153,6 +153,9 @@ export function deriveRecords(events, { offsetMinutes = 0, settings = SETTINGS }
 export const isTimed = (r) => !!KINDS[r.kind]?.timed;
 export const isOpen = (r) => isTimed(r) && r.stage !== 'closed';
 
+// The reply waits on clinical review only if the record went there before its reply was due. A reply
+// already late when the record was passed stays late, on screen as in the KPIs.
+export const replyPaused = (r) => r.clinical && !!r.clinicalAt && r.clinicalAt <= r.replyDueAt;
 // Was the record with clinical review at this moment?
 export const withClinicalAt = (r, iso) => r.clinicalPeriods.some((p) => p.from <= iso && (!p.to || p.to > iso));
 
@@ -167,11 +170,11 @@ export function timing(r, now, settings = SETTINGS) {
   const toDue = days(now, r.replyDueAt);
   const waitingReply = open && !r.repliedAt && r.outcome !== 'withdrawn';
   const ackOverdue = open && !r.acknowledgedAt && now > r.ackDueAt;
-  const replyOverdue = waitingReply && !r.clinical && now > r.replyDueAt;
+  const replyOverdue = waitingReply && !replyPaused(r) && now > r.replyDueAt;
   const overdue = ackOverdue || replyOverdue;
   return {
     timed: true, overdue, ackOverdue, replyOverdue, ackLate, replyLate,
-    dueSoon: waitingReply && !r.clinical && !overdue && toDue <= settings.remindDaysBefore,
+    dueSoon: waitingReply && !replyPaused(r) && !overdue && toDue <= settings.remindDaysBefore,
     daysToReplyDue: waitingReply ? round1(toDue) : null,
   };
 }
@@ -322,7 +325,7 @@ export function themesBoard(records, { since, until, offsetMinutes = 0 } = {}) {
 export const GUIDE_RULES = [
   {
     id: 'reply-due-soon',
-    words: `A complaint or concern is within ${SETTINGS.remindDaysBefore} days of its reply due date, or past it, and no reply is recorded: shown to the owner role and the patient liaison officer. Not while it is with clinical review.`,
+    words: `A complaint or concern is within ${SETTINGS.remindDaysBefore} days of its reply due date, or past it, and no reply is recorded: shown to the owner role and the patient liaison officer. Not while it waits on clinical review (passed before its reply was due).`,
     basis: `Fixed rule. The ${SETTINGS.remindDaysBefore} days and the due dates are example settings, not a standard.`,
   },
   {
@@ -336,7 +339,7 @@ export const GUIDE_LEFT_OUT = 'Not in this version: a "theme higher than usual" 
 export function guideReplyDue(records, now, settings = SETTINGS) {
   const out = [];
   for (const r of records) {
-    if (!isOpen(r) || r.clinical || r.repliedAt || r.outcome === 'withdrawn') continue;
+    if (!isOpen(r) || replyPaused(r) || r.repliedAt || r.outcome === 'withdrawn') continue;
     const left = days(now, r.replyDueAt);
     if (left > settings.remindDaysBefore) continue;
     const d = Math.abs(Math.round(left));

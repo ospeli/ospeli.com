@@ -273,6 +273,28 @@ test('clinical review does not take a complaint out of the process: acknowledgem
   assert.match(g.due.note, /acknowledgement is timed as usual/);
 });
 
+test('a reply already late when the record is passed to clinical review stays late in the queue and on the record', async () => {
+  const { core, c } = await site();
+  const late = await run(core, LOG, complaint({ serviceId: 'ward-b2', theme: 'access' }), 'patient-liaison');
+  const early = await run(core, LOG, complaint({ serviceId: 'ward-b2', theme: 'food' }), 'patient-liaison');
+  await run(core, UPD, { recordId: early.recordId, step: 'acknowledge', channel: 'letter' }, 'patient-liaison');
+  await run(core, UPD, { recordId: late.recordId, step: 'acknowledge', channel: 'letter' }, 'patient-liaison');
+  await run(core, UPD, { recordId: early.recordId, step: 'clinical-review' }, 'patient-liaison'); // before its reply is due
+  c.add(20 * 864e5); // both replies are now past due
+  const before = (await run(core, Q, {}, 'patient-liaison')).counts.overdue;
+  await run(core, UPD, { recordId: late.recordId, step: 'clinical-review' }, 'patient-liaison'); // after its reply was due
+  const q = await run(core, Q, { serviceId: 'ward-b2', limit: 500 }, 'patient-liaison');
+  assert.equal(q.counts.overdue, before, 'the overdue count does not drop when a late record is passed');
+  const rl = q.records.find((r) => r.id === late.recordId); const re = q.records.find((r) => r.id === early.recordId);
+  assert.deepEqual([rl.clinical, rl.replyPaused, rl.overdue], [true, false, true]);
+  assert.deepEqual([re.clinical, re.replyPaused, re.overdue], [true, true, false]);
+  assert.ok(q.suggestions.some((s) => s.recordId === late.recordId), 'still chased: it was already late');
+  assert.ok(!q.suggestions.some((s) => s.recordId === early.recordId));
+  const g = await run(core, GET, { recordId: late.recordId }, 'patient-liaison');
+  assert.deepEqual([g.due.replyLate, g.due.replyPaused], [true, false]);
+  assert.match(g.due.note, /already late when it was passed, so it is still shown as late/);
+});
+
 test('after logging, only the liaison officer or the quality lead pass a record to clinical review, and they can take it back', async () => {
   const { core, c } = await site();
   const { recordId: id } = await run(core, LOG, complaint({ serviceId: 'ward-a1' }), 'patient-liaison');
@@ -512,12 +534,16 @@ test('KPIs from a hand-built event log match the numbers worked out by hand, wit
   // Timing at the end of the period.
   assert.equal(L.timing(recs.get('fb-00004'), PERIOD.now).overdue, true);
   assert.equal(L.timing(recs.get('fb-00003'), PERIOD.now).overdue, false, 'C: acknowledged, and its reply is not called overdue while with clinical review');
-  assert.deepEqual([L.timing(recs.get('fb-00007'), PERIOD.now).ackOverdue, L.timing(recs.get('fb-00007'), PERIOD.now).replyOverdue], [true, false], 'G: the acknowledgement is still overdue');
+  // G was passed to clinical review after its reply was already late: it stays late on screen too.
+  assert.equal(L.replyPaused(recs.get('fb-00007')), false);
+  assert.equal(L.replyPaused(recs.get('fb-00003')), true, 'C went to clinical review before its reply was due');
+  assert.deepEqual([L.timing(recs.get('fb-00007'), PERIOD.now).ackOverdue, L.timing(recs.get('fb-00007'), PERIOD.now).replyOverdue], [true, true], 'G: acknowledgement and reply both still overdue');
   const g = L.guideReplyDue([...recs.values()], '2026-11-25T08:00:00.000Z');
-  // E (a concern, reply due 16 Nov) is 9 days late and comes first; D is 2 days from its due date.
-  // A, B, H and I are replied, C and G are with clinical review, F is closed.
-  assert.deepEqual(g.map((x) => x.recordId), ['fb-00005', 'fb-00004']);
-  assert.deepEqual(g.map((x) => x.title), ['FB-00005: reply 9 days late', 'FB-00004: reply due in 2 days']);
+  // G (due 16 Nov 09:00, passed to clinical review after that) and E (a concern, due 16 Nov 11:00) are both
+  // 9 days late, G a little more; D is 2 days from its due date. A, B, H and I are replied, C waits on
+  // clinical review (passed before its due date), F is closed.
+  assert.deepEqual(g.map((x) => x.recordId), ['fb-00007', 'fb-00005', 'fb-00004']);
+  assert.deepEqual(g.map((x) => x.title), ['FB-00007: reply 9 days late', 'FB-00005: reply 9 days late', 'FB-00004: reply due in 2 days']);
   for (const k of L.KPIS) {
     assert.equal(k.source, 'local definition');
     assert.ok(k.leavesOut && k.definition && k.targetText);
