@@ -30,7 +30,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -244,7 +247,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -358,7 +364,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1526,7 +1535,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1595,7 +1607,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1692,7 +1707,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1789,7 +1807,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": false,
@@ -2016,7 +2037,10 @@
               "estates-tech",
               "ae-nic",
               "ops-manager",
-              "coo"
+              "coo",
+              "patient-liaison",
+              "receptionist",
+              "quality-lead"
             ],
             "description": "The one role this agent works for. It is refused if it claims another."
           },
@@ -2174,7 +2198,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -2224,7 +2251,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -2377,7 +2407,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -2525,7 +2558,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -2677,7 +2713,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -2805,7 +2844,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -3348,7 +3390,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -3811,7 +3856,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -3935,7 +3983,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4310,7 +4361,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4622,7 +4676,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4736,7 +4793,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -4822,7 +4882,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -4956,7 +5019,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5082,7 +5148,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5186,7 +5255,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5281,7 +5353,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5367,7 +5442,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5452,7 +5530,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5530,7 +5611,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -5583,7 +5667,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -5648,7 +5735,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -5837,7 +5927,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6022,7 +6115,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6213,7 +6309,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6425,7 +6524,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6610,7 +6712,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6795,7 +6900,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6979,7 +7087,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -7120,7 +7231,10 @@
         "estates-tech",
         "ae-nic",
         "ops-manager",
-        "coo"
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
       ],
       "humanApproval": false,
       "agentsMayCall": true,

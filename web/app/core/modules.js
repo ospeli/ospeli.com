@@ -16,7 +16,9 @@
 //
 // Only the module crew lead edits this file: one import and one list entry per module.
 
-export const MODULE_PACKS = [];
+import * as feedback from '../modules/feedback/commands.js';
+
+export const MODULE_PACKS = [feedback];
 
 export const MODULE_COMMANDS = MODULE_PACKS.flatMap((p) => p.COMMANDS || []);
 export const packById = (id) => MODULE_PACKS.find((p) => p.id === id) || null;

@@ -23,6 +23,10 @@ export const ROLES = [
   { id: 'ae-nic', name: 'Emergency department nurse in charge', home: 'ae' },
   { id: 'ops-manager', name: 'Operations manager', home: 'dashboard' },
   { id: 'coo', name: 'COO', home: 'dashboard' },
+  // Roles added with a module (module crew). New roles go at the end: the order is kept in stored data.
+  { id: 'patient-liaison', name: 'Patient liaison officer', home: 'feedback' },
+  { id: 'receptionist', name: 'Receptionist', home: 'feedback' },
+  { id: 'quality-lead', name: 'Quality lead', home: 'feedback' },
 ];
 
 export const roleById = (id) => ROLES.find((r) => r.id === id) || null;
