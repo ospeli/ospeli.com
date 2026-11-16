@@ -75,13 +75,16 @@ function buildRoles(ctx) {
     if (!roleById(to)) return;
     const from = ctx.role;
     ctx.role = to;
+    // A role whose whole job is on one page opens on it (its job is one tap away, not a menu
+    // away). The address changes at once, before anything is saved, so nothing that happens
+    // next (a reload, another page) can be overtaken by a late jump.
+    const home = homePage(to);
+    const moved = !!home && location.hash !== home;
+    if (moved) location.hash = home;
     await ctx.core.setMeta('role', to);
     await ctx.core.record(to, 'role.changed', null, { from, to });
     toast(`Role: ${roleById(to).name}`);
-    // A role whose whole job is on one page opens on it (its job is one tap away, not a menu away).
-    const home = homePage(to);
-    if (home && location.hash !== home) { location.hash = home; return; }
-    route(ctx);
+    if (!moved) route(ctx);
   });
 }
 
