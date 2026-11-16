@@ -38,7 +38,11 @@ test('the pack adds its kinds of task to the shared task object; porter, cleaner
   assert.deepEqual(k.teams.map((x) => x.id).sort(), ['cleaning', 'portering']);
   const kinds = Object.fromEntries(k.kinds.map((x) => [x.id, x]));
   assert.deepEqual(Object.keys(kinds).sort(), ['bed-clean', 'equipment-move', 'item-run', 'patient-move', 'room-clean']);
-  assert.deepEqual([kinds['patient-move'].team, kinds['patient-move'].needsTo, kinds['patient-move'].startLabel, kinds['patient-move'].doneLabel], ['portering', true, 'Collected', 'Delivered']);
+  // The first tap says "I am going" and claims the job; a clean keeps its own words.
+  assert.deepEqual([kinds['patient-move'].team, kinds['patient-move'].needsTo, kinds['patient-move'].startLabel, kinds['patient-move'].doneLabel], ['portering', true, 'On my way', 'Delivered']);
+  assert.deepEqual([kinds['room-clean'].startLabel, kinds['room-clean'].doneLabel], ['Start clean', 'Clean done']);
+  assert.deepEqual(Object.keys(kinds).filter((id) => kinds[id].repeatable), ['patient-move'], 'two patients are two moves; a specimen run or an equipment move between the same places is one');
+  assert.ok(k.releaseReasons.includes('Patient or item not ready'));
   assert.deepEqual(kinds['patient-move'].details, ['Wheelchair', 'Bed', 'Trolley', 'Walking with help']);
   assert.ok(kinds['room-clean'].details.includes('Extra clean asked for by the ward'), 'the ward picks a neutral extra clean; Ospeli decides nothing clinical');
   assert.deepEqual(kinds['room-clean'].doRoles, ['cleaner', 'support-supervisor']);
@@ -318,10 +322,12 @@ test('guide rule "a team is busier than usual": above the example level, with th
 });
 
 test('guide rule "failed twice": the last two audits under the example pass mark, with the elements failed both times', () => {
-  const a = (id, score, failed, at) => ({ id, locationId: 'ward-b2', score, failed, at });
+  const a = (id, score, failed, at) => ({ id, locationId: 'ward-b2', score, failed, at: `2026-11-0${at}T10:00:00.000Z` });
   const name = () => 'Ward B2';
   const [s] = ruleAuditFailedTwice([a('aud-1', 100, [], '1'), a('aud-2', 70, ['curtains', 'bins'], '2'), a('aud-3', 80, ['curtains', 'floor'], '3')], name);
-  assert.equal(s.text, 'Re-audit Ward B2.');
+  assert.equal(s.text, 'Re-audit Ward B2 by 10 Nov 2026.', 'an example date: 7 days after the last audit');
+  assert.equal(s.reauditBy, '2026-11-10');
+  assert.match(s.basis, /7 days after the last audit, also an example setting/);
   assert.equal(s.why, `The last two audits scored 70% and 80%, under the example pass mark of ${PASS_MARK}%. Failed both times: Curtains and screens.`);
   assert.deepEqual(ruleAuditFailedTwice([a('aud-2', 70, ['bins'], '2'), a('aud-3', 90, [], '3')], name), [], 'passed last time');
   assert.deepEqual(ruleAuditFailedTwice([a('aud-3', 50, ['bins'], '3')], name), [], 'once is not twice');
@@ -416,4 +422,77 @@ test('synthetic jobs: valid kinds, places and roles; ids unique and in time orde
   // A person's next request follows the seeded ids.
   const next = await run('ospeli_tasks_request', { kind: 'equipment-move', locationId: 'ward-a1', toLocationId: 'ward-c1', detail: 'Empty bed' }, 'ward-nurse');
   assert.equal(next.taskId, `task-${String(asks.length + 1).padStart(5, '0')}`);
+});
+
+test('two patients from one ward are two moves; one bed asked twice is refused with words that name the open job and its bed', async () => {
+  const { run } = await site();
+  const move = { kind: 'patient-move', locationId: 'ward-b2', toLocationId: 'dept-imaging', detail: 'Wheelchair' };
+  const a = await run('ospeli_tasks_request', move, 'ward-nurse');
+  const b = await run('ospeli_tasks_request', move, 'ward-nurse');
+  assert.notEqual(a.taskId, b.taskId, 'two jobs');
+  const bed = { ...move, locationId: 'ward-b2-bed-05' };
+  const c = await run('ospeli_tasks_request', bed, 'ward-nurse');
+  await assert.rejects(run('ospeli_tasks_request', bed, 'ward-nurse'), (err) => err.code === 'conflict' && err.detail.existing === c.taskId);
+  // A specimen run between the same places is one run.
+  const run1 = { kind: 'item-run', locationId: 'ward-c1', toLocationId: 'dept-laboratory', detail: 'Specimen' };
+  await run('ospeli_tasks_request', run1, 'ward-nurse');
+  await assert.rejects(run('ospeli_tasks_request', run1, 'ward-nurse'), code('conflict'));
+});
+
+test('a started job handed back goes back in its old place with its reason; the measure keeps the first asked-for time', async () => {
+  const { run, advance } = await site();
+  const { taskId } = await run('ospeli_tasks_request', { kind: 'equipment-move', locationId: 'ward-a1', toLocationId: 'ward-c1', detail: 'Empty bed' }, 'ward-nurse');
+  advance(3);
+  await run('ospeli_tasks_start', { taskId }, 'porter');
+  await assert.rejects(run('ospeli_tasks_release', { taskId, reason: 'Patient or item not ready' }, 'cleaner'), code('forbidden'), 'a cleaner cannot hand back a porter job');
+  await run('ospeli_tasks_release', { taskId, reason: 'Patient or item not ready', expectedState: 'started' }, 'porter');
+  const t = (await run('ospeli_tasks_list', { team: 'portering', limit: 200 }, 'porter')).tasks.find((x) => x.id === taskId);
+  assert.deepEqual([t.state, t.releases, t.lastReleaseReason], ['requested', 1, 'Patient or item not ready']);
+  advance(10);
+  await run('ospeli_tasks_start', { taskId }, 'porter');
+  advance(7);
+  await run('ospeli_tasks_complete', { taskId }, 'porter');
+  const done = (await run('ospeli_tasks_list', { state: 'completed', kind: 'equipment-move', limit: 1 }, 'coo')).tasks[0];
+  assert.deepEqual([done.id, done.totalMinutes], [taskId, 20], 'asked at T, done at T + 20 min: the hand-back did not restart the clock');
+});
+
+test('the overview tells a ward\'s urgent ask from a job moved to the front, and shows bed demand with the guide on or off', async () => {
+  const { run } = await site();
+  const urgent = await run('ospeli_tasks_request', { kind: 'item-run', locationId: 'ward-c1', toLocationId: 'dept-laboratory', detail: 'Supplies', priority: 'urgent' }, 'ward-nurse');
+  const plain = await run('ospeli_tasks_request', { kind: 'equipment-move', locationId: 'ward-a3', toLocationId: 'ward-c1', detail: 'Empty bed' }, 'ward-nurse');
+  await run('ospeli_tasks_set_priority', { taskId: plain.taskId, priority: 'urgent' }, 'support-supervisor');
+  let ov = await run('ospeli_support_overview', { format: 'short' }, 'support-supervisor');
+  assert.deepEqual([ov.marks[urgent.taskId], ov.marks[plain.taskId]], ['asked-urgent', 'do-next']);
+  await run('ospeli_tasks_set_priority', { taskId: plain.taskId, priority: 'routine' }, 'support-supervisor');
+  ov = await run('ospeli_support_overview', { format: 'short' }, 'support-supervisor');
+  assert.equal(ov.marks[plain.taskId], undefined, 'back to its place');
+  // Bed demand is a fact from the bed board: the same with the guide off.
+  const board = await run('ospeli_beds_board', {}, 'bed-manager');
+  const ward = board.waiting.find((w) => !w.allocatedBed && w.wardId).wardId;
+  const waitingThere = board.waiting.filter((w) => !w.allocatedBed && w.wardId === ward).length;
+  const freeThere = board.beds.filter((b) => b.wardId === ward && b.state === 'available').length;
+  await run('ospeli_support_guide_set', { on: false }, 'support-supervisor');
+  ov = await run('ospeli_support_overview', { format: 'short' }, 'cleaner');
+  assert.deepEqual(ov.bedDemand.find((d) => d.wardId === ward), { wardId: ward, patientsWaiting: waitingThere, freeBeds: freeThere });
+  assert.equal(ov.bedDemand.length, 6);
+});
+
+test('honest measures: beds used again or taken out of service before a clean are counted apart; porter jobs urgent and normal apart', () => {
+  const beds = new Map([['ward-a1-bed-01', 'ward-a1'], ['ward-a1-bed-02', 'ward-a1'], ['ward-a1-bed-03', 'ward-a1']]);
+  const events = [
+    ev('bed.vacated', 'ward-a1-bed-01', '09:00'), ev('bed.cleaned', 'ward-a1-bed-01', '09:40', null, 'cleaner'), // 40
+    ev('bed.vacated', 'ward-a1-bed-02', '10:00'), ev('patient.admitted', 'enc-000001', '10:30', { bedId: 'ward-a1-bed-02', wardId: 'ward-a1' }), // used again
+    ev('bed.vacated', 'ward-a1-bed-03', '11:00'), ev('bed.out-of-service', 'ward-a1-bed-03', '11:10', { reason: 'Electrical' }), // out of service
+  ];
+  const k = bedTurnaround(events, { ...PERIOD, beds });
+  assert.deepEqual([k.value, k.n, k.leftOut], [40, 1, { total: 2, usedAgain: 1, outOfService: 1 }]);
+  const ask = (id, at, priority) => ev('task.requested', id, at, { kind: 'patient-move', locationId: 'ward-a1', toLocationId: 'dept-imaging', priority, detail: 'Bed' });
+  const jobs = [
+    ask('task-00001', '10:00', 'urgent'), ev('task.completed', 'task-00001', '10:10', null, 'porter'), // 10, urgent
+    ask('task-00002', '10:00', 'routine'), ev('task.completed', 'task-00002', '10:40', null, 'porter'), // 40
+    ask('task-00003', '10:00', 'routine'), ev('task.prioritised', 'task-00003', '10:05', { priority: 'urgent' }, 'support-supervisor'), ev('task.completed', 'task-00003', '10:20', null, 'porter'), // 20, moved up
+  ];
+  const p = porterRequestToDone(jobs, PERIOD);
+  assert.deepEqual(p.byPriority.map((b) => [b.id, b.value, b.n]), [['urgent', 15, 2], ['routine', 40, 1]]);
+  assert.equal(p.value, 20);
 });

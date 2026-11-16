@@ -10174,6 +10174,14 @@
               }
             }
           },
+          "bedDemand": {
+            "type": "array",
+            "description": "For each ward: patients waiting for a bed there with no bed held, and beds free now. A fact from the bed board, with the guide on or off."
+          },
+          "marks": {
+            "type": "object",
+            "description": "Open jobs first in their queue, by id: \"asked-urgent\" (the ward asked for it urgently) or \"do-next\" (moved to the front by the people who balance the work)."
+          },
           "note": {
             "type": "string"
           }

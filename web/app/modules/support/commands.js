@@ -16,7 +16,7 @@ import { deriveTasks, taskTimes, BED_CLEAN } from '../../core/tasks.js';
 import { deriveBoard } from '../../core/beds.js';
 import {
   TEAMS, KINDS, TEAM_OF, TEAM_NAMES, RISK_CATEGORIES, RISK_NAME, AUDIT_ELEMENTS, ELEMENT_NAME, AUDIT_PLACE_TYPES, AUDIT_SET_NOTE, PASS_MARK,
-  BED_TURNAROUND_TARGET, GUIDE_RULES, deriveAudits, nextAuditId, guideOn, bedTurnaround, porterRequestToDone, auditScore,
+  BED_TURNAROUND_TARGET, GUIDE_RULES, deriveAudits, nextAuditId, guideOn, queueMarks, bedTurnaround, porterRequestToDone, auditScore,
   ruleCleansFirst, ruleTeamBusy, ruleAuditFailedTwice,
 } from './logic.js';
 
@@ -31,19 +31,19 @@ export const KPIS = [
   { id: 'support-bed-turnaround', name: 'Bed turnaround time', unit: 'minutes',
     definition: 'Median minutes from a bed being vacated on the bed board to its clean being done and the bed ready.',
     counts: 'Bed cleans finished in the period.', outOf: 'None (a median).',
-    leavesOut: 'Beds still waiting for a clean or being cleaned; a bed taken out of service or given to a patient before it was cleaned.',
+    leavesOut: 'Beds still waiting for a clean or being cleaned; a bed used again or taken out of service before a clean was recorded (counted apart as leftOut).',
     source: 'local definition (the same as the bed board\'s bed turnaround)',
     target: BED_TURNAROUND_TARGET, targetText: `${BED_TURNAROUND_TARGET} minutes or less (example setting, not a standard; set locally)` },
   { id: 'porter-request-to-done', name: 'Porter request to completion', unit: 'minutes',
-    definition: 'Median minutes from a porter job being asked for to it being delivered, for each kind of job and for all portering jobs.',
+    definition: 'Median minutes from a porter job being asked for to it being delivered, for each kind of job, for urgent and normal jobs, and for all portering jobs. A job that was handed back keeps the time it was first asked for.',
     counts: 'Portering jobs delivered in the period.', outOf: 'None (a median).',
     leavesOut: 'Cancelled jobs and jobs still open.',
     source: 'local definition', target: null, targetText: 'No target set: track the trend.' },
   { id: 'cleanliness-audit-score', name: 'Cleanliness audit score', unit: '%',
-    definition: 'Elements passed divided by elements audited, for each risk category and for all audits.',
-    counts: 'Elements marked pass.', outOf: 'Elements marked pass or fail in the audits recorded in the period.',
-    leavesOut: 'Elements not checked in an audit.',
-    source: 'Your site\'s cleanliness standard (set locally). The element list and risk categories here are an example set, not a standard.',
+    definition: 'Items passed divided by items checked, for each type of area and for all audits.',
+    counts: 'Items marked pass.', outOf: 'Items marked pass or fail in the audits recorded in the period.',
+    leavesOut: 'Items not checked in an audit.',
+    source: 'Your site\'s cleanliness standard (set locally). The list of items and the types of area here are an example set, not a standard.',
     target: PASS_MARK, targetText: `${PASS_MARK}% pass mark (example setting, not a standard)` },
 ];
 // Planned with the shared stock item (module B4): listed so a reader knows they are coming, with no value.
@@ -122,14 +122,19 @@ async function overview(core, input, wards) {
     'porter-request-to-done': porterRequestToDone(events, { since, until: now, tasks: mine }),
     'cleanliness-audit-score': auditScore(events, { since, until: now, audits }),
   };
+  // Bed demand is a fact from the bed board, shown with the guide on or off: patients waiting for a
+  // bed on each ward with no bed held, and the beds free there now.
+  const board = deriveBoard(bedList, events);
+  const wardName = new Map([...map.values()].filter((p) => p.type === 'ward').map((w) => [w.id, currentWords(w.name)]));
+  const patientsWaiting = new Map(); const freeBeds = new Map();
+  for (const w of board.waiting) if (!w.allocatedBed && w.wardId && (!wards || wards.has(w.wardId))) patientsWaiting.set(w.wardId, (patientsWaiting.get(w.wardId) || 0) + 1);
+  for (const [bedId, s] of board.beds) if (s.state === 'available') freeBeds.set(beds.get(bedId), (freeBeds.get(beds.get(bedId)) || 0) + 1);
+  const bedDemand = [...wardName.keys()].filter((w) => !wards || wards.has(w)).map((w) => ({ wardId: w, patientsWaiting: patientsWaiting.get(w) || 0, freeBeds: freeBeds.get(w) || 0 }));
+  const openIds = new Set(open.map((t) => t.id));
+  const marks = Object.fromEntries([...queueMarks(events)].filter(([taskId]) => openIds.has(taskId)));
   const on = guideOn(events);
   let suggestions = [];
   if (on) {
-    const board = deriveBoard(bedList, events);
-    const wardName = new Map([...map.values()].filter((p) => p.type === 'ward').map((w) => [w.id, currentWords(w.name)]));
-    const patientsWaiting = new Map(); const freeBeds = new Map();
-    for (const w of board.waiting) if (!w.allocatedBed && w.wardId && (!wards || wards.has(w.wardId))) patientsWaiting.set(w.wardId, (patientsWaiting.get(w.wardId) || 0) + 1);
-    for (const [bedId, s] of board.beds) if (s.state === 'available') freeBeds.set(beds.get(bedId), (freeBeds.get(beds.get(bedId)) || 0) + 1);
     const openCleans = open.filter((t) => t.kind === BED_CLEAN.id).map((t) => ({ id: t.id, wardId: beds.get(t.locationId), state: t.state, priority: t.priority, requestedAt: t.requestedAt, bedName: map.get(t.locationId)?.name || t.locationId }));
     suggestions = [
       ...ruleCleansFirst({ openCleans, patientsWaiting, freeBeds, wardName }),
@@ -140,10 +145,11 @@ async function overview(core, input, wards) {
   const kpis = KPIS.map((k) => {
     const v = values[k.id];
     const base = { id: k.id, name: k.name, unit: k.unit, value: v.value, numerator: v.numerator, denominator: v.denominator, n: v.n, target: k.target, targetText: k.targetText };
-    return input.format === 'short' ? base : { ...base, breakdown: v.breakdown, definition: k.definition, counts: k.counts, outOf: k.outOf, leavesOut: k.leavesOut, source: k.source };
+    return input.format === 'short' ? base : { ...base, breakdown: v.breakdown, ...(v.byPriority ? { byPriority: v.byPriority } : {}), ...(v.leftOut ? { leftOut: v.leftOut } : {}),
+      definition: k.definition, counts: k.counts, outOf: k.outOf, leavesOut: k.leavesOut, source: k.source };
   });
   return {
-    asOf: now, synthetic: await synth(core), period: { since, until: now, days }, kpis, planned: PLANNED_KPIS.map((x) => ({ ...x })), teams,
+    asOf: now, synthetic: await synth(core), period: { since, until: now, days }, kpis, planned: PLANNED_KPIS.map((x) => ({ ...x })), teams, bedDemand, marks,
     guide: { on, rules: GUIDE_RULES.map((r) => ({ ...r })), suggestions },
     note: 'Measures jobs and waits, never individual cleaners or porters. Does not set isolation or infection decisions or patient diets.',
   };
@@ -196,6 +202,8 @@ export const COMMANDS = [
       planned: { type: 'array', items: { type: 'object', required: ['id', 'name', 'status'] } },
       teams: { type: 'array', items: { type: 'object', required: ['id', 'name', 'open', 'waiting', 'inProgress', 'urgent', 'longestWaitMinutes'] } },
       guide: { type: 'object', required: ['on', 'rules', 'suggestions'], properties: { on: { type: 'boolean' }, rules: { type: 'array' }, suggestions: { type: 'array', items: SUGGESTION } } },
+      bedDemand: { type: 'array', description: 'For each ward: patients waiting for a bed there with no bed held, and beds free now. A fact from the bed board, with the guide on or off.' },
+      marks: { type: 'object', description: 'Open jobs first in their queue, by id: "asked-urgent" (the ward asked for it urgently) or "do-next" (moved to the front by the people who balance the work).' },
       note: { type: 'string' } } },
     async run(core, input, { wards }) { return overview(core, input, wards); },
     example: { input: { days: 7, format: 'short' } },

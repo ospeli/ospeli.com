@@ -14,11 +14,15 @@ import { deriveTasks, completionStats, BED_CLEAN } from '../../core/tasks.js';
 // ward decides what kind of clean it needs; Ospeli records the pick and decides nothing.
 const ASK = ['ward-nurse', 'ae-nic', 'bed-manager', 'support-supervisor'];
 const LEADS = ['support-supervisor', 'bed-manager']; // who may move a job to the front, as for a bed clean
-const MOVE = { team: 'portering', needsTo: true, placeTypes: ['ward', 'department', 'bed'], startLabel: 'Collected', startedName: 'On the way', doneLabel: 'Delivered',
+// The first tap says "I am going" (it claims the job for the team, so nobody else goes too).
+const MOVE = { team: 'portering', needsTo: true, placeTypes: ['ward', 'department', 'bed'], startLabel: 'On my way', startedName: 'On the way', doneLabel: 'Delivered',
   requestRoles: ASK, doRoles: ['porter', 'support-supervisor'], leadRoles: LEADS };
 export const TEAMS = { portering: 'Portering' };
 export const KINDS = [
-  { ...MOVE, id: 'patient-move', name: 'Patient move', details: ['Wheelchair', 'Bed', 'Trolley', 'Walking with help'] },
+  // Two patients on one ward are two moves, so a second identical ask for a ward is a new job; for
+  // one bed it is still a double ask. Two specimen runs or equipment moves between the same places
+  // are one run: those stay one open job at a time.
+  { ...MOVE, id: 'patient-move', name: 'Patient move', repeatable: true, details: ['Wheelchair', 'Bed', 'Trolley', 'Walking with help'] },
   { ...MOVE, id: 'item-run', name: 'Specimen or item run', details: ['Specimen', 'Medicines', 'Supplies', 'Other item'] },
   { ...MOVE, id: 'equipment-move', name: 'Equipment move', details: ['Empty bed', 'Wheelchair or trolley', 'Other equipment'] },
   { id: 'room-clean', name: 'Room or area clean', team: 'cleaning', placeTypes: ['ward', 'department', 'bed'],
@@ -54,10 +58,11 @@ export const AUDIT_ELEMENTS = [
 export const AUDIT_PLACE_TYPES = ['ward', 'department'];
 export const ELEMENT_NAME = Object.fromEntries(AUDIT_ELEMENTS.map((e) => [e.id, e.name]));
 export const RISK_NAME = Object.fromEntries(RISK_CATEGORIES.map((c) => [c.id, c.name]));
-export const AUDIT_SET_NOTE = 'The element list and the risk categories are an example set, set locally, not a standard. Your site uses its own cleanliness standard.';
+export const AUDIT_SET_NOTE = 'The list of items and the types of area are an example set, set locally, not a standard. Your site uses its own cleanliness standard.';
 
 // ---- example settings, not a standard (each site sets its own) ----
 export const PASS_MARK = 85; // per cent, for the guide's "failed twice" rule and the audit tile
+export const REAUDIT_DAYS = 7; // the guide's suggested re-audit date: this many days after the last audit
 export const BED_TURNAROUND_TARGET = 60; // minutes, the same example target as the bed board
 export const SEVERAL_CLEANS = 2; // "several beds wait for a clean"
 export const TEAM_LEVELS = { portering: { waiting: 5, longestMinutes: 30 }, cleaning: { waiting: 6, longestMinutes: 60 } };
@@ -95,6 +100,21 @@ export function nextAuditId(events) {
   return `aud-${String(max + 1).padStart(5, '0')}`;
 }
 
+// Why an open job is first in its queue: the ward asked for it urgently ('asked-urgent'), or one of
+// the people who balance the work moved it to the front ('do-next'). The task object keeps one
+// priority for both; the event log says which. Returns Map(taskId -> mark) for marked jobs.
+export function queueMarks(events) {
+  const marks = new Map();
+  for (const e of events) {
+    if (e.type === 'task.requested' && e.data?.priority === 'urgent') marks.set(e.subject, 'asked-urgent');
+    else if (e.type === 'task.prioritised') {
+      if (e.data?.priority === 'urgent') marks.set(e.subject, 'do-next');
+      else marks.delete(e.subject);
+    }
+  }
+  return marks;
+}
+
 // The guide is on until a person switches it off (support.guide-set, a people-only command).
 export function guideOn(events) {
   let on = true;
@@ -106,10 +126,15 @@ export function guideOn(events) {
 // Bed turnaround: bed vacated -> clean done and bed ready, median minutes, cleans finished in the
 // period. Read from the bed cleans of the task object, which are the bed board's own events, so it
 // equals the bed board's KPI (tested).
+// Beds used again or taken out of service before a clean was recorded are left out of the median
+// and counted in `leftOut`, so a reader can see how many there were.
 export function bedTurnaround(events, { since, until, beds }) {
   const { all } = deriveTasks(events, { beds });
   const s = completionStats(all, { since, until, pick: (t) => t.kind === BED_CLEAN.id });
-  return { value: s.medianMinutes, numerator: null, denominator: s.n, n: s.n, breakdown: [] };
+  const gone = all.filter((t) => t.kind === BED_CLEAN.id && t.state === 'cancelled' && inPeriod(t.cancelledAt, since, until));
+  const count = (reason) => gone.filter((t) => t.cancelReason === reason).length;
+  return { value: s.medianMinutes, numerator: null, denominator: s.n, n: s.n, breakdown: [],
+    leftOut: { total: gone.length, usedAgain: count('Bed in use again'), outOfService: count('Bed taken out of service') } };
 }
 
 // Porter request to completion: asked for -> delivered, median minutes, for each kind and for all
@@ -121,6 +146,11 @@ export function porterRequestToDone(events, { since, until, tasks = null }) {
   return {
     value: total.medianMinutes, numerator: null, denominator: total.n, n: total.n,
     breakdown: PORTERING_KINDS.map((id) => { const s = stat((t) => t.kind === id); return { id, name: KIND_NAME[id], value: s.medianMinutes, n: s.n }; }),
+    // Urgent and normal apart: a job moved to the front counts as urgent, as it was when done.
+    byPriority: [['urgent', 'Urgent'], ['routine', 'Normal']].map(([id, name]) => {
+      const s = stat((t) => PORTERING_KINDS.includes(t.kind) && t.priority === id);
+      return { id, name, value: s.medianMinutes, n: s.n };
+    }),
   };
 }
 
@@ -148,7 +178,7 @@ export const GUIDE_RULES = [
   { id: 'team-busy', name: 'A team is busier than usual',
     basis: `Example setting, not a standard: the usual level is set locally (here up to ${TEAM_LEVELS.portering.waiting} jobs waiting and ${TEAM_LEVELS.portering.longestMinutes} min for portering, ${TEAM_LEVELS.cleaning.waiting} and ${TEAM_LEVELS.cleaning.longestMinutes} min for cleaning). Advice only.` },
   { id: 'audit-failed-twice', name: 'An area failed its audit twice',
-    basis: `Example setting, not a standard: the last two audits of an area both scored under the example pass mark of ${PASS_MARK}%, set locally. Advice only.` },
+    basis: `Example setting, not a standard: the last two audits of an area both scored under the example pass mark of ${PASS_MARK}%, set locally. The suggested re-audit date is ${REAUDIT_DAYS} days after the last audit, also an example setting. Advice only.` },
 ];
 const BASIS = Object.fromEntries(GUIDE_RULES.map((r) => [r.id, r.basis]));
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -197,6 +227,8 @@ export function ruleTeamBusy(teams) {
 }
 
 // Rule 3. audits: from deriveAudits, oldest first; placeName(id) -> name.
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const dayText = (ms) => { const d = new Date(ms); return `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`; };
 export function ruleAuditFailedTwice(audits, placeName) {
   const byPlace = new Map();
   for (const a of audits) byPlace.set(a.locationId, [...(byPlace.get(a.locationId) || []), a]);
@@ -205,9 +237,10 @@ export function ruleAuditFailedTwice(audits, placeName) {
     const [a, b] = list.slice(-2);
     if (!b || a.score >= PASS_MARK || b.score >= PASS_MARK) continue;
     const both = b.failed.filter((x) => a.failed.includes(x)).map((x) => ELEMENT_NAME[x]);
+    const by = Date.parse(b.at) + REAUDIT_DAYS * 864e5;
     out.push({
-      rule: 'audit-failed-twice', id: `audit-failed-twice:${place}:${b.id}`,
-      text: `Re-audit ${placeName(place)}.`,
+      rule: 'audit-failed-twice', id: `audit-failed-twice:${place}:${b.id}`, reauditBy: new Date(by).toISOString().slice(0, 10),
+      text: `Re-audit ${placeName(place)} by ${dayText(by)}.`,
       why: `The last two audits scored ${Math.round(a.score)}% and ${Math.round(b.score)}%, under the example pass mark of ${PASS_MARK}%.${both.length ? ` Failed both times: ${both.join("; ")}.` : ''}`,
       basis: BASIS['audit-failed-twice'], action: null,
     });
