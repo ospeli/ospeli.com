@@ -62,7 +62,6 @@ export const BED_TURNAROUND_TARGET = 60; // minutes, the same example target as 
 export const SEVERAL_CLEANS = 2; // "several beds wait for a clean"
 export const TEAM_LEVELS = { portering: { waiting: 5, longestMinutes: 30 }, cleaning: { waiting: 6, longestMinutes: 60 } };
 
-const ms = (iso) => Date.parse(iso);
 const inPeriod = (at, since, until) => at < until && (since == null || at >= since);
 
 // ---- audits, derived from support.audit-recorded events ----
@@ -215,6 +214,3 @@ export function ruleAuditFailedTwice(audits, placeName) {
   }
   return out;
 }
-
-// How long ago, in whole minutes; null-safe.
-export const minutesBetween = (from, to) => (from && to ? Math.max(0, Math.round((ms(to) - ms(from)) / 60000)) : null);

@@ -1,2 +1,108 @@
-/* Cleaning and portering: every rule starts with .mod-support */
-.mod-support { display: block; }
+/* Cleaning and portering. Every rule starts with .mod-support. Shell colours only (brand kit v3.1).
+   Phone first for porters and cleaners: text 15 px or more, every control at least 44 px tall,
+   the job's one button 64 px tall and full width, readable at arm's length with gloves on. */
+.mod-support.sup { font-size: 1rem; }
+.mod-support .meta, .mod-support .chip, .mod-support .chip-btn, .mod-support .stat span { font-size: .9375rem; }
+.mod-support .page-head { margin-bottom: 8px; }
+
+/* screens: a row of links, one per screen this role uses */
+.mod-support .sup-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; }
+.mod-support .sup-tabs a { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 14px; border-radius: 999px; border: 1.5px solid var(--line-strong);
+  background: var(--surface); color: var(--navy); text-decoration: none; font-weight: 800; font-size: .9375rem; }
+.mod-support .sup-tabs a[aria-current="page"] { background: var(--navy); border-color: var(--navy); color: #fff; }
+
+/* one job */
+.mod-support .sup-what, .mod-support .sup-where, .mod-support .sup-wait, .mod-support .sup-pos { margin: 0; overflow-wrap: anywhere; }
+.mod-support .sup-what { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.mod-support .sup-where { font-size: 1.0625rem; }
+.mod-support .sup-wait { font-weight: 700; color: var(--ink); }
+.mod-support .sup-wait.is-started { color: #0B4A3A; }
+.mod-support .chip.sup-urgent { background: #FBE3DE; color: #8A2412; }
+.mod-support .sup-pos { color: var(--ink-soft); font-size: .9375rem; }
+.mod-support .sup-counts { margin: 0 0 10px; }
+
+/* the next job: one card, one big button */
+.mod-support .sup-card { display: grid; gap: 8px; background: var(--surface); border: 1.5px solid var(--navy); border-left: 8px solid var(--sea); border-radius: var(--radius);
+  padding: 14px; margin: 0 0 16px; max-width: 640px; min-width: 0; }
+.mod-support .sup-card.is-urgent { border-left-color: var(--coral); }
+.mod-support .sup-card.is-mine { background: #E6F4F3; }
+.mod-support .sup-card p { margin: 0; }
+.mod-support .sup-label { font-weight: 800; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .08em; font-size: .9375rem; }
+.mod-support .sup-card .sup-what b { font-size: 1.45rem; line-height: 1.2; }
+.mod-support .sup-card .sup-where { font-size: 1.15rem; }
+.mod-support .btn.sup-main { min-height: 64px; font-size: 1.25rem; width: 100%; }
+.mod-support .sup-empty { font-size: 1.15rem; font-weight: 800; margin: 0; }
+
+/* lists of jobs */
+.mod-support .sup-list h2, .mod-support .sup-group h3 { margin: 16px 0 8px; }
+.mod-support .sup-list ul, .mod-support .sup-group ul, .mod-support .sup-list-plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mod-support .sup-row { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; background: var(--surface);
+  border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.mod-support .sup-row.is-urgent { border-left-color: var(--coral); }
+.mod-support .sup-row-text { display: grid; gap: 2px; flex: 1 1 220px; min-width: 0; }
+.mod-support .sup-row-acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mod-support .btn.sup-go { min-height: 48px; flex: 0 0 auto; }
+.mod-support .sup-group h3 span { color: var(--ink-soft); font-weight: 700; }
+.mod-support .sup-cancel > summary, .mod-support .sup-def > summary, .mod-support .sup-areas summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 800; color: var(--sea-ink); }
+.mod-support .sup-cancel-body { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mod-support .sup-cancel-body select, .mod-support .sup-form select { font: inherit; min-height: 44px; padding: 6px 10px; border: 1.5px solid var(--line-strong); border-radius: 10px;
+  background: var(--surface); color: var(--ink); max-width: 100%; min-width: 0; }
+.mod-support .sup-def p { margin: 0 0 6px; font-size: .9375rem; color: var(--ink-soft); }
+.mod-support .sup-measure { margin-top: 18px; max-width: 640px; }
+.mod-support .sup-measure h2 { margin: 0 0 4px; font-size: 1.05rem; }
+.mod-support .sup-big-n { font-size: 1.5rem; }
+.mod-support .sup-foot { margin-top: 12px; }
+
+/* the board */
+.mod-support .sup-teams { margin-bottom: 14px; }
+.mod-support .sup-teams .stat b { font-size: 1.35rem; }
+.mod-support .sup-guide { border-left: 5px solid var(--seafoam); margin-bottom: 8px; }
+.mod-support .sup-guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mod-support .sup-guide-head h2 { margin: 0; }
+.mod-support .guide-switch[aria-pressed="false"] { border-style: dashed; color: var(--ink-soft); }
+.mod-support .sup-sugg { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.mod-support .sup-sugg li { border: 1px solid var(--line); border-left: 4px solid var(--mango); border-radius: 10px; padding: 10px 12px; overflow-wrap: anywhere; }
+.mod-support .sup-sugg p { margin: 0 0 4px; }
+.mod-support .sup-groups { display: grid; gap: 4px; }
+.mod-support .sup-kpis { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+.mod-support .sup-kpi p { margin: 0 0 4px; }
+.mod-support .sup-kpi-name { font-weight: 800; }
+.mod-support .sup-kpi-value { font-size: 1.7rem; font-weight: 800; line-height: 1.1; }
+.mod-support .sup-breakdown, .mod-support .sup-planned { margin: 4px 0; padding-left: 18px; font-size: .9375rem; }
+.mod-support .sup-planned { margin-top: 10px; }
+
+/* forms: ask for help, cleaning audit */
+.mod-support .sup-form { display: grid; gap: 10px; max-width: 640px; min-width: 0; }
+.mod-support .sup-form h2 { margin: 0; }
+.mod-support .sup-form .field { display: grid; gap: 4px; min-width: 0; }
+.mod-support .sup-form .field[hidden] { display: none; }
+.mod-support .sup-form .field label, .mod-support .sup-form .label { font-weight: 800; }
+.mod-support .sup-form select { width: 100%; }
+.mod-support .sup-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.mod-support .sup-choice { min-height: 48px; font-size: 1rem; text-align: left; }
+.mod-support .sup-two .sup-choice { flex: 1 1 120px; text-align: center; }
+.mod-support .sup-status { margin: 0; font-weight: 700; }
+.mod-support .sup-status:empty { display: none; }
+.mod-support .sup-elements { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.mod-support .sup-elements li { display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 1px solid var(--line); border-left: 5px solid var(--line-strong);
+  border-radius: 10px; padding: 6px 8px 6px 12px; background: var(--surface); }
+.mod-support .sup-elements li.is-pass { border-left-color: var(--sea); }
+.mod-support .sup-elements li.is-fail { border-left-color: var(--coral); background: #FDF0EC; }
+.mod-support .sup-el-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.mod-support .sup-pf { display: flex; gap: 6px; flex: none; }
+.mod-support .sup-hint { margin: 0; font-size: .9375rem; color: var(--ink-soft); }
+.mod-support .sup-mark { font: inherit; font-weight: 800; min-height: 48px; min-width: 64px; border-radius: 10px; border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--navy); cursor: pointer; }
+.mod-support .sup-mark.sup-pass[aria-pressed="true"] { background: var(--sea-ink); border-color: var(--sea-ink); color: #fff; }
+.mod-support .sup-mark.sup-fail[aria-pressed="true"] { background: #A3301A; border-color: #A3301A; color: #fff; }
+.mod-support .sup-score { font-size: 1.15rem; font-weight: 800; margin: 0; }
+.mod-support .sup-result { border-left: 5px solid var(--sea); margin-top: 6px; }
+.mod-support .sup-result.is-below { border-left-color: var(--coral); }
+.mod-support .sup-result ul { margin: 0; padding-left: 20px; }
+.mod-support .sup-areas { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.mod-support .sup-areas > li { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; }
+.mod-support .sup-areas summary { flex-wrap: wrap; gap: 4px 10px; color: var(--ink); padding: 6px 0; }
+.mod-support .sup-area-name { font-weight: 800; flex: 1 1 160px; }
+.mod-support .chip.sup-below { background: #FBE3DE; color: #8A2412; }
+.mod-support .chip.sup-ok { background: #DDF1EA; color: #0B4A3A; }
+.mod-support .sup-audit-list { margin: 0 0 10px; padding-left: 18px; display: grid; gap: 4px; }
+.mod-support .sup-audit .notice, .mod-support .sup-board .notice { margin: 10px 0; }
