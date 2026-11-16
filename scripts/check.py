@@ -363,6 +363,20 @@ if areas_file.exists():
             if c not in names:
                 errors.append(f"areas.json {a['id']}: connects to unknown area {c}")
 
+# Issue #45: no public page or the area spec may name an assistant command that does not exist.
+# Area pages of Built areas list their commands from commands.json (scripts/build_areas.py);
+# the other area pages say commands are defined when the area is built. areas.json holds none.
+for f in sorted((ROOT / "areas").rglob("*.html")) + [ROOT / "areas" / "areas.json", ROOT / "index.html"]:
+    if not f.exists():
+        continue
+    for tok in sorted(set(re.findall(r"\bospeli_[a-z_]+\b", f.read_text(encoding="utf-8")))):
+        if tok not in _cmds:
+            errors.append(f"{f.relative_to(ROOT).as_posix()}: names an assistant command that does not exist (issue #45): {tok}")
+if areas_file.exists():
+    for a in areas:
+        if a.get("agentCommands"):
+            errors.append(f"areas.json {a['id']}: lists assistant commands; commands are published from commands.json once an area is built (issue #45)")
+
 for e in errors:
     print("FAIL", e)
 print(f"Checked {len(pages)} pages, {len(errors)} problems")

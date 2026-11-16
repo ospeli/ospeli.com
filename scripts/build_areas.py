@@ -26,6 +26,53 @@ MONTHS = ["Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"]
 #   Planned = designed, nothing to click yet.
 BUILT = ["A3", "B1", "X1"]
 # Areas with something to click today.
+# Issue #45: an area page lists assistant commands only when the area is Built, and the list is
+# read from the app's own registry (web/app/api/commands.json), so the page and the app cannot
+# drift apart. Each Built area names the command prefixes that belong to it.
+COMMAND_PREFIXES = {
+    "A3": ["ospeli_beds_"],
+    "B1": ["ospeli_workorders_", "ospeli_assets_"],
+    "X1": ["ospeli_maps_", "ospeli_walks_"],
+}
+COMMANDS = ROOT / "app" / "api" / "commands.json"
+
+
+def area_commands(a):
+    prefixes = COMMAND_PREFIXES.get(a["id"]) if a["id"] in BUILT else None
+    if not prefixes:
+        return []
+    spec = json.loads(COMMANDS.read_text(encoding="utf-8"))["commands"]
+    return [c for c in spec if c["name"].startswith(tuple(prefixes))]
+
+
+# Short words for the registry's agentBehaviour values; an unknown value fails the build.
+BEHAVIOUR = {
+    "runs and is audited as an agent read": "Read",
+    "recorded as a proposal for a person to accept or decline; nothing changes until they do": "Waits for a person",
+    "refused: people only": "People only",
+}
+
+
+def first_sentence(text):
+    m = re.match(r"(.+?[.!?])(\s|$)", text)
+    return m.group(1) if m else text
+
+
+def agent_section(a):
+    cmds = area_commands(a)
+    head = '<section class="block card" aria-labelledby="ag"><h2 id="ag">For AI assistants</h2>'
+    if not cmds:
+        return (head + '<p>Agent commands are defined and tested when this area is built. Read-only first; anything '
+                'that records or changes data needs a person. The commands that exist today are in '
+                '<a href="../../app/api/commands.json">the app\'s command list</a>.</p></section>')
+    rows = "".join(f'<tr><td><code>{e(c["name"])}</code></td><td>{e(first_sentence(c["summary"]))}</td><td>{e(BEHAVIOUR[c["agentBehaviour"]])}</td></tr>' for c in cmds)
+    return (head + '<p class="legend">These are the app\'s own commands for this area, copied from '
+            '<a href="../../app/api/commands.json">the command list</a>, which gives the inputs and an example for each. '
+            'Agents are off unless a site switches them on. "Read" only reads. "Waits for a person": the change is '
+            'a proposal until a person accepts it. "People only": refused for an assistant.</p>'
+            f'<div class="tw"><table><thead><tr><th>Command</th><th>What it does</th><th>An assistant</th></tr></thead><tbody>{rows}</tbody></table></div></section>')
+
+
 LIVE = {
     "A3": ("Open the bed board demo", "../../demo/bed-board/"),
     "X1": ("Open the process mapping demo", "../../demo/process-map/"),
@@ -185,7 +232,6 @@ def area_page(a, by_id):
     kpis = "".join(f'<tr><td><b>{e(k["name"])}</b></td><td>{e(k["definition"])}</td><td>{e(k["source"])}</td></tr>' for k in a["kpis"])
     guide = "".join(f"<li>{e(g)}</li>" for g in a["guide"])
     plays = "".join(f"<li>{e(p)}</li>" for p in a["playbooks"])
-    cmds = "".join(f'<tr><td><code>{e(c["name"])}</code></td><td>{e(c["does"])}</td><td>{e(c["approval"])}</td></tr>' for c in a["agentCommands"])
     methods = "".join(f"<li>{e(m)}</li>" for m in a["methods"])
     stds = "".join(f'<li><b>{e(s["name"])}</b>: {e(s["how"])}</li>' for s in a["standards"])
     design = (f'<h3>Improvement methods</h3><ul>{methods}</ul>' if methods else "") + (f'<h3>Standards and references</h3><ul>{stds}</ul>' if stds else "")
@@ -208,7 +254,7 @@ def area_page(a, by_id):
 <section class="card" aria-labelledby="pb"><h2 id="pb">Playbooks</h2><ul>{plays}</ul></section>
 </div>
 <section class="block card" aria-labelledby="kp"><h2 id="kp">Measures, with their definitions</h2><div class="tw"><table><thead><tr><th>Measure</th><th>Definition</th><th>Source</th></tr></thead><tbody>{kpis}</tbody></table></div></section>
-<section class="block card" aria-labelledby="ag"><h2 id="ag">For AI assistants</h2><p class="legend">Assistants may read and propose through these commands. "none (read only)" commands only read. Anything that records or changes data is a proposal until a person confirms it, and "person decides" waits for a person with that role.</p><div class="tw"><table><thead><tr><th>Command</th><th>What it does</th><th>Approval</th></tr></thead><tbody>{cmds}</tbody></table></div></section>
+{agent_section(a)}
 <section class="block card" aria-labelledby="st"><h2 id="st">Standards and methods it is designed around</h2>{design}</section>
 {'<section class="block" aria-labelledby="cn"><h2 id="cn">Works with</h2><div class="chips">' + links + '</div></section>' if links else ''}
 <p class="not"><b>What it does not do:</b> {e(a["notFor"])}</p>"""

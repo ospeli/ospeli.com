@@ -94,33 +94,6 @@
    "Waiting list validation: check each open referral, output list cleaned and contacted.",
    "Clinic template review: compare demand and slots, output a revised template."
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_clinics_list_waiting",
-    "does": "List open referrals by service and wait, unbooked first, with filters and limit.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_clinics_find_slots",
-    "does": "Find free slots for a service and date range, with clinic and time.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_clinics_book_appointment",
-    "does": "Propose booking a referral into a slot; booking clerk confirms.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_clinics_record_attendance",
-    "does": "Record arrived, called, finished or did not attend for an appointment code.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_clinics_get_day_summary",
-    "does": "Return a clinic day's slots used, empty, cancelled and waits.",
-    "approval": "none (read only)"
-   }
-  ],
   "methods": [],
   "standards": [
    {
@@ -241,28 +214,6 @@
   "playbooks": [
    "Department flow walk: time each stage, output the biggest wait.",
    "Full-capacity drill: run the escalation steps, output actions and timings."
-  ],
-  "agentCommands": [
-   {
-    "name": "ospeli_ed_get_board",
-    "does": "Return the live department board by area, stage and wait, using patient codes.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_ed_log_stage",
-    "does": "Record a stage change for a patient code with event time.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_ed_list_awaiting_beds",
-    "does": "List decisions to admit waiting for beds, with time and specialty.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_ed_propose_escalation",
-    "does": "Propose an escalation level with triggers met; the charge nurse decides.",
-    "approval": "person decides"
-   }
   ],
   "methods": [],
   "standards": [
@@ -390,33 +341,6 @@
    "Daily bed meeting: review board and delays, output actions with owners.",
    "Long-stay review: list 21-day-plus stays by delay reason, output actions."
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_beds_find_free",
-    "does": "Find ready beds by ward and bed type, with time ready.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_beds_propose_allocation",
-    "does": "Propose a bed for a bed request with reasons; the ward accepts.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_beds_update_state",
-    "does": "Set a bed's state or a patient code's expected discharge date.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_beds_list_delays",
-    "does": "List patients ready to leave and their delay reasons, by ward.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_beds_get_summary",
-    "does": "Return occupancy, expected discharges and long stays for the bed meeting.",
-    "approval": "none (read only)"
-   }
-  ],
   "methods": [
    "SAFER patient flow bundle",
    "Red2Green bed days"
@@ -539,28 +463,6 @@
   "playbooks": [
    "Session review: compare planned and used time, output lost time by cause.",
    "Cancellation review: group last month's cancellations, output top avoidable causes."
-  ],
-  "agentCommands": [
-   {
-    "name": "ospeli_theatres_get_lists",
-    "does": "Return today's or a date's lists by theatre, with case stages and delays.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_theatres_log_case_time",
-    "does": "Record a case milestone time for a patient code.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_theatres_check_readiness",
-    "does": "List next-day cases missing a bed, kit, staff or checklist.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_theatres_propose_list_change",
-    "does": "Propose moving or swapping a case; the theatre coordinator decides.",
-    "approval": "person decides"
-   }
   ],
   "methods": [],
   "standards": [
@@ -686,28 +588,6 @@
    "Turnaround walk: time a sample's journey, output the longest step.",
    "Downtime drill: rehearse backup routes, output gaps and actions."
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_diagnostics_get_request_status",
-    "does": "Return status and timestamps for requests by patient code or area.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_diagnostics_log_specimen",
-    "does": "Record a specimen collected, received or rejected, with reason.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_diagnostics_list_backlog",
-    "does": "List waiting scans or tests by modality, age and area.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_diagnostics_set_equipment_status",
-    "does": "Propose marking equipment down or up, linked to a work order.",
-    "approval": "person decides"
-   }
-  ],
   "methods": [],
   "standards": [
    {
@@ -823,28 +703,6 @@
    "Stock count: count by location, output variances and top-up updates.",
    "Discharge medicines review: map request to collection, output main delay."
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_pharmacy_list_queue",
-    "does": "List dispensing requests by ward, type and wait.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_pharmacy_get_stock",
-    "does": "Return stock levels, top-up levels and days left by item or location.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_pharmacy_propose_reorder",
-    "does": "Draft a reorder from use and stock; the pharmacy manager approves.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_pharmacy_mark_ready",
-    "does": "Mark a dispensing request ready for collection.",
-    "approval": "person confirms"
-   }
-  ],
   "methods": [],
   "standards": [
    {
@@ -958,28 +816,6 @@
   "playbooks": [
    "Capacity review: closures and transfers out by cause, output actions.",
    "Transfer walk: map a transfer from request to arrival, output delays."
-  ],
-  "agentCommands": [
-   {
-    "name": "ospeli_maternity_get_capacity",
-    "does": "Return labour rooms, beds and cots by state and unit.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_maternity_log_closure",
-    "does": "Record a unit closure or reopening with reason and decision maker.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_maternity_list_transfers",
-    "does": "List transfer requests by stage, reason and wait.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_maternity_propose_transfer_route",
-    "does": "Propose a receiving unit with free capacity; a person decides.",
-    "approval": "person decides"
-   }
   ],
   "methods": [],
   "standards": [
@@ -1097,28 +933,6 @@
    "Step-down review: map ready to left unit, output main delays.",
    "Capacity huddle: beds, staffing and demand, output actions with owners."
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_criticalcare_get_capacity",
-    "does": "Return beds by state and staffing, with ready-to-step-down count.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_criticalcare_list_stepdowns",
-    "does": "List patient codes ready to step down, hours waiting and ward bed status.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_criticalcare_mark_ready",
-    "does": "Record a patient code ready to step down, as decided by the team.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_criticalcare_propose_ward_bed",
-    "does": "Propose a ward bed for a step-down; the ward accepts.",
-    "approval": "person decides"
-   }
-  ],
   "methods": [],
   "standards": [
    {
@@ -1235,28 +1049,6 @@
    "Delayed transfers review: list delays by reason, output actions with owners.",
    "Placement walk: map a request to move, output slowest step."
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_longstay_list_delays",
-    "does": "List patient codes past ready to leave, days waiting and reason.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_longstay_update_placement",
-    "does": "Record a placement request stage for a patient code.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_longstay_get_capacity",
-    "does": "Return beds by unit, type and state, with far-away placements.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_longstay_propose_return",
-    "does": "Propose returning a far-placed patient to a free local bed.",
-    "approval": "person decides"
-   }
-  ],
   "methods": [],
   "standards": [
    {
@@ -1371,33 +1163,6 @@
   "playbooks": [
    "Equipment census: walk each area, label assets, output a baseline inventory.",
    "Replacement review: rank ageing and repeat-fault assets for the investment request."
-  ],
-  "agentCommands": [
-   {
-    "name": "ospeli_equipment_report_fault",
-    "does": "Raise a fault on an asset from its ID, fault code and urgency.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_equipment_list_workorders",
-    "does": "List open work orders by area, team, status or overdue, with timers.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_equipment_assign_workorder",
-    "does": "Propose assigning a work order to a team.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_equipment_get_asset_history",
-    "does": "Return an asset's faults, maintenance, downtime and step guides.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_equipment_plan_maintenance",
-    "does": "Draft next month's planned maintenance schedule from due dates and team capacity.",
-    "approval": "person decides"
-   }
   ],
   "methods": [],
   "standards": [
@@ -1524,33 +1289,6 @@
    "Utilities resilience check: walk plant, test backups, output a gap list.",
    "Statutory compliance sweep: list every inspection, output what is overdue."
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_facilities_report_fault",
-    "does": "Raise a building or plant fault for a room or plant item.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_facilities_list_workorders",
-    "does": "List open facilities work orders by building, priority or overdue.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_facilities_log_utility_check",
-    "does": "Record a generator test, gas check or outage with times.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_facilities_list_compliance_due",
-    "does": "List statutory inspections due or overdue in a date range.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_facilities_close_room",
-    "does": "Propose taking a room out of use, with reason and expected return.",
-    "approval": "person decides"
-   }
-  ],
   "methods": [],
   "standards": [
    {
@@ -1673,28 +1411,6 @@
    "Bed turnaround review: map vacate to ready, output the main delay.",
    "Cleaning audit round: audit rooms by risk category, output scores and actions."
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_support_request_task",
-    "does": "Request a clean, porter move, linen or meal delivery for a location.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_support_list_tasks",
-    "does": "List open support tasks by team, area or wait, oldest first.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_support_reorder_queue",
-    "does": "Propose a new task order for a team queue, with reasons.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_support_record_audit",
-    "does": "Record a cleaning audit result for a room and risk category.",
-    "approval": "person confirms"
-   }
-  ],
   "methods": [],
   "standards": [
    {
@@ -1801,28 +1517,6 @@
   "playbooks": [
    "Top-up level reset: review usage by area, output new levels.",
    "Stock-out review: trace each stock-out's cause, output fixes per step."
-  ],
-  "agentCommands": [
-   {
-    "name": "ospeli_stores_check_stock",
-    "does": "Return stock on hand against top-up level for an area or item.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_stores_request_topup",
-    "does": "Raise a top-up request for an area from its latest count.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_stores_track_order",
-    "does": "Return an order's status, current step and days waiting.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_stores_propose_transfer",
-    "does": "Propose moving stock between areas, with quantities and reason.",
-    "approval": "person decides"
-   }
   ],
   "methods": [],
   "standards": [
@@ -1939,28 +1633,6 @@
   "playbooks": [
    "Transfer delay review: time each journey step, output the main bottleneck.",
    "Fleet check: inspect every vehicle, output availability and repair list."
-  ],
-  "agentCommands": [
-   {
-    "name": "ospeli_transport_request_transfer",
-    "does": "Book a transfer with from, to, time needed and escort needs.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_transport_list_waiting",
-    "does": "List transfers waiting, with time needed and delay reason.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_transport_assign_vehicle",
-    "does": "Propose a vehicle and crew for a waiting transfer.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_transport_get_fleet_status",
-    "does": "Return each vehicle's availability, faults and service due.",
-    "approval": "none (read only)"
-   }
   ],
   "methods": [],
   "standards": [
@@ -2087,28 +1759,6 @@
    "WISN workload review: staff required per category, with the gap.",
    "New starter onboarding checklist: ready-to-work date and outstanding steps."
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_staffing_list_gaps",
-    "does": "Lists uncovered shifts by unit, skill and start time.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_staffing_request_cover",
-    "does": "Drafts a cover request for a gap; a coordinator sends it.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_staffing_get_demand",
-    "does": "Returns staff needed versus rostered per unit and shift, with workload basis.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_credentials_list_expiring",
-    "does": "Lists credentials and training expiring in a date range, by role and unit.",
-    "approval": "none (read only)"
-   }
-  ],
   "methods": [
    "WHO WISN (Workload Indicators of Staffing Need)"
   ],
@@ -2227,28 +1877,6 @@
    "Safety huddle: yesterday's incidents, open risks and actions due today.",
    "Learning review: timeline, contributing factors and agreed actions with owners.",
    "Monthly overdue-actions report for leadership, by source and owner role."
-  ],
-  "agentCommands": [
-   {
-    "name": "ospeli_incidents_report",
-    "does": "Drafts an incident report from a description; the reporter submits it.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_actions_list_overdue",
-    "does": "Lists overdue actions by source, area and owner role, with days late.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_actions_create",
-    "does": "Proposes an action with owner, due date and source link.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_risks_get_register",
-    "does": "Returns risks above a score, with controls, owner and review dates.",
-    "approval": "none (read only)"
-   }
   ],
   "methods": [
    "Model for Improvement (plan-do-study-act cycles)",
@@ -2369,28 +1997,6 @@
    "Outbreak response: area closure, clean schedule, supplies, daily status note.",
    "Monthly audit round: schedule by area, results pack and actions."
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_ipc_list_isolation_rooms",
-    "does": "Returns isolation rooms by status and time in status, per site.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_ipc_record_audit",
-    "does": "Records a completed audit from structured observations.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_ipc_close_area",
-    "does": "Proposes closing or reopening an area; the IPC nurse confirms.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_ipc_get_compliance",
-    "does": "Returns audit compliance by area and period, with KPI definition.",
-    "approval": "none (read only)"
-   }
-  ],
   "methods": [
    "WHO My 5 Moments for Hand Hygiene"
   ],
@@ -2506,28 +2112,6 @@
    "Policy review cycle: draft, consult, approve, publish, acknowledgement report.",
    "Accreditation mock survey: tracer checklist, gaps found, actions assigned.",
    "Committee meeting: agenda, pack, minutes and actions in one routine."
-  ],
-  "agentCommands": [
-   {
-    "name": "ospeli_docs_find_current",
-    "does": "Returns the current approved version of a policy by topic.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_docs_list_due_review",
-    "does": "Lists documents past or near review date, by owner role.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_docs_submit_revision",
-    "does": "Submits a draft revision for approval by the named approver.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_accreditation_get_gaps",
-    "does": "Lists standards with missing evidence or unmet self-assessment, with actions.",
-    "approval": "none (read only)"
-   }
   ],
   "methods": [
    "Model for Improvement (plan-do-study-act cycles)"
@@ -2648,28 +2232,6 @@
    "Clinic preparation: pull list, located records, missing list by morning.",
    "Retention review: records due for archive or destruction, for approval."
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_records_get_pull_list",
-    "does": "Returns records needed per clinic session with location and status.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_records_log_movement",
-    "does": "Records a chart moving between locations, with time and role.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_records_list_coding_backlog",
-    "does": "Lists uncoded discharges by age and specialty.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_records_propose_merge",
-    "does": "Proposes merging two patient records; a records officer confirms.",
-    "approval": "person decides"
-   }
-  ],
   "methods": [],
   "standards": [
    {
@@ -2788,28 +2350,6 @@
    "Business case: problem, options, costs, risks, benefits, ready for approval.",
    "Department redesign: current map, future map, layout, capacity check.",
    "Post-project review: benefits achieved, lessons, follow-up actions."
-  ],
-  "agentCommands": [
-   {
-    "name": "ospeli_projects_list_at_risk",
-    "does": "Lists projects with slipped milestones or overspend, with reasons.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_cases_draft",
-    "does": "Drafts a business case from a problem, process map and KPIs.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_projects_update_milestone",
-    "does": "Records a milestone's status and date for a project.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_benefits_get_review",
-    "does": "Returns baseline versus current values for a project's promised KPIs.",
-    "approval": "none (read only)"
-   }
   ],
   "methods": [],
   "standards": [
@@ -2930,28 +2470,6 @@
    "Budget setting: roll forward, adjust for planned activity, collect manager sign-off",
    "Recovery plan: list drivers, agree actions, track savings against budget"
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_finance_get_position",
-    "does": "Returns budget, actual and variance for a cost centre and period.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_finance_list_variances",
-    "does": "Lists variances beyond tolerance, with owner, reason and note status.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_finance_draft_variance_note",
-    "does": "Drafts a variance explanation from spend and activity data for the owner.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_finance_request_spend",
-    "does": "Raises a spend request against a budget line, routed to the approver.",
-    "approval": "person decides"
-   }
-  ],
   "methods": [],
   "standards": [],
   "connects": [
@@ -3054,28 +2572,6 @@
   "playbooks": [
    "Denial review: group by reason, find the root step, assign fixes",
    "Month-end receivables: age balances, flag stalled claims, update cash forecast"
-  ],
-  "agentCommands": [
-   {
-    "name": "ospeli_revenue_list_claims",
-    "does": "Lists claims by stage, payer group or age, with what each is waiting for.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_revenue_check_ready",
-    "does": "Checks an encounter for missing coverage, authorisation, charges or coding before submission.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_revenue_draft_appeal",
-    "does": "Drafts a denial appeal from the claim record and denial reason.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_revenue_get_ageing",
-    "does": "Returns accounts receivable by payer group and age band.",
-    "approval": "none (read only)"
-   }
   ],
   "methods": [],
   "standards": [
@@ -3198,28 +2694,6 @@
    "Quarterly access review: managers confirm each account, removals logged",
    "Cyber incident first hour: contain, notify leadership, record actions"
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_it_report_fault",
-    "does": "Raises an IT ticket for a system or device, with location and description.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_it_get_status",
-    "does": "Returns current status of systems, open downtime and departments affected.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_it_declare_downtime",
-    "does": "Proposes declaring downtime for a system and starts the paper fallback plan.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_it_list_access_risks",
-    "does": "Lists leaver accounts still active, overdue reviews and unpatched devices.",
-    "approval": "none (read only)"
-   }
-  ],
   "methods": [],
   "standards": [
    {
@@ -3338,28 +2812,6 @@
    "Monthly pack: refresh data, flag signals, collect commentary, sign off",
    "External report: check completeness, reconcile, named sign-off, submit, file copy",
    "New KPI: define, test on past data, agree owner, publish"
-  ],
-  "agentCommands": [
-   {
-    "name": "ospeli_reports_get_kpi",
-    "does": "Returns a KPI value, trend, SPC signal and its full definition.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_reports_check_completeness",
-    "does": "Lists missing or late data for a report or period, by data owner.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_reports_draft_pack",
-    "does": "Assembles a draft performance pack with charts and commentary prompts.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_reports_submit_external",
-    "does": "Prepares an external report for named sign-off and submission.",
-    "approval": "person decides"
-   }
   ],
   "methods": [],
   "standards": [
@@ -3486,33 +2938,6 @@
    "Drill review: timeline, gaps and an action list",
    "Continuity test: system downtime walk-through and printed fallback pack"
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_continuity_readiness_get",
-    "does": "Returns readiness by area: plans, drills, backup cover, open actions.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_continuity_checklist_start",
-    "does": "Opens a pre-event or downtime checklist for chosen areas and assigns owners.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_continuity_plan_activate",
-    "does": "Proposes activating a plan; the incident commander confirms.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_continuity_drill_review_draft",
-    "does": "Drafts a drill review and actions from the drill's timed log.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_continuity_fallback_print",
-    "does": "Builds the printable downtime pack: bed list, contacts, rosters, critical stock.",
-    "approval": "none (read only)"
-   }
-  ],
   "methods": [],
   "standards": [
    {
@@ -3637,28 +3062,6 @@
    "Weekly recall run: overdue list, slots offered, letters or messages",
    "Placement delay review: waits by reason and service, with actions"
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_community_capacity_get",
-    "does": "Returns free, held and occupied community places by service.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_community_followups_overdue",
-    "does": "Lists overdue follow-ups by programme and health centre, with recall status.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_community_recall_book",
-    "does": "Proposes recall bookings into open session slots.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_community_placement_offer",
-    "does": "Proposes a community place for a hospital referral.",
-    "approval": "person decides"
-   }
-  ],
   "methods": [],
   "standards": [
    {
@@ -3763,28 +3166,6 @@
   "playbooks": [
    "Campaign readiness check: sessions, teams, transport and stock gaps",
    "Cold chain monthly review: excursions, repairs and stock affected"
-  ],
-  "agentCommands": [
-   {
-    "name": "ospeli_publichealth_campaign_gaps",
-    "does": "Lists upcoming sessions missing staff, transport or stock.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_publichealth_stock_get",
-    "does": "Returns stock, expiry and days of cover per site and item.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_publichealth_transfer_propose",
-    "does": "Proposes a stock transfer between sites to cover planned sessions.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_publichealth_coldchain_status",
-    "does": "Returns device readings, alarms and open excursions.",
-    "approval": "none (read only)"
-   }
   ],
   "methods": [],
   "standards": [
@@ -3891,28 +3272,6 @@
    "Monthly feedback report: volumes, themes, timeliness and actions",
    "Theme deep-dive: one theme's cases, process map and actions"
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_experience_complaint_log",
-    "does": "Logs a complaint or compliment with channel, service and theme.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_experience_queue_list",
-    "does": "Lists open complaints by stage, owner role and due date.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_experience_response_draft",
-    "does": "Drafts a response for the owner to edit and send.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_experience_themes_get",
-    "does": "Returns themes by service and period with trend.",
-    "approval": "none (read only)"
-   }
-  ],
   "methods": [],
   "standards": [
    {
@@ -4016,28 +3375,6 @@
   "playbooks": [
    "Process map: captured steps and times to current and future state"
   ],
-  "agentCommands": [
-   {
-    "name": "ospeli_processmap_get",
-    "does": "Returns a map's steps, roles and times, today or proposed.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_processmap_analyse",
-    "does": "Returns elapsed time, waiting share, handoffs and biggest waits.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_processmap_suggest",
-    "does": "Returns the guide's suggestions with their reasons.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_processmap_propose_change",
-    "does": "Applies a suggested change to the proposed version only.",
-    "approval": "person decides"
-   }
-  ],
   "methods": [
    "Lean value stream mapping"
   ],
@@ -4132,28 +3469,6 @@
    "Department redesign: layout and process options with trade-offs and data sheet",
    "Structure review: layers, spans, duplication and a proposed structure",
    "Business case pack: brief, data sheet and figures for sign-off"
-  ],
-  "agentCommands": [
-   {
-    "name": "ospeli_playbooks_list",
-    "does": "Lists playbooks with inputs, outputs and last run.",
-    "approval": "none (read only)"
-   },
-   {
-    "name": "ospeli_playbooks_run",
-    "does": "Runs a playbook for a chosen area and period; returns a draft.",
-    "approval": "person confirms"
-   },
-   {
-    "name": "ospeli_playbooks_output_approve",
-    "does": "Sends a draft output for a named role to approve.",
-    "approval": "person decides"
-   },
-   {
-    "name": "ospeli_playbooks_business_case_draft",
-    "does": "Builds a business case pack from a playbook output.",
-    "approval": "person decides"
-   }
   ],
   "methods": [
    "Statistical process control",
