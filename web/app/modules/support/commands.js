@@ -289,23 +289,34 @@ export const COMMANDS = [
   },
 ];
 
-// ---- synthetic history: thirty days of cleaning audits for Example General Hospital ----
-// Generic patterns only: most elements pass, high surfaces and curtains fail more often, and one
-// ward (B2) fails its last two audits so the guide has something real to say. Task history (porter
-// jobs and room cleans) is not seeded: see the builder's report (the core task tests expect an
-// example hospital with no task.requested events).
-// Wards only: the generator's own test expects every example event's subject to be a ward, bed
-// (asset) or encounter id. Departments are audited the same way on screen.
-const AUDITED = [['ward-a1', 'high'], ['ward-a2', 'high'], ['ward-a3', 'high'], ['ward-b1', 'high'], ['ward-b2', 'high'], ['ward-c1', 'high']];
+// ---- synthetic history for Example General Hospital: thirty days of jobs and cleaning audits ----
+// Generic patterns only, entirely fictional: busier by day, longer waits around shift change, most
+// audit elements pass while high surfaces and curtains fail more often, and one ward (B2) fails its
+// last two audits so the guide has something real to say. A handful of jobs are left open at the
+// end so a porter and a cleaner who open the app see a real queue.
+const AUDITED = [['ward-a1', 'high'], ['ward-a2', 'high'], ['ward-a3', 'high'], ['ward-b1', 'high'], ['ward-b2', 'high'], ['ward-c1', 'high'],
+  ['dept-emergency', 'high'], ['dept-theatres', 'very-high'], ['dept-imaging', 'moderate'], ['dept-outpatients', 'moderate']];
 const WEAK = { 'high-surfaces': 0.18, curtains: 0.12 }; // fail more often than the rest (generic pattern)
 const WEAK_WARD = 'ward-b2';
+// Jobs asked for per hour by local hour of day (generic: busy 08:00 to 18:00, quiet at night).
+const PORTER_PER_HOUR = [0.6, 0.4, 0.4, 0.4, 0.5, 0.6, 1, 1.6, 2.6, 3, 3, 2.8, 2.6, 2.8, 3, 2.8, 2.4, 2, 1.6, 1.2, 1, 0.8, 0.7, 0.6];
+const CLEAN_PER_HOUR = PORTER_PER_HOUR.map((x) => x / 4);
+const SHIFT_CHANGE = [6, 7, 18, 19]; // local hours around 07:00 and 19:00, when waits run longer
+const CANCEL = ['No longer needed', 'Asked for by mistake', 'Done another way'];
+
 export function seed({ r, startMs, endMs, entities }) {
   const offset = (entities.find((e) => e.type === 'site' && e.utcOffsetMinutes != null)?.utcOffsetMinutes ?? 0) * MIN;
+  const localHour = (t) => Math.floor((((t + offset) % DAY) + DAY) % DAY / HOUR);
   const atLocal = (t, hour) => { const local = t + offset; return local - (local % DAY) + hour * HOUR + r.int(0, 59) * MIN - offset; };
+  const has = (id) => entities.some((e) => e.id === id);
+  return [...seedAudits(r, startMs, endMs, has, atLocal), ...seedTasks(r, startMs, endMs, entities, localHour)];
+}
+
+function seedAudits(r, startMs, endMs, has, atLocal) {
   const raw = [];
   for (const [place, risk] of AUDITED) {
-    if (!entities.some((e) => e.id === place)) continue;
-    const elements = AUDIT_ELEMENTS.map((e) => e.id);
+    if (!has(place)) continue;
+    const elements = AUDIT_ELEMENTS.map((e) => e.id).filter((x) => place.startsWith('ward-') || !['bed-frame', 'bedside'].includes(x));
     const stop = place === WEAK_WARD ? endMs - 4 * DAY : endMs;
     for (let t = startMs + r.int(0, 3) * DAY; t < stop; t += r.int(3, 5) * DAY) {
       const at = atLocal(t, r.int(9, 15));
@@ -325,4 +336,80 @@ export function seed({ r, startMs, endMs, entities }) {
     t: a.t, type: 'support.audit-recorded', subject: a.place, actorRole: 'support-supervisor',
     data: { auditId: `aud-${String(i + 1).padStart(5, '0')}`, riskCategory: a.risk, passed: a.passed, failed: a.failed },
   }));
+}
+
+function seedTasks(r, startMs, endMs, entities, localHour) {
+  const wards = entities.filter((e) => e.type === 'ward').map((e) => e.id);
+  const bedsOf = (w) => entities.filter((e) => e.type === 'bed' && e.parentId === w).map((e) => e.id);
+  const dept = (id) => (entities.some((e) => e.id === id) ? id : null);
+  const [ED, IMAGING, THEATRES, LAB] = ['dept-emergency', 'dept-imaging', 'dept-theatres', 'dept-laboratory'].map(dept);
+  if (!wards.length || !ED || !IMAGING || !LAB) return [];
+  const otherWard = (w) => r.pick(wards.filter((x) => x !== w));
+  const minutes = (median, sigma, cap) => Math.min(cap, Math.max(1, Math.round(r.lognormal(median, sigma)))) * MIN;
+
+  // One job: where, what, who asked. Places and details are generic picks from the module's own lists.
+  function porterJob() {
+    const kind = r.weighted([['patient-move', 55], ['item-run', 30], ['equipment-move', 15]]);
+    const ward = r.pick(wards);
+    if (kind === 'patient-move') {
+      const fromEd = r.chance(0.2);
+      const from = fromEd ? ED : r.chance(0.75) ? r.pick(bedsOf(ward)) : ward;
+      const to = fromEd ? ward : r.weighted([[IMAGING, 40], [THEATRES || IMAGING, 25], [otherWard(ward), 35]]);
+      return { kind, from, to, detail: r.weighted([['Wheelchair', 40], ['Bed', 30], ['Trolley', 20], ['Walking with help', 10]]), role: fromEd ? 'ae-nic' : r.chance(0.15) ? 'bed-manager' : 'ward-nurse' };
+    }
+    if (kind === 'item-run') {
+      const detail = r.weighted([['Specimen', 60], ['Medicines', 15], ['Supplies', 15], ['Other item', 10]]);
+      const from = r.chance(0.2) ? ED : ward;
+      return { kind, from, to: detail === 'Specimen' ? LAB : r.chance(0.5) ? otherWard(ward) : IMAGING, detail, role: from === ED ? 'ae-nic' : 'ward-nurse' };
+    }
+    return { kind, from: ward, to: otherWard(ward), detail: r.weighted([['Empty bed', 40], ['Wheelchair or trolley', 40], ['Other equipment', 20]]), role: r.chance(0.3) ? 'support-supervisor' : 'ward-nurse' };
+  }
+  function cleanJob() {
+    const inWard = r.chance(0.65);
+    const place = inWard ? (r.chance(0.3) ? r.pick(bedsOf(r.pick(wards))) : r.pick(wards)) : r.pick([ED, IMAGING, THEATRES, dept('dept-outpatients')].filter(Boolean));
+    return { kind: 'room-clean', from: place, to: null, detail: r.weighted([['Routine clean', 45], ['Spill', 25], ['After a patient leaves a room', 20], ['Extra clean asked for by the ward', 10]]), role: place === ED ? 'ae-nic' : 'ward-nurse' };
+  }
+
+  // History: every job asked for more than two hours before the end time is closed by then.
+  const jobs = [];
+  for (let h = startMs; h < endMs - 2 * HOUR; h += HOUR) {
+    const lh = localHour(h);
+    for (const [rate, make, team] of [[PORTER_PER_HOUR[lh], porterJob, 'portering'], [CLEAN_PER_HOUR[lh], cleanJob, 'cleaning']]) {
+      const n = Math.floor(rate) + (r.chance(rate % 1) ? 1 : 0);
+      for (let k = 0; k < n; k++) {
+        const job = make();
+        const at = h + r.int(0, 59) * MIN;
+        const urgent = r.chance(job.detail === 'Specimen' ? 0.15 : 0.07);
+        const slow = SHIFT_CHANGE.includes(localHour(at)) ? 2 : 1;
+        const wait = urgent ? minutes(5, 0.5, 30) : minutes((team === 'portering' ? 12 : 25) * slow, 0.6, 90);
+        const work = minutes(team === 'portering' ? { 'patient-move': 20, 'item-run': 15, 'equipment-move': 18 }[job.kind] : 20, 0.4, 25);
+        const cancelled = r.chance(0.04);
+        jobs.push({ ...job, at, urgent, started: cancelled ? null : at + wait, done: cancelled ? null : at + wait + work,
+          cancelledAt: cancelled ? at + r.int(5, 40) * MIN : null, reason: cancelled ? r.pick(CANCEL) : null, doer: team === 'portering' ? 'porter' : 'cleaner' });
+      }
+    }
+  }
+  // Open at the end time: a real queue for the porter and the cleaner, waits under the guide's usual levels.
+  const open = (job, minsAgo, state, urgent = false) => jobs.push({ ...job, at: endMs - minsAgo * MIN, urgent,
+    started: state === 'started' ? endMs - Math.floor(minsAgo / 2) * MIN : null, done: null, cancelledAt: null, reason: null, doer: job.kind === 'room-clean' ? 'cleaner' : 'porter' });
+  const [w1, w2, w3, w4] = [wards[0], wards[1 % wards.length], wards[3 % wards.length], wards[4 % wards.length]];
+  open({ kind: 'item-run', from: w3, to: LAB, detail: 'Specimen', role: 'ward-nurse' }, 9, 'requested', true);
+  open({ kind: 'patient-move', from: bedsOf(w2)[6] || w2, to: IMAGING, detail: 'Bed', role: 'ward-nurse' }, 24, 'requested');
+  open({ kind: 'patient-move', from: ED, to: w1, detail: 'Trolley', role: 'ae-nic' }, 16, 'requested');
+  open({ kind: 'equipment-move', from: w4, to: w2, detail: 'Wheelchair or trolley', role: 'ward-nurse' }, 6, 'requested');
+  open({ kind: 'patient-move', from: bedsOf(w1)[2] || w1, to: THEATRES || IMAGING, detail: 'Wheelchair', role: 'ward-nurse' }, 20, 'started');
+  open({ kind: 'room-clean', from: w2, to: null, detail: 'Spill', role: 'ward-nurse' }, 18, 'requested');
+  open({ kind: 'room-clean', from: IMAGING, to: null, detail: 'Routine clean', role: 'ward-nurse' }, 30, 'started');
+
+  jobs.sort((a, b) => a.at - b.at || (a.kind < b.kind ? -1 : 1));
+  const out = [];
+  jobs.forEach((j, i) => {
+    const id = `task-${String(i + 1).padStart(5, '0')}`;
+    out.push({ t: j.at, type: 'task.requested', subject: id, actorRole: j.role,
+      data: { kind: j.kind, locationId: j.from, toLocationId: j.to, priority: j.urgent ? 'urgent' : 'routine', detail: j.detail } });
+    if (j.cancelledAt) out.push({ t: j.cancelledAt, type: 'task.cancelled', subject: id, actorRole: j.role, data: { reason: j.reason } });
+    if (j.started) out.push({ t: j.started, type: 'task.started', subject: id, actorRole: j.doer });
+    if (j.done) out.push({ t: j.done, type: 'task.completed', subject: id, actorRole: j.doer });
+  });
+  return out.filter((e) => e.t <= endMs);
 }

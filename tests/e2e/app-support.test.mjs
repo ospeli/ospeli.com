@@ -52,7 +52,48 @@ for (const width of [360, 390, 1024, 1280]) {
   });
 }
 
-test('a ward asks for a move in a few taps; a porter takes it from waiting to done on a 390 px touch screen, and the queue and the measure change', async () => {
+test('a porter opens the app on a 390 px touch screen and takes the first job in the queue from waiting to done; the queue and the measure change', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/support' });
+  await asRole(page, 'porter', 'jobs');
+  const card = page.locator('[data-test="next-job"]');
+  await card.waitFor();
+  const id = await card.getAttribute('data-task');
+  assert.match(await card.textContent(), /Next job.*Specimen or item run.*Specimen.*Urgent.*to Laboratory.*Waiting/s, 'the urgent job is first');
+  const main = page.locator('[data-test="main-action"]');
+  const box = await main.boundingBox();
+  assert.ok(box.y + box.height <= 844, `the job's button is on the first screen (bottom at ${Math.round(box.y + box.height)} px)`);
+  assert.ok(box.height >= 56, `one big button (${box.height} px)`);
+  assert.equal(await main.textContent(), 'Collected');
+  assert.deepEqual(await phoneProblems(page), [], 'jobs screen: phone rules');
+  const counts = async () => (await page.locator('[data-test="queue-counts"]').textContent()).match(/^(\d+) waiting · (\d+) in progress/).slice(1).map(Number);
+  const [waiting0, busy0] = await counts();
+  assert.ok(waiting0 >= 3 && busy0 >= 1, `a real queue: ${waiting0} waiting, ${busy0} in progress`);
+  const measured = () => page.locator('[data-test="team-measure"]').getAttribute('data-n').then(Number);
+  const n0 = await measured();
+  assert.ok(n0 > 100, 'the measure has thirty days of history');
+
+  await main.tap();
+  await page.waitForFunction(() => document.querySelector('[data-test="main-action"]')?.textContent === 'Delivered');
+  assert.match(await card.textContent(), /Your job now.*On the way/s);
+  assert.equal(await card.getAttribute('data-task'), id);
+  assert.deepEqual(await counts(), [waiting0 - 1, busy0 + 1]);
+  // The phone is locked and the app opened again: the job this phone started is still on top.
+  await page.reload();
+  await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForFunction((t) => document.querySelector('[data-test="next-job"]')?.dataset.task === t && document.querySelector('[data-test="main-action"]')?.textContent === 'Delivered', id);
+  assert.match(await page.locator('[data-test="next-job"]').textContent(), /Your job now/);
+  await page.locator('[data-test="main-action"]').tap();
+  await page.waitForFunction((n) => Number(document.querySelector('[data-test="team-measure"]')?.dataset.n) === n + 1, n0);
+  assert.deepEqual(await counts(), [waiting0 - 1, busy0]);
+  assert.notEqual(await page.locator('[data-test="next-job"]').getAttribute('data-task'), id, 'the next job moves up');
+  const types = await page.evaluate(async (t) => (await window.ospeli.core.events({ subject: t })).map((e) => [e.type, e.actorRole]), id);
+  assert.deepEqual(types.slice(-2), [['task.started', 'porter'], ['task.completed', 'porter']]);
+  assert.ok(await noSideways(page) <= 0);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('a ward asks for a move in a few taps, sees its place in the queue, and the porter sees the job', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/support' });
   await asRole(page, 'ward-nurse', 'ask');
   await page.tap('[data-kind="patient-move"]');
@@ -61,41 +102,17 @@ test('a ward asks for a move in a few taps; a porter takes it from waiting to do
   await page.selectOption('[data-test="ask-to"]', 'dept-imaging');
   await page.tap('[data-detail="Wheelchair"]');
   await page.tap('[data-test="ask-send"]');
-  await page.waitForFunction(() => /^Asked: Patient move, Ward A1 \(acute medicine\), Bed 04\. 1st of 1 waiting for Portering\./.test(document.querySelector('[data-test="ask-status"]').textContent));
-  assert.match(await page.locator('[data-test="ask-open"]').textContent(), /1st of 1 waiting for Portering/, 'the ward sees where its job is in the queue');
+  await page.waitForFunction(() => /^Asked: Patient move, Ward A1 \(acute medicine\), Bed 04\. \d+(st|nd|rd|th) of \d+ waiting for Portering\./.test(document.querySelector('[data-test="ask-status"]').textContent));
+  assert.match(await page.locator('[data-test="ask-open"]').textContent(), /\d+(st|nd|rd|th) of \d+ waiting for Portering/, 'the ward sees where its job is in the queue');
   assert.deepEqual(await phoneProblems(page), [], 'ask form: phone rules');
+  const asked = await page.evaluate(async () => (await window.ospeli.core.events({ type: 'task.requested' })).at(-1));
+  assert.deepEqual([asked.actorRole, asked.data.locationId, asked.data.toLocationId, asked.data.detail], ['ward-nurse', 'ward-a1-bed-04', 'dept-imaging', 'Wheelchair']);
 
   await asRole(page, 'porter', 'jobs');
-  const card = page.locator('[data-test="next-job"]');
-  await card.waitFor();
-  assert.match(await card.textContent(), /Next job.*Patient move.*Wheelchair.*From Ward A1 \(acute medicine\), Bed 04 to Imaging.*Waiting/s);
-  const main = page.locator('[data-test="main-action"]');
-  const box = await main.boundingBox();
-  assert.ok(box.y + box.height <= 844, `the job's button is on the first screen (bottom at ${Math.round(box.y + box.height)} px)`);
-  assert.ok(box.height >= 56, `one big button (${box.height} px)`);
-  assert.equal(await main.textContent(), 'Collected');
-  assert.deepEqual(await phoneProblems(page), [], 'jobs screen: phone rules');
-  const counts = () => page.locator('[data-test="queue-counts"]').textContent();
-  assert.match(await counts(), /^1 waiting · 0 in progress/);
-  const measured = () => page.locator('[data-test="team-measure"]').getAttribute('data-n').then(Number);
-  const n0 = await measured();
-
-  await main.tap();
-  await page.waitForFunction(() => document.querySelector('[data-test="main-action"]')?.textContent === 'Delivered');
-  assert.match(await card.textContent(), /Your job now.*On the way/s);
-  assert.match(await counts(), /^0 waiting · 1 in progress/);
-  // The phone is locked and the app opened again: the job this phone started is still on top.
-  await page.reload();
-  await page.waitForSelector('html[data-ready="true"]');
-  await page.waitForFunction(() => document.querySelector('[data-test="main-action"]')?.textContent === 'Delivered');
-  assert.match(await page.locator('[data-test="next-job"]').textContent(), /Your job now/);
-  await page.locator('[data-test="main-action"]').tap();
-  await page.waitForSelector('[data-test="queue-empty"]');
-  await page.waitForFunction((n) => Number(document.querySelector('[data-test="team-measure"]')?.dataset.n) === n + 1, n0);
-  assert.match(await counts(), /^0 waiting · 0 in progress/);
-  const types = await page.evaluate(async () => (await window.ospeli.core.events()).filter((e) => e.type.startsWith('task.')).map((e) => [e.type, e.actorRole]));
-  assert.deepEqual(types, [['task.requested', 'ward-nurse'], ['task.started', 'porter'], ['task.completed', 'porter']]);
-  assert.ok(await noSideways(page) <= 0);
+  const btn = page.locator(`button[data-task="${asked.subject}"]`);
+  await btn.waitFor();
+  assert.equal(await btn.textContent(), 'Collected');
+  assert.match(await page.locator(`li[data-task="${asked.subject}"]`).textContent(), /From Ward A1 \(acute medicine\), Bed 04 to Imaging/);
   assert.deepEqual(errors, []);
   await context.close();
 });
@@ -103,15 +120,15 @@ test('a ward asks for a move in a few taps; a porter takes it from waiting to do
 test('a room clean in three taps from the ward\'s own link; the cleaning team sees it', async () => {
   const { context, page, errors } = await openPage(env, { width: 360, touch: true, clock: CLOCK, path: '#/support' });
   await asRole(page, 'ward-nurse');
-  await page.evaluate(() => { document.querySelector('.sup').dataset.stale = 'true'; location.hash = '#/support/ask/ward-a2'; });
-  await page.waitForFunction(() => !document.querySelector('.sup').dataset.stale && document.querySelector('[data-test="ask-where"]')?.value === 'ward-a2');
+  await page.evaluate(() => { document.querySelector('.sup').dataset.stale = 'true'; location.hash = '#/support/ask/ward-a3'; });
+  await page.waitForFunction(() => !document.querySelector('.sup').dataset.stale && document.querySelector('[data-test="ask-where"]')?.value === 'ward-a3');
   await page.tap('[data-kind="room-clean"]');
   await page.tap('[data-detail="Spill"]');
   await page.tap('[data-test="ask-send"]');
-  await page.waitForFunction(() => /^Asked: Room or area clean, Ward A2/.test(document.querySelector('[data-test="ask-status"]').textContent));
+  await page.waitForFunction(() => /^Asked: Room or area clean, Ward A3/.test(document.querySelector('[data-test="ask-status"]').textContent));
   await asRole(page, 'cleaner', 'jobs');
   await page.waitForSelector('.sup-jobs [data-test="queue-counts"]');
-  assert.ok(await page.locator('.sup-jobs').getByText('Ward A2 (general medicine)').count() >= 1);
+  assert.ok(await page.locator('.sup-jobs').getByText('Ward A3 (care of older people)').count() >= 1);
   assert.deepEqual(errors, []);
   await context.close();
 });
@@ -159,24 +176,24 @@ test('the supervisor\'s board at 1280 px: teams, the guide with its reasons and 
   const sugg = page.locator('[data-test="suggestion"][data-rule="audit-failed-twice"]');
   assert.match(await sugg.textContent(), /Re-audit Ward B2 \(orthopaedics\).*70% and 80%.*Failed both times/s);
 
-  // A job to show the board still works with the guide off.
-  await page.evaluate(async () => {
+  // A job asked for now, to show the board still works with the guide off.
+  const id = await page.evaluate(async () => {
     const { runCommand } = await import('/app/core/commands.js');
-    await runCommand(window.ospeli.core, 'ospeli_tasks_request', { kind: 'item-run', locationId: 'ward-b1', toLocationId: 'dept-laboratory', detail: 'Specimen' }, { type: 'human', role: 'ward-nurse' });
+    return (await runCommand(window.ospeli.core, 'ospeli_tasks_request', { kind: 'item-run', locationId: 'ward-c1', toLocationId: 'dept-laboratory', detail: 'Supplies' }, { type: 'human', role: 'ward-nurse' })).taskId;
   });
-  await page.waitForSelector('[data-test="board"] [data-team="portering"]');
+  const row = page.locator(`[data-test="board"] li[data-task="${id}"]`);
+  await row.waitFor();
   await page.click('[data-test="guide-switch"]');
   await page.waitForSelector('[data-test="guide-off"]');
   assert.equal(await page.locator('[data-test="suggestion"]').count(), 0);
   assert.equal(await page.locator('[data-kpi]').count(), 3, 'the measures stay');
-  const row = page.locator('[data-test="board"] [data-team="portering"]').first();
   await row.locator('[data-test="to-front"]').click();
-  await page.waitForFunction(() => document.querySelector('[data-test="board"] [data-team="portering"] [data-test="to-front"]')?.textContent === 'Back in order');
-  assert.match(await page.locator('[data-test="board"] [data-team="portering"]').first().textContent(), /Urgent/);
+  await page.waitForFunction((t) => document.querySelector(`[data-test="board"] li[data-task="${t}"] [data-test="to-front"]`)?.textContent === 'Back in order', id);
+  assert.match(await row.textContent(), /Urgent/);
   // A job already in progress has no "move to the front": the order matters only while it waits.
-  await page.locator('[data-test="board"] [data-team="portering"] [data-cmd="ospeli_tasks_start"]').first().click();
-  await page.waitForFunction(() => document.querySelector('[data-test="board"] [data-team="portering"] [data-cmd="ospeli_tasks_complete"]'));
-  assert.equal(await page.locator('[data-test="board"] [data-team="portering"] [data-test="to-front"]').count(), 0);
+  await row.locator('[data-cmd="ospeli_tasks_start"]').click();
+  await page.waitForFunction((t) => document.querySelector(`[data-test="board"] li[data-task="${t}"] [data-cmd="ospeli_tasks_complete"]`), id);
+  assert.equal(await row.locator('[data-test="to-front"]').count(), 0);
   await page.click('[data-test="guide-switch"]');
   await page.waitForSelector('[data-test="suggestion"]');
   assert.ok(await noSideways(page) <= 0);
