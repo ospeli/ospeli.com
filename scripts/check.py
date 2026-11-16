@@ -284,7 +284,10 @@ OLD_WORDS = [(re.compile(r"\bbed managers?\b", re.I), "Bed manager", "Patient fl
              # Issue #40: one health system's programme names and its word for patient transport staff.
              # The lower-case role id 'porter' is left alone; the words people read are checked.
              (re.compile(r"\bSAFER\b|\bRed2Green\b"), "SAFER / Red2Green", "a daily senior review and expected discharge date; a delay-day review"),
-             (re.compile(r"\b[Pp]ortering\b|\bPorters?\b|\bporters\b|\b(?:a|the|to) porter\b|\bporter (?:requests?|requested|jobs?|tasks?|rounds?)\b"), "Porter / portering", "Transport assistant / patient transport")]
+             (re.compile(r"\b[Pp]ortering\b|\bPorters?\b|\bporters\b|\b(?:a|the|to) porter\b|\bporter (?:requests?|requested|jobs?|tasks?|rounds?)\b"), "Porter / portering", "Transport assistant / patient transport"),
+             # Issue #41: a local job-place term and one country's service name for a ward.
+             (re.compile(r"\b(?:bed|allocation) desk\b", re.I), "bed desk / allocation desk", "patient flow team"),
+             (re.compile(r"\bcare of (?:the )?older people\b", re.I), "care of older people", "older adults")]
 
 def js_strings(src):
     """The string and template literals of a script, joined; comments and code are left out."""

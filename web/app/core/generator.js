@@ -76,7 +76,7 @@ const DEPARTMENTS = [
 const WARDS = [
   { id: 'ward-a1', name: 'Ward A1 (acute medicine)', parentId: 'dept-medicine', specialty: 'Acute medicine', losMedianDays: 3.2, emergencyShare: 0.95 },
   { id: 'ward-a2', name: 'Ward A2 (general medicine)', parentId: 'dept-medicine', specialty: 'General medicine', losMedianDays: 5.5, emergencyShare: 0.9 },
-  { id: 'ward-a3', name: 'Ward A3 (care of older people)', parentId: 'dept-medicine', specialty: 'Care of older people', losMedianDays: 8, emergencyShare: 0.92 },
+  { id: 'ward-a3', name: 'Ward A3 (older adults)', parentId: 'dept-medicine', specialty: 'Older adults', losMedianDays: 8, emergencyShare: 0.92 },
   { id: 'ward-b1', name: 'Ward B1 (general surgery)', parentId: 'dept-surgery', specialty: 'General surgery', losMedianDays: 3, emergencyShare: 0.55 },
   { id: 'ward-b2', name: 'Ward B2 (orthopaedics)', parentId: 'dept-surgery', specialty: 'Orthopaedics', losMedianDays: 4.5, emergencyShare: 0.5 },
   { id: 'ward-c1', name: 'Ward C1 (maternity)', parentId: 'dept-women-children', specialty: 'Maternity', losMedianDays: 1.8, emergencyShare: 0.7 },
