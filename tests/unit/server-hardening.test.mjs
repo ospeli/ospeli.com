@@ -115,9 +115,11 @@ function testCertificate(name) {
   const made = spawnSync('openssl', ['req', '-x509', '-newkey', 'ec', '-pkeyopt', 'ec_paramgen_curve:prime256v1', '-nodes', '-keyout', key, '-out', cert, '-days', '2', '-subj', '/CN=ospeli-test', '-addext', 'subjectAltName=IP:127.0.0.1,DNS:localhost'], { encoding: 'utf8' });
   return made.status === 0 && existsSync(cert) ? { cert: readFileSync(cert), key: readFileSync(key), certFile: cert, keyFile: key } : null;
 }
+// Skipped on a computer without openssl, but never in the pipeline (CI is set there): a missing
+// openssl fails the run there instead of hiding the https check (#95).
 const haveOpenssl = spawnSync('openssl', ['version']).status === 0;
 
-test('https with the site\'s own certificate: plain http is not answered, the device cookie is Secure, a plain-http page cannot make a device act', { skip: haveOpenssl ? false : 'the openssl program is not on this computer' }, async () => {
+test('https with the site\'s own certificate: plain http is not answered, the device cookie is Secure, a plain-http page cannot make a device act', { skip: haveOpenssl || process.env.CI ? false : 'the openssl program is not on this computer' }, async () => {
   const pem = testCertificate('site');
   assert.ok(pem, 'a test certificate was made');
   const site = await start({ tls: { cert: pem.cert, key: pem.key } });

@@ -170,10 +170,10 @@ test('issue #72: the same proposal is returned, not queued again; one target has
   const dry = await runCommand(core, 'ospeli_beds_allocate', input, A, { dryRun: true });
   assert.match(dry.would, new RegExp(first.proposal.id));
   // Same command and bed, another patient: refused, and the answer names the one that is waiting.
-  if (waits[1]) {
-    await assert.rejects(runCommand(core, 'ospeli_beds_allocate', { bedId: free[0].id, encounter: waits[1].encounter }, A),
-      (err) => err.code === 'conflict' && err.detail?.existing === first.proposal.id && /waiting for a person/.test(err.message));
-  }
+  // The fixed example hospital has a second waiting patient, so this check always runs (#95).
+  assert.ok(waits[1], 'a second waiting patient for the same-bed check');
+  await assert.rejects(runCommand(core, 'ospeli_beds_allocate', { bedId: free[0].id, encounter: waits[1].encounter }, A),
+    (err) => err.code === 'conflict' && err.detail?.existing === first.proposal.id && /waiting for a person/.test(err.message));
   // Another agent may still propose for the same bed: the limit is per agent.
   const other = await runCommand(core, 'ospeli_beds_allocate', input, agent('bed-manager', 'other-bot'));
   assert.notEqual(other.proposal.id, first.proposal.id);
