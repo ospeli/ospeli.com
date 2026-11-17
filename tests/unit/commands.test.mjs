@@ -283,3 +283,26 @@ test('issue #19: import refuses personal details in values (titles, notes, label
   await target.importData(structuredClone(dump), 'coo');
   assert.deepEqual((await target.auditLog()).at(-1).detail.checks, { markedSynthetic: true, identifierFields: 0, identifierValues: 0 });
 });
+
+// Issue #90 (remainder): a refused bed action named the state in the long form ("vacated, to
+// clean") while the tile and the dialog chip say "To clean". The refusal now uses the tile's word.
+test('issue #90: a refused bed action names the state with the word on the bed tile', async () => {
+  const core = await hospital();
+  const board = await runCommand(core, 'ospeli_beds_board', {}, human('bed-manager'));
+  const byState = (s) => board.beds.find((b) => b.state === s);
+  const vacated = byState('vacated') || byState('available');
+  const tries = [];
+  for (const b of [byState('vacated'), byState('available'), byState('expected-discharge'), byState('cleaning')].filter(Boolean)) {
+    // Each bed tries actions that are not open to it in its state.
+    for (const cmd of ['ospeli_beds_mark_vacated', 'ospeli_beds_finish_clean', 'ospeli_beds_start_clean']) {
+      try { await runCommand(core, cmd, { bedId: b.id }, human('bed-manager')); } catch (err) { if (err.code === 'conflict') tries.push([err.detail.state, err.message]); }
+    }
+  }
+  assert.ok(vacated);
+  assert.ok(tries.length >= 2, JSON.stringify(tries));
+  const words = { vacated: 'To clean', available: 'Available', 'expected-discharge': 'Going home', cleaning: 'Cleaning', occupied: 'Occupied' };
+  for (const [state, message] of tries) {
+    assert.equal(message, `A bed marked "${words[state]}" cannot do that.`, state);
+    assert.doesNotMatch(message, /vacated, to clean|expected discharge/i);
+  }
+});

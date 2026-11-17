@@ -136,7 +136,7 @@ async function checkBedWrite(core, w, input, events) {
     throw new CommandError('conflict', 'This bed changed since you opened it.', { state: bed.state });
   }
   if (!bedActions(bed).includes(w.action)) {
-    throw new CommandError('conflict', `A bed that is ${BED_STATES[bed.state].name.toLowerCase()} cannot do that.`, { state: bed.state });
+    throw new CommandError('conflict', `A bed marked "${BED_STATES[bed.state].short}" cannot do that.`, { state: bed.state });
   }
   if (w.action === 'allocate') {
     const wait = board.waiting.find((x) => x.encounter === input.encounter);
