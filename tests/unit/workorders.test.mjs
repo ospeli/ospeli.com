@@ -313,3 +313,17 @@ test('issue #75: "No fault found", "Escalated" and a different fault are not rep
   const words = commandByName('ospeli_workorders_list').output.properties.workOrders.items.properties.repeat.description;
   assert.match(words, /same fault/); assert.match(words, /same asset/); assert.match(words, /closed as Fixed/); assert.match(words, /30 days/);
 });
+
+// Issue #95 item 3: "Late by 0 min" and "Due in 0 min" showed for the half minute either side of
+// the due time. Under a minute is said in words, and which side of the due time it is stays clear.
+test('issue #95: under a minute from the due time is not "0 min" either side', () => {
+  const due = '2026-11-14T10:00:00.000Z';
+  const w = { state: 'open', dueAt: due };
+  const at = (s) => new Date(Date.parse(due) + s * 1000).toISOString();
+  assert.equal(slaText(w, at(-20)), 'Due in under 1 min');
+  assert.equal(slaText(w, at(0)), 'Due in under 1 min');
+  assert.equal(slaText(w, at(20)), 'Late by under 1 min');
+  assert.equal(slaText(w, at(-31)), 'Due in 1 min');
+  assert.equal(slaText(w, at(31)), 'Late by 1 min');
+  for (let s = -600; s <= 600; s += 7) assert.doesNotMatch(slaText(w, at(s)), /\b0 min/, `at ${s} s`);
+});

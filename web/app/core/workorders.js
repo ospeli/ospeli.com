@@ -133,8 +133,9 @@ export function nextWorkOrderId(events) {
   return `wo-${String(max + 1).padStart(5, '0')}`;
 }
 
-// Time to the target, in words: "Due in 3 h 10 min" or "Late by 2 d 3 h".
-const spanText = (m) => (m < 60 ? `${m} min` : m < 48 * 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${Math.floor(m / 1440)} d ${Math.floor((m % 1440) / 60)} h`);
+// Time to the target, in words: "Due in 3 h 10 min" or "Late by 2 d 3 h". Under half a minute either
+// side is "under 1 min", never "0 min" (issue #95).
+const spanText = (m) => (m < 1 ? 'under 1 min' : m < 60 ? `${m} min` : m < 48 * 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}` : `${Math.floor(m / 1440)} d ${Math.floor((m % 1440) / 60)} h`);
 export function slaText(w, now) {
   if (w.state === 'completed') return w.metSla ? 'Done within target' : 'Done after target';
   const left = ms(w.dueAt) - ms(now);
