@@ -33,10 +33,15 @@ export async function render(el, ctx) {
   const assets = new Map(assetData.assets.map((a) => [a.id, a]));
   const places = new Map(assetData.locations.map((p) => [p.id, p]));
   const deepAsset = ctx.rest[0] === 'report' && assets.has(ctx.rest[1]) ? ctx.rest[1] : null;
+  const unknownLabel = ctx.rest[0] === 'report' && ctx.rest[1] && !deepAsset; // a mistyped or retired label (issue #29)
+  // Wards first, then the other areas (issue #29): most reports come from a ward.
+  const placeList = [...assetData.locations.filter((p) => p.type === 'ward'), ...assetData.locations.filter((p) => p.type !== 'ward')];
+  // A ward nurse starts on the ward last chosen on the bed board (#10), read only here.
+  const myWard = ctx.role === 'ward-nurse' ? await core.getMeta('my-ward') : null;
 
   // ---- report a fault ----
   const canReport = can(ctx.role, 'ospeli_workorders_report_fault');
-  const locSel = h('select', { id: 'f-loc', 'data-test': 'f-loc' }, assetData.locations.map((p) => new Option(p.name, p.id)));
+  const locSel = h('select', { id: 'f-loc', 'data-test': 'f-loc' }, placeList.map((p) => new Option(p.name, p.id)));
   const assetSel = h('select', { id: 'f-asset', 'data-test': 'f-asset' });
   const faultSel = h('select', { id: 'f-fault', 'data-test': 'f-fault' });
   const prioBox = h('div', { class: 'prio', role: 'radiogroup', 'aria-labelledby': 'f-prio-l' },
@@ -47,7 +52,11 @@ export async function render(el, ctx) {
   const reportMore = h('div', { class: 'actions', 'data-test': 'report-more' }); // a way on after "Already reported"
   const fillAssets = (keep) => {
     const list = assetData.assets.filter((a) => a.locationId === locSel.value);
-    assetSel.replaceChildren(...list.map((a) => new Option(a.name, a.id)));
+    // Assets of one kind are grouped with a count, e.g. "Infusion pump (4)" (issue #29).
+    const kinds = new Map();
+    for (const a of list) kinds.set(a.kind, [...(kinds.get(a.kind) || []), a]);
+    assetSel.replaceChildren(...[...kinds.values()].map((same) => same.length === 1 ? new Option(same[0].name, same[0].id)
+      : h('optgroup', { label: `${same[0].name.replace(/\s+\d+$/, '')} (${same.length})` }, same.map((a) => new Option(a.name, a.id)))));
     if (keep && list.some((a) => a.id === keep)) assetSel.value = keep;
     fillFaults();
   };
@@ -55,12 +64,14 @@ export async function render(el, ctx) {
   locSel.addEventListener('change', () => fillAssets());
   assetSel.addEventListener('change', fillFaults);
   if (deepAsset) locSel.value = assets.get(deepAsset).locationId;
+  else if (myWard && places.has(myWard)) locSel.value = myWard;
   fillAssets(deepAsset);
 
   const reportBtn = h('button', { class: 'btn', type: 'submit', 'data-cmd': 'ospeli_workorders_report_fault' }, 'Report fault');
   const form = h('form', { class: 'card report-form', 'aria-labelledby': 'report-h', 'data-test': 'report-form' },
     h('h2', { id: 'report-h' }, 'Report a fault'),
     deepAsset ? h('p', { class: 'meta' }, `From the label on ${assets.get(deepAsset).name}.`) : null,
+    unknownLabel ? h('p', { class: 'meta notice', role: 'status', 'data-test': 'label-unknown' }, 'This label isn\'t recognised; pick the asset below.') : null,
     h('div', { class: 'field' }, h('label', { for: 'f-loc' }, 'Where'), locSel),
     h('div', { class: 'field' }, h('label', { for: 'f-asset' }, 'What'), assetSel),
     h('div', { class: 'field' }, h('label', { for: 'f-fault' }, 'Fault'), faultSel),
@@ -100,7 +111,7 @@ export async function render(el, ctx) {
 
   // ---- the queue ----
   const ownTeam = teamOfRole(ctx.role) || 'estates';
-  const doNext = ctx.role === 'estates-tech' && !deepAsset; // the "do next" card (issue #83)
+  const doNext = ctx.role === 'estates-tech' && !deepAsset && !unknownLabel; // the "do next" card (issue #83)
   const counts = h('p', { class: 'wo-summary', 'data-test': 'wo-counts' });
   const sortRow = h('div', { class: 'seg', role: 'group', 'aria-label': 'Sort the list by' });
   const filterRow = h('div', { class: 'chips', role: 'group', 'aria-label': 'Show work orders' });
@@ -309,7 +320,7 @@ export async function render(el, ctx) {
       : `${p.input.workOrderId?.toUpperCase()}: ${p.command === 'ospeli_workorders_assign' ? `assign to ${TEAMS[p.input.team]}` : p.command === 'ospeli_workorders_start' ? 'start the job' : `close as ${OUTCOMES[p.input.outcome]}`}`),
   });
 
-  const queueFirst = ctx.role === 'estates-tech' && !deepAsset;
+  const queueFirst = ctx.role === 'estates-tech' && !deepAsset && !unknownLabel; // a label link, even an unknown one, opens on the form
   const rules = h('p', { class: 'meta', 'data-test': 'queue-rules' }, 'Grouped by priority, the most late first. "Late" is time past the target. Targets: urgent 4 h, high 24 h, routine 72 h (examples; set locally). A repeat fault is the same fault on the same asset that came back within 30 days of being closed as Fixed. Not counted: "No fault found", a different fault, and a second report of a fault that is still open.');
   // data-role lets a test (and a browser agent) see which role this queue was drawn for.
   const queue = h('section', { class: 'section wo-queue', 'aria-labelledby': 'queue-h', 'data-test': 'wo-queue', 'data-role': ctx.role },
@@ -326,7 +337,7 @@ export async function render(el, ctx) {
       h('div', {},
         h('p', { class: 'eyebrow' }, 'Engineering'),
         h('h1', {}, 'Faults and work orders'),
-        doNext ? null : h('p', {}, 'Report a fault in three taps. The facilities and equipment teams work the queue from the same log.'))),
+        doNext ? null : h('p', {}, 'Report a fault from the label on the asset, in three taps. The facilities and equipment teams work the queue from the same log.'))),
     props.el,
     queueFirst ? queue : reportSection,
     queueFirst ? reportSection : queue,

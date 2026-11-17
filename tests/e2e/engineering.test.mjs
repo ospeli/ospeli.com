@@ -559,3 +559,36 @@ test('the do-next page has no sideways scroll at 360, 390 and 1280 px; other rol
     await context.close();
   }
 });
+
+test('a ward nurse starts the report on a ward: wards listed first, own ward when chosen, same-kind assets grouped with counts (issue #29)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, path: '#/engineering', touch: true });
+  await page.waitForSelector('[data-test="f-loc"]');
+  const types = await page.evaluate(async () => {
+    const ids = [...document.querySelectorAll('[data-test="f-loc"] option')].map((o) => o.value);
+    return Promise.all(ids.map(async (id) => (await window.ospeli.core.getEntity(id))?.type));
+  });
+  const firstOther = types.findIndex((t) => t !== 'ward');
+  assert.ok(firstOther > 0 && types.slice(firstOther).every((t) => t !== 'ward'), `wards first, then other areas: ${types.join(',')}`);
+  assert.equal(types[0], 'ward', 'Where opens on a ward, not a building');
+  const groups = await page.locator('[data-test="f-asset"] optgroup').evaluateAll((els) => els.map((g) => [g.label, g.children.length]));
+  assert.ok(groups.some(([l, n]) => l === 'Infusion pump (4)' && n === 4), `assets of one kind are grouped with a count: ${JSON.stringify(groups)}`);
+  assert.match(await page.locator('main .page-head').textContent(), /from the label on the asset, in three taps/);
+  // The ward the nurse last chose on the bed board opens first here too (#10).
+  await page.evaluate(() => window.ospeli.core.setMeta('my-ward', 'ward-b2'));
+  await page.goto(env.appUrl + '#/beds');
+  await page.goto(env.appUrl + '#/engineering');
+  await page.waitForFunction(() => document.querySelector('[data-test="f-loc"]')?.value === 'ward-b2');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('a label link with an unknown asset says so and keeps the form; nothing is recorded (issue #29)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, path: '#/engineering/report/asset-nope', touch: true });
+  await page.waitForSelector('[data-test="report-form"]');
+  const before = await page.evaluate(async () => (await window.ospeli.core.events()).length);
+  assert.match(await page.locator('[data-test="label-unknown"]').textContent(), /This label isn't recognised; pick the asset below/);
+  assert.ok(await page.locator('[data-test="f-asset"] option').count() > 0, 'the form is still there');
+  assert.equal(await page.evaluate(async () => (await window.ospeli.core.events()).length), before);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
