@@ -81,7 +81,7 @@ test('issue #17: an agent proposes, the patient flow coordinator accepts on the 
   await page.selectOption('#role-select', 'bed-manager');
   const item = page.locator(`[data-proposal="${prop.id}"]`);
   await item.waitFor();
-  assert.match(await page.locator('#prop-h').textContent(), /Agent proposals \(1\)/);
+  assert.match(await page.locator('#prop-h').textContent(), /Suggested changes \(1\)/);
   assert.match(await item.textContent(), /Agent flow-bot for Patient flow coordinator/);
   const box = await item.locator('[data-cmd="ospeli_proposals_accept"]').boundingBox();
   assert.ok(box.height >= 44, 'Accept is a full-size tap target');
@@ -265,7 +265,7 @@ test('issue #72: five proposals show a count, the newest three and "See all"; an
   assert.equal(out.pending, 5);
   await page.reload();
   await page.waitForSelector('[data-proposal]');
-  assert.match(await page.locator('#prop-h').textContent(), /Agent proposals \(5\)/);
+  assert.match(await page.locator('#prop-h').textContent(), /Suggested changes \(5\)/);
   assert.equal(await page.locator('[data-proposal]').count(), 3, 'the newest three');
   assert.deepEqual(await page.locator('[data-proposal]').evaluateAll((els) => els.map((e) => e.dataset.proposal)), out.ids.slice(-3).reverse());
   const more = page.locator('[data-test="proposals-more"]');
@@ -451,7 +451,7 @@ test('issue #106: map and fault proposals show their title, and the reasons to d
     // The new page is in place (something only that page has), then its card.
     const own = { '#/process': '[data-test="walk-card"]', '#/engineering': '[data-test="wo-queue"]', '#/beds': '.bed' }[route];
     await page.waitForFunction(([want, sel]) => document.querySelector(`main ${sel}`)
-      && [...document.querySelectorAll('main [data-test="proposals"] h2')].some((x) => x.textContent.trim() === `Agent proposals (${want})`), [n, own]);
+      && [...document.querySelectorAll('main [data-test="proposals"] h2')].some((x) => x.textContent.trim() === `Suggested changes (${want})`), [n, own]);
     const more = page.locator('[data-test="proposals-more"]');
     if (await more.count()) await more.evaluate((b) => b.click());
     return page.evaluate(() => ({

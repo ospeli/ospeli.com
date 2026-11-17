@@ -519,6 +519,10 @@ html[data-site="connect"] .layout { display: block; }
 .proposal-no label { font-size: .9375rem; font-weight: 700; flex: 0 0 100%; }
 .proposal-no select { font: inherit; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: 10px; min-height: 44px; padding: 6px 10px; flex: 1 1 10rem; min-width: 0; }
 .proposal-no .btn { min-height: 44px; }
+/* No connection on a connected device (issue #86): the buttons cannot be tapped and look it, without see-through text. */
+.proposal-actions .btn:disabled { background: var(--sand); color: var(--ink-soft); border: 1.5px dashed var(--line-strong); cursor: not-allowed; opacity: 1; }
+.proposal-offline { justify-self: start; font-size: .9375rem; font-weight: 700; color: var(--navy); background: var(--mango-tint); border-left: 4px solid var(--mango); border-radius: 6px; padding: 4px 10px; }
+.proposal-msg { margin: 8px 0; padding: 8px 12px; font-weight: 700; color: var(--navy); background: var(--mango-tint); border-left: 5px solid var(--coral); border-radius: 8px; }
 
 /* Issue #13: a long unbroken word (a pasted web address) wraps inside its box in process maps;
    it may never widen the page. Role names in the swimlane keep to their 120 px column. */

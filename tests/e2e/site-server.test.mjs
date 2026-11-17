@@ -145,9 +145,10 @@ test('no connection at 360 px: the phone says so, still shows the last informati
   const bar = page.locator('[data-test="site-status"]');
   assert.match(await bar.textContent(), /^Not connected\. You see the information from \d{1,2}[:.]\d{2}.*\. You cannot save changes now\.$/);
   assert.ok(parseFloat(await bar.evaluate((e) => getComputedStyle(e).fontSize)) >= 15);
-  // A change is refused in plain words; nothing reaches the server later.
-  await page.locator('[data-test="proposals"] [data-cmd="ospeli_proposals_accept"]').first().tap();
-  await page.waitForFunction(() => document.querySelector('#toast').textContent === 'Not saved. This device is not connected. Try again when it is back on your site\'s network.');
+  // A change cannot be made, and the card says why beside the buttons (#86); nothing reaches the server later.
+  await page.waitForSelector('[data-test="proposal-offline"]');
+  assert.equal(await page.locator('[data-test="proposals"] [data-cmd="ospeli_proposals_accept"]').first().isDisabled(), true);
+  assert.equal(await page.locator('[data-test="proposal-offline"]').first().textContent(), 'Not connected');
   // Reopened with no connection: the app still opens on the last information, and says so.
   await page.reload();
   await page.waitForSelector('html[data-ready="true"]');
