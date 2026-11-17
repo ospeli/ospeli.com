@@ -363,6 +363,14 @@ function feedbackCard(ctx, opt, serviceOf) {
 }
 
 // ---------------------------------------------------------------- the queue
+// What an empty queue says, one line per view (issue #84).
+const QUEUE_EMPTY = {
+  open: 'All clear: no complaint or concern is open.',
+  overdue: 'Nothing is overdue: every open complaint and concern is within its due date.',
+  clinical: 'Nothing is waiting on clinical review.',
+  closed: 'No complaint or concern has been closed yet.',
+  compliments: 'No compliment or feedback card is recorded yet.',
+};
 const VIEWS = [['mine', 'Mine'], ['open', 'All open'], ['overdue', 'Overdue'], ['clinical', 'Clinical review'], ['closed', 'Closed'], ['compliments', 'Compliments and cards']];
 function dueText(r) {
   if (r.replyPaused && r.stage !== 'closed' && !r.repliedAt) return `${r.overdue ? 'Not acknowledged in time · ' : ''}Waiting on clinical review · reply due ${day(r.replyDueAt)}`;
@@ -415,7 +423,7 @@ async function queueScreen(box, ctx, { opt }) {
       h('b', {}, c.dueSoon), ' due soon · ', h('b', {}, c.clinicalReview), ' at clinical review');
     setKids(list, q.records.length
       ? h('ul', { class: 'fb-rows' }, q.records.map(recordRow))
-      : h('p', { class: 'fb-none' }, ui.view === 'mine' ? `Nothing open is owned by ${mineWho} now.` : 'Nothing here.'),
+      : h('p', { class: 'fb-none empty-state', 'data-test': 'queue-empty' }, ui.view === 'mine' ? `All clear: nothing open is owned by ${mineWho} now.` : QUEUE_EMPTY[ui.view]),
     q.truncated ? h('p', { class: 'meta' }, `Showing ${q.records.length} of ${q.total}.`) : null,
     h('p', { class: 'meta fb-settings' }, `Due dates: ${q.settings} A record with clinical review keeps its acknowledgement due date; its reply is not called overdue here while it waits.`));
     const mayGuide = can(role, C.guide);

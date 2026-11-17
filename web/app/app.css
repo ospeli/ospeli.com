@@ -353,6 +353,8 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .steps-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .steps-head h3 { margin: 0; }
 .steps-box { margin-top: 0; }
+/* An empty list says what that means in one plain line (issue #84). */
+.empty-state { margin: 0; padding: 14px; border: 1px dashed var(--line-strong); border-radius: 12px; background: var(--surface); color: var(--ink); font-size: 1rem; }
 .scroll-hint { margin: 0 0 6px; }
 .lanes { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .lanes:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
