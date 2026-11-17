@@ -278,10 +278,13 @@ async function asTechnician(page) {
   await page.waitForSelector('[data-test="wo-queue"][data-role="estates-tech"] [data-test="next-card"][data-mode="suggest"]');
   await page.waitForSelector('[data-test="wo-list"] [data-wo]');
 }
-// What the suggestion must be, worked out again from the event log alone.
+// What the suggestion must be, worked out again from the event log alone, at the moment the card
+// was worked out (its data-as-of), not a moment later: a due time falling in between could flip
+// the order or the late count (issue #95).
 const expectedNext = (page, skip = 0) => page.evaluate(async (n) => {
   const { deriveWorkOrders, suggestNext } = await import('/app/core/workorders.js');
-  const s = suggestNext(deriveWorkOrders(await window.ospeli.core.events(), new Date().toISOString()), { team: 'estates', skip: n, now: new Date().toISOString() });
+  const at = document.querySelector('[data-test="next-card"]')?.dataset.asOf || new Date().toISOString();
+  const s = suggestNext(deriveWorkOrders(await window.ospeli.core.events(), at), { team: 'estates', skip: n, now: at });
   return { id: s.workOrder?.id ?? null, title: s.workOrder?.title ?? null, position: s.position, total: s.total, reason: s.reason };
 }, skip);
 // Visible text smaller than 15 px, and tap targets shorter than 44 px, inside one part of the page.
@@ -329,7 +332,8 @@ test('first-time user at 360 px: the facilities technician sees the next job, st
   // One line replaces the three count tiles, and it equals the log.
   const counts = await page.evaluate(async () => {
     const { deriveWorkOrders } = await import('/app/core/workorders.js');
-    const open = [...deriveWorkOrders(await window.ospeli.core.events(), new Date().toISOString()).values()].filter((w) => w.state !== 'completed');
+    const at = document.querySelector('[data-test="next-card"]').dataset.asOf; // the moment the page worked its numbers out (#95)
+    const open = [...deriveWorkOrders(await window.ospeli.core.events(), at).values()].filter((w) => w.state !== 'completed');
     return { open: open.length, late: open.filter((w) => w.overdue).length, repeat: open.filter((w) => w.repeat > 0).length };
   });
   assert.equal((await page.locator('[data-test="wo-counts"]').innerText()).replace(/\s+/g, ' '), `${counts.open} open · ${counts.late} late · ${counts.repeat} repeat fault${counts.repeat === 1 ? '' : 's'}`);

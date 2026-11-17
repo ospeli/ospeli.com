@@ -21,6 +21,14 @@ const FILTERS = [
   ['completed', 'Completed'],
 ];
 
+// What an empty list says, one line per filter (issue #84): a designed state, not a blank.
+const EMPTY = {
+  open: 'All clear: no open work orders. A new fault shows here as soon as it is reported.',
+  overdue: 'Nothing is late: every open work order is within its target.',
+  repeat: 'No repeat faults among the open work orders.',
+  completed: 'No work order has been closed yet.',
+};
+
 export async function render(el, ctx) {
   const { core } = ctx;
   const ui = { filter: 'open', sort: 'priority', busy: false, skip: 0, view: 'auto', closing: false, mine: null, shown: 0 };
@@ -174,6 +182,7 @@ export async function render(el, ctx) {
     card.className = `next-card${w ? ` pr-${w.priority}` : ''}`;
     card.dataset.mode = started ? 'started' : w ? 'suggest' : 'empty';
     if (w) card.dataset.job = w.id; else delete card.dataset.job;
+    card.dataset.asOf = n.asOf; // the moment this suggestion was worked out
     const body = (label, side) => [
       h('p', { class: 'next-label' }, h('span', {}, label), side),
       h('h3', { id: 'next-h' }, w.title),
@@ -305,7 +314,7 @@ export async function render(el, ctx) {
     setKids(list, groups.length ? groups.map((g) => [
       g.name ? h('h3', { class: 'wo-group', 'data-group': g.id }, g.name, h('span', {}, ` ${g.items.length}`)) : null,
       h('ul', { class: 'wo-list' }, g.items.map((w) => row(w, done ? false : ui.sort !== 'priority'))),
-    ]) : h('p', { class: 'meta' }, 'No work orders here.'));
+    ]) : h('p', { class: 'empty-state', 'data-test': 'wo-empty' }, EMPTY[ui.filter]));
     if (doNext && data.next) drawCard(now, max);
   }
 
