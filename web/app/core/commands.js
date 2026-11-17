@@ -229,9 +229,10 @@ const COMMAND_LIST = [
     input: { type: 'object', additionalProperties: false, properties: {
       wardId: { ...ID, description: 'Only look on this ward, for example ward-a1. Leave out to look on every ward the caller may see.' },
       forEncounter: { ...ID, description: 'The waiting patient\'s synthetic encounter id, for example enc-000123. Leave out to see who has waited longest.' },
-      limit: { type: 'integer', minimum: 1, maximum: 20, description: 'At most this many beds. Default 5, 20 at most. totalFree and truncated say if there are more.' } } },
+      limit: { type: 'integer', minimum: 1, maximum: 20, description: 'At most this many beds. Default 5, 20 at most. totalFree and truncated say if there are more.' },
+      waitingLimit: { type: 'integer', minimum: 1, maximum: 20, description: 'At most this many waiting patients. Default 3, 20 at most. totalWaiting and waitingTruncated say if there are more.' } } },
     output: {
-      type: 'object', required: ['asOf', 'synthetic', 'wardsSearched', 'beds', 'totalFree', 'truncated', 'waiting', 'totalWaiting', 'order', 'nextStep', 'note'],
+      type: 'object', required: ['asOf', 'synthetic', 'wardsSearched', 'beds', 'totalFree', 'truncated', 'waiting', 'totalWaiting', 'waitingTruncated', 'order', 'nextStep', 'note'],
       properties: {
         asOf: TIME, synthetic: SYNTHETIC,
         wardsSearched: { type: 'array', items: { type: 'object', required: ['id', 'name'], properties: { id: ID, name: { type: 'string' } } } },
@@ -240,12 +241,13 @@ const COMMAND_LIST = [
           requestedWard: { type: 'boolean', description: 'True when this is the ward the patient was requested for.' },
           sideRoom: { type: 'boolean' }, freeSince: { type: ['string', 'null'], description: 'When the bed became available.' } } } },
         totalFree: { type: 'integer', minimum: 0, description: 'Available beds on the wards searched, before the limit.' }, truncated: TRUNCATED,
-        waiting: { type: 'array', description: 'Patients waiting with no bed held: the one asked for, or the three who have waited longest.', items: { type: 'object', required: ['encounter', 'decisionAt', 'waitingMinutes'], properties: {
+        waiting: { type: 'array', description: 'Patients waiting with no bed held: the one asked for, or up to waitingLimit (default 3). With wardId, the patients requested for that ward come first; within each group, longest wait first.', items: { type: 'object', required: ['encounter', 'decisionAt', 'waitingMinutes'], properties: {
           encounter: ID, wardId: { type: ['string', 'null'], description: 'The ward requested, if one was.' }, wardName: { type: ['string', 'null'] },
           decisionAt: TIME, waitingMinutes: { type: 'integer', minimum: 0, description: 'Minutes since the decision to admit.' } } } },
         totalWaiting: { type: 'integer', minimum: 0, description: 'Patients waiting with no bed held, in the caller\'s view.' },
+        waitingTruncated: { type: 'boolean', description: 'True when more patients are waiting than are listed: call again with a higher waitingLimit.' },
         order: { type: 'string', description: 'How the lists are ordered, in words. An order, not a recommendation.' },
-        nextStep: { type: ['object', 'null'], description: 'The command that would hold the first listed bed for the first listed patient. Null when there is no free bed or no one waiting, or when the first bed is not on the ward that patient was requested for. A person decides; any listed bed can be used instead.', properties: { command: { type: 'string' }, input: { type: 'object' } } },
+        nextStep: { type: ['object', 'null'], description: 'The command that would hold a listed bed for the first listed patient whom a listed bed fits (a bed on the ward they were requested for, or any bed when none was requested). Null when no listed bed fits a listed patient. A person decides; any listed bed can be used instead.', properties: { command: { type: 'string' }, input: { type: 'object' } } },
         note: { type: 'string' },
       },
     },
@@ -261,30 +263,34 @@ const COMMAND_LIST = [
       // Same view of the waiting list as ospeli_beds_board: an agent sees patients with no ward
       // requested, and patients requested for a ward it may see.
       const queue = board.waiting.filter((x) => !x.allocatedBed && (!allowed || !x.wardId || allowed.has(x.wardId)))
-        .sort((a, b) => (a.decisionAt < b.decisionAt ? -1 : 1));
-      let patients = queue.slice(0, 3);
+        .sort((a, b) => (input.wardId ? (b.wardId === input.wardId) - (a.wardId === input.wardId) : 0) || (a.decisionAt < b.decisionAt ? -1 : 1));
+      const waitCut = page(queue, input.waitingLimit, 3);
+      let patients = waitCut.items;
+      let waitingTruncated = waitCut.truncated;
       if (input.forEncounter) {
         const one = queue.find((x) => x.encounter === input.forEncounter);
         // The same answer whether the patient does not exist, already has a bed held, or is outside the caller's wards.
         if (!one) throw new CommandError('not-found', `No patient ${input.forEncounter} is waiting for a bed in your view. Leave forEncounter out to see who is waiting.`);
-        patients = [one];
+        patients = [one]; waitingTruncated = false;
       }
       const wanted = patients[0]?.wardId ?? null;
       const free = beds.filter((b) => openIds.has(b.parentId) && board.beds.get(b.id)?.state === 'available')
         .map((b) => ({ b, s: board.beds.get(b.id) }))
         .sort((x, y) => ((y.b.parentId === wanted) - (x.b.parentId === wanted)) || ((x.s.since || '') < (y.s.since || '') ? -1 : (x.s.since || '') > (y.s.since || '') ? 1 : 0) || (x.b.name < y.b.name ? -1 : 1));
       const cut = page(free, input.limit, 5);
-      const first = cut.items[0]; const who = patients[0];
+      const fits = (x, b) => !x.wardId || b.b.parentId === x.wardId;
+      const who = patients.find((x) => cut.items.some((b) => fits(x, b)));
+      const first = who && cut.items.find((b) => fits(who, b));
       return {
         asOf: now, synthetic: (await core.getMeta('synthetic', false)) === true,
         wardsSearched: open.map((w) => ({ id: w.id, name: w.name })),
         beds: cut.items.map(({ b, s }) => ({ bedId: b.id, bedName: b.name, wardId: b.parentId, wardName: wardName.get(b.parentId) || b.parentId, requestedWard: !!wanted && b.parentId === wanted, sideRoom: !!b.sideRoom, freeSince: s.since ?? null })),
         totalFree: cut.total, truncated: cut.truncated,
         waiting: patients.map((x) => ({ encounter: x.encounter, wardId: x.wardId ?? null, wardName: x.wardId ? wardName.get(x.wardId) || null : null, decisionAt: x.decisionAt, waitingMinutes: Math.max(0, Math.round((Date.parse(now) - Date.parse(x.decisionAt)) / 60000)) })),
-        totalWaiting: queue.length,
-        order: 'Beds: the ward the first listed patient was requested for comes first, then the bed that has been free longest. Patients: longest wait first. This is an order, not a recommendation.',
-        nextStep: first && who && (!who.wardId || first.b.parentId === who.wardId) ? { command: 'ospeli_beds_allocate', input: { bedId: first.b.id, encounter: who.encounter, expectedState: 'available' } } : null,
-        note: 'Ospeli lists free beds; it does not judge whether a bed suits a patient. A person decides, and an agent\'s allocate is a proposal a person accepts or declines.',
+        totalWaiting: queue.length, waitingTruncated,
+        order: `Beds: the ward the first listed patient was requested for comes first, then the bed that has been free longest. Patients: ${input.wardId ? 'those requested for this ward first, then ' : ''}longest wait first. This is an order, not a recommendation.`,
+        nextStep: first && who ? { command: 'ospeli_beds_allocate', input: { bedId: first.b.id, encounter: who.encounter, expectedState: 'available' } } : null,
+        note: `Ospeli lists free beds; it does not judge whether a bed suits a patient. A person decides, and an agent's allocate is a proposal a person accepts or declines.${waitingTruncated ? ` ${patients.length} of ${queue.length} waiting patients listed: call again with waitingLimit (up to 20) to see more.` : ''}`,
       };
     },
     example: { input: { wardId: 'ward-a1', limit: 5 } },

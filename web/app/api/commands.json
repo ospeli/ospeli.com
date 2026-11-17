@@ -393,6 +393,12 @@
             "minimum": 1,
             "maximum": 20,
             "description": "At most this many beds. Default 5, 20 at most. totalFree and truncated say if there are more."
+          },
+          "waitingLimit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 20,
+            "description": "At most this many waiting patients. Default 3, 20 at most. totalWaiting and waitingTruncated say if there are more."
           }
         }
       },
@@ -407,6 +413,7 @@
           "truncated",
           "waiting",
           "totalWaiting",
+          "waitingTruncated",
           "order",
           "nextStep",
           "note"
@@ -497,7 +504,7 @@
           },
           "waiting": {
             "type": "array",
-            "description": "Patients waiting with no bed held: the one asked for, or the three who have waited longest.",
+            "description": "Patients waiting with no bed held: the one asked for, or up to waitingLimit (default 3). With wardId, the patients requested for that ward come first; within each group, longest wait first.",
             "items": {
               "type": "object",
               "required": [
@@ -541,6 +548,10 @@
             "minimum": 0,
             "description": "Patients waiting with no bed held, in the caller's view."
           },
+          "waitingTruncated": {
+            "type": "boolean",
+            "description": "True when more patients are waiting than are listed: call again with a higher waitingLimit."
+          },
           "order": {
             "type": "string",
             "description": "How the lists are ordered, in words. An order, not a recommendation."
@@ -550,7 +561,7 @@
               "object",
               "null"
             ],
-            "description": "The command that would hold the first listed bed for the first listed patient. Null when there is no free bed or no one waiting, or when the first bed is not on the ward that patient was requested for. A person decides; any listed bed can be used instead.",
+            "description": "The command that would hold a listed bed for the first listed patient whom a listed bed fits (a bed on the ward they were requested for, or any bed when none was requested). Null when no listed bed fits a listed patient. A person decides; any listed bed can be used instead.",
             "properties": {
               "command": {
                 "type": "string"
