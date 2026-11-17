@@ -105,7 +105,7 @@ test('a guide proposal changes nothing until the named role confirms', async () 
   await context.close();
 });
 
-test('the guide flags a growing delay reason and a local bed for an out-of-area return', async () => {
+test('the guide flags a growing delay reason and a local bed for a return to the home area', async () => {
   const { context, page, errors } = await open(1280);
   const s = await api(page, 'suggestions');
   assert.ok(s.some((x) => x.id.startsWith('grow-housing')), 'housing delays flagged as growing');

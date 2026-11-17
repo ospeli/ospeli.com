@@ -109,7 +109,7 @@ test('a guide recall proposal changes nothing until the centre manager confirms'
   await context.close();
 });
 
-test('the district manager holds a free place and starts it, recording the wait', async () => {
+test('the area manager holds a free place and starts it, recording the wait', async () => {
   const { context, page, errors } = await open(1280);
   await page.click('#r-district');
   const k0 = await api(page, 'kpis');

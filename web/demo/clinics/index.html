@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Outpatients and clinics demo · Ospeli</title>
-<meta name="description" content="Clinic check-in on a phone, one referral waiting list with free slots and reminders, and a manager view of slot use, did-not-attend rates and waits past each service's target. Fictional example data; runs in your browser.">
+<meta name="description" content="Clinic check-in on a phone, one referral waiting list with free slots and reminders, and a manager view of slot use, missed appointment rates and waits past each service's target. Fictional example data; runs in your browser.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Ospeli">
 <meta property="og:title" content="Outpatients and clinics demo · Ospeli">
-<meta property="og:description" content="Clinic check-in on a phone, one referral waiting list with free slots and reminders, and a manager view of slot use, did-not-attend rates and waits past each service's target. Fictional example data; runs in your browser.">
+<meta property="og:description" content="Clinic check-in on a phone, one referral waiting list with free slots and reminders, and a manager view of slot use, missed appointment rates and waits past each service's target. Fictional example data; runs in your browser.">
 <meta property="og:url" content="https://ospeli.com/demo/clinics/">
 <meta property="og:image" content="https://ospeli.com/og.png">
 <meta property="og:image:width" content="1200">
@@ -212,7 +212,7 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
 <main class="wrap">
   <span class="badge">Preview · fictional example data</span>
   <h1>Outpatients and clinics</h1>
-  <p class="lead">Every referral on one waiting list, with its wait shown. Reception checks patients in by code, so the waiting area sees live waits. The booking team fills free and late-cancelled slots. The manager sees slot use, did-not-attend rates and who is waiting past the target the service set. The guide suggests; a person decides.</p>
+  <p class="lead">Every referral on one waiting list, with its wait shown. Reception checks patients in by code, so the waiting area sees live waits. The booking team fills free and late-cancelled slots. The manager sees slot use, missed appointment rates and who is waiting past the target the service set. The guide suggests; a person decides.</p>
 
   <div class="roles" role="group" aria-label="Whose view">
     <button type="button" id="r-reception" aria-pressed="false">Clinic reception</button>
@@ -283,7 +283,7 @@ var CLINICS = [
   { id: 'diab', svc: 'diab', start: 570, len: 20, n: 9, late: 0, dur: [13, 19], dna: [1, 6], gone: [] },
   { id: 'ent',  svc: 'ent',  start: 810, len: 15, n: 12, late: 0, dur: [10, 15], dna: [], gone: [5] }
 ];
-// Did not attend in recent weeks per service, as [did not attend, booked] (fictional).
+// No-shows in recent weeks per service, as [no-shows, booked] (fictional).
 var DNA_PCT = { card: [7, 9, 8, 6, 8, 7, 9, 8], derm: [10, 9, 11, 12, 10, 11, 9, 10], orth: [6, 8, 7, 7, 6, 8, 7, 6], diab: [9, 8, 10, 9, 8, 14, 16, 15], ent: [8, 7, 9, 8, 8, 9, 7, 8] };
 // Referral accepted to first appointment attended, median weeks over the last 8 weeks (fictional).
 var R2F = { card: 11, derm: 14, orth: 17, diab: 8, ent: 12 };
@@ -317,7 +317,7 @@ function seed() {
       a._call = Math.max(free, a._arr); a._fin = a._call + a._dur; free = a._fin;
     });
     s.appts.filter(function (a) { return a.clinic === c.id; }).forEach(function (a) {
-      if (a._dna) { if (a.booked + 30 <= NOW) { a.status = 'dna'; a.dnaAt = a.booked + 30; ev.push({ t: a.dnaAt, text: label(a) + ' marked did not attend (booked ' + hhmm(a.booked) + ')' }); } }
+      if (a._dna) { if (a.booked + 30 <= NOW) { a.status = 'dna'; a.dnaAt = a.booked + 30; ev.push({ t: a.dnaAt, text: label(a) + ' marked no-show (booked ' + hhmm(a.booked) + ')' }); } }
       else if (a._arr <= NOW) {
         a.arr = a._arr; a.status = 'arrived'; ev.push({ t: a.arr, text: label(a) + ' arrived (booked ' + hhmm(a.booked) + ')' });
         if (a._call <= NOW) { a.call = a._call; a.status = 'called'; ev.push({ t: a.call, text: label(a) + ' called in after ' + fmt(a.call - a.arr) + ' waiting' }); }
@@ -477,14 +477,14 @@ function suggest() {
         acts: [{ label: 'Propose: show a delay notice', primary: true, fn: function () { propose({ id: id, kind: 'notice', who: 'reception', clinic: k.id, minutes: mins, text: 'Show on the ' + k.name + ' waiting area screen: running about ' + mins + ' minutes late.' }); } },
           { label: 'Show this clinic', fn: function () { state.role = 'reception'; state.clinic = k.id; render(); scrollToView(); } }] });
     });
-  // 3. A clinic's did-not-attend rate above its usual range in recent weeks.
+  // 3. A clinic's missed appointment rate above its usual range in recent weeks.
   SVC.forEach(function (sv) {
     var t = dnaTrend(sv); if (!t.above || state.extraReminder[sv]) return;
     var nm = SERVICES[sv].name, id = 'dna-' + sv;
     out.push({ id: id, kind: 'ask', who: 'booking',
-      title: nm + ': did-not-attend rate is above its usual range',
+      title: nm + ': missed appointment rate is above its usual range',
       text: 'Last 3 weeks: ' + t.recent + '% of booked appointments. The 5 weeks before ranged from ' + t.lo + '% to ' + t.hi + '%. Try a second reminder two days before, and check the contact details on the list.',
-      why: 'Weekly did-not-attend counts for ' + nm + ' clinics against booked appointments, recent weeks against earlier weeks.',
+      why: 'Weekly no-show counts for ' + nm + ' clinics against booked appointments, recent weeks against earlier weeks.',
       acts: [{ label: 'Propose: add a second reminder', primary: true, fn: function () { propose({ id: id, kind: 'remind', who: 'booking', svc: sv, text: 'Send a second reminder two days before ' + nm + ' appointments, from this week.' }); } }] });
   });
   // 4. Everyone booked for the clinic start: suggest a staggered template, showing the current waits.
@@ -540,7 +540,7 @@ function mark(a, what) {
   if (what === 'arrive') { a.arr = n; a.status = 'arrived'; addLog(aname(a) + ' arrived (booked ' + hhmm(a.booked) + ')' + (n - a.booked > 0 ? ', ' + fmt(n - a.booked) + ' after the booked time' : '')); toast('Checked in. The wait clock has started.'); }
   else if (what === 'call') { a.call = n; a.status = 'called'; addLog(aname(a) + ' called in after ' + fmt(n - a.arr) + ' waiting'); toast('Called in. The waiting area screen shows ' + a.code + '.'); }
   else if (what === 'finish') { a.fin = n; a.status = 'finished'; addLog(aname(a) + ' finished'); toast('Finished.'); }
-  else if (what === 'dna') { a.dnaAt = n; a.status = 'dna'; addLog(aname(a) + ' marked did not attend (booked ' + hhmm(a.booked) + '). Goes to the booking team to rebook.'); toast('Marked did not attend. The booking team will see it.'); }
+  else if (what === 'dna') { a.dnaAt = n; a.status = 'dna'; addLog(aname(a) + ' marked no-show (booked ' + hhmm(a.booked) + '). Goes to the booking team to rebook.'); toast('Marked as a no-show. The booking team will see it.'); }
   render();
 }
 function undo() {
@@ -575,9 +575,9 @@ function sendReminders() {
 
 // ---------- Render ----------
 var HINTS = {
-  reception: 'A reception tablet or phone. Mark each patient arrived, called in and finished, or did not attend. The waiting area screen updates as you go. Patients show as codes only.',
+  reception: 'A reception tablet or phone. Mark each patient arrived, called in and finished, or no-show. The waiting area screen updates as you go. Patients show as codes only.',
   booking: 'The booking team\'s view. One waiting list for every service: unbooked first, longest waits at the top. Book or offer free slots this week, and send reminders.',
-  manager: 'The outpatient manager\'s view. How today\'s clinics use their slots, did-not-attend rates by clinic, the waiting list trend, and who is waiting past the target each service set.'
+  manager: 'The outpatient manager\'s view. How today\'s clinics use their slots, missed appointment rates by clinic, the waiting list trend, and who is waiting past the target each service set.'
 };
 function render() {
   var aid = document.activeElement && document.activeElement.id;
@@ -598,7 +598,7 @@ function renderKpis() {
   var k = kpis(), box = document.getElementById('kpis'); box.textContent = '';
   var tiles = [
     ['util', k.slotUtilisationPct == null ? '–' : k.slotUtilisationPct + '%', 'Slot utilisation', k.slotsUsed + ' of ' + k.slotsAvailable + ' slots used today', 'Slots used / slots available in the template, for today\'s clinics so far. A slot is used when its patient checked in. Empty and late-cancelled slots count as not used. Local definition.'],
-    ['dna', k.dnaRatePct == null ? '–' : k.dnaRatePct + '%', 'Did not attend', k.dnaCount + ' of ' + k.bookedSoFar + ' booked so far', 'Appointments marked did not attend / appointments booked, today so far (booked time reached). Local definition.'],
+    ['dna', k.dnaRatePct == null ? '–' : k.dnaRatePct + '%', 'No-shows', k.dnaCount + ' of ' + k.bookedSoFar + ' booked so far', 'Appointments marked no-show / appointments booked, today so far (booked time reached). Local definition.'],
     ['wait', k.waitInClinicMin == null ? '–' : fmt(k.waitInClinicMin), 'Wait in clinic', 'median of ' + k.calledCount + ' called today', 'Patient checked in → called in, median of patients called today, all clinics. Local definition.'],
     ['past', String(k.pastTarget), 'Waiting past target', k.pastTargetUnbooked + ' of them not booked', 'Open referrals waiting longer than the target their service set, counted in weeks from the referral being accepted. Each service sets its own target (see the manager\'s Local settings); they are not national standards.']
   ];
@@ -627,7 +627,7 @@ function reception() {
   frag.appendChild(el('div', { class: 'pills' }, [
     el('span', { class: 'pill', text: k.toArrive + ' to arrive' }), el('span', { class: 'pill' + (k.longestWait > 30 ? ' hot' : ''), text: k.waitingNow + ' waiting' }),
     el('span', { class: 'pill', text: k.withClinician + ' with clinician' }), el('span', { class: 'pill ok', text: k.finished + ' finished' }),
-    el('span', { class: 'pill', text: k.dna + ' did not attend' })
+    el('span', { class: 'pill', text: k.dna + ' no-show' })
   ]));
   var as = apptsOf(state.clinic);
   function card(a, opts) {
@@ -639,7 +639,7 @@ function reception() {
     var acts = [];
     if (a.status === 'booked') {
       acts.push(el('button', { type: 'button', id: 'go-' + a.id, class: 'go arrive', 'aria-label': 'Arrived: ' + a.code, onclick: function () { mark(a, 'arrive'); }, text: 'Arrived' }));
-      if (n >= a.booked) acts.push(el('button', { type: 'button', id: 'dna-' + a.id, class: 'dna', 'aria-label': 'Did not attend: ' + a.code, onclick: function () { mark(a, 'dna'); }, text: 'Did not attend' }));
+      if (n >= a.booked) acts.push(el('button', { type: 'button', id: 'dna-' + a.id, class: 'dna', 'aria-label': 'No-show: ' + a.code, onclick: function () { mark(a, 'dna'); }, text: 'No-show' }));
     } else if (a.status === 'arrived') acts.push(el('button', { type: 'button', id: 'go-' + a.id, class: 'go call', 'aria-label': 'Call in: ' + a.code, onclick: function () { mark(a, 'call'); }, text: 'Call in' }));
     else if (a.status === 'called') acts.push(el('button', { type: 'button', id: 'go-' + a.id, class: 'go finish', 'aria-label': 'Finished: ' + a.code, onclick: function () { mark(a, 'finish'); }, text: 'Finished' }));
     return el('article', { class: 'appt s-' + a.status + (late ? ' overdue' : ''), 'aria-label': a.code + ', booked ' + hhmm(a.booked) }, [el('div', { class: 'top' }, head), el('p', { class: 'meta', text: meta }), el('div', { class: 'acts' }, acts)]);
@@ -657,9 +657,9 @@ function reception() {
   if (state.undo && appt(state.undo.id) && appt(state.undo.id).clinic === state.clinic) frag.appendChild(el('div', { class: 'undo' }, [el('button', { type: 'button', id: 'undo', onclick: undo, text: 'Undo last change (' + appt(state.undo.id).code + ')' })]));
   var done = as.filter(function (a) { return a.status === 'finished' || a.status === 'dna'; });
   var gaps = c.template.filter(function (x) { return !x.a; });
-  frag.appendChild(el('h3', { class: 'sec', text: 'Finished, did not attend and empty slots · ' + (done.length + gaps.length) }));
+  frag.appendChild(el('h3', { class: 'sec', text: 'Finished, no-shows and empty slots · ' + (done.length + gaps.length) }));
   var ul = el('ul', { class: 'donelist' });
-  done.sort(function (a, b) { return a.booked - b.booked; }).forEach(function (a) { ul.appendChild(el('li', {}, [el('span', {}, [el('b', { text: a.code }), ' · booked ' + hhmm(a.booked)]), el('span', { text: a.status === 'dna' ? 'Did not attend' : 'Finished ' + hhmm(a.fin) })])); });
+  done.sort(function (a, b) { return a.booked - b.booked; }).forEach(function (a) { ul.appendChild(el('li', {}, [el('span', {}, [el('b', { text: a.code }), ' · booked ' + hhmm(a.booked)]), el('span', { text: a.status === 'dna' ? 'No-show' : 'Finished ' + hhmm(a.fin) })])); });
   gaps.forEach(function (x) { ul.appendChild(el('li', {}, [el('span', { text: hhmm(x.t) + ' slot' }), el('span', { text: x.lateCancel ? 'Cancelled late, empty' : 'Not booked' })])); });
   frag.appendChild(ul);
   return frag;
@@ -745,13 +745,13 @@ function manager() {
       el('td', { class: 'r' }, [k.started ? (flag ? el('span', { class: 'hot', text: fmt(k.behind) }) : fmt(k.behind)) : '–'])
     ]));
   });
-  var th = el('tr', {}, ['Clinic', 'Started', 'Slots used so far', 'Empty', 'Late cancel', 'Did not attend', 'Wait in clinic', 'Behind'].map(function (h, i) { return el('th', { class: i > 1 ? 'r' : '', scope: 'col', text: h }); }));
+  var th = el('tr', {}, ['Clinic', 'Started', 'Slots used so far', 'Empty', 'Late cancel', 'No-show', 'Wait in clinic', 'Behind'].map(function (h, i) { return el('th', { class: i > 1 ? 'r' : '', scope: 'col', text: h }); }));
   frag.appendChild(el('p', { class: 'swipe', text: 'Swipe the tables sideways for more columns.' }));
   frag.appendChild(el('div', { class: 'tablewrap', tabindex: '0', 'aria-label': 'Today\'s clinics table' }, [el('table', { class: 't', id: 'daytable' }, [el('thead', {}, [th]), tb])]));
   var started = ks.filter(function (k) { return k.started; });
   frag.appendChild(el('p', { class: 'fine', text: 'Clinic start punctuality: ' + started.filter(function (k) { return k.punctual; }).length + ' of ' + started.length + ' clinics held so far started within ' + state.startWindow + ' min of the scheduled time (first patient called; local definition). "So far" counts slots whose time has come.' }));
   // DNA by clinic
-  frag.appendChild(el('h3', { class: 'sec', text: 'Did not attend by clinic · last 8 weeks' }));
+  frag.appendChild(el('h3', { class: 'sec', text: 'No-shows by clinic · last 8 weeks' }));
   var dbox = el('div', { id: 'dnabox' });
   SVC.forEach(function (sv) {
     var t = dnaTrend(sv), max = 20;
@@ -808,13 +808,13 @@ function renderGuide() {
   var box = document.getElementById('sugg'), dec = document.getElementById('decide'); box.textContent = ''; dec.textContent = '';
   if (!state.guide) { box.appendChild(el('p', { class: 'how', text: 'The guide is off. Check-in, the waiting list, booking, reminders and the measures all work without it.' })); return; }
   var list = suggest();
-  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag: no empty late-cancelled slots, no clinic running behind, and did-not-attend rates are in their usual range.' }));
+  if (!list.length) box.appendChild(el('p', { class: 'empty', text: 'Nothing to flag: no empty late-cancelled slots, no clinic running behind, and missed appointment rates are in their usual range.' }));
   list.forEach(function (sg) {
     var pend = state.pending.some(function (p) { return p.id === sg.id; });
     var acts = sg.acts.map(function (a) { return el('button', { type: 'button', class: 'small' + (a.primary ? ' primary' : ''), disabled: pend && a.primary ? 'disabled' : false, onclick: a.fn, text: pend && a.primary ? 'Proposed' : a.label }); });
     acts.push(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not useful' }));
     box.appendChild(el('div', { class: 'sugg', 'data-id': sg.id }, [
-      el('span', { class: 'tag ' + (sg.kind === 'time' ? 'time' : sg.kind === 'ask' ? 'ask' : ''), text: { slot: 'Fill a slot', time: 'Running behind', ask: sg.id.indexOf('dna') === 0 ? 'Did not attend' : 'Template' }[sg.kind] }),
+      el('span', { class: 'tag ' + (sg.kind === 'time' ? 'time' : sg.kind === 'ask' ? 'ask' : ''), text: { slot: 'Fill a slot', time: 'Running behind', ask: sg.id.indexOf('dna') === 0 ? 'No-show' : 'Template' }[sg.kind] }),
       el('h3', { text: sg.title }), el('p', { text: sg.text }),
       el('p', { class: 'why', text: 'Why: ' + sg.why }), el('div', { class: 'acts' }, acts)
     ]));

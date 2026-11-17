@@ -303,7 +303,11 @@ OLD_WORDS = [(re.compile(r"\bbed managers?\b", re.I), "Bed manager", "Patient fl
              # Issue #67: framing that assumes a paper-run site on a tight budget.
              (re.compile(r"\bwalking, phoning and paper\b", re.I), "walking, phoning and paper", "walking, phoning, paper and spreadsheets"),
              (re.compile(r"\btight budgets?\b", re.I), "tight budgets", "hardware you already have"),
-             (re.compile(r"\ba mini PC and a UPS\b", re.I), "a mini PC and a UPS", "the tablets, phones and PCs you already have")]
+             (re.compile(r"\ba mini PC and a UPS\b", re.I), "a mini PC and a UPS", "the tablets, phones and PCs you already have"),
+             # Issue #56: three terms from one health system's vocabulary ("theatres" waits: see the issue).
+             (re.compile(r"\bdid[- ]not[- ]attend\b", re.I), "did not attend / did-not-attend", "no-show / missed appointment"),
+             (re.compile(r"\bout-of-area\b", re.I), "out-of-area", "away from the home area"),
+             (re.compile(r"\bdistrict (?:managers?|view)\b", re.I), "district manager / district view", "area manager / area view")]
 
 def js_strings(src):
     """The string and template literals of a script, joined; comments and code are left out."""

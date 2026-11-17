@@ -1,5 +1,5 @@
 // Outpatients and clinics demo (web/demo/clinics/): each role renders with no sideways scroll,
-// reception can take a patient from arrived to finished (and mark did not attend) with the measures
+// reception can take a patient from arrived to finished (and mark a no-show) with the measures
 // updating, the booking team can book a slot, guide proposals wait for the right person to confirm,
 // and the guide can be switched off. Fictional data only.
 import { test, before, after } from 'node:test';
@@ -45,7 +45,7 @@ for (const width of [360, 390, 1280]) {
   });
 }
 
-test('reception takes a patient from arrived to finished, and marks did not attend; the measures update', async () => {
+test('reception takes a patient from arrived to finished, and marks a no-show; the measures update', async () => {
   const { context, page, errors } = await open(390);
   await page.click('#r-reception');
   const before = await api(page, 'kpis');
@@ -61,7 +61,7 @@ test('reception takes a patient from arrived to finished, and marks did not atte
   assert.match(await page.locator('#screen').textContent(), /Now calling/);
   await page.click('#' + id);
   assert.match(await page.locator('#log li').first().textContent(), /finished/);
-  // Did not attend: a patient whose booked time has passed (Dermatology has one at the demo start).
+  // No-show: a patient whose booked time has passed (Dermatology has one at the demo start).
   await page.selectOption('#clinic-pick', 'derm');
   const d = page.locator('#toarrive button.dna').first();
   await d.click();

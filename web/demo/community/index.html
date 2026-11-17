@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Primary and community care demo · Ospeli</title>
-<meta name="description" content="Home visit rounds and clinic lists on a phone that keep working offline, a health centre view of sessions, follow-ups, stock and hospital referrals, and a district view of community places. Fictional example data; runs in your browser.">
+<meta name="description" content="Home visit rounds and clinic lists on a phone that keep working offline, a health centre view of sessions, follow-ups, stock and hospital referrals, and an area view of community places. Fictional example data; runs in your browser.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Ospeli">
 <meta property="og:title" content="Primary and community care demo · Ospeli">
-<meta property="og:description" content="Home visit rounds and clinic lists on a phone that keep working offline, a health centre view of sessions, follow-ups, stock and hospital referrals, and a district view of community places. Fictional example data; runs in your browser.">
+<meta property="og:description" content="Home visit rounds and clinic lists on a phone that keep working offline, a health centre view of sessions, follow-ups, stock and hospital referrals, and an area view of community places. Fictional example data; runs in your browser.">
 <meta property="og:url" content="https://ospeli.com/demo/community/">
 <meta property="og:image" content="https://ospeli.com/og.png">
 <meta property="og:image:width" content="1200">
@@ -249,12 +249,12 @@ ol.log .qd { display: inline-block; font-size: 0.7rem; font-weight: 800; text-tr
 <main class="wrap">
   <span class="badge">Preview · fictional example data</span>
   <h1>Primary and community care: visits, clinics, follow-ups and community places</h1>
-  <p class="lead">Home visit rounds and clinic lists on a phone that keeps working without a signal. Health centre managers see sessions, follow-ups, stock and referrals from the hospital in one place. The district manager compares centres as rates and sees which community places are free for patients ready to leave hospital. The guide points things out; a person decides.</p>
+  <p class="lead">Home visit rounds and clinic lists on a phone that keeps working without a signal. Health centre managers see sessions, follow-ups, stock and referrals from the hospital in one place. The area manager compares centres as rates and sees which community places are free for patients ready to leave hospital. The guide points things out; a person decides.</p>
 
   <div class="roles" role="group" aria-label="Whose view">
     <button type="button" id="r-front" aria-pressed="false">Nurse or clinic</button>
     <button type="button" id="r-manager" aria-pressed="false">Centre manager</button>
-    <button type="button" id="r-district" aria-pressed="false">District manager</button>
+    <button type="button" id="r-district" aria-pressed="false">Area manager</button>
   </div>
   <p class="rolehint" id="rolehint"></p>
   <div class="tools" role="group" aria-label="Demo tools">
@@ -418,7 +418,7 @@ function seed() {
   // Build today's log from the seeded events, in time order.
   var ev = [];
   s.visits.forEach(function (v) { if (v.arr) ev.push([v.arr, 'Community nurse arrived: ' + v.code + ', ' + AREAS[v.area]]); if (v.status === 'seen') ev.push([v.done, 'Visit done: ' + v.code + ' (' + PROGS[v.prog] + ')']); if (v.status === 'nothome') ev.push([v.done, 'Not home: ' + v.code + '. Follow-up recorded as missed.']); });
-  s.clinic.forEach(function (c) { if (c.arr) ev.push([c.arr, 'Checked in at North Health Centre: ' + c.code]); if (c.seen) ev.push([c.seen, 'Seen: ' + c.code + ' (waited ' + (c.seen - c.arr) + ' min)']); if (c.status === 'dna') ev.push([c.slot + 20, 'Did not attend: ' + c.code + '. Added to recalls.']); });
+  s.clinic.forEach(function (c) { if (c.arr) ev.push([c.arr, 'Checked in at North Health Centre: ' + c.code]); if (c.seen) ev.push([c.seen, 'Seen: ' + c.code + ' (waited ' + (c.seen - c.arr) + ' min)']); if (c.status === 'dna') ev.push([c.slot + 20, 'No-show: ' + c.code + '. Added to recalls.']); });
   s.refs.forEach(function (r) { if (Math.floor(r.recv / DAY) === TODAY) ev.push([r.recv, 'Referral received from Example General Hospital: ' + r.code + ', ' + r.service + ' (' + CENTRES[r.centre] + ')']); });
   ev.push([hm(8, 2), 'North Health Centre opened. Readiness check done by the centre manager.']);
   ev.push([hm(8, 20), 'Community nurse round synced to the phone: 10 visits.']);
@@ -585,7 +585,7 @@ function suggest() {
   }
   return out.filter(function (x) { return !state.dismissed[x.id]; });
 }
-var WHO = { front: 'community nurse', manager: 'centre manager', district: 'placement coordinator (district manager)' };
+var WHO = { front: 'community nurse', manager: 'centre manager', district: 'placement coordinator (area manager)' };
 function propose(p) {
   if (state.pending.some(function (x) { return x.id === p.id; })) return;
   state.pending.push(p);
@@ -642,7 +642,7 @@ function clinicAct(c, what) {
   var t = now();
   if (what === 'arrive') { c.status = 'arrived'; c.arr = t; addLog('Checked in at North Health Centre: ' + c.code, true); toast('Checked in. The wait clock has started.' + saved()); }
   else if (what === 'seen') { c.status = 'seen'; c.seen = t; addLog('Seen: ' + c.code + ' (waited ' + fmt(t - c.arr) + ')', true); toast('Seen after ' + fmt(t - c.arr) + '.' + saved()); }
-  else if (what === 'dna') { c.status = 'dna'; addLog('Did not attend: ' + c.code + '. Added to recalls.', true); toast('Recorded. Added to recalls.' + saved()); }
+  else if (what === 'dna') { c.status = 'dna'; addLog('No-show: ' + c.code + '. Added to recalls.', true); toast('Recorded. Added to recalls.' + saved()); }
   else if (what === 'resched') { c.status = 'resched'; addLog('Clinic appointment rescheduled: ' + c.code, true); toast('Rescheduled.' + saved()); }
   render();
 }
@@ -675,7 +675,7 @@ function setOffline(off) {
 var HINTS = {
   front: 'A community nurse\'s or clinic worker\'s phone. Work down today\'s visits or the clinic list with one thumb. Try switching the network off: it keeps working and sends changes later.',
   manager: 'A health centre manager\'s view. Referrals from the hospital, follow-ups overdue by programme, sessions this week, stock of key items and the readiness check.',
-  district: 'A district or area manager\'s view. Health centres compared as rates, not people, and community places free, held or occupied for patients ready to leave hospital.'
+  district: 'An area manager\'s view. Health centres compared as rates, not people, and community places free, held or occupied for patients ready to leave hospital.'
 };
 function render() {
   var aid = document.activeElement && document.activeElement.id;
@@ -797,11 +797,11 @@ function clinicView(f) {
       var st = c.status, acts = null, tb, big = st === 'booked' && nb++ === 0;
       if (st === 'booked') acts = el('div', { class: 'acts' + (big ? '' : ' row3') }, [
         el('button', { type: 'button', class: 'go arrive', id: 'ci-' + c.id, 'aria-label': 'Checked in: ' + c.code, onclick: function () { clinicAct(c, 'arrive'); }, text: 'Checked in' }),
-        el('button', { type: 'button', class: 'alt', 'aria-label': 'Did not attend: ' + c.code, onclick: function () { clinicAct(c, 'dna'); }, text: big ? 'Did not attend' : 'No-show' }),
+        el('button', { type: 'button', class: 'alt', 'aria-label': 'No-show: ' + c.code, onclick: function () { clinicAct(c, 'dna'); }, text: 'No-show' }),
         el('button', { type: 'button', class: 'alt', 'aria-label': 'Reschedule: ' + c.code, onclick: function () { clinicAct(c, 'resched'); }, text: 'Reschedule' })]);
       else if (st === 'arrived') acts = el('div', { class: 'acts' }, [el('button', { type: 'button', class: 'go done', id: 'ci-' + c.id, 'aria-label': 'Seen: ' + c.code, onclick: function () { clinicAct(c, 'seen'); }, text: 'Seen' })]);
       tb = st === 'arrived' ? el('div', { class: 'timebox' }, [fmt(now() - c.arr), el('small', { text: 'waiting' })]) : st === 'seen' ? el('div', { class: 'timebox' }, [fmt(c.seen - c.arr), el('small', { text: 'waited' })]) : el('div', { class: 'timebox' }, [hhmm(c.slot), el('small', { text: 'slot' })]);
-      var chip = { booked: null, arrived: ['arrived', 'Checked in ' + hhmm(c.arr || 0)], seen: ['seen', 'Seen ' + hhmm(c.seen || 0)], dna: ['dna', 'Did not attend'], resched: ['resched', 'Rescheduled'] }[st];
+      var chip = { booked: null, arrived: ['arrived', 'Checked in ' + hhmm(c.arr || 0)], seen: ['seen', 'Seen ' + hhmm(c.seen || 0)], dna: ['dna', 'No-show'], resched: ['resched', 'Rescheduled'] }[st];
       list.appendChild(el('article', { class: 'job compact' + (st === 'seen' || st === 'dna' || st === 'resched' ? '' : '') , style: st === 'seen' || st === 'dna' || st === 'resched' ? 'opacity:0.75' : null, 'aria-label': 'Clinic ' + c.code }, [
         el('div', { class: 'top' }, [el('div', {}, [el('p', { class: 'where', text: c.code + ' · slot ' + hhmm(c.slot) }), chip ? el('span', { class: 'chip st-' + chip[0], text: chip[1] }) : el('span', { class: 'meta', text: 'Booked' })]), tb]),
         acts]));
@@ -810,7 +810,7 @@ function clinicView(f) {
     f.appendChild(list);
     if (fin.length) {
       var d = el('details', { class: 'set' }, [el('summary', { text: 'Finished · ' + fin.length + (s[0] === 'am' ? ' · median wait ' + fmt(clinicWait('N') || 0) : '') })]);
-      d.appendChild(el('ul', { class: 'donelist' }, fin.sort(function (a, b) { return a.slot - b.slot; }).map(function (c) { return el('li', {}, [el('span', { text: c.code + ' · slot ' + hhmm(c.slot) + (c.seen ? ' · waited ' + fmt(c.seen - c.arr) : '') }), el('span', { class: 'chip st-' + c.status, text: { seen: 'Seen ' + hhmm(c.seen || 0), dna: 'Did not attend', resched: 'Rescheduled' }[c.status] })]); })));
+      d.appendChild(el('ul', { class: 'donelist' }, fin.sort(function (a, b) { return a.slot - b.slot; }).map(function (c) { return el('li', {}, [el('span', { text: c.code + ' · slot ' + hhmm(c.slot) + (c.seen ? ' · waited ' + fmt(c.seen - c.arr) : '') }), el('span', { class: 'chip st-' + c.status, text: { seen: 'Seen ' + hhmm(c.seen || 0), dna: 'No-show', resched: 'Rescheduled' }[c.status] })]); })));
       f.appendChild(d);
     }
   });

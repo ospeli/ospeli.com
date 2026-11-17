@@ -8,11 +8,11 @@
   "oneLine": "Shows referrals, bookings, waiting lists and clinic days in one place.",
   "today": "Referrals often sit in inboxes and paper books, with no single waiting list. Patients are often all booked for the start of clinic, slots go unfilled, and missed appointments are rarely followed up.",
   "todaySystem": "A booking system holds the appointments, but waits inside the clinic and the reasons for empty slots often go unrecorded.",
-  "withOspeli": "Every referral lands on one list with its wait shown. Clinic templates set slots, reminders go out, and check-in times are logged, so waits, empty slots and did-not-attend show clearly.",
+  "withOspeli": "Every referral lands on one list with its wait shown. Clinic templates set slots, reminders go out, and check-in times are logged, so waits, empty slots and missed appointments (no-shows) show clearly.",
   "people": [
    {
     "role": "Clinic receptionist",
-    "does": "Checks patients in by code on a tablet, marks arrived, seen or did not attend."
+    "does": "Checks patients in by code on a tablet, marks arrived, seen or no-show."
    },
    {
     "role": "Booking clerk",
@@ -46,7 +46,7 @@
    },
    {
     "name": "Clinic day summary",
-    "shows": "Slots used, empty, cancelled and did not attend, start time and overrun per clinic."
+    "shows": "Slots used, empty, cancelled and no-show, start time and overrun per clinic."
    }
   ],
   "captures": [
@@ -55,13 +55,13 @@
    "Reminder sent and reply: links reminders to attendance.",
    "Patient arrived and checked in: starts the in-clinic wait.",
    "Called in and consultation finished: measures in-clinic wait and clinic overrun.",
-   "Did not attend recorded: drives the did-not-attend rate and rebooking.",
+   "No-show recorded: drives the missed appointment rate and rebooking.",
    "Clinic cancelled or reduced at short notice, with reason: shows lost capacity."
   ],
   "kpis": [
    {
-    "name": "Did-not-attend rate",
-    "definition": "appointments marked did not attend / appointments booked",
+    "name": "Missed appointment rate",
+    "definition": "appointments marked no-show / appointments booked",
     "source": "local definition"
    },
    {
@@ -86,7 +86,7 @@
    }
   ],
   "guide": [
-   "When a clinic's did-not-attend rate rises above its usual range, suggests extra reminders or a booking review for that clinic, citing recent weeks.",
+   "When a clinic's missed appointment rate rises above its usual range, suggests extra reminders or a booking review for that clinic, citing recent weeks.",
    "When slots stay empty within two days of clinic, suggests offering them to the longest waiting referrals for that service.",
    "When patients are all booked for the clinic start, suggests a staggered template, showing the current arrival-to-called waits."
   ],
@@ -1030,7 +1030,7 @@
     "source": "local definition"
    },
    {
-    "name": "Out-of-area placement days",
+    "name": "Days placed away from the home area",
     "definition": "bed-days spent outside the usual area, per period",
     "source": "local definition"
    },
