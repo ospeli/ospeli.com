@@ -104,6 +104,9 @@ export async function startServer({
   // connections cannot use the server up. notify(text): a line for the person at the console
   // about something that happened on the network. webRoot: where the app's files are (tests).
   maxConnections = 200, maxPerAddress = 40, notify = () => {}, webRoot = WEB_ROOT,
+  // consoleMode: 'terminal' (a person types here), 'piped' (words arrive on the input, one per
+  // line, from a service manager or a script) or 'none' (--no-console). Issue #74.
+  consoleMode = 'terminal',
 } = {}) {
   if (!file) throw new StartError('The server needs a data file.');
   // tls: { cert, key } (PEM text the site supplies). With it the server answers over https only.
@@ -678,13 +681,14 @@ export async function startServer({
       ...(openToOthers(file) ? ['Warning: other accounts on this computer can read the data file. Keep this computer for the people who look after Ospeli.'] : []),
       access.allowed ? `Bots and scripts: ON for ${live} bot${live === 1 ? '' : 's'}. They read and suggest; a person here says yes or no.` : 'Bots and scripts: OFF. No bot or script can read or suggest yet.',
       `Data file: ${resolve(file)}`,
-      'Type a word below and press Enter:',
-      '  add device    connect a phone or laptop to this site',
-      '  setup agent   let one bot in (4 questions)',
-      '  proposals     see changes waiting for a person',
-      '  stop agents   shut out every bot now',
-      '  help          everything else',
-      'To turn Ospeli off: press Ctrl and C together.',
+      ...(consoleMode === 'none' ? ['No console here. Start Ospeli in a terminal window to let bots in or accept changes.']
+        : [consoleMode === 'piped' ? 'No terminal here. Ospeli reads words from its input, one per line, for example: echo proposals' : 'Type a word below and press Enter:',
+          '  add device    connect a phone or laptop to this site',
+          '  setup agent   let one bot in (4 questions)',
+          '  proposals     see changes waiting for a person',
+          '  stop agents   shut out every bot now',
+          '  help          everything else']),
+      consoleMode === 'terminal' ? 'To turn Ospeli off: press Ctrl and C together.' : 'To turn Ospeli off: stop it the way it was started (Ctrl and C, or the service manager).',
     ].join('\n');
   }
 

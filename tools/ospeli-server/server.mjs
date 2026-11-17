@@ -36,6 +36,9 @@ if (certFile) {
   try { tls = { cert: readFileSync(certFile), key: readFileSync(keyFile) }; } catch (err) { console.error(`Ospeli could not read the certificate or key file (${err.code || 'not readable'}). Check the two file names.`); process.exit(1); }
 }
 
+// Issue #74: without a terminal (a service manager, a container, nohup) words can still arrive on
+// the input, one per line; with --no-console none are read. The banner says which.
+const consoleMode = args.includes('--no-console') ? 'none' : process.stdin.isTTY ? 'terminal' : 'piped';
 let site;
 try {
   site = await startServer({
@@ -45,6 +48,7 @@ try {
     tls,
     // Something on the network a person here should know about (a cancelled device code).
     notify: (text) => console.log(`\n${text}`),
+    consoleMode,
   });
 } catch (err) {
   if (err instanceof StartError) { console.error(err.message); process.exit(1); }
@@ -57,7 +61,7 @@ const stop = async () => { try { await site.close(); } finally { console.log('\n
 process.on('SIGINT', stop);
 process.on('SIGTERM', stop);
 
-if (process.stdin.isTTY && !args.includes('--no-console')) {
+if (consoleMode === 'terminal') {
   const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: '> ' });
   rl.prompt();
   rl.on('line', async (line) => {
@@ -65,4 +69,14 @@ if (process.stdin.isTTY && !args.includes('--no-console')) {
     rl.prompt();
   });
   rl.on('close', stop);
+} else if (consoleMode === 'piped') {
+  // One word per line, answered in order. The end of the input does not stop the server.
+  const rl = createInterface({ input: process.stdin, terminal: false });
+  let queue = Promise.resolve();
+  rl.on('line', (line) => {
+    queue = queue.then(async () => {
+      try { const out = await site.consoleLine(line); if (out) console.log(out); } catch (err) { console.log(`That did not work (${err.message}). Send: help`); }
+    });
+  });
+  rl.on('close', () => { queue.then(() => console.log('Input ended: no more words can be read. Ospeli keeps running. To let bots in or accept changes, start Ospeli in a terminal window.')); });
 }

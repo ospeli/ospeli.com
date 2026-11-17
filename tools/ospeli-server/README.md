@@ -23,6 +23,8 @@ You need Node.js 22.13 or newer (nodejs.org, the "LTS" version). Nothing else to
 
 The window then tells you what to type. You do not need the rest of this page to begin.
 
+Started with no terminal (a service manager, a container, `nohup`), Ospeli reads words from its input, one per line, for example `echo proposals | node tools/ospeli-server/server.mjs`, and keeps running when the input ends. To let bots in or accept changes by typing, start it in a terminal window. With `--no-console` it reads no words at all and says so.
+
 ## Let one bot in
 In the server window type `setup agent` and answer four questions (its name, the role it works for, the units it may see, for how many days). Ospeli shows the bot's key once, and a line you can paste to try it.
 
