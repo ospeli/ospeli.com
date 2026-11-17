@@ -209,8 +209,14 @@ test('a room clean in three taps from the ward\'s own link; the cleaning team se
 
 test('a bed vacated on the bed board is in the cleaner\'s queue with no one asking, with any patient waiting for a bed there; finishing it makes the bed available', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, touch: true, clock: CLOCK, path: '#/beds' });
+  // Mark the board drawn before the role pick, so the test can wait for the new drawing to be
+  // swapped in: the shell draws a page off-screen from the data it read when it started (app.js
+  // route), so a bed changed while that drawing is under way shows its old state until the next one.
+  await page.waitForSelector('.bed.st-occupied');
+  await page.evaluate(() => document.querySelectorAll('main .bed').forEach((b) => { b.dataset.oldDrawing = '1'; }));
   await page.selectOption('#role-select', 'ward-nurse');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
+  await page.waitForFunction(() => document.querySelector('main .bed') && !document.querySelector('main .bed[data-old-drawing]'));
   await page.waitForSelector('.bed.st-occupied');
   const bedId = await page.locator('.bed.st-occupied').first().getAttribute('data-bed');
   // The bed board draws itself again for the new role a moment after the pick, which closes a dialog
