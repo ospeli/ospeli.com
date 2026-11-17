@@ -155,6 +155,9 @@ async function showSynthetic(core) {
   badge.classList.toggle('badge-synthetic', synthetic);
   badge.classList.toggle('badge-warn', !synthetic && !empty);
   badge.textContent = synthetic ? 'Synthetic data' : empty ? 'No data loaded' : 'Not marked synthetic';
+  // Never a hospital's name beside "No data loaded" (issue #62).
+  const name = $('.hospital-name');
+  if (name) name.hidden = empty;
   badge.title = synthetic ? 'This is a fictional hospital. Every name and number is generated.'
     : empty ? 'Nothing is loaded on this device.' : 'The data on this device is not marked synthetic. This build is for synthetic data only.';
 }

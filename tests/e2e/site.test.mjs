@@ -169,7 +169,7 @@ for (const width of [360, 390]) {
       const r = a.getBoundingClientRect();
       return { text: a.innerText.trim(), href: a.getAttribute('href'), h: r.height, size: parseFloat(getComputedStyle(a).fontSize), lines: Math.round(r.height / 44) };
     }));
-    assert.deepEqual(links.map((l) => l.text), ['Demos', 'All areas', 'Roadmap', 'For AI agents']);
+    assert.deepEqual(links.map((l) => l.text), ['Demos', 'All areas', 'Roadmap', 'For AI agents (text file)']);
     assert.ok(links.every((l) => l.h >= 44 && l.h < 60 && l.size >= 16), JSON.stringify(links));
     for (const l of links.filter((x) => !x.href.startsWith('#'))) {
       const res = await page.request.get(new URL(l.href, page.url()).href);

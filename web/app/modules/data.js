@@ -139,7 +139,7 @@ export async function render(el, ctx) {
       h('td', {}, fmtTime(e.at)),
       h('td', { 'data-actor-type': actorTypeOf(e) }, actorLabel(e)),
       h('td', { 'data-action': e.action, title: e.action }, actionLabel(e, places), e.target ? ` · ${e.target}` : ''),
-      h('td', {}, h('code', { title: e.hash }, e.hash.slice(0, 12))))) : [h('tr', {}, h('td', { colspan: 5 }, want === 'all' ? 'No entries yet.' : 'No entries by this kind of actor.'))]));
+      h('td', { class: 'col-hash' }, h('code', { title: e.hash }, e.hash.slice(0, 12))))) : [h('tr', {}, h('td', { colspan: 5 }, want === 'all' ? 'No entries yet.' : 'No entries by this kind of actor.'))]));
   }
 
   const file = h('input', { type: 'file', accept: 'application/json,.json', id: 'import-file', class: 'sr-only' });
@@ -257,7 +257,7 @@ export async function render(el, ctx) {
       h('div', { class: 'table-wrap', tabindex: '0', role: 'region', 'aria-label': 'Audit trail, scroll sideways' },
         h('table', {},
           h('caption', { class: 'sr-only' }, 'Most recent 50 audit entries'),
-          h('thead', {}, h('tr', {}, ['#', 'When', 'Actor', 'Action', 'Hash'].map((t) => h('th', { scope: 'col' }, t)))),
+          h('thead', {}, h('tr', {}, ['#', 'When', 'Actor', 'Action', 'Hash'].map((t) => h('th', { scope: 'col', ...(t === 'Hash' ? { class: 'col-hash' } : {}) }, t)))),
           tbody))),
   );
   await refresh();
