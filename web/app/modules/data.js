@@ -23,7 +23,7 @@ const AGENTS_OFF_TOO = ' AI agents will also be switched off.';
 // What an agent read, in words a data-protection lead can scan (issue #65).
 const READ_WORDS = {
   ospeli_beds_board: 'the bed board', ospeli_beds_get: 'one bed', ospeli_beds_find_free: 'free beds and the waiting list',
-  ospeli_kpi_list: 'the KPI definitions', ospeli_kpi_get: 'a KPI', ospeli_agents_access: 'the agent access settings',
+  ospeli_kpi_list: 'the KPI definitions', ospeli_kpi_get: 'a KPI', ospeli_kpi_summary: 'every KPI tile', ospeli_agents_access: 'the agent access settings',
   ospeli_proposals_list: 'its own proposals', ospeli_assets_list: 'the asset list', ospeli_workorders_list: 'the work-order queue',
   ospeli_maps_list: 'the list of process maps', ospeli_maps_get: 'a process map', ospeli_maps_summary: 'the numbers for a process map',
   ospeli_maps_suggest: 'the guide\'s suggestions for a process map',

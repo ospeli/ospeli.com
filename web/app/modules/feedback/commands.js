@@ -309,7 +309,7 @@ export const COMMANDS = [
       properties: {
         view: { type: 'string', enum: ['open', 'overdue', 'clinical', 'closed', 'compliments', 'all'], description: 'open (default): complaints and concerns not closed. overdue: past a due date. clinical: passed to clinical review. closed. compliments: compliments and cards. all.' },
         mine: { type: 'boolean', description: 'true: only records owned by the caller\'s role.' },
-        ownerRole: { type: 'string', enum: OWNER_ROLES }, serviceId: SERVICE_ID, kind: enumOf(KINDS),
+        ownerRole: { type: 'string', enum: OWNER_ROLES, description: 'Only records owned by this role id, for example patient-liaison.' }, serviceId: SERVICE_ID, kind: enumOf(KINDS, `Only one type of record: ${Object.keys(KINDS).join(', ')}.`),
         format: FORMAT('id, type, service, theme, stage, owner and due', 'channel, rating, note, times and actions too'),
         limit: LIMIT(50, 500, 'records'),
       },
@@ -414,7 +414,7 @@ export const COMMANDS = [
     input: {
       type: 'object', additionalProperties: false, required: ['recordId', 'step'],
       properties: {
-        recordId: RECORD_ID, step: enumOf(STEPS),
+        recordId: RECORD_ID, step: enumOf(STEPS, `The next step on the record: ${Object.keys(STEPS).join(', ')}. Some steps need one more field (channel, ownerRole or outcome); the error says which.`),
         channel: enumOf(REPLY_CHANNELS, 'acknowledge and reply: how the site did it.'),
         ownerRole: { type: 'string', enum: OWNER_ROLES, description: 'set-owner: the role that owns the reply.' },
         outcome: enumOf(OUTCOMES, 'close: how it ended. Before a reply, only withdrawn.'),
@@ -450,7 +450,7 @@ export const COMMANDS = [
     input: {
       type: 'object', additionalProperties: false, required: ['op', 'recordId'],
       properties: {
-        op: { type: 'string', enum: ['agree', 'close'] }, recordId: RECORD_ID, actionId: { ...ACTION_ID, description: 'close only: the action to close.' },
+        op: { type: 'string', enum: ['agree', 'close'], description: 'agree: add an action (needs what, ownerRole and dueInDays). close: mark an action done (needs actionId).' }, recordId: RECORD_ID, actionId: { ...ACTION_ID, description: 'close only: the action to close.' },
         what: enumOf(ACTION_KINDS, 'agree only: what will change.'), ownerRole: { type: 'string', enum: OWNER_ROLES, description: 'agree only: the role that does it.' },
         dueInDays: { type: 'integer', enum: DUE_IN_DAYS, description: 'agree only: due this many days from now.' },
         note: NOTE, notAName: NOT_A_NAME,
@@ -546,7 +546,7 @@ export const COMMANDS = [
     name: 'ospeli_experience_guide_set',
     summary: 'Switch the feedback guide on or off for this site: the reply-due-soon reminders and the template reply. Everything else works the same with it off. People only.',
     kind: 'write', roles: GUIDE_ROLES, approval: true, agents: false,
-    input: { type: 'object', additionalProperties: false, required: ['on'], properties: { on: { type: 'boolean' } } },
+    input: { type: 'object', additionalProperties: false, required: ['on'], properties: { on: { type: 'boolean', description: 'true shows the guide on the feedback page; false hides it. The page works the same either way.' } } },
     output: { type: 'object', required: ['status', 'guideOn'], properties: { status: { type: 'string', enum: ['done'] }, guideOn: { type: 'boolean' } } },
     async precheck() { /* people only: the command layer turns agents away before this */ },
     async run(core, input, { actor }) {

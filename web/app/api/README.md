@@ -25,7 +25,7 @@ Every action in the app is a named command. The screens call these commands, and
 - An agent's write returns `{ status: "proposed", proposal: { id } }`. A person accepts or declines it on the bed board (`ospeli_proposals_accept`, `ospeli_proposals_decline`); the agent reads the outcome with `ospeli_proposals_list` (accepted, declined, or expired if the bed changed first).
 - More for agents: [/agents.md](../../agents.md) and [/llms.txt](../../llms.txt).
 
-## Commands (65)
+## Commands (66)
 | Command | Kind | Roles | Agents: needs a person | What it does |
 |---|---|---|---|---|
 | `ospeli_beds_board` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo, patient-liaison, receptionist, quality-lead | no | Live bed state for every ward (or one ward), the waiting-for-a-bed list and any conflicting events, derived from the event log. To find a free bed for a waiting patient use ospeli_beds_find_free instead: it answers in one short call. Read-only. |
@@ -43,6 +43,7 @@ Every action in the app is a named command. The screens call these commands, and
 | `ospeli_beds_return_to_service` | write | ward-nurse, bed-manager, estates-tech | yes (agents propose) | Put an out-of-service bed back into use. |
 | `ospeli_kpi_list` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo, patient-liaison, receptionist, quality-lead | no | Every KPI definition: numerator, denominator, exclusions, source standard, owner and target. Use ospeli_kpi_get for a number. Read-only. |
 | `ospeli_kpi_get` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo, patient-liaison, receptionist, quality-lead | no | Calculate one KPI from the event log, with its definition beside the number. |
+| `ospeli_kpi_summary` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo, patient-liaison, receptionist, quality-lead | no | Every KPI tile in one read: each number with its unit, the text the tile shows and whether it is on target. For "how are we doing?" use this instead of ospeli_kpi_list and one ospeli_kpi_get per KPI. Short by default; format detailed adds each definition. Read-only; it reports numbers and decides nothing. |
 | `ospeli_agents_access` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo, patient-liaison, receptionist, quality-lead | no | Whether agents may work on this hospital, and on which wards. Off by default. |
 | `ospeli_agents_set_access` | write | ops-manager, coo | people only | Switch agent access on or off for the hospital and for each ward. People only. |
 | `ospeli_agents_list` | read | ward-nurse, bed-manager, estates-tech, ae-nic, ops-manager, coo, patient-liaison, receptionist, quality-lead | people only | The Agents screen as data: the dial (off or advise), the agents this site allows, and what each agent did in the last 7 days. People only. |

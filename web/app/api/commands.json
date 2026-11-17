@@ -266,7 +266,8 @@
           "bedId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "maxLength": 64
+            "maxLength": 64,
+            "description": "The bed's id, for example ward-a1-bed-01. ospeli_beds_board and ospeli_beds_find_free give the ids."
           }
         }
       },
@@ -605,7 +606,8 @@
           "bedId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "maxLength": 64
+            "maxLength": 64,
+            "description": "The bed's id, for example ward-a1-bed-01. ospeli_beds_board and ospeli_beds_find_free give the ids."
           },
           "expectedAt": {
             "type": "string",
@@ -703,7 +705,8 @@
           "bedId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "maxLength": 64
+            "maxLength": 64,
+            "description": "The bed's id, for example ward-a1-bed-01. ospeli_beds_board and ospeli_beds_find_free give the ids."
           },
           "expectedState": {
             "type": "string",
@@ -795,7 +798,8 @@
           "bedId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "maxLength": 64
+            "maxLength": 64,
+            "description": "The bed's id, for example ward-a1-bed-01. ospeli_beds_board and ospeli_beds_find_free give the ids."
           },
           "expectedState": {
             "type": "string",
@@ -888,7 +892,8 @@
           "bedId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "maxLength": 64
+            "maxLength": 64,
+            "description": "The bed's id, for example ward-a1-bed-01. ospeli_beds_board and ospeli_beds_find_free give the ids."
           },
           "expectedState": {
             "type": "string",
@@ -980,7 +985,8 @@
           "bedId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "maxLength": 64
+            "maxLength": 64,
+            "description": "The bed's id, for example ward-a1-bed-01. ospeli_beds_board and ospeli_beds_find_free give the ids."
           },
           "expectedState": {
             "type": "string",
@@ -1075,7 +1081,8 @@
           "bedId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "maxLength": 64
+            "maxLength": 64,
+            "description": "The bed's id, for example ward-a1-bed-01. ospeli_beds_board and ospeli_beds_find_free give the ids."
           },
           "encounter": {
             "type": "string",
@@ -1175,7 +1182,8 @@
           "bedId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "maxLength": 64
+            "maxLength": 64,
+            "description": "The bed's id, for example ward-a1-bed-01. ospeli_beds_board and ospeli_beds_find_free give the ids."
           },
           "expectedState": {
             "type": "string",
@@ -1267,7 +1275,8 @@
           "bedId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "maxLength": 64
+            "maxLength": 64,
+            "description": "The bed's id, for example ward-a1-bed-01. ospeli_beds_board and ospeli_beds_find_free give the ids."
           },
           "expectedState": {
             "type": "string",
@@ -1361,7 +1370,8 @@
           "bedId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "maxLength": 64
+            "maxLength": 64,
+            "description": "The bed's id, for example ward-a1-bed-01. ospeli_beds_board and ospeli_beds_find_free give the ids."
           },
           "reason": {
             "type": "string",
@@ -1372,7 +1382,8 @@
               "Bed frame or mattress",
               "Infection control clean",
               "Other"
-            ]
+            ],
+            "description": "Why the bed cannot be used: one of Equipment fault, Plumbing or leak, Electrical, Bed frame or mattress, Infection control clean, Other."
           },
           "expectedState": {
             "type": "string",
@@ -1466,7 +1477,8 @@
           "bedId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "maxLength": 64
+            "maxLength": 64,
+            "description": "The bed's id, for example ward-a1-bed-01. ospeli_beds_board and ospeli_beds_find_free give the ids."
           },
           "expectedState": {
             "type": "string",
@@ -1644,12 +1656,14 @@
               "bed-turnaround",
               "open-work-orders",
               "overdue-work-orders"
-            ]
+            ],
+            "description": "The KPI id, for example occupancy. ospeli_kpi_list gives every id with its name and definition."
           },
           "days": {
             "type": "integer",
             "minimum": 1,
-            "maximum": 90
+            "maximum": 90,
+            "description": "How many days back to count, ending now. Whole days, 1 to 90. Default 7."
           }
         }
       },
@@ -1657,7 +1671,12 @@
         "type": "object",
         "required": [
           "id",
+          "name",
           "value",
+          "unit",
+          "display",
+          "onTarget",
+          "targetText",
           "definition",
           "since",
           "until",
@@ -1667,11 +1686,34 @@
           "id": {
             "type": "string"
           },
+          "name": {
+            "type": "string"
+          },
           "value": {
             "type": [
               "number",
               "null"
-            ]
+            ],
+            "description": "The number, unrounded. null when there is no data in the period."
+          },
+          "unit": {
+            "type": "string",
+            "description": "What value counts: %, days, hours, minutes or count."
+          },
+          "display": {
+            "type": "string",
+            "description": "The exact text on the tile a person sees, for example 2.8 h or No data."
+          },
+          "onTarget": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "true or false against the KPI's target; null when it has no target or no data."
+          },
+          "targetText": {
+            "type": "string",
+            "description": "The target in words, as on the tile."
           },
           "numerator": {
             "type": [
@@ -1706,6 +1748,143 @@
         "input": {
           "id": "occupancy"
         }
+      }
+    },
+    {
+      "name": "ospeli_kpi_summary",
+      "summary": "Every KPI tile in one read: each number with its unit, the text the tile shows and whether it is on target. For \"how are we doing?\" use this instead of ospeli_kpi_list and one ospeli_kpi_get per KPI. Short by default; format detailed adds each definition. Read-only; it reports numbers and decides nothing.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 90,
+            "description": "How many days back to count, ending now. Whole days, 1 to 90. Default 7, as on the tiles."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short (default): id, name, value, unit, tile text and target. detailed: each KPI's full definition too (numerator, denominator, exclusions, source)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "since",
+          "until",
+          "days",
+          "kpis",
+          "total",
+          "note"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "days": {
+            "type": "integer"
+          },
+          "kpis": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "value",
+                "unit",
+                "display",
+                "onTarget",
+                "targetText"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "The number, unrounded. null when there is no data in the period."
+                },
+                "unit": {
+                  "type": "string",
+                  "description": "What value counts: %, days, hours, minutes or count."
+                },
+                "display": {
+                  "type": "string",
+                  "description": "The exact text on the tile a person sees, for example 2.8 h or No data."
+                },
+                "onTarget": {
+                  "type": [
+                    "boolean",
+                    "null"
+                  ],
+                  "description": "true or false against the KPI's target; null when it has no target or no data."
+                },
+                "targetText": {
+                  "type": "string",
+                  "description": "The target in words, as on the tile."
+                },
+                "definition": {
+                  "type": "object",
+                  "description": "format detailed only."
+                }
+              }
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {}
       }
     },
     {
@@ -1774,13 +1953,15 @@
         ],
         "properties": {
           "allowed": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "true lets the site's listed agents in (Advise: they read and propose; a person decides). false switches every agent off."
           },
           "wards": {
             "type": "object",
             "additionalProperties": {
               "type": "boolean"
-            }
+            },
+            "description": "Ward id to true or false, for example { \"ward-a1\": true }. Only the wards named change; the others keep their setting."
           }
         }
       },
@@ -2170,7 +2351,8 @@
         "properties": {
           "name": {
             "type": "string",
-            "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._-]{1,40}$"
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9 ._-]{1,40}$",
+            "description": "The agent's name as it is listed on the Agents screen, for example night-flow-helper. ospeli_agents_list gives the names."
           }
         }
       },
@@ -2282,7 +2464,8 @@
               "accepted",
               "declined",
               "expired"
-            ]
+            ],
+            "description": "pending: waiting for a person. accepted, declined or expired (the target changed before anyone decided, so nothing was done). Leave out for all."
           },
           "limit": {
             "type": "integer",
@@ -2437,7 +2620,8 @@
           "id": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "maxLength": 64
+            "maxLength": 64,
+            "description": "The proposal's id, for example prop-0001. ospeli_proposals_list gives the ids."
           }
         }
       },
@@ -2589,7 +2773,8 @@
           "id": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "maxLength": 64
+            "maxLength": 64,
+            "description": "The proposal's id, for example prop-0001. ospeli_proposals_list gives the ids."
           },
           "reason": {
             "type": "string",
@@ -2599,7 +2784,8 @@
               "Already done",
               "Needs a conversation first",
               "Other"
-            ]
+            ],
+            "description": "Why not, in one of the listed words: Not needed, Wrong bed or patient, Already done, Needs a conversation first, Other. Stored with the decision and shown to the agent."
           }
         }
       },
@@ -3121,7 +3307,8 @@
           "assetId": {
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]*$",
-            "maxLength": 64
+            "maxLength": 64,
+            "description": "The asset's id, for example asset-a1-sink-1. ospeli_assets_list gives the assets with their ids and the faults each can have."
           },
           "fault": {
             "type": "string",
@@ -3157,7 +3344,8 @@
               "urgent",
               "high",
               "routine"
-            ]
+            ],
+            "description": "How soon it must be answered: urgent, high, routine. Each has its own response time (ospeli_kpi_list, late work orders)."
           }
         }
       },
@@ -3234,7 +3422,8 @@
         "properties": {
           "workOrderId": {
             "type": "string",
-            "pattern": "^wo-[0-9]{5}$"
+            "pattern": "^wo-[0-9]{5}$",
+            "description": "The work order's id, wo- and five digits, for example wo-00001. ospeli_workorders_list gives the ids."
           },
           "team": {
             "type": "string",
@@ -3242,7 +3431,8 @@
               "estates",
               "biomed",
               "contractor"
-            ]
+            ],
+            "description": "The team that does the job: estates (Facilities team), biomed (Medical equipment team), contractor (External contractor)."
           },
           "expectedState": {
             "type": "string",
@@ -3327,7 +3517,8 @@
         "properties": {
           "workOrderId": {
             "type": "string",
-            "pattern": "^wo-[0-9]{5}$"
+            "pattern": "^wo-[0-9]{5}$",
+            "description": "The work order's id, wo- and five digits, for example wo-00001. ospeli_workorders_list gives the ids."
           },
           "expectedState": {
             "type": "string",
@@ -3784,7 +3975,8 @@
         "properties": {
           "workOrderId": {
             "type": "string",
-            "pattern": "^wo-[0-9]{5}$"
+            "pattern": "^wo-[0-9]{5}$",
+            "description": "The work order's id, wo- and five digits, for example wo-00001. ospeli_workorders_list gives the ids."
           },
           "outcome": {
             "type": "string",
@@ -3792,7 +3984,8 @@
               "fixed",
               "escalated",
               "no-fault-found"
-            ]
+            ],
+            "description": "How the job ended: fixed (Fixed), escalated (Escalated), no-fault-found (No fault found)."
           },
           "expectedState": {
             "type": "string",
@@ -5071,28 +5264,34 @@
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 140
+            "maxLength": 140,
+            "description": "The step's new name, 1 to 140 characters, for example Bed cleaned. Says what is done, never who (no names of people)."
           },
           "role": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 140
+            "maxLength": 140,
+            "description": "The new role that does the step, for example Housekeeping. A role, not a person's name."
           },
           "wait": {
             "type": "integer",
             "minimum": 0,
-            "maximum": 10080
+            "maximum": 10080,
+            "description": "New waiting time before the step starts, in whole minutes."
           },
           "work": {
             "type": "integer",
             "minimum": 0,
-            "maximum": 10080
+            "maximum": 10080,
+            "description": "New working time of the step, in whole minutes."
           },
           "msg": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "true when the step only passes on information (a call, message or form)."
           },
           "par": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "true when the step starts alongside the step before it instead of after it."
           },
           "notAName": {
             "type": "boolean",
@@ -5203,7 +5402,8 @@
             "enum": [
               "up",
               "down"
-            ]
+            ],
+            "description": "up: one place earlier in the process. down: one place later."
           },
           "expectedRevision": {
             "type": "integer",
@@ -5480,7 +5680,8 @@
           "suggestionId": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 80
+            "maxLength": 80,
+            "description": "The guide suggestion's id, for example questions. ospeli_maps_summary lists the guide's suggestions with their ids."
           },
           "expectedRevision": {
             "type": "integer",
@@ -5640,7 +5841,8 @@
         ],
         "properties": {
           "on": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "true shows the improvement guide beside the maps; false hides it. The maps work the same either way."
           }
         }
       },
@@ -7275,7 +7477,8 @@
             "type": "string",
             "enum": [
               "bed-clean"
-            ]
+            ],
+            "description": "One kind of task: bed-clean. Leave out for every kind."
           },
           "locationId": {
             "type": "string",
@@ -7740,7 +7943,8 @@
               "Wrong place or details",
               "Called to an urgent job",
               "Started by mistake"
-            ]
+            ],
+            "description": "Why the task goes back to the queue: Patient or item not ready, Needs a second person, Wrong place or details, Called to an urgent job, Started by mistake."
           },
           "expectedState": {
             "type": "string",
@@ -8096,7 +8300,8 @@
               "ward-nurse",
               "quality-lead",
               "ops-manager"
-            ]
+            ],
+            "description": "Only records owned by this role id, for example patient-liaison."
           },
           "serviceId": {
             "type": "string",
@@ -8111,7 +8316,8 @@
               "concern",
               "compliment",
               "card"
-            ]
+            ],
+            "description": "Only one type of record: complaint, concern, compliment, card."
           },
           "format": {
             "type": "string",
@@ -8810,7 +9016,8 @@
               "clinical-review",
               "clinical-return",
               "share"
-            ]
+            ],
+            "description": "The next step on the record: acknowledge, reply, set-owner, close, clinical-review, clinical-return, share. Some steps need one more field (channel, ownerRole or outcome); the error says which."
           },
           "channel": {
             "type": "string",
@@ -8934,7 +9141,8 @@
             "enum": [
               "agree",
               "close"
-            ]
+            ],
+            "description": "agree: add an action (needs what, ownerRole and dueInDays). close: mark an action done (needs actionId)."
           },
           "recordId": {
             "type": "string",
@@ -9265,7 +9473,8 @@
         ],
         "properties": {
           "on": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "true shows the guide on the feedback page; false hides it. The page works the same either way."
           }
         }
       },

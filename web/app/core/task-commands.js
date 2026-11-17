@@ -197,7 +197,7 @@ export function taskCommands(packs = []) {
       input: { type: 'object', additionalProperties: false, properties: {
         state: { type: 'string', enum: ['open', 'completed', 'cancelled', 'all'], description: 'open (default) means waiting or in progress.' },
         team: { type: 'string', enum: Object.keys(teams), description: 'One team\'s queue. Leave out for every team.' },
-        kind: { type: 'string', enum: kindList.map((k) => k.id) },
+        kind: { type: 'string', enum: kindList.map((k) => k.id), description: `One kind of task: ${kindList.map((k) => k.id).join(', ')}. Leave out for every kind.` },
         locationId: { ...ID, description: 'A ward, department or bed id, for example ward-a1. A ward matches its beds too.' },
         since: { ...TIME, description: 'Only tasks asked for at or after this time. Useful with completed.' },
         format: FORMAT('what, where, priority, state and wait', 'who asked (role only), times and labels too'),
@@ -259,7 +259,7 @@ export function taskCommands(packs = []) {
     taskWrite({
       name: 'ospeli_tasks_release', verb: 'hand back', to: 'requested',
       summary: 'Put a task that was started back in its team\'s queue, with a reason from the list (patient or item not ready, needs a second person, started by mistake). It goes back to its old place: the time it was asked for does not change, so the wait is still counted in full. For the clean of a bed, the bed board shows the bed as waiting for its clean again.',
-      extra: { reason: { type: 'string', enum: RELEASE_REASONS } }, required: ['reason'],
+      extra: { reason: { type: 'string', enum: RELEASE_REASONS, description: `Why the task goes back to the queue: ${RELEASE_REASONS.join(', ')}.` } }, required: ['reason'],
       guard: (t) => { if (t.state !== 'started') throw new CommandError('conflict', 'Only a task that is in progress can be handed back. This one is still waiting.', { state: t.state }); },
       events: (t, input, role, at) => [t.source === 'bed' ? ev('bed.clean-stopped', t.locationId, role, at, { reason: input.reason }) : ev('task.released', t.id, role, at, { reason: input.reason })],
       example: { input: { taskId: 'clean-ward-a1-bed-01', reason: RELEASE_REASONS[4] }, needs: `${NEED_OPEN} It must be in progress: ospeli_tasks_start starts it.` },
