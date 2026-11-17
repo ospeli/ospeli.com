@@ -4,6 +4,18 @@ Runs the Ospeli core on your site's own computer, with an HTTP API. Your scripts
 Agent access is Off until a person switches it on. Synthetic data only: do not load real records.
 Not built yet: named sign-in for people, changes made on a device with no connection, the AI assistant connector, the event feed. The code is public to read; an open-source licence is planned for March 2027.
 
+## What it looks like
+Six lines from a real session with the made-up hospital: a bot asked to hold a bed, and nothing moved until a person said yes.
+
+    1  night-helper (for Patient flow coordinator) asks: Hold an available bed for a patient waiting for a bed.
+    Nothing changes until you say so. Type: accept NUMBER  or  decline NUMBER  or  decline all NAME
+    > accept 1
+    Done. Proposal 1 was accepted and the change is made.
+    7  2026-11-08 17:10  agent night-helper (over the API)  agent.proposed ospeli_beds_allocate
+    8  2026-11-08 17:10  person, Patient flow coordinator (at this console)  agent.proposal-accepted ospeli_beds_allocate
+
+The last two lines are from `audit`: the bot's request and the person's yes, each under its own name.
+
 ## Start
 You need Node.js 22.13 or newer (nodejs.org, the "LTS" version). Nothing else to install.
 
