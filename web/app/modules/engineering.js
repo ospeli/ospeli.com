@@ -14,6 +14,7 @@ import { kpiContext, kpiTiles } from './kpi-tiles.js';
 import { proposalsCard } from './proposals.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
+const whoCloses = () => (commandByName('ospeli_workorders_complete')?.roles || []).map((r) => roleById(r)?.name || r).join(' or ');
 const FILTERS = [
   ['open', 'Open'],
   ['overdue', 'Late'],
@@ -263,6 +264,10 @@ export async function render(el, ctx) {
         w.completedAt ? row('Closed', `${fmtTime(w.completedAt)}: ${OUTCOMES[w.outcome] || w.outcome}`) : null),
       mayAssign ? h('div', { class: 'field' }, h('label', { for: 'wo-team' }, 'Team'), teamSel) : null,
       mayClose ? h('div', { class: 'field' }, h('label', { for: 'wo-outcome' }, 'Outcome'), outSel) : null,
+      // Said before the person acts (issue #95): what Assign does to a job in progress, and who
+      // closes a job this role can start but not close.
+      mayAssign && w.state === 'started' ? h('p', { class: 'wo-note', 'data-test': 'assign-resets' }, 'This job is in progress. Assigning it puts it back to Assigned and clears its start time.') : null,
+      mayStart && !mayClose ? h('p', { class: 'wo-note', 'data-test': 'who-closes' }, `Closing a work order is for the ${whoCloses()}.`) : null,
       h('p', { class: 'meta' }, mayAssign || mayClose || mayStart ? `Each change is saved to the event log as ${roleById(ctx.role).name}.`
         : open ? `${roleById(ctx.role).name} can see this work order but not change it.` : 'This work order is closed.'),
       h('div', { class: 'actions' },

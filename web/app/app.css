@@ -355,6 +355,7 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .steps-box { margin-top: 0; }
 /* An empty list says what that means in one plain line (issue #84). */
 .empty-state { margin: 0; padding: 14px; border: 1px dashed var(--line-strong); border-radius: 12px; background: var(--surface); color: var(--ink); font-size: 1rem; }
+.wo-note { margin: 8px 0; padding: 10px 12px; background: var(--mango-tint); border-left: 4px solid var(--mango); border-radius: 8px; color: var(--ink); font-size: 1rem; }
 .scroll-hint { margin: 0 0 6px; }
 .lanes { overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .lanes:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
