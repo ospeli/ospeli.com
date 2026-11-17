@@ -24,8 +24,9 @@ export async function startApp() {
 // clock: an ISO time to start the page's clock at (time then runs normally), so the synthetic
 // hospital, which is generated from the current hour, is the same on every run.
 // touch: a phone, so the test taps instead of clicking.
-export async function openPage(env, { width = 1280, height = 860, path = '', testHook = true, clock, touch = false } = {}) {
-  const context = await env.browser.newContext({ viewport: { width, height }, acceptDownloads: true, ...(touch ? { hasTouch: true, isMobile: true } : {}) });
+// locale: the device's language and region (for example 'en-GB'), for a test that checks a date's exact form.
+export async function openPage(env, { width = 1280, height = 860, path = '', testHook = true, clock, touch = false, locale } = {}) {
+  const context = await env.browser.newContext({ viewport: { width, height }, acceptDownloads: true, ...(touch ? { hasTouch: true, isMobile: true } : {}), ...(locale ? { locale } : {}) });
   if (testHook) await context.addInitScript(() => { window.__OSPELI_TEST__ = true; });
   const page = await context.newPage();
   if (clock) await page.clock.install({ time: new Date(clock) });

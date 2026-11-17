@@ -280,7 +280,7 @@ async function writeMarker(lastSeen) {
   try { localStorage.setItem(MARKER_KEY, body); } catch { /* blocked */ }
   try { await (await caches.open(MARKER_KEY)).put(MARKER_URL, new Response(body, { headers: { 'Content-Type': 'application/json' } })); } catch { /* no Cache Storage here */ }
 }
-const dayAndTime = (iso) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const dayAndTime = (iso) => new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 // The notice sits in the top bar, in the page (not a toast), until a person closes it.
 async function showDataLost(core) {
   const lost = await core.getMeta('data-lost', null);

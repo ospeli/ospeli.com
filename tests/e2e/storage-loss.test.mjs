@@ -32,7 +32,8 @@ const startAJob = async (page) => {
 for (const [width, types] of [[390, 'indexeddb,local_storage'], [360, 'indexeddb'], [1280, 'indexeddb,local_storage']]) {
   test(`the browser clears the app's storage (${types}): the app says so, records it, and the pill reads "History replaced" (issue #87, ${width}px)`, async () => {
     const phone = width < 641;
-    const { context, page, errors } = await openPage(env, { width, height: phone ? 780 : 860, clock: CLOCK, touch: phone });
+    // A UK-English device, so the date has one exact form (other devices: locale-41.test.mjs).
+    const { context, page, errors } = await openPage(env, { width, height: phone ? 780 : 860, clock: CLOCK, touch: phone, locale: 'en-GB' });
     assert.equal(await page.locator('[data-test="data-lost"]').count(), 0, 'a first visit has no notice');
     await startAJob(page);
     const before = await page.evaluate(() => window.ospeli.core.eventCount());
@@ -108,7 +109,8 @@ test('the menu foot says whether the browser agreed to keep the data; a reset a 
 for (const width of [360, 1280]) {
   test(`the Data page shows the date of the last export and nudges after a week (issue #87, ${width}px)`, async () => {
     const phone = width < 641;
-    const { context, page, errors } = await openPage(env, { width, height: phone ? 780 : 860, path: '#/data', clock: CLOCK, touch: phone });
+    // A UK-English device, so the date has one exact form (other devices: locale-41.test.mjs).
+    const { context, page, errors } = await openPage(env, { width, height: phone ? 780 : 860, path: '#/data', clock: CLOCK, touch: phone, locale: 'en-GB' });
     const line = page.locator('[data-test="last-export"]');
     await line.waitFor();
     assert.equal(await line.innerText(), 'This data has not been exported yet. An export is the only backup.');

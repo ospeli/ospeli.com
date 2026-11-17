@@ -14,7 +14,8 @@ const walkState = (page) => page.getAttribute('[data-test="walk"]', 'data-state'
 const stored = (page) => page.evaluate(async () => (await window.ospeli.core.getMeta('process-walks'))?.walks || []);
 
 test('first-time user at 360 px: walk three steps and see the timed map in 15 taps, nothing typed', async () => {
-  const { context, page, errors } = await openPage(env, { width: 360, height: 780, path: '#/process', touch: true });
+  // A UK-English phone, so the walk's date has one exact form (other devices: locale-41.test.mjs).
+  const { context, page, errors } = await openPage(env, { width: 360, height: 780, path: '#/process', touch: true, locale: 'en-GB' });
   let taps = 0;
   const tap = async (sel) => { await page.locator(sel).first().tap(); taps += 1; };
   await page.waitForSelector('[data-test="walk-card"]');

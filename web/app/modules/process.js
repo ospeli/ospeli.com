@@ -132,8 +132,9 @@ export async function render(el, ctx) {
     // no time was changed by hand and no step was added by hand.
     const byHand = walked && m.today.steps.some((x) => x.edited || (x.waitSec == null && x.workSec == null));
     const measuredView = walked && ui.version === 'today';
-    const day = (iso) => { const d = new Date(iso); const part = (o) => d.toLocaleDateString('en', o); return `${part({ weekday: 'short' })} ${d.getDate()} ${part({ month: 'short' })}`; };
-    const clock = (iso) => new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+    // The device's own date and time format (issue #41), like the rest of the app.
+    const day = (iso) => new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
+    const clock = (iso) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
     const statsOf = (part) => (walked ? part.statsSec : part.stats);
     const inView = (list) => (walked ? stepsInSeconds(list) : list);
     todayView = inView(m.today.steps);

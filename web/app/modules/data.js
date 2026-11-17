@@ -128,7 +128,7 @@ export async function render(el, ctx) {
       lastExport.dataset.old = 'false';
     } else {
       const days = Math.floor((Date.parse(core.now()) - Date.parse(exported.at)) / 864e5);
-      const when = new Date(exported.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+      const when = new Date(exported.at).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
       lastExport.dataset.old = String(days >= NUDGE_DAYS);
       lastExport.textContent = days >= NUDGE_DAYS ? `Last export: ${when}, ${days} days ago. Export a new backup.` : `Last export: ${when}.`;
     }
