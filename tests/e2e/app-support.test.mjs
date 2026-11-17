@@ -213,10 +213,15 @@ test('a bed vacated on the bed board is in the cleaner\'s queue with no one aski
   // swapped in: the shell draws a page off-screen from the data it read when it started (app.js
   // route), so a bed changed while that drawing is under way shows its old state until the next one.
   await page.waitForSelector('.bed.st-occupied');
-  await page.evaluate(() => document.querySelectorAll('main .bed').forEach((b) => { b.dataset.oldDrawing = '1'; }));
-  await page.selectOption('#role-select', 'ward-nurse');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
-  await page.waitForFunction(() => document.querySelector('main .bed') && !document.querySelector('main .bed[data-old-drawing]'));
+  // A new device starts as a ward nurse. Choosing the role already chosen changes nothing (#95: no
+  // event, no new drawing), so the pick and the wait for a new drawing happen only for another role.
+  if ((await page.inputValue('#role-select')) !== 'ward-nurse') {
+    await page.evaluate(() => document.querySelectorAll('main .bed').forEach((b) => { b.dataset.oldDrawing = '1'; }));
+    await page.selectOption('#role-select', 'ward-nurse');
+    await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
+    await page.waitForFunction(() => document.querySelector('main .bed') && !document.querySelector('main .bed[data-old-drawing]'));
+  }
+  assert.equal(await page.inputValue('#role-select'), 'ward-nurse');
   await page.waitForSelector('.bed.st-occupied');
   const bedId = await page.locator('.bed.st-occupied').first().getAttribute('data-bed');
   // The bed board draws itself again for the new role a moment after the pick, which closes a dialog
