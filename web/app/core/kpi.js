@@ -5,7 +5,9 @@
 const HOUR = 3600e3;
 const MIN = 60e3;
 
-// Response targets used to decide when a work order is overdue (example values, set locally).
+// Fix targets used to decide when a work order is late: the clock runs from the fault report to the
+// job being closed (rectification), not to someone attending (response). Example values, set locally
+// (issue #33).
 export const WORK_ORDER_SLA_HOURS = { urgent: 4, high: 24, routine: 72 };
 
 export const KPIS = [
@@ -14,7 +16,7 @@ export const KPIS = [
     numerator: 'Beds with a patient in them at the time shown (admitted and not yet discharged).',
     denominator: 'All inpatient beds in the hospital model.',
     exclusions: 'Day-case and emergency department stretchers are not inpatient beds. Beds not yet cleaned count as empty.',
-    source: 'General bed-occupancy definition (point-in-time census).',
+    source: 'Ospeli definition: a point-in-time count of occupied beds, not an average over the period. The 85% example target comes from modelling of average occupancy over time (Bagust et al. 1999, BMJ, PMID 10406748, doi:10.1136/bmj.319.7203.155), so it is a guide for this count, not a limit for one moment.',
     owner: 'bed-manager', target: 85, targetText: '85% or lower (example target; set locally)',
   },
   {
@@ -22,7 +24,7 @@ export const KPIS = [
     numerator: 'Total time in hospital, admission to discharge, for patients discharged in the period.',
     denominator: 'Number of patients discharged in the period.',
     exclusions: 'Patients still in hospital at the end of the period.',
-    source: 'General length-of-stay definition (mean, discharges in period).',
+    source: 'Ospeli definition: the mean stay of patients discharged in the period. No published standard is named; a few very long stays pull the mean up.',
     owner: 'ops-manager', target: null, targetText: 'Set by specialty',
   },
   {
@@ -34,19 +36,19 @@ export const KPIS = [
     owner: 'ward-nurse', target: 33, targetText: '33% or higher (example target; set locally)',
   },
   {
-    id: 'decision-to-bed', name: 'Decision to bed (ED)', unit: 'hours', decimals: 1, direction: 'lower',
-    numerator: 'Median time from the decision to admit in the emergency department (ED) to the patient arriving in a ward bed.',
+    id: 'decision-to-bed', name: 'Decision to admit to ward bed (ED)', unit: 'hours', decimals: 1, direction: 'lower',
+    numerator: 'Median time from the decision to admit in the emergency department (ED) to the patient arriving in a ward bed. The 90th percentile is shown beside it, so long waits are not hidden.',
     denominator: 'Patients admitted from the ED in the period.',
     exclusions: 'Elective admissions, and ED patients still waiting for a bed.',
-    source: 'General emergency department flow measure.',
-    owner: 'bed-manager', target: 4, targetText: '4 hours or less (example target; set locally)',
+    source: 'Ospeli definition (decision to admit to arrival in a ward bed). Agreed definitions of emergency department time intervals: Welch et al. 2011, Ann Emerg Med, PMID 21067846, doi:10.1016/j.annemergmed.2010.08.040.',
+    owner: 'bed-manager', target: 4, targetText: '4 hours or less (local example; not a four-hour emergency department standard, which runs from arrival to departure)',
   },
   {
     id: 'bed-turnaround', name: 'Bed turnaround', unit: 'minutes', decimals: 0, direction: 'lower',
-    numerator: 'Median time from a bed being vacated to it being cleaned and ready.',
+    numerator: 'Median time from a bed being vacated to it being cleaned and ready. The 90th percentile is shown beside it.',
     denominator: 'Beds cleaned in the period.',
     exclusions: 'Beds vacated but not yet cleaned.',
-    source: 'General bed-management measure.',
+    source: 'No published standard; Ospeli definition.',
     owner: 'bed-manager', target: 60, targetText: '60 minutes or less (example target; set locally)',
   },
   {
@@ -54,15 +56,15 @@ export const KPIS = [
     numerator: 'Faults reported and not yet completed at the time shown.',
     denominator: 'None (a count).',
     exclusions: 'Planned maintenance is not included yet.',
-    source: 'General maintenance backlog measure.',
+    source: 'No published standard; Ospeli definition.',
     owner: 'estates-tech', target: null, targetText: 'Track the trend',
   },
   {
     id: 'overdue-work-orders', name: 'Late work orders', unit: 'count', decimals: 0, direction: 'lower',
-    numerator: 'Open work orders older than their response target: urgent 4 h, high 24 h, routine 72 h.',
+    numerator: 'Open work orders past their fix target: urgent 4 h, high 24 h, routine 72 h, counted from the fault report until the job is closed. This is a fix (rectification) clock, not a response clock: someone attending does not stop it.',
     denominator: 'None (a count).',
     exclusions: 'Completed work orders.',
-    source: 'General maintenance SLA measure. Response targets are examples; set locally.',
+    source: 'No published standard; Ospeli definition. Fix targets are examples, set locally. A separate response target (time until someone attends) is not measured yet.',
     owner: 'estates-tech', target: 0, targetText: 'None late',
   },
 ];
@@ -75,6 +77,12 @@ const median = (xs) => {
   const s = [...xs].sort((a, b) => a - b);
   const m = Math.floor(s.length / 2);
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
+// Nearest-rank percentile (issue #33: the 90th beside a median, so long waits show).
+export const percentile = (xs, p) => {
+  if (!xs.length) return null;
+  const s = [...xs].sort((a, b) => a - b);
+  return s[Math.min(s.length - 1, Math.max(0, Math.ceil(p * s.length) - 1))];
 };
 const inWindow = (e, since, until) => (since == null || e.at >= since) && e.at < until;
 
@@ -120,7 +128,7 @@ const CALC = {
         waits.push((ms(e.at) - decided.get(e.subject)) / HOUR);
       }
     }
-    return { numerator: null, denominator: waits.length, value: median(waits) };
+    return { numerator: null, denominator: waits.length, value: median(waits), p90: percentile(waits, 0.9) };
   },
   'bed-turnaround'(events, { since, until }) {
     const vacated = new Map();
@@ -133,7 +141,7 @@ const CALC = {
         vacated.delete(e.subject);
       }
     }
-    return { numerator: null, denominator: times.length, value: median(times) };
+    return { numerator: null, denominator: times.length, value: median(times), p90: percentile(times, 0.9) };
   },
   'open-work-orders'(events, opts) {
     const open = openWorkOrders(events, opts.until);

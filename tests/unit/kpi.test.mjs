@@ -108,3 +108,39 @@ test('on the synthetic hospital every KPI has a plausible value', () => {
   assert.ok(v['bed-turnaround'] > 30 && v['bed-turnaround'] < 180);
   assert.ok(v['open-work-orders'] >= 0 && v['overdue-work-orders'] <= v['open-work-orders']);
 });
+
+// Issue #33: an informatics lead's points on the KPI library. Every source names a standard or a
+// paper, or says plainly that it is Ospeli's own definition; the engineering clock is called a fix
+// clock, not a response clock; decision to admit to ward bed has its 90th percentile and is not
+// mistaken for a four-hour emergency department standard; occupancy says it is a point-in-time count.
+test('issue #33: KPI sources, the fix clock, the 90th percentile and the four-hour label', async () => {
+  const { KPIS, computeKpi, percentile } = await import('../../web/app/core/kpi.js');
+  for (const k of KPIS) {
+    assert.doesNotMatch(k.source, /^General\b/, `${k.id}: "${k.source}"`);
+    assert.match(k.source, /PMID \d+|standard|Ospeli definition|patient-flow measure/i, `${k.id} names a source or says it is Ospeli's own`);
+  }
+  const by = Object.fromEntries(KPIS.map((k) => [k.id, k]));
+  assert.match(by.occupancy.source, /point-in-time/);
+  assert.match(by.occupancy.source, /PMID 10406748/);
+  assert.match(by['overdue-work-orders'].numerator, /fix target/);
+  assert.doesNotMatch(by['overdue-work-orders'].numerator, /response target/);
+  assert.equal(by['decision-to-bed'].name, 'Decision to admit to ward bed (ED)');
+  assert.match(by['decision-to-bed'].targetText, /not a four-hour emergency department standard/);
+  // The 90th percentile: nearest rank.
+  assert.equal(percentile([], 0.9), null);
+  assert.equal(percentile([5], 0.9), 5);
+  assert.equal(percentile([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 0.9), 9);
+  const at = (h) => new Date(Date.UTC(2026, 10, 10, h)).toISOString();
+  const events = [];
+  for (let i = 0; i < 10; i++) {
+    events.push({ seq: events.length + 1, type: 'ae.decision-to-admit', subject: `enc-${i}`, at: at(i), data: null });
+    events.push({ seq: events.length + 1, type: 'patient.admitted', subject: `enc-${i}`, at: at(i + 1 + (i === 9 ? 9 : 0)), data: { bedId: `b${i}` } });
+  }
+  events.sort((a, b) => (a.at < b.at ? -1 : 1));
+  const r = computeKpi('decision-to-bed', events, { since: at(0), until: at(23) });
+  assert.equal(r.denominator, 10);
+  assert.equal(r.value, 1, 'the median hides the one long wait');
+  assert.equal(r.p90, 1, 'nearest rank: the 9th of 10 is still 1 h');
+  const r2 = computeKpi('decision-to-bed', events.filter((e) => !['enc-0'].includes(e.subject)), { since: at(0), until: at(23) });
+  assert.equal(r2.p90, 10, 'with 9 cases the 90th percentile is the longest: the long wait shows');
+});

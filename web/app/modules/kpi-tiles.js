@@ -21,6 +21,7 @@ function definitionDialog(kpi, res, kctx) {
     h('p', { class: 'kpi-dialog-value' }, formatKpi(kpi, res.value),
       res.denominator != null && res.numerator != null && kpi.unit === '%' ? h('span', { class: 'meta' }, ` (${res.numerator} of ${res.denominator})`) : null,
       res.denominator != null && res.numerator == null ? h('span', { class: 'meta' }, ` (from ${res.denominator})`) : null),
+    res.p90 != null ? h('p', { class: 'kpi-dialog-p90', 'data-test': 'kpi-p90' }, `90th percentile: ${formatKpi(kpi, res.p90)}. Nine in ten were this or less.`) : null,
     h('dl', {},
       row('Counts', kpi.numerator),
       row('Out of', kpi.denominator),

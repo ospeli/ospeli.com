@@ -333,11 +333,11 @@ const COMMAND_LIST = [
     summary: 'Calculate one KPI from the event log, with its definition beside the number.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: { type: 'string', enum: KPIS.map((k) => k.id), description: 'The KPI id, for example occupancy. ospeli_kpi_list gives every id with its name and definition.' }, days: { type: 'integer', minimum: 1, maximum: 90, description: 'How many days back to count, ending now. Whole days, 1 to 90. Default 7.' } } },
-    output: { type: 'object', required: ['id', 'name', 'value', 'unit', 'display', 'onTarget', 'targetText', 'definition', 'since', 'until', 'synthetic'], properties: { id: { type: 'string' }, ...KPI_READING, numerator: { type: ['number', 'null'] }, denominator: { type: ['number', 'null'] }, since: TIME, until: TIME, synthetic: SYNTHETIC, definition: { type: 'object' } } },
+    output: { type: 'object', required: ['id', 'name', 'value', 'unit', 'display', 'onTarget', 'targetText', 'definition', 'since', 'until', 'synthetic'], properties: { id: { type: 'string' }, ...KPI_READING, numerator: { type: ['number', 'null'] }, denominator: { type: ['number', 'null'] }, p90: { type: ['number', 'null'], description: 'The 90th percentile, in the KPI\'s unit, for a time KPI shown as a median (decision-to-bed, bed-turnaround); null for the others.' }, since: TIME, until: TIME, synthetic: SYNTHETIC, definition: { type: 'object' } } },
     async run(core, input) {
       const k = await kpiWindow(core, input.days);
       const res = computeKpi(input.id, k.events, k.opts);
-      return { id: input.id, ...kpiReading(kpiById(input.id), res), numerator: res.numerator ?? null, denominator: res.denominator ?? null, since: k.opts.since, until: k.opts.until,
+      return { id: input.id, ...kpiReading(kpiById(input.id), res), numerator: res.numerator ?? null, denominator: res.denominator ?? null, p90: res.p90 ?? null, since: k.opts.since, until: k.opts.until,
         synthetic: (await core.getMeta('synthetic', false)) === true, definition: { ...kpiById(input.id) } };
     },
     example: { input: { id: 'occupancy' } },
@@ -632,7 +632,7 @@ const WO_SCHEMA = {
     assignedAt: { type: ['string', 'null'] },
     startedAt: { type: ['string', 'null'], description: 'When the job was started (state started, shown as In progress). No person is recorded, only the role.' }, startedByRole: { type: ['string', 'null'] },
     completedAt: { type: ['string', 'null'] }, outcome: { type: ['string', 'null'] },
-    dueAt: { ...TIME, description: 'Reported time plus the response target for its priority (urgent 4 h, high 24 h, routine 72 h; examples, set locally).' },
+    dueAt: { ...TIME, description: 'Reported time plus the fix target for its priority (urgent 4 h, high 24 h, routine 72 h; examples, set locally). The clock stops when the job is closed, not when someone attends.' },
     overdue: { type: 'boolean' }, overdueByMinutes: { type: 'integer', minimum: 0, description: 'Minutes past the due time; 0 when not overdue.' }, metSla: { type: ['boolean', 'null'] },
     repeat: { type: 'integer', minimum: 0, description: REPEAT_WORDS },
   },

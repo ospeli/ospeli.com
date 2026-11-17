@@ -1727,6 +1727,13 @@
               "null"
             ]
           },
+          "p90": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "The 90th percentile, in the KPI's unit, for a time KPI shown as a median (decision-to-bed, bed-turnaround); null for the others."
+          },
           "since": {
             "type": "string",
             "format": "date-time"
@@ -3228,7 +3235,7 @@
                 "dueAt": {
                   "type": "string",
                   "format": "date-time",
-                  "description": "Reported time plus the response target for its priority (urgent 4 h, high 24 h, routine 72 h; examples, set locally)."
+                  "description": "Reported time plus the fix target for its priority (urgent 4 h, high 24 h, routine 72 h; examples, set locally). The clock stops when the job is closed, not when someone attends."
                 },
                 "overdue": {
                   "type": "boolean"
@@ -3766,7 +3773,7 @@
               "dueAt": {
                 "type": "string",
                 "format": "date-time",
-                "description": "Reported time plus the response target for its priority (urgent 4 h, high 24 h, routine 72 h; examples, set locally)."
+                "description": "Reported time plus the fix target for its priority (urgent 4 h, high 24 h, routine 72 h; examples, set locally). The clock stops when the job is closed, not when someone attends."
               },
               "overdue": {
                 "type": "boolean"
@@ -3921,7 +3928,7 @@
                 "dueAt": {
                   "type": "string",
                   "format": "date-time",
-                  "description": "Reported time plus the response target for its priority (urgent 4 h, high 24 h, routine 72 h; examples, set locally)."
+                  "description": "Reported time plus the fix target for its priority (urgent 4 h, high 24 h, routine 72 h; examples, set locally). The clock stops when the job is closed, not when someone attends."
                 },
                 "overdue": {
                   "type": "boolean"
