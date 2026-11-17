@@ -166,6 +166,7 @@ ol.log span small { color: var(--soft); font-size: 0.85rem; }
 .foot { color: var(--soft); font-size: 0.92rem; padding-bottom: 40px; }
 .foot a { color: var(--ink); font-weight: 700; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
@@ -551,7 +552,7 @@ function renderGuide() {
   list.forEach(function (sg) {
     var row = el('div', { class: 'row' });
     if (sg.apply) row.appendChild(el('button', { type: 'button', class: 'small primary', 'aria-expanded': String(openConfirm === sg.id), onclick: function () { openConfirm = openConfirm === sg.id ? null : sg.id; renderGuide(); }, text: sg.label }));
-    if (sg.show) row.appendChild(el('button', { type: 'button', class: 'small primary', onclick: function () { sg.show(); render(); document.getElementById('view').scrollIntoView({ block: 'start', behavior: 'smooth' }); }, text: sg.label }));
+    if (sg.show) row.appendChild(el('button', { type: 'button', class: 'small primary', onclick: function () { sg.show(); render(); document.getElementById('view').scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }, text: sg.label }));
     row.appendChild(el('button', { type: 'button', class: 'small', onclick: function () { state.dismissed[sg.id] = true; openConfirm = null; render(); toast('Hidden. Reset the example to see it again.'); }, text: 'Not now' }));
     var card = el('div', { class: 'sugg', 'data-id': sg.id }, [
       el('span', { class: 'tag ' + sg.kind, text: sg.kind === 'time' ? 'Needs a decision' : 'Worth a look' }),

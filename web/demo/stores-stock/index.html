@@ -169,6 +169,7 @@ a { color: var(--ink); }
 .toast.on { opacity: 1; }
 .foot { color: var(--soft); font-size: 0.9rem; padding-bottom: 40px; max-width: 60em; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
@@ -742,7 +743,7 @@ function renderGuide() {
       return;
     }
     if (sg.label) acts.push(el('button', { type: 'button', class: 'small primary sg-act', disabled: sg.done ? 'disabled' : false, text: sg.label, onclick: function () {
-      if (sg.show) { var t = document.getElementById(sg.show); if (t) { t.scrollIntoView({ behavior: 'smooth', block: 'start' }); var b = t.querySelector('button'); if (b) b.focus({ preventScroll: true }); } return; }
+      if (sg.show) { var t = document.getElementById(sg.show); if (t) { t.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); var b = t.querySelector('button'); if (b) b.focus({ preventScroll: true }); } return; }
       if (sg.confirm) { pending = sg.id; render(); var y = document.querySelector('.confirm-yes'); if (y) y.focus(); return; }
       var m = sg.run(); render(); toast(m || 'Done.'); } }));
     acts.push(el('button', { type: 'button', class: 'small', text: 'Not useful', onclick: function () { state.dismissed[sg.id + ':' + state.role] = true; render(); toast('Hidden. Reset the example to see it again.'); } }));

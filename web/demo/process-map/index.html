@@ -117,6 +117,7 @@ details.edit summary { cursor: pointer; font-weight: 800; min-height: 44px; disp
 .toast.on { opacity: 1; }
 .foot { color: var(--soft); font-size: 0.85rem; padding-bottom: 40px; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>

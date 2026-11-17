@@ -404,6 +404,26 @@ if areas_file.exists():
         if a.get("agentCommands"):
             errors.append(f"areas.json {a['id']}: lists assistant commands; commands are published from commands.json once an area is built (issue #45)")
 
+# Issue #84 item 4: motion stays minimal and honours the phone's reduce-motion setting.
+# A page or stylesheet that animates must turn its motion off under prefers-reduced-motion,
+# and a script's smooth scroll must ask the same setting on the same line.
+for f in sorted(ROOT.rglob("*")):
+    if not f.is_file() or f.suffix not in (".html", ".css", ".js", ".mjs"):
+        continue
+    src = f.read_text(encoding="utf-8")
+    rel = f.relative_to(ROOT).as_posix()
+    if f.suffix in (".html", ".css"):
+        css = "\n".join(re.findall(r"<style[^>]*>(.*?)</style>", src, re.S)) if f.suffix == ".html" else src
+        reduce = " ".join(css[m.end():m.end() + 400] for m in re.finditer(r"prefers-reduced-motion:\s*reduce\)", css))
+        for kind, rx, off in (("animation", r"(@keyframes|\banimation\s*:)", r"animation:\s*none"), ("transition", r"\btransition\s*:", r"transition:\s*none"), ("smooth scroll", r"scroll-behavior\s*:\s*smooth", r"scroll-behavior:\s*auto")):
+            if re.search(rx, css) and not re.search(off, reduce):
+                errors.append(f"{rel}: has {kind} but no prefers-reduced-motion rule that turns it off (issue #84)")
+            if kind == "transition" and re.search(r"(@keyframes|\banimation\s*:|\btransition\s*:)", css) and reduce and not re.search(r"::after", reduce):
+                errors.append(f"{rel}: the prefers-reduced-motion rule must cover ::before and ::after too (issue #84)")
+    for line in src.splitlines():
+        if re.search(r"behavior\s*:\s*['\"]smooth['\"]", line) and "prefers-reduced-motion" not in line:
+            errors.append(f"{rel}: smooth scroll that ignores the reduce-motion setting (issue #84): \"{line.strip()[:90]}\"")
+
 for e in errors:
     print("FAIL", e)
 print(f"Checked {len(pages)} pages, {len(errors)} problems")

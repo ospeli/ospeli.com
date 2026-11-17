@@ -165,6 +165,7 @@ ol.log time { color: var(--soft); font-weight: 700; }
 [hidden] { display: none !important; }
 .err:empty { display: none; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
@@ -433,7 +434,7 @@ function render() {
   main.appendChild(logCard());
   renderGuide();
   save();
-  if (ui.flash) { var f = document.getElementById(ui.flash); ui.flash = null; if (f) { f.classList.add('flash'); f.scrollIntoView({ block: 'center', behavior: 'smooth' }); setTimeout(function () { f.classList.remove('flash'); }, 2400); } }
+  if (ui.flash) { var f = document.getElementById(ui.flash); ui.flash = null; if (f) { f.classList.add('flash'); f.scrollIntoView({ block: 'center', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); setTimeout(function () { f.classList.remove('flash'); }, 2400); } }
 }
 
 function kpiCard(title) {
@@ -521,7 +522,7 @@ function submitReport() {
   addLog('Report ' + r.id + ' made' + (r.anon ? ' (anonymous)' : '') + ' · ' + catName(r.cat) + ' · ' + r.where + (r.near ? ' · near miss' : ''));
   ui.sent = r.id; ui.err = ''; ui.form = { cat: null, where: '', when: 'now', near: null, what: '', done: '', anon: false };
   render(); toast('Report ' + r.id + ' sent. Thank you.');
-  window.scrollTo({ top: document.getElementById('main').offsetTop - 10, behavior: 'smooth' });
+  window.scrollTo({ top: document.getElementById('main').offsetTop - 10, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
 }
 function reportStatus(r) {
   var kids = [];
@@ -819,7 +820,7 @@ function show(target) {
 // ---------- Wiring ----------
 ['staff', 'lead', 'exec'].forEach(function (r) { document.getElementById('role-' + r).addEventListener('click', function () { state.role = r; ui.open = null; ui.proposing = null; ui.err = ''; render(); }); });
 document.getElementById('guide-on').addEventListener('change', function (e) { state.guide = e.target.checked; ui.proposing = null; renderGuide(); save(); });
-document.getElementById('reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; ui.sent = null; ui.open = null; ui.proposing = null; render(); toast('Example reset.'); window.scrollTo({ top: 0, behavior: 'smooth' }); });
+document.getElementById('reset').addEventListener('click', function () { var role = state.role; state = seed(); state.role = role; ui.sent = null; ui.open = null; ui.proposing = null; render(); toast('Example reset.'); window.scrollTo({ top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); });
 
 // Read-only view for software agents (no writes): window.ospeliActionsDemo
 window.ospeliActionsDemo = Object.freeze({

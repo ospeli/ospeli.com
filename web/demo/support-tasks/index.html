@@ -193,6 +193,7 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
 .foot { color: var(--soft); font-size: 0.88rem; padding-bottom: 40px; max-width: 60em; }
 .foot a { color: var(--ink); font-weight: 700; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>

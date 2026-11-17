@@ -57,7 +57,7 @@ body { background: var(--bg); color: var(--ink); font-family: var(--f-body); fon
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 30; background: var(--surface); }
 button { font: inherit; color: inherit; }
 button:focus-visible, select:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 .wrap { max-width: 1280px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 
 header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--surface); border-bottom: 1px solid var(--line); }
@@ -378,7 +378,7 @@ a.ghost { color: var(--ink); text-decoration: none; }
         el('span', { class: 'key', text: q.key }),
         el('span', { class: 'wait' + (w > mins(120) ? ' long' : ''), text: dur(w) }),
         el('span', { class: 'needs', text: q.spec + ' · ' + (q.needs.length ? q.needs.map(function (n) { return ATTR[n]; }).join(', ') : 'no special needs') + ' · decided ' + hhmm(q.dta) }),
-        el('span', { class: 'act' }, [el('button', { type: 'button', class: 'primary', text: S.picking === q.key ? 'Choosing…' : 'Find a bed', onclick: function () { S.picking = S.picking === q.key ? null : q.key; var m = S.beds.filter(function (b) { return fits(b, q); })[0]; if (S.picking && m) S.ward = m.ward; save(); render(); if (S.picking && window.innerWidth < 900) { var bn = document.getElementById('banner'); if (bn && bn.scrollIntoView) bn.scrollIntoView({ behavior: 'smooth', block: 'start' }); } } })])
+        el('span', { class: 'act' }, [el('button', { type: 'button', class: 'primary', text: S.picking === q.key ? 'Choosing…' : 'Find a bed', onclick: function () { S.picking = S.picking === q.key ? null : q.key; var m = S.beds.filter(function (b) { return fits(b, q); })[0]; if (S.picking && m) S.ward = m.ward; save(); render(); if (S.picking && window.innerWidth < 900) { var bn = document.getElementById('banner'); if (bn && bn.scrollIntoView) bn.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); } } })])
       ]));
     });
   }
