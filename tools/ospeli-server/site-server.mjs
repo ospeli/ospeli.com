@@ -230,8 +230,23 @@ export async function startServer({
   }
   async function removeDevice(which) {
     const all = await liveDevices();
-    const d = /^\d+$/.test(which) ? all[Number(which) - 1] : all.find((x) => x.label.toLowerCase() === String(which).trim().toLowerCase());
-    if (!d) throw new CommandError('not-found', `There is no device ${which}. To see the list, type: devices`);
+    // A number is the device's place on the list, "#2" always is, and "label" in quotes is always a
+    // label. A number that is no place on the list is read as a label. A number that is one device's
+    // place and another device's label is not guessed at (issue #95).
+    const w = String(which).trim();
+    const byLabel = (t) => all.find((x) => x.label.toLowerCase() === t.toLowerCase());
+    let d;
+    const quoted = /^"(.+)"$/.exec(w);
+    if (quoted) d = byLabel(quoted[1]);
+    else if (/^#\d+$/.test(w)) d = all[Number(w.slice(1)) - 1];
+    else if (/^\d+$/.test(w)) {
+      const at = all[Number(w) - 1]; const named = byLabel(w);
+      if (at && named && at !== named) {
+        throw new CommandError('conflict', `Number ${w} on the list is "${at.label}", and another device is labelled "${named.label}". Nothing was changed. Type remove device #${w} for "${at.label}", or remove device "${named.label}" for the one labelled "${named.label}".`);
+      }
+      d = at || named;
+    } else d = byLabel(w);
+    if (!d) throw new CommandError('not-found', `There is no device ${w}. To see the list, type: devices`);
     const at = core.now();
     await core.updateMeta('devices', (raw) => (raw || []).map((x) => (x.id === d.id ? { ...x, removedAt: at } : x)), []);
     await core.recordAs(person(CONSOLE_ADMIN), 'devices.removed', null, { device: d.label, deviceId: d.id });

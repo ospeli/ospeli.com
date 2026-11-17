@@ -399,3 +399,29 @@ test('the app\'s files: served with the site marker and safe headers; nothing ou
   const { readFileSync } = await import('node:fs');
   assert.ok(!readFileSync(new URL('../../web/app/index.html', import.meta.url), 'utf8').includes('ospeli-site-server'));
 });
+
+// Issue #95 item 3: "remove device 12" was always read as position 12 on the list, so a device
+// labelled "12" could not be removed by its label. A number that is no position is read as a label;
+// a number that is a position and also another device's label is not guessed at.
+test('issue #95: a device labelled with a number can be removed by its label, and a clash is asked about, not guessed', async () => {
+  const s = await start();
+  // A label is at least two characters, so a clash needs a label such as "02" (read as 2).
+  for (const label of ['ward phone', '12', 'desk', '02', 'lab']) await connect(s, { label });
+  assert.match(await s.site.consoleLine('devices'), /1 {2}ward phone[\s\S]*2 {2}12 [\s\S]*3 {2}desk[\s\S]*4 {2}02 [\s\S]*5 {2}lab/);
+  // No 12th device: "12" is the label.
+  assert.match(await s.site.consoleLine('remove device 12'), /^"12" is disconnected/);
+  // "02" is number 2 on the list now (desk) and also the label of another device: say so, change nothing.
+  const clash = await s.site.consoleLine('remove device 02');
+  assert.match(clash, /"desk"/);
+  assert.match(clash, /labelled "02"/);
+  assert.match(clash, /remove device #02/);
+  assert.match(clash, /remove device "02"/);
+  assert.doesNotMatch(clash, /is disconnected/);
+  assert.equal((await s.audit()).filter((e) => e.action === 'devices.removed').length, 1);
+  // Either can be chosen: by its number with #, or by its label in quotes.
+  assert.match(await s.site.consoleLine('remove device "02"'), /^"02" is disconnected/);
+  assert.match(await s.site.consoleLine('remove device #2'), /^"desk" is disconnected/);
+  assert.match(await s.site.consoleLine('remove device 1'), /^"ward phone" is disconnected/);
+  assert.match(await s.site.consoleLine('remove device #5'), /There is no device #5/);
+  assert.match(await s.site.consoleLine('devices'), /1 {2}lab/);
+});
