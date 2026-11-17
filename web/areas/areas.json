@@ -62,27 +62,56 @@
    {
     "name": "Missed appointment rate",
     "definition": "appointments marked no-show / appointments booked",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Appointments marked no-show",
+    "denominator": "Appointments booked",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Slot utilisation",
     "definition": "slots used / slots available in the template",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Slots used",
+    "denominator": "Slots available in the template",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Referral to first appointment",
     "definition": "referral accepted → first appointment attended, median by service",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Referral accepted",
+    "endEvent": "First appointment attended",
+    "statistic": "Median by service",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Waiting time in clinic",
     "definition": "patient checked in → called in, median per clinic",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Patient checked in",
+    "endEvent": "Called in",
+    "statistic": "Median per clinic",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Clinic start punctuality",
     "definition": "clinics starting within the set window of scheduled time / clinics held",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Clinics starting within the set window of scheduled time",
+    "denominator": "Clinics held",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -183,27 +212,58 @@
    {
     "name": "Time in department (arrival → departure), share within the local standard",
     "definition": "attendances departing within the locally set time from arrival / all attendances",
-    "source": "local standard, set by each site"
+    "kind": "ratio",
+    "numerator": "Attendances departing within the locally set time from arrival",
+    "denominator": "All attendances",
+    "statistic": "Share (%), per period, with the median and 90th percentile time",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Welch et al. 2011, \"Emergency department operational metrics, measures and definitions\", Ann Emerg Med, PMID 21067846, doi:10.1016/j.annemergmed.2010.08.040 (consensus definitions; time limits are set locally); the time standard itself is set by each site"
    },
    {
     "name": "Time to triage",
     "definition": "arrival → triage recorded, median",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Arrival",
+    "endEvent": "Triage recorded",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Welch et al. 2011, \"Emergency department operational metrics, measures and definitions\", Ann Emerg Med, PMID 21067846, doi:10.1016/j.annemergmed.2010.08.040 (consensus definitions; time limits are set locally)"
    },
    {
     "name": "Decision to admit to departure",
     "definition": "decision to admit → left the department, median and over 12 hours",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Decision to admit",
+    "endEvent": "Left the department",
+    "statistic": "Median, with the 90th percentile, n, and the number over 12 hours",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Welch et al. 2011, \"Emergency department operational metrics, measures and definitions\", Ann Emerg Med, PMID 21067846, doi:10.1016/j.annemergmed.2010.08.040 (consensus definitions; time limits are set locally)"
    },
    {
     "name": "Ambulance handover time",
     "definition": "ambulance arrived → handover completed, median and over the local limit",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Ambulance arrived",
+    "endEvent": "Handover completed",
+    "statistic": "Median and over the local limit",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Left before being seen",
     "definition": "attendances leaving before first seen / all attendances",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Attendances leaving before first seen",
+    "denominator": "All attendances",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Welch et al. 2011, \"Emergency department operational metrics, measures and definitions\", Ann Emerg Med, PMID 21067846, doi:10.1016/j.annemergmed.2010.08.040 (consensus definitions; time limits are set locally)"
    }
   ],
   "guide": [
@@ -309,27 +369,54 @@
    {
     "name": "Bed occupancy",
     "definition": "occupied bed-days / available bed-days",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Occupied bed-days",
+    "denominator": "Available bed-days",
+    "statistic": "Average over the period, not a single point in time; any target is an example, set locally",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Bagust et al. 1999, BMJ, PMID 10406748, doi:10.1136/bmj.319.7203.155 (risk rises as average occupancy goes above about 85%)"
    },
    {
     "name": "Average length of stay",
     "definition": "inpatient bed-days / discharges in period",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Inpatient bed-days",
+    "denominator": "Discharges in period",
+    "statistic": "Days per discharge, per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Discharges before noon (diagnostic, no target)",
     "definition": "discharges before 12:00 / all discharges; shown to understand the pattern of the day, never as a target",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Discharges before 12:00",
+    "denominator": "All discharges",
+    "statistic": "Share (%), per period; a diagnostic to understand the pattern of the day, never a target",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Discharge delay",
     "definition": "ready to leave → departed, total delayed days and over 48 hours",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Ready to leave",
+    "endEvent": "Departed",
+    "statistic": "Total delayed days and over 48 hours",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Long-stay patients",
     "definition": "inpatients with stays of 7 or more and 21 or more days / inpatients",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Inpatients with stays of 7 or more and 21 or more days",
+    "denominator": "Inpatients",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -432,26 +519,54 @@
    {
     "name": "Session utilisation",
     "definition": "time patients in theatre within planned session / planned session time",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Time patients in theatre within planned session",
+    "denominator": "Planned session time",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)",
+    "counterMeasure": "Read with cancellations on the day and overruns past the session end: utilisation alone rewards overbooking"
    },
    {
     "name": "Late starts",
     "definition": "sessions where first case starts after the set window / sessions held",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Sessions where first case starts after the set window",
+    "denominator": "Sessions held",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Cancellations on the day",
     "definition": "cases cancelled on the day / cases listed",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Cases cancelled on the day",
+    "denominator": "Cases listed",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Turnaround time",
     "definition": "patient out of room → next patient in room, median",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Patient out of room",
+    "endEvent": "Next patient in room",
+    "statistic": "Median",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Checklist completion",
     "definition": "cases with the surgical safety checklist recorded complete / cases",
+    "kind": "ratio",
+    "numerator": "Cases with the surgical safety checklist recorded complete",
+    "denominator": "Cases",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
     "source": "WHO Surgical Safety Checklist"
    }
   ],
@@ -556,27 +671,56 @@
    {
     "name": "Laboratory turnaround time",
     "definition": "specimen received → result validated, median and percentile, by test",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Specimen received",
+    "endEvent": "Result validated",
+    "statistic": "Median and 90th percentile, by test",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Request to report (imaging)",
     "definition": "request made → report issued, median by modality",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Request made",
+    "endEvent": "Report issued",
+    "statistic": "Median by modality",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Specimen rejection rate",
     "definition": "specimens rejected / specimens received",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Specimens rejected",
+    "denominator": "Specimens received",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Equipment downtime",
     "definition": "hours down / scheduled hours, per analyser or scanner",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Hours down",
+    "denominator": "Scheduled hours",
+    "statistic": "Share (%), per analyser or scanner",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Reporting backlog",
     "definition": "scans performed and not yet reported, by age band",
-    "source": "local definition"
+    "kind": "count",
+    "numerator": "Scans performed and not yet reported",
+    "denominator": "None (a count, not a share)",
+    "statistic": "Count, by age band",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -676,22 +820,44 @@
    {
     "name": "Discharge medicines turnaround",
     "definition": "request received → ready for collection, median",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Request received",
+    "endEvent": "Ready for collection",
+    "statistic": "Median",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Tracer medicine availability",
     "definition": "tracer items in stock on the day / tracer items listed",
+    "kind": "ratio",
+    "numerator": "Tracer items in stock on the day",
+    "denominator": "Tracer items listed",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
     "source": "WHO harmonized PSM indicators"
    },
    {
     "name": "Stock-out duration",
     "definition": "days out of stock per item, in period",
+    "kind": "count",
+    "numerator": "Days each item was out of stock",
+    "denominator": "Items tracked",
+    "statistic": "Days per item, in period",
+    "exclusions": "Items not stocked by the site",
     "source": "WHO harmonized PSM indicators"
    },
    {
     "name": "Expiry value",
     "definition": "value of stock expired / value of stock held, in period",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Value of stock expired",
+    "denominator": "Value of stock held",
+    "statistic": "Share (%), in period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -790,22 +956,44 @@
    {
     "name": "Cot occupancy",
     "definition": "occupied cot-days / available cot-days",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Occupied cot-days",
+    "denominator": "Available cot-days",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Unit closure hours",
     "definition": "hours closed to admissions / hours in period, per unit",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Hours closed to admissions",
+    "denominator": "Hours in period",
+    "statistic": "Share (%), per unit",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Transfers out for capacity",
     "definition": "transfers out for lack of cot or bed / all transfers out",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Transfers out for lack of cot or bed",
+    "denominator": "All transfers out",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Transfer request to departure",
     "definition": "transfer requested → patient departed, median",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Transfer requested",
+    "endEvent": "Patient departed",
+    "statistic": "Median",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -901,27 +1089,54 @@
    {
     "name": "Critical care occupancy",
     "definition": "occupied bed-days / staffed bed-days",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Occupied bed-days",
+    "denominator": "Staffed bed-days",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Step-down delay",
     "definition": "ready to step down → left the unit, median and over 4 hours",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Ready to step down",
+    "endEvent": "Left the unit",
+    "statistic": "Median and over 4 hours",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Out-of-hours discharges",
     "definition": "discharges to wards in the out-of-hours window / all discharges to wards",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Discharges to wards in the out-of-hours window",
+    "denominator": "All discharges to wards",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; the out-of-hours window is set locally (the studies reviewed began it between 16:00 and 22:00 and ended it between 05:59 and 09:00)",
+    "source": "Vollam et al. 2018, systematic review and meta-analysis, Intensive Care Med, PMID 29938369, doi:10.1007/s00134-018-5245-2 (out-of-hours discharge linked to higher in-hospital death and readmission)"
    },
    {
     "name": "Transfers out for capacity",
     "definition": "transfers out for lack of bed or staff / admissions requested",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Transfers out for lack of bed or staff",
+    "denominator": "Admissions requested",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Planned surgery cancelled for lack of critical care bed",
     "definition": "cancellations for that reason / planned cases needing a bed",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Cancellations for that reason",
+    "denominator": "Planned cases needing a bed",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -1017,27 +1232,56 @@
    {
     "name": "Discharge delay days",
     "definition": "days from ready to leave → departure, summed per period",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Ready to leave",
+    "endEvent": "Departure",
+    "statistic": "Days, summed per period",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Patients delayed",
     "definition": "patients past ready to leave date / inpatients",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Patients past ready to leave date",
+    "denominator": "Inpatients",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Placement request to move",
     "definition": "placement requested → moved, median",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Placement requested",
+    "endEvent": "Moved",
+    "statistic": "Median",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Days placed away from the home area",
     "definition": "bed-days spent outside the usual area, per period",
-    "source": "local definition"
+    "kind": "count",
+    "numerator": "Bed-days spent outside the usual area",
+    "denominator": "None (a count, not a share)",
+    "statistic": "Bed-days, per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Bed occupancy",
     "definition": "occupied bed-days / available bed-days",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Occupied bed-days",
+    "denominator": "Available bed-days",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -1132,27 +1376,54 @@
    {
     "name": "Planned maintenance completion on schedule",
     "definition": "planned maintenance jobs done by due date / jobs due in period",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Planned maintenance jobs done by due date",
+    "denominator": "Jobs due in period",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Mean time to repair",
     "definition": "asset marked down → asset back in service, averaged per closed fault",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Asset marked down",
+    "endEvent": "Asset back in service",
+    "statistic": "Mean per closed fault (with the median beside it, since a few long repairs pull the mean up)",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Equipment availability",
     "definition": "hours in service / scheduled hours, per asset class",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Hours in service",
+    "denominator": "Scheduled hours",
+    "statistic": "Share (%), per asset class",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Late work orders",
     "definition": "open work orders past their SLA due time / all open work orders",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Open work orders past their SLA due time",
+    "denominator": "All open work orders",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Repeat faults",
     "definition": "assets with a new fault within the set window of a closed fault / assets with faults",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Assets with a new fault within the set window of a closed fault",
+    "denominator": "Assets with faults",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -1257,27 +1528,56 @@
    {
     "name": "Reactive work-order completion time by priority",
     "definition": "fault reported → work order closed, median per priority",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Fault reported",
+    "endEvent": "Work order closed",
+    "statistic": "Median per priority",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Planned maintenance compliance",
     "definition": "planned facilities jobs done by due date / jobs due",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Planned facilities jobs done by due date",
+    "denominator": "Jobs due",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Generator test compliance",
     "definition": "scheduled generator tests completed / tests scheduled",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Scheduled generator tests completed",
+    "denominator": "Tests scheduled",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Utility outage hours",
     "definition": "sum of outage start → outage end, per utility per month",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Length of each outage",
+    "denominator": "None (a total, not a share)",
+    "startEvent": "Outage start",
+    "endEvent": "Outage end",
+    "statistic": "Hours, summed per utility per month",
+    "exclusions": "Planned shutdowns are shown apart from unplanned outages",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Rooms out of use",
     "definition": "room-hours out of use for facilities reasons / total room-hours",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Room-hours out of use for facilities reasons",
+    "denominator": "Total room-hours",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -1379,27 +1679,56 @@
    {
     "name": "Bed turnaround time",
     "definition": "bed vacated → bed clean and ready",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Bed vacated",
+    "endEvent": "Bed clean and ready",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Transport request to completion",
     "definition": "transport requested → task delivered, median by task type",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Transport requested",
+    "endEvent": "Task delivered",
+    "statistic": "Median by task type",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Cleanliness audit score",
     "definition": "elements passed / elements audited, by functional risk category",
+    "kind": "ratio",
+    "numerator": "Elements passed",
+    "denominator": "Elements audited",
+    "statistic": "Share (%), by functional risk category",
+    "exclusions": "None by default; a site adds its own",
     "source": "National cleanliness standard (set locally)"
    },
    {
     "name": "Linen stock-outs",
     "definition": "area-shifts with linen below zero stock / area-shifts",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Area-shifts with linen below zero stock",
+    "denominator": "Area-shifts",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Meal waste",
     "definition": "meals returned uneaten / meals delivered",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Meals returned uneaten",
+    "denominator": "Meals delivered",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -1491,22 +1820,44 @@
    {
     "name": "Stock-out rate on tracer items",
     "definition": "tracer item-days out of stock / tracer item-days, per area",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Tracer item-days out of stock",
+    "denominator": "Tracer item-days",
+    "statistic": "Share (%), per area",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Order cycle time",
     "definition": "request raised → goods received, median",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Request raised",
+    "endEvent": "Goods received",
+    "statistic": "Median",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Fill rate",
     "definition": "request lines issued in full / request lines raised",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Request lines issued in full",
+    "denominator": "Request lines raised",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Inventory turns",
     "definition": "value issued in period / average value in stock",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Value issued in period",
+    "denominator": "Average value in stock",
+    "statistic": "Times per period (a turnover ratio, not a share)",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -1607,22 +1958,46 @@
    {
     "name": "Transfer wait",
     "definition": "transfer requested → patient departed, median by request type",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Transfer requested",
+    "endEvent": "Patient departed",
+    "statistic": "Median by request type",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "On-time pickup",
     "definition": "pickups by booked time / pickups booked",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Pickups by booked time",
+    "denominator": "Pickups booked",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Handover time at destination",
     "definition": "vehicle arrived at destination → handover complete",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Vehicle arrived at destination",
+    "endEvent": "Handover complete",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Fleet availability",
     "definition": "vehicle-hours available / scheduled vehicle-hours",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Vehicle-hours available",
+    "denominator": "Scheduled vehicle-hours",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -1725,27 +2100,54 @@
    {
     "name": "Roster fill rate",
     "definition": "Shifts filled to planned level / shifts planned",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Shifts filled to planned level",
+    "denominator": "Shifts planned",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "WISN ratio",
     "definition": "Staff in post / staff required by workload, per staff category",
+    "kind": "ratio",
+    "numerator": "Staff in post",
+    "denominator": "Staff required by workload",
+    "statistic": "Ratio (1.0 means staff in post match the workload)",
+    "exclusions": "None by default; a site adds its own",
     "source": "WHO WISN"
    },
    {
     "name": "Time to fill a shift gap",
     "definition": "Gap raised → cover confirmed",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Gap raised",
+    "endEvent": "Cover confirmed",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Vacancy rate",
     "definition": "Vacant funded posts / total funded posts",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Vacant funded posts",
+    "denominator": "Total funded posts",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Credentials in date",
     "definition": "Required credentials current / required credentials, by role",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Required credentials current",
+    "denominator": "Required credentials",
+    "statistic": "Share (%), by role",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -1844,27 +2246,54 @@
    {
     "name": "Incident reporting rate",
     "definition": "Incidents reported / occupied bed-days × 1,000",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Incidents reported",
+    "denominator": "Occupied bed-days",
+    "statistic": "Rate per 1,000 occupied bed-days (more reports can mean a better reporting culture, not more harm)",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Time to triage",
     "definition": "Incident reported → triage decision recorded",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Incident reported",
+    "endEvent": "Triage decision recorded",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Overdue actions",
     "definition": "Open actions past due date / all open actions",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Open actions past due date",
+    "denominator": "All open actions",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Risks reviewed on time",
     "definition": "Risks reviewed by review date / risks due for review",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Risks reviewed by review date",
+    "denominator": "Risks due for review",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Incidents with harm",
     "definition": "Incidents graded with harm / all incidents reported",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Incidents graded with harm",
+    "denominator": "All incidents reported",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -1965,27 +2394,55 @@
    {
     "name": "Hand hygiene compliance",
     "definition": "Hand hygiene actions performed / opportunities observed",
-    "source": "WHO 5 Moments observation method"
+    "kind": "ratio",
+    "numerator": "Hand hygiene actions performed",
+    "denominator": "Opportunities observed",
+    "statistic": "Share (%) by area and period, never by person, with n opportunities, observation hours, and how many were at night and at weekends",
+    "exclusions": "None by default; a site adds its own",
+    "source": "WHO 5 Moments observation method; direct observation is open to bias (Jeanes et al. 2019, systematic review, Am J Infect Control, PMID 30322815, doi:10.1016/j.ajic.2018.08.004)",
+    "counterMeasure": "Show observation coverage beside the number; a high score from few daytime observations is not the same as a high score"
    },
    {
     "name": "Time to isolation room",
     "definition": "Isolation room requested → patient in isolation room",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Isolation room requested",
+    "endEvent": "Patient in isolation room",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Isolation room availability",
     "definition": "Isolation rooms free and clean / isolation rooms in service, per day",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Isolation rooms free and clean",
+    "denominator": "Isolation rooms in service",
+    "statistic": "Share (%), per day",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Central line infection rate (imported)",
     "definition": "imported from your infection surveillance system; Ospeli does not calculate or judge infections",
+    "kind": "imported",
+    "numerator": "As defined by your infection surveillance system",
+    "denominator": "As defined by your infection surveillance system",
+    "statistic": "Shown as imported; Ospeli does not calculate or judge infections",
+    "exclusions": "As defined by your infection surveillance system",
     "source": "your infection surveillance system"
    },
    {
     "name": "Bed-days lost to closures",
     "definition": "Sum of beds closed × days closed, per outbreak",
-    "source": "local definition"
+    "kind": "count",
+    "numerator": "Beds closed × days closed",
+    "denominator": "None (a count, not a share)",
+    "statistic": "Bed-days, per outbreak",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -2085,22 +2542,42 @@
    {
     "name": "Policies in date",
     "definition": "Approved documents within review date / all approved documents",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Approved documents within review date",
+    "denominator": "All approved documents",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Audit cycle completion",
     "definition": "Audits with re-audit done / audits due for re-audit",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Audits with re-audit done",
+    "denominator": "Audits due for re-audit",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Open actions past due",
     "definition": "Governance actions past due date / all open governance actions",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Governance actions past due date",
+    "denominator": "All open governance actions",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Self-assessment compliance",
     "definition": "Standards met / standards assessed, per chapter",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Standards met",
+    "denominator": "Standards assessed",
+    "statistic": "Share (%), per chapter",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -2200,27 +2677,58 @@
    {
     "name": "Record available at clinic start",
     "definition": "Records present at session start / records requested for session",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Records present at session start",
+    "denominator": "Records requested for session",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Record retrieval time",
     "definition": "Record requested → record delivered",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Record requested",
+    "endEvent": "Record delivered",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Coding timeliness",
     "definition": "Discharge → episode coded",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Discharge",
+    "endEvent": "Episode coded",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Duplicate record rate",
     "definition": "Confirmed duplicate records / new registrations",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Confirmed duplicate records",
+    "denominator": "New registrations",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Release request response time",
     "definition": "Request received → information released or refused",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Request received",
+    "endEvent": "Information released or refused",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -2322,22 +2830,44 @@
    {
     "name": "Capital programme delivery",
     "definition": "Milestones achieved by planned date / milestones due",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Milestones achieved by planned date",
+    "denominator": "Milestones due",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Budget variance",
     "definition": "(Actual spend − approved budget) / approved budget, per project",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Actual spend − approved budget",
+    "denominator": "Approved budget",
+    "statistic": "Percentage of budget, per project (negative means under budget)",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Benefits realised",
     "definition": "Promised KPI changes achieved at review / promised KPI changes",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Promised KPI changes achieved at review",
+    "denominator": "Promised KPI changes",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Time to decision",
     "definition": "Business case submitted → investment decision recorded",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Business case submitted",
+    "endEvent": "Investment decision recorded",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -2437,27 +2967,52 @@
    {
     "name": "Budget variance",
     "definition": "(actual spend − budget) ÷ budget, per cost centre and period",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Actual spend − budget",
+    "denominator": "Budget",
+    "statistic": "Percentage of budget, per cost centre and period (negative means under budget)",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Cost per inpatient bed-day",
     "definition": "inpatient costs for the period ÷ occupied bed-days from the event log",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Inpatient costs for the period",
+    "denominator": "Occupied bed-days from the event log",
+    "statistic": "Money per occupied bed-day, per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Temporary staffing spend share",
     "definition": "agency and internal relief staff cost ÷ total staff cost",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Agency and internal relief staff cost",
+    "denominator": "Total staff cost",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Creditor days",
     "definition": "trade payables ÷ (purchases for the period ÷ days in period)",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Trade payables at period end",
+    "denominator": "Purchases for the period ÷ days in period (average daily purchases)",
+    "statistic": "Days",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Variances explained on time",
     "definition": "variances beyond tolerance with an agreed note by the due date ÷ all variances beyond tolerance",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Variances beyond tolerance with an agreed note by the due date",
+    "denominator": "All variances beyond tolerance",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -2546,22 +3101,44 @@
    {
     "name": "Net days in accounts receivable",
     "definition": "net accounts receivable ÷ average daily net patient service revenue",
+    "kind": "ratio",
+    "numerator": "Net accounts receivable",
+    "denominator": "Average daily net patient service revenue",
+    "statistic": "Days",
+    "exclusions": "None by default; a site adds its own",
     "source": "HFMA MAP Keys"
    },
    {
     "name": "Clean claim rate",
     "definition": "claims passing billing edits with no manual intervention ÷ claims processed through edits",
+    "kind": "ratio",
+    "numerator": "Claims passing billing edits with no manual intervention",
+    "denominator": "Claims processed through edits",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
     "source": "HFMA MAP Keys"
    },
    {
     "name": "Remittance denial rate",
     "definition": "claims denied by payers ÷ claims remitted",
+    "kind": "ratio",
+    "numerator": "Claims denied by payers",
+    "denominator": "Claims remitted",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
     "source": "HFMA MAP Keys"
    },
    {
     "name": "Discharge to claim submitted",
     "definition": "discharge or visit end event → claim submitted event",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Discharge or visit end event",
+    "endEvent": "Claim submitted event",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -2661,27 +3238,54 @@
    {
     "name": "System availability",
     "definition": "minutes up in scheduled service hours ÷ scheduled service minutes, per system",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Minutes up in scheduled service hours",
+    "denominator": "Scheduled service minutes",
+    "statistic": "Share (%), per system",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "IT ticket time to resolve",
     "definition": "ticket raised event → ticket resolved event, by priority",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Ticket raised event",
+    "endEvent": "Ticket resolved event",
+    "statistic": "Median by priority, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Backup restore test success",
     "definition": "restore tests passed ÷ restore tests scheduled in period",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Restore tests passed",
+    "denominator": "Restore tests scheduled in period",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Leaver access removed on time",
     "definition": "leaver accounts disabled by the local deadline ÷ leavers in period",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Leaver accounts disabled by the local deadline",
+    "denominator": "Leavers in period",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Patch compliance",
     "definition": "devices with critical patches applied within local target ÷ devices in scope",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Devices with critical patches applied within local target",
+    "denominator": "Devices in scope",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -2785,22 +3389,44 @@
    {
     "name": "Report timeliness",
     "definition": "external reports submitted by due date ÷ external reports due",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "External reports submitted by due date",
+    "denominator": "External reports due",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Data completeness",
     "definition": "required fields recorded ÷ required fields expected, per source and period",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Required fields recorded",
+    "denominator": "Required fields expected",
+    "statistic": "Share (%), per source and period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Period close to pack published",
     "definition": "reporting period end → pack signed off event",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Reporting period end",
+    "endEvent": "Pack signed off event",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "KPIs fully defined",
     "definition": "KPIs with numerator, denominator, owner and source ÷ KPIs in use",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "KPIs with numerator, denominator, owner and source",
+    "denominator": "KPIs in use",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -2904,27 +3530,54 @@
    {
     "name": "Hospital Safety Index category",
     "definition": "Self-assessed safety index score and A/B/C category, per assessment",
+    "kind": "score",
+    "numerator": "Safety index score from the self-assessment",
+    "denominator": "The index's own scoring",
+    "statistic": "Score and A/B/C category, per assessment",
+    "exclusions": "As set by the WHO Hospital Safety Index",
     "source": "WHO Hospital Safety Index"
    },
    {
     "name": "Drills completed on schedule",
     "definition": "Drills held by due date / drills planned in period",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Drills held by due date",
+    "denominator": "Drills planned in period",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Plans within review date",
     "definition": "Emergency and continuity plans in date / all plans",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Emergency and continuity plans in date",
+    "denominator": "All plans",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Drill action closure time",
     "definition": "Drill review signed off → last action closed",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Drill review signed off",
+    "endEvent": "Last action closed",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Backup supply cover",
     "definition": "Fuel, water or oxygen on hand / measured daily use, in hours",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Fuel, water or oxygen on hand",
+    "denominator": "Measured daily use",
+    "statistic": "Days of cover, per supply",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -3035,21 +3688,43 @@
    {
     "name": "Step-down placement wait",
     "definition": "Referral from hospital accepted → community place started",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Referral from hospital accepted",
+    "endEvent": "Community place started",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Missed follow-up rate",
     "definition": "Follow-ups missed / follow-ups due in period",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Follow-ups missed",
+    "denominator": "Follow-ups due in period",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Visits completed as planned",
     "definition": "Visits completed on planned day / visits planned",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Visits completed on planned day",
+    "denominator": "Visits planned",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "General service readiness index",
     "definition": "Mean availability of tracer readiness items across domains, per facility",
+    "kind": "score",
+    "numerator": "Tracer readiness items available",
+    "denominator": "Tracer readiness items assessed, by domain",
+    "statistic": "Mean availability across domains, per facility",
+    "exclusions": "As set by WHO SARA",
     "source": "WHO SARA"
    }
   ],
@@ -3140,22 +3815,44 @@
    {
     "name": "Sessions held as planned",
     "definition": "Outreach or campaign sessions held / sessions planned",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Outreach or campaign sessions held",
+    "denominator": "Sessions planned",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Cold chain excursion time",
     "definition": "Excursion start → back in range, per device",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Excursion start",
+    "endEvent": "Back in range",
+    "statistic": "Total and longest excursion, per device",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Vaccine stock-out days",
     "definition": "Site-days with zero usable stock / site-days in period",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Site-days with zero usable stock",
+    "denominator": "Site-days in period",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Dose wastage",
     "definition": "(Doses issued − doses given) / doses issued",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Doses issued − doses given",
+    "denominator": "Doses issued",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -3245,22 +3942,46 @@
    {
     "name": "Acknowledgement time",
     "definition": "Complaint received → acknowledged",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Complaint received",
+    "endEvent": "Acknowledged",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Response time",
     "definition": "Complaint received → full response sent",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Complaint received",
+    "endEvent": "Full response sent",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Responses on time",
     "definition": "Complaints answered by due date / complaints due",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Complaints answered by due date",
+    "denominator": "Complaints due",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Actions closed",
     "definition": "Complaint-linked actions closed by due date / actions due",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Complaint-linked actions closed by due date",
+    "denominator": "Actions due",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -3353,17 +4074,34 @@
    {
     "name": "Total elapsed time",
     "definition": "Process trigger → final step done",
-    "source": "local definition"
+    "kind": "time",
+    "numerator": "Time between the two events, for each case",
+    "denominator": "Cases with both times recorded in the period",
+    "startEvent": "Process trigger",
+    "endEvent": "Final step done",
+    "statistic": "Median, with the 90th percentile and n",
+    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Waiting share",
     "definition": "Total waiting time / total elapsed time",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Total waiting time",
+    "denominator": "Total elapsed time",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Handoffs between roles",
     "definition": "Count of steps where the role changes from the step before",
-    "source": "local definition"
+    "kind": "count",
+    "numerator": "Steps where the role changes from the step before",
+    "denominator": "None (a count, not a share)",
+    "statistic": "Count, per mapped process",
+    "exclusions": "None",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
@@ -3445,17 +4183,32 @@
    {
     "name": "Daily report on time",
     "definition": "Days report ready before morning meeting / working days",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Days report ready before morning meeting",
+    "denominator": "Working days",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Data completeness",
     "definition": "Events with required timestamps / events in period",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Events with required timestamps",
+    "denominator": "Events in period",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    },
    {
     "name": "Actions from playbooks closed",
     "definition": "Playbook actions closed by due date / actions due",
-    "source": "local definition"
+    "kind": "ratio",
+    "numerator": "Playbook actions closed by due date",
+    "denominator": "Actions due",
+    "statistic": "Share (%), per period",
+    "exclusions": "None by default; a site adds its own",
+    "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [

@@ -55,6 +55,14 @@ table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
 th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--soft); }
 .tw { overflow-x: auto; }
+.kd { margin-top: 6px; }
+.kt td { overflow-wrap: anywhere; }
+.kt .src-l { display: none; }
+.kd summary { cursor: pointer; color: var(--sea-ink, #076467); font-weight: 700; min-height: 44px; display: flex; align-items: center; }
+.kd dl { margin: 4px 0 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; }
+.kd dt { font-weight: 700; }
+.kd dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 640px) { table, .kd { font-size: 0.9375rem; } .kt thead { display: none; } .kt, .kt tbody, .kt tr, .kt td { display: block; width: 100%; } .kt tr { border-bottom: 1px solid var(--line); padding: 8px 0; } .kt td { border: 0; padding: 2px 0; } .kt .src-l { display: inline; font-weight: 700; } .kd dl { grid-template-columns: minmax(0, 1fr); } .kd dd { margin-bottom: 6px; } }
 code { font-size: 0.85rem; background: var(--sand); padding: 1px 5px; border-radius: 5px; overflow-wrap: anywhere; }
 section.block { margin: 22px 0; }
 .not { background: #FDF1DC; border-radius: 12px; padding: 12px 14px; font-size: 0.95rem; }

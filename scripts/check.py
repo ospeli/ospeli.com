@@ -364,6 +364,13 @@ if areas_file.exists():
     import json
     areas = json.loads(areas_file.read_text(encoding="utf-8"))
     names = {a["id"]: a["name"] for a in areas}
+    # Issue #44: every area-page KPI has the full definition template (numerator, denominator,
+    # statistic, exclusions, source; start and end events for a time) and never "local definition".
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+    from build_areas import kpi_problems
+    for a in areas:
+        for k in a["kpis"]:
+            errors.extend(f"areas.json {p}" for p in kpi_problems(a["id"], k))
     def strings(x):
         if isinstance(x, str):
             yield x

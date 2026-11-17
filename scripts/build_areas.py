@@ -166,6 +166,14 @@ table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
 th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--soft); }
 .tw { overflow-x: auto; }
+.kd { margin-top: 6px; }
+.kt td { overflow-wrap: anywhere; }
+.kt .src-l { display: none; }
+.kd summary { cursor: pointer; color: var(--sea-ink, #076467); font-weight: 700; min-height: 44px; display: flex; align-items: center; }
+.kd dl { margin: 4px 0 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 10px; }
+.kd dt { font-weight: 700; }
+.kd dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 640px) { table, .kd { font-size: 0.9375rem; } .kt thead { display: none; } .kt, .kt tbody, .kt tr, .kt td { display: block; width: 100%; } .kt tr { border-bottom: 1px solid var(--line); padding: 8px 0; } .kt td { border: 0; padding: 2px 0; } .kt .src-l { display: inline; font-weight: 700; } .kd dl { grid-template-columns: minmax(0, 1fr); } .kd dd { margin-bottom: 6px; } }
 code { font-size: 0.85rem; background: var(--sand); padding: 1px 5px; border-radius: 5px; overflow-wrap: anywhere; }
 section.block { margin: 22px 0; }
 .not { background: #FDF1DC; border-radius: 12px; padding: 12px 14px; font-size: 0.95rem; }
@@ -218,6 +226,40 @@ def page(title, desc, depth, body):
 """
 
 
+# Issue #44: every measure on an area page carries the same definition template, so an informatics
+# lead can see what is counted, out of what, between which two events, how it is summarised, what
+# is left out and where the definition comes from. A measure with no published standard says so
+# ("Editable default"), never "local definition".
+KPI_FIELDS = ["kind", "numerator", "denominator", "statistic", "exclusions", "source"]
+KPI_KINDS = {"ratio", "time", "count", "score", "imported"}
+DEFAULT_SOURCE = "Editable default (no published standard found)"
+
+
+def kpi_problems(area_id, k):
+    out = []
+    for f in KPI_FIELDS:
+        if not str(k.get(f, "")).strip():
+            out.append(f'{area_id} KPI "{k.get("name")}": no {f}')
+    if k.get("kind") not in KPI_KINDS:
+        out.append(f'{area_id} KPI "{k.get("name")}": kind must be one of {sorted(KPI_KINDS)}')
+    if k.get("kind") == "time" and not (k.get("startEvent") and k.get("endEvent")):
+        out.append(f'{area_id} KPI "{k.get("name")}": a time measure names its startEvent and endEvent')
+    if str(k.get("source", "")).strip().lower() == "local definition":
+        out.append(f'{area_id} KPI "{k.get("name")}": say "{DEFAULT_SOURCE}" or cite the standard, not "local definition"')
+    return out
+
+
+def kpi_detail(k):
+    rows = []
+    if k["kind"] == "time":
+        rows.append(("From", f'{k["startEvent"]} to {k["endEvent"]} (the time each event happened, not when it was typed in)'))
+    rows += [("Counts", k["numerator"]), ("Out of", k["denominator"]), ("Shown as", k["statistic"]), ("Not counted", k["exclusions"])]
+    if k.get("counterMeasure"):
+        rows.append(("Read with", k["counterMeasure"]))
+    dl = "".join(f"<dt>{e(a)}</dt><dd>{e(b)}</dd>" for a, b in rows)
+    return f'<details class="kd"><summary>How it is counted</summary><dl>{dl}</dl></details>'
+
+
 def area_page(a, by_id):
     live = LIVE.get(a["id"])
     word = status_word(a)
@@ -229,14 +271,14 @@ def area_page(a, by_id):
     people = "".join(f'<div class="person"><b>{e(p["role"])}</b><span>{e(p["does"])}</span></div>' for p in a["people"])
     screens = "".join(f'<li><b>{e(s["name"])}</b>: {e(s["shows"])}</li>' for s in a["screens"])
     captures = "".join(f"<li>{e(c)}</li>" for c in a["captures"])
-    kpis = "".join(f'<tr><td><b>{e(k["name"])}</b></td><td>{e(k["definition"])}</td><td>{e(k["source"])}</td></tr>' for k in a["kpis"])
+    kpis = "".join(f'<tr><td><b>{e(k["name"])}</b></td><td>{e(k["definition"])}{kpi_detail(k)}</td><td class="src"><span class="src-l">Source: </span>{e(k["source"])}</td></tr>' for k in a["kpis"])
     guide = "".join(f"<li>{e(g)}</li>" for g in a["guide"])
     plays = "".join(f"<li>{e(p)}</li>" for p in a["playbooks"])
     methods = "".join(f"<li>{e(m)}</li>" for m in a["methods"])
     stds = "".join(f'<li><b>{e(s["name"])}</b>: {e(s["how"])}</li>' for s in a["standards"])
     design = (f'<h3>Improvement methods</h3><ul>{methods}</ul>' if methods else "") + (f'<h3>Standards and references</h3><ul>{stds}</ul>' if stds else "")
     if not design:
-        design = "<p>Local definitions only: each site sets its own measures. No external standard is used here.</p>"
+        design = "<p>Editable default definitions only: each site can change its measures. No external standard is used here.</p>"
     else:
         design = '<p class="legend">Ospeli is not certified against any of these. Each line says how the area relates to the standard or method.</p>' + design
     links = "".join(f'<a href="../{e(by_id[c]["slug"])}/">{e(by_id[c]["name"])}</a>' for c in a.get("connects", []) if c in by_id and c != a["id"])
@@ -253,7 +295,7 @@ def area_page(a, by_id):
 <section class="card" aria-labelledby="gd"><h2 id="gd">What the guide suggests</h2><ul>{guide}</ul><p class="legend" style="margin-top:8px">Every suggestion shows its reason. A person decides. The guide has an off switch.</p></section>
 <section class="card" aria-labelledby="pb"><h2 id="pb">Playbooks</h2><ul>{plays}</ul></section>
 </div>
-<section class="block card" aria-labelledby="kp"><h2 id="kp">Measures, with their definitions</h2><div class="tw"><table><thead><tr><th>Measure</th><th>Definition</th><th>Source</th></tr></thead><tbody>{kpis}</tbody></table></div></section>
+<section class="block card" aria-labelledby="kp"><h2 id="kp">Measures, with their definitions</h2><div class="tw"><table class="kt"><thead><tr><th>Measure</th><th>Definition</th><th>Source</th></tr></thead><tbody>{kpis}</tbody></table></div></section>
 {agent_section(a)}
 <section class="block card" aria-labelledby="st"><h2 id="st">Standards and methods it is designed around</h2>{design}</section>
 {'<section class="block" aria-labelledby="cn"><h2 id="cn">Works with</h2><div class="chips">' + links + '</div></section>' if links else ''}
@@ -291,6 +333,9 @@ def main():
     by_id = {a["id"]: a for a in areas}
     slugs = [a["slug"] for a in areas]
     assert len(slugs) == len(set(slugs)), "duplicate slugs"
+    problems = [p for a in areas for k in a["kpis"] for p in kpi_problems(a["id"], k)]
+    if problems:
+        raise SystemExit("KPI definitions incomplete (issue #44):\n  " + "\n  ".join(problems))
     for a in areas:
         assert a["month"] in MONTHS, (a["id"], a["month"])
         d = OUT / a["slug"]
