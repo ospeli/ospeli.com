@@ -426,11 +426,11 @@ for (const width of [390, 1280]) {
     });
     assert.ok(worst.dim > 0);
     assert.ok(worst.low.ratio >= 4.5, `lowest contrast on a bed that is not a match: ${JSON.stringify(worst.low)}`);
-    // A match still stands out from the rest.
-    if (worst.match) {
-      const [m, d] = await page.evaluate(() => [getComputedStyle(document.querySelector('.bed.match')).backgroundColor, getComputedStyle(document.querySelector('.bed.dim')).backgroundColor]);
-      assert.notEqual(m, d);
-    }
+    // A match still stands out from the rest. The fixed clock's hospital always has one, so this
+    // check always runs (#95).
+    assert.ok(worst.match > 0, 'at least one bed matches');
+    const [m, d] = await page.evaluate(() => [getComputedStyle(document.querySelector('.bed.match')).backgroundColor, getComputedStyle(document.querySelector('.bed.dim')).backgroundColor]);
+    assert.notEqual(m, d);
     assert.deepEqual(errors, []);
     await context.close();
   });
