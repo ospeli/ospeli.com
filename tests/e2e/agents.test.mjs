@@ -376,6 +376,10 @@ for (const width of [360, 390, 1280]) {
       heading: (await card.locator('h2').innerText()).trim(),
       links: await card.locator('a').evaluateAll((as) => as.map((a) => [a.getAttribute('href'), a.innerText.replace(/\s+/g, ' ').trim(), Math.round(a.getBoundingClientRect().height), parseFloat(getComputedStyle(a).fontSize)])),
     });
+    // The card appears with the first proposal and draws itself again as the next ones land (issue
+    // #95: reading it once saw 2 of 3). Wait for it to settle on the expected heading, then check it.
+    const settle = (want) => page.waitForFunction((w) => document.querySelector('[data-test="decisions-waiting"] h2')?.innerText.trim() === w, want, { timeout: 10000 }).catch(() => {});
+    await settle('Waiting for your decision (3)');
     let c = await read();
     assert.equal(c.heading, 'Waiting for your decision (3)');
     assert.deepEqual(c.links.map((l) => l.slice(0, 2)), [['#/beds', 'Bed board: 2 proposals'], ['#/process', 'Process maps: 1 proposal']]);
@@ -389,6 +393,7 @@ for (const width of [360, 390, 1280]) {
     await page.selectOption('#role-select', 'estates-tech');
     await page.waitForFunction(() => /Facilities technician/.test(document.querySelector('main h1')?.textContent || ''));
     await card.waitFor();
+    await settle('Waiting for your decision (2)');
     c = await read();
     assert.equal(c.heading, 'Waiting for your decision (2)');
     assert.deepEqual(c.links.map((l) => l.slice(0, 2)), [['#/engineering', 'Engineering: 1 proposal'], ['#/process', 'Process maps: 1 proposal']]);
@@ -407,6 +412,7 @@ for (const width of [360, 390, 1280]) {
     await page.waitForFunction(() => !document.querySelector('#nav-list a[data-module="engineering"] .nav-count'));
     await page.evaluate(() => { location.hash = '#/home'; });
     await card.waitFor();
+    await settle('Waiting for your decision (1)');
     assert.equal((await read()).heading, 'Waiting for your decision (1)');
     // Nothing shows once nothing is waiting.
     await page.evaluate(async () => {

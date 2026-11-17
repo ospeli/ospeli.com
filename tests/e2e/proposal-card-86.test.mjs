@@ -17,7 +17,9 @@ const { chromium } = createRequire(import.meta.url)('playwright');
 const dir = mkdtempSync(join(tmpdir(), 'ospeli-card-e2e-'));
 let site; let browser; let key;
 before(async () => {
-  site = await startServer({ file: join(dir, 'site.db'), port: 0 });
+  // The example hospital is made for a fixed hour, not the wall clock: at some hours of the day the
+  // wall-clock hospital had too few free beds for the third proposal and the test failed (issue #95).
+  site = await startServer({ file: join(dir, 'site.db'), port: 0, end: '2026-11-08T12:00:00.000Z' });
   browser = await chromium.launch();
   for (const line of ['setup agent', 'night-helper', '2', 'all']) await site.consoleLine(line);
   key = /osk_[0-9a-f]{8}_[A-Za-z0-9_-]{32}/.exec(await site.consoleLine(''))[0];

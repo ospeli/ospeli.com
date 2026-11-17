@@ -17,7 +17,7 @@ const { chromium } = createRequire(import.meta.url)('playwright');
 const dir = mkdtempSync(join(tmpdir(), 'ospeli-site-e2e-'));
 let site; let browser; let key;
 before(async () => {
-  site = await startServer({ file: join(dir, 'site.db'), port: 0 });
+  site = await startServer({ file: join(dir, 'site.db'), port: 0, end: '2026-11-08T12:00:00.000Z' }); // a fixed hour, not the wall clock (issue #95)
   browser = await chromium.launch();
   for (const line of ['setup agent', 'night-helper', '2', 'all']) await site.consoleLine(line);
   key = /osk_[0-9a-f]{8}_[A-Za-z0-9_-]{32}/.exec(await site.consoleLine(''))[0];
@@ -131,6 +131,7 @@ test('first-time user at 360 px: connect the phone with the code and answer an a
 test('no connection at 360 px: the phone says so, still shows the last information, refuses a change, and catches up when it is back', async () => {
   const code = await codeFor('ward phone', 2);
   const { context, page, errors } = await phone();
+  const connectedFrom = Date.now();
   await page.goto(`${site.url}/app/`);
   await page.waitForSelector('html[data-ready="connect"]');
   await page.fill('[data-test="connect-code"]', code);
@@ -144,6 +145,15 @@ test('no connection at 360 px: the phone says so, still shows the last informati
   await page.waitForFunction(() => document.documentElement.dataset.site === 'offline', null, { timeout: 15000 });
   const bar = page.locator('[data-test="site-status"]');
   assert.match(await bar.textContent(), /^Not connected\. You see the information from \d{1,2}[:.]\d{2}.*\. You cannot save changes now\.$/);
+  // Issue #95: the time is the device's last copy, between connecting and losing the connection,
+  // not any time at all. Every minute in that window, written the way the device writes times.
+  const shown = (await bar.textContent()).match(/information from (.+?)\. You cannot/)[1];
+  const window_ = await page.evaluate(([from, to]) => {
+    const out = [];
+    for (let t = Math.floor(from / 60000) * 60000; t <= to; t += 60000) out.push(new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }));
+    return out;
+  }, [connectedFrom, Date.now()]);
+  assert.ok(window_.includes(shown), `"${shown}" is not a time between connecting and losing the connection (${window_.join(', ')})`);
   assert.ok(parseFloat(await bar.evaluate((e) => getComputedStyle(e).fontSize)) >= 15);
   // A change cannot be made, and the card says why beside the buttons (#86); nothing reaches the server later.
   await page.waitForSelector('[data-test="proposal-offline"]');
