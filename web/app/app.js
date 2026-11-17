@@ -72,7 +72,9 @@ function buildRoles(ctx) {
   sel.value = ctx.role;
   sel.addEventListener('change', async () => {
     const to = sel.value;
-    if (!roleById(to)) return;
+    // The same role chosen again changes nothing: no event, and the page is not drawn again under
+    // the person's hands (issue #95: a tap during that redraw was lost).
+    if (!roleById(to) || to === ctx.role) return;
     const from = ctx.role;
     ctx.role = to;
     // A role whose whole job is on one page opens on it (its job is one tap away, not a menu
@@ -132,6 +134,9 @@ async function route(ctx) {
       renderSoon(page, mod);
     }
   } catch (err) {
+    // A page left while it loaded (another page, or a role change, started meanwhile) is thrown
+    // away below: what went wrong for it is not this page's error (issue #95).
+    if (token !== routeToken) return;
     console.error(err);
     page.innerHTML = '<div class="card notice"><h2>Something went wrong</h2><p>This page could not load. Your data is safe. Try again, or go back to <a href="#/home">Today</a>.</p></div>';
   }
