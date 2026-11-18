@@ -39,7 +39,7 @@ export function findIdentifierFields(data) {
 // An event's subject is read too. A list cannot catch every name: an untitled name inside a
 // sentence passes. The answer names the place, never the value.
 const HASH_KEY = /^(prev|hash)$/;
-const PLACE_OR_ASSET = new Set(['site', 'building', 'department', 'ward', 'bed', 'asset']);
+const PLACE_OR_ASSET = new Set(['site', 'building', 'department', 'ward', 'bed', 'asset', 'store']);
 const ISO_TIME = /^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:?\d{2})?)?$/;
 export function findIdentifierValues(data) {
   const hits = [];

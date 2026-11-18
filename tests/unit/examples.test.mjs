@@ -36,7 +36,8 @@ test('every published example runs as written on a fresh example hospital, or sa
       ran += 1;
       // A bed write that happens to run still says the state it needs: the example bed moves on with the clock.
       // The clean of a bed follows the bed, so the same holds for starting and finishing a task.
-      if (c.example.needs) assert.ok(c.name.startsWith('ospeli_beds_') || ['ospeli_tasks_start', 'ospeli_tasks_complete', 'ospeli_tasks_set_priority', 'ospeli_tasks_release'].includes(c.name), `${c.name}: the example runs as written, so it should not say it needs anything`);
+      // Stock moves through the day too: a stock write that happens to run on today's example stock still says what it needs.
+      if (c.example.needs) assert.ok(c.name.startsWith('ospeli_beds_') || c.name.startsWith('ospeli_stock_') || ['ospeli_tasks_start', 'ospeli_tasks_complete', 'ospeli_tasks_set_priority', 'ospeli_tasks_release'].includes(c.name), `${c.name}: the example runs as written, so it should not say it needs anything`);
     } catch (err) {
       assert.ok(err instanceof CommandError, `${c.name}: ${err.stack}`);
       if (typeof c.example.needs !== 'string' || c.example.needs.length < 30) refused.push(`${c.name}: ${err.code} (${err.message.slice(0, 60)})`);
@@ -115,6 +116,32 @@ async function prepare(core, c) {
     }
     const { bedId } = await bedIn(core, name === 'ospeli_tasks_release' ? 'cleaning' : 'vacated'); // a vacated bed is a clean task
     return { taskId: `clean-${bedId}` };
+  }
+  if (name.startsWith('ospeli_stock_')) {
+    assert.match(c.example.needs, /ospeli_stock_/, `${name}: the needs line names the stock command that finds or makes what is needed`);
+    // A new item nobody has touched, so the example hospital's own stock history cannot get in the way.
+    const list = await runCommand(core, 'ospeli_stock_items', {}, human('coo'));
+    const exampleItem = listCommands().find((x) => x.name === 'ospeli_stock_count').example.input.lines[0].itemId;
+    const cat = list.categories.find((x) => x.id === list.items.find((it) => it.id === exampleItem).category);
+    const as = (verb, cmd, input) => {
+      assert.ok(cat.roles[verb].length, `${name}: preparing its example needs a role that may ${verb} ${cat.id} stock`);
+      return runCommand(core, `ospeli_stock_${cmd}`, input, human(cat.roles[verb][0]));
+    };
+    const { itemId } = await as('itemAdd', 'item_add', { name: 'Example test pack', unit: 'pack', category: cat.id });
+    const one = [{ itemId, qty: 1 }];
+    const stockAt = (placeId, qty) => as('receive', 'receive', { placeId, lines: [{ itemId, qty }], source: 'Purchase' });
+    switch (name.slice('ospeli_stock_'.length)) {
+      case 'use': case 'write_off': case 'hold': case 'transfer': await stockAt('ward-a1', 5); return { lines: one };
+      case 'release': await stockAt('ward-a1', 5); await as('hold', 'hold', { placeId: 'ward-a1', lines: one, reason: 'Damaged packaging' }); return { lines: one };
+      case 'request': return { lines: [{ itemId, qty: 10 }] };
+      case 'issue': case 'request_cancel': {
+        await stockAt(list.stores[0].id, 20);
+        return { requestId: (await as('request', 'request', { placeId: 'ward-a1', lines: [{ itemId, qty: 2 }] })).requestId };
+      }
+      case 'out_start': case 'level_set': return { itemId };
+      case 'out_end': return { stockOutId: (await as('count', 'out_start', { itemId, placeId: 'ward-a1', cause: 'Not delivered' })).stockOutId };
+      default: assert.fail(`${name}: add what this stock example needs to the test`);
+    }
   }
   // A module's own commands: the module says how to put in place what its example needs.
   const pack = MODULE_PACKS.find((p) => name.startsWith(p.PREFIX));

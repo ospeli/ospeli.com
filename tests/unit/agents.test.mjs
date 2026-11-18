@@ -132,7 +132,9 @@ test('every refused agent call leaves one audit entry, for each reason, and stor
   assert.ok(rows.every((e) => e.actorType === 'agent' && e.detail.code && e.detail.why));
   assert.deepEqual(rows.map((e) => e.detail.code), [...tries, ...more].map(([c]) => c));
   assert.equal(JSON.stringify(rows).includes('Mary'), false, 'no text the agent typed is stored');
-  assert.equal(JSON.stringify(rows).includes('555'), false);
+  // The chain's own hashes are left out of this one check: a hash is hex, so '555' can turn up in one by chance
+  // (it did when the example hospital gained a store). Everything the entry itself holds is still read.
+  assert.equal(JSON.stringify(rows.map(({ hash, prev, ...own }) => own)).includes('555'), false);
   assert.deepEqual(rows.at(-1).detail.fields, ['id'], 'field names only, never values');
   assert.equal(rows[1].detail.command, '(unknown)');
   assert.ok(rows.slice(0, tries.length).every((e) => e.agent === 'unlisted'), 'a name nobody put on the list is never stored');

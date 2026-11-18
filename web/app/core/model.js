@@ -8,6 +8,7 @@ export const ENTITY_TYPES = {
   ward: { parents: ['department', 'building', 'site'] },
   bed: { parents: ['ward'] },
   asset: { parents: ['site', 'building', 'department', 'ward', 'bed'] },
+  store: { parents: ['site', 'building', 'department'] }, // a place that holds stock and supplies others (core/stock.js)
   role: { parents: [] },
   shift: { parents: [] },
 };

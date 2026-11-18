@@ -123,6 +123,8 @@ export function buildModel() {
     }
   }
   for (const [id, name, parentId, kind] of PLANT_ASSETS) entities.push({ id, type: 'asset', name, parentId, kind });
+  // One store: the place that holds stock and supplies the wards (the shared stock item, core/stock.js).
+  entities.push({ id: 'store-main', type: 'store', name: 'Main store', parentId: 'bld-main-plant' });
   for (const r of [['ward-nurse', 'Ward nurse'], ['bed-manager', 'Patient flow coordinator'], ['estates-tech', 'Facilities technician'], ['ae-nic', 'Emergency department nurse in charge'], ['ops-manager', 'Operations manager'], ['coo', 'COO']]) {
     entities.push({ id: `role-${r[0]}`, type: 'role', name: r[1], roleId: r[0] });
   }
@@ -289,13 +291,15 @@ export function generateHospital({ seed = DEFAULT_SEED, end, days = 30 } = {}) {
 
   // Each module adds its own synthetic history (core/modules.js). A module gets its own random
   // stream, so adding one never changes the events above or another module's. It may only write
-  // its own kinds of event, and task.* for the shared task object.
+  // its own kinds of event, task.* for the shared task object and, when it lists stock items,
+  // stock.* for the shared stock item.
   for (const p of MODULE_PACKS) {
     if (typeof p.seed !== 'function') continue;
     const mine = p.seed({ r: rng((seed ^ hashOf(p.id)) >>> 0), startMs, endMs, days, entities, events: raw.map((e) => ({ ...e })) }) || [];
     for (const e of mine) {
-      const ok = typeof e?.type === 'string' && (e.type.startsWith(p.EVENT_PREFIX) || (e.type.startsWith('task.') && Array.isArray(p.TASK_KINDS) && p.TASK_KINDS.length));
-      if (!ok) throw new Error(`module ${p.id}: a seed may only write ${p.EVENT_PREFIX}* events${p.TASK_KINDS?.length ? ' and task.* events' : ''}, not ${e?.type}`);
+      const stock = Array.isArray(p.STOCK_ITEMS) && p.STOCK_ITEMS.length > 0;
+      const ok = typeof e?.type === 'string' && (e.type.startsWith(p.EVENT_PREFIX) || (e.type.startsWith('task.') && Array.isArray(p.TASK_KINDS) && p.TASK_KINDS.length) || (e.type.startsWith('stock.') && stock));
+      if (!ok) throw new Error(`module ${p.id}: a seed may only write ${p.EVENT_PREFIX}* events${p.TASK_KINDS?.length ? ' and task.* events' : ''}${stock ? ' and stock.* events' : ''}, not ${e?.type}`);
       push(e.t, e.type, e.subject, e.actorRole, e.data ?? null);
     }
   }
