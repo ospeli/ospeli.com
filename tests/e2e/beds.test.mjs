@@ -435,3 +435,47 @@ for (const width of [390, 1280]) {
     await context.close();
   });
 }
+
+// Adoption check (ospeli/ospeli#112): the manager's first five minutes, untrained, on a phone.
+// The patient flow coordinator opens the app on a touch phone, reaches the bed board in one tap,
+// sees how many wait on the first screen, and places the first waiting patient.
+test('the patient flow coordinator\'s first five minutes on a 390 px phone: one tap to the bed board, sees the waiting count first, and places a patient', async () => {
+  const { context, page, errors } = await openPage(env, { clock: CLOCK, width: 390, height: 844, touch: true, path: '' });
+  await page.selectOption('#role-select', 'bed-manager');
+  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
+  await page.goto(env.appUrl);
+  await page.waitForSelector('html[data-ready="true"]');
+  // The first roles open on Today, with their shortcuts first on a phone (issue #10): the bed
+  // board is one tap away on the first screen.
+  const shortcut = page.locator('[data-test="role-shortcuts"] a[href^="#/beds"]').first();
+  await shortcut.waitFor();
+  const sc = await shortcut.boundingBox();
+  assert.ok(sc.y + sc.height <= 844 && sc.height >= 44, `the bed board shortcut is a 44 px target on the first screen (${Math.round(sc.y)}, ${Math.round(sc.height)} px)`);
+  await shortcut.tap();
+  await page.waitForSelector('[data-find]');
+  assert.match(await page.evaluate(() => location.hash), /^#\/beds/);
+  // The area's status on the first screen.
+  const waiting = await stat(page, 'sum-waiting');
+  assert.ok(waiting >= 1);
+  const box = await page.locator('[data-test="sum-waiting"]').boundingBox();
+  assert.ok(box && box.y < 844, `the waiting count is on the first screen (top at ${Math.round(box?.y)} px)`);
+  const find = await page.locator('[data-find]').first().boundingBox();
+  assert.ok(find.height >= 44, `Find a bed is a 44 px target (${Math.round(find.height)} px)`);
+  // Act: find a bed for the first waiting patient and place them, in taps.
+  await page.locator('[data-find]').first().tap();
+  await page.waitForSelector('.banner');
+  let freeBed = await page.locator('.bed.match').first().getAttribute('data-bed').catch(() => null);
+  if (!freeBed) {
+    const ward = await page.evaluate(() => [...document.querySelectorAll('.ward-tab')].find((b) => !/\b0 free/.test(b.textContent))?.dataset.ward);
+    await page.locator(`.ward-tab[data-ward="${ward}"]`).tap();
+    freeBed = await page.locator('.bed.match').first().getAttribute('data-bed');
+  }
+  await page.locator(`.bed[data-bed="${freeBed}"]`).tap();
+  await page.waitForFunction((b) => document.querySelector(`.bed[data-bed="${b}"]`)?.classList.contains('st-allocated'), freeBed);
+  assert.equal(await stat(page, 'sum-waiting'), waiting - 1);
+  const ev = await page.evaluate(async () => (await window.ospeli.core.events({ type: 'bed.allocated' })).at(-1));
+  assert.deepEqual([ev.subject, ev.actorRole], [freeBed, 'bed-manager']);
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth) <= 0, 'no sideways scroll');
+  assert.deepEqual(errors, []);
+  await context.close();
+});

@@ -475,3 +475,41 @@ test('a redraw keeps open what the person opened and keeps unsaved picks (record
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Adoption check (ospeli/ospeli#112): the manager's first five minutes, untrained, on a phone.
+// The patient liaison officer runs the feedback queue for the site: opening the app, they land on
+// it, see how many are open and overdue on the first screen, and record a late reply in a few taps.
+test('the liaison officer\'s first five minutes on a 390 px phone: opens on the queue, sees open and overdue counts first, and records a late reply', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
+  await page.selectOption('#role-select', 'patient-liaison');
+  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'patient-liaison');
+  await page.goto(env.appUrl);
+  await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForSelector('.mod-feedback[data-role="patient-liaison"] [data-test="queue-list"] [data-record]');
+  assert.match(await page.evaluate(() => location.hash), /^#\/feedback/, 'the liaison officer opens on the module, not on Today');
+  assert.equal(await page.locator('.fb-tabs a[aria-current="page"]').getAttribute('data-tab'), 'queue');
+  // The area's status on the first screen: open and overdue counts, and the oldest late one first.
+  const overdue = Number(await page.locator('[data-test="count-overdue"]').textContent());
+  assert.ok(overdue >= 1, 'the example site has at least one overdue reply');
+  assert.ok(Number(await page.locator('[data-test="count-open"]').textContent()) >= overdue);
+  const box = await page.locator('[data-test="count-overdue"]').boundingBox();
+  assert.ok(box && box.y < 844, `the overdue count is on the first screen (top at ${Math.round(box?.y)} px)`);
+  const first = page.locator('[data-test="queue-list"] .fb-row').first();
+  assert.ok(await first.evaluate((a) => a.classList.contains('is-over')), 'an overdue record is first in the list');
+  // Act: open it and record the reply that was sent.
+  const id = await first.getAttribute('data-record');
+  await first.tap();
+  await page.waitForSelector(`[data-test="record"][data-record="${id}"]`);
+  assert.deepEqual(await smallText(page, '.mod-feedback'), [], 'record text at 390 px');
+  assert.deepEqual(await shortTargets(page, '[data-test="next"]'), [], 'next-step targets at 390 px');
+  await page.selectOption('#fb-reply-ch', 'phone');
+  await page.locator('[data-step="reply"]').tap();
+  await page.waitForSelector(`[data-test="record"][data-stage="replied"]`);
+  const ev = await page.evaluate(async (r) => (await window.ospeli.core.events({ subject: r })).at(-1), id);
+  assert.deepEqual([ev.type, ev.actorRole], ['feedback.replied', 'patient-liaison']);
+  await page.locator('.fb-tabs a[data-tab="queue"]').tap();
+  await page.waitForFunction((n) => Number(document.querySelector('[data-test="count-overdue"]')?.textContent) === n - 1, overdue);
+  assert.ok(await noSideways(page) <= 0, 'no sideways scroll');
+  assert.deepEqual(errors, []);
+  await context.close();
+});

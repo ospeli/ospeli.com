@@ -334,7 +334,9 @@ export async function render(el, ctx) {
       : `${p.input.workOrderId?.toUpperCase()}: ${p.command === 'ospeli_workorders_assign' ? `assign to ${TEAMS[p.input.team]}` : p.command === 'ospeli_workorders_start' ? 'start the job' : `close as ${OUTCOMES[p.input.outcome]}`}`),
   });
 
-  const queueFirst = ctx.role === 'estates-tech' && !deepAsset && !unknownLabel; // a label link, even an unknown one, opens on the form
+  // The roles that work the queue (the technician, and the operations manager who oversees it and
+  // may assign) see it first; a label link, even an unknown one, opens on the form (issue #112).
+  const queueFirst = ['estates-tech', 'ops-manager'].includes(ctx.role) && !deepAsset && !unknownLabel;
   const rules = h('p', { class: 'meta', 'data-test': 'queue-rules' }, 'Grouped by priority, the most late first. "Late" is time past the target. Targets: urgent 4 h, high 24 h, routine 72 h (examples; set locally). A repeat fault is the same fault on the same asset that came back within 30 days of being closed as Fixed. Not counted: "No fault found", a different fault, and a second report of a fault that is still open.');
   // data-role lets a test (and a browser agent) see which role this queue was drawn for.
   const queue = h('section', { class: 'section wo-queue', 'aria-labelledby': 'queue-h', 'data-test': 'wo-queue', 'data-role': ctx.role },

@@ -481,10 +481,12 @@ async function queueScreen(box, ctx, { opt }) {
     setKids(kpis, h('h2', { id: 'fb-kpi-h' }, 'Response measures, last 30 days'), kpiRow(t.kpis, 'Calculated from the same event log. Tap "How it is counted" under a number. Nothing here is a score of a person.'));
   }
   const ownerFirst = role === 'ward-nurse' || role === 'ops-manager';
-  // An owner role works its list on a phone: the list first, the reminders and measures below it.
+  // An owner role, and the liaison officer who runs the queue, work the list: the list and its
+  // open and overdue counts first, the reminders and measures below it (ospeli/ospeli#112).
+  const listFirst = ownerFirst || role === 'patient-liaison';
   const queue = h('section', { class: 'section', 'aria-labelledby': 'fb-q-h' }, h('h2', { id: 'fb-q-h' }, ownerFirst ? `Complaints owned by ${mineWho}` : 'Open complaints and concerns'), counts, chips, list);
   setKids(box, h('div', { class: 'fb-queue', 'data-role': role },
-    ownerFirst ? [queue, guide, kpis] : [kpis, guide, queue],
+    listFirst ? [queue, guide, kpis] : [kpis, guide, queue],
     h('p', { class: 'meta fb-notfor' }, 'Ospeli does not score or rank staff and does not judge clinical care. It holds no names or contact details and sends nothing.')));
   await load();
   return { refresh: load };

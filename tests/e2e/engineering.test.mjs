@@ -596,3 +596,39 @@ test('a label link with an unknown asset says so and keeps the form; nothing is 
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Adoption check (ospeli/ospeli#112): the manager's first five minutes, untrained, on a phone.
+// Engineering has no manager role of its own in this build; the operations manager oversees it and
+// may assign. Opening the app on a touch phone, they reach the queue from Today, see the open count
+// and the late ones on the first screen of the module, and send a waiting job to a team.
+test('the operations manager\'s first five minutes in Engineering on a 390 px phone: open count first, a job sent to a team in a few taps', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true });
+  await page.selectOption('#role-select', 'ops-manager');
+  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'ops-manager');
+  await page.goto(env.appUrl);
+  await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForSelector('[data-test="role-shortcuts"] a');
+  const shortcut = page.locator('[data-test="role-shortcuts"] a[href^="#/engineering"]').first();
+  if (await shortcut.count()) await shortcut.tap();
+  else await page.evaluate(() => { location.hash = '#/engineering'; }); // reached from the menu
+  await page.waitForSelector('[data-test="wo-list"] [data-wo]');
+  const open = await openCount(page);
+  assert.ok(open >= 1);
+  const box = await page.locator('[data-test="wo-open"]').boundingBox();
+  assert.ok(box && box.y < 844, `the open count is on the first screen (top at ${Math.round(box?.y)} px)`);
+  // Act: open the first job and send it to a team.
+  const first = page.locator('[data-test="wo-list"] [data-wo]').first();
+  const id = await first.getAttribute('data-wo');
+  await first.tap();
+  await page.waitForSelector('dialog[open]');
+  await page.selectOption('#wo-team', 'contractor');
+  const assign = page.locator('dialog[open] [data-cmd="ospeli_workorders_assign"]');
+  assert.ok((await assign.boundingBox()).height >= 44, 'Assign is a 44 px target');
+  await assign.tap();
+  await page.waitForFunction((wo) => document.querySelector(`[data-wo="${wo}"]`)?.textContent.includes('External contractor'), id);
+  const ev = await page.evaluate(async (wo) => (await window.ospeli.core.events({ subject: wo })).at(-1), id);
+  assert.deepEqual([ev.type, ev.actorRole], ['workorder.assigned', 'ops-manager']);
+  assert.ok(await noSideways(page) <= 0);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
