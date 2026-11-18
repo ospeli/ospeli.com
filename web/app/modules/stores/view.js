@@ -612,7 +612,7 @@ function manageScreen(ctx, shared) {
       reqs.length ? h('ul', { class: 'sto-plain' }, reqs.map((q) => h('li', {}, h('b', {}, q.placeName), ` · ${q.id} · waiting ${hoursText(q.waitHours)} · ${plural(q.lines.filter((l) => l.left > 0).length, 'item')}${q.canIssueInFull ? '' : ' · the store is short'}`))) : null,
       h('div', { class: 'sto-acts' }, h('a', { class: 'btn btn-ghost btn-small', href: '#/stores/orders' }, 'All orders'), h('a', { class: 'btn btn-ghost btn-small', href: '#/stores/requests' }, 'All requests')));
   }
-  const fmtKpi = (k) => (k.value == null ? 'None yet' : k.unit === '%' ? `${Math.round(k.value)}%` : k.unit === 'hours' ? hoursText(k.value) : daysText(k.value));
+  const fmtKpi = (k) => (k.value == null ? 'None yet' : k.unit === '%' ? `${k.value < 10 ? Math.round(k.value * 10) / 10 : Math.round(k.value)}%` : k.unit === 'hours' ? hoursText(k.value) : daysText(k.value));
   function kpiSection(ov) {
     const extra = (k) => (k.open != null ? `${plural(k.open, k.id === 'stores-order-cycle' ? 'order' : 'request')} not finished yet${k.longestOpen != null ? `, the longest ${k.unit === 'hours' ? hoursText(k.longestOpen) : daysText(k.longestOpen)} so far` : ''}.` : null);
     return h('section', { class: 'section', 'aria-labelledby': 'sto-kpi-h' },

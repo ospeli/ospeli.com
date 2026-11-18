@@ -41,7 +41,8 @@ async function site({ withHistory = true, noStore = false } = {}) {
     await core.putEntities(entities.filter((e) => e.type !== 'store'), 'system', 'an older example hospital with no store');
   } else {
     await loadSyntheticHospital(core, { end: END });
-    if (withHistory) await core.appendEvents(history(await core.listEntities()), 'system', 'stores history');
+    // Once the example hospital carries this history itself (seed), it is not added twice.
+    if (withHistory && !(await core.events({ type: 'stores.order-step' })).length) await core.appendEvents(history(await core.listEntities()), 'system', 'stores history');
   }
   const run = (name, input, who) => runCommand(core, name, input, typeof who === 'string' ? human(who) : who);
   return { core, run, skip: (m) => { t += m * MIN; } };

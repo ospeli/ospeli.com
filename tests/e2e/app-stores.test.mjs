@@ -21,6 +21,7 @@ const loadHistory = (page) => page.evaluate(async () => {
   const { rng } = await import('/app/core/generator.js');
   const { seedHistory } = await import('/app/modules/stores/commands.js');
   const core = window.ospeli.core; const gen = await core.getMeta('generator'); const endMs = Date.parse(gen.end);
+  if ((await core.events({ type: 'stores.order-step' })).length) return; // the example hospital already has it
   const evs = seedHistory({ r: rng(4242), startMs: endMs - gen.days * 864e5, endMs, days: gen.days, entities: await core.listEntities() });
   evs.sort((a, b) => a.t - b.t || (a.type < b.type ? -1 : a.type > b.type ? 1 : 0) || (a.subject < b.subject ? -1 : 1));
   await core.appendEvents(evs.map((e) => ({ type: e.type, subject: e.subject, actorRole: e.actorRole, at: new Date(e.t).toISOString(), data: e.data ?? null })), 'system', 'stores history');
