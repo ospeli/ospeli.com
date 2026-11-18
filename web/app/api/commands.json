@@ -8391,7 +8391,8 @@
               "Asked for by mistake",
               "Done another way",
               "Other"
-            ]
+            ],
+            "description": "Why the task is cancelled: No longer needed, Asked for by mistake, Done another way, Other."
           },
           "expectedState": {
             "type": "string",
