@@ -100,7 +100,7 @@ function stepper({ get, set, label, max = MAX, test = null }) {
     const why = raw === '' || !Number.isFinite(n) ? 'Type a number, for example 4.'
       : n < 0 ? 'A count cannot be below 0.'
         : !Number.isInteger(n) || !/^\d+$/.test(raw) ? 'Use a whole number, for example 4.'
-          : n > max ? `The most this field takes is ${max.toLocaleString('en')}.` : null;
+          : n > max ? `The most this field takes is ${max}.` : null;
     mark(why);
     if (!why) set(n);
   });
