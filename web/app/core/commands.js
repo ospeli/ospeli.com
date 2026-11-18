@@ -376,10 +376,14 @@ const COMMAND_LIST = [
     name: 'ospeli_agents_set_access',
     summary: 'Switch agent access on or off for the hospital and for each ward. People only.',
     kind: 'write', roles: ['ops-manager', 'coo'], approval: true, agents: false,
-    input: { type: 'object', additionalProperties: false, required: ['allowed'], properties: { allowed: { type: 'boolean', description: 'true lets the site\'s listed agents in (Advise: they read and propose; a person decides). false switches every agent off.' }, wards: { type: 'object', additionalProperties: { type: 'boolean' }, description: 'Ward id to true or false, for example { "ward-a1": true }. Only the wards named change; the others keep their setting.' } } },
+    input: { type: 'object', additionalProperties: false, required: ['allowed'], properties: { allowed: { type: 'boolean', description: 'true lets the site\'s listed agents in (Advise: they read and propose; a person decides). false switches every agent off.' }, wards: { type: 'object', additionalProperties: { type: 'boolean' }, description: 'Ward id to true or false, for example { "ward-a1": true }. Only the wards named change; the others keep their setting. An id that is not a ward is refused: places outside a ward cannot be switched on yet.' } } },
     output: { type: 'object', required: ['allowed', 'wards'], properties: { allowed: { type: 'boolean' }, wards: { type: 'object' } } },
     async run(core, input, { actor }) {
       const prev = await agentAccess(core);
+      // Only wards can be switched on today; an id that is not a ward is refused, not stored and ignored (#117).
+      const wardIds = new Set((await core.listEntities('ward')).map((w) => w.id));
+      const bad = Object.keys(input.wards || {}).find((w) => !wardIds.has(w));
+      if (bad) throw new CommandError('invalid-input', `There is no ward ${bad}. Wards on this site: ${[...wardIds].slice(0, 8).join(', ')}. Departments, plant and other places outside a ward cannot be switched on for agents yet.`);
       const next = { allowed: input.allowed, wards: { ...prev.wards, ...(input.wards || {}) } };
       await core.updateMeta('agents', (raw) => ({ ...(raw || {}), ...next }));
       if (next.allowed) await core.setMeta('agents-cleared', null);

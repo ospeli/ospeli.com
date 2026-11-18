@@ -292,3 +292,13 @@ test('issue #89: people-only commands answer forbidden while agents are on; null
   }
   assert.deepEqual(await core.verifyAudit(), { ok: true });
 });
+
+test('#117 point 3: switching on an id that is not a ward is refused, the way adding an agent is; nothing is stored', async () => {
+  const { core } = await setup();
+  const before = await runCommand(core, 'ospeli_agents_set_access', { allowed: false }, human('coo'));
+  await assert.rejects(runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: { 'dept-imaging': true } }, human('coo')),
+    (err) => err.code === 'invalid-input' && /There is no ward dept-imaging/.test(err.message));
+  const after = await runCommand(core, 'ospeli_agents_set_access', { allowed: false }, human('coo'));
+  assert.deepEqual(after.wards, before.wards);
+  assert.ok(!('dept-imaging' in after.wards));
+});

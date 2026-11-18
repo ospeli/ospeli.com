@@ -2003,7 +2003,7 @@
             "additionalProperties": {
               "type": "boolean"
             },
-            "description": "Ward id to true or false, for example { \"ward-a1\": true }. Only the wards named change; the others keep their setting."
+            "description": "Ward id to true or false, for example { \"ward-a1\": true }. Only the wards named change; the others keep their setting. An id that is not a ward is refused: places outside a ward cannot be switched on yet."
           }
         }
       },
