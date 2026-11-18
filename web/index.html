@@ -109,6 +109,8 @@ nav.links a.nl:hover { border-bottom-color: var(--coral); }
 .btn-cta:hover { transform: translateY(-1px); background: #CB4C33; }
 .btn-ghost { border-color: var(--line-strong); color: var(--ink); background: transparent; }
 .btn-ghost:hover { border-color: var(--navy); }
+.hero .demo-phone { display: none; }
+@media (max-width: 640px) { .hero .demo-desk { display: none; } .hero .actions .demo-phone { display: flex; } }
 nav.links .btn { padding: 9px 16px; font-size: 0.9rem; }
 nav.links a.btn-primary { color: #FFFFFF; }
 
@@ -470,7 +472,8 @@ details.acc > summary::-webkit-details-marker { display: none; }
         <p class="tagline">Map processes. Optimise flow. Improve care.</p>
         <div class="actions">
           <a class="btn btn-cta" href="#pilot"><span class="cta-long">Start a pilot conversation</span><span class="cta-short">Talk to us about a pilot</span></a>
-          <a class="btn btn-ghost" href="demo/">Try the live demo</a>
+          <a class="btn btn-ghost demo-desk" href="demo/">Try the live demo</a>
+          <a class="btn btn-ghost demo-phone" href="app/">Try the live demo</a>
         </div>
       </div>
 
