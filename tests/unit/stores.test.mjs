@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital, generateHospital, rng } from '../../web/app/core/generator.js';
+import { loadSyntheticHospital, generateHospital } from '../../web/app/core/generator.js';
 import { runCommand, CommandError, commandByName, listCommands } from '../../web/app/core/commands.js';
 import { validate } from '../../web/app/core/schema.js';
 import { ROLES } from '../../web/app/core/model.js';
@@ -24,13 +24,6 @@ const human = (role) => ({ type: 'human', role });
 const code = (c) => (err) => err instanceof CommandError && err.code === c;
 const out = (name, value) => assert.deepEqual(validate(commandByName(name).output, value), [], `${name}: answer matches its schema`);
 
-// The module's thirty days of history, made the way the generator makes a pack's history.
-function history(entities, end = END) {
-  const endMs = Date.parse(end);
-  return pack.seedHistory({ r: rng(4242), startMs: endMs - 30 * DAY, endMs, days: 30, entities })
-    .sort((a, b) => a.t - b.t || (a.type < b.type ? -1 : a.type > b.type ? 1 : 0) || (a.subject < b.subject ? -1 : 1))
-    .map((e) => ({ type: e.type, subject: e.subject, actorRole: e.actorRole, at: new Date(e.t).toISOString(), data: e.data ?? null }));
-}
 // A site on a clock the test moves (each reading one second later; skip(m) jumps m minutes), with
 // the example hospital and, unless asked otherwise, the module's history.
 async function site({ withHistory = true, noStore = false } = {}) {
@@ -40,9 +33,8 @@ async function site({ withHistory = true, noStore = false } = {}) {
     const { entities } = generateHospital({ end: END });
     await core.putEntities(entities.filter((e) => e.type !== 'store'), 'system', 'an older example hospital with no store');
   } else {
-    await loadSyntheticHospital(core, { end: END });
-    // Once the example hospital carries this history itself (seed), it is not added twice.
-    if (withHistory && !(await core.events({ type: 'stores.order-step' })).length) await core.appendEvents(history(await core.listEntities()), 'system', 'stores history');
+    // The example hospital carries the module's history (its seed); modules: false leaves it out.
+    await loadSyntheticHospital(core, { end: END, modules: withHistory });
   }
   const run = (name, input, who) => runCommand(core, name, input, typeof who === 'string' ? human(who) : who);
   return { core, run, skip: (m) => { t += m * MIN; } };
@@ -66,9 +58,11 @@ test('the pack: about twenty generic supplies items, nothing cold-chain or price
 
 test('the synthetic history replays through the shared stock item with no problem, and ends as the brief asks', () => {
   for (const end of [END, '2026-11-10T14:00:00.000Z', '2026-11-18T03:00:00.000Z']) {
-    const { entities } = generateHospital({ end });
-    const evs = history(entities, end).map((e, i) => ({ ...e, seq: i + 1 }));
-    assert.deepEqual(history(entities, end).map((e) => e.at), evs.map((e) => e.at), 'the same stream gives the same history');
+    // The example hospital's own events, as the generator makes them with the module's seed.
+    const { events } = generateHospital({ end });
+    const evs = events.filter((e) => e.type.startsWith('stock.') || e.type.startsWith('stores.')).map((e, i) => ({ ...e, seq: i + 1 }));
+    assert.deepEqual(generateHospital({ end }).events.length, events.length, 'the same seed gives the same history');
+    assert.equal(generateHospital({ end, modules: false }).events.filter((e) => e.type.startsWith('stock.')).length, 0, 'modules: false leaves it out');
     assert.ok(evs.every((e) => (e.type.startsWith('stock.') || e.type.startsWith('stores.')) && ROLE_IDS.includes(e.actorRole) && e.at <= end));
     const stock = deriveStock(evs, { items: CATALOGUE.items, categories: CATALOGUE.categories });
     assert.equal(stock.problems, 0, `${end}: every movement fits and no balance goes below zero`);

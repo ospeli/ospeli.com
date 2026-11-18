@@ -4,7 +4,7 @@
 // quick second tap issues nothing more); the supply chain manager's first five minutes on a 390 px
 // phone (sees what is short and stuck, and records an order step) (issue #112); a ward count under
 // level raises a request with no extra step and the ward sees it move; phone rules; the guide
-// switch; a role with no rights sees no action button; honest empty states.
+// switch; a role with no rights sees no action button; honest empty states on an older device.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startApp, openPage } from './helpers.mjs';
@@ -15,17 +15,14 @@ after(async () => { await env.close(); });
 
 const CLOCK = '2026-11-10T14:00:00Z';
 const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-// The module's thirty days of history, loaded the way the example hospital will load it once the
-// core stock test is ready for it (see stores/commands.js, seedHistory).
-const loadHistory = (page) => page.evaluate(async () => {
-  const { rng } = await import('/app/core/generator.js');
-  const { seedHistory } = await import('/app/modules/stores/commands.js');
-  const core = window.ospeli.core; const gen = await core.getMeta('generator'); const endMs = Date.parse(gen.end);
-  if ((await core.events({ type: 'stores.order-step' })).length) return; // the example hospital already has it
-  const evs = seedHistory({ r: rng(4242), startMs: endMs - gen.days * 864e5, endMs, days: gen.days, entities: await core.listEntities() });
-  evs.sort((a, b) => a.t - b.t || (a.type < b.type ? -1 : a.type > b.type ? 1 : 0) || (a.subject < b.subject ? -1 : 1));
-  await core.appendEvents(evs.map((e) => ({ type: e.type, subject: e.subject, actorRole: e.actorRole, at: new Date(e.t).toISOString(), data: e.data ?? null })), 'system', 'stores history');
-});
+// Data as an older device holds it (no stores history, or no store at all), through export and import.
+const olderDevice = (page, what) => page.evaluate(async (w) => {
+  const core = window.ospeli.core;
+  const data = await core.exportData();
+  if (w === 'history') data.events = data.events.filter((e) => !e.type.startsWith('stock.') && !e.type.startsWith('stores.')).map((e, i) => ({ ...e, seq: i + 1 }));
+  if (w === 'store') data.entities = data.entities.filter((e) => e.type !== 'store');
+  await core.importData(data, 'coo');
+}, what);
 const cmd = (page, name, input, role) => page.evaluate(async ([n, i, r]) => {
   const { runCommand } = await import('/app/core/commands.js');
   return runCommand(window.ospeli.core, n, i, { type: 'human', role: r });
@@ -66,8 +63,7 @@ const SCREENS = [['storekeeper', 'requests'], ['storekeeper', 'receive'], ['stor
 for (const width of [360, 390, 1024, 1280]) {
   test(`every role and screen renders at ${width} px with no sideways scroll and no console error`, async () => {
     const { context, page, errors } = await openPage(env, { width, touch: width < 500, clock: CLOCK, path: '#/stores' });
-    await loadHistory(page);
-    await page.evaluate(() => { try { localStorage.setItem('ospeli-stores-ward', 'ward-a1'); } catch { /* none */ } });
+      await page.evaluate(() => { try { localStorage.setItem('ospeli-stores-ward', 'ward-a1'); } catch { /* none */ } });
     for (const [role, screen] of SCREENS) {
       await asRole(page, role, screen);
       const o = await noSideways(page);
@@ -80,7 +76,6 @@ for (const width of [360, 390, 1024, 1280]) {
 
 test('the storekeeper\'s first five minutes on a 390 px touch screen: issues the oldest request the store can fill, a second tap issues nothing more, and the measure changes', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
-  await loadHistory(page);
   // A storekeeper's phone: opening the app with no address opens the module, on the requests.
   await page.selectOption('#role-select', 'storekeeper');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'storekeeper');
@@ -119,7 +114,6 @@ test('the storekeeper\'s first five minutes on a 390 px touch screen: issues the
 
 test('a ward count under level raises the request with no extra step, and the ward sees it move to issued', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/stores' });
-  await loadHistory(page);
   // A ward with no request waiting, as a ward is after its last delivery.
   for (const q of (await cmd(page, 'ospeli_stock_requests', { placeId: 'ward-b1' }, 'ward-nurse')).requests) {
     await cmd(page, 'ospeli_stock_request_cancel', { requestId: q.id, reason: 'Supplied another way' }, 'ward-nurse');
@@ -159,7 +153,6 @@ test('a ward count under level raises the request with no extra step, and the wa
 
 test('the supply chain manager\'s first five minutes on a 390 px phone: sees what is short and what is stuck, and records an order step (#112)', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
-  await loadHistory(page);
   await page.selectOption('#role-select', 'supply-manager');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'supply-manager');
   await page.goto(env.appUrl);
@@ -194,7 +187,6 @@ test('the supply chain manager\'s first five minutes on a 390 px phone: sees wha
 
 test('the manager view at 1280 px: measures with their sources, the guide switch off and on, and an approval by the operations manager', async () => {
   const { context, page, errors } = await openPage(env, { width: 1280, clock: CLOCK, path: '#/stores' });
-  await loadHistory(page);
   await asRole(page, 'supply-manager', 'manage');
   assert.equal(await page.locator('[data-kpi]').count(), 4);
   assert.match(await page.locator('[data-test="planned"]').textContent(), /Inventory turns: Planned, not built/);
@@ -224,8 +216,16 @@ test('the manager view at 1280 px: measures with their sources, the guide switch
 
 test('a role with no rights sees no action button; with no stock history and with no store the screens say so honestly', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, touch: true, clock: CLOCK, path: '#/stores' });
-  // No stock history on this device yet (the example hospital as it is today).
+  for (const screen of ['manage', 'requests', 'orders', 'outs']) {
+    await asRole(page, 'estates-tech', screen);
+    assert.equal(await page.locator('.sto [data-cmd]').count(), 0, `${screen}: no action button for a role with no rights`);
+  }
+  await asRole(page, 'estates-tech', 'requests');
+  assert.match(await page.locator('[data-test="read-only"]').textContent(), /issued by Storekeeper/);
+  // A device whose example hospital was made before this module: no stock history.
+  await olderDevice(page, 'history');
   await asRole(page, 'supply-manager', 'manage');
+  await page.waitForSelector('[data-test="no-history"]');
   assert.match(await page.locator('[data-test="no-history"]').textContent(), /No supplies are held anywhere on this device yet/);
   await asRole(page, 'storekeeper', 'requests');
   await page.waitForSelector('[data-test="requests-empty"]');
@@ -233,20 +233,8 @@ test('a role with no rights sees no action button; with no stock history and wit
   await page.waitForSelector('[data-test="count-empty"]');
   await asRole(page, 'storekeeper', 'orders');
   await page.waitForSelector('[data-test="orders-empty"]');
-  await loadHistory(page);
-  for (const screen of ['manage', 'requests', 'orders', 'outs']) {
-    await asRole(page, 'estates-tech', screen);
-    assert.equal(await page.locator('.sto [data-cmd]').count(), 0, `${screen}: no action button for a role with no rights`);
-  }
-  await asRole(page, 'estates-tech', 'requests');
-  assert.match(await page.locator('[data-test="read-only"]').textContent(), /issued by Storekeeper/);
   // An older example hospital with no store.
-  await page.evaluate(async () => {
-    const core = window.ospeli.core;
-    const data = await core.exportData();
-    data.entities = data.entities.filter((e) => e.type !== 'store');
-    await core.importData(data, 'coo');
-  });
+  await olderDevice(page, 'store');
   await page.evaluate(() => { location.hash = '#/stores/receive'; });
   await page.reload();
   await page.waitForSelector('[data-test="no-store"]');

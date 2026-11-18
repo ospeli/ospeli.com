@@ -365,10 +365,7 @@ const RATE = { 'gloves-m': 1.2, 'gloves-l': 0.6, 'syringe-5': 0.35, 'syringe-10'
 const WARD_USE = [1.2, 1, 0.9, 1, 0.9, 0.7]; // how busy each example ward is, by its place in the list
 const ONLY_ON = { masks: [0, 3], 'suction-cath': [0, 2], electrodes: [0, 1, 3], 'urine-bag': [0, 1, 2, 3, 4] };
 
-// Not exported as `seed` yet: tests/unit/stock.test.mjs (core) checks exact balances on an example
-// hospital with no stock history, so the lead switches this on with that test (see the build report):
-//   export const seed = seedHistory;
-// Until then the module's own tests and screens load this history into the example hospital themselves.
+export const seed = seedHistory; // thirty days of ward supplies in the example hospital
 export function seedHistory({ r, startMs, endMs, entities }) {
   const store = entities.find((e) => e.type === 'store');
   const wards = entities.filter((e) => e.type === 'ward').map((e) => e.id);
