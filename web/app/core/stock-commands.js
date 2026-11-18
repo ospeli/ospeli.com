@@ -74,7 +74,19 @@ export function stockCommands(packs = []) {
   const stores = (c) => [...c.places.values()].filter((p) => p.type === 'store').sort((a, b) => (a.id < b.id ? -1 : 1));
   // A ward-limited agent sees its own wards; stores and departments are not wards and stay visible.
   const visible = (c, wards) => (placeId) => !wards || c.places.get(placeId)?.type !== 'ward' || wards.has(placeId);
-  const wardOf = (key) => async (core, input) => { const p = input[key] ? await core.getEntity(input[key]) : null; return p?.type === 'ward' ? p.id : null; };
+  // The wards a command names. Several keys (a transfer's two ends) give a list: the command layer checks each.
+  const wardOf = (key) => async (core, input) => {
+    const out = [];
+    for (const k of [].concat(key)) { const p = input[k] ? await core.getEntity(input[k]) : null; if (p?.type === 'ward') out.push(p.id); }
+    return Array.isArray(key) ? out : out[0] ?? null;
+  };
+  // A write that names a request or a stock-out is about the places that record names: the
+  // place that asked and the place that supplies; the place that ran out.
+  const wardOfRecord = (kind) => async (core, input) => {
+    const c = await ctx(core, input, null);
+    const r = kind === 'request' ? c.stock.requests.get(input.requestId) : c.stock.stockOuts.get(input.stockOutId);
+    return r ? [r.placeId, r.fromPlaceId].filter((id) => c.places.get(id)?.type === 'ward') : [];
+  };
 
   // ---- checks shared by a person's action, an agent's proposal and its acceptance ----
   function place(c, id, what) {
@@ -151,7 +163,7 @@ export function stockCommands(packs = []) {
     return {
       name, summary, kind: 'write', approval: true, ...(people ? { agents: false } : {}), roles: union(...verbs),
       input: { type: 'object', additionalProperties: false, required, properties: props },
-      output: WRITE_OUT(out), ...(target ? { target } : {}), ...(check ? { check } : {}), wardOf: wardOf(ward),
+      output: WRITE_OUT(out), ...(target ? { target } : {}), ...(check ? { check } : {}), wardOf: ward === 'request' || ward === 'stockOut' ? wardOfRecord(ward) : wardOf(ward),
       async precheck(core, input, { actor } = {}) { await verify(await ctx(core, input, actor?.role)); },
       async run(core, input, { actor }) {
         if (check) check(input);
@@ -209,12 +221,14 @@ export function stockCommands(packs = []) {
       nearExpiry: nearExpiry(h, c.now, NEAR_EXPIRY_DAYS, c.stock.offsetMinutes).length, daysLeft: daysOfStockLeft(h, c.now, { offsetMinutes: c.stock.offsetMinutes }),
       nothingUsableSince: zero ? new Date(zero[0]).toISOString() : null, openStockOutId: openStockOut(c.stock, h.itemId, h.placeId)?.id ?? null };
   };
-  const requestRow = (c, q) => ({
+  // `see` is the reader's view of places (an agent's wards). What the supplier holds is the
+  // supplier's stock: an agent that may not see that ward is not told it (18 Nov).
+  const requestRow = (c, q, see = () => true) => ({
     id: q.id, placeId: q.placeId, placeName: placeName(c, q.placeId), fromPlaceId: q.fromPlaceId, fromPlaceName: placeName(c, q.fromPlaceId),
     state: q.state, stateName: REQUEST_STATES[q.state], raisedAt: q.at, raisedByRole: q.byRole, raisedBy: q.raisedBy, issuedAt: q.issuedAt, cancelledAt: q.cancelledAt, cancelReason: q.cancelReason,
     waitHours: Math.round(((Date.parse(q.issuedAt || q.cancelledAt || c.now) - Date.parse(q.at)) / HOUR) * 10) / 10,
-    lines: q.lines.map((l) => { const it = c.stock.items.get(l.itemId); return { itemId: l.itemId, itemName: it.name, unit: it.unit, batched: it.batched, qty: l.qty, issued: l.issued, left: l.qty - l.issued, usableAtSupplier: usableOf(c.stock, l.itemId, q.fromPlaceId, c.now) }; }),
-    canIssueInFull: q.lines.every((l) => l.issued >= l.qty || (!c.stock.items.get(l.itemId).batched && usableOf(c.stock, l.itemId, q.fromPlaceId, c.now) >= l.qty - l.issued)),
+    lines: q.lines.map((l) => { const it = c.stock.items.get(l.itemId); return { itemId: l.itemId, itemName: it.name, unit: it.unit, batched: it.batched, qty: l.qty, issued: l.issued, left: l.qty - l.issued, usableAtSupplier: see(q.fromPlaceId) ? usableOf(c.stock, l.itemId, q.fromPlaceId, c.now) : null }; }),
+    canIssueInFull: !see(q.fromPlaceId) ? null : q.lines.every((l) => l.issued >= l.qty || (!c.stock.items.get(l.itemId).batched && usableOf(c.stock, l.itemId, q.fromPlaceId, c.now) >= l.qty - l.issued)),
   });
   const CATEGORY = { type: 'string', enum: catList.map((x) => x.id), description: `Only items of this category: ${catList.map((x) => x.id).join(', ')}. Leave out for every category.` };
   const COLD = { type: 'boolean', description: 'true: only cold-chain items. false: leave cold-chain items out. Leave out for both.' };
@@ -297,7 +311,7 @@ export function stockCommands(packs = []) {
         rows.sort((a, b) => (a.at < b.at ? -1 : 1));
         if (state !== 'waiting') rows.reverse();
         const cut = page(rows, input.limit, 50);
-        return { asOf: c.now, synthetic: (await core.getMeta('synthetic', false)) === true, total: cut.total, truncated: cut.truncated, requests: cut.items.map((q) => requestRow(c, q)) };
+        return { asOf: c.now, synthetic: (await core.getMeta('synthetic', false)) === true, total: cut.total, truncated: cut.truncated, requests: cut.items.map((q) => requestRow(c, q, see)) };
       },
       example: { input: {} },
     },
@@ -422,7 +436,7 @@ export function stockCommands(packs = []) {
     write({
       name: 'ospeli_stock_issue',
       summary: 'Issue stock against a request: it leaves the supplying place and arrives at the place that asked. Leave lines out to issue everything still owed in full; send lines to issue part, and the rest stays open. Refused above what was asked or above what the supplier has usable. An agent\'s call becomes a proposal for a person.',
-      verbs: ['issue'], required: ['requestId'], ward: 'none',
+      verbs: ['issue'], required: ['requestId'], ward: 'request',
       props: { requestId: REQUEST_ID,
         lines: LINES(1, {}, 'What is issued now, for a part issue or for batched items. Leave out to issue everything still owed.'),
         expectedState: { type: 'string', enum: ['open', 'part'], description: 'The state the caller last saw. If the request has changed since, the command is refused (conflict).' } },
@@ -467,7 +481,7 @@ export function stockCommands(packs = []) {
     write({
       name: 'ospeli_stock_request_cancel',
       summary: 'Cancel a request that is still waiting, with a reason from the list. What was already issued stays issued. An agent\'s call becomes a proposal for a person.',
-      verbs: ['request', 'count', 'issue'], required: ['requestId', 'reason'], ward: 'none',
+      verbs: ['request', 'count', 'issue'], required: ['requestId', 'reason'], ward: 'request',
       props: { requestId: REQUEST_ID, reason: { type: 'string', enum: REQUEST_CANCEL_REASONS, description: `Why it is cancelled: ${REQUEST_CANCEL_REASONS.join(', ')}.` },
         expectedState: { type: 'string', enum: ['open', 'part'], description: 'The state the caller last saw. If the request has changed since, the command is refused (conflict).' } },
       out: { requestId: { type: 'string' }, state: { type: 'string' } },
@@ -487,7 +501,8 @@ export function stockCommands(packs = []) {
       summary: 'Record stock arriving at a place from outside the site: a purchase delivered, a donation, or a transfer from another organisation. For a batched item give the batch and its expiry date. It records the receipt only: it approves no purchase and keeps no price or supplier. An agent\'s call becomes a proposal for a person.',
       linesWhat: 'What arrived.',
       extra: { source: { type: 'string', enum: RECEIVE_SOURCES, description: `Where it came from: ${RECEIVE_SOURCES.join(', ')}.` },
-        orderRef: { type: 'string', pattern: '^[a-z0-9][a-z0-9-]{0,39}$', maxLength: 40, description: 'Optional: the id of the order this delivery belongs to, from the module that tracks orders (an id, not text).' } },
+        // An id's shape only (letters, a dash, digits), so a phone or record number typed here is refused and never reaches the log or the trail.
+        orderRef: { type: 'string', pattern: '^[a-z]{2,12}-[0-9]{1,8}$', maxLength: 21, description: 'Optional: the id of the order this delivery belongs to, from the module that tracks orders, for example ord-00001 (an id, not text).' } },
       data: (input) => ({ source: input.source, orderRef: input.orderRef ?? null }),
       example: { input: { placeId: 'ward-a1', lines: [{ itemId: first.id, qty: 20 }], source: RECEIVE_SOURCES[0] } },
     }),
@@ -520,7 +535,7 @@ export function stockCommands(packs = []) {
     write({
       name: 'ospeli_stock_transfer',
       summary: 'Move stock from one place on the site to another in one step (between wards, between stores, out to a session and back): it leaves the first place and arrives at the second together, so it can never be half done. Refused above what is usable. An agent\'s call becomes a proposal for a person.',
-      verbs: ['transfer'], required: ['fromPlaceId', 'toPlaceId', 'lines'], ward: 'toPlaceId',
+      verbs: ['transfer'], required: ['fromPlaceId', 'toPlaceId', 'lines'], ward: ['fromPlaceId', 'toPlaceId'],
       props: { fromPlaceId: PLACE('Where the stock leaves.'), toPlaceId: PLACE('Where it arrives.'), lines: LINES(1, {}, 'What is moved.'), ref: REF, again: AGAIN },
       out: { transferId: { type: 'string', pattern: TRANSFER_ID_PATTERN }, lines: { type: 'integer' } },
       target: (input) => ({ id: input.fromPlaceId, word: 'place' }),
@@ -568,7 +583,7 @@ export function stockCommands(packs = []) {
     write({
       name: 'ospeli_stock_out_end',
       summary: 'Close a stock-out when the item is back, and say whether care was affected while it was out: yes or no, nothing clinical and nothing about any patient. An agent\'s call becomes a proposal for a person.',
-      verbs: ['count', 'issue', 'levels'], required: ['stockOutId', 'careAffected'], ward: 'none',
+      verbs: ['count', 'issue', 'levels'], required: ['stockOutId', 'careAffected'], ward: 'stockOut',
       props: { stockOutId: { type: 'string', pattern: STOCK_OUT_ID_PATTERN, maxLength: 20, description: 'A stock-out id from ospeli_stock_outs, for example so-00001.' },
         careAffected: { type: 'boolean', description: 'true: care was delayed or changed because the item was out. false: it was not. A yes or no only.' } },
       out: { stockOutId: { type: 'string' }, hours: { type: 'number' } },
@@ -577,6 +592,8 @@ export function stockCommands(packs = []) {
         const s = c.stock.stockOuts.get(c.input.stockOutId);
         if (!s) throw new CommandError('not-found', 'No stock-out with that id. ospeli_stock_outs with { "state": "open" } lists the open ones.');
         if (s.endedAt) throw new CommandError('conflict', 'This stock-out is already closed.');
+        // An end before the start is dropped when the log is read, so the command would say done and the stock-out would stay open.
+        if (c.now < s.startedAt) throw new CommandError('conflict', 'This device\'s clock is earlier than the time this stock-out started, so it cannot be closed from here. Check the date and time on this device.');
         allowed(c, c.stock.items.get(s.itemId), ['count', 'issue', 'levels'], 'close a stock-out of');
         return s;
       },

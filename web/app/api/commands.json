@@ -9571,9 +9571,9 @@
           },
           "orderRef": {
             "type": "string",
-            "pattern": "^[a-z0-9][a-z0-9-]{0,39}$",
-            "maxLength": 40,
-            "description": "Optional: the id of the order this delivery belongs to, from the module that tracks orders (an id, not text)."
+            "pattern": "^[a-z]{2,12}-[0-9]{1,8}$",
+            "maxLength": 21,
+            "description": "Optional: the id of the order this delivery belongs to, from the module that tracks orders, for example ord-00001 (an id, not text)."
           },
           "again": {
             "type": "boolean",

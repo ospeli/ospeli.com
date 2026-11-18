@@ -79,3 +79,7 @@ export const median = (xs) => {
   const m = Math.floor(s.length / 2);
   return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 };
+
+// A moment a caller typed, in the one form stored times use (UTC, milliseconds), so that
+// "13:00-04:00" and "17:00Z" compare as the same moment. Stored times are compared as text.
+export const sameMoment = (x) => { const t = typeof x === 'string' ? Date.parse(x) : NaN; return Number.isNaN(t) ? (x || null) : new Date(t).toISOString(); };

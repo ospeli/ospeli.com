@@ -1633,6 +1633,21 @@ function normaliseActor(actor) {
 // trail: the same agent, command and reason within a minute is counted, and the count is
 // written on the next entry for that agent, command and reason.
 const REFUSAL_WINDOW_MS = 60_000;
+// Fixed words for each reason a call is turned away. The message the caller is given can hold
+// what it typed (the name it claimed, a ward id), so the trail never stores that message.
+const REFUSAL_WHY = {
+  'people-only': 'This command is for people only.',
+  'dial-off': 'Agent access is off for this hospital.',
+  'not-listed': 'The agent is not on this site\'s list.',
+  ended: 'The agent passed its end date.',
+  'other-role': 'The agent is listed for a different role.',
+  'role-cannot': 'The role cannot run this command.',
+  actor: 'The call did not say who was calling in a form the site accepts.',
+  'personal-detail': 'The text looked like it held a personal detail.',
+  'ward-off': 'Agent access is off for a ward the call named.',
+  'ward-not-listed': 'The agent is not allowed on a ward the call named.',
+  'queue-full': 'The agent already has the most proposals one agent may have waiting.',
+};
 export async function auditRefusal(core, name, input, actor, err) {
   const cmd = commandByName(name);
   const known = !!cmd;
@@ -1645,7 +1660,8 @@ export async function auditRefusal(core, name, input, actor, err) {
     command, code: err.code, reason: err.reason || err.code,
     why: err.code === 'invalid-input' ? 'The input did not match what the command accepts.' : err.code === 'unknown-command' ? 'There is no such command.'
       : err.reason === 'target' ? (err.code === 'not-found' ? 'The bed, work order, map, task or record it named does not exist.' : 'The bed, patient, work order, map, task or record was not in a state that allows this.')
-        : err.reason === 'duplicate' ? 'The same agent already has a proposal waiting for the same bed, work order, task or record.' : err.message,
+        : err.reason === 'duplicate' ? 'The same agent already has a proposal waiting for the same bed, work order, task or record.'
+          : REFUSAL_WHY[err.reason] || (err.reason ? 'The call was refused.' : err.message),
     claimedRole: role === 'system' ? '(unknown)' : role,
     fields: input && typeof input === 'object' ? Object.keys(input).filter((k) => ownFields.has(k)).slice(0, 12) : [],
     ...(known && name !== cmd.name ? { calledAs: cmd.deprecatedName } : {}),
@@ -1732,6 +1748,9 @@ async function runChecked(core, name, input, actor, opts = {}) {
     if (!cmd.roles.includes(who.role)) refuse('forbidden', `${roleById(who.role).name} cannot run ${name}.`, { roles: cmd.roles });
     const errs = validate(cmd.input, input ?? {});
     if (errs.length) refuse('invalid-input', errs.join('; '), { errors: errs });
+    // The typed-text check runs here for people as it does for agents, so a module whose run
+    // forgets to repeat it still cannot save a personal detail (security sweep, 17 Nov).
+    if (cmd.check) cmd.check(input);
     if (opts.dryRun) return { status: 'dry-run', command: name, would: cmd.kind === 'read' ? 'run as a read' : 'run now and change data' };
     return cmd.run(core, input ?? {}, { actor: who, wards: null });
   }
@@ -1760,10 +1779,19 @@ async function runChecked(core, name, input, actor, opts = {}) {
   // The ward gate applies to real wards. A ward id that does not exist is not echoed back in a
   // refusal (nothing an agent typed reaches the trail): the command answers not-found instead,
   // with the ids of the wards this agent may see.
+  // A command may name more than one ward (a transfer's source and destination, a job's start
+  // and end): wardOf then answers a list, and every real ward on it must be open to this agent.
+  // Gating one end only let an agent learn about, or propose changes to, the other (18 Nov).
   const claimed = cmd.wardOf ? await cmd.wardOf(core, input) : null;
-  const ward = claimed && (await core.getEntity(claimed))?.type === 'ward' ? claimed : null;
-  if (ward && access.wards[ward] !== true) refuse('agents-off', `Agent access is off for ward ${ward}.`, null, 'ward-off');
-  if (ward && !listed.wards.includes(ward)) refuse('forbidden', `Agent ${who.agent} is not allowed on ward ${ward}.`, null, 'ward-not-listed');
+  const wardsNamed = [];
+  for (const id of new Set((Array.isArray(claimed) ? claimed : [claimed]).filter((x) => typeof x === 'string' && x))) {
+    if ((await core.getEntity(id))?.type === 'ward') wardsNamed.push(id);
+  }
+  for (const w of wardsNamed) {
+    if (access.wards[w] !== true) refuse('agents-off', `Agent access is off for ward ${w}.`, null, 'ward-off');
+    if (!listed.wards.includes(w)) refuse('forbidden', `Agent ${who.agent} is not allowed on ward ${w}.`, null, 'ward-not-listed');
+  }
+  const ward = wardsNamed[0] ?? null;
   const allowedWards = new Set(listed.wards.filter((id) => access.wards[id] === true));
   who.agent = listed.name; // the name as a person wrote it on the list
   // Issue #72: a queue worth reading. Before a write is queued (or a dry run says it would be):

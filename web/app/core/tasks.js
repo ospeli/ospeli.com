@@ -234,7 +234,8 @@ export function completionStats(all, { since = null, until, pick = () => true })
   const done = all.filter((t) => t.state === 'completed' && t.completedAt < until && (since == null || t.completedAt >= since) && pick(t));
   return {
     n: done.length,
-    medianMinutes: median(done.map((t) => (ms(t.completedAt) - ms(t.requestedAt)) / 60000)),
-    medianWaitMinutes: median(done.filter((t) => t.startedAt).map((t) => (ms(t.startedAt) - ms(t.requestedAt)) / 60000)),
+    // A device clock set back can put an end before its start: a time is never below zero (as taskTimes).
+    medianMinutes: median(done.map((t) => Math.max(0, ms(t.completedAt) - ms(t.requestedAt)) / 60000)),
+    medianWaitMinutes: median(done.filter((t) => t.startedAt).map((t) => Math.max(0, ms(t.startedAt) - ms(t.requestedAt)) / 60000)),
   };
 }

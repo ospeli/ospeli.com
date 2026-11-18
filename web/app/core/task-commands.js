@@ -7,7 +7,7 @@
 
 import {
   CommandError, ALL_ROLES, ID, TIME, SYNTHETIC, LIMIT, TOTAL, TRUNCATED, FORMAT, page, idsHint, WRITE_STATUS, PROPOSAL_OUT, EVENT_SEQS,
-  placeOrNull, wardOfPlace, isSynthetic,
+  placeOrNull, wardOfPlace, isSynthetic, sameMoment,
 } from './kit.js';
 import { roleById, currentWords } from './model.js';
 import {
@@ -217,10 +217,11 @@ export function taskCommands(packs = []) {
           throw new CommandError('not-found', `No place with that id. ${can.length ? `For a ward use one of: ${idsHint(can)}.` : 'No ward is open to this caller.'}`, { wards: can.slice(0, 50) });
         }
         const teamOf = (t) => kinds.get(t.kind)?.team;
+        const since = sameMoment(input.since);
         const here = (t) => !input.locationId || t.locationId === input.locationId || wardOf(t.locationId, map) === input.locationId || t.toLocationId === input.locationId;
         // An agent sees the tasks of the wards it is allowed on, and no others.
         const mine = tasks.all.filter((t) => (!allowed || allowed.has(wardOf(t.locationId, map)))
-          && here(t) && (!input.team || teamOf(t) === input.team) && (!input.kind || t.kind === input.kind) && (!input.since || t.requestedAt >= input.since));
+          && here(t) && (!input.team || teamOf(t) === input.team) && (!input.kind || t.kind === input.kind) && (!since || t.requestedAt >= since));
         const open = mine.filter((t) => t.state === 'requested' || t.state === 'started');
         const state = input.state || 'open';
         const newest = (key) => (a, b) => ((a[key] || '') < (b[key] || '') ? 1 : -1);
@@ -288,7 +289,8 @@ export function taskCommands(packs = []) {
           priority: { type: 'string', enum: Object.keys(TASK_PRIORITIES), description: 'routine (default) or urgent. Urgent goes to the front of the team\'s queue.' },
           detail: { type: 'string', maxLength: 60, description: 'Pick one from the kind\'s details list (ospeli_tasks_kinds). No free text, so no personal details.' } } },
         output: { type: 'object', required: ['status'], properties: { status: WRITE_STATUS, taskId: TASK_ID, state: STATE, team: { type: 'string' }, events: EVENT_SEQS, proposal: PROPOSAL_OUT } },
-        wardOf: (core, input) => wardOfPlace(core, input.locationId),
+        // Both ends: a job that goes into a ward is that ward's business too.
+        wardOf: async (core, input) => [await wardOfPlace(core, input.locationId), input.toLocationId ? await wardOfPlace(core, input.toLocationId) : null],
         async precheck(core, input, { actor } = {}) { await verifyRequest(core, input, actor?.role); },
         async run(core, input, { actor }) {
           let id = null;

@@ -9,7 +9,7 @@
 
 import {
   CommandError, ALL_ROLES, ID, TIME, SYNTHETIC, LIMIT, TOTAL, TRUNCATED, FORMAT, page, WRITE_STATUS, PROPOSAL_OUT, EVENT_SEQS,
-  placeOrNull, wardOfPlace, isSynthetic, DAY, HOUR, MIN,
+  placeOrNull, wardOfPlace, isSynthetic, sameMoment, DAY, HOUR, MIN,
 } from '../../core/kit.js';
 import { currentWords } from '../../core/model.js';
 import { deriveTasks, taskTimes, BED_CLEAN } from '../../core/tasks.js';
@@ -236,7 +236,8 @@ export const COMMANDS = [
           failedTwice: !!prev && prev.score < PASS_MARK && last.score < PASS_MARK });
       }
       areas.sort((a, b) => (a.locationName < b.locationName ? -1 : 1));
-      const pick = all.filter((a) => (!input.locationId || a.locationId === input.locationId) && (!input.riskCategory || a.riskCategory === input.riskCategory) && (!input.since || a.at >= input.since)).reverse();
+      const since = sameMoment(input.since);
+      const pick = all.filter((a) => (!input.locationId || a.locationId === input.locationId) && (!input.riskCategory || a.riskCategory === input.riskCategory) && (!since || a.at >= since)).reverse();
       const cut = page(pick, input.limit, 20);
       return {
         asOf: core.now(), synthetic: await synth(core), total: cut.total, truncated: cut.truncated,
