@@ -9080,22 +9080,26 @@
                 "itemId": {
                   "type": "string",
                   "pattern": "^[a-z][a-z0-9-]{1,30}$",
-                  "maxLength": 31
+                  "maxLength": 31,
+                  "description": "The item, by its id from ospeli_stock_items or ospeli_stock_levels, for example \"gloves-m\"."
                 },
                 "qty": {
                   "type": "integer",
                   "minimum": 0,
-                  "maximum": 100000
+                  "maximum": 100000,
+                  "description": "How many, as a whole number of the item's own unit (its \"unit\" in ospeli_stock_items or ospeli_stock_levels): 3 means 3 boxes of 50, not 3 gloves. From 0 to 100000."
                 },
                 "batch": {
                   "type": "string",
                   "pattern": "^[A-Z0-9][A-Z0-9-]{0,19}$",
-                  "maxLength": 20
+                  "maxLength": 20,
+                  "description": "The batch or lot printed on the pack, for example \"LOT123\". Needed for an item tracked by batch; leave it out for any other item."
                 },
                 "expiresOn": {
                   "type": "string",
                   "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
-                  "maxLength": 10
+                  "maxLength": 10,
+                  "description": "The expiry date printed on the pack, as YYYY-MM-DD, for example \"2027-06-30\". Only for an item tracked by batch."
                 }
               }
             },
@@ -9230,12 +9234,14 @@
                 "itemId": {
                   "type": "string",
                   "pattern": "^[a-z][a-z0-9-]{1,30}$",
-                  "maxLength": 31
+                  "maxLength": 31,
+                  "description": "The item, by its id from ospeli_stock_items or ospeli_stock_levels, for example \"gloves-m\"."
                 },
                 "qty": {
                   "type": "integer",
                   "minimum": 1,
-                  "maximum": 100000
+                  "maximum": 100000,
+                  "description": "How many, as a whole number of the item's own unit (its \"unit\" in ospeli_stock_items or ospeli_stock_levels): 3 means 3 boxes of 50, not 3 gloves. From 1 to 100000."
                 }
               }
             },
@@ -9331,17 +9337,20 @@
                 "itemId": {
                   "type": "string",
                   "pattern": "^[a-z][a-z0-9-]{1,30}$",
-                  "maxLength": 31
+                  "maxLength": 31,
+                  "description": "The item, by its id from ospeli_stock_items or ospeli_stock_levels, for example \"gloves-m\"."
                 },
                 "qty": {
                   "type": "integer",
                   "minimum": 1,
-                  "maximum": 100000
+                  "maximum": 100000,
+                  "description": "How many, as a whole number of the item's own unit (its \"unit\" in ospeli_stock_items or ospeli_stock_levels): 3 means 3 boxes of 50, not 3 gloves. From 1 to 100000."
                 },
                 "batch": {
                   "type": "string",
                   "pattern": "^[A-Z0-9][A-Z0-9-]{0,19}$",
-                  "maxLength": 20
+                  "maxLength": 20,
+                  "description": "The batch or lot printed on the pack, for example \"LOT123\". Needed for an item tracked by batch; leave it out for any other item."
                 }
               }
             },
@@ -9526,22 +9535,26 @@
                 "itemId": {
                   "type": "string",
                   "pattern": "^[a-z][a-z0-9-]{1,30}$",
-                  "maxLength": 31
+                  "maxLength": 31,
+                  "description": "The item, by its id from ospeli_stock_items or ospeli_stock_levels, for example \"gloves-m\"."
                 },
                 "qty": {
                   "type": "integer",
                   "minimum": 1,
-                  "maximum": 100000
+                  "maximum": 100000,
+                  "description": "How many, as a whole number of the item's own unit (its \"unit\" in ospeli_stock_items or ospeli_stock_levels): 3 means 3 boxes of 50, not 3 gloves. From 1 to 100000."
                 },
                 "batch": {
                   "type": "string",
                   "pattern": "^[A-Z0-9][A-Z0-9-]{0,19}$",
-                  "maxLength": 20
+                  "maxLength": 20,
+                  "description": "The batch or lot printed on the pack, for example \"LOT123\". Needed for an item tracked by batch; leave it out for any other item."
                 },
                 "expiresOn": {
                   "type": "string",
                   "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
-                  "maxLength": 10
+                  "maxLength": 10,
+                  "description": "The expiry date printed on the pack, as YYYY-MM-DD, for example \"2027-06-30\". Only for an item tracked by batch."
                 }
               }
             },
@@ -9657,17 +9670,20 @@
                 "itemId": {
                   "type": "string",
                   "pattern": "^[a-z][a-z0-9-]{1,30}$",
-                  "maxLength": 31
+                  "maxLength": 31,
+                  "description": "The item, by its id from ospeli_stock_items or ospeli_stock_levels, for example \"gloves-m\"."
                 },
                 "qty": {
                   "type": "integer",
                   "minimum": 1,
-                  "maximum": 100000
+                  "maximum": 100000,
+                  "description": "How many, as a whole number of the item's own unit (its \"unit\" in ospeli_stock_items or ospeli_stock_levels): 3 means 3 boxes of 50, not 3 gloves. From 1 to 100000."
                 },
                 "batch": {
                   "type": "string",
                   "pattern": "^[A-Z0-9][A-Z0-9-]{0,19}$",
-                  "maxLength": 20
+                  "maxLength": 20,
+                  "description": "The batch or lot printed on the pack, for example \"LOT123\". Needed for an item tracked by batch; leave it out for any other item."
                 }
               }
             },
@@ -9785,17 +9801,20 @@
                 "itemId": {
                   "type": "string",
                   "pattern": "^[a-z][a-z0-9-]{1,30}$",
-                  "maxLength": 31
+                  "maxLength": 31,
+                  "description": "The item, by its id from ospeli_stock_items or ospeli_stock_levels, for example \"gloves-m\"."
                 },
                 "qty": {
                   "type": "integer",
                   "minimum": 1,
-                  "maximum": 100000
+                  "maximum": 100000,
+                  "description": "How many, as a whole number of the item's own unit (its \"unit\" in ospeli_stock_items or ospeli_stock_levels): 3 means 3 boxes of 50, not 3 gloves. From 1 to 100000."
                 },
                 "batch": {
                   "type": "string",
                   "pattern": "^[A-Z0-9][A-Z0-9-]{0,19}$",
-                  "maxLength": 20
+                  "maxLength": 20,
+                  "description": "The batch or lot printed on the pack, for example \"LOT123\". Needed for an item tracked by batch; leave it out for any other item."
                 }
               }
             },
@@ -9905,17 +9924,20 @@
                 "itemId": {
                   "type": "string",
                   "pattern": "^[a-z][a-z0-9-]{1,30}$",
-                  "maxLength": 31
+                  "maxLength": 31,
+                  "description": "The item, by its id from ospeli_stock_items or ospeli_stock_levels, for example \"gloves-m\"."
                 },
                 "qty": {
                   "type": "integer",
                   "minimum": 1,
-                  "maximum": 100000
+                  "maximum": 100000,
+                  "description": "How many, as a whole number of the item's own unit (its \"unit\" in ospeli_stock_items or ospeli_stock_levels): 3 means 3 boxes of 50, not 3 gloves. From 1 to 100000."
                 },
                 "batch": {
                   "type": "string",
                   "pattern": "^[A-Z0-9][A-Z0-9-]{0,19}$",
-                  "maxLength": 20
+                  "maxLength": 20,
+                  "description": "The batch or lot printed on the pack, for example \"LOT123\". Needed for an item tracked by batch; leave it out for any other item."
                 }
               }
             },
@@ -10022,17 +10044,20 @@
                 "itemId": {
                   "type": "string",
                   "pattern": "^[a-z][a-z0-9-]{1,30}$",
-                  "maxLength": 31
+                  "maxLength": 31,
+                  "description": "The item, by its id from ospeli_stock_items or ospeli_stock_levels, for example \"gloves-m\"."
                 },
                 "qty": {
                   "type": "integer",
                   "minimum": 1,
-                  "maximum": 100000
+                  "maximum": 100000,
+                  "description": "How many, as a whole number of the item's own unit (its \"unit\" in ospeli_stock_items or ospeli_stock_levels): 3 means 3 boxes of 50, not 3 gloves. From 1 to 100000."
                 },
                 "batch": {
                   "type": "string",
                   "pattern": "^[A-Z0-9][A-Z0-9-]{0,19}$",
-                  "maxLength": 20
+                  "maxLength": 20,
+                  "description": "The batch or lot printed on the pack, for example \"LOT123\". Needed for an item tracked by batch; leave it out for any other item."
                 }
               }
             },
@@ -10050,12 +10075,14 @@
               "module": {
                 "type": "string",
                 "pattern": "^[a-z][a-z0-9-]{1,30}$",
-                "maxLength": 31
+                "maxLength": 31,
+                "description": "The module the record belongs to, in lower case, for example \"support\" or \"engineering\"."
               },
               "id": {
                 "type": "string",
                 "pattern": "^[a-z0-9][a-z0-9-]*$",
-                "maxLength": 64
+                "maxLength": 64,
+                "description": "The record's id in that module, for example a task or work-order id. An id only, never a name or free text."
               }
             }
           },

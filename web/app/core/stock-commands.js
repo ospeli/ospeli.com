@@ -30,14 +30,20 @@ const BATCH = { type: 'string', pattern: BATCH_PATTERN, maxLength: 20 };
 const DATE = { type: 'string', pattern: DATE_PATTERN, maxLength: 10 };
 const lineSchema = (min, { batch = true, date = false } = {}) => ({
   type: 'object', additionalProperties: false, required: ['itemId', 'qty'],
-  properties: { itemId: ITEM, qty: QTY(min), ...(batch ? { batch: BATCH } : {}), ...(date ? { expiresOn: DATE } : {}) },
+  properties: {
+    itemId: { ...ITEM, description: 'The item, by its id from ospeli_stock_items or ospeli_stock_levels, for example "gloves-m".' },
+    qty: { ...QTY(min), description: `How many, as a whole number of the item's own unit (its "unit" in ospeli_stock_items or ospeli_stock_levels): 3 means 3 boxes of 50, not 3 gloves. From ${min} to ${MAX_QTY}.` },
+    ...(batch ? { batch: { ...BATCH, description: 'The batch or lot printed on the pack, for example "LOT123". Needed for an item tracked by batch; leave it out for any other item.' } } : {}),
+    ...(date ? { expiresOn: { ...DATE, description: 'The expiry date printed on the pack, as YYYY-MM-DD, for example "2027-06-30". Only for an item tracked by batch.' } } : {}),
+  },
 });
 const LINES = (min, opts, what) => ({ type: 'array', minItems: 1, maxItems: MAX_LINES, items: lineSchema(min, opts),
   description: `${what} Each line is { itemId, qty${opts?.batch === false ? '' : ', batch'}${opts?.date ? ', expiresOn' : ''} }: qty is a whole number in the item's own unit${opts?.batch === false ? '' : '; batch (the product lot printed on the pack) is needed for a batched item and left out for any other'}${opts?.date ? '; expiresOn is the expiry date as YYYY-MM-DD' : ''}. ospeli_stock_items lists the items.` });
 const PLACE = (what) => ({ ...ID, description: `${what} A ward, department or store id, for example ward-a1 (ospeli_stock_items lists the stores; ospeli_stock_levels shows what each place holds).` });
 const AGAIN = { type: 'boolean', description: 'Send true only when the command said the same movement was saved a moment ago and this really is a second one.' };
 const REF = { type: 'object', additionalProperties: false, required: ['module', 'id'], description: 'Optional: the record in another module this movement belongs to, as { module, id } (ids only, no text).',
-  properties: { module: { type: 'string', pattern: '^[a-z][a-z0-9-]{1,30}$', maxLength: 31 }, id: ID } };
+  properties: { module: { type: 'string', pattern: '^[a-z][a-z0-9-]{1,30}$', maxLength: 31, description: 'The module the record belongs to, in lower case, for example "support" or "engineering".' },
+    id: { ...ID, description: 'The record\'s id in that module, for example a task or work-order id. An id only, never a name or free text.' } } };
 const REQUEST_ID = { type: 'string', pattern: REQUEST_ID_PATTERN, maxLength: 20, description: 'A request id from ospeli_stock_requests, for example req-00001.' };
 const roleNames = (ids) => ids.map((r) => roleById(r)?.name || r).join(', ');
 const cleanLine = (l, extra = {}) => ({ itemId: l.itemId, qty: l.qty, ...(l.batch ? { batch: l.batch } : {}), ...(extra.expiresOn || l.expiresOn ? { expiresOn: extra.expiresOn || l.expiresOn } : {}) });

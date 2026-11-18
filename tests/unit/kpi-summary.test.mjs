@@ -73,3 +73,24 @@ test('#105 journey: a COO\'s agent reads all seven tiles in one call, short by d
   const p = commandByName('ospeli_kpi_summary').input.properties;
   assert.deepEqual(Object.keys(p).sort(), ['days', 'format']);
 });
+
+test('#119: inputs inside arrays and nested objects have a description too', () => {
+  const missing = [];
+  const walk = (schema, path) => {
+    const props = schema?.properties || {};
+    for (const [k, v] of Object.entries(props)) {
+      const p = `${path}.${k}`;
+      if (!v.description || v.description.length < 15) missing.push(p);
+      if (v.type === 'object' || v.properties) walk(v, p);
+      if (v.items) walk(v.items, `${p}[]`);
+    }
+  };
+  for (const c of listCommands()) {
+    const cmd = commandByName(c.name ?? c);
+    for (const [k, v] of Object.entries(cmd.input?.properties || {})) {
+      if (v.properties) walk(v, `${cmd.name}.${k}`);
+      if (v.items) walk(v.items, `${cmd.name}.${k}[]`);
+    }
+  }
+  assert.deepEqual(missing, []);
+});
