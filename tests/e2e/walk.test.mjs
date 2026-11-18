@@ -92,7 +92,7 @@ test('first-time user at 360 px: walk three steps and see the timed map in 15 ta
   const text = await page.textContent('[data-test="process-body"]');
   for (const [name, role] of steps) { assert.ok(text.includes(name)); assert.ok(text.includes(role)); }
   assert.doesNotMatch(text, /null|undefined|NaN/);
-  assert.match(await page.textContent('[data-test="guide"]'), /Longest wait on this walk: \d+ s before/);
+  assert.doesNotMatch(await page.textContent('[data-test="guide"]'), /Longest wait on this walk/, 'waits of a second or two are under the 30 s floor');
   assert.equal(await page.locator('[data-cmd="ospeli_maps_try_suggestion"]').count(), 0, 'no change is offered on one walk');
   assert.ok(await noSideways(page) <= 0);
   // What the screen shows is what the tap times give.
@@ -171,10 +171,15 @@ test('a reload in the middle loses nothing; undo, name it later, work stopped, a
   assert.match(await page.textContent('[data-test="guide"]'), /1 step has no name or role yet/);
   // Naming it on the map keeps its measured time; changing a time by hand says so.
   await page.click('[data-test="step-list"] li >> nth=1 >> [aria-label="Change step 2"]');
+  // Issue #114: the "Add a step" form has the same fields, so wait for the change form itself;
+  // otherwise the fields can be filled into the add form just before the redraw replaces it.
+  await page.waitForSelector('[data-test="step-form"] [data-cmd="ospeli_maps_step_update"]');
   await page.waitForSelector('#st-name');
   await page.fill('#st-name', 'Medicines collected');
   await page.fill('#st-role', 'Pharmacy');
   await page.fill('#st-wait', '4');
+  // If the form was redrawn under the test, say so here instead of timing out below (#114).
+  assert.deepEqual([await page.inputValue('#st-name'), await page.inputValue('#st-wait')], ['Medicines collected', '4'], 'the change form kept what was typed');
   await page.click('[data-cmd="ospeli_maps_step_update"]');
   await page.waitForFunction(() => /time changed by hand/.test(document.querySelector('[data-test="step-list"]')?.textContent || ''));
   assert.match(await page.textContent('[data-test="step-list"]'), /Waits 4 min/);
@@ -236,10 +241,13 @@ test('a half-answered step is kept when the next step is timed, and "Name it lat
   await page.waitForSelector('[data-test="walk"]');
   const state = (want) => page.waitForFunction((w) => document.querySelector('[data-test="walk"]')?.dataset.state === w, want);
   await page.tap('[data-test="walk-main"]'); await state('step');
+  await page.waitForTimeout(1100); // past the 1 s double-tap guard
   await page.tap('[data-test="walk-main"]'); await page.waitForSelector('[data-test="walk-sheet"]');
   // Only the first answer is tapped, then the next step is timed straight away.
   await page.tap('[data-chip="name"]:text-is("Seen by a nurse")');
+  await page.waitForTimeout(1100); // a start under a second after "Step done" is taken as a double tap
   await page.tap('[data-test="walk-main"]'); await state('step');
+  await page.waitForTimeout(1100); // past the 1 s double-tap guard
   await page.tap('[data-test="walk-main"]'); await state('waiting');
   await page.waitForSelector('[data-test="walk-sheet"]');
   let w = (await stored(page))[0];
