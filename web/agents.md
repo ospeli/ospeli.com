@@ -1,6 +1,6 @@
 # Ospeli for AI agents
 
-Ospeli is a healthcare operations platform. Built today: beds, engineering work orders, process maps and the numbers that go with them. Other areas, such as emergency department flow, are previews on fictional data. The area pages under /areas/ list commands only for Built areas, copied from `app/api/commands.json`; a preview area has no commands yet. The bed board is one module. This guide says how an AI agent working for a member of staff may use Ospeli, and what it may not do.
+Ospeli is a healthcare operations platform. Built today, in the app: beds (`app/#/beds`), engineering work orders (`app/#/engineering`), process maps with a timed walk of one visit (`app/#/process`), and first versions of stores and supplies (`app/#/stores`), cleaning and transport (`app/#/support`) and patient feedback (`app/#/feedback`), with the numbers that go with them. Other areas, such as emergency department flow, are previews on fictional data. The area pages under /areas/ list commands only for Built areas, copied from `app/api/commands.json`; a preview area has no commands yet. The bed board is one module. This guide says how an AI agent working for a member of staff may use Ospeli, and what it may not do.
 
 The public demo at https://ospeli.com/app/ holds **synthetic data only** (the fictional Example General Hospital). Never put real patient, staff or hospital data into it.
 

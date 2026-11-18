@@ -11,6 +11,10 @@ const built = {
   'beds-and-patient-flow': ['ospeli_beds_'],
   'medical-equipment': ['ospeli_workorders_', 'ospeli_assets_'],
   'process-mapping': ['ospeli_maps_', 'ospeli_walks_'],
+  // Built in first versions since 17 and 18 Nov (issue #118).
+  'support-services': ['ospeli_support_', 'ospeli_tasks_'],
+  'supply-chain-stores': ['ospeli_stores_', 'ospeli_stock_'],
+  'patient-experience': ['ospeli_experience_'],
 };
 
 let env;
@@ -46,7 +50,7 @@ for (const width of [360, 390, 1280]) {
   });
 
   test(`preview area pages name no command at ${width}px (issue #45)`, async () => {
-    for (const slug of ['emergency-department-flow', 'critical-care-capacity', 'patient-experience']) {
+    for (const slug of ['emergency-department-flow', 'critical-care-capacity', 'theatres-and-procedures']) {
       const r = await open(slug, width);
       assert.deepEqual(r.names, [], `${slug} names no command`);
       assert.match(r.text, /defined and tested when this area is built/);

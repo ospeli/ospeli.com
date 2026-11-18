@@ -21,7 +21,7 @@
 <link rel="manifest" href="site.webmanifest">
 <link rel="alternate" type="text/plain" href="llms.txt" title="Ospeli for language models">
 <script type="application/ld+json">
-{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Ospeli","url":"https://ospeli.com/","applicationCategory":"BusinessApplication","applicationSubCategory":"Healthcare operations","operatingSystem":"Any (web browser; works offline)","description":"Open-core, offline-first healthcare operations platform. Built today: beds, engineering work orders, process maps and a KPI library on one event log. More areas, such as emergency department flow, are previews on fictional data. People decide, Ospeli suggests; no clinical decision features. The public demo uses synthetic data only.","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD","description":"Live demo with synthetic data"},"potentialAction":{"@type":"UseAction","target":"https://ospeli.com/app/","name":"Try the live demo"},"subjectOf":[{"@type":"WebPage","url":"https://ospeli.com/agents.md","name":"Ospeli for AI agents"},{"@type":"Dataset","name":"Ospeli command API","url":"https://ospeli.com/app/api/commands.json","description":"JSON schemas for every command in the Ospeli app.","encodingFormat":"application/json"}]}
+{"@context":"https://schema.org","@type":"SoftwareApplication","name":"Ospeli","url":"https://ospeli.com/","applicationCategory":"BusinessApplication","applicationSubCategory":"Healthcare operations","operatingSystem":"Any (web browser; works offline)","description":"Open-core, offline-first healthcare operations platform. Built today: beds, engineering work orders, process maps with a timed walk, first versions of stores and supplies, cleaning and transport, and patient feedback, and a KPI library on one event log. More areas, such as emergency department flow, are previews on fictional data. People decide, Ospeli suggests; no clinical decision features. The public demo uses synthetic data only.","isAccessibleForFree":true,"offers":{"@type":"Offer","price":"0","priceCurrency":"USD","description":"Live demo with synthetic data"},"potentialAction":{"@type":"UseAction","target":"https://ospeli.com/app/","name":"Try the live demo"},"subjectOf":[{"@type":"WebPage","url":"https://ospeli.com/agents.md","name":"Ospeli for AI agents"},{"@type":"Dataset","name":"Ospeli command API","url":"https://ospeli.com/app/api/commands.json","description":"JSON schemas for every command in the Ospeli app.","encodingFormat":"application/json"}]}
 </script>
 <style>body{margin:0}/* Desktop: the demo is the main action while Ospeli is in preview; the pilot is the second (founder, 9 Nov). Phones already do this. */
 @media (min-width: 641px) {
@@ -34,6 +34,8 @@
 }
 /* Roadmap: show each month's headline and detail on every screen size. */
 .timeline.road .short { display: block; font-family: var(--f-display); font-weight: 800; font-size: 1.05rem; color: var(--ink); margin: 2px 0 4px; }
+.timeline.road .road-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.timeline.road .road-links a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 999px; font-weight: 700; }
 .timeline.road p { display: block; margin: 0; }
 .timeline.road li:first-child::before { background: var(--sea); }
 .timeline.road a { color: var(--ink); font-weight: 700; }
@@ -190,6 +192,7 @@ nav.links a.btn-primary { color: #FFFFFF; }
   .pv-wrap > summary.acc-sum:focus:not(:focus-visible) { outline: none; }
   .pv-list a:not(:last-child) { justify-content: space-between; gap: 10px; }
   .pv-list a:not(:last-child)::after { content: "Preview"; flex: none; font-size: 15px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; background: var(--wash); color: var(--ink); }
+  .pv-list a.b::after { content: "Built"; background: #0B2F4E; color: #fff; }
   .pv-list a { display: flex; align-items: center; min-height: 46px; padding: 8px 16px; border-radius: 12px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font-weight: 700; font-size: 1rem; text-decoration: none; }
 }
 .modules { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
@@ -462,7 +465,7 @@ details.acc > summary::-webkit-details-marker { display: none; }
       <div class="hero-copy">
         <span class="eyebrow">Healthcare operations</span>
         <h1>Run the hospital, not the paperwork.</h1>
-        <p class="lead lead-long">Ospeli is one operations system for hospitals and clinics. Built today: beds, equipment maintenance and process maps, with previews of emergency department flow and more. It is designed to capture what happens, so your team can fix the flow and see what changed.</p>
+        <p class="lead lead-long">Ospeli is one operations system for hospitals and clinics. Built today: beds, equipment maintenance, process maps with a timed walk, stores, cleaning and transport, and patient feedback, with previews of emergency department flow and more. It is designed to capture what happens, so your team can fix the flow and see what changed.</p>
         <p class="lead lead-short">One system for beds, maintenance and process maps, with previews of more areas. It captures what happens, then helps your team fix the flow.</p>
         <p class="tagline">Map processes. Optimise flow. Improve care.</p>
         <div class="actions">
@@ -514,7 +517,7 @@ details.acc > summary::-webkit-details-marker { display: none; }
       <div class="head">
         <span class="eyebrow">Modules</span>
         <h2 id="mod-h">One system for the whole operation.</h2>
-        <p>Built today: the bed board, equipment maintenance, process maps and the KPI library, on one core. Designed on the same core: 26 more areas, each with a preview.</p>
+        <p>Built today, in first versions: the bed board, equipment maintenance, process maps with a timed walk, stores and supplies, cleaning and transport, patient feedback and the KPI library, on one core. Designed on the same core: 23 more areas, each with a preview.</p>
       </div>
       <details class="acc roles-wrap" open><summary class="acc-sum">Find your area by role</summary>
       <nav class="roles" aria-label="Find your area by role">
@@ -535,27 +538,27 @@ details.acc > summary::-webkit-details-marker { display: none; }
       <div class="modules">
         <div class="mod"><span class="st built">Built</span><h3>Bed board</h3><p>Bed states by ward, the waiting list, find a bed with undo, and today's flow numbers.</p><p class="short" hidden>Beds, the waiting list and today's flow.</p><a href="app/#/beds">Open the app</a></div>
         <div class="mod"><span class="st built">Built</span><h3>Medical equipment and maintenance</h3><p>Fault reports from a link on each asset, work-order queues and repeat-fault flags. Photos and step guides for simple fixes are planned.</p><p class="short" hidden>Fault reports and work-order queues.</p><a href="app/#/engineering">Open the app</a></div>
-        <div class="mod"><span class="st built">Built</span><h3>Process mapping</h3><p>Map a process step by step, see where the time goes, and test a change with the built-in guide before trying it on a ward.</p><p class="short" hidden>Map a process; see where the time goes.</p><a href="app/#/process">Open the app</a></div>
+        <div class="mod"><span class="st built">Built</span><h3>Process mapping</h3><p>Walk one visit on a phone and get a timed map of it, or map a process step by step; see where the time went and test a change with the built-in guide.</p><p class="short" hidden>Map a process; see where the time goes.</p><a href="app/#/process">Open the app</a></div>
         <div class="mod pv"><span class="st live">Preview</span><h3>Emergency department flow</h3><p>Arrival to bed on one timeline, pressure levels and action cards when the department is under strain.</p><a href="demo/ed-flow/">Open the demo</a></div>
-        <div class="mod pv"><span class="st live">Preview</span><h3>Cleaning and patient transport</h3><p>Phone task lists for transport assistants and cleaners, three-tap requests from the ward, and a helpdesk view by team.</p><a href="demo/support-tasks/">Open the demo</a></div>
+        <div class="mod pv"><span class="st built">Built</span><h3>Cleaning and transport</h3><p>A first version: cleans, moves and deliveries as tracked tasks for each team, asked for from the ward in a few taps.</p><a href="app/#/support">Open the app</a></div>
         <div class="mod pv"><span class="st live">Preview</span><h3>Incidents, risk and actions</h3><p>Report a problem in under a minute; track every action from meetings, audits and incidents in one list.</p><a href="demo/actions/">Open the demo</a></div>
-        <div class="mod pv"><span class="st live">Preview</span><h3>Stores and stock</h3><p>Report an item low or out from the ward; see stock-outs, days of stock and orders waiting for approval.</p><a href="demo/stores-stock/">Open the demo</a></div>
+        <div class="mod pv"><span class="st built">Built</span><h3>Stores and supplies</h3><p>A first version: count ward stock against its top-up level, raise and issue requests, and track orders and stock-outs.</p><a href="app/#/stores">Open the app</a></div>
         <div class="mod pv"><span class="st live">Preview</span><h3>Daily operations report</h3><p>What needs a decision today, run charts, a bottleneck finder and the huddle list, for operations leads.</p><a href="demo/daily-report/">Open the demo</a></div>
         <div class="mod pv"><span class="st live">Preview</span><h3>Theatres and procedure lists</h3><p>Case times on one timeline, session use, cancellations and tomorrow's readiness.</p><a href="demo/theatres/">Open the demo</a></div>
         <div class="mod pv"><span class="st live">Preview</span><h3>Outpatients and clinics</h3><p>Reception on a phone, the waiting list and free slots, and clinic use for the manager.</p><a href="demo/clinics/">Open the demo</a></div>
-        <div class="mod pv"><span class="st live">Preview</span><h3>Facilities and utilities</h3><p>Report a building fault by QR code; job queues by trade, planned maintenance and plant status.</p><a href="demo/facilities/">Open the demo</a></div>
+        <div class="mod pv"><span class="st built">Built</span><h3>Patient feedback</h3><p>A first version: complaints, compliments and feedback cards, with replies and themes.</p><a href="app/#/feedback">Open the app</a></div>
         <div class="mod pv"><span class="st live">Preview</span><h3>And 18 more</h3><p>Every area now has a preview: staffing, transport, diagnostics, pharmacy, critical care, maternity, community, governance, IT, finance and more.</p><a href="demo/">See all demos</a></div>
       </div>
-      <details class="acc pv-wrap" hidden><summary class="acc-sum">8 previews and 18 more areas</summary>
+      <details class="acc pv-wrap" hidden><summary class="acc-sum">3 more built, and 23 previews</summary>
       <nav class="pv-list" aria-label="Previews">
+        <a class="b" href="app/#/support">Cleaning and transport</a>
+        <a class="b" href="app/#/stores">Stores and supplies</a>
+        <a class="b" href="app/#/feedback">Patient feedback</a>
         <a href="demo/ed-flow/">Emergency department flow</a>
-        <a href="demo/support-tasks/">Cleaning and patient transport</a>
         <a href="demo/actions/">Incidents, risk and actions</a>
-        <a href="demo/stores-stock/">Stores and stock</a>
         <a href="demo/daily-report/">Daily operations report</a>
         <a href="demo/theatres/">Theatres and procedure lists</a>
         <a href="demo/clinics/">Outpatients and clinics</a>
-        <a href="demo/facilities/">Facilities and utilities</a>
         <a href="demo/">18 more previews: see all demos</a>
       </nav>
       </details>
@@ -567,14 +570,14 @@ details.acc > summary::-webkit-details-marker { display: none; }
       <div class="head">
         <span class="eyebrow">Roadmap</span>
         <h2 id="road-h">What we're building, month by month.</h2>
-        <p>Pilot-ready by March 2027: outpatient bookings and waiting times, a patient journey walked and timed on a phone, patient feedback and a short welcome setup, for small clinics. A preview of every area now; each is built on the core in the order pilots ask. Months show when a first version is planned. Plans can change.</p>
+        <p>Pilot-ready by March 2027: outpatient bookings and waiting times and a short welcome setup, beside the timed walk and patient feedback already in the app, for small clinics. A preview of every area now; each is built on the core in the order pilots ask. Months show when a first version is planned. Plans can change.</p>
       </div>
       <details class="acc road-more">
         <summary class="acc-sum">Roadmap: clinic pilots planned for March 2027</summary>
       <ol class="timeline road">
-        <li><span class="wk">November 2026 · now</span><span class="short">Built: beds, maintenance and process maps</span><p>Built and in the app: the <a href="app/#/beds">bed board</a>, <a href="app/#/engineering">medical equipment and maintenance</a>, and <a href="app/#/process">process mapping</a> with a built-in guide. Early previews of more areas are in the demos. Underneath: the shared core that works offline, keeps an audit trail and lets AI assistants read and propose, never decide.</p></li>
-        <li><span class="wk">December 2026</span><span class="short">Clinics first, on a small site server</span><p>Planned for small clinics: outpatient bookings and waiting times, walk a patient journey on a phone to time each step, and patient feedback. A short welcome that sets Ospeli up for your role in a few questions. In development: the app syncing to a small server a site runs itself. A first version is in the repository now: a phone connected to it can show the site's data and answer a suggestion. Changes made with no connection are not built yet.</p></li>
-        <li><span class="wk">January 2027</span><span class="short">Patient flow and clinical services</span><p>First versions planned: cleaning and patient transport, stores, emergency department, theatres, diagnostics, pharmacy operations, maternity, critical care and long-stay beds. Playbooks: daily flow report, bottleneck finder, redesign proposal. First clinic pilot conversations.</p></li>
+        <li><span class="wk">November 2026 · now</span><span class="short">Built: six modules in the app</span><p>Built and in the app: the bed board, medical equipment and maintenance, process mapping with a built-in guide and a timed walk of one visit on a phone, and first versions of stores and supplies, cleaning and transport and patient feedback. Early previews of more areas are in the demos. Underneath: the shared core that works offline, keeps an audit trail and lets AI assistants read and propose, never decide.</p><p class="road-links"><a href="app/#/beds">Bed board</a><a href="app/#/engineering">Medical equipment and maintenance</a><a href="app/#/process">Process mapping</a><a href="app/#/stores">Stores and supplies</a><a href="app/#/support">Cleaning and transport</a><a href="app/#/feedback">Patient feedback</a></p></li>
+        <li><span class="wk">December 2026</span><span class="short">Clinics first, on a small site server</span><p>Planned for small clinics: outpatient bookings and waiting times. In development: repeat walks of the same visit, to compare them. A short welcome that sets Ospeli up for your role in a few questions. In development: the app syncing to a small server a site runs itself. A first version is in the repository now: a phone connected to it can show the site's data and answer a suggestion. Changes made with no connection are not built yet.</p></li>
+        <li><span class="wk">January 2027</span><span class="short">Patient flow and clinical services</span><p>First versions planned: emergency department, theatres, diagnostics, pharmacy operations, maternity, critical care and long-stay beds. Playbooks: daily flow report, bottleneck finder, redesign proposal. First clinic pilot conversations.</p></li>
         <li><span class="wk">February 2027</span><span class="short">People, quality, finance and digital</span><p>First versions planned: staffing, incidents and actions, infection prevention operations, governance, records, planning, budgets, IT and reporting.</p></li>
         <li><span class="wk">March 2027</span><span class="short">Resilience, community and launch</span><p>First versions planned: emergency preparedness, community care, public health operations, facilities and patient transport. Open-source core you can install on your own server. First pilots, starting with small and multidisciplinary clinics.</p></li>
       </ol>

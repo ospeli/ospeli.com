@@ -269,7 +269,8 @@ for (const width of [360, 390]) {
         dots: [...sec.querySelectorAll('.dots, .swipe-hint')].filter(shown).length,
         text: sec.innerText,
         labels: cards.map(label),
-        built: cards.filter((c) => label(c) === 'Built').map((c) => {
+        builtInList: cards.filter((c) => label(c) === 'Built' && !shown(c)).map((c) => c.querySelector('a').getAttribute('href')),
+        built: cards.filter((c) => label(c) === 'Built' && shown(c)).map((c) => {
           const r = c.getBoundingClientRect(); const a = c.querySelector('a'); const ar = a.getBoundingClientRect();
           const txt = [...c.querySelectorAll('h3, p, a, .st')].filter(shown);
           return { name: c.querySelector('h3').textContent.trim(), width: r.width, left: r.left, right: r.right, top: r.top, bottom: r.bottom, linkH: ar.height, linkShown: shown(a) && ar.left >= 0 && ar.right <= innerWidth, href: a.getAttribute('href'), minFs: Math.min(...txt.map((e) => parseFloat(getComputedStyle(e).fontSize))), lines: txt.filter((e) => e.tagName === 'P').length };
@@ -286,10 +287,12 @@ for (const width of [360, 390]) {
     assert.deepEqual(before.scrollers, [], 'no sideways-scrolling row');
     assert.equal(before.dots, 0, 'no dots and no swipe hint');
     assert.doesNotMatch(before.text, /swipe/i);
-    // The labels are unchanged: 3 Built, 9 Preview.
-    assert.equal(before.labels.filter((l) => l === 'Built').length, 3);
-    assert.equal(before.labels.filter((l) => l === 'Preview').length, 9);
+    // Six Built (three newer ones since 17 and 18 Nov, issue #118), six Preview. On a phone the first
+    // three are rows; the newer three open from the one closed list, tagged Built, to keep the page short.
+    assert.equal(before.labels.filter((l) => l === 'Built').length, 6);
+    assert.equal(before.labels.filter((l) => l === 'Preview').length, 6);
     assert.deepEqual(before.built.map((b) => b.name), ['Bed board', 'Medical equipment and maintenance', 'Process mapping']);
+    assert.deepEqual(before.builtInList, ['app/#/support', 'app/#/stores', 'app/#/feedback']);
     for (const b of before.built) {
       assert.ok(b.width >= width - 48 && b.left >= 0 && b.right <= width, `${b.name}: a full-width row on screen (${Math.round(b.width)}px)`);
       assert.ok(b.linkShown && b.linkH >= 44, `${b.name}: link is ${Math.round(b.linkH)}px tall`);
@@ -302,7 +305,7 @@ for (const width of [360, 390]) {
 
     const sum = page.locator('#modules details.pv-wrap > summary');
     assert.equal(await page.locator('#modules details.pv-wrap').evaluate((d) => d.open), false, 'closed at first, to keep the page short');
-    assert.equal(await sum.innerText(), `${before.namedPreviews} previews and ${before.more} more areas`, 'the counts come from the cards');
+    assert.equal(await sum.innerText(), `${before.builtInList.length} more built, and ${before.namedPreviews + Number(before.more)} previews`, 'the counts come from the cards');
     assert.ok((await sum.boundingBox()).height >= 44, 'the row is a 44 px tap target');
     await sum.tap();
     const m = await page.evaluate(() => {
@@ -318,8 +321,8 @@ for (const width of [360, 390]) {
       };
     });
     assert.equal(m.open, true);
-    assert.equal(m.links.length, before.previewHrefs.length, 'one link for each preview card');
-    assert.deepEqual(m.links.map((l) => l.href), before.previewHrefs, 'the links go where the cards go');
+    assert.equal(m.links.length, before.builtInList.length + before.previewHrefs.length, 'one link for each built card not shown as a row and each preview card');
+    assert.deepEqual(m.links.map((l) => l.href), [...before.builtInList, ...before.previewHrefs], 'the links go where the cards go');
     assert.ok(m.navScroll <= 0 && m.pageScroll <= 0, `sideways scroll: list ${m.navScroll}px, page ${m.pageScroll}px`);
     const bad = m.links.filter((l) => !l.inside || l.cut || l.h < 44 || l.fs < 15);
     assert.deepEqual(bad, [], 'every link is fully on screen, not cut, at least 44 px tall and 15 px text');
@@ -467,6 +470,9 @@ for (const width of [360, 1280]) {
       ['Bed board', 'app/#/beds', 'Open the app'],
       ['Medical equipment and maintenance', 'app/#/engineering', 'Open the app'],
       ['Process mapping', 'app/#/process', 'Open the app'],
+      ['Cleaning and transport', 'app/#/support', 'Open the app'],
+      ['Stores and supplies', 'app/#/stores', 'Open the app'],
+      ['Patient feedback', 'app/#/feedback', 'Open the app'],
     ]);
     const beds = rows[0].text;
     assert.doesNotMatch(beds, /declin/i, 'the built bed board has no decline step');
