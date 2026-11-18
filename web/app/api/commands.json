@@ -12503,6 +12503,657 @@
           "on": false
         }
       }
+    },
+    {
+      "name": "ospeli_stores_overview",
+      "summary": "Stores and supplies at a glance, in one call: the four measures with their definitions and sources (stock-out rate on tracer items, request wait, order cycle time, fill rate), how many items are under their top-up level, requests waiting, open orders and stock-outs, reminders sent, and the guide's suggestions with their reasons and basis (empty while the guide is off). Inventory turns is listed as planned, with no value. Counts items, requests and orders, never people. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 90,
+            "description": "The period for the measures: the last this many days. Default 30."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: the values without their definitions. detailed (default): each value with its definition, source and the value for each area."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "period",
+          "hasStore",
+          "hasHistory",
+          "counts",
+          "kpis",
+          "planned",
+          "guide"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "period": {
+            "type": "object"
+          },
+          "hasStore": {
+            "type": "boolean",
+            "description": "False on a device whose hospital has no store set up: nothing can be issued or received."
+          },
+          "hasHistory": {
+            "type": "boolean",
+            "description": "False when no supplies are held anywhere yet (no level set, no movement)."
+          },
+          "stores": {
+            "type": "array",
+            "description": "The stores, with ids."
+          },
+          "counts": {
+            "type": "object",
+            "description": "underLevel, areasShort, requestsWaiting, oldestWaitHours, ordersOpen, longestAtStepDays, stockOutsOpen, notDeclared (items with a level and nothing usable, with no stock-out declared)."
+          },
+          "reminders": {
+            "type": "array",
+            "description": "Reminders sent for open orders at the step they wait at: { orderId, step, waitingFor, roles, at, byRole }."
+          },
+          "kpis": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "unit",
+                "value"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "null when nothing was counted in the period."
+                },
+                "numerator": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "denominator": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "n": {
+                  "type": "integer",
+                  "description": "How many holdings, requests or orders the value is from."
+                },
+                "open": {
+                  "type": "integer",
+                  "description": "Requests or orders not finished yet, shown beside the value and never dropped."
+                },
+                "longestOpen": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "The longest of those so far, in the measure's own unit."
+                },
+                "byArea": {
+                  "type": "array",
+                  "description": "For the stock-out rate: the value for each area."
+                },
+                "cancelled": {
+                  "type": "integer"
+                },
+                "target": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "targetText": {
+                  "type": "string"
+                },
+                "definition": {
+                  "type": "string"
+                },
+                "counts": {
+                  "type": "string"
+                },
+                "outOf": {
+                  "type": "string"
+                },
+                "leavesOut": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "planned": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "status"
+              ]
+            }
+          },
+          "guide": {
+            "type": "object",
+            "required": [
+              "on",
+              "rules",
+              "suggestions"
+            ],
+            "properties": {
+              "on": {
+                "type": "boolean"
+              },
+              "rules": {
+                "type": "array"
+              },
+              "suggestions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "rule",
+                    "id",
+                    "text",
+                    "why",
+                    "basis"
+                  ],
+                  "properties": {
+                    "rule": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "why": {
+                      "type": "string"
+                    },
+                    "basis": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "The command a person may run to follow the suggestion, with its input filled in (for an agent, a proposal). null: advice only."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "days": 7,
+          "format": "short"
+        }
+      }
+    },
+    {
+      "name": "ospeli_stores_orders",
+      "summary": "The order tracker: each order with its items and quantities, its steps (requested, approved, ordered, delivered, received) with the date and the days spent at each, what it is waiting for and which roles hold that step, and what has been received against it. Open orders come first, the longest at one step first. No prices or suppliers are kept. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "received",
+              "cancelled",
+              "all"
+            ],
+            "description": "open (default): not received or cancelled yet. received, cancelled or all: newest first."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: each order without its steps. detailed (default): each order with its steps, its last reminder and the steps that can be recorded next."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "description": "At most this many orders. Default 50, 200 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "orders",
+          "steps",
+          "total",
+          "truncated"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          },
+          "steps": {
+            "type": "array",
+            "description": "The steps in order, who records each, and the usual longest wait at each (example settings, not standards)."
+          },
+          "orders": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "state",
+                "stateName",
+                "requestedAt",
+                "lines",
+                "daysAtStep"
+              ]
+            }
+          },
+          "cancelReasons": {
+            "type": "array",
+            "description": "The reasons to pick from when an order is cancelled."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "state": "open",
+          "limit": 10
+        }
+      }
+    },
+    {
+      "name": "ospeli_stores_order_step",
+      "summary": "Record the next purchasing step of an order: requested (opens an order: items and quantities, no price or supplier), approved, ordered, delivered, or cancelled with a reason from the list. Steps go in order; \"received\" is recorded by receiving the delivery into stock with ospeli_stock_receive and orderRef. People approve purchases: an agent's approval is refused, and any other step from an agent becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "supply-manager",
+        "storekeeper",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "step"
+        ],
+        "properties": {
+          "step": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "approved",
+              "ordered",
+              "delivered",
+              "cancelled"
+            ],
+            "description": "The step to record: requested, approved, ordered, delivered, cancelled. Who records each: requested by Supply chain manager or Storekeeper; approved by Operations manager or COO; ordered by Supply chain manager; delivered by Storekeeper or Supply chain manager; cancelled by Supply chain manager or Operations manager."
+          },
+          "orderId": {
+            "type": "string",
+            "pattern": "^ord-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "The order, for every step after requested, for example ord-00001 (ospeli_stores_orders lists them)."
+          },
+          "expectedStep": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "approved",
+              "ordered",
+              "delivered",
+              "received"
+            ],
+            "description": "The step the caller last saw the order at. If it has moved on since, the command is refused (conflict)."
+          },
+          "lines": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 50,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "itemId",
+                "qty"
+              ],
+              "properties": {
+                "itemId": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]{1,30}$",
+                  "maxLength": 31,
+                  "description": "A supplies item id from ospeli_stock_items, for example gloves-m."
+                },
+                "qty": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100000,
+                  "description": "How many to order, in the item's own unit (for example boxes of 100)."
+                }
+              }
+            },
+            "description": "For step requested only: what is ordered, each line { itemId, qty } once."
+          },
+          "placeId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "For step requested only: the store the order is for. Leave out for the site's first store."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "No longer needed",
+              "Ordered another way",
+              "Asked for by mistake",
+              "Other"
+            ],
+            "description": "For step cancelled only: why, one of No longer needed, Ordered another way, Asked for by mistake, Other."
+          },
+          "again": {
+            "type": "boolean",
+            "description": "Send true only when the command said the same order was requested a moment ago and this really is a second one."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          },
+          "orderId": {
+            "type": "string",
+            "pattern": "^ord-[0-9]{5,}$"
+          },
+          "step": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "step": "requested",
+          "lines": [
+            {
+              "itemId": "gloves-m",
+              "qty": 20
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "ospeli_stores_order_remind",
+      "summary": "Send a reminder about an order that waits at one step, to the roles that hold that step: it shows on their stores page and on the order. At most one a day for one order at one step. The guide suggests it when an order has waited longer than usual (an example setting); a person sends it. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "supply-manager",
+        "storekeeper"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "orderId",
+          "expectedStep"
+        ],
+        "properties": {
+          "orderId": {
+            "type": "string",
+            "pattern": "^ord-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An order id from ospeli_stores_orders, for example ord-00001."
+          },
+          "expectedStep": {
+            "type": "string",
+            "enum": [
+              "requested",
+              "approved",
+              "ordered",
+              "delivered"
+            ],
+            "description": "The step the order waits at, as the caller saw it. If it has moved on, nothing is sent (conflict)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          },
+          "orderId": {
+            "type": "string"
+          },
+          "step": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "description": "The roles the reminder is for."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "orderId": "ord-00001",
+          "expectedStep": "requested"
+        },
+        "needs": "An open order at that step, with no reminder sent in the last day. ord-00001 is an example id: ospeli_stores_orders lists the open orders, and ospeli_stores_order_step with step \"requested\" opens one."
+      }
+    },
+    {
+      "name": "ospeli_stores_guide_set",
+      "summary": "Switch the stores guide on or off for this site. The guide is three fixed rules: a top-up level that use has outgrown, an order waiting at one step longer than usual, and a transfer from an area with far more than its level to one that is short. They suggest; a person decides. With it off everything else works the same. People only.",
+      "kind": "write",
+      "roles": [
+        "supply-manager",
+        "ops-manager",
+        "coo"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "on"
+        ],
+        "properties": {
+          "on": {
+            "type": "boolean",
+            "description": "true: show the guide's suggestions. false: none."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          },
+          "on": {
+            "type": "boolean"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "on": false
+        }
+      }
     }
   ]
 }

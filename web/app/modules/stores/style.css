@@ -1,1 +1,122 @@
-/* Stores and supplies: every rule starts with .mod-stores (skeleton; the builder writes this file). */
+/* Stores and supplies. Every rule starts with .mod-stores. Shell colours only (brand kit v3.1).
+   Phone first for the ward nurse and the storekeeper: text 15 px or more, every control at least
+   44 px tall, the count's save button always in reach at the bottom of the screen. */
+.mod-stores.sto { font-size: 1rem; min-width: 0; }
+.mod-stores .meta, .mod-stores .chip, .mod-stores .chip-btn, .mod-stores .stat span, .mod-stores .btn-small, .mod-stores label, .mod-stores .label { font-size: .9375rem; }
+.mod-stores .page-head { margin-bottom: 8px; }
+.mod-stores p { overflow-wrap: anywhere; }
+
+/* screens: a row of links, one per screen this role uses */
+.mod-stores .sto-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; }
+.mod-stores .sto-tabs a { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 14px; border-radius: 999px; border: 1.5px solid var(--line-strong);
+  background: var(--surface); color: var(--navy); text-decoration: none; font-weight: 800; font-size: .9375rem; }
+.mod-stores .sto-tabs a[aria-current="page"] { background: var(--navy); border-color: var(--navy); color: #fff; }
+
+/* fields, pick lists and the stepper */
+.mod-stores .field { display: grid; gap: 4px; min-width: 0; margin: 0 0 10px; }
+.mod-stores .field label, .mod-stores .field .label { font-weight: 800; }
+.mod-stores select, .mod-stores input[type="text"] { font: inherit; font-size: 1rem; min-height: 44px; padding: 6px 10px; border: 1.5px solid var(--line-strong); border-radius: 10px;
+  background: var(--surface); color: var(--ink); max-width: 100%; min-width: 0; box-sizing: border-box; }
+.mod-stores .field select, .mod-stores .field input[type="text"] { width: 100%; }
+.mod-stores .sto-stepper { display: inline-flex; align-items: stretch; gap: 0; flex: none; }
+.mod-stores .sto-step { font: inherit; font-size: 1.35rem; font-weight: 800; min-width: 48px; min-height: 48px; border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--navy); cursor: pointer; }
+.mod-stores .sto-step:first-child { border-radius: 10px 0 0 10px; }
+.mod-stores .sto-step:last-child { border-radius: 0 10px 10px 0; }
+.mod-stores .sto-num { font: inherit; font-size: 1.15rem; font-weight: 800; width: 64px; min-height: 48px; text-align: center; border: 1.5px solid var(--line-strong); border-left: 0; border-right: 0;
+  border-radius: 0; background: var(--surface); color: var(--ink); -moz-appearance: textfield; appearance: textfield; box-sizing: border-box; }
+.mod-stores .sto-num::-webkit-outer-spin-button, .mod-stores .sto-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.mod-stores .sto-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.mod-stores .sto-choice { min-height: 48px; font-size: 1rem; }
+.mod-stores .sto-check { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+.mod-stores .sto-check input { width: 24px; height: 24px; }
+
+/* lines of items: counting, issuing part, receiving, ordering */
+.mod-stores .sto-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mod-stores .sto-lines > li { display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--line-strong); border-radius: 10px; padding: 8px 10px; min-width: 0; }
+.mod-stores .sto-lines > li.is-counted { border-left-color: var(--sea); }
+.mod-stores .sto-lines > li.is-under { border-left-color: var(--mango); background: var(--mango-tint); }
+.mod-stores .sto-lines > li.is-moved { border-left-color: var(--coral); }
+.mod-stores .sto-line-head { display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; min-width: 0; }
+.mod-stores .sto-line-head b { font-size: 1.0625rem; }
+.mod-stores .sto-line-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mod-stores .sto-marker { font-size: .9375rem; font-weight: 700; color: var(--ink-soft); }
+.mod-stores .sto-marker:empty { display: none; }
+.mod-stores li.is-under .sto-marker { color: #5C3B00; }
+.mod-stores li.is-moved .sto-marker { color: #8A2412; }
+.mod-stores .sto-hint { margin: 6px 0 8px; color: var(--ink-soft); font-size: .9375rem; }
+.mod-stores .sto-status { margin: 6px 0; font-weight: 700; }
+.mod-stores .sto-savebar { position: sticky; bottom: 0; z-index: 2; padding: 10px 0 12px; background: linear-gradient(to bottom, rgba(246, 241, 231, 0), var(--sand) 30%); }
+.mod-stores .sto-save { margin: 0; }
+.mod-stores .sto-result { border-left: 5px solid var(--mango); margin: 8px 0; }
+.mod-stores .sto-result.is-ok { border-left-color: var(--sea); }
+.mod-stores .sto-result p { margin: 0 0 4px; }
+.mod-stores .sto-empty { font-weight: 700; }
+.mod-stores .sto-plain { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mod-stores .sto-plain > li { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; min-width: 0; overflow-wrap: anywhere; }
+.mod-stores .sto-plain > li.is-zero { border-left: 6px solid var(--coral); }
+.mod-stores .sto-plain p { margin: 0 0 4px; }
+.mod-stores .sto-mini { margin: 4px 0 6px; padding-left: 18px; display: grid; gap: 2px; font-size: .9375rem; }
+.mod-stores .sto-mini li.is-short { color: #8A2412; font-weight: 700; }
+.mod-stores details > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 800; color: var(--sea-ink); }
+.mod-stores .chip.sto-state { background: #E6F3EF; color: #0B4A3A; }
+.mod-stores .chip.sto-state.is-open, .mod-stores .chip.sto-state.is-requested { background: var(--mango-tint); color: #5C3B00; }
+.mod-stores .chip.sto-state.is-cancelled { background: #EEE; color: var(--ink-soft); }
+.mod-stores .sto-fact { margin: 0; font-weight: 700; color: #5C3B00; background: var(--mango-tint); border-radius: 8px; padding: 4px 8px; }
+
+/* requests and issues */
+.mod-stores .sto-counts { margin: 0 0 8px; font-size: 1.05rem; }
+.mod-stores .sto-req-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.mod-stores .sto-req { display: grid; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.mod-stores .sto-req.is-first { border: 1.5px solid var(--navy); border-left: 8px solid var(--sea); }
+.mod-stores .sto-req-head p { margin: 0; }
+.mod-stores .sto-req-place b { font-size: 1.2rem; }
+.mod-stores .sto-wait { font-weight: 700; }
+.mod-stores .sto-issue { width: 100%; }
+.mod-stores .sto-more > summary { font-size: .9375rem; }
+.mod-stores .sto-part { display: grid; gap: 8px; }
+.mod-stores .sto-measure { margin-top: 14px; }
+
+/* orders */
+.mod-stores .sto-order-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.mod-stores .sto-order { display: grid; gap: 6px; background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.mod-stores .sto-order.is-late { border-left-color: var(--mango); }
+.mod-stores .sto-order-head p { margin: 0; }
+.mod-stores .chip.sto-late { background: var(--mango-tint); color: #5C3B00; margin-left: 4px; }
+.mod-stores .sto-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 6px; }
+.mod-stores .sto-steps li { border: 1px dashed var(--line-strong); border-radius: 8px; padding: 4px 8px; font-size: .9375rem; color: var(--ink-soft); }
+.mod-stores .sto-steps li.is-done { border-style: solid; border-color: var(--seafoam); color: var(--ink); }
+.mod-stores .sto-steps li.is-now { border: 2px solid var(--mango); color: var(--ink); }
+.mod-stores .sto-acts { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mod-stores .btn.sto-approve { background: var(--navy); border-color: var(--navy); }
+.mod-stores .sto-new { margin-bottom: 10px; }
+.mod-stores .sto-form { display: grid; gap: 8px; min-width: 0; }
+
+/* stock-outs */
+.mod-stores .sto-out { border-left: 6px solid var(--coral); }
+.mod-stores .sto-q { margin: 4px 0; font-size: .9375rem; }
+
+/* supplies overview */
+.mod-stores .sto-stats { margin: 0 0 12px; }
+.mod-stores .sto-stats .stat b { font-size: 1.5rem; }
+.mod-stores .sto-cols { display: grid; gap: 0 18px; grid-template-columns: minmax(0, 1fr); }
+.mod-stores .sto-guide { border-left: 5px solid var(--seafoam); margin: 12px 0; }
+.mod-stores .sto-guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mod-stores .sto-guide-head h2 { margin: 0; }
+.mod-stores .sto-switch[aria-pressed="false"] { border-style: dashed; color: var(--ink-soft); }
+.mod-stores .sto-sugg { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.mod-stores .sto-sugg li { border: 1px solid var(--line); border-left: 4px solid var(--mango); border-radius: 10px; padding: 10px 12px; overflow-wrap: anywhere; }
+.mod-stores .sto-sugg p { margin: 0 0 4px; }
+.mod-stores .sto-def p { margin: 0 0 6px; font-size: .9375rem; color: var(--ink-soft); }
+.mod-stores .sto-kpis { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+.mod-stores .sto-kpi p { margin: 0 0 4px; }
+.mod-stores .sto-kpi-name { font-weight: 800; }
+.mod-stores .sto-kpi-value { font-size: 1.7rem; font-weight: 800; line-height: 1.1; }
+.mod-stores .sto-planned { margin: 10px 0; padding-left: 18px; }
+.mod-stores .sto-tool { margin: 0 0 10px; }
+.mod-stores .notice { margin: 10px 0; }
+@media (min-width: 1000px) {
+  .mod-stores .sto-cols { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+}
+/* For a moment after an issue the next request's button cannot be tapped: it looks greyed. */
+.mod-stores .btn.sto-issue:disabled { background: #E4E4E4; border-color: #B8B8B8; color: #4A5968; border-style: dashed; cursor: default; }
+.mod-stores a.sto-link { display: inline-flex; align-items: center; min-height: 44px; }
