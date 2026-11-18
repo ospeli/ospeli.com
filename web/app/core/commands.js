@@ -26,7 +26,7 @@ import {
   EXAMPLES as MAP_EXAMPLES, VERSIONS as MAP_VERSIONS, MAX_STEPS, MAX_MINUTES, newMap, analyse, suggest, applyChange, personalDetailIn, personNameIn, possibleNameIn, nameQuestion, NAME_ADVICE,
 } from './processmap.js';
 import {
-  MAX_WALK_STEPS, WALK_STEP_CHIPS, WALK_ROLE_CHIPS, newWalk, walkState, sinceAt, stepStart, stepDone, nameLast, undoLast, walkSteps, walkTotals,
+  MAX_WALK_STEPS, WALK_STEP_CHIPS, WALK_ROLE_CHIPS, newWalk, walkState, sinceAt, stepStart, stepDone, isDoubleTap, clockMoved, nameLast, undoLast, walkSteps, walkTotals,
   mapStepsFromWalk, stepsInSeconds, dropStaleSeconds, suggestWalk,
 } from './walk.js';
 
@@ -927,7 +927,8 @@ const SUGGESTION = {
   type: 'object', required: ['id', 'kind', 'title', 'text', 'why'],
   properties: {
     id: { type: 'string' }, kind: { type: 'string', enum: ['time', 'ask'] }, title: { type: 'string' }, text: { type: 'string' },
-    why: { type: 'string', description: 'The rule or data behind it, so a person can check it.' }, stepId: STEP_ID,
+    why: { type: 'string', description: 'The rule or data behind it, so a person can check it.' },
+    basis: { type: 'string', description: 'What the rule and its threshold rest on: a named method, a local definition, or "Example setting, not a standard".' }, stepId: STEP_ID,
     tryLabel: { type: 'string' }, tryable: { type: 'boolean', description: 'ospeli_maps_try_suggestion can apply it to the Proposed version.' },
     tried: { type: 'boolean' },
   },
@@ -1024,7 +1025,7 @@ const mapSummary = (m) => {
     ...(m.walk ? { walk: true, elapsedSecToday: analyse(stepsInSeconds(m.today)).elapsed } : {}) };
 };
 // A map made from one walk gets the walk's own guide: it asks, and offers no change to try.
-const visibleSuggestions = (map, list) => (map.walk ? suggestWalk(list) : suggest(list))
+const visibleSuggestions = (map, list) => (map.walk ? suggestWalk(list, { clockMoved: !!map.walk.clockMoved }) : suggest(list))
   .filter((sg) => !map.hidden.includes(sg.id))
   .map(({ change, ...sg }) => ({ ...sg, tryable: !!change, tried: map.tried.includes(sg.id) }));
 
@@ -1058,7 +1059,7 @@ COMMAND_LIST.push(
       id: MAP_ID, title: { type: 'string' }, start: { type: 'string' }, revision: { type: 'integer' }, changed: { type: 'boolean', description: 'Proposed differs from Today.' },
       tried: { type: 'array', items: { type: 'string' } },
       walk: { type: 'object', description: 'Present when the map was made from one walk (ospeli_walks_finish). One walk is one observation, not a measurement of the process.', required: ['id', 'startedAt', 'finishedAt'],
-        properties: { id: { type: 'string' }, startedAt: TIME, finishedAt: TIME } },
+        properties: { id: { type: 'string' }, startedAt: TIME, finishedAt: TIME, clockMoved: { type: 'boolean', description: 'Present and true when a tap was stamped earlier than the tap before it: the device clock was set back during the walk, so its times cannot be relied on.' } } },
       today: { type: 'object', required: ['stats'], properties: { stats: MAP_STATS, statsSec: { type: 'object', description: 'For a map made from a walk: the same numbers in seconds, from the measured times.' }, steps: { type: 'array', items: MAP_STEP } } },
       proposed: { type: 'object', required: ['stats'], properties: { stats: MAP_STATS, statsSec: { type: 'object' }, steps: { type: 'array', items: MAP_STEP } } } } },
     async run(core, input) {
@@ -1275,6 +1276,7 @@ const WALK_VIEW = {
     state: { type: 'string', enum: ['waiting', 'step'], description: 'waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up.' },
     startedAt: TIME, finishedAt: { type: ['string', 'null'] }, since: { ...TIME, description: 'When the present wait or step began.' },
     mapId: { type: ['string', 'null'], description: 'The map this walk became, once finished.' },
+    clockMoved: { type: 'boolean', description: 'true when the device clock moved back during the walk: its times cannot be trusted.' },
     steps: { type: 'array', items: { type: 'object', required: ['n', 'name', 'role', 'waitSec', 'workSec', 'named'], properties: {
       n: { type: 'integer' }, name: { type: 'string' }, role: { type: 'string' }, msg: { type: 'boolean' }, interrupted: { type: 'boolean' },
       waitSec: { type: 'integer', description: 'Seconds from the end of the step before (or the start of the walk) to this step starting.' },
@@ -1285,7 +1287,7 @@ const WALK_VIEW = {
 const WALK_WRITE_OUTPUT = { type: 'object', required: ['status', 'walk'], properties: { status: { type: 'string', enum: ['done'] }, walk: WALK_VIEW, mapId: MAP_ID, undone: { type: 'string' } } };
 function walkView(w, now) {
   const steps = walkSteps(w).map((s, i) => ({ n: i + 1, ...s, named: !!(w.steps[i].name && w.steps[i].role) }));
-  return { id: w.id, title: w.title, status: w.status, state: walkState(w), startedAt: w.startedAt, finishedAt: w.finishedAt, since: sinceAt(w), mapId: w.mapId, steps, totals: walkTotals(w, now) };
+  return { id: w.id, title: w.title, status: w.status, state: walkState(w), startedAt: w.startedAt, finishedAt: w.finishedAt, since: sinceAt(w), mapId: w.mapId, clockMoved: clockMoved(w), steps, totals: walkTotals(w, now) };
 }
 const WALK_PEOPLE_ONLY = 'People only: a walk is a person\'s own observation on site, so this command is for people, not for agents.';
 // One shape for every tap on the walk in progress: find it, change it, save, audit (ids only).
@@ -1384,6 +1386,7 @@ COMMAND_LIST.push(
     props: { interrupted: { type: 'boolean', description: 'The work stopped before the step was finished.' } },
     mutate: (w, input, now) => {
       if (!w.current) throw new CommandError('conflict', 'No step is running. Start one first.', { state: 'waiting' });
+      if (isDoubleTap(w, now)) throw new CommandError('conflict', 'That tap came less than a second after the step started, so it was taken as a double tap. The step is still running.', { state: 'step' });
       stepDone(w, now, { interrupted: input.interrupted === true });
       return { audit: input.interrupted ? { interrupted: true } : {} };
     },
@@ -1400,7 +1403,7 @@ COMMAND_LIST.push(
       if (!w.steps.length) throw new CommandError('conflict', 'No step has ended yet. Start a step and mark it done first.', { state: walkState(w) });
       if (input.nextStarted && w.current) throw new CommandError('conflict', 'The next step is already running.', { state: 'step' });
       if (input.nextStarted && w.steps.length >= MAX_WALK_STEPS) throw new CommandError('conflict', `A walk holds at most ${MAX_WALK_STEPS} steps.`);
-      nameLast(w, { name: input.name, role: input.role, msg: input.msg === true, nextStarted: input.nextStarted === true });
+      nameLast(w, { name: input.name, role: input.role, msg: typeof input.msg === 'boolean' ? input.msg : undefined, nextStarted: input.nextStarted === true });
       return { audit: input.nextStarted ? { nextStarted: true } : {} };
     },
     example: { name: 'Checked in at reception', role: 'Reception' },
@@ -1427,32 +1430,31 @@ COMMAND_LIST.push(
     output: WALK_WRITE_OUTPUT,
     async run(core, input, { actor }) {
       const now = core.now();
-      const store = walkStore(await core.getMeta(WALKS_KEY, null));
-      const w0 = store.walks.find((w) => w.status === 'walking' && (!input.walkId || w.id === input.walkId));
-      if (!w0) throw new CommandError('not-found', 'No walk is in progress on this device.', { fix: 'ospeli_walks_start starts a walk.' });
-      if (w0.current) throw new CommandError('conflict', 'A step is still running. Mark it done, then finish the walk.', { state: 'step' });
-      if (!w0.steps.length) throw new CommandError('conflict', 'This walk has no steps yet. Time at least one step, or delete the walk.', { state: 'waiting' });
-      // The walk ends at its last step: time after the last "step done" tap is not part of it.
-      const finishedAt = w0.steps[w0.steps.length - 1].endAt;
-      let mapId = null;
-      await core.updateMeta(MAPS_KEY, (raw) => {
-        const maps = mapStore(raw);
+      // One storage step (#107): the walk is checked, the map is made and the walk is closed inside
+      // one turn of the write queue, so a second finish, a delete or a tap that arrives at the same
+      // moment either runs before all of it or after all of it. The map is read and written with
+      // getMeta and setMeta here; a nested updateMeta would wait for this turn for ever.
+      let view = null; let mapId = null;
+      await core.updateMeta(WALKS_KEY, async (raw) => {
+        const store = walkStore(raw);
+        const w = store.walks.find((x) => x.status === 'walking' && (!input.walkId || x.id === input.walkId));
+        if (!w) throw new CommandError('not-found', 'No walk is in progress on this device.', { fix: 'ospeli_walks_start starts a walk.' });
+        if (w.current) throw new CommandError('conflict', 'A step is still running. Mark it done, then finish the walk.', { state: 'step' });
+        if (!w.steps.length) throw new CommandError('conflict', 'This walk has no steps yet. Time at least one step, or delete the walk.', { state: 'waiting' });
+        // The walk ends at its last step: time after the last "step done" tap is not part of it.
+        const finishedAt = w.steps[w.steps.length - 1].endAt;
+        const maps = mapStore(await core.getMeta(MAPS_KEY, null));
         mapId = `map-${String(maps.nextId).padStart(3, '0')}`;
         maps.nextId += 1;
-        const m = newMap({ id: mapId, from: 'blank', title: w0.title, at: now, role: actor.role });
+        const m = newMap({ id: mapId, from: 'blank', title: w.title, at: now, role: actor.role });
         m.from = 'walk';
-        m.today = mapStepsFromWalk(w0, mapId); m.proposed = JSON.parse(JSON.stringify(m.today)); m.nextStep = m.today.length + 1;
-        m.walk = { id: w0.id, startedAt: w0.startedAt, finishedAt };
+        m.today = mapStepsFromWalk(w, mapId); m.proposed = JSON.parse(JSON.stringify(m.today)); m.nextStep = m.today.length + 1;
+        m.walk = { id: w.id, startedAt: w.startedAt, finishedAt, ...(clockMoved(w) ? { clockMoved: true } : {}) };
         maps.maps.push(m);
-        return maps;
-      });
-      let view = null;
-      await core.updateMeta(WALKS_KEY, (raw) => {
-        const s2 = walkStore(raw);
-        const w = s2.walks.find((x) => x.id === w0.id);
+        await core.setMeta(MAPS_KEY, maps);
         w.status = 'finished'; w.finishedAt = finishedAt; w.mapId = mapId;
         view = walkView(w, now);
-        return s2;
+        return store;
       });
       await core.recordAs(actor, 'walk.finished', view.id, { steps: view.steps.length, mapId });
       return { status: 'done', walk: view, mapId };
@@ -1527,7 +1529,7 @@ for (const [name, needs] of Object.entries(EXAMPLE_NEEDS)) {
 const BY_NAME = new Map(COMMAND_LIST.map((c) => [c.name, c]));
 // Process maps hold text people typed (titles, step names). Answers from these commands are
 // marked so an agent treats that text as data, never as instructions.
-for (const c of COMMAND_LIST) if (c.name.startsWith('ospeli_maps_')) c.freeText = true;
+for (const c of COMMAND_LIST) if (c.name.startsWith('ospeli_maps_') || c.name === 'ospeli_walks_get') c.freeText = true;
 
 // Names (issue #39, tool-design rule): every command is ospeli_<module>_<action>, so an agent that
 // runs many tool servers cannot confuse them. The dotted names used before 12 Nov 2026 still work

@@ -465,8 +465,9 @@ export class Core {
       const was = await this._agentAccessInUse();
       const hadHistory = (await this.db.getAll('audit')).length > 0;
       for (const s of ['entities', 'events', 'audit']) await this.db.clear(s);
-      // Nothing is loaded now, so nothing is claimed about it (issue #5 badge, issue #7).
-      for (const id of ['synthetic', 'generator', 'process-maps']) await this.db.put('meta', { id, value: null });
+      // Nothing is loaded now, so nothing is claimed about it (issue #5 badge, issue #7). Walks go too:
+      // their timings must not stay on the phone after a reset, pointing at maps that are gone.
+      for (const id of ['synthetic', 'generator', 'process-maps', 'process-walks']) await this.db.put('meta', { id, value: null });
       this.lastEvent = null;
       this.lastAudit = null;
       // An earlier trail was wiped: say so from now on (issue #79). A first setup that never

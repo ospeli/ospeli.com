@@ -203,7 +203,7 @@ export function suggest(list) {
   if (!list.length) {
     return [{ id: 'start', kind: 'ask', title: 'Start with what triggers the process',
       text: 'Add the first step: the moment the process starts (a decision, an arrival, a fault found). Then add each step in order, with who does it. Rough times are fine.',
-      why: 'A map starts from a clear trigger and ends at a clear finish.' }];
+      why: 'A map starts from a clear trigger and ends at a clear finish.', basis: 'Method: lean value stream mapping (Rother and Shook, Learning to See).' }];
   }
   const share = (m) => (a.elapsed ? Math.round((100 * m) / a.elapsed) : 0);
   const byWait = list.map((s, i) => ({ s, i })).sort((x, y) => (y.s.wait || 0) - (x.s.wait || 0));
@@ -213,7 +213,7 @@ export function suggest(list) {
     out.push({ id: `wait-${s.id}`, kind: 'time', stepId: s.id,
       title: `${k === 0 ? 'Biggest wait' : 'Next biggest wait'}: ${fmtMinutes(s.wait)} before “${s.name}”`,
       text: `This wait is ${share(s.wait)}% of the whole process. Ask the team what it is waiting for. Could it be prepared earlier${prev ? `, before “${prev.name}” finishes` : ''}, or done in a fixed slot so others can plan around it?`,
-      why: 'Calculated from the times on this map.',
+      why: 'Calculated from the times on this map.', basis: 'Example setting, not a standard: a wait is named when it is 12% or more of start to finish.',
       tryLabel: 'Try in Proposed: halve this wait', change: { op: 'halve-wait', stepId: s.id } });
   });
   const msgSteps = list.filter((s) => s.msg && s.wait >= 15);
@@ -222,20 +222,20 @@ export function suggest(list) {
     out.push({ id: 'msgs', kind: 'time',
       title: `${msgSteps.length} step${msgSteps.length > 1 ? 's' : ''} only pass${msgSteps.length > 1 ? '' : 'es'} on information, after ${fmtMinutes(mw)} of waiting`,
       text: 'Calls, messages and forms that tell the next person to start. If whoever finishes a step updates its status once, everyone who needs it can see it at once, without a call.',
-      why: 'Steps marked “only passes on information” on this map.',
+      why: 'Steps marked “only passes on information” on this map.', basis: 'Example setting, not a standard: counted when the wait before the step is 15 minutes or more.',
       tryLabel: 'Try in Proposed: one-tap status update', change: { op: 'status-update' } });
   }
   if (a.handoffs >= 4) {
     out.push({ id: 'handoffs', kind: 'ask', title: `${a.handoffs} handoffs between roles`,
       text: 'Each handoff is a place where work can sit in someone else’s queue. Look at neighbouring steps done by different people: could one person do both, or could the next person be told before the step ends?',
-      why: 'Counted where the role changes from one step to the next.' });
+      why: 'Counted where the role changes from one step to the next.', basis: 'Example setting, not a standard: shown at 4 handoffs or more.' });
   }
   for (let i = 1; i < list.length; i++) {
     const s = list[i]; const p = list[i - 1];
     if (!s.par && !p.par && s.role !== p.role && s.wait >= 30 && !s.msg && !p.msg) {
       out.push({ id: `par-${s.id}`, kind: 'ask', stepId: s.id, title: `Does “${s.name}” need the step before to finish?`,
         text: `If it does not, it could run at the same time as “${p.name}”. Check with both teams before changing anything.`,
-        why: `Different roles, and a wait of ${fmtMinutes(s.wait)} between them.`,
+        why: `Different roles, and a wait of ${fmtMinutes(s.wait)} between them.`, basis: 'Example setting, not a standard: asked when the wait between two roles is 30 minutes or more.',
         tryLabel: 'Try in Proposed: run together', change: { op: 'run-alongside', stepId: s.id } });
       break;
     }
@@ -244,11 +244,11 @@ export function suggest(list) {
   if (blank.length) {
     out.push({ id: 'blank', kind: 'ask', title: `${blank.length} step${blank.length > 1 ? 's have' : ' has'} no times yet`,
       text: `Time ${blank.length > 1 ? 'them' : 'it'} on your next walk of the process, so the map shows where time really goes.`,
-      why: 'Steps with no waiting or hands-on time recorded.' });
+      why: 'Steps with no waiting or hands-on time recorded.', basis: 'Local definition: a step with no time recorded.' });
   }
   out.push({ id: 'questions', kind: 'ask', title: 'Questions to ask on your next walk',
     text: 'Who decides each step is done? What tells the next person to start? Where does the patient or item sit while it waits? Which step would you remove first, and what would stop you?',
-    why: 'Standard process-walk questions; they apply to any process.' });
+    why: 'Standard process-walk questions; they apply to any process.', basis: 'Method: lean value stream mapping (Rother and Shook, Learning to See).' });
   return out;
 }
 

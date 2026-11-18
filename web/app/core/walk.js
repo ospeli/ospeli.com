@@ -14,6 +14,10 @@
 
 export const MAX_WALK_STEPS = 60;
 export const ROLE_NOT_SET = 'Not set';
+// A "Step done" tap less than this long after "Step starts" is taken as a double tap, not a step.
+export const MIN_STEP_MS = 1000;
+// Waits shorter than this are not named as the longest wait (a stated local definition, not a standard).
+export const MIN_LONGEST_WAIT_SEC = 30;
 
 const secs = (a, b) => Math.max(0, Math.round((Date.parse(b) - Date.parse(a)) / 1000));
 
@@ -34,6 +38,7 @@ export function sinceAt(walk) {
 export function stepStart(walk, at) {
   if (walk.current) throw new Error('A step is already running.');
   if (walk.steps.length >= MAX_WALK_STEPS) throw new Error(`A walk holds at most ${MAX_WALK_STEPS} steps.`);
+  if (isDoubleStart(walk, at)) throw new Error('That tap came less than a second after the step before ended.');
   walk.current = { startAt: at };
   return walk;
 }
@@ -41,19 +46,49 @@ export function stepStart(walk, at) {
 // End the running step. interrupted: the work stopped before it was finished.
 export function stepDone(walk, at, { interrupted = false } = {}) {
   if (!walk.current) throw new Error('No step is running.');
+  if (isDoubleTap(walk, at)) throw new Error('That tap came less than a second after the step started.');
   walk.steps.push({ startAt: walk.current.startAt, endAt: at, name: null, role: null, msg: false, ...(interrupted ? { interrupted: true } : {}) });
   walk.current = null;
   return walk;
 }
 
+// True when "Step done" at this time would end the running step under a second after it began.
+export function isDoubleTap(walk, at) {
+  if (!walk.current) return false;
+  const ms = Date.parse(at) - Date.parse(walk.current.startAt);
+  return ms >= 0 && ms < MIN_STEP_MS;
+}
+
+// True when "Step starts" at this time would come under a second after the step before ended:
+// the second half of a double tap on "Step done" (the same button then reads "Step starts").
+// A hand-over with no wait is still recorded: nameLast starts the next step at the same moment
+// on purpose and does not pass through here with a later time.
+export function isDoubleStart(walk, at) {
+  const last = walk.steps[walk.steps.length - 1];
+  if (!last || walk.current) return false;
+  const ms = Date.parse(at) - Date.parse(last.endAt);
+  return ms > 0 && ms < MIN_STEP_MS;
+}
+
+// True when any tap is earlier than the tap before it (the device clock moved back mid-walk),
+// so the walk's times cannot be trusted and the totals may not add up.
+export function clockMoved(walk) {
+  const taps = [walk.startedAt];
+  for (const s of walk.steps) taps.push(s.startAt, s.endAt);
+  if (walk.current) taps.push(walk.current.startAt);
+  if (walk.finishedAt) taps.push(walk.finishedAt);
+  for (let i = 1; i < taps.length; i++) if (Date.parse(taps[i]) < Date.parse(taps[i - 1])) return true;
+  return false;
+}
+
 // Name the step that just ended. nextStarted: the next step began the moment this one ended
 // (a hand-over with no wait), so it starts at this step's end time, not at the time of this tap.
-export function nameLast(walk, { name, role, msg = false, nextStarted = false }) {
+export function nameLast(walk, { name, role, msg, nextStarted = false }) {
   const last = walk.steps[walk.steps.length - 1];
   if (!last) throw new Error('No step has ended yet.');
   if (name != null) last.name = name;
   if (role != null) last.role = role;
-  last.msg = !!msg;
+  if (msg != null) last.msg = !!msg;
   if (nextStarted) {
     if (walk.current) throw new Error('The next step is already running.');
     stepStart(walk, last.endAt);
@@ -126,26 +161,46 @@ export function fmtClock(sec) {
   return h ? `${h}:${two(m)}:${two(s)}` : `${m}:${two(s)}`;
 }
 
+// The longest wait or waits on a walked map: every step whose wait equals the longest, when
+// that is at or above the floor. An empty list when no wait reaches the floor.
+export function longestWaits(stepsSec) {
+  const max = Math.max(0, ...stepsSec.map((x) => x.wait || 0));
+  return max >= MIN_LONGEST_WAIT_SEC ? stepsSec.filter((x) => x.wait === max) : [];
+}
+
 // What the guide says about a walked map. One walk is one observation, so nothing here offers
 // to change a time: it asks what the longest wait was waiting for, and to walk again.
-export function suggestWalk(list) {
+export const WALK_BASIS = {
+  longestWait: `Example setting, not a standard: waits under ${MIN_LONGEST_WAIT_SEC} seconds are not named, so the gap between two taps is not read as a wait.`,
+  unnamed: 'Local definition: a step needs a name and a role to be read on a map.',
+  limits: 'Method: a process walk in the manner of lean value stream mapping (Rother and Shook, Learning to See). One walk is one observation.',
+  clock: 'Local definition: a tap stamped earlier than the tap before it means the device clock was set back.',
+};
+export function suggestWalk(list, { clockMoved: moved = false } = {}) {
   const out = [];
   const inSec = stepsInSeconds(list);
-  const worst = [...inSec].sort((a, b) => b.wait - a.wait)[0];
-  if (worst && worst.wait > 0) {
-    out.push({ id: `walk-wait-${worst.id}`, kind: 'ask', stepId: worst.id,
-      title: `Longest wait on this walk: ${fmtSeconds(worst.wait)} before “${worst.name}”`,
-      text: 'Ask what it was waiting for: a person, information, a room, equipment or supplies, transport, a decision, or a queue. Then walk it again on another day or at another time before changing anything.',
-      why: 'Calculated from the tap times of this one walk.' });
+  const top = longestWaits(inSec);
+  if (moved) {
+    // Times from a clock that was set back cannot be ranked: name no longest wait.
+    out.push({ id: 'walk-clock', kind: 'ask', title: 'The phone\'s clock changed during this walk',
+      text: 'These times cannot be relied on. Walk it again. A clock that jumps forward cannot be detected, so check the phone\'s time before a walk.',
+      why: 'One tap was stamped earlier than the tap before it.', basis: WALK_BASIS.clock });
+  } else if (top.length) {
+    const t = fmtSeconds(top[0].wait);
+    out.push({ id: `walk-wait-${top[0].id}`, kind: 'ask', stepId: top[0].id,
+      title: top.length === 1 ? `Longest wait on this walk: ${t} before “${top[0].name}”`
+        : `Longest wait on this walk, tied: ${t} each, before ${top.map((x) => `“${x.name}”`).join(' and before ')}`,
+      text: 'Ask what it was waiting for: a person, information, a room, equipment or supplies, transport, a decision, or a queue. A wait belongs to the process, not to the role that comes next. Then walk it again on another day or at another time before changing anything.',
+      why: 'Calculated from the tap times of this one walk.', basis: WALK_BASIS.longestWait });
   }
   const unnamed = list.filter((s) => s.role === ROLE_NOT_SET || /^Step \d+$/.test(s.name));
   if (unnamed.length) {
     out.push({ id: 'walk-unnamed', kind: 'ask', title: `${unnamed.length} step${unnamed.length > 1 ? 's have' : ' has'} no name or role yet`,
-      text: 'Tap the step and say what happened and which role did it, while you still remember.', why: 'Steps saved with “Name it later”.' });
+      text: 'Tap the step and say what happened and which role did it, while you still remember.', why: 'Steps saved with “Name it later”.', basis: WALK_BASIS.unnamed });
   }
   out.push({ id: 'walk-limits', kind: 'ask', title: 'What one walk can and cannot show',
     text: 'This is what happened once. People may work differently when someone is watching, and work that ran at the same time as another step is not recorded. Tell staff what you are doing: the steps are timed, never the people.',
-    why: 'A single observation is not a measurement of the process.' });
+    why: 'A single observation is not a measurement of the process.', basis: WALK_BASIS.limits });
   return out;
 }
 

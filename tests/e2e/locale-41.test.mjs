@@ -42,6 +42,7 @@ for (const locale of ['en-US', 'de-DE', 'en-GB']) {
       const core = window.ospeli.core;
       await runCommand(core, 'ospeli_walks_start', {}, me);
       await runCommand(core, 'ospeli_walks_step_start', {}, me);
+      await new Promise((r) => setTimeout(r, 1100)); // past the 1 s double-tap guard (walk-mode fixes, #102)
       await runCommand(core, 'ospeli_walks_step_done', {}, me);
       await runCommand(core, 'ospeli_walks_step_name', { name: 'Checked in at reception', role: 'Reception' }, me);
       await runCommand(core, 'ospeli_walks_finish', {}, me);
