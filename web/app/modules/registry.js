@@ -22,7 +22,7 @@ export const MODULES = [
 
 // Which modules each role uses most, in order. Shown first on the Today page.
 export const ROLE_MODULES = {
-  'ward-nurse': ['beds', 'engineering', 'incidents', 'sops'],
+  'ward-nurse': ['beds', 'stores', 'engineering', 'incidents', 'sops'],
   'bed-manager': ['beds', 'ae', 'dashboard', 'playbooks'],
   'estates-tech': ['engineering', 'sops', 'incidents'],
   'ae-nic': ['ae', 'beds', 'incidents', 'sops'],
