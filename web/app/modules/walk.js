@@ -19,6 +19,22 @@ export async function renderWalk(box, ctx) {
   document.addEventListener('visibilitychange', onVisible);
   keepAwake();
 
+  // Spoken state (#103): one polite line beside the walk, kept across redraws so a screen reader
+  // hears "Step started. Hands-on." after a tap. The big timer itself stays silent.
+  const status = h('p', { class: 'sr-only', role: 'status', 'aria-live': 'polite', 'data-test': 'walk-status' });
+  box.after(status);
+  const say = (text) => { status.textContent = text; };
+  // Keyboard focus (#103): the screen is redrawn after every tap, so focus is put back on the
+  // control that had it, or on the main button when that control is gone.
+  const focusKey = () => {
+    const a = document.activeElement;
+    if (!a || !box.contains(a)) return null;
+    if (a.dataset.test) return `[data-test="${a.dataset.test}"]`;
+    if (a.id) return `#${a.id}`;
+    return '[data-test="walk-main"]';
+  };
+  const refocus = (key) => { if (key) (box.querySelector(key) || box.querySelector('[data-test="walk-main"]'))?.focus({ preventScroll: true }); };
+
   const nowMs = () => Date.now() - offset;
   const secsSince = (iso) => Math.max(0, (nowMs() - Date.parse(iso)) / 1000);
 
@@ -42,7 +58,7 @@ export async function renderWalk(box, ctx) {
     } finally { ui.busy = false; }
   }
   const showUndo = () => { ui.undoUntil = Date.now() + UNDO_MS; clearTimeout(undoTimer); undoTimer = setTimeout(() => { if (!stopped) draw(); }, UNDO_MS + 50); };
-  const resetSheet = () => { ui.sheet = false; ui.name = ''; ui.role = ''; ui.msg = false; ui.next = false; ui.question = null; ui.error = ''; };
+  const resetSheet = () => { box.querySelectorAll('#wk-name, #wk-role').forEach((i) => { i.value = ''; }); ui.sheet = false; ui.name = ''; ui.role = ''; ui.msg = false; ui.next = false; ui.question = null; ui.error = ''; };
   function afterNamed() { resetSheet(); draw(); }
 
   async function saveName() {
@@ -74,6 +90,7 @@ export async function renderWalk(box, ctx) {
       } }, text);
     return h('section', { class: 'card walk-sheet', 'data-test': 'walk-sheet', 'aria-labelledby': 'wk-sheet-h' },
       h('h2', { id: 'wk-sheet-h' }, `Step ${last.n}: ${fmtSeconds(last.workSec)}`),
+      h('p', { class: 'walk-sheet-hint', 'data-test': 'walk-sheet-hint' }, 'Name the step you just timed. The clock keeps running.'),
       h('div', { class: 'field' },
         h('label', { for: 'wk-name' }, 'What happened?'),
         h('div', { class: 'walk-chips' }, data.stepChips.map((c) => chip('name', c))),
@@ -100,6 +117,13 @@ export async function renderWalk(box, ctx) {
 
   function draw() {
     if (stopped) return;
+    const key = focusKey();
+    // Words typed but not yet saved survive a redraw (the Undo button leaving after 10 seconds).
+    for (const kind of ['name', 'role']) { const typed = box.querySelector(`#wk-${kind}`)?.value.trim(); if (typed) ui[kind] = typed; }
+    paint();
+    refocus(key);
+  }
+  function paint() {
     const w = data?.walk;
     if (!w || w.status !== 'walking') {
       box.replaceChildren(h('section', { class: 'card', 'data-test': 'walk-none' },
@@ -117,6 +141,7 @@ export async function renderWalk(box, ctx) {
         const out = await tap(step ? 'ospeli_walks_step_done' : 'ospeli_walks_step_start');
         if (!out) return;
         if (step) { resetSheet(); ui.sheet = true; }
+        say(step ? 'Step done. Waiting. Name the step, or carry on.' : 'Step started. Hands-on.');
         ui.confirm = false; showUndo(); draw();
         if (step) box.querySelector('[data-test="walk-sheet"]')?.scrollIntoView({ block: 'nearest' });
       } }, step ? 'Step done' : 'Step starts');
@@ -128,15 +153,16 @@ export async function renderWalk(box, ctx) {
         h('span', { class: 'walk-state', 'data-test': 'walk-state' }, step ? 'Hands-on' : 'Waiting'),
         h('span', { class: 'walk-timer', role: 'timer', 'data-test': 'walk-timer' }, fmtClock(secsSince(w.since))),
         h('span', { class: 'walk-meta' }, h('span', { 'data-test': 'walk-total' }, `Whole walk ${fmtClock(secsSince(w.startedAt))}`), ` · ${w.steps.length} ${w.steps.length === 1 ? 'step' : 'steps'} saved`)),
+      w.clockMoved ? h('p', { class: 'walk-clock', role: 'alert', 'data-test': 'walk-clock' }, h('b', {}, 'The phone\'s clock changed during this walk.'), ' Its times cannot be relied on. You can finish it, but walk it again.') : null,
       main,
       h('p', { class: 'walk-def', 'data-test': 'walk-def' }, step
         ? 'Hands-on: someone is working on this patient or item.'
         : 'Waiting: no one is working on this patient or item, even if staff are busy elsewhere.'),
       h('div', { class: 'walk-side' },
         step ? h('button', { type: 'button', class: 'btn btn-ghost walk-stop', 'data-test': 'walk-stopped', 'data-cmd': 'ospeli_walks_step_done',
-          onclick: async () => { const out = await tap('ospeli_walks_step_done', { interrupted: true }); if (out) { resetSheet(); ui.sheet = true; showUndo(); draw(); } } }, 'Interrupted') : null,
+          onclick: async () => { const out = await tap('ospeli_walks_step_done', { interrupted: true }); if (out) { resetSheet(); ui.sheet = true; say('Step marked as interrupted. Waiting.'); showUndo(); draw(); } } }, 'Interrupted') : null,
         canUndo ? h('button', { type: 'button', class: 'btn btn-ghost walk-undo', 'data-test': 'walk-undo', 'data-cmd': 'ospeli_walks_undo',
-          onclick: async () => { const out = await tap('ospeli_walks_undo'); if (out) { resetSheet(); ui.undoUntil = 0; ctx.toast(out.undone === 'step-done' ? 'Undone. The step is running again.' : 'Undone. Waiting again.'); draw(); } } }, 'Undo last tap') : null),
+          onclick: async () => { const out = await tap('ospeli_walks_undo'); if (out) { resetSheet(); ui.undoUntil = 0; const msg = out.undone === 'step-done' ? 'Undone. The step is running again.' : 'Undone. Waiting again.'; say(msg); ctx.toast(msg); draw(); } } }, 'Undo last tap') : null),
       ui.sheet && w.steps.length ? sheet(w) : null,
       h('div', { class: 'walk-end' },
         ui.confirm
@@ -162,7 +188,7 @@ export async function renderWalk(box, ctx) {
   draw();
   timer = setInterval(tick, 500);
   return () => {
-    stopped = true; clearInterval(timer); clearTimeout(undoTimer);
+    stopped = true; clearInterval(timer); clearTimeout(undoTimer); status.remove();
     document.removeEventListener('visibilitychange', onVisible);
     try { lock?.release?.(); } catch { /* nothing to release */ }
   };

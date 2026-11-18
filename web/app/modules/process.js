@@ -7,7 +7,7 @@
 // Deep link: #/process/<mapId>. The guide is rule-based, says why, and has an off switch.
 import { h } from './ui.js';
 import { fmtMinutes, EXAMPLES } from '../core/processmap.js';
-import { fmtSeconds, stepsInSeconds } from '../core/walk.js';
+import { fmtSeconds, stepsInSeconds, longestWaits, MIN_LONGEST_WAIT_SEC } from '../core/walk.js';
 import { renderWalk } from './walk.js';
 import { proposalsCard } from './proposals.js';
 
@@ -25,6 +25,10 @@ export async function render(el, ctx) {
   const body = h('div', { 'data-test': 'process-body' });
   // T: how a time reads on the map in view (minutes, or seconds for a map made from a walk).
   let T = fmtMinutes; let todayView = []; let walkOff = null; let walkNow = null;
+  // On a map made from a walk: the step or steps with the longest wait, when it reaches the floor
+  // and the clock did not move. Null on other maps, which ring the biggest wait as before.
+  let hotIds = null; let walkedNow = false;
+  const isHot = (a, s) => (hotIds ? hotIds.includes(s.id) : a.biggestWaitStepId === s.id);
   // What the first version is called: "Today", or "This walk" on a map made from one walk.
   let NOW = 'Today';
   const props = proposalsCard(ctx, {
@@ -41,13 +45,14 @@ export async function render(el, ctx) {
     },
   });
   const guideBtn = h('button', { type: 'button', class: 'chip-btn guide-switch', 'data-test': 'guide-switch', 'data-cmd': 'ospeli_maps_guide_set', 'aria-pressed': 'true' }, 'Guide: On');
+  const guideHome = h('div', { class: 'guide-head' }, guideBtn, h('span', { class: 'meta' }, 'People decide; Ospeli suggests.'));
   const pageHead =
     h('div', { class: 'page-head' },
       h('div', {},
         h('p', { class: 'eyebrow' }, 'Process maps'),
-        h('h1', {}, 'See where time goes, and try a change safely'),
-        h('p', {}, 'Map how work flows, step by step and role by role. Changes you try go into a Proposed version; Today stays as it is.')),
-      h('div', { class: 'guide-head' }, guideBtn, h('span', { class: 'meta' }, 'People decide; Ospeli suggests.')));
+        h('h1', {}, 'See where the time goes'),
+        h('p', {}, 'Walk a visit and get a timed map, or map how work flows step by step and role by role. Changes you try go into a Proposed version; Today stays as it is.')),
+      guideHome);
   el.append(pageHead, props.el, body);
 
   let list = { maps: [], examples: [], guideOn: true };
@@ -80,7 +85,7 @@ export async function render(el, ctx) {
     }
     return h('section', { class: 'card walk-card', 'aria-labelledby': 'walkcard-h', 'data-test': 'walk-card' },
       h('h2', { id: 'walkcard-h' }, 'Walk it and time it'),
-      h('p', {}, 'Follow one visit with your phone and time each step as it happens. No names, no patient details. Works with no connection.'),
+      h('p', {}, 'Follow one visit with your phone and time each step as it happens. Finish, and you get a timed map. No names, no patient details. Works with no connection.'),
       h('button', { type: 'button', class: 'btn walk-start', 'data-cmd': 'ospeli_walks_start', 'data-test': 'walk-start',
         onclick: async () => { if (await run('ospeli_walks_start', {})) location.hash = '#/process/walk'; } }, 'Start a walk'));
   }
@@ -98,6 +103,7 @@ export async function render(el, ctx) {
 
   async function draw() {
     if (walkOff) { walkOff(); walkOff = null; }
+    if (guideBtn.parentNode !== guideHome) guideHome.prepend(guideBtn);
     walkNow = (await ctx.run('ospeli_walks_get', {})).walk;
     const walking = ui.mapId === 'walk';
     // During a walk the screen holds the walk and nothing else.
@@ -107,6 +113,7 @@ export async function render(el, ctx) {
     guideBtn.setAttribute('aria-pressed', String(list.guideOn));
     guideBtn.textContent = `Guide: ${list.guideOn ? 'On' : 'Off'}`;
     if (ui.mapId && !list.maps.some((m) => m.id === ui.mapId)) ui.mapId = null;
+    headFor();
     if (!ui.mapId) {
       body.replaceChildren(...[
         list.maps.length ? h('section', { class: 'section', 'aria-labelledby': 'maps-h' },
@@ -121,6 +128,8 @@ export async function render(el, ctx) {
     }
     await drawMap();
   }
+  // On a phone, an open map starts at its title: the page heading is kept for screen readers only.
+  const headFor = () => pageHead.classList.toggle('on-map', !!ui.mapId && ui.mapId !== 'walk');
 
   async function drawMap() {
     const m = await ctx.run('ospeli_maps_get', { mapId: ui.mapId });
@@ -143,6 +152,10 @@ export async function render(el, ctx) {
     const roles = [...new Set([...m.today.steps, ...m.proposed.steps].map((s) => s.role))];
     const colour = (r) => ROLE_COLOURS[Math.max(0, roles.indexOf(r)) % ROLE_COLOURS.length];
     const isP = ui.version === 'proposed';
+    walkedNow = walked;
+    const moved = walked && !!m.walk.clockMoved;
+    const top = walked && !moved ? longestWaits(steps) : [];
+    hotIds = walked ? top.map((x) => x.id) : null;
 
     const seg = (id, label, on, onclick, extra = {}) => h('button', { type: 'button', class: 'chip-btn', 'aria-pressed': String(on), 'data-test': id, onclick, ...extra }, label);
     const head = h('div', { class: 'map-head' },
@@ -158,10 +171,23 @@ export async function render(el, ctx) {
 
     const stat = (val, label, was, better) => h('div', { class: 'pm-stat' }, h('b', {}, val), h('span', {}, label),
       isP && was != null && was !== val ? h('span', { class: `was${better ? ' better' : ''}` }, `${NOW.toLowerCase()}: ${was}`) : null);
-    const stats = h('div', { class: 'pm-stats', 'data-test': 'pm-stats' },
+    // Waiting share (local definition): waiting time divided by start to finish, as a whole percent.
+    const waitShare = (x) => (x.elapsed ? Math.round((100 * x.wait) / x.elapsed) : null);
+    // A walked map opens with the answer: how long, how much of it was waiting, and the longest wait.
+    const answer = measuredView ? h('section', { class: `card walk-answer${moved ? ' is-warn' : ''}`, 'data-test': 'walk-answer', 'aria-label': 'What this walk showed' },
+      moved ? h('p', { class: 'walk-clock', role: 'alert', 'data-test': 'walk-clock' }, h('b', {}, 'The phone\'s clock changed during this walk.'), ' These times cannot be relied on. Walk it again.') : null,
+      h('p', { class: 'wa-big' }, h('b', {}, T(a.elapsed)), ' start to finish on this walk'),
+      h('p', { class: 'wa-line' }, h('b', {}, `${T(a.wait)} waiting`), waitShare(a) == null ? '' : ` (${waitShare(a)}% of this walk)`, ` · ${T(a.work)} hands-on`),
+      moved ? null : top.length
+        ? h('p', { class: 'wa-line wa-wait', 'data-test': 'walk-longest' }, h('b', {}, top.length === 1 ? 'Longest wait: ' : 'Longest waits, tied: '), `${T(top[0].wait)} before ${top.map((x) => `“${x.name}”`).join(' and ')}`)
+        : h('p', { class: 'wa-line', 'data-test': 'walk-longest' }, `No wait of ${MIN_LONGEST_WAIT_SEC} seconds or more on this walk.`),
+      h('p', { class: 'wa-line', 'data-test': 'walk-handoffs' }, `${a.handoffs} ${a.handoffs === 1 ? 'handoff' : 'handoffs'} between roles`),
+      h('p', { class: 'meta wa-note' }, 'One walk, one observation. Ask what the wait was for, and walk it again before changing anything.')) : null;
+    const stats = measuredView ? h('div', { class: 'pm-stats is-answer', 'data-test': 'pm-stats' }, answer) : h('div', { class: 'pm-stats', 'data-test': 'pm-stats' },
       stat(T(a.elapsed), measuredView ? 'start to finish on this walk' : 'start to finish', T(t.elapsed), a.elapsed < t.elapsed),
       stat(T(a.work), 'hands-on work', T(t.work), false),
-      stat(a.workShare == null ? '–' : `${a.workShare}%`, measuredView ? 'of this walk is hands-on' : walked ? 'of the time is hands-on' : 'of the time is work', t.workShare == null ? null : `${t.workShare}%`, a.elapsed < t.elapsed),
+      walked ? stat(waitShare(a) == null ? '–' : `${waitShare(a)}%`, measuredView ? 'of this walk is waiting' : 'of the time is waiting', waitShare(t) == null ? null : `${waitShare(t)}%`, waitShare(a) < waitShare(t))
+        : stat(a.workShare == null ? '–' : `${a.workShare}%`, 'of the time is work', t.workShare == null ? null : `${t.workShare}%`, a.elapsed < t.elapsed),
       stat(String(a.handoffs), 'handoffs between roles', String(t.handoffs), a.handoffs < t.handoffs));
 
     // Time bars: one for Today; once Proposed differs, both stacked, on the same scale.
@@ -181,7 +207,7 @@ export async function render(el, ctx) {
       m.changed ? bar('Proposed', statsOf(m.proposed), scale, 'bar-proposed') : null,
       h('p', { class: 'legend meta' }, h('span', { class: 'sw w' }), 'Waiting ', h('span', { class: 'sw k' }), 'Hands-on work'),
       walked ? h('p', { class: 'meta notice walk-note', 'data-test': 'walk-note' },
-        `Times from one walk on ${day(m.walk.startedAt)}, started ${clock(m.walk.startedAt)}. This is what happened once, not how the process usually runs. Walk it again on another day or at another time before changing anything.${byHand ? ' Some times or steps were changed by hand after the walk.' : ''}`) : null,
+        `Times from one walk on ${day(m.walk.startedAt)}, started ${clock(m.walk.startedAt)}. This is what happened once, not how the process usually runs. Time after the last step is not recorded.${byHand ? ' Some times or steps were changed by hand after the walk.' : ''}`) : null,
       m.changed ? h('p', { class: 'meta', 'data-test': 'whatif-note' }, 'A what-if from your map, not a prediction. Test it and measure.',
         ' ', h('button', { type: 'button', class: 'linkish', 'data-cmd': 'ospeli_maps_reset_proposed', onclick: async () => { if (await run('ospeli_maps_reset_proposed', { mapId: m.id })) { ctx.toast(`Proposed is a copy of ${NOW} again.`); drawMap(); } } }, 'Reset Proposed')) : null);
 
@@ -192,7 +218,7 @@ export async function render(el, ctx) {
         : [
           h('p', { class: 'meta' }, `${walked ? 'The guide uses simple rules you can check, on this device. One walk is one observation, so it asks questions and offers no change to try.' : 'The guide uses simple rules you can check, on this device. Suggestions only change the Proposed version.'}${sugg.hidden ? ` ${sugg.hidden} hidden.` : ''}`),
           suggList(sugg.suggestions.map((sg) => h('li', { class: `sg ${sg.kind}`, 'data-suggestion': sg.id },
-            h('b', {}, sg.title), h('p', {}, sg.text), h('p', { class: 'why' }, `Why: ${sg.why}`),
+            h('b', {}, sg.title), h('p', {}, sg.text), h('p', { class: 'why' }, `Why: ${sg.why}`), sg.basis ? h('p', { class: 'why basis', 'data-test': 'sg-basis' }, sg.basis) : null,
             h('div', { class: 'sg-actions' },
               sg.tryable ? h('button', { type: 'button', class: 'btn btn-small', 'data-cmd': 'ospeli_maps_try_suggestion', disabled: sg.tried && isP ? true : null,
                 onclick: async () => {
@@ -208,7 +234,7 @@ export async function render(el, ctx) {
       // Phones: the answer first. The top suggestion shows; the rest fold under one row.
       if (!phone() || items.length <= 1) return h('ol', { class: 'sugg' }, items);
       return [h('ol', { class: 'sugg' }, items[0]),
-        h('details', { class: 'more-sugg', 'data-test': 'more-sugg' }, h('summary', {}, `${items.length - 1} more suggestion${items.length > 2 ? 's' : ''}`),
+        h('details', { class: 'more-sugg', 'data-test': 'more-sugg' }, h('summary', {}, `${items.length - 1} more ${walkedNow ? 'note' : 'suggestion'}${items.length > 2 ? 's' : ''}`),
           h('ol', { class: 'sugg', start: '2' }, items.slice(1)))];
     }
 
@@ -224,6 +250,10 @@ export async function render(el, ctx) {
     const editor = stepEditor(m, v.steps); // the form works in minutes, on the stored steps
     const layout = h('div', { class: 'pm-layout' },
       h('div', { class: 'pm-main' }, stats, bars), h('div', { class: 'pm-guide' }, guide), h('div', { class: 'pm-steps' }, stepsBox, editor));
+    // On a phone the guide switch sits in the Guide card of an open map, so the map starts at its
+    // title and the answer is on the first screen (at the card's foot, clear of the short messages). It is the same button either way.
+    if (phone()) guide.append(h('div', { class: 'guide-head in-card' }, guideBtn, h('span', { class: 'meta' }, 'People decide; Ospeli suggests.')));
+    else if (guideBtn.parentNode !== guideHome) guideHome.prepend(guideBtn);
     body.replaceChildren(head, layout);
   }
 
@@ -243,7 +273,7 @@ export async function render(el, ctx) {
       h('div', { class: 'lanes', tabindex: '0', role: 'region', 'aria-label': 'Swimlane map, scroll sideways for later steps' }, grid));
   }
   function stepCard(s, i, a, colour, m) {
-    const hot = a.biggestWaitStepId === s.id; const note = changedNote(s, m);
+    const hot = isHot(a, s); const note = changedNote(s, m);
     return h('button', { type: 'button', class: `pm-step${hot ? ' hot' : ''}${s.par ? ' par' : ''}${note ? ' changed' : ''}`, style: `border-left-color:${colour(s.role)}`, 'data-step': s.id,
       'aria-label': `Step ${i + 1}: ${s.name}, ${s.role}, waits ${T(s.wait)}, work ${T(s.work)}. Change it.`, onclick: () => edit(s.id) },
       h('span', { class: 'n' }, `Step ${i + 1}`), s.name, note,
@@ -251,7 +281,7 @@ export async function render(el, ctx) {
   }
   function stepList(steps, a, colour, m) {
     return h('ol', { class: 'pm-list', 'data-test': 'step-list' }, steps.map((s, i) => {
-      const hot = a.biggestWaitStepId === s.id;
+      const hot = isHot(a, s);
       const mv = (dir) => async () => { if (await run('ospeli_maps_step_move', { mapId: m.id, version: ui.version, stepId: s.id, direction: dir, expectedRevision: m.revision })) drawMap(); };
       return h('li', { 'data-step': s.id },
         s.wait || s.par ? h('div', { class: `wait${hot ? ' hot' : ''}` }, s.par ? `Starts alongside the step before${s.wait ? `, after ${T(s.wait)}` : ''}` : `Waits ${T(s.wait)}${hot ? (T === fmtSeconds ? ' · the longest wait on this walk' : ' · the biggest wait') : ''}`) : null,
