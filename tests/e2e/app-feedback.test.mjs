@@ -134,10 +134,12 @@ for (const width of [360, 390]) {
     await dlg.locator('[data-test="card-again"]').tap();
     assert.equal(await dlg.locator('.fbc-face[aria-pressed="true"]').count(), 0);
     assert.equal(await dlg.locator('.fbc-theme[aria-pressed="true"]').count(), 0);
-    // Back to staff takes two taps, so a patient does not leave by accident.
+    // Back to staff takes a tap and then a two-second hold, so a patient does not leave by accident (#122).
     await dlg.locator('[data-test="card-exit"]').tap();
     assert.ok(await page.locator('dialog[data-test="card"]').evaluate((d) => d.open));
     await dlg.locator('[data-test="card-exit-yes"]').tap();
+    assert.ok(await page.locator('dialog[data-test="card"]').evaluate((d) => d.open), 'a tap is not enough');
+    await dlg.locator('[data-test="card-exit-yes"]').dispatchEvent('pointerdown');
     await page.waitForFunction(() => !document.querySelector('dialog[data-test="card"]').open);
     await page.waitForFunction((n) => Number(document.querySelector('[data-test="svc-numbers"] [data-n="cards"] b').textContent) === n + 1, cards);
     assert.ok(await noSideways(page) <= 0);
@@ -361,7 +363,7 @@ test('back button or back swipe keeps the patient on the card; after staff close
     assert.equal(await page.evaluate(() => { const r = document.querySelector('#role-select').getBoundingClientRect(); return document.elementFromPoint(r.x + 5, r.y + 5)?.closest('dialog[data-test="card"]') != null; }), true);
   }
   assert.equal(await dlg.locator('.fbc-face[aria-pressed="true"]').count(), 1, 'the patient\'s answer is kept');
-  await dlg.locator('[data-test="card-exit-yes"]').tap();
+  await dlg.locator('[data-test="card-exit-yes"]').dispatchEvent('pointerdown'); // staff hold it for two seconds (#122)
   await page.waitForFunction(() => !document.querySelector('dialog[data-test="card"]').open);
   await page.waitForFunction(() => !history.state?.fbCard);
   assert.equal(await page.evaluate(() => location.hash), '#/feedback/quick');

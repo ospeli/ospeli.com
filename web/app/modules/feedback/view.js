@@ -27,6 +27,7 @@ const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 // holding the device can get back to the staff screen. A patient's own-phone link needs the site
 // server and a restricted role (core work). The staff are told so in one plain line.
 const NOT_A_LOCK = 'Stay close. The patient can get back to your screen.';
+const HOLD_MS = 2000; // press and hold to go back to staff (example setting, not a standard)
 
 // ---- the five faces: simple drawn shapes (not the logo), each with its word under it ----
 const SVGNS = 'http://www.w3.org/2000/svg';
@@ -269,11 +270,39 @@ function feedbackCard(ctx, opt, serviceOf) {
   // adds a history entry when it opens, and going back while it is open puts it back and asks the
   // staff question instead. Closing the card properly takes that entry away again.
   const onBack = () => { if (!dlg.open) return; history.pushState({ fbCard: true }, ''); s.leaving = true; draw(); dlg.querySelector('[data-test="card-exit-yes"]')?.focus(); };
-  const s = { face: 0, theme: null, note: '', sent: null, leaving: false, ask: null, error: '', busy: false };
+  const s = { face: 0, theme: null, note: '', sent: null, leaving: false, ask: null, error: '', busy: false, holdNote: '' };
   let timer = null;
   // Escape would drop a patient back on the staff screen: the card leaves only through its own button.
   dlg.addEventListener('cancel', (e) => e.preventDefault());
-  const fresh = () => Object.assign(s, { face: 0, theme: null, note: '', sent: null, leaving: false, ask: null, error: '', busy: false });
+  const fresh = () => Object.assign(s, { face: 0, theme: null, note: '', sent: null, leaving: false, ask: null, error: '', busy: false, holdNote: '' });
+  // Back to the staff screen is a deliberate act (#122): press and hold for HOLD_MS, with a count.
+  // A tap, or letting go early, keeps the card. Still not a lock: see NOT_A_LOCK.
+  let hold = null;
+  const say = (t) => { s.holdNote = t; const n = dlg.querySelector('[data-test="card-hold-note"]'); if (n) n.textContent = t; };
+  const stopHold = (early) => {
+    if (!hold) return;
+    clearInterval(hold.tick); clearTimeout(hold.done); hold = null;
+    if (early) say('Hold it for 2 seconds to go back to the staff screen. Until then the card stays.');
+  };
+  const startHold = () => {
+    if (hold) return;
+    const t0 = Date.now();
+    say('Keep holding: 2');
+    hold = {
+      tick: setInterval(() => say(`Keep holding: ${Math.max(1, Math.ceil((HOLD_MS - (Date.now() - t0)) / 1000))}`), 250),
+      done: setTimeout(() => { stopHold(false); s.holdNote = ''; close(); }, HOLD_MS),
+    };
+  };
+  function holdButton() {
+    const b = h('button', { class: 'btn fbc-hold', type: 'button', 'data-test': 'card-exit-yes' }, 'Yes: hold for 2 seconds');
+    b.addEventListener('pointerdown', (e) => { e.preventDefault(); startHold(); });
+    for (const ev of ['pointerup', 'pointerleave', 'pointercancel']) b.addEventListener(ev, () => stopHold(true));
+    b.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { e.preventDefault(); startHold(); } });
+    b.addEventListener('keyup', (e) => { if (e.key === 'Enter' || e.key === ' ') stopHold(true); });
+    b.addEventListener('click', (e) => { e.preventDefault(); if (!hold) say('Hold it for 2 seconds to go back to the staff screen. Until then the card stays.'); });
+    b.addEventListener('contextmenu', (e) => e.preventDefault());
+    return b;
+  }
   function draw() {
     clearTimeout(timer);
     const svc = serviceNames(opt).get(serviceOf());
@@ -281,9 +310,10 @@ function feedbackCard(ctx, opt, serviceOf) {
       ? h('div', { class: 'fbc-leave', role: 'group', 'aria-label': 'Hand back to staff' },
         h('p', {}, 'Hand the device back to staff?'),
         h('div', { class: 'fbc-row' },
-          h('button', { class: 'btn', type: 'button', 'data-test': 'card-exit-yes', onclick: () => close() }, 'Yes, staff screen'),
-          h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => { s.leaving = false; draw(); } }, 'No, stay on the card')))
-      : h('button', { class: 'linkish fbc-staff', type: 'button', 'data-test': 'card-exit', onclick: () => { s.leaving = true; draw(); } }, 'Staff: back to the staff screen');
+          holdButton(),
+          h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => { s.leaving = false; draw(); } }, 'No, stay on the card')),
+        h('p', { class: 'fbc-small', role: 'status', 'data-test': 'card-hold-note' }, s.holdNote || 'Staff: press and hold for 2 seconds.'))
+      : h('button', { class: 'linkish fbc-staff', type: 'button', 'data-test': 'card-exit', onclick: () => { s.leaving = true; s.holdNote = ''; draw(); } }, 'Staff: back to the staff screen');
     if (s.sent) {
       setKids(dlg, h('div', { class: 'fbc-in fbc-thanks', 'data-test': 'card-thanks' },
         svg('svg', { viewBox: '0 0 64 64', 'aria-hidden': 'true', class: 'fbc-tick' }, svg('circle', { cx: 32, cy: 32, r: 30, fill: '#0A9396' }),
