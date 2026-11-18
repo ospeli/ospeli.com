@@ -17,7 +17,7 @@ import { createServer } from 'node:http';
 import { createServer as createTlsServer } from 'node:https';
 import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { networkInterfaces } from 'node:os';
-import { mkdirSync, chmodSync, statSync } from 'node:fs';
+import { mkdirSync, chmodSync, statSync, readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
 import { readFile, stat, realpath } from 'node:fs/promises';
 import { dirname, resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,6 +32,7 @@ import { deviceLabelNamesPerson, personalDetailIn } from '../../web/app/core/pro
 import { SITE_META } from '../../web/app/core/site.js';
 import { SqliteAdapter, StoreInUseError } from './store.mjs';
 import { buildOpenApi } from './openapi.mjs';
+import { saveLocked, open as openLocked, passphraseProblem, NotLockedCopyError, DamagedCopyError, WrongPassphraseError, MAX_COPY_BYTES } from './locked-copy.mjs';
 
 // What the console may say about the trail (issue #79): a self-check on a plain chain of check
 // codes catches accidental damage. It cannot show removed or rewritten entries, so say so, and
@@ -680,6 +681,8 @@ export async function startServer({
     '  remove device 2      disconnect device 2 on that list',
     '  audit                check the audit trail and show the last entries',
     '  backup FILE          save a copy of all data to FILE',
+    '  locked backup FILE   save a copy that cannot be read without a passphrase you choose',
+    '  open backup FILE NEW open a locked copy into a new data file NEW (asks for the passphrase)',
     '  status               the address and whether bots are on',
     'To turn Ospeli off: press Ctrl and C together.',
   ].join('\n');
@@ -721,10 +724,67 @@ export async function startServer({
   ].join('\n');
 
   let wizard = null; // the "setup agent" and "add device" questions, one line at a time
+  // True while the next line typed is a passphrase, so the window can keep it out of its history.
+  const secretNext = () => !!wizard && ['lock-pass1', 'lock-pass2', 'open-pass'].includes(wizard.step);
+  // A locked copy: a plain copy is made beside the target for a moment (SQLite writes its own
+  // file), sealed in memory, and removed. Then the sealed file is read back and opened, so a
+  // copy that says "saved" is a copy that opens (issue #93, the recovery story).
+  async function lockedBackup(to, passphrase) {
+    const tmp = `${to}.${randomBytes(6).toString('hex')}.part`;
+    try {
+      if (existsSync(to)) return `A file called ${to} is already there. Nothing was saved. Give a new name.`;
+      adapter.backupTo(tmp); ownerOnly(tmp);
+      if (statSync(tmp).size > MAX_COPY_BYTES) return 'The data file is too large for a locked copy in this version. Nothing was saved. Use backup FILE and keep that file on an encrypted disk.';
+      saveLocked(readFileSync(tmp), to, passphrase);
+      ownerOnly(to);
+    } catch (err) {
+      return `The locked copy could not be saved to ${to} (${err.code === 'EEXIST' ? 'a file with that name is already there; give a new name' : err.code === 'check-failed' ? 'it did not open again when checked, so it was removed' : err.code || 'the file could not be written'}). Nothing was saved.`;
+    } finally {
+      try { unlinkSync(tmp); } catch { /* it was never made */ }
+    }
+    await core.recordAs(person(CONSOLE_ADMIN), 'data.backup', null, { locked: true, checked: true });
+    return [
+      `Saved a locked copy of all data to ${to}.`,
+      'Checked: the file was read back and opens with the passphrase you typed.',
+      'Without the passphrase nobody can open it: not you, and not Ospeli. There is no reset.',
+      'Write the passphrase on paper now and keep it somewhere safe, apart from the file.',
+      `To use the copy later, type: open backup ${to} NEWFILE`,
+    ].join('\n');
+  }
+  async function openBackup(from, to, passphrase) {
+    let plain;
+    try {
+      plain = openLocked(readFileSync(from), passphrase);
+    } catch (err) {
+      if (err instanceof WrongPassphraseError) return 'Wrong passphrase. The file itself is whole. Nothing was written. To try again, type the open backup line again.';
+      if (err instanceof DamagedCopyError) return 'This file is damaged: it has changed since Ospeli wrote it, or part of it is missing. It cannot be opened with any passphrase. Nothing was written. Try another copy.';
+      if (err instanceof NotLockedCopyError) return `${from} is not a locked copy made by Ospeli. Nothing was written. (A copy made with backup FILE is not locked: start Ospeli with --data and its name.)`;
+      return `${from} could not be read (${err.code || 'not readable'}). Nothing was written.`;
+    }
+    try { writeFileSync(to, plain, { flag: 'wx', mode: 0o600 }); ownerOnly(to); } catch (err) {
+      return `The opened copy could not be written to ${to} (${err.code === 'EEXIST' ? 'a file with that name is already there; give a new name' : err.code || 'the file could not be written'}). Nothing was written.`;
+    }
+    await core.recordAs(person(CONSOLE_ADMIN), 'data.backup-opened', null, null);
+    return [`Opened. The data is in ${to}, which is NOT locked: anyone who gets that file can read it.`, 'The data Ospeli is running on now was not changed.', `To run Ospeli on the opened copy: stop Ospeli, then start it with: --data ${to}`].join('\n');
+  }
   async function wizardStep(line) {
     const w = wizard; const text = line.trim();
     if (/^stop (agents|bots)$/i.test(text)) { wizard = null; return consoleLine('stop agents'); }
     if (/^(cancel|stop|quit)$/i.test(text)) { wizard = null; return 'Cancelled. Nothing was changed.'; }
+    // A locked copy (#93). The passphrase is used and forgotten: it is never stored, recorded or
+    // repeated back, and neither step writes anything until the last answer is in.
+    if (w.step === 'lock-pass1') {
+      const problem = passphraseProblem(text);
+      if (problem) return `${problem} Type another, or type cancel.`;
+      w.pass = text; w.step = 'lock-pass2';
+      return '2 of 2. Type the same passphrase again.';
+    }
+    if (w.step === 'lock-pass2') {
+      wizard = null;
+      if (text !== w.pass) return 'The two did not match. Nothing was saved. To try again, type: locked backup FILE';
+      return lockedBackup(w.to, w.pass);
+    }
+    if (w.step === 'open-pass') { wizard = null; return openBackup(w.from, w.to, text); }
     if (w.step === 'device-label') {
       if (text && (!DEVICE_LABEL.test(text) || deviceLabelNamesPerson(text))) return 'Say where the device is or what it is for, not whose it is, for example front desk tablet (letters, digits, spaces, dots, dashes). Or press Enter to skip.';
       if (text && (await liveDevices()).some((d) => d.label.toLowerCase() === text.toLowerCase())) return `There is already a device called ${text}. Pick another label, or press Enter to skip.`;
@@ -851,11 +911,25 @@ export async function startServer({
         return [check.ok ? auditLine(check) : `Audit trail: BROKEN at entry ${check.at} (${check.reason}). Tell the person who looks after this server.`,
           ...log.slice(-8).map((e) => `  ${e.seq}  ${e.at.slice(0, 16).replace('T', ' ')}  ${who(e)}  ${e.action}${e.detail?.command ? ` ${e.detail.command}` : ''}`)].join('\n');
       }
+      if ((m = /^locked backup (.+)$/i.exec(text))) {
+        const to = resolve(m[1]);
+        if (existsSync(to)) return `A file called ${to} is already there. Nothing was saved. Give a new name.`;
+        wizard = { step: 'lock-pass1', to };
+        return ['1 of 2. Choose a passphrase for this copy: at least 12 characters; four or five unrelated words work well.', 'It shows on this screen as you type, so check nobody is watching. It is not stored anywhere.', 'If it is lost, the copy cannot be opened by anyone. (Type cancel to stop.)'].join('\n');
+      }
+      if ((m = /^open backup (\S+) (\S+)$/i.exec(text))) {
+        const from = resolve(m[1]); const to = resolve(m[2]);
+        if (!existsSync(from)) return `There is no file ${from}. Nothing was written.`;
+        if (existsSync(to)) return `A file called ${to} is already there. Nothing was written. Give a new name for the opened copy.`;
+        wizard = { step: 'open-pass', from, to };
+        return 'Type the passphrase for this copy. (Type cancel to stop.)';
+      }
+      if (/^(locked backup|open backup)\b/i.test(text)) return 'Type locked backup and a file name, for example: locked backup ospeli-copy.locked\nTo open one: open backup ospeli-copy.locked opened.db (file names without spaces)';
       if ((m = /^backup (.+)$/i.exec(text))) {
         const to = resolve(m[1]);
         try { adapter.backupTo(to); ownerOnly(to); } catch (err) { return `The copy could not be saved to ${to} (${/exist/i.test(err.message) ? 'a file with that name is already there; give a new name' : err.message}).`; }
         await core.recordAs(person(CONSOLE_ADMIN), 'data.backup', null, null);
-        return `Saved a copy of all data to ${to}. To use it later, start Ospeli with: --data ${to}`;
+        return `Saved a copy of all data to ${to}. To use it later, start Ospeli with: --data ${to}\nThis copy is not locked: anyone who gets the file can read it. For a copy that needs a passphrase, type: locked backup FILE`;
       }
       return `"${text.slice(0, 40)}" is not a word Ospeli knows. Type: help`;
     } catch (err) {
@@ -867,7 +941,7 @@ export async function startServer({
 
   return {
     core, url, shareUrl, port: actualPort, file,
-    banner, consoleLine, addAgent, issueKey, openapi, deviceCode, appUrl,
+    banner, consoleLine, secretNext, addAgent, issueKey, openapi, deviceCode, appUrl,
     async close() {
       await new Promise((r) => { server.close(r); server.closeAllConnections?.(); });
       await core.queue;

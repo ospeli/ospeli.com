@@ -65,6 +65,8 @@ if (consoleMode === 'terminal') {
   const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: '> ' });
   rl.prompt();
   rl.on('line', async (line) => {
+    // A passphrase typed for a locked copy does not stay in this window's history (the up arrow).
+    if (site.secretNext() && rl.history?.[0] === line) rl.history.shift();
     try { const out = await site.consoleLine(line); if (out) console.log(out); } catch (err) { console.log(`That did not work (${err.message}). Type: help`); }
     rl.prompt();
   });

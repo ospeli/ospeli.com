@@ -55,6 +55,14 @@ Type `stop agents`. Every bot is shut out at once. `start agents` lets the liste
 ## Turn Ospeli off
 Press Ctrl and C together. Your data is saved in one file (`tools/ospeli-server/data/site.db`); `backup FILE` in the server window saves a copy while it runs.
 
+## A copy that needs a passphrase
+`backup FILE` saves a plain copy: anyone who gets that file can read it. For a copy that leaves the building (a USB stick, another computer), type `locked backup FILE` instead.
+- Ospeli asks for a passphrase twice: at least 12 characters; four or five unrelated words work well. It shows on the screen as you type and is not stored anywhere.
+- The copy is sealed with that passphrase (AES-256-GCM; the key is made from the passphrase with scrypt; Node's own library, nothing home-made). Straight after writing it, Ospeli reads the file back and opens it, and only then says it is saved.
+- **If the passphrase is lost, nobody can open the copy: not you, and not Ospeli. There is no reset.** Write it on paper and keep it apart from the file.
+- To use a copy: `open backup FILE NEWFILE` asks for the passphrase and writes the data to NEWFILE, which is not locked. The data Ospeli is running on is not touched. Then stop Ospeli and start it with `--data NEWFILE`. A wrong passphrase and a damaged file are told apart, and neither writes anything.
+- What this does not cover: the data file Ospeli runs on, and plain `backup` copies, are still not encrypted; the passphrase is only as strong as you make it; while a locked copy is being made a plain working copy sits beside it for a moment and is then deleted (deleted, not wiped); the app's own export file (Data page) is not locked. File names here cannot hold spaces for `open backup`.
+
 ## For the person writing the bot
 - `GET /api/v1/health` (no key), then `GET /api/v1/whoami` with `Authorization: Bearer osk_…`: your role, units, end date and limits.
 - `GET /api/v1/commands` lists every command; `GET /api/v1/openapi.json` is the same list as an OpenAPI 3.1 file, generated from the command registry the app's screens use.
@@ -72,7 +80,7 @@ Press Ctrl and C together. Your data is saved in one file (`tools/ospeli-server/
 - A call from a connected device that is turned away (a role that may not run the command, a command that does not exist, input the command does not accept, a call that came from a page on another site, a made-up or removed device cookie) is recorded as `device.refused` with the device's label, the command's name and a fixed reason, never what was typed. The same refusal within a minute is counted, not listed. A device code cancelled by five wrong tries is recorded as `devices.code-cancelled` and the server window says so, with the address the last try came from.
 - Limits on the network side: at most 200 connections open at once and 40 from one address; callers without a key or a connected device share a small number of calls a minute per address, and a flood from many addresses cannot reset anyone's count. These slow a flood down; they do not make the server safe on a network you do not trust.
 - It listens on this computer only. `--host 0.0.0.0` lets other computers on your network reach it; keys then travel unencrypted, so use it only on a network you trust.
-- The data file, and every copy `backup` saves, can be read only by the computer account that runs Ospeli (on Windows, by whoever that folder already allows). The file itself is not encrypted: anyone who can sign in as that account, or who takes the disk, can read it.
+- The data file, and every copy `backup` saves, can be read only by the computer account that runs Ospeli (on Windows, by whoever that folder already allows). The data file and plain copies are not encrypted: anyone who can sign in as that account, or who takes the disk, can read them. Only a copy made with `locked backup` needs a passphrase (see above).
 - One server per data file. Other options: `--port 8787`, `--data FILE`, `--tls-cert FILE --tls-key FILE`.
 
 ### What the audit self-check proves
