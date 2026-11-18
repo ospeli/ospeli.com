@@ -35,6 +35,7 @@ const daysText = (d) => (d == null ? '' : d < 1 ? `${Math.max(1, Math.round(d * 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const day = (iso) => { const d = new Date(iso); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; };
 const when = (iso) => { const d = new Date(iso); return `${day(iso)}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+const CHECK_TIMES = 10; // a count over this many times the top-up level is asked about once (example setting, not a standard)
 const ISSUED_RECENT_HOURS = 4; // an issue this recent may still be on its way to the ward (example setting, not a standard)
 const levelWord = (isStore) => (isStore ? 'reorder level' : 'top-up level');
 // Issued is not arrived: the ward sees that the store issued it, never that it arrived.
@@ -83,19 +84,40 @@ export async function render(el, ctx) {
 // A number picked with − and + (or typed). It starts blank: blank means "not counted", never zero.
 function stepper({ get, set, label, max = MAX, test = null }) {
   const input = h('input', { type: 'number', inputmode: 'numeric', min: 0, max, step: 1, placeholder: '–', class: 'sto-num', 'aria-label': label, 'data-test': test });
-  const show = () => { const v = get(); input.value = v == null ? '' : String(v); };
+  const msg = h('span', { class: 'sto-bad', role: 'alert', hidden: true });
+  // A number the field itself marks wrong is never changed to a nearby one and saved (#116):
+  // it is marked, said beside the field, and every save on the page refuses while it stands.
+  const mark = (why) => {
+    if (why) { input.setAttribute('aria-invalid', 'true'); msg.textContent = `Not saved: ${label.replace(/, how many.*$/, '')}. ${why}`; msg.hidden = false; }
+    else { input.removeAttribute('aria-invalid'); msg.textContent = ''; msg.hidden = true; }
+  };
+  const show = () => { const v = get(); input.value = v == null ? '' : String(v); mark(null); };
   const put = (v) => { set(v); show(); };
   input.addEventListener('input', () => {
     const raw = input.value.trim();
-    const n = raw === '' ? null : Math.floor(Number(raw));
-    set(raw === '' || !Number.isFinite(n) ? null : Math.max(0, Math.min(max, n)));
+    if (raw === '' && !input.validity.badInput) { mark(null); set(null); return; }
+    const n = Number(raw);
+    const why = raw === '' || !Number.isFinite(n) ? 'Type a number, for example 4.'
+      : n < 0 ? 'A count cannot be below 0.'
+        : !Number.isInteger(n) || !/^\d+$/.test(raw) ? 'Use a whole number, for example 4.'
+          : n > max ? `The most this field takes is ${max.toLocaleString('en')}.` : null;
+    mark(why);
+    if (!why) set(n);
   });
-  input.addEventListener('blur', show);
+  input.addEventListener('blur', () => { if (input.getAttribute('aria-invalid') !== 'true') show(); });
   show();
-  return h('span', { class: 'sto-stepper' },
+  return h('span', { class: 'sto-stepper-wrap' }, h('span', { class: 'sto-stepper' },
     h('button', { type: 'button', class: 'sto-step', 'aria-label': `One less: ${label}`, onclick: () => { const v = get(); put(v == null ? 0 : Math.max(0, v - 1)); } }, '−'),
     input,
-    h('button', { type: 'button', class: 'sto-step', 'aria-label': `One more: ${label}`, onclick: () => { const v = get(); put(v == null ? 1 : Math.min(max, v + 1)); } }, '+'));
+    h('button', { type: 'button', class: 'sto-step', 'aria-label': `One more: ${label}`, onclick: () => { const v = get(); put(v == null ? 1 : Math.min(max, v + 1)); } }, '+')), msg);
+}
+// The first number on the page the field marks wrong: focus it and say so. True when one stands.
+function refuseBad(ctx) {
+  const bad = document.querySelector('.mod-stores .sto-num[aria-invalid="true"]');
+  if (!bad) return false;
+  bad.focus();
+  ctx.toast('Not saved. Fix the number marked beside its field.');
+  return true;
 }
 // A <details> that stays open or shut across redraws.
 function keepOpen(openSet, key, summary, body, attrs = {}) {
@@ -115,6 +137,7 @@ function actions(ctx, reload) {
   let busy = false;
   return async function act(cmd, input, words, { onDone = null, onError = null } = {}) {
     if (busy) return null;
+    if (refuseBad(ctx)) return null;
     busy = true;
     try {
       const out = await ctx.run(cmd, input);
@@ -167,7 +190,7 @@ function countScreen(ctx, shared) {
   const box = h('div', { class: 'sto-count' });
   const mayCount = can(ctx.role, 'ospeli_stock_count');
   const known = () => ui.wards.some(([id]) => id === ui.ward);
-  const ui = { ward: ctx.rest[1] || store.get('ospeli-stores-ward') || '', wards: [], values: new Map(), moved: new Set(), result: null, open: new Set() };
+  const ui = { ward: ctx.rest[1] || store.get('ospeli-stores-ward') || '', wards: [], values: new Map(), moved: new Set(), result: null, open: new Set(), checked: null };
   let data = null;
   const load = async () => {
     const levels = await ctx.run('ospeli_stock_levels', { category: 'supplies', format: 'short', limit: 500 });
@@ -183,8 +206,20 @@ function countScreen(ctx, shared) {
   const counted = () => [...ui.values].filter(([, v]) => v != null);
   const label = () => { const n = counted().length; saveBtn.textContent = n ? `Save count (${plural(n, 'item')})` : 'Count at least one item to save'; };
   saveBtn.addEventListener('click', async () => {
+    if (refuseBad(ctx)) return;
     const lines = counted().map(([itemId, qty]) => ({ itemId, qty }));
     if (!lines.length) return;
+    // A count far over the top-up level is often a slip (400 for 4): ask once, then save what was typed.
+    const big = lines.map((l) => ({ ...l, row: data.rows.find((r) => r.itemId === l.itemId) })).filter((l) => l.row?.level && l.qty > l.row.level * CHECK_TIMES);
+    const key = JSON.stringify(big.map((l) => [l.itemId, l.qty]));
+    if (big.length && ui.checked !== key) {
+      ui.checked = key;
+      ui.result = { check: big.map((l) => `${l.qty} of ${l.row.itemName} (${l.row.unit}; top-up level ${l.row.level})`).join('; ') };
+      draw();
+      saveBtn.focus();
+      return;
+    }
+    ui.checked = null;
     const place = ui.ward;
     await act('ospeli_stock_count', { placeId: place, lines, seenSeq: data.levels.asOfSeq }, (out) => (out.requestId ? `Count saved. ${reqName(out.requestId)} sent to the store` : 'Count saved'), {
       onDone: (out) => { ui.values.clear(); ui.moved.clear(); ui.result = { ...out, place }; },
@@ -230,17 +265,18 @@ function countScreen(ctx, shared) {
         marker.textContent = v == null ? (ui.moved.has(r.itemId) ? 'Count again' : '') : under ? (r.openRequestId ? `Under level: already asked for (${reqName(r.openRequestId)})` : `Under level: ${r.level - v} will be asked for`) : 'At or over level';
         label();
       };
-      li.append(
+      li.append(...[
         h('div', { class: 'sto-line-head' }, h('b', {}, r.itemName), h('span', { class: 'meta' }, `${r.unit} · top-up level ${r.level}`)),
         onWay.has(r.itemId) ? h('p', { class: 'sto-fact', 'data-test': 'on-its-way' }, `Issued from the store ${Math.max(1, Math.round(onWay.get(r.itemId)))} h ago: on its way. Count it once it is on the shelf.`) : null,
         mayCount ? h('div', { class: 'sto-line-acts' },
           stepper({ get: () => ui.values.get(r.itemId) ?? null, set: (v) => { if (v == null) ui.values.delete(r.itemId); else ui.values.set(r.itemId, v); mark(); }, label: `${r.itemName}, how many are there`, test: 'count-input' }),
-          h('button', { type: 'button', class: 'btn btn-ghost btn-small sto-full', 'data-test': 'at-level', onclick: () => { ui.values.set(r.itemId, r.level); li.querySelector('.sto-num').value = String(r.level); mark(); } }, `At level: ${r.level}`)) : null,
-        marker);
+          h('button', { type: 'button', class: 'btn btn-ghost btn-small sto-full', 'data-test': 'at-level', onclick: () => { ui.values.set(r.itemId, r.level); const n = li.querySelector('.sto-num'); n.value = String(r.level); n.dispatchEvent(new Event('input')); mark(); } }, `At level: ${r.level}`)) : null,
+        marker].filter(Boolean));
       mark();
       return li;
     }));
-    const result = ui.result ? (ui.result.error
+    const result = ui.result?.check ? h('p', { class: 'card notice sto-result', role: 'status', 'data-test': 'count-check' }, `${ui.result.check}: more than ${CHECK_TIMES} times the level. Is that right? Tap save again to keep it, or change the number.`)
+      : ui.result ? (ui.result.error
       ? h('p', { class: 'card notice sto-result', role: 'status', 'data-test': 'count-result' }, ui.result.error)
       : h('div', { class: 'card sto-result is-ok', role: 'status', 'data-test': 'count-result' },
         h('p', {}, h('b', {}, `Saved: ${plural(ui.result.counted, 'item')} counted at ${shared.names.get(ui.result.place) || 'the ward'}.`)),

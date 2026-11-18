@@ -18,6 +18,10 @@
 .mod-stores select, .mod-stores input[type="text"] { font: inherit; font-size: 1rem; min-height: 44px; padding: 6px 10px; border: 1.5px solid var(--line-strong); border-radius: 10px;
   background: var(--surface); color: var(--ink); max-width: 100%; min-width: 0; box-sizing: border-box; }
 .mod-stores .field select, .mod-stores .field input[type="text"] { width: 100%; }
+.mod-stores .sto-stepper-wrap { display: contents; }
+.mod-stores .sto-bad { display: block; flex-basis: 100%; order: 2; font-size: .9375rem; font-weight: 700; color: #8A2412; }
+.mod-stores .sto-bad[hidden] { display: none; }
+.mod-stores .sto-num[aria-invalid="true"] { border-color: #8A2412; background: #FBEAE6; }
 .mod-stores .sto-stepper { display: inline-flex; align-items: stretch; gap: 0; flex: none; }
 .mod-stores .sto-step { font: inherit; font-size: 1.35rem; font-weight: 800; min-width: 48px; min-height: 48px; border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--navy); cursor: pointer; }
 .mod-stores .sto-step:first-child { border-radius: 10px 0 0 10px; }

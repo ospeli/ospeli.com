@@ -508,3 +508,12 @@ test('a proposal is checked before it waits and again when a person accepts it',
   await assert.rejects(run(core, 'transfer', move, 'estates-tech'), code('conflict'));
   assert.deepEqual([await usableAt(core, 'gloves-m', STORE), await usableAt(core, 'gloves-m', WARD)], [2, 0]);
 });
+
+test('#116: a count of −5, 2.5 or over the most a line takes is refused and nothing is written', async () => {
+  const core = await site();
+  const before = (await core.exportData()).events.length;
+  for (const qty of [-5, 2.5, 1e9, 1e20]) {
+    await assert.rejects(run(core, 'count', { placeId: WARD, lines: [{ itemId: 'gloves-m', qty }] }, 'ward-nurse'), code('invalid-input'), `qty ${qty}`);
+  }
+  assert.equal((await core.exportData()).events.length, before);
+});
