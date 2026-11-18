@@ -306,7 +306,7 @@ export function taskCommands(packs = []) {
       taskWrite({
         name: 'ospeli_tasks_cancel', verb: 'cancel', to: 'cancelled',
         summary: 'Cancel an open task that someone asked for, with a reason from the list. A bed clean cannot be cancelled here: it follows the bed board.',
-        extra: { reason: { type: 'string', enum: CANCEL_REASONS } }, required: ['reason'],
+        extra: { reason: { type: 'string', enum: CANCEL_REASONS, description: `Why the task is cancelled: ${CANCEL_REASONS.join(', ')}.` } }, required: ['reason'],
         guard: (t) => { if (t.source === 'bed') throw new CommandError('conflict', 'A bed clean follows the bed board and cannot be cancelled here. If the bed should not be used, take it out of service on the bed board.'); },
         events: (t, input, role, at) => [ev('task.cancelled', t.id, role, at, { reason: input.reason })],
         example: { input: { taskId: 'task-00001', reason: CANCEL_REASONS[0] }, needs: 'An open task that someone asked for. task-00001 is an example id: ospeli_tasks_list with { "state": "open" } lists the open tasks, and ospeli_tasks_request opens one.' },
