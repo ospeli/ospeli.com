@@ -10,6 +10,8 @@
 //                commands only, never by itself)
 //   COMMANDS     [command]: name, summary, kind, roles, approval, input, output, run, example
 //   TASK_TEAMS, TASK_KINDS   optional: its kinds of task for the shared task object
+//   STOCK_CATEGORIES, STOCK_ITEMS   optional: its category of stock (with the roles for each verb)
+//                and its example items, for the shared stock item (core/stock.js)
 //   KPIS         optional: [{ id, name, unit, definition, source, ... }] with a calculation each
 //   seed         optional: (ctx) => [{ t, type, subject, actorRole, data }] synthetic events for
 //                the example hospital; ctx = { r, startMs, endMs, days, entities, events }
@@ -18,8 +20,9 @@
 
 import * as feedback from '../modules/feedback/commands.js';
 import * as support from '../modules/support/commands.js';
+import * as stores from '../modules/stores/commands.js';
 
-export const MODULE_PACKS = [feedback, support];
+export const MODULE_PACKS = [feedback, support, stores];
 
 export const MODULE_COMMANDS = MODULE_PACKS.flatMap((p) => p.COMMANDS || []);
 export const packById = (id) => MODULE_PACKS.find((p) => p.id === id) || null;

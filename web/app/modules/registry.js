@@ -15,6 +15,7 @@ export const MODULES = [
   { id: 'playbooks', name: 'Playbooks', week: 4, summary: 'Daily flow report and bottleneck finder.', soon: 'A printable daily flow report and a bottleneck finder that shows the longest waits between steps.' },
   { id: 'feedback', name: 'Patient feedback', summary: 'Complaints, compliments and feedback cards, with replies and themes.', commands: ['ospeli_experience_'], load: () => import('./feedback/view.js') },
   { id: 'support', name: 'Cleaning and transport', summary: 'Cleans, moves and deliveries as tracked tasks for each team.', commands: ['ospeli_support_', 'ospeli_tasks_'], load: () => import('./support/view.js') },
+  { id: 'stores', name: 'Stores and supplies', summary: 'Count ward stock, raise and issue requests, track orders and stock-outs.', commands: ['ospeli_stores_', 'ospeli_stock_'], load: () => import('./stores/view.js') },
   { id: 'agents', name: 'Agents', summary: 'Choose whether AI helpers may read and suggest. Off until you turn it on.', load: () => import('./agents.js') },
   { id: 'data', name: 'Data and audit', summary: 'Export, import, reset and the audit trail.', load: () => import('./data.js') },
 ];
@@ -33,6 +34,8 @@ export const ROLE_MODULES = {
   'porter': ['support'],
   'cleaner': ['support'],
   'support-supervisor': ['support'],
+  'storekeeper': ['stores'],
+  'supply-manager': ['stores'],
 };
 
 export const moduleById = (id) => MODULES.find((m) => m.id === id) || null;
