@@ -274,6 +274,13 @@ function feedbackCard(ctx, opt, serviceOf) {
   let timer = null;
   // Escape would drop a patient back on the staff screen: the card leaves only through its own button.
   dlg.addEventListener('cancel', (e) => e.preventDefault());
+  // The browser lets a page refuse "cancel" only once: a second Escape closed the card and left
+  // the person holding the device on the staff screen (18 Nov). So Escape is stopped at the key,
+  // and a card closed by anything but its own way out opens again at once.
+  let leavingProperly = false;
+  dlg.addEventListener('keydown', (e) => { if (e.key === 'Escape') e.preventDefault(); });
+  // "close" arrives a moment after the card shut, so the mark is cleared here, not where it is set.
+  dlg.addEventListener('close', () => { if (leavingProperly) { leavingProperly = false; return; } if (dlg.isConnected && !dlg.open) dlg.showModal(); });
   const fresh = () => Object.assign(s, { face: 0, theme: null, note: '', sent: null, leaving: false, ask: null, error: '', busy: false, holdNote: '' });
   // Back to the staff screen is a deliberate act (#122): press and hold for HOLD_MS, with a count.
   // A tap, or letting go early, keeps the card. Still not a lock: see NOT_A_LOCK.
@@ -384,7 +391,7 @@ function feedbackCard(ctx, opt, serviceOf) {
   function close() {
     clearTimeout(timer);
     window.removeEventListener('popstate', onBack);
-    if (dlg.open) dlg.close();
+    if (dlg.open) { leavingProperly = true; dlg.close(); }
     if (history.state?.fbCard) history.back(); // the entry the card added; the address does not change
     fresh();
     document.querySelector('[data-test="hand-over"]')?.focus();
