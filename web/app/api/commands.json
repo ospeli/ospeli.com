@@ -9140,8 +9140,7 @@
               "qty": 4
             }
           ]
-        },
-        "needs": "An item that is not tracked by batch (a batched item needs its batch on the line). ospeli_stock_items lists the items, and ospeli_stock_levels gives the asOfSeq to send as seenSeq."
+        }
       }
     },
     {
@@ -9573,8 +9572,7 @@
             }
           ],
           "source": "Purchase"
-        },
-        "needs": "An item that is not tracked by batch, or the batch and expiry date on the line. ospeli_stock_items lists the items and the stores."
+        }
       }
     },
     {
