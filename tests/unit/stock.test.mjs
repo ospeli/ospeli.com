@@ -56,7 +56,8 @@ async function run(core, name, input, role, opts = {}) {
 async function site() {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  await loadSyntheticHospital(core, { end: END });
+  // No module history: these tests bring their own items and check exact balances.
+  await loadSyntheticHospital(core, { end: END, modules: false });
   core.skip = (ms) => { t += ms; };
   return core;
 }

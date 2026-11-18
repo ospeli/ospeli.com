@@ -147,7 +147,8 @@ const atLocalHour = (t, hour, r) => {
 // Discharge hours lean to the afternoon, with a small morning share (a common pattern).
 const DISCHARGE_HOURS = [[8, 1], [9, 2], [10, 4], [11, 6], [12, 8], [13, 10], [14, 12], [15, 12], [16, 11], [17, 9], [18, 6], [19, 4], [20, 2], [21, 1]];
 
-export function generateHospital({ seed = DEFAULT_SEED, end, days = 30 } = {}) {
+// modules: false leaves the modules' own history out (for a test of a shared object that brings its own).
+export function generateHospital({ seed = DEFAULT_SEED, end, days = 30, modules = true } = {}) {
   if (end == null) throw new Error('end time is required so output is reproducible');
   const endMs = new Date(end).getTime();
   const startMs = endMs - days * DAY;
@@ -293,7 +294,7 @@ export function generateHospital({ seed = DEFAULT_SEED, end, days = 30 } = {}) {
   // stream, so adding one never changes the events above or another module's. It may only write
   // its own kinds of event, task.* for the shared task object and, when it lists stock items,
   // stock.* for the shared stock item.
-  for (const p of MODULE_PACKS) {
+  for (const p of modules ? MODULE_PACKS : []) {
     if (typeof p.seed !== 'function') continue;
     const mine = p.seed({ r: rng((seed ^ hashOf(p.id)) >>> 0), startMs, endMs, days, entities, events: raw.map((e) => ({ ...e })) }) || [];
     for (const e of mine) {
@@ -310,8 +311,8 @@ export function generateHospital({ seed = DEFAULT_SEED, end, days = 30 } = {}) {
 }
 
 // Load the synthetic hospital into a (normally empty) core.
-export async function loadSyntheticHospital(core, { seed = DEFAULT_SEED, end, days = 30 } = {}) {
-  const { entities, events, meta } = generateHospital({ seed, end, days });
+export async function loadSyntheticHospital(core, { seed = DEFAULT_SEED, end, days = 30, modules = true } = {}) {
+  const { entities, events, meta } = generateHospital({ seed, end, days, modules });
   // Mark setup as unfinished until every event is stored, so a reload mid-way is detected
   // and setup starts again on the next boot (issue #1).
   await core.setMeta('setup', 'started');
