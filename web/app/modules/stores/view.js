@@ -14,7 +14,12 @@ import { proposalsCard } from '../proposals.js';
 import { STEP_ROLES, STEP_NAMES, UNITS } from './logic.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
-const roleNames = (ids) => ids.map((r) => roleById(r)?.name || r).join(' or ');
+// Role names in full on this page ("COO" spelled out).
+const roleName = (r) => (r === 'coo' ? 'Chief operating officer' : roleById(r)?.name || r);
+const roleNames = (ids) => ids.map(roleName).join(' or ');
+// A request or an order named in plain words; the id itself stays in data attributes.
+const reqName = (id) => `Request ${Number(String(id).replace(/^req-/, '')) || id}`;
+const ordName = (id) => `Order ${Number(String(id).replace(/^ord-/, '')) || id}`;
 const TITLES = { count: 'Ward stock count', requests: 'Requests and issues', receive: 'Receive a delivery', orders: 'Order tracker', outs: 'Stock-out log', manage: 'Supplies overview' };
 function screensFor(role) {
   if (role === 'ward-nurse') return ['count', 'outs'];
@@ -26,8 +31,14 @@ function screensFor(role) {
 const MAX = 100000;
 const hoursText = (hrs) => (hrs == null ? '' : fmtWait(hrs * 60));
 const daysText = (d) => (d == null ? '' : d < 1 ? `${Math.max(1, Math.round(d * 24))} h` : `${Math.round(d * 10) / 10} days`);
-const day = (iso) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-const when = (iso) => new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+// Dates as day and month, times on the 24-hour clock, in the device's own time: "8 Nov, 19:19".
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const day = (iso) => { const d = new Date(iso); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; };
+const when = (iso) => { const d = new Date(iso); return `${day(iso)}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+const ISSUED_RECENT_HOURS = 4; // an issue this recent may still be on its way to the ward (example setting, not a standard)
+const levelWord = (isStore) => (isStore ? 'reorder level' : 'top-up level');
+// Issued is not arrived: the ward sees that the store issued it, never that it arrived.
+const stateWords = (q) => ({ open: 'Waiting', part: 'Part issued from the store', issued: 'Issued from the store', cancelled: 'Cancelled' })[q.state] || q.stateName;
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 // A double tap: the core refuses the same movement again and says so. That is not an error to retry.
 const already = (err) => err?.code === 'conflict' && (err.detail?.confirm === 'again' || err.detail?.already === true || err.detail?.state === 'issued');
@@ -63,7 +74,8 @@ export async function render(el, ctx) {
     clearTimeout(t);
     t = setTimeout(() => view.load(), 120);
   });
-  const tick = setInterval(() => view.load(), 60e3); // keep the waits fresh
+  // Keep the waits fresh, but never redraw under a person who is typing or picking.
+  const tick = setInterval(() => { const a = document.activeElement; if (a && wrap.contains(a) && ['INPUT', 'SELECT', 'TEXTAREA'].includes(a.tagName)) return; view.load(); }, 60e3);
   return () => { off(); clearInterval(tick); clearTimeout(t); };
 }
 
@@ -162,7 +174,7 @@ function countScreen(ctx, shared) {
     ui.wards = placesOf(levels.levels, shared.stores);
     for (const [id, name] of ui.wards) shared.names.set(id, name);
     if (!known()) ui.ward = '';
-    const reqs = ui.ward ? await ctx.run('ospeli_stock_requests', { placeId: ui.ward, state: 'all', limit: 5 }) : null;
+    const reqs = ui.ward ? await ctx.run('ospeli_stock_requests', { placeId: ui.ward, state: 'all', limit: 20 }) : null;
     data = { levels, rows: levels.levels.filter((r) => r.placeId === ui.ward && r.level), reqs };
     draw();
   };
@@ -174,7 +186,7 @@ function countScreen(ctx, shared) {
     const lines = counted().map(([itemId, qty]) => ({ itemId, qty }));
     if (!lines.length) return;
     const place = ui.ward;
-    await act('ospeli_stock_count', { placeId: place, lines, seenSeq: data.levels.asOfSeq }, (out) => (out.requestId ? `Saved. Request ${out.requestId} raised` : 'Count saved'), {
+    await act('ospeli_stock_count', { placeId: place, lines, seenSeq: data.levels.asOfSeq }, (out) => (out.requestId ? `Count saved. ${reqName(out.requestId)} sent to the store` : 'Count saved'), {
       onDone: (out) => { ui.values.clear(); ui.moved.clear(); ui.result = { ...out, place }; },
       onError: (err) => {
         if (err.code === 'conflict' && err.detail?.changed) {
@@ -193,10 +205,19 @@ function countScreen(ctx, shared) {
       return;
     }
     if (!ui.ward) { setKids(box, top, h('p', { class: 'meta' }, 'Choose your ward to see its supplies and their top-up levels.')); return; }
-    const waiting = (data.reqs?.requests || []).filter((q) => q.state === 'open' || q.state === 'part');
+    const all = data.reqs?.requests || [];
+    const waiting = all.filter((q) => q.state === 'open' || q.state === 'part');
     const status = waiting.length
-      ? h('p', { class: 'sto-status', 'data-test': 'ward-status' }, h('b', {}, `${plural(waiting.length, 'request')} waiting`), ` for this ward: ${waiting.map((q) => `${q.id}, ${q.stateName.toLowerCase()} ${hoursText(q.waitHours)}`).join('; ')}. `, h('a', { class: 'sto-link', href: '#sto-ward-reqs' }, 'See it'))
+      ? h('p', { class: 'sto-status', 'data-test': 'ward-status' }, h('b', {}, `${plural(waiting.length, 'request')} waiting`), ` for this ward: ${waiting.map((q) => `${reqName(q.id)}, ${stateWords(q).toLowerCase()} ${hoursText(q.waitHours)}`).join('; ')}. `, h('a', { class: 'sto-link', href: '#sto-ward-reqs' }, 'See it'))
       : null;
+    // Issued is not arrived: an issue in the last few hours may still be on its way to the ward.
+    const now = Date.parse(data.levels.asOf);
+    const onWay = new Map();
+    for (const q of all) {
+      if (q.state !== 'issued' || !q.issuedAt) continue;
+      const hrs = (now - Date.parse(q.issuedAt)) / 36e5;
+      if (hrs >= 0 && hrs < ISSUED_RECENT_HOURS) for (const l of q.lines) if (l.issued > 0 && !onWay.has(l.itemId)) onWay.set(l.itemId, hrs);
+    }
     const rows = data.rows;
     const list = h('ul', { class: 'sto-lines', 'data-test': 'count-list' }, rows.map((r) => {
       const marker = h('span', { class: 'sto-marker', 'data-test': 'marker' });
@@ -206,14 +227,15 @@ function countScreen(ctx, shared) {
         const under = v != null && v < r.level;
         li.classList.toggle('is-under', under);
         li.classList.toggle('is-counted', v != null);
-        marker.textContent = v == null ? (ui.moved.has(r.itemId) ? 'Count again' : '') : under ? (r.openRequestId ? `Under level: already asked (${r.openRequestId})` : `Under level: ${r.level - v} will be asked for`) : 'At or over level';
+        marker.textContent = v == null ? (ui.moved.has(r.itemId) ? 'Count again' : '') : under ? (r.openRequestId ? `Under level: already asked for (${reqName(r.openRequestId)})` : `Under level: ${r.level - v} will be asked for`) : 'At or over level';
         label();
       };
       li.append(
         h('div', { class: 'sto-line-head' }, h('b', {}, r.itemName), h('span', { class: 'meta' }, `${r.unit} · top-up level ${r.level}`)),
+        onWay.has(r.itemId) ? h('p', { class: 'sto-fact', 'data-test': 'on-its-way' }, `Issued from the store ${Math.max(1, Math.round(onWay.get(r.itemId)))} h ago: on its way. Count it once it is on the shelf.`) : null,
         mayCount ? h('div', { class: 'sto-line-acts' },
           stepper({ get: () => ui.values.get(r.itemId) ?? null, set: (v) => { if (v == null) ui.values.delete(r.itemId); else ui.values.set(r.itemId, v); mark(); }, label: `${r.itemName}, how many are there`, test: 'count-input' }),
-          h('button', { type: 'button', class: 'btn btn-ghost btn-small sto-full', 'data-test': 'at-level', onclick: () => { ui.values.set(r.itemId, r.level); li.querySelector('.sto-num').value = String(r.level); mark(); } }, `Full (${r.level})`)) : null,
+          h('button', { type: 'button', class: 'btn btn-ghost btn-small sto-full', 'data-test': 'at-level', onclick: () => { ui.values.set(r.itemId, r.level); li.querySelector('.sto-num').value = String(r.level); mark(); } }, `At level: ${r.level}`)) : null,
         marker);
       mark();
       return li;
@@ -222,14 +244,14 @@ function countScreen(ctx, shared) {
       ? h('p', { class: 'card notice sto-result', role: 'status', 'data-test': 'count-result' }, ui.result.error)
       : h('div', { class: 'card sto-result is-ok', role: 'status', 'data-test': 'count-result' },
         h('p', {}, h('b', {}, `Saved: ${plural(ui.result.counted, 'item')} counted at ${shared.names.get(ui.result.place) || 'the ward'}.`)),
-        ui.result.requestId ? h('p', { 'data-test': 'raised' }, `Request ${ui.result.requestId} sent to the store for ${plural(ui.result.requested.length, 'item')} under level: `, ui.result.requested.map((l) => `${shared.item.get(l.itemId)?.name || l.itemId} ${l.qty}`).join(', '), '.')
+        ui.result.requestId ? h('p', { 'data-test': 'raised', 'data-request': ui.result.requestId }, `${reqName(ui.result.requestId)} sent to the store for ${plural(ui.result.requested.length, 'item')} under level: `, ui.result.requested.map((l) => `${shared.item.get(l.itemId)?.name || l.itemId} ${l.qty}`).join(', '), '.')
           : h('p', {}, ui.result.requestNote || 'Nothing is under its level: no request needed.'))) : null;
     label();
     setKids(box,
-      offlineNote('a count'),
+      offline() ? h('p', { class: 'card notice', 'data-test': 'offline' }, 'Not connected to the site: the count cannot be saved until the connection is back. Keep this screen open; your count is kept.') : null,
       top, status, result,
       rows.length ? [
-        h('p', { class: 'sto-hint' }, mayCount ? 'Count what is on the shelf. Leave an item blank if you did not count it. Anything under its level is asked for when you save.' : `${roleById(ctx.role).name} can see this list. Counts are saved by ${roleNames(commandByName('ospeli_stock_count').roles)}.`),
+        h('p', { class: 'sto-hint' }, mayCount ? 'Count what is on the shelf. Leave an item blank if you did not count it. "At level" fills in the top-up level; if there is more than that, use +. Anything under its top-up level is asked for when you save.' : `${roleName(ctx.role)} can see this list. Counts are saved by ${roleNames(commandByName('ospeli_stock_count').roles)}.`),
         list,
         mayCount ? h('div', { class: 'sto-savebar' }, saveBtn) : null,
       ] : h('p', { class: 'card sto-empty', 'data-test': 'count-empty' }, 'No top-up levels are set for this ward yet. The supply chain manager sets them.'),
@@ -240,9 +262,9 @@ function countScreen(ctx, shared) {
     return h('section', { class: 'section', id: 'sto-ward-reqs', 'aria-labelledby': 'sto-wr-h', 'data-test': 'ward-requests' },
       h('h2', { id: 'sto-wr-h' }, 'This ward\'s requests'),
       list.length ? h('ul', { class: 'sto-plain' }, list.map((q) => h('li', { 'data-request': q.id, 'data-state': q.state },
-        h('p', {}, h('b', {}, q.id), ' ', h('span', { class: `chip sto-state is-${q.state}` }, q.stateName),
+        h('p', {}, h('b', {}, reqName(q.id)), ' ', h('span', { class: `chip sto-state is-${q.state}`, 'data-test': 'state' }, stateWords(q)),
           ` ${q.state === 'issued' ? `in ${hoursText(q.waitHours)}, ${when(q.issuedAt)}` : q.state === 'cancelled' ? `(${q.cancelReason})` : `for ${hoursText(q.waitHours)}`}`),
-        keepOpen(ui.open, q.id, `${plural(q.lines.length, 'item')} asked for`, h('ul', { class: 'sto-mini' }, q.lines.map((l) => h('li', {}, `${l.itemName}: ${l.issued} of ${l.qty} issued`))))))) : h('p', { class: 'meta' }, 'No request from this ward yet.'));
+        keepOpen(ui.open, q.id, `${plural(q.lines.length, 'item')} asked for`, h('ul', { class: 'sto-mini' }, q.lines.map((l) => h('li', {}, `${l.itemName}: ${l.issued} of ${l.qty} issued from the store`))))))) : h('p', { class: 'meta' }, 'No request from this ward yet.'));
   }
   return { el: box, load };
 }
@@ -251,7 +273,7 @@ function countScreen(ctx, shared) {
 function requestsScreen(ctx, shared) {
   const box = h('div', { class: 'sto-reqs' });
   const mayIssue = can(ctx.role, 'ospeli_stock_issue');
-  const ui = { open: new Set(), part: new Map(), done: null };
+  const ui = { open: new Set(), closed: new Set(), pick: new Map(), done: null };
   const props = proposalsCard(ctx, { match: matchMine, describe: (p) => describe(p, shared) });
   let data = null;
   const load = async () => {
@@ -263,51 +285,53 @@ function requestsScreen(ctx, shared) {
   };
   const act = actions(ctx, load);
   const issue = (q, lines) => act('ospeli_stock_issue', { requestId: q.id, expectedState: q.state, ...(lines ? { lines } : {}) },
-    (out) => `${out.state === 'issued' ? 'Issued in full' : 'Part issued'}: ${q.id} to ${q.placeName}`,
-    { onDone: (out) => { ui.part.delete(q.id); ui.done = { id: q.id, place: q.placeName, state: out.state, left: out.left.length }; ui.lockUntil = Date.now() + LOCK_MS; setTimeout(() => draw(), LOCK_MS + 50); } });
+    (out) => `${out.state === 'issued' ? 'Issued in full' : 'Part issued'}: ${reqName(q.id)} to ${q.placeName}`,
+    { onDone: (out) => { ui.pick.delete(q.id); ui.done = { id: q.id, place: q.placeName, state: out.state, left: out.left.length }; ui.lockUntil = Date.now() + LOCK_MS; setTimeout(() => draw(), LOCK_MS + 50); } });
   // After an issue the next request's button moves up into the same place: it cannot be tapped for a
   // moment, so a second tap to "check it worked" never issues the next request.
   const LOCK_MS = 2500;
   const locked = () => Date.now() < (ui.lockUntil || 0);
 
+  // One request: the pick list (item, how many are owed, what the store holds, how many go now) is
+  // open on the oldest card, above the button that confirms it. Reduce a line for a part issue.
   function card(q, first) {
     const owed = q.lines.filter((l) => l.left > 0);
-    const short = owed.filter((l) => l.usableAtSupplier < l.left);
     const none = owed.every((l) => l.usableAtSupplier <= 0);
-    const vals = ui.part.get(q.id) || new Map();
-    ui.part.set(q.id, vals);
-    const partBtn = h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_stock_issue', 'data-test': 'issue-part-save' });
-    const partLabel = () => { const n = [...vals.values()].filter((v) => v > 0).length; partBtn.textContent = n ? `Issue these ${plural(n, 'line')}` : 'Pick how many to issue first'; };
-    partBtn.addEventListener('click', () => { const lines = [...vals].filter(([, v]) => v > 0).map(([itemId, qty]) => ({ itemId, qty })); if (lines.length) issue(q, lines); });
-    partLabel();
+    if (!ui.pick.has(q.id)) ui.pick.set(q.id, new Map(owed.map((l) => [l.itemId, Math.max(0, Math.min(l.left, l.usableAtSupplier))])));
+    const vals = ui.pick.get(q.id);
+    const picked = () => owed.map((l) => ({ itemId: l.itemId, qty: vals.get(l.itemId) || 0 })).filter((l) => l.qty > 0);
+    const full = () => owed.every((l) => (vals.get(l.itemId) || 0) >= l.left);
+    const btn = h('button', { class: `btn ${first ? 'btn-big ' : ''}sto-issue`, type: 'button', disabled: locked(), 'data-cmd': 'ospeli_stock_issue', 'data-test': 'issue' });
+    const label = () => {
+      const n = picked().length;
+      btn.textContent = !n ? 'Nothing picked to issue' : full() ? `Issue all ${plural(n, 'item')} as picked` : `Issue ${n} of ${plural(owed.length, 'item')} as picked (part)`;
+      btn.dataset.full = String(full());
+    };
+    btn.addEventListener('click', (e) => { const ls = picked(); if (!ls.length) return; e.currentTarget.disabled = true; issue(q, full() ? null : ls); });
+    label();
+    const isOpen = first ? !ui.closed.has(q.id) : ui.open.has(q.id);
+    const pick = h('details', { class: 'sto-pick', 'data-test': 'pick-list', open: isOpen || null },
+      h('summary', {}, `Pick list: ${plural(owed.length, 'item')}`),
+      h('ul', { class: 'sto-lines' }, owed.map((l) => {
+        const most = Math.max(0, Math.min(l.left, l.usableAtSupplier));
+        return h('li', { 'data-item': l.itemId, class: l.usableAtSupplier < l.left ? 'is-under' : null },
+          h('div', { class: 'sto-line-head' }, h('b', {}, l.itemName), h('span', { class: 'meta' }, `${l.left} owed · store holds ${l.usableAtSupplier}`)),
+          most > 0 ? h('div', { class: 'sto-line-acts' }, h('span', { class: 'meta' }, 'Issue now'),
+            stepper({ get: () => vals.get(l.itemId) ?? 0, set: (v) => { vals.set(l.itemId, v ?? 0); label(); }, label: `${l.itemName}, how many to issue now`, max: most }))
+            : h('span', { class: 'sto-marker' }, 'None in the store: stays owed'));
+      })));
+    pick.addEventListener('toggle', () => { if (first) { if (pick.open) ui.closed.delete(q.id); else ui.closed.add(q.id); } else if (pick.open) ui.open.add(q.id); else ui.open.delete(q.id); });
     return h('li', { class: `sto-req${first ? ' is-first' : ''}`, 'data-request': q.id, 'data-test': first ? 'first-request' : 'request' },
       h('div', { class: 'sto-req-head' },
         h('p', { class: 'sto-req-place' }, h('b', {}, q.placeName)),
         h('p', { class: 'sto-wait', 'data-test': 'wait' }, `Waiting ${hoursText(q.waitHours)}`),
-        h('p', { class: 'meta' }, `${q.id} · ${q.raisedBy === 'count' ? 'raised by a count' : 'asked for by hand'}${q.state === 'part' ? ' · part issued' : ''} · ${plural(owed.length, 'item')} to issue`),
+        h('p', { class: 'meta' }, `${reqName(q.id)} · ${q.raisedBy === 'count' ? 'raised by a count' : 'asked for by hand'}${q.state === 'part' ? ' · part issued' : ''} · ${plural(owed.length, 'item')} to issue`),
         owed.length <= 3 ? h('p', { class: 'meta', 'data-test': 'owed' }, `Still owed: ${owed.map((l) => `${l.itemName} ${l.left}`).join(', ')}`) : null),
-      mayIssue ? [
-        q.canIssueInFull
-          ? h('button', { class: `btn ${first ? 'btn-big ' : ''}sto-issue`, type: 'button', disabled: locked(), 'data-cmd': 'ospeli_stock_issue', 'data-test': 'issue-all', onclick: (e) => { e.currentTarget.disabled = true; issue(q, null); } },
-            `Issue all ${plural(owed.length, 'item')}`)
-          : [h('p', { class: 'sto-fact', 'data-test': 'cannot-full' }, none ? 'The store has none of what is still owed. It stays waiting until a delivery is received.' : `The store is short of ${plural(short.length, 'item')} on this request: issue what it has now, and the rest stays waiting.`),
-            none ? null : h('button', { class: `btn ${first ? 'btn-big ' : ''}sto-issue`, type: 'button', disabled: locked(), 'data-cmd': 'ospeli_stock_issue', 'data-test': 'issue-what-we-have',
-              onclick: (e) => { e.currentTarget.disabled = true; issue(q, owed.map((l) => ({ itemId: l.itemId, qty: Math.min(l.left, l.usableAtSupplier) })).filter((l) => l.qty > 0)); } },
-            `Issue what the store has (${owed.length - owed.filter((l) => l.usableAtSupplier <= 0).length} of ${plural(owed.length, 'item')})`)],
-        none ? null : keepOpen(ui.open, `part:${q.id}`, 'Issue part', h('div', { class: 'sto-part' },
-          h('p', { class: 'meta' }, 'Set how many go now. What is left stays waiting.'),
-          h('ul', { class: 'sto-lines' }, owed.map((l) => {
-            const most = Math.min(l.left, l.usableAtSupplier);
-            return h('li', { 'data-item': l.itemId },
-              h('div', { class: 'sto-line-head' }, h('b', {}, l.itemName), h('span', { class: 'meta' }, `${l.left} owed · store has ${l.usableAtSupplier}`)),
-              most > 0 ? h('div', { class: 'sto-line-acts' },
-                stepper({ get: () => vals.get(l.itemId) ?? null, set: (v) => { if (v) vals.set(l.itemId, v); else vals.delete(l.itemId); partLabel(); }, label: `${l.itemName}, how many to issue`, max: most }),
-                h('button', { type: 'button', class: 'btn btn-ghost btn-small', onclick: (e) => { vals.set(l.itemId, most); e.currentTarget.parentElement.querySelector('.sto-num').value = String(most); partLabel(); } }, `All (${most})`))
-                : h('span', { class: 'sto-marker' }, 'None in the store'));
-          })), partBtn), { class: 'sto-more', 'data-test': 'issue-part' }),
-      ] : null,
-      keepOpen(ui.open, `lines:${q.id}`, `See the ${plural(q.lines.length, 'item')}`, h('ul', { class: 'sto-mini' }, q.lines.map((l) => h('li', { class: l.left > l.usableAtSupplier ? 'is-short' : null },
-        `${l.itemName}: ${l.left} to issue${l.issued ? ` (${l.issued} already issued)` : ''}, store has ${l.usableAtSupplier}`))), { class: 'sto-more' }));
+      mayIssue
+        ? (none ? h('p', { class: 'sto-fact', 'data-test': 'cannot-full' }, 'The store has none of what is still owed. It stays waiting until a delivery is received.')
+          : [pick, h('div', { class: first ? 'sto-issuebar' : 'sto-acts' }, btn)])
+        : keepOpen(ui.open, `lines:${q.id}`, `See the ${plural(q.lines.length, 'item')}`, h('ul', { class: 'sto-mini' }, q.lines.map((l) => h('li', { class: l.left > l.usableAtSupplier ? 'is-short' : null },
+          `${l.itemName}: ${l.left} to issue${l.issued ? ` (${l.issued} already issued)` : ''}, store holds ${l.usableAtSupplier}`))), { class: 'sto-more' }));
   }
   function draw() {
     const list = data.reqs;
@@ -321,8 +345,8 @@ function requestsScreen(ctx, shared) {
       offlineNote('an issue'),
       props.el,
       h('p', { class: 'sto-counts', 'data-test': 'req-counts' }, h('b', {}, list.length), ` waiting${oldest ? ` · oldest ${hoursText(oldest.waitHours)}` : ''}${stuck.length ? ` · ${stuck.length} need a delivery first` : ''}`),
-      ui.done ? h('p', { class: 'card sto-result is-ok', role: 'status', 'data-test': 'issue-result' }, `${ui.done.state === 'issued' ? 'Issued in full' : 'Part issued'}: ${ui.done.id} to ${ui.done.place}.${ui.done.left ? ` ${plural(ui.done.left, 'item')} still to come.` : ''}`) : null,
-      mayIssue ? null : h('p', { class: 'meta', 'data-test': 'read-only' }, `${roleById(ctx.role).name} can see the requests. They are issued by ${roleNames(commandByName('ospeli_stock_issue').roles)}.`),
+      ui.done ? h('p', { class: 'card sto-result is-ok', role: 'status', 'data-test': 'issue-result' }, `${ui.done.state === 'issued' ? 'Issued in full' : 'Part issued'}: ${reqName(ui.done.id)} to ${ui.done.place}.${ui.done.left ? ` ${plural(ui.done.left, 'item')} still to come.` : ''}`) : null,
+      mayIssue ? null : h('p', { class: 'meta', 'data-test': 'read-only' }, `${roleName(ctx.role)} can see the requests. They are issued by ${roleNames(commandByName('ospeli_stock_issue').roles)}.`),
       list.length ? [
         ready.length ? h('ul', { class: 'sto-req-list', 'data-test': 'requests' }, ready.map((q, i) => card(q, i === 0))) : h('p', { class: 'meta' }, 'Nothing can be issued now: the store has none of what is owed.'),
         stuck.length ? h('section', { class: 'section', 'aria-labelledby': 'sto-ws-h' }, h('h2', { id: 'sto-ws-h' }, `Waiting for a delivery (${stuck.length})`),
@@ -330,7 +354,7 @@ function requestsScreen(ctx, shared) {
           h('ul', { class: 'sto-req-list', 'data-test': 'requests-waiting-stock' }, stuck.map((q) => card(q, false)))) : null,
       ] : h('p', { class: 'card sto-empty', 'data-test': 'requests-empty' }, 'No request is waiting. New requests show here by themselves when a ward saves a count.'),
       h('p', { class: 'meta sto-measure', 'data-test': 'req-measure', 'data-n': wait?.n ?? 0, 'data-fill': fill?.numerator ?? 0 },
-        `Last 30 days: requests waited ${wait?.value == null ? 'no full issue yet' : `a median of ${hoursText(wait.value)}`} from raised to issued in full (${plural(wait?.n ?? 0, 'request')}); fill rate ${fill?.value == null ? 'none yet' : `${Math.round(fill.value)}%`} of lines issued in full.`));
+        `Last 30 days: requests waited ${wait?.value == null ? 'no full issue yet' : `a median of ${hoursText(wait.value)}`} from raised to issued from the store in full (${plural(wait?.n ?? 0, 'request')}); fill rate ${fill?.value == null ? 'none yet' : `${Math.round(fill.value)}%`} of request lines issued in full in the end (after any part issues).`));
   }
   return { el: box, load };
 }
@@ -352,7 +376,7 @@ function receiveScreen(ctx, shared) {
   const order = () => data.orders.orders.find((o) => o.id === ui.orderId) || null;
   const save = h('button', { class: 'btn btn-big', type: 'button', 'data-cmd': 'ospeli_stock_receive', 'data-test': 'receive-save' });
   const missing = () => (!ui.source ? 'the source' : ui.source === 'Purchase' && ui.orderId === '' ? 'the order (or "No order on the list")' : ![...ui.lines.values()].some((v) => v > 0) ? 'how many of at least one item' : null);
-  const label = () => { const m = missing(); save.textContent = m ? `Choose ${m}` : `Receive ${plural([...ui.lines.values()].filter((v) => v > 0).length, 'item')} into ${shared.names.get(ui.placeId)}`; };
+  const label = () => { const m = missing(); save.classList.toggle('is-waiting', !!m); save.setAttribute('aria-disabled', String(!!m)); save.textContent = m ? `Choose ${m}` : `Receive ${plural([...ui.lines.values()].filter((v) => v > 0).length, 'item')} into ${shared.names.get(ui.placeId)}`; };
   save.addEventListener('click', async () => {
     if (missing()) { ui.msg = `Choose ${missing()} first.`; draw(); return; }
     const lines = [...ui.lines].filter(([, v]) => v > 0).map(([itemId, qty]) => ({ itemId, qty }));
@@ -369,14 +393,15 @@ function receiveScreen(ctx, shared) {
     draw();
   }
   function draw() {
-    if (!mayReceive) { setKids(box, h('p', { class: 'card meta', 'data-test': 'read-only' }, `${roleById(ctx.role).name} can see deliveries on the order tracker. Deliveries are received by ${roleNames(commandByName('ospeli_stock_receive').roles)}.`)); return; }
+    if (!mayReceive) { setKids(box, h('p', { class: 'card meta', 'data-test': 'read-only' }, `${roleName(ctx.role)} can see deliveries on the order tracker. Deliveries are received by ${roleNames(commandByName('ospeli_stock_receive').roles)}.`)); return; }
     const o = order();
-    const open = data.orders.orders.filter((x) => ['approved', 'ordered', 'delivered'].includes(x.state));
+    // Orders that can arrive: approved or later, part received included (what is still to come).
+    const open = data.orders.orders.filter((x) => ['approved', 'ordered', 'delivered', 'part-received'].includes(x.state));
     const choice = (v) => h('button', { type: 'button', class: 'chip-btn sto-choice', 'aria-pressed': String(ui.source === v), 'data-source': v, onclick: () => { ui.source = v; if (v !== 'Purchase') { ui.orderId = ''; } draw(); box.querySelector(`[data-source="${v}"]`)?.focus(); } }, v);
     const rows = [...ui.lines.keys()].map((itemId) => {
       const it = shared.item.get(itemId);
       const ol = o?.lines.find((l) => l.itemId === itemId);
-      const left = ol ? ol.qty - ol.received : null;
+      const left = ol ? Math.max(0, ol.qty - ol.received) : null;
       return h('li', { 'data-item': itemId },
         h('div', { class: 'sto-line-head' }, h('b', {}, it?.name || itemId), h('span', { class: 'meta' }, `${it?.unit || ''}${left != null ? ` · ${left} on the order` : ''}`)),
         h('div', { class: 'sto-line-acts' },
@@ -392,7 +417,7 @@ function receiveScreen(ctx, shared) {
       h('div', { class: 'card sto-form' },
         h('div', { class: 'field' }, h('span', { class: 'label', id: 'rcv-src' }, 'Where did it come from?'), h('div', { class: 'sto-choices', role: 'group', 'aria-labelledby': 'rcv-src' }, SOURCES.map(choice))),
         ui.source === 'Purchase' ? h('div', { class: 'field' }, h('label', { for: 'rcv-order' }, 'Which order is it for?'),
-          placeSelect('rcv-order', [...open.map((x) => [x.id, `${x.id}: ${x.lines.slice(0, 2).map((l) => l.itemName).join(', ')}${x.lines.length > 2 ? ` and ${x.lines.length - 2} more` : ''} (${x.stateName.toLowerCase()})`]), ['none', 'No order on the list']],
+          placeSelect('rcv-order', [...open.map((x) => [x.id, `${x.lines.slice(0, 2).map((l) => l.itemName).join(', ')}${x.lines.length > 2 ? ` and ${x.lines.length - 2} more` : ''} (${ordName(x.id)}, ${x.stateName.toLowerCase()})`]), ['none', 'No order on the list']],
             { blank: 'Choose the order', value: ui.orderId, onchange: pickOrder })) : null,
         shared.stores.length > 1 ? h('div', { class: 'field' }, h('label', { for: 'rcv-place' }, 'Into which store?'), placeSelect('rcv-place', shared.stores.map((s) => [s.id, s.name]), { blank: 'Choose the store', value: ui.placeId, onchange: (v) => { ui.placeId = v; label(); } }))
           : h('p', { class: 'meta' }, `Into: ${shared.stores[0].name}`),
@@ -401,8 +426,9 @@ function receiveScreen(ctx, shared) {
         save,
         ui.msg ? h('p', { class: 'sto-status', role: 'status', 'data-test': 'receive-result' }, ui.msg) : null,
         h('p', { class: 'meta' }, 'Count what arrived, not what the paperwork says. This records the receipt only: it approves nothing and keeps no price or supplier.')),
-      open.length ? h('section', { class: 'section', 'aria-labelledby': 'rcv-exp-h' }, h('h2', { id: 'rcv-exp-h' }, 'Orders on their way'),
-        h('ul', { class: 'sto-plain' }, open.map((x) => h('li', {}, h('b', {}, x.id), ` ${x.waitingFor} · ${daysText(x.daysAtStep)} · ${x.lines.map((l) => `${l.itemName} ${l.qty}`).join(', ')}`)))) : null);
+      open.length ? h('section', { class: 'section', 'aria-labelledby': 'rcv-exp-h' }, h('h2', { id: 'rcv-exp-h' }, `Open orders (${open.length})`),
+        h('p', { class: 'meta' }, 'Approved or later, with what is still to come on each.'),
+        h('ul', { class: 'sto-plain', 'data-test': 'rcv-open' }, open.map((x) => h('li', { 'data-order': x.id }, h('b', {}, x.lines.filter((l) => l.toCome > 0).map((l) => `${l.itemName} ${l.toCome}`).join(', ')), ` · ${ordName(x.id)} · ${x.waitingFor.toLowerCase()} · ${daysText(x.daysAtStep)}`)))) : null);
   }
   return { el: box, load };
 }
@@ -426,7 +452,7 @@ function ordersScreen(ctx, shared) {
   newBtn.addEventListener('click', () => {
     const lines = [...ui.lines].filter(([, v]) => v > 0).map(([itemId, qty]) => ({ itemId, qty }));
     if (!lines.length) return;
-    act('ospeli_stores_order_step', { step: 'requested', lines }, (out) => `Order ${out.orderId} requested: it waits for approval`, { onDone: () => { ui.lines.clear(); ui.open.delete('new'); } });
+    act('ospeli_stores_order_step', { step: 'requested', lines }, (out) => `${ordName(out.orderId)} requested: it waits for approval`, { onDone: () => { ui.lines.clear(); ui.open.delete('new'); } });
   });
 
   function newOrder() {
@@ -445,14 +471,14 @@ function ordersScreen(ctx, shared) {
     const forMe = (data.ov.reminders || []).filter((r) => r.roles.includes(ctx.role));
     setKids(box,
       props.el,
-      forMe.length ? h('div', { class: 'card notice', 'data-test': 'reminders' }, forMe.map((r) => h('p', {}, h('b', {}, `Reminder: ${r.orderId}`), ` ${r.waitingFor.toLowerCase()} (sent by ${roleById(r.byRole)?.name || 'a colleague'}, ${when(r.at)}).`))) : null,
+      forMe.length ? h('div', { class: 'card notice', 'data-test': 'reminders' }, forMe.map((r) => h('p', {}, h('b', {}, `Reminder: ${ordName(r.orderId)}`), ` ${r.waitingFor.toLowerCase()} (sent by ${roleName(r.byRole)}, ${when(r.at)}).`))) : null,
       h('p', { class: 'meta' }, `Ospeli records each step; people approve purchases (${roleNames(STEP_ROLES.approved)}). "Received" is recorded when the delivery is received into stock against the order.`),
       mayRequest ? newOrder() : null,
       h('section', { class: 'section', 'aria-labelledby': 'ord-open-h' }, h('h2', { id: 'ord-open-h' }, `Open orders (${data.open.length})`),
         data.open.length ? h('ul', { class: 'sto-order-list', 'data-test': 'orders' }, data.open.map((o) => orderCard(ctx, shared, o, { ui, act, remind: remind.get(o.id), guideOn: data.ov.guide.on })))
           : h('p', { class: 'card sto-empty', 'data-test': 'orders-empty' }, 'No order is open. An order starts when a storekeeper or the supply chain manager requests one.')),
       data.closed.length ? h('section', { class: 'section', 'aria-labelledby': 'ord-done-h' }, h('h2', { id: 'ord-done-h' }, 'Recently closed'),
-        h('ul', { class: 'sto-plain' }, data.closed.map((o) => h('li', { 'data-order': o.id }, h('b', {}, o.id), ` ${o.stateName.toLowerCase()}${o.cycleDays != null ? ` ${daysText(o.cycleDays)} after it was requested` : ''} · ${o.lines.slice(0, 3).map((l) => `${l.itemName} ${l.received}/${l.qty}`).join(', ')}${o.lines.length > 3 ? ` and ${o.lines.length - 3} more` : ''}`)))) : null);
+        h('ul', { class: 'sto-plain' }, data.closed.map((o) => h('li', { 'data-order': o.id }, h('b', {}, ordName(o.id)), ` ${o.stateName.toLowerCase()}${o.cycleDays != null ? ` ${daysText(o.cycleDays)} after it was requested` : ''} · ${o.lines.slice(0, 3).map((l) => `${l.itemName} ${l.received}/${l.qty}`).join(', ')}${o.lines.length > 3 ? ` and ${o.lines.length - 3} more` : ''}`)))) : null);
   }
   return { el: box, load };
 }
@@ -461,25 +487,29 @@ function orderCard(ctx, shared, o, { ui, act, remind, guideOn, compact = false }
   const mine = (o.nextSteps || []).filter((s) => s.step !== 'cancelled' && s.roles.includes(ctx.role));
   const mayCancel = (o.nextSteps || []).some((s) => s.step === 'cancelled' && s.roles.includes(ctx.role));
   const stepWords = { approved: 'Approve', ordered: 'Mark ordered', delivered: 'Mark delivered' };
-  const reason = h('select', { 'aria-label': `Why cancel order ${o.id}` }, h('option', { value: '' }, 'Choose why'), ['No longer needed', 'Ordered another way', 'Asked for by mistake', 'Other'].map((r) => h('option', { value: r }, r)));
+  const reason = h('select', { 'aria-label': `Why cancel ${ordName(o.id)}` }, h('option', { value: '' }, 'Choose why'), ['No longer needed', 'Ordered another way', 'Asked for by mistake', 'Other'].map((r) => h('option', { value: r }, r)));
   reason.value = ui.cancel.get(o.id) || '';
   reason.addEventListener('change', () => ui.cancel.set(o.id, reason.value));
-  const record = (step) => act('ospeli_stores_order_step', { step, orderId: o.id, expectedStep: o.state }, `${o.id}: ${STEP_NAMES[step].toLowerCase()} recorded`);
+  const record = (step) => act('ospeli_stores_order_step', { step, orderId: o.id, expectedStep: o.state }, `${ordName(o.id)}: ${STEP_NAMES[step].toLowerCase()} recorded`);
+  const what = `${o.lines.slice(0, 3).map((l) => `${l.itemName} ${l.qty}`).join(', ')}${o.lines.length > 3 ? ` and ${o.lines.length - 3} more` : ''}`;
+  const toCome = o.state === 'part-received' ? o.lines.filter((l) => l.toCome > 0) : [];
   return h('li', { class: `sto-order${guideOn && o.overUsual ? ' is-late' : ''}`, 'data-order': o.id, 'data-state': o.state },
     h('div', { class: 'sto-order-head' },
-      h('p', {}, h('b', {}, o.id), ' ', h('span', { class: `chip sto-state is-${o.state}` }, o.stateName), guideOn && o.overUsual ? h('span', { class: 'chip sto-late', 'data-test': 'over-usual' }, 'Longer than usual') : null),
+      h('p', {}, h('b', {}, what)),
+      h('p', {}, h('span', { class: 'meta' }, `${ordName(o.id)} `), h('span', { class: `chip sto-state is-${o.state}` }, o.stateName), guideOn && o.overUsual ? h('span', { class: 'chip sto-late', 'data-test': 'over-usual' }, 'Longer than usual') : null),
       h('p', { class: 'sto-wait' }, `${o.waitingFor} · ${daysText(o.daysAtStep)}`),
-      h('p', { class: 'meta' }, `${o.lines.slice(0, 4).map((l) => `${l.itemName} ${l.qty}`).join(', ')}${o.lines.length > 4 ? ` and ${o.lines.length - 4} more` : ''}`)),
-    compact ? null : h('ol', { class: 'sto-steps', 'aria-label': `Steps of order ${o.id}` }, o.steps.map((s) => h('li', { class: s.at ? (s.current ? 'is-now' : 'is-done') : null, 'data-step': s.step },
+      toCome.length ? h('p', { class: 'meta', 'data-test': 'to-come' }, `Still to come: ${toCome.map((l) => `${l.itemName} ${l.toCome} of ${l.qty}`).join(', ')}`) : null,
+      o.overReceived ? h('p', { class: 'sto-fact', 'data-test': 'over-received' }, `More received than ordered: ${o.lines.filter((l) => l.over).map((l) => `${l.itemName} ${l.received} of ${l.qty}`).join(', ')}. Check the delivery note.`) : null),
+    compact ? null : h('ol', { class: 'sto-steps', 'aria-label': `Steps of ${ordName(o.id)}` }, o.steps.map((s) => h('li', { class: s.at ? (s.current ? 'is-now' : 'is-done') : null, 'data-step': s.step },
       h('b', {}, s.name), ' ', s.at ? `${day(s.at)}${s.days != null ? ` · ${daysText(s.days)}${s.current ? ' so far' : ''}` : ''}` : (o.state === 'received' && s.step !== 'received' ? 'not recorded' : '')))),
     h('div', { class: 'sto-acts' },
       mine.map((s) => h('button', { class: `btn btn-small${s.step === 'approved' ? ' sto-approve' : ''}`, type: 'button', 'data-cmd': 'ospeli_stores_order_step', 'data-step': s.step, onclick: () => record(s.step) }, stepWords[s.step])),
-      ['ordered', 'delivered'].includes(o.state) && can(ctx.role, 'ospeli_stock_receive') ? h('a', { class: 'btn btn-ghost btn-small', href: `#/stores/receive/${o.id}` }, 'Receive into stock') : null,
+      ['ordered', 'delivered', 'part-received'].includes(o.state) && can(ctx.role, 'ospeli_stock_receive') ? h('a', { class: 'btn btn-ghost btn-small', href: `#/stores/receive/${o.id}` }, 'Receive into stock') : null,
       remind?.action && can(ctx.role, 'ospeli_stores_order_remind') ? h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_stores_order_remind', 'data-test': 'remind',
-        onclick: () => act('ospeli_stores_order_remind', remind.action.inputs[0], 'Reminder sent') }, remind.action.label) : null,
+        onclick: () => act('ospeli_stores_order_remind', remind.action.inputs[0], `Reminder sent to ${roleNames(o.waitingForRoles)}: ${ordName(o.id)}`) }, remind.action.label) : null,
       remind && !remind.action ? h('span', { class: 'meta' }, 'Reminder sent in the last day.') : null),
-    mayCancel && !compact ? keepOpen(ui.open, `cancel:${o.id}`, 'Cancel this order', h('div', { class: 'sto-acts' }, reason,
-      h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_stores_order_step', onclick: () => { if (!reason.value) { ctx.toast('Choose why first'); return; } act('ospeli_stores_order_step', { step: 'cancelled', orderId: o.id, expectedStep: o.state, reason: reason.value }, `${o.id} cancelled`); } }, 'Cancel order')), { class: 'sto-more' }) : null);
+    mayCancel && !compact ? keepOpen(ui.open, `cancel:${o.id}`, o.state === 'part-received' ? 'Cancel the rest of this order' : 'Cancel this order', h('div', { class: 'sto-acts' }, reason,
+      h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_stores_order_step', onclick: () => { if (!reason.value) { ctx.toast('Choose why first'); return; } act('ospeli_stores_order_step', { step: 'cancelled', orderId: o.id, expectedStep: o.state, reason: reason.value }, `${ordName(o.id)} cancelled (${reason.value.toLowerCase()})`); } }, o.state === 'part-received' ? 'Cancel the rest' : 'Cancel order')), { class: 'sto-more' }) : null);
 }
 
 // ---------------------------------------------------------------- Stock-out log
@@ -487,10 +517,13 @@ function outsScreen(ctx, shared) {
   const box = h('div', { class: 'sto-outs' });
   const mayStart = can(ctx.role, 'ospeli_stock_out_start');
   const mayEnd = can(ctx.role, 'ospeli_stock_out_end');
-  const ui = { cause: new Map(), open: new Set() };
+  // A ward nurse sees her own ward first (the ward saved on the count screen), with a way to all wards.
+  const ui = { cause: new Map(), open: new Set(), ward: ctx.role === 'ward-nurse' ? store.get('ospeli-stores-ward') || '' : '', all: false, wardName: '' };
   let data = null;
   const load = async () => {
-    data = await ctx.run('ospeli_stock_outs', { category: 'supplies', state: 'all', limit: 100 });
+    const mine = ui.ward && !ui.all;
+    try { data = await ctx.run('ospeli_stock_outs', { category: 'supplies', state: 'all', limit: 100, ...(mine ? { placeId: ui.ward } : {}) }); } catch { ui.ward = ''; data = await ctx.run('ospeli_stock_outs', { category: 'supplies', state: 'all', limit: 100 }); }
+    if (ui.ward && !ui.wardName) ui.wardName = (await ctx.run('ospeli_stock_levels', { placeId: ui.ward, format: 'short', limit: 1 })).levels[0]?.placeName || 'your ward';
     draw();
   };
   const act = actions(ctx, load);
@@ -500,14 +533,16 @@ function outsScreen(ctx, shared) {
     const causes = shared.items.picks.stockOutCauses;
     setKids(box,
       offlineNote('a stock-out'),
+      ui.ward ? h('div', { class: 'sto-acts', 'data-test': 'outs-scope' }, h('p', { class: 'meta' }, ui.all ? 'Showing every ward.' : `Showing ${ui.wardName}.`),
+        h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-test': 'outs-all', onclick: () => { ui.all = !ui.all; load(); } }, ui.all ? `Only ${ui.wardName}` : 'Show all wards')) : null,
       h('section', { class: 'section', 'aria-labelledby': 'out-open-h' }, h('h2', { id: 'out-open-h' }, `Out of stock now (${open.length})`),
         open.length ? h('ul', { class: 'sto-plain sto-out-list', 'data-test': 'outs-open' }, open.map((s) => h('li', { class: 'sto-out', 'data-out': s.id },
           h('p', {}, h('b', {}, s.itemName), ` at ${s.placeName}`),
           h('p', { class: 'meta' }, `Since ${when(s.startedAt)} · ${hoursText(s.hours)} · cause: ${s.cause}`),
           mayEnd ? [h('p', { class: 'sto-q' }, 'Is it back in stock? Close it and say whether care was affected (yes or no, nothing about any patient):'),
             h('div', { class: 'sto-acts' },
-              h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_stock_out_end', 'data-care': 'yes', onclick: () => act('ospeli_stock_out_end', { stockOutId: s.id, careAffected: true }, 'Stock-out closed') }, 'Back: care was affected'),
-              h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_stock_out_end', 'data-care': 'no', onclick: () => act('ospeli_stock_out_end', { stockOutId: s.id, careAffected: false }, 'Stock-out closed') }, 'Back: care not affected'))] : null)))
+              h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_stock_out_end', 'data-care': 'yes', onclick: () => act('ospeli_stock_out_end', { stockOutId: s.id, careAffected: true }, `Stock-out closed: ${s.itemName}, ${s.placeName}, care was affected`) }, 'Back in stock: care was affected'),
+              h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_stock_out_end', 'data-care': 'no', onclick: () => act('ospeli_stock_out_end', { stockOutId: s.id, careAffected: false }, `Stock-out closed: ${s.itemName}, ${s.placeName}, care not affected`) }, 'Back in stock: care not affected'))] : null)))
           : h('p', { class: 'meta', 'data-test': 'outs-none' }, 'No stock-out is open.')),
       data.notDeclared.length ? h('section', { class: 'section', 'aria-labelledby': 'out-nd-h' }, h('h2', { id: 'out-nd-h' }, `Nothing usable, no stock-out declared (${data.notDeclared.length})`),
         h('p', { class: 'meta' }, 'A count of zero does not start a stock-out by itself. A person checks and declares it, with the cause.'),
@@ -518,9 +553,9 @@ function outsScreen(ctx, shared) {
           sel.addEventListener('change', () => ui.cause.set(key, sel.value));
           return h('li', { 'data-item': x.itemId, 'data-place': x.placeId }, h('p', {}, h('b', {}, x.itemName), ` at ${x.placeName}, nothing usable since ${when(x.since)}`),
             mayStart ? h('div', { class: 'sto-acts' }, sel, h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_stock_out_start',
-              onclick: () => { if (!sel.value) { ctx.toast('Choose the cause first'); return; } act('ospeli_stock_out_start', { itemId: x.itemId, placeId: x.placeId, cause: sel.value }, 'Stock-out started'); } }, 'Start stock-out')) : null);
+              onclick: () => { if (!sel.value) { ctx.toast('Choose the cause first'); return; } act('ospeli_stock_out_start', { itemId: x.itemId, placeId: x.placeId, cause: sel.value }, `Stock-out started: ${x.itemName}, ${x.placeName} (${sel.value.toLowerCase()})`); } }, 'Start stock-out')) : null);
         }))) : null,
-      mayStart || mayEnd ? null : h('p', { class: 'meta', 'data-test': 'read-only' }, `${roleById(ctx.role).name} can see the log. Stock-outs are started and closed by ${roleNames(commandByName('ospeli_stock_out_start').roles)}.`),
+      mayStart || mayEnd ? null : h('p', { class: 'meta', 'data-test': 'read-only' }, `${roleName(ctx.role)} can see the log. Stock-outs are started and closed by ${roleNames(commandByName('ospeli_stock_out_start').roles)}.`),
       h('section', { class: 'section', 'aria-labelledby': 'out-end-h' }, h('h2', { id: 'out-end-h' }, 'Closed'),
         ended.length ? h('ul', { class: 'sto-plain', 'data-test': 'outs-ended' }, ended.map((s) => h('li', { 'data-out': s.id }, h('b', {}, s.itemName), ` at ${s.placeName}: ${day(s.startedAt)}, ${hoursText(s.hours)}, ${s.cause.toLowerCase()}, care ${s.careAffected ? 'affected' : 'not affected'}`)))
           : h('p', { class: 'meta' }, 'None closed yet.')));
@@ -548,58 +583,66 @@ function manageScreen(ctx, shared) {
   const act = actions(ctx, load);
   const places = () => [...shared.stores.map((s) => [s.id, s.name]), ...placesOf(data.levels, shared.stores)];
 
+  // A suggestion never saves on one tap: it fills in the form, and the person checks it and saves.
+  function follow(s) {
+    const i = s.action.inputs[0];
+    if (s.action.command === 'ospeli_stock_level_set') { ui.form = { place: i.placeId, item: i.itemId, level: i.level }; ui.open.add('tool:level'); }
+    else if (s.action.command === 'ospeli_stock_transfer') { ui.move = { from: i.fromPlaceId, to: i.toPlaceId, item: i.lines[0].itemId, qty: i.lines[0].qty }; ui.open.add('tool:move'); }
+    draw();
+    const target = box.querySelector(s.action.command === 'ospeli_stock_level_set' ? '[data-test="tool-level"]' : '[data-test="tool-move"]');
+    target?.scrollIntoView({ block: 'start' });
+    target?.querySelector('[data-cmd]')?.focus({ preventScroll: true });
+  }
   function guideCard(g) {
     const mayToggle = can(ctx.role, 'ospeli_stores_guide_set');
+    const button = (s) => {
+      if (!s.action || !can(ctx.role, s.action.command)) return null;
+      if (s.action.command === 'ospeli_stores_order_remind') {
+        return h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': s.action.command, 'data-test': 'follow',
+          onclick: () => act(s.action.command, s.action.inputs[0], `Reminder sent: ${ordName(s.action.inputs[0].orderId)}`) }, s.action.label);
+      }
+      return h('button', { class: 'btn btn-small', type: 'button', 'data-test': 'follow', onclick: () => follow(s) },
+        s.action.command === 'ospeli_stock_transfer' ? 'Fill in the move to check and record' : 'Fill in the level to check and save');
+    };
     return h('section', { class: 'card sto-guide', 'data-test': 'guide', 'data-on': String(g.on), 'aria-labelledby': 'sto-guide-h' },
       h('div', { class: 'sto-guide-head' }, h('h2', { id: 'sto-guide-h' }, 'Guide'),
         mayToggle ? h('button', { class: 'btn btn-ghost btn-small sto-switch', type: 'button', 'aria-pressed': String(g.on), 'data-cmd': 'ospeli_stores_guide_set', 'data-test': 'guide-switch',
-          onclick: () => act('ospeli_stores_guide_set', { on: !g.on }, `Guide ${g.on ? 'off' : 'on'}`) }, g.on ? 'Guide on: switch off' : 'Guide off: switch on') : null),
+          onclick: () => act('ospeli_stores_guide_set', { on: !g.on }, `Guide switched ${g.on ? 'off' : 'on'}`) }, g.on ? 'Guide on: switch off' : 'Guide off: switch on') : null),
       g.on ? [
-        h('p', { class: 'meta' }, 'Three fixed rules, not AI. They suggest; you decide. Nothing changes until you tap.'),
+        h('p', { class: 'meta' }, 'Three fixed rules, not AI. They suggest; you decide. Nothing is saved until you check the form and tap Save.'),
         g.suggestions.length ? h('ul', { class: 'sto-sugg' }, g.suggestions.map((s) => h('li', { 'data-rule': s.rule, 'data-test': 'suggestion' },
-          h('p', {}, h('b', {}, s.text)), h('p', { class: 'meta' }, s.why),
-          s.action && can(ctx.role, s.action.command) ? h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': s.action.command, 'data-test': 'follow',
-            onclick: () => act(s.action.command, s.action.inputs[0], 'Done') }, s.action.label) : null,
+          h('p', {}, h('b', {}, s.text)), h('p', { class: 'meta' }, s.why), button(s),
           keepOpen(ui.open, `why:${s.id}`, 'Why this rule', h('p', {}, s.basis), { class: 'sto-def' }))))
           : h('p', { 'data-test': 'no-suggestion' }, 'Nothing to suggest right now.'),
       ] : h('p', { 'data-test': 'guide-off' }, 'The guide is off. Counts, requests, orders and measures work the same.'),
       mayToggle ? null : h('p', { class: 'meta' }, `${roleNames(commandByName('ospeli_stores_guide_set').roles)} can switch the guide on or off.`));
   }
+  const storeIds = () => new Set(shared.stores.map((s) => s.id));
   function levelEditor(r) {
     const key = `${r.itemId}@${r.placeId}`;
+    const word = levelWord(storeIds().has(r.placeId));
     if (!ui.level.has(key)) ui.level.set(key, r.level);
-    return keepOpen(ui.open, `lvl:${key}`, 'Change level', h('div', { class: 'sto-acts' },
-      stepper({ get: () => ui.level.get(key) ?? null, set: (v) => ui.level.set(key, v), label: `Top-up level: ${r.itemName}, ${r.placeName}` }),
+    return keepOpen(ui.open, `lvl:${key}`, `Change the ${word}`, h('div', { class: 'sto-acts' },
+      stepper({ get: () => ui.level.get(key) ?? null, set: (v) => ui.level.set(key, v), label: `${word}: ${r.itemName}, ${r.placeName}` }),
       h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_stock_level_set', 'data-test': 'level-save',
-        onclick: () => { const v = ui.level.get(key); if (v == null) return; act('ospeli_stock_level_set', { itemId: r.itemId, placeId: r.placeId, level: v, expectedLevel: r.level ?? 0 }, `Level set: ${r.itemName}, ${r.placeName}: ${v}`, { onDone: () => { ui.level.delete(key); ui.open.delete(`lvl:${key}`); } }); } }, 'Save level')), { class: 'sto-more' });
+        onclick: () => { const v = ui.level.get(key); if (v == null) return; act('ospeli_stock_level_set', { itemId: r.itemId, placeId: r.placeId, level: v, expectedLevel: r.level ?? 0 }, `The ${word} of ${r.itemName} at ${r.placeName} is now ${v}`, { onDone: () => { ui.level.delete(key); ui.open.delete(`lvl:${key}`); } }); } }, `Save ${word}`)), { class: 'sto-more' });
   }
-  // What is short, by item: the store first (its level is its reorder point) with any order on its
-  // way, then how many areas are under their level and how many have nothing left.
+  // What is short: not every item under its top-up level (that is normal between top-ups and each
+  // ward's count asks for it), only what needs a person to look (overview "short", example settings).
   function shortList() {
-    const under = data.levels.filter((r) => r.underLevel);
-    const storeIds = new Set(shared.stores.map((s) => s.id));
-    const onOrder = new Map();
-    for (const o of data.orders) for (const l of o.lines) if (!onOrder.has(l.itemId)) onOrder.set(l.itemId, o);
-    const byItem = new Map();
-    for (const r of under) { if (!byItem.has(r.itemId)) byItem.set(r.itemId, []); byItem.get(r.itemId).push(r); }
-    const rows = [...byItem].map(([itemId, list]) => {
-      const st = data.levels.find((r) => r.itemId === itemId && storeIds.has(r.placeId)) || null;
-      const areas = list.filter((r) => !storeIds.has(r.placeId));
-      const storeShort = st?.underLevel ? st : null;
-      const rank = (storeShort && !onOrder.has(itemId) ? 0 : storeShort?.usable === 0 ? 1 : 2) * 1000 - areas.filter((r) => r.usable === 0).length * 10 - areas.length;
-      return { itemId, name: list[0].itemName, unit: list[0].unit, st, storeShort, areas, zero: areas.filter((r) => r.usable === 0).length, order: onOrder.get(itemId) || null, rank };
-    }).sort((a, b) => a.rank - b.rank || (a.name < b.name ? -1 : 1));
-    const shown = ui.showAll ? rows : rows.slice(0, 8);
+    const sh = data.ov.short;
+    const KIND = { 'none-left': 'Nothing left', 'below-share': `Below ${Math.round(sh.share * 100)}% of its top-up level`, 'store-not-on-order': 'Store below its reorder level, not on order', 'request-waiting': `Request waiting more than ${sh.requestUsualHours} h` };
+    const row = (x) => levelOf(x);
+    const levelOf = (x) => data.levels.find((r) => r.placeId === x.placeId && r.itemId === x.itemId) || null;
+    const shown = ui.showAll ? sh.lines : sh.lines.slice(0, 10);
     return h('section', { class: 'section', 'aria-labelledby': 'sto-short-h', 'data-test': 'short' },
-      h('h2', { id: 'sto-short-h' }, `What is short (${plural(rows.length, 'item')})`),
-      h('p', { class: 'meta' }, 'By item: the store against its reorder level, then the areas under their top-up level. An area under its level has a request waiting unless it says otherwise.'),
-      rows.length ? h('ul', { class: 'sto-plain' }, shown.map((x) => h('li', { class: x.storeShort?.usable === 0 || x.zero ? 'is-zero' : null, 'data-item': x.itemId },
-        h('p', {}, h('b', {}, x.name), ` (${x.unit})`),
-        x.st ? h('p', { class: x.storeShort ? 'sto-fact' : 'meta' }, `${x.st.placeName}: ${x.st.usable} of ${x.st.level}${x.storeShort ? (x.order ? ` · on order ${x.order.id}, ${x.order.waitingFor.toLowerCase()}` : ' · under its reorder level and not on order') : ' · enough'}`) : null,
-        x.areas.length ? h('p', { class: 'meta' }, `${plural(x.areas.length, 'area')} under level${x.zero ? `, ${x.zero} with none left` : ''}${x.areas.some((r) => !r.openRequestId) ? `; ${x.areas.filter((r) => !r.openRequestId).length} with no request` : ''}`) : null,
-        keepOpen(ui.open, `short:${x.itemId}`, `Places (${x.areas.length + (x.storeShort ? 1 : 0)})`, h('ul', { class: 'sto-mini' }, [...(x.storeShort ? [x.storeShort] : []), ...x.areas].map((r) => h('li', { 'data-place': r.placeId },
-          h('span', {}, `${r.placeName}: ${r.usable} of ${r.level}${r.openRequestId ? ` · ${r.openRequestId} waiting` : ''}`), mayLevel ? levelEditor(r) : null))), { class: 'sto-more' })))) : h('p', { class: 'meta' }, 'Nothing is under its level.'),
-      rows.length > 8 ? h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'aria-expanded': String(ui.showAll), onclick: () => { ui.showAll = !ui.showAll; draw(); } }, ui.showAll ? 'Show the first 8' : `See all ${rows.length}`) : null);
+      h('h2', { id: 'sto-short-h' }, `What is short (${plural(sh.lines.length, 'line')})`),
+      h('p', { class: 'meta' }, `${sh.note} Ordinary top-ups are on each ward's count.`),
+      sh.lines.length ? h('ul', { class: 'sto-plain' }, shown.map((x) => h('li', { class: x.kind === 'none-left' ? 'is-zero' : null, 'data-kind': x.kind, 'data-item': x.itemId || null, 'data-place': x.placeId },
+        h('p', {}, h('b', {}, x.itemName ? `${x.itemName}, ${x.placeName}` : x.placeName), ' ', h('span', { class: 'chip sto-kind' }, KIND[x.kind])),
+        h('p', { class: 'meta' }, x.kind === 'request-waiting' ? `${reqName(x.requestId)} has waited ${hoursText(x.hours)}.` : `${x.usable} usable; ${levelWord(x.kind === 'store-not-on-order')} ${x.level} (${x.unit}).`),
+        mayLevel && x.itemId && row(x) ? levelEditor(row(x)) : null))) : h('p', { class: 'meta', 'data-test': 'short-none' }, 'Nothing needs a look right now.'),
+      sh.lines.length > 10 ? h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'aria-expanded': String(ui.showAll), onclick: () => { ui.showAll = !ui.showAll; draw(); } }, ui.showAll ? 'Show the first 10' : `See all ${sh.lines.length}`) : null);
   }
   function stuckList() {
     const orders = data.orders.slice(0, 5);
@@ -609,73 +652,90 @@ function manageScreen(ctx, shared) {
       h('p', { class: 'meta' }, 'Open orders, the longest at one step first, and the requests that have waited longest.'),
       orders.length ? h('ul', { class: 'sto-order-list' }, orders.map((o) => orderCard(ctx, shared, o, { ui, act, remind: data.ov.guide.suggestions.find((s) => s.rule === 'order-waiting' && s.action?.inputs[0].orderId === o.id), guideOn: data.ov.guide.on, compact: true })))
         : h('p', { class: 'meta' }, 'No order is open.'),
-      reqs.length ? h('ul', { class: 'sto-plain' }, reqs.map((q) => h('li', {}, h('b', {}, q.placeName), ` · ${q.id} · waiting ${hoursText(q.waitHours)} · ${plural(q.lines.filter((l) => l.left > 0).length, 'item')}${q.canIssueInFull ? '' : ' · the store is short'}`))) : null,
+      reqs.length ? h('ul', { class: 'sto-plain' }, reqs.map((q) => h('li', { 'data-request': q.id }, h('b', {}, q.placeName), ` · ${reqName(q.id)} · waiting ${hoursText(q.waitHours)} · ${plural(q.lines.filter((l) => l.left > 0).length, 'item')}${q.canIssueInFull ? '' : ' · the store is short'}`))) : null,
       h('div', { class: 'sto-acts' }, h('a', { class: 'btn btn-ghost btn-small', href: '#/stores/orders' }, 'All orders'), h('a', { class: 'btn btn-ghost btn-small', href: '#/stores/requests' }, 'All requests')));
   }
   const fmtKpi = (k) => (k.value == null ? 'None yet' : k.unit === '%' ? `${k.value < 10 ? Math.round(k.value * 10) / 10 : Math.round(k.value)}%` : k.unit === 'hours' ? hoursText(k.value) : daysText(k.value));
   function kpiSection(ov) {
     const extra = (k) => (k.open != null ? `${plural(k.open, k.id === 'stores-order-cycle' ? 'order' : 'request')} not finished yet${k.longestOpen != null ? `, the longest ${k.unit === 'hours' ? hoursText(k.longestOpen) : daysText(k.longestOpen)} so far` : ''}.` : null);
+    const sub = (k) => {
+      if (k.id === 'stores-fill-rate') return `${k.numerator ?? 0} of ${k.denominator ?? 0} request lines issued in full in the end (after any part issues)`;
+      if (k.id === 'stores-request-wait') return `Median of ${plural(k.n, 'request')}, from raised to issued from the store in full`;
+      if (k.id === 'stores-order-cycle') return `Median of ${plural(k.n, 'order')}, from requested to the last receipt that completes it`;
+      return `${k.numerator ?? 0} of ${k.denominator ?? 0} item-days with nothing usable. It sees zero only when a count or a movement records it.`;
+    };
+    const ids = storeIds();
     return h('section', { class: 'section', 'aria-labelledby': 'sto-kpi-h' },
       h('h2', { id: 'sto-kpi-h' }, `Measures, last ${ov.period.days} days`),
       h('p', { class: 'meta' }, 'Worked out from the record on this device. They count items, requests and orders, never a person.'),
       h('div', { class: 'sto-kpis' }, ov.kpis.map((k) => h('div', { class: 'card sto-kpi', 'data-kpi': k.id, 'data-n': k.n },
         h('p', { class: 'sto-kpi-name' }, k.name), h('p', { class: 'sto-kpi-value' }, fmtKpi(k)),
-        h('p', { class: 'meta' }, k.unit === '%' ? `${k.numerator ?? 0} of ${k.denominator ?? 0} ${k.id === 'stores-fill-rate' ? 'lines' : 'item-days'}` : `Median of ${plural(k.n, k.id === 'stores-order-cycle' ? 'order' : 'request')}`),
+        h('p', { class: 'meta' }, sub(k)),
         extra(k) ? h('p', { class: 'meta' }, extra(k)) : null,
-        k.byArea?.length ? keepOpen(ui.open, `area:${k.id}`, 'By area', h('ul', { class: 'sto-mini' }, k.byArea.map((a) => h('li', {}, `${a.placeName}: ${a.value == null ? 'none' : `${a.value}%`} (${a.numerator} of ${a.denominator} item-days)`))), { class: 'sto-def' }) : null,
-        keepOpen(ui.open, `def:${k.id}`, 'How it is counted', [h('p', {}, k.definition), h('p', {}, `Counts: ${k.counts}`), h('p', {}, `Leaves out: ${k.leavesOut}`), h('p', {}, `Source: ${k.source}`), h('p', {}, `Target: ${k.targetText}`)], { class: 'sto-def' })))),
-      h('ul', { class: 'sto-planned' }, ov.planned.map((p) => h('li', { class: 'meta', 'data-test': 'planned' }, `${p.name}: ${p.note}`))));
+        (k.byArea || []).filter((x) => ids.has(x.placeId)).map((x) => h('p', { class: 'meta', 'data-test': 'store-line' }, `${x.placeName}: ${x.value == null ? 'none' : `${x.value}%`} (${x.numerator} of ${x.denominator} item-days)`)),
+        k.byArea?.length ? keepOpen(ui.open, `area:${k.id}`, 'Each ward', h('ul', { class: 'sto-mini' }, k.byArea.filter((x) => !ids.has(x.placeId)).map((x) => h('li', {}, `${x.placeName}: ${x.value == null ? 'none' : `${x.value}%`} (${x.numerator} of ${x.denominator} item-days)`))), { class: 'sto-def' }) : null,
+        keepOpen(ui.open, `def:${k.id}`, 'How it is counted', [h('p', {}, k.definition), h('p', {}, `Counts: ${k.counts}`), h('p', {}, `Leaves out: ${k.leavesOut}`), h('p', {}, `Source: ${k.source}`), h('p', {}, `Target: ${k.targetText}`)], { class: 'sto-def' })))));
   }
   function tools() {
     if (!mayLevel && !can(ctx.role, 'ospeli_stock_transfer') && !can(ctx.role, 'ospeli_stock_item_add')) return null;
     const itemOpts = shared.items.items.map((it) => [it.id, `${it.name} (${it.unit})`]);
+    const nm = (id) => shared.names.get(id) || id; const it = (id) => shared.item.get(id)?.name || id;
     const f = ui.form; const a = ui.add; const m = ui.move;
     const msg = (k) => (ui.msg.get(k) ? h('p', { class: 'sto-status', role: 'status' }, ui.msg.get(k)) : null);
     const lvlBtn = h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_stock_level_set', 'data-test': 'set-level-save', onclick: () => {
       if (!f.place || !f.item || f.level == null) { ui.msg.set('lvl', 'Choose the place, the item and the level first.'); draw(); return; }
       const now = data.levels.find((r) => r.placeId === f.place && r.itemId === f.item)?.level ?? 0;
-      act('ospeli_stock_level_set', { itemId: f.item, placeId: f.place, level: f.level, expectedLevel: now }, 'Level set', { onDone: () => { ui.msg.set('lvl', 'Saved.'); ui.form = { place: f.place, item: '', level: null }; }, onError: (e) => ui.msg.set('lvl', `Not saved. ${e.message}`) });
+      const word = levelWord(storeIds().has(f.place));
+      act('ospeli_stock_level_set', { itemId: f.item, placeId: f.place, level: f.level, expectedLevel: now }, `The ${word} of ${it(f.item)} at ${nm(f.place)} is now ${f.level}`,
+        { onDone: () => { ui.msg.set('lvl', `Saved: ${word} ${f.level} for ${it(f.item)} at ${nm(f.place)}.`); ui.form = { place: f.place, item: '', level: null }; }, onError: (e) => ui.msg.set('lvl', `Not saved. ${e.message}`) });
     } }, 'Save level');
     const name = h('input', { type: 'text', id: 'add-name', maxlength: 60, autocomplete: 'off', value: a.name, 'data-test': 'add-name' });
     name.addEventListener('input', () => { a.name = name.value; });
     const addBtn = h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_stock_item_add', 'data-test': 'add-save', onclick: () => {
       if (a.name.trim().length < 2 || !a.unit) { ui.msg.set('add', 'Write the item\'s name and choose its unit first.'); draw(); return; }
-      act('ospeli_stock_item_add', { name: a.name.trim(), unit: a.unit, category: 'supplies', tracer: a.tracer }, 'Item added', { onDone: (out) => { ui.msg.set('add', `Added as ${out.itemId}. Set its level for each place that keeps it.`); ui.add = { name: '', unit: '', tracer: false }; }, onError: (e) => ui.msg.set('add', `Not saved. ${e.message}`) });
+      const label = a.name.trim();
+      act('ospeli_stock_item_add', { name: label, unit: a.unit, category: 'supplies', tracer: a.tracer }, `Item added: ${label} (${a.unit})`, { onDone: () => { ui.msg.set('add', `Added: ${label}. Set its top-up level for each ward that keeps it, and the store's reorder level.`); ui.add = { name: '', unit: '', tracer: false }; }, onError: (e) => ui.msg.set('add', `Not saved. ${e.message}`) });
     } }, 'Add item');
     const tracer = h('input', { type: 'checkbox', id: 'add-tracer', checked: a.tracer || null });
     tracer.addEventListener('change', () => { a.tracer = tracer.checked; });
-    const moveBtn = h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_stock_transfer', 'data-test': 'move-save', onclick: () => {
+    // Records a move that has been made: the button says so, with the numbers.
+    const moveBtn = h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_stock_transfer', 'data-test': 'move-save' });
+    const moveLabel = () => { moveBtn.textContent = m.from && m.to && m.item && m.qty ? `Record: ${m.qty} moved from ${nm(m.from)} to ${nm(m.to)}` : 'Record a move that has been made'; };
+    moveBtn.addEventListener('click', () => {
       if (!m.from || !m.to || !m.item || !m.qty) { ui.msg.set('move', 'Choose both places, the item and how many first.'); draw(); return; }
-      act('ospeli_stock_transfer', { fromPlaceId: m.from, toPlaceId: m.to, lines: [{ itemId: m.item, qty: m.qty }] }, 'Moved', { onDone: () => { ui.msg.set('move', 'Saved.'); ui.move = { from: '', to: '', item: '', qty: null }; }, onError: (e) => ui.msg.set('move', `Not saved. ${e.message}`) });
-    } }, 'Move stock');
+      const words = `Recorded: ${m.qty} (${shared.item.get(m.item)?.unit || ''}) of ${it(m.item)} moved from ${nm(m.from)} to ${nm(m.to)}`;
+      act('ospeli_stock_transfer', { fromPlaceId: m.from, toPlaceId: m.to, lines: [{ itemId: m.item, qty: m.qty }] }, words, { onDone: () => { ui.msg.set('move', `${words}.`); ui.move = { from: '', to: '', item: '', qty: null }; }, onError: (e) => ui.msg.set('move', `Not saved. ${e.message}`) });
+    });
+    moveLabel();
     return h('section', { class: 'section', 'aria-labelledby': 'sto-tools-h' }, h('h2', { id: 'sto-tools-h' }, 'Levels, items and moves'),
-      mayLevel ? keepOpen(ui.open, 'tool:level', 'Set a top-up level', h('div', { class: 'sto-form' },
+      mayLevel ? keepOpen(ui.open, 'tool:level', 'Set a level', h('div', { class: 'sto-form' },
         h('div', { class: 'field' }, h('label', { for: 'lvl-place' }, 'Place'), placeSelect('lvl-place', places(), { blank: 'Choose the place', value: f.place, onchange: (v) => { f.place = v; } })),
         h('div', { class: 'field' }, h('label', { for: 'lvl-item' }, 'Item'), placeSelect('lvl-item', itemOpts, { blank: 'Choose the item', value: f.item, onchange: (v) => { f.item = v; } })),
-        h('div', { class: 'field' }, h('span', { class: 'label' }, 'Level (0 clears it)'), stepper({ get: () => f.level, set: (v) => { f.level = v; }, label: 'Top-up level' })),
+        h('div', { class: 'field' }, h('span', { class: 'label' }, 'Level: the top-up level for a ward, the reorder level for the store (0 clears it)'), stepper({ get: () => f.level, set: (v) => { f.level = v; }, label: 'Level', test: 'level-input' })),
         lvlBtn, msg('lvl')), { class: 'card sto-tool', 'data-test': 'tool-level' }) : null,
       can(ctx.role, 'ospeli_stock_item_add') ? keepOpen(ui.open, 'tool:add', 'Add an item this site keeps', h('div', { class: 'sto-form' },
         h('div', { class: 'field' }, h('label', { for: 'add-name' }, 'Name of the thing (no brand, supplier or person)'), name),
         h('div', { class: 'field' }, h('label', { for: 'add-unit' }, 'Counted in'), placeSelect('add-unit', UNITS.map((u) => [u, u]), { blank: 'Choose the unit', value: a.unit, onchange: (v) => { a.unit = v; } })),
         h('label', { class: 'sto-check', for: 'add-tracer' }, tracer, ' A tracer item (watched as a sign of how well stock is kept)'),
         addBtn, msg('add')), { class: 'card sto-tool', 'data-test': 'tool-add' }) : null,
-      can(ctx.role, 'ospeli_stock_transfer') ? keepOpen(ui.open, 'tool:move', 'Move stock between places', h('div', { class: 'sto-form' },
-        h('div', { class: 'field' }, h('label', { for: 'mv-out' }, 'From'), placeSelect('mv-out', places(), { blank: 'Choose the place it leaves', value: m.from, onchange: (v) => { m.from = v; } })),
-        h('div', { class: 'field' }, h('label', { for: 'mv-in' }, 'To'), placeSelect('mv-in', places(), { blank: 'Choose where to', value: m.to, onchange: (v) => { m.to = v; } })),
-        h('div', { class: 'field' }, h('label', { for: 'mv-item' }, 'Item'), placeSelect('mv-item', itemOpts, { blank: 'Choose the item', value: m.item, onchange: (v) => { m.item = v; } })),
-        h('div', { class: 'field' }, h('span', { class: 'label' }, 'How many'), stepper({ get: () => m.qty, set: (v) => { m.qty = v; }, label: 'How many to move' })),
+      can(ctx.role, 'ospeli_stock_transfer') ? keepOpen(ui.open, 'tool:move', 'Record a move between places', h('div', { class: 'sto-form' },
+        h('p', { class: 'meta' }, 'For stock that has been moved: it leaves the first place and arrives at the second.'),
+        h('div', { class: 'field' }, h('label', { for: 'mv-out' }, 'From'), placeSelect('mv-out', places(), { blank: 'Choose the place it left', value: m.from, onchange: (v) => { m.from = v; moveLabel(); } })),
+        h('div', { class: 'field' }, h('label', { for: 'mv-in' }, 'To'), placeSelect('mv-in', places(), { blank: 'Choose the place it went', value: m.to, onchange: (v) => { m.to = v; moveLabel(); } })),
+        h('div', { class: 'field' }, h('label', { for: 'mv-item' }, 'Item'), placeSelect('mv-item', itemOpts, { blank: 'Choose the item', value: m.item, onchange: (v) => { m.item = v; moveLabel(); } })),
+        h('div', { class: 'field' }, h('span', { class: 'label' }, 'How many'), stepper({ get: () => m.qty, set: (v) => { m.qty = v; moveLabel(); }, label: 'How many were moved', test: 'move-input' })),
         moveBtn, msg('move')), { class: 'card sto-tool', 'data-test': 'tool-move' }) : null);
   }
   function draw() {
     const { ov } = data;
-    const c = ov.counts;
+    const c = ov.counts; const sc = ov.short.counts;
     const forMe = (ov.reminders || []).filter((r) => r.roles.includes(ctx.role));
     setKids(box,
       props.el,
-      ov.hasHistory ? null : h('p', { class: 'card notice', 'data-test': 'no-history' }, 'No supplies are held anywhere on this device yet: no level is set and nothing has been received. Set top-up levels for each ward below, and receive the store\'s stock, to start.'),
-      forMe.length ? h('div', { class: 'card notice', 'data-test': 'reminders' }, forMe.map((r) => h('p', {}, h('b', {}, `Reminder: ${r.orderId}`), ` ${r.waitingFor.toLowerCase()}. `, h('a', { class: 'sto-link', href: '#/stores/orders' }, 'Open the order tracker')))) : null,
+      ov.hasHistory ? null : h('p', { class: 'card notice', 'data-test': 'no-history' }, 'No supplies are held anywhere on this device yet: no level is set and nothing has been received. Set the top-up levels for each ward and the store\'s reorder levels below, and receive the store\'s stock, to start.'),
+      forMe.length ? h('div', { class: 'card notice', 'data-test': 'reminders' }, forMe.map((r) => h('p', {}, h('b', {}, `Reminder: ${ordName(r.orderId)}`), ` ${r.waitingFor.toLowerCase()}. `, h('a', { class: 'sto-link', href: '#/stores/orders' }, 'Open the order tracker')))) : null,
       h('div', { class: 'stats sto-stats', 'data-test': 'stats' },
-        h('div', { class: 'stat', 'data-stat': 'short' }, h('span', {}, 'Under level'), h('b', {}, String(c.underLevel)), h('span', {}, `in ${plural(c.areasShort, 'place')}`)),
+        h('div', { class: 'stat', 'data-stat': 'short' }, h('span', {}, 'Short now'), h('b', {}, String(sc.itemLines)), h('span', {}, `item lines in ${plural(sc.wards, 'ward')}${sc.noneLeft ? `, ${sc.noneLeft} with none left` : ''}${sc.storeLines ? `; ${sc.storeLines} store items not on order` : ''}`)),
         h('div', { class: 'stat', 'data-stat': 'requests' }, h('span', {}, 'Requests waiting'), h('b', {}, String(c.requestsWaiting)), h('span', {}, c.oldestWaitHours != null ? `oldest ${hoursText(c.oldestWaitHours)}` : 'none waiting')),
         h('div', { class: 'stat', 'data-stat': 'orders' }, h('span', {}, 'Open orders'), h('b', {}, String(c.ordersOpen)), h('span', {}, c.longestAtStepDays != null ? `longest at one step ${daysText(c.longestAtStepDays)}` : 'none open')),
         h('div', { class: 'stat', 'data-stat': 'outs' }, h('span', {}, 'Stock-outs open'), h('b', {}, String(c.stockOutsOpen)), h('span', {}, c.notDeclared ? `${c.notDeclared} more with nothing usable` : 'declared by a person'))),

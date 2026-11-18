@@ -65,7 +65,9 @@ export const suppliesRequest = (stock) => (q) => q.lines.some((l) => isSupply(st
 // ospeli_stock_receive), so the tracker and the stock balance can never disagree.
 export const ORDER_STEPS = ['requested', 'approved', 'ordered', 'delivered', 'received'];
 export const RECORDED_STEPS = ['requested', 'approved', 'ordered', 'delivered', 'cancelled'];
-export const STEP_NAMES = { requested: 'Requested', approved: 'Approved', ordered: 'Ordered', delivered: 'Delivered', received: 'Received', cancelled: 'Cancelled' };
+export const STEP_NAMES = { requested: 'Requested', approved: 'Approved', ordered: 'Ordered', delivered: 'Delivered', 'part-received': 'Part received', received: 'Received', cancelled: 'Cancelled' };
+// The states an order can be in: a step, or part received (some lines still to come).
+export const ORDER_STATES = ['requested', 'approved', 'ordered', 'delivered', 'part-received'];
 // Who records each step. The roles that request and the roles that approve are different on purpose.
 export const STEP_ROLES = {
   requested: ['supply-manager', 'storekeeper'], approved: ['ops-manager', 'coo'], ordered: ['supply-manager'],
@@ -78,22 +80,24 @@ export const WAITING_FOR = {
   approved: { words: 'Waiting to be ordered', roles: STEP_ROLES.ordered },
   ordered: { words: 'Waiting for delivery', roles: ['supply-manager'] },
   delivered: { words: 'Waiting to be received into stock', roles: RECEIVE_ROLES },
+  'part-received': { words: 'Waiting for the rest of the delivery', roles: ['supply-manager'] },
 };
 // Example settings, not standards: the usual longest wait at each step, set locally.
-export const USUAL_DAYS = { requested: 2, approved: 2, ordered: 7, delivered: 1 };
+export const USUAL_DAYS = { requested: 2, approved: 2, ordered: 7, delivered: 1, 'part-received': 7 };
 export const REMIND_GAP_HOURS = 24; // one reminder a day at most for one order at one step (example setting)
 export const ORDER_CANCEL_REASONS = ['No longer needed', 'Ordered another way', 'Asked for by mistake', 'Other'];
 export const ORDER_ID_PATTERN = '^ord-[0-9]{5,}$';
 export const MAX_ORDER_LINES = 50;
 const ORDER_ID = /^ord-(\d{5,})$/;
-const OPEN = ['requested', 'approved', 'ordered', 'delivered'];
+const OPEN = ORDER_STATES;
 export const isOpenOrder = (o) => OPEN.includes(o.state);
 
 // Why a step cannot be recorded on an order as it stands, or null when it can.
 export function stepProblem(order, step) {
   if (step === 'requested') return order ? 'This order is already requested.' : null;
   if (!order) return 'There is no such order.';
-  if (order.state === 'received') return 'This order is already received.';
+  if (order.state === 'received') return 'This order is already received in full.';
+  if (order.state === 'part-received' && step !== 'cancelled') return 'Part of this order is received: the rest is received into stock against it, or cancelled with a reason.';
   if (order.state === 'cancelled') return 'This order is cancelled.';
   if (step === 'cancelled') return null;
   const before = { approved: 'requested', ordered: 'approved', delivered: 'ordered' }[step];
@@ -134,13 +138,16 @@ export function deriveOrders(events) {
       if (e.seq > o.lastSeq) o.lastSeq = e.seq;
     } else if (e.type === 'stock.received' && typeof e.data?.orderRef === 'string') {
       const o = orders.get(e.data.orderRef);
-      if (!o || o.state === 'cancelled') continue;
+      if (!o || o.state === 'cancelled' || o.state === 'received') continue;
       for (const l of Array.isArray(e.data.lines) ? e.data.lines : []) {
         const want = o.lines.find((x) => x.itemId === l?.itemId);
         if (want && Number.isInteger(l.qty) && l.qty > 0) want.received += l.qty;
       }
       o.receipts += 1;
-      if (!o.steps.received) { o.steps.received = { at: e.at, byRole: e.actorRole }; o.state = 'received'; }
+      // Received in full only when every line has come: the last receipt that completes it. Until
+      // then the order is part received and stays open. More than ordered is flagged, never refused.
+      if (o.lines.every((l) => l.received >= l.qty)) { o.steps.received = { at: e.at, byRole: e.actorRole }; o.state = 'received'; }
+      else if (!o.steps['part-received']) { o.steps['part-received'] = { at: e.at, byRole: e.actorRole }; o.state = 'part-received'; }
       if (e.seq > o.lastSeq) o.lastSeq = e.seq;
     }
   }
@@ -152,17 +159,20 @@ export function nextOrderId(events) {
   return `ord-${String(max + 1).padStart(5, '0')}`;
 }
 const days = (fromIso, toMs) => Math.round(((toMs - Date.parse(fromIso)) / DAY) * 10) / 10;
-// One order's steps with the days spent at each, as of `now`.
+// One order's steps with the days spent at each, as of `now`. While some lines are still to come,
+// the last step shows as "Part received".
+const SEQ = ['requested', 'approved', 'ordered', 'delivered', 'part-received', 'received'];
 export function orderSteps(o, now) {
   const t = typeof now === 'string' ? Date.parse(now) : now;
-  const reached = ORDER_STEPS.filter((s) => o.steps[s]);
+  const reached = SEQ.filter((s) => o.steps[s]);
   const end = o.steps.cancelled?.at;
-  return ORDER_STEPS.map((s) => {
+  const row = (s) => {
     const at = o.steps[s]?.at ?? null;
     if (!at) return { step: s, name: STEP_NAMES[s], at: null, byRole: null, days: null };
     const later = reached.slice(reached.indexOf(s) + 1).map((x) => o.steps[x].at)[0] ?? end ?? null;
     return { step: s, name: STEP_NAMES[s], at, byRole: o.steps[s].byRole, days: s === 'received' ? null : days(at, later ? Date.parse(later) : t), current: s === o.state };
-  });
+  };
+  return ORDER_STEPS.map((s) => (s === 'received' && !o.steps.received && o.steps['part-received'] ? row('part-received') : row(s)));
 }
 export const daysAtStep = (o, now) => (isOpenOrder(o) ? days(o.steps[o.state].at, typeof now === 'string' ? Date.parse(now) : now) : null);
 export const overUsual = (o, now) => isOpenOrder(o) && daysAtStep(o, now) > USUAL_DAYS[o.state];
@@ -215,6 +225,34 @@ export function fillRatePercent(stock, { since, until, see = all }) {
   return { value: v.value, numerator: v.numerator, denominator: v.denominator, n: v.requests, cancelled: v.cancelled };
 }
 
+// ---- what is short now: not every item under its top-up level (a ward under its level is normal
+// between top-ups and is asked for by its count), but what needs a person to look ----
+export const SHORT_SHARE = 0.5; // a ward item below half its top-up level (example setting, not a standard)
+export const REQUEST_USUAL_HOURS = 24; // a ward request waiting longer than this (example setting, not a standard)
+export function shortNow(stock, orders, { now, isArea, isStore, see = all }) {
+  const t = typeof now === 'string' ? Date.parse(now) : now;
+  const onOrder = new Set([...orders.values()].filter(isOpenOrder).flatMap((o) => o.lines.filter((l) => l.received < l.qty).map((l) => l.itemId)));
+  const lines = [];
+  for (const h of stock.holdings.values()) {
+    const it = stock.items.get(h.itemId);
+    if (!isSupply(it) || !h.level || !see(h.placeId)) continue;
+    const usable = balance(h, t, stock.offsetMinutes).usable;
+    if (isArea(h.placeId)) {
+      if (usable === 0) lines.push({ kind: 'none-left', itemId: h.itemId, placeId: h.placeId, usable, level: h.level });
+      else if (usable < h.level * SHORT_SHARE) lines.push({ kind: 'below-share', itemId: h.itemId, placeId: h.placeId, usable, level: h.level });
+    } else if (isStore(h.placeId) && usable < h.level && !onOrder.has(h.itemId)) {
+      lines.push({ kind: 'store-not-on-order', itemId: h.itemId, placeId: h.placeId, usable, level: h.level });
+    }
+  }
+  const late = [...stock.requests.values()].filter((q) => (q.state === 'open' || q.state === 'part') && suppliesRequest(stock)(q) && see(q.placeId) && t - Date.parse(q.at) > REQUEST_USUAL_HOURS * HOUR)
+    .map((q) => ({ kind: 'request-waiting', placeId: q.placeId, requestId: q.id, hours: Math.round(((t - Date.parse(q.at)) / HOUR) * 10) / 10 }));
+  const order = { 'none-left': 0, 'store-not-on-order': 1, 'request-waiting': 2, 'below-share': 3 };
+  const all = [...lines, ...late].sort((a, b) => order[a.kind] - order[b.kind] || (a.placeId < b.placeId ? -1 : a.placeId > b.placeId ? 1 : (a.itemId || a.requestId) < (b.itemId || b.requestId) ? -1 : 1));
+  const wardLines = lines.filter((x) => x.kind !== 'store-not-on-order');
+  return { lines: all, counts: { itemLines: wardLines.length, wards: new Set(wardLines.map((x) => x.placeId)).size, noneLeft: lines.filter((x) => x.kind === 'none-left').length,
+    storeLines: lines.length - wardLines.length, requestsLate: late.length } };
+}
+
 // ---- guide rules: fixed, checkable rules. A rule suggests; a person decides. ----
 export const LEVEL_WEEK_DAYS = 7; // the guide assumes an area is topped up about once a week (example setting)
 export const LEVEL_EXTRA = 0.25; // a quarter on top of a week's use (example setting)
@@ -226,10 +264,10 @@ export const GUIDE_RULES = [
   { id: 'order-waiting', name: 'An order has waited at one step longer than usual',
     basis: `Example setting, not a standard: the usual longest waits set here are ${USUAL_DAYS.requested} days for approval, ${USUAL_DAYS.approved} days to be ordered, ${USUAL_DAYS.ordered} days for delivery and ${USUAL_DAYS.delivered} day to be received into stock. A person sends the reminder; at most one a day for one order at one step.` },
   { id: 'transfer', name: 'One area holds far more than another that is short',
-    basis: `Example setting, not a standard: one area holds at least ${FAR_MORE} times its top-up level of an item while another area is under its level. The amount suggested is the smaller of the extra and what is short, and what the store holds is shown beside it. Cold-chain items are left out. A person confirms the transfer.` },
+    basis: `Example setting, not a standard: one area holds at least ${FAR_MORE} times its top-up level of an item while another area is under its level. The amount suggested is the smaller of the extra and what is short, and what the store holds is shown beside it. Cold-chain items are left out. A person moves the stock and then records the move.` },
 ];
 const BASIS = Object.fromEntries(GUIDE_RULES.map((r) => [r.id, r.basis]));
-const roleList = (ids) => ids.map((r) => roleById(r)?.name || r).join(' or ');
+const roleList = (ids) => ids.map((r) => (r === 'coo' ? 'Chief operating officer' : roleById(r)?.name || r)).join(' or ');
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // Rule 1. `isArea(placeId)`: a ward or department (the store's level is its reorder level, left out).
@@ -269,7 +307,7 @@ export function ruleOrderWaiting(orders, { now, itemName = (id) => id }) {
     const what = o.lines.slice(0, 3).map((l) => itemName(l.itemId)).join(', ') + (o.lines.length > 3 ? ` and ${o.lines.length - 3} more` : '');
     out.push({
       rule: 'order-waiting', id: `order-waiting:${o.id}:${o.state}`, orderId: o.id,
-      text: `${o.id} (${what}): ${wait.words.toLowerCase()} for ${daysAtStep(o, t)} days.`,
+      text: `${what} (order ${Number(o.id.slice(4))}): ${wait.words.toLowerCase()} for ${daysAtStep(o, t)} days.`,
       why: `The usual longest wait set here is ${plural(USUAL_DAYS[o.state], 'day')} (example setting, not a standard). This step is for ${roleList(wait.roles)}.${recent ? ` A reminder was sent ${Math.max(1, Math.round((t - Date.parse(sent.at)) / HOUR))} h ago.` : ''}`,
       basis: BASIS['order-waiting'],
       action: recent ? null : { label: `Remind ${roleList(wait.roles)}`, command: 'ospeli_stores_order_remind', inputs: [{ orderId: o.id, expectedStep: o.state }] },
@@ -298,10 +336,10 @@ export function ruleTransfer(stock, { now, isArea, see = all, placeName = (id) =
     const store = storeHas(itemId);
     out.push({
       rule: 'transfer', id: `transfer:${itemId}:${rich.placeId}:${short.placeId}`, itemId, fromPlaceId: rich.placeId, toPlaceId: short.placeId,
-      text: `Move ${qty} (${it.unit}) of ${it.name} from ${placeName(rich.placeId)} to ${placeName(short.placeId)}.`,
+      text: `${it.name}: ${placeName(rich.placeId)} could send ${qty} (${it.unit}) to ${placeName(short.placeId)}.`,
       why: `${placeName(rich.placeId)} has ${rich.usable} (top-up level ${rich.level}); ${placeName(short.placeId)} has ${short.usable} (level ${short.level}).${store == null ? '' : ` The store has ${store} usable.`}`,
       basis: BASIS.transfer,
-      action: { label: `Move ${qty}`, command: 'ospeli_stock_transfer', inputs: [{ fromPlaceId: rich.placeId, toPlaceId: short.placeId, lines: [{ itemId, qty }] }] },
+      action: { label: `Record: ${qty} moved from ${placeName(rich.placeId)} to ${placeName(short.placeId)}`, command: 'ospeli_stock_transfer', inputs: [{ fromPlaceId: rich.placeId, toPlaceId: short.placeId, lines: [{ itemId, qty }] }] },
     });
   }
   return out.sort((a, b) => (a.id < b.id ? -1 : 1));

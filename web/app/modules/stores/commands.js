@@ -16,8 +16,8 @@ import { roleById, currentWords } from '../../core/model.js';
 import { STOCK_PLACE_TYPES, MAX_QTY, ITEM_ID_PATTERN, balance, openStockOut, usableOf } from '../../core/stock.js';
 import {
   STOCK_CATEGORIES, STOCK_ITEMS, CATEGORY, deriveSupplies, isSupply, suppliesRequest, deriveOrders, nextOrderId, orderSteps, daysAtStep, overUsual, lastReminder, isOpenOrder,
-  ORDER_STEPS, RECORDED_STEPS, STEP_NAMES, STEP_ROLES, WAITING_FOR, USUAL_DAYS, REMIND_GAP_HOURS, ORDER_CANCEL_REASONS, ORDER_ID_PATTERN, MAX_ORDER_LINES, stepProblem,
-  guideOn, GUIDE_RULES, tracerStockOutRate, requestWaitHours, orderCycleTime, fillRatePercent, ruleLevelCheck, ruleOrderWaiting, ruleTransfer,
+  ORDER_STEPS, ORDER_STATES, RECORDED_STEPS, STEP_NAMES, STEP_ROLES, WAITING_FOR, USUAL_DAYS, REMIND_GAP_HOURS, ORDER_CANCEL_REASONS, ORDER_ID_PATTERN, MAX_ORDER_LINES, stepProblem,
+  guideOn, GUIDE_RULES, shortNow, SHORT_SHARE, REQUEST_USUAL_HOURS, tracerStockOutRate, requestWaitHours, orderCycleTime, fillRatePercent, ruleLevelCheck, ruleOrderWaiting, ruleTransfer,
 } from './logic.js';
 
 export { STOCK_CATEGORIES, STOCK_ITEMS };
@@ -70,7 +70,7 @@ async function context(core, wards = null, events = null) {
   const itemName = (iid) => stock.items.get(iid)?.name || iid;
   return { core, events: evs, places, stock, orders, placeName, see, isArea, stores, itemName, now: core.now(), offsetMinutes };
 }
-const roleList = (ids) => ids.map((r) => roleById(r)?.name || r).join(' or ');
+const roleList = (ids) => ids.map((r) => (r === 'coo' ? 'Chief operating officer' : roleById(r)?.name || r)).join(' or ');
 const hoursSince = (iso, now) => Math.round(((Date.parse(now) - Date.parse(iso)) / HOUR) * 10) / 10;
 
 // ---- the overview: measures, what is short, what is stuck, and the guide, in one read ----
@@ -99,6 +99,7 @@ async function overview(core, input, wards) {
   const open = [...c.orders.values()].filter(isOpenOrder);
   const outs = [...stock.stockOuts.values()].filter((s) => !s.endedAt && isSupply(stock.items.get(s.itemId)) && see(s.placeId));
   const notDeclared = held.filter((h) => h.level && balance(h, now, stock.offsetMinutes).usable === 0 && !openStockOut(stock, h.itemId, h.placeId));
+  const short = shortNow(stock, c.orders, { now, isArea: c.isArea, isStore: (pid) => c.places.get(pid)?.type === 'store', see });
   const on = guideOn(c.events);
   const suggestions = on ? [
     ...ruleLevelCheck(stock, { now, isArea: c.isArea, see, placeName: c.placeName }),
@@ -114,6 +115,9 @@ async function overview(core, input, wards) {
       ordersOpen: open.length, longestAtStepDays: open.length ? Math.max(...open.map((o) => daysAtStep(o, now))) : null,
       stockOutsOpen: outs.length, notDeclared: notDeclared.length,
     },
+    // What needs a person to look now (not every item under its top-up level: see shortNow).
+    short: { share: SHORT_SHARE, requestUsualHours: REQUEST_USUAL_HOURS, note: `Example settings, not standards: a ward item with nothing usable or below ${SHORT_SHARE * 100}% of its top-up level, a ward request waiting more than ${REQUEST_USUAL_HOURS} hours, a store item below its reorder level with no open order.`,
+      counts: short.counts, lines: short.lines.slice(0, 200).map((x) => ({ ...x, placeName: c.placeName(x.placeId), ...(x.itemId ? { itemName: c.itemName(x.itemId), unit: stock.items.get(x.itemId)?.unit ?? null } : {}) })) },
     // Reminders sent for open orders at the step they wait at, and the roles each is for.
     reminders: open.map((o) => ({ o, r: lastReminder(o) })).filter((x) => x.r).map(({ o, r }) => ({ orderId: o.id, step: o.state, waitingFor: WAITING_FOR[o.state].words, roles: [...WAITING_FOR[o.state].roles], at: r.at, byRole: r.byRole })),
     kpis, planned: PLANNED_KPIS.map((x) => ({ ...x })),
@@ -130,14 +134,15 @@ const orderRow = (c, o, format) => {
     waitingFor: wait?.words ?? null, waitingForRoles: wait ? [...wait.roles] : [], daysAtStep: daysAtStep(o, c.now),
     usualDays: wait ? USUAL_DAYS[o.state] : null, overUsual: overUsual(o, c.now),
     cycleDays: o.steps.received ? Math.round(((Date.parse(o.steps.received.at) - Date.parse(o.steps.requested.at)) / DAY) * 10) / 10 : null,
-    lines: o.lines.map((l) => ({ itemId: l.itemId, itemName: c.itemName(l.itemId), unit: c.stock.items.get(l.itemId)?.unit ?? null, qty: l.qty, received: l.received })),
+    lines: o.lines.map((l) => ({ itemId: l.itemId, itemName: c.itemName(l.itemId), unit: c.stock.items.get(l.itemId)?.unit ?? null, qty: l.qty, received: l.received, toCome: Math.max(0, l.qty - l.received), over: l.received > l.qty })),
+    overReceived: o.lines.some((l) => l.received > l.qty),
   };
   if (format === 'short') return base;
   const r = lastReminder(o);
   return { ...base, steps: orderSteps(o, c.now), cancelReason: o.cancelReason,
     lastReminder: r ? { at: r.at, byRole: r.byRole, hoursAgo: hoursSince(r.at, c.now) } : null,
     nextSteps: RECORDED_STEPS.filter((s) => s !== 'requested' && !stepProblem(o, s)).map((s) => ({ step: s, name: STEP_NAMES[s], roles: [...STEP_ROLES[s]] })),
-    receivedBy: isOpenOrder(o) && ['ordered', 'delivered'].includes(o.state) ? 'Record the delivery with ospeli_stock_receive and orderRef set to this order id.' : null };
+    receivedBy: isOpenOrder(o) && ['ordered', 'delivered', 'part-received'].includes(o.state) ? 'Record the delivery with ospeli_stock_receive and orderRef set to this order id.' : null };
 };
 
 // ---- order steps: the checks a person's action and an agent's proposal both pass ----
@@ -232,6 +237,7 @@ export const COMMANDS = [
       hasStore: { type: 'boolean', description: 'False on a device whose hospital has no store set up: nothing can be issued or received.' },
       hasHistory: { type: 'boolean', description: 'False when no supplies are held anywhere yet (no level set, no movement).' },
       stores: { type: 'array', description: 'The stores, with ids.' },
+      short: { type: 'object', description: 'What needs a person to look now: lines of kind none-left, below-share (a ward item below a share of its top-up level), store-not-on-order or request-waiting, with counts (itemLines and wards for the wards; storeLines; requestsLate). The share and the wait are example settings, not standards.' },
       counts: { type: 'object', description: 'underLevel, areasShort, requestsWaiting, oldestWaitHours, ordersOpen, longestAtStepDays, stockOutsOpen, notDeclared (items with a level and nothing usable, with no stock-out declared).' },
       reminders: { type: 'array', description: 'Reminders sent for open orders at the step they wait at: { orderId, step, waitingFor, roles, at, byRole }.' },
       kpis: { type: 'array', items: KPI_OUT }, planned: { type: 'array', items: { type: 'object', required: ['id', 'name', 'status'] } },
@@ -242,10 +248,10 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_stores_orders',
-    summary: 'The order tracker: each order with its items and quantities, its steps (requested, approved, ordered, delivered, received) with the date and the days spent at each, what it is waiting for and which roles hold that step, and what has been received against it. Open orders come first, the longest at one step first. No prices or suppliers are kept. Read-only.',
+    summary: 'The order tracker: each order with its items and quantities (and what is still to come; a delivery above the order is flagged), its steps (requested, approved, ordered, delivered, part received, received) with the date and the days spent at each, what it is waiting for and which roles hold that step, and what has been received against it. Open orders come first, the longest at one step first. No prices or suppliers are kept. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, properties: {
-      state: { type: 'string', enum: ['open', 'received', 'cancelled', 'all'], description: 'open (default): not received or cancelled yet. received, cancelled or all: newest first.' },
+      state: { type: 'string', enum: ['open', 'received', 'cancelled', 'all'], description: 'open (default): not received in full or cancelled yet (part received is open). received, cancelled or all: newest first.' },
       format: FORMAT('each order without its steps', 'each order with its steps, its last reminder and the steps that can be recorded next'), limit: LIMIT(50, 200, 'orders') } },
     output: { type: 'object', required: ['asOf', 'synthetic', 'orders', 'steps', 'total', 'truncated'], properties: {
       asOf: TIME, synthetic: SYNTHETIC, total: TOTAL, truncated: TRUNCATED,
@@ -269,12 +275,12 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_stores_order_step',
-    summary: 'Record the next purchasing step of an order: requested (opens an order: items and quantities, no price or supplier), approved, ordered, delivered, or cancelled with a reason from the list. Steps go in order; "received" is recorded by receiving the delivery into stock with ospeli_stock_receive and orderRef. People approve purchases: an agent\'s approval is refused, and any other step from an agent becomes a proposal for a person.',
+    summary: 'Record the next purchasing step of an order: requested (opens an order: items and quantities, no price or supplier), approved, ordered, delivered, or cancelled with a reason from the list (an order part received can have the rest cancelled this way). Steps go in order; "received" is recorded by receiving the delivery into stock with ospeli_stock_receive and orderRef, and the order stays open as part received until every line has come. People approve purchases: an agent\'s approval is refused, and any other step from an agent becomes a proposal for a person.',
     kind: 'write', roles: STEP_WRITERS, approval: true,
     input: { type: 'object', additionalProperties: false, required: ['step'], properties: {
       step: { type: 'string', enum: RECORDED_STEPS, description: `The step to record: ${RECORDED_STEPS.join(', ')}. Who records each: ${RECORDED_STEPS.map((s) => `${s} by ${roleList(STEP_ROLES[s])}`).join('; ')}.` },
       orderId: { ...ORDER_ID, description: 'The order, for every step after requested, for example ord-00001 (ospeli_stores_orders lists them).' },
-      expectedStep: { type: 'string', enum: ORDER_STEPS, description: 'The step the caller last saw the order at. If it has moved on since, the command is refused (conflict).' },
+      expectedStep: { type: 'string', enum: ORDER_STATES, description: 'The step the caller last saw the order at (or part-received). If it has moved on since, the command is refused (conflict).' },
       lines: { type: 'array', minItems: 1, maxItems: MAX_ORDER_LINES, items: STEP_LINE, description: 'For step requested only: what is ordered, each line { itemId, qty } once.' },
       placeId: { ...ID, description: 'For step requested only: the store the order is for. Leave out for the site\'s first store.' },
       reason: { type: 'string', enum: ORDER_CANCEL_REASONS, description: `For step cancelled only: why, one of ${ORDER_CANCEL_REASONS.join(', ')}.` },
@@ -305,7 +311,7 @@ export const COMMANDS = [
     kind: 'write', roles: ['supply-manager', 'storekeeper'], approval: true,
     input: { type: 'object', additionalProperties: false, required: ['orderId', 'expectedStep'], properties: {
       orderId: ORDER_ID,
-      expectedStep: { type: 'string', enum: ['requested', 'approved', 'ordered', 'delivered'], description: 'The step the order waits at, as the caller saw it. If it has moved on, nothing is sent (conflict).' } } },
+      expectedStep: { type: 'string', enum: ORDER_STATES, description: 'The step the order waits at, as the caller saw it. If it has moved on, nothing is sent (conflict).' } } },
     output: WRITE_OUT({ orderId: { type: 'string' }, step: { type: 'string' }, roles: { type: 'array', description: 'The roles the reminder is for.' } }),
     target: (input) => ({ id: input.orderId, word: 'order' }),
     wardOf: async () => null,

@@ -14,7 +14,7 @@ import { deriveStock, stockCatalogue, balance } from '../../web/app/core/stock.j
 import * as pack from '../../web/app/modules/stores/commands.js';
 import {
   CATALOGUE, deriveSupplies, deriveOrders, orderSteps, overUsual, tracerStockOutRate, requestWaitHours, orderCycleTime, fillRatePercent,
-  ruleLevelCheck, ruleOrderWaiting, ruleTransfer, guideOn, GUIDE_RULES,
+  ruleLevelCheck, ruleOrderWaiting, ruleTransfer, guideOn, GUIDE_RULES, shortNow, SHORT_SHARE, REQUEST_USUAL_HOURS,
 } from '../../web/app/modules/stores/logic.js';
 
 const END = '2026-11-06T18:00:00.000Z';
@@ -113,7 +113,7 @@ test('a ward count under level raises the request in the same step; the ward see
   assert.equal(await core.eventCount(), n);
 });
 
-test('an order through its steps: people approve; steps go in order; the receipt that names it is its "received"; the cycle time counts it', async () => {
+test('an order through its steps: people approve; steps go in order; a part delivery keeps it open; the receipt that completes it is its "received"; the cycle time counts it', async () => {
   const { core, run, skip } = await site();
   const made = await run('ospeli_stores_order_step', { step: 'requested', lines: [{ itemId: 'gauze-swabs', qty: 30 }, { itemId: 'aprons', qty: 12 }] }, 'storekeeper');
   out('ospeli_stores_order_step', made);
@@ -134,18 +134,32 @@ test('an order through its steps: people approve; steps go in order; the receipt
   await assert.rejects(run('ospeli_stores_order_step', { step: 'cancelled', orderId: o }, 'supply-manager'), code('invalid-input'), 'a cancel needs a picked reason');
   skip(60 * 24 * 3);
   const before = await run('ospeli_stores_overview', { days: 7 }, 'supply-manager');
+  const k = (ov) => ov.kpis.find((x) => x.id === 'stores-order-cycle');
+  // A part delivery does not close the order: it is part received, still open, with what is still to come.
   await run('ospeli_stock_receive', { placeId: 'store-main', lines: [{ itemId: 'gauze-swabs', qty: 30 }, { itemId: 'aprons', qty: 10 }], source: 'Purchase', orderRef: o }, 'storekeeper');
+  let got = (await run('ospeli_stores_orders', { state: 'open', limit: 50 }, 'coo')).orders.find((x) => x.id === o);
+  assert.equal(got.state, 'part-received');
+  assert.equal(got.waitingFor, 'Waiting for the rest of the delivery');
+  assert.deepEqual(got.lines.map((l) => [l.itemId, l.qty, l.received, l.toCome, l.over]), [['gauze-swabs', 30, 30, 0, false], ['aprons', 12, 10, 2, false]]);
+  assert.equal(got.steps.at(-1).step, 'part-received', 'the last step shows as part received');
+  let mid = await run('ospeli_stores_overview', { days: 7 }, 'supply-manager');
+  assert.deepEqual([k(mid).n, k(mid).open], [k(before).n, k(before).open], 'not counted as received; still open beside the value');
+  await assert.rejects(run('ospeli_stores_order_step', { step: 'delivered', orderId: o }, 'storekeeper'), (e) => code('conflict')(e) && /Part of this order is received/.test(e.message));
+  skip(60 * 24);
+  mid = await run('ospeli_stores_overview', { days: 7 }, 'supply-manager');
+  // The rest arrives, more than was still expected: received in full at this last receipt, and flagged, not refused.
+  await run('ospeli_stock_receive', { placeId: 'store-main', lines: [{ itemId: 'aprons', qty: 5 }], source: 'Purchase', orderRef: o }, 'storekeeper');
   const list = await run('ospeli_stores_orders', { state: 'received', limit: 50 }, 'coo');
   out('ospeli_stores_orders', list);
-  const got = list.orders.find((x) => x.id === o);
+  got = list.orders.find((x) => x.id === o);
   assert.equal(got.state, 'received');
-  assert.deepEqual(got.lines.map((l) => [l.itemId, l.qty, l.received]), [['gauze-swabs', 30, 30], ['aprons', 12, 10]], 'what came against what was ordered');
+  assert.deepEqual(got.lines.map((l) => [l.itemId, l.qty, l.received, l.over]), [['gauze-swabs', 30, 30, false], ['aprons', 12, 15, true]], 'what came against what was ordered');
+  assert.equal(got.overReceived, true);
   assert.deepEqual(got.steps.map((s) => [s.step, !!s.at]), [['requested', true], ['approved', true], ['ordered', true], ['delivered', false], ['received', true]]);
   assert.equal(got.steps[1].days, 1, 'one day at "approved" before it was ordered');
-  assert.equal(got.cycleDays, 5.3, 'requested, then 30 h, 24 h and 72 h (and a few clock seconds): 5.25 days, shown to one decimal');
+  assert.equal(got.cycleDays, 6.3, 'requested, then 30 h, 24 h, 72 h and 24 h (and a few clock seconds): 6.25 days to the last receipt, shown to one decimal');
   const after = await run('ospeli_stores_overview', { days: 7 }, 'supply-manager');
-  const k = (ov) => ov.kpis.find((x) => x.id === 'stores-order-cycle');
-  assert.equal(k(after).n, k(before).n + 1, 'the order cycle time counts it');
+  assert.deepEqual([k(after).n, k(after).open], [k(mid).n + 1, k(mid).open - 1], 'the order cycle time counts it, and it is no longer open');
   await assert.rejects(run('ospeli_stores_order_step', { step: 'cancelled', orderId: o, reason: 'Other' }, 'supply-manager'), (e) => code('conflict')(e) && /already received/.test(e.message));
   // A cancel of an open order, with a pick; the trail holds ids and picks only.
   const other = await run('ospeli_stores_order_step', { step: 'requested', lines: [{ itemId: 'masks', qty: 5 }] }, 'supply-manager');
@@ -352,7 +366,7 @@ test('guide rules by hand: use ahead of a level, an order waiting longer than us
   ].sort((a, b) => a[0] - b[0])));
   const r2 = ruleOrderWaiting(orders, { now: at(28) });
   assert.deepEqual(r2.map((s) => [s.id, s.action?.inputs[0] ?? null]), [['order-waiting:ord-00001:requested', { orderId: 'ord-00001', expectedStep: 'requested' }], ['order-waiting:ord-00003:ordered', null]]);
-  assert.match(r2[0].why, /Operations manager or COO/);
+  assert.match(r2[0].why, /Operations manager or Chief operating officer/);
   for (const r of GUIDE_RULES) assert.match(r.basis, /^Example setting, not a standard/);
 });
 
@@ -374,4 +388,40 @@ test('the guide switch: off, there are no suggestions and everything else is the
   await assert.rejects(run('ospeli_stores_guide_set', { on: false }, 'coo'), (e) => code('conflict')(e) && e.detail.already === true);
   await run('ospeli_stores_guide_set', { on: true }, 'ops-manager');
   assert.equal((await run('ospeli_stores_overview', {}, 'coo')).guide.on, true);
+});
+
+test('what is short is not every item under its top-up level: nothing left, below half the level, a request waiting too long, a store item not on order', () => {
+  assert.deepEqual([SHORT_SHARE, REQUEST_USUAL_HOURS], [0.5, 24], 'example settings, named on screen');
+  const rows = [
+    ...['gloves-m', 'gauze-swabs', 'aprons', 'masks'].map((itemId) => [0, 'stock.level-set', W1, { itemId, level: 10 }]),
+    [0, 'stock.level-set', S, { itemId: 'gloves-m', level: 40 }], [0, 'stock.level-set', S, { itemId: 'aprons', level: 40 }],
+    [0, 'stock.received', S, { lines: [{ itemId: 'gloves-m', qty: 30 }, { itemId: 'aprons', qty: 30 }], source: 'Purchase' }],
+    // On the ward: gloves 0 (nothing left), gauze 4 (below half of 10), aprons 7 (under its level: an ordinary top-up), masks 10.
+    [1, 'stock.counted', W1, { lines: [{ itemId: 'gloves-m', qty: 0 }, { itemId: 'gauze-swabs', qty: 4 }, { itemId: 'aprons', qty: 7 }, { itemId: 'masks', qty: 10 }] }],
+    [1, 'stock.requested', 'req-00001', { placeId: W1, fromPlaceId: S, lines: [{ itemId: 'aprons', qty: 3 }], raisedBy: 'count' }], // 47 h waiting at day 3
+    [2.5, 'stock.requested', 'req-00002', { placeId: W1, fromPlaceId: S, lines: [{ itemId: 'gloves-m', qty: 10 }], raisedBy: 'request' }], // 12 h: not late
+    // The store: gloves 30 of 40 and on order (not short here); aprons 30 of 40 and not on order (short).
+    [2, 'stores.order-step', 'ord-00001', { step: 'requested', placeId: S, lines: [{ itemId: 'gloves-m', qty: 20 }] }, 'supply-manager'],
+  ].sort((a, b) => a[0] - b[0]);
+  const evs = log(rows);
+  const got = shortNow(deriveSupplies(evs), deriveOrders(evs).orders, { now: at(3), isArea: (p) => p.startsWith('ward-'), isStore: (p) => p === S });
+  assert.deepEqual(got.lines.map((x) => [x.kind, x.itemId || x.requestId, x.placeId]), [
+    ['none-left', 'gloves-m', W1], ['store-not-on-order', 'aprons', S], ['request-waiting', 'req-00001', W1], ['below-share', 'gauze-swabs', W1]]);
+  assert.equal(got.lines.find((x) => x.kind === 'request-waiting').hours, 48);
+  assert.deepEqual(got.counts, { itemLines: 2, wards: 1, noneLeft: 1, storeLines: 1, requestsLate: 1 }, 'aprons on the ward (7 of 10) and masks are not short');
+});
+
+test('the rest of a part-received order can be cancelled with a reason; it is then closed and left out of the cycle time', () => {
+  const evs = log([
+    [0, 'stores.order-step', 'ord-00001', { step: 'requested', placeId: S, lines: [{ itemId: 'gloves-m', qty: 10 }, { itemId: 'aprons', qty: 4 }] }, 'supply-manager'],
+    [1, 'stores.order-step', 'ord-00001', { step: 'approved' }, 'coo'],
+    [2, 'stores.order-step', 'ord-00001', { step: 'ordered' }, 'supply-manager'],
+    [5, 'stock.received', S, { lines: [{ itemId: 'gloves-m', qty: 10 }], source: 'Purchase', orderRef: 'ord-00001' }],
+    [9, 'stores.order-step', 'ord-00001', { step: 'cancelled', reason: 'Ordered another way' }, 'supply-manager'],
+  ]);
+  const { orders, problems } = deriveOrders(evs);
+  const o = orders.get('ord-00001');
+  assert.deepEqual([problems, o.state, o.cancelReason, o.lines[0].received], [0, 'cancelled', 'Ordered another way', 10]);
+  assert.deepEqual(orderSteps(o, at(10)).map((x) => [x.step, x.days]), [['requested', 1], ['approved', 1], ['ordered', 3], ['delivered', null], ['part-received', 4]]);
+  assert.deepEqual([orderCycleTime(orders, { since: at(0), until: at(10) }).n, orderCycleTime(orders, { since: at(0), until: at(10) }).open], [0, 0]);
 });

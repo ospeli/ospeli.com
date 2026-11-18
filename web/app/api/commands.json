@@ -12584,6 +12584,10 @@
             "type": "array",
             "description": "The stores, with ids."
           },
+          "short": {
+            "type": "object",
+            "description": "What needs a person to look now: lines of kind none-left, below-share (a ward item below a share of its top-up level), store-not-on-order or request-waiting, with counts (itemLines and wards for the wards; storeLines; requestsLate). The share and the wait are example settings, not standards."
+          },
           "counts": {
             "type": "object",
             "description": "underLevel, areasShort, requestsWaiting, oldestWaitHours, ordersOpen, longestAtStepDays, stockOutsOpen, notDeclared (items with a level and nothing usable, with no stock-out declared)."
@@ -12758,7 +12762,7 @@
     },
     {
       "name": "ospeli_stores_orders",
-      "summary": "The order tracker: each order with its items and quantities, its steps (requested, approved, ordered, delivered, received) with the date and the days spent at each, what it is waiting for and which roles hold that step, and what has been received against it. Open orders come first, the longest at one step first. No prices or suppliers are kept. Read-only.",
+      "summary": "The order tracker: each order with its items and quantities (and what is still to come; a delivery above the order is flagged), its steps (requested, approved, ordered, delivered, part received, received) with the date and the days spent at each, what it is waiting for and which roles hold that step, and what has been received against it. Open orders come first, the longest at one step first. No prices or suppliers are kept. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -12791,7 +12795,7 @@
               "cancelled",
               "all"
             ],
-            "description": "open (default): not received or cancelled yet. received, cancelled or all: newest first."
+            "description": "open (default): not received in full or cancelled yet (part received is open). received, cancelled or all: newest first."
           },
           "format": {
             "type": "string",
@@ -12870,7 +12874,7 @@
     },
     {
       "name": "ospeli_stores_order_step",
-      "summary": "Record the next purchasing step of an order: requested (opens an order: items and quantities, no price or supplier), approved, ordered, delivered, or cancelled with a reason from the list. Steps go in order; \"received\" is recorded by receiving the delivery into stock with ospeli_stock_receive and orderRef. People approve purchases: an agent's approval is refused, and any other step from an agent becomes a proposal for a person.",
+      "summary": "Record the next purchasing step of an order: requested (opens an order: items and quantities, no price or supplier), approved, ordered, delivered, or cancelled with a reason from the list (an order part received can have the rest cancelled this way). Steps go in order; \"received\" is recorded by receiving the delivery into stock with ospeli_stock_receive and orderRef, and the order stays open as part received until every line has come. People approve purchases: an agent's approval is refused, and any other step from an agent becomes a proposal for a person.",
       "kind": "write",
       "roles": [
         "supply-manager",
@@ -12897,7 +12901,7 @@
               "delivered",
               "cancelled"
             ],
-            "description": "The step to record: requested, approved, ordered, delivered, cancelled. Who records each: requested by Supply chain manager or Storekeeper; approved by Operations manager or COO; ordered by Supply chain manager; delivered by Storekeeper or Supply chain manager; cancelled by Supply chain manager or Operations manager."
+            "description": "The step to record: requested, approved, ordered, delivered, cancelled. Who records each: requested by Supply chain manager or Storekeeper; approved by Operations manager or Chief operating officer; ordered by Supply chain manager; delivered by Storekeeper or Supply chain manager; cancelled by Supply chain manager or Operations manager."
           },
           "orderId": {
             "type": "string",
@@ -12912,9 +12916,9 @@
               "approved",
               "ordered",
               "delivered",
-              "received"
+              "part-received"
             ],
-            "description": "The step the caller last saw the order at. If it has moved on since, the command is refused (conflict)."
+            "description": "The step the caller last saw the order at (or part-received). If it has moved on since, the command is refused (conflict)."
           },
           "lines": {
             "type": "array",
@@ -13045,7 +13049,8 @@
               "requested",
               "approved",
               "ordered",
-              "delivered"
+              "delivered",
+              "part-received"
             ],
             "description": "The step the order waits at, as the caller saw it. If it has moved on, nothing is sent (conflict)."
           }

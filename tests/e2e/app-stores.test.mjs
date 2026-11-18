@@ -89,12 +89,23 @@ test('the storekeeper\'s first five minutes on a 390 px touch screen: issues the
   const waiting = await cmd(page, 'ospeli_stock_requests', { fromPlaceId: 'store-main', limit: 200 }, 'storekeeper');
   const fillable = waiting.requests.filter((q) => q.lines.some((l) => l.left > 0 && l.usableAtSupplier > 0));
   assert.equal(id, fillable[0].id, 'the first card is the oldest request the store can fill');
-  assert.ok(await page.locator('[data-test="requests-waiting-stock"] li').count() >= 0);
+  // The pick list is open on the oldest card, above the button that confirms it.
+  const pick = first.locator('[data-test="pick-list"]');
+  assert.equal(await pick.getAttribute('open'), '', 'the pick list is open');
   const main = first.locator('[data-cmd="ospeli_stock_issue"]').first();
+  assert.ok((await pick.boundingBox()).y < (await main.boundingBox()).y, 'the list comes before the button');
+  assert.match(await pick.textContent(), /owed · store holds \d+/);
   const box = await main.boundingBox();
   assert.ok(box.y + box.height <= 844, `the issue button is on the first screen (bottom at ${Math.round(box.y + box.height)} px)`);
   assert.ok(box.height >= 56, `one big button (${box.height} px)`);
   assert.deepEqual(await phoneProblems(page), [], 'requests screen: phone rules');
+  // One line is reduced inline: the button now says it is a part issue.
+  const line = pick.locator('li[data-item]').filter({ has: page.locator('.sto-num') }).first();
+  const lineItem = await line.getAttribute('data-item');
+  const lineQty = Number(await line.locator('.sto-num').inputValue());
+  assert.ok(lineQty >= 1);
+  await line.getByRole('button', { name: /One less/ }).tap();
+  assert.match(await main.textContent(), /^Issue \d+ of \d+ items as picked \(part\)$|^Issue \d+ of \d+ items as picked \(part\)$/);
   const fill0 = await fillLines(page);
   const issued0 = await page.evaluate(async () => (await window.ospeli.core.events({ type: 'stock.issued' })).length);
   await main.tap();
@@ -105,8 +116,11 @@ test('the storekeeper\'s first five minutes on a 390 px touch screen: issues the
   await page.waitForTimeout(600);
   assert.equal(await page.evaluate(async () => (await window.ospeli.core.events({ type: 'stock.issued' })).length), issued0 + 1, 'one issue, not two');
   assert.equal(await page.evaluate(async (r) => (await window.ospeli.core.events({ subject: r })).at(-1).type, id), 'stock.issued');
-  assert.match(await page.locator('[data-test="issue-result"]').textContent(), new RegExp(`(Issued in full|Part issued): ${id} to Ward`));
-  assert.notEqual(await page.locator('[data-test="first-request"]').getAttribute('data-request'), id, 'the next request comes up');
+  assert.match(await page.locator('[data-test="issue-result"]').textContent(), new RegExp(`^Part issued: Request ${Number(id.slice(4))} to Ward`));
+  const ev = await page.evaluate(async (r) => (await window.ospeli.core.events({ subject: r })).at(-1), id);
+  assert.equal(ev.data.lines.find((l) => l.itemId === lineItem)?.qty ?? 0, lineQty - 1, 'what was picked is what was issued');
+  await page.waitForFunction((r) => document.querySelector(`[data-request="${r}"] .sto-req-head`)?.textContent.includes('part issued'), id);
+  assert.match(await page.locator(`[data-request="${id}"] [data-test="owed"]`).textContent(), /^Still owed: .+ 1$/, 'the reduced line stays owed');
   assert.ok(await fillLines(page) > fill0, 'the fill rate counts the lines issued in full');
   assert.deepEqual(errors, []);
   await context.close();
@@ -140,13 +154,18 @@ test('a ward count under level raises the request with no extra step, and the wa
   assert.deepEqual(await phoneProblems(page), [], 'count screen: phone rules');
   await save.tap();
   await page.waitForSelector('[data-test="raised"]');
-  const req = (await page.locator('[data-test="raised"]').textContent()).match(/Request (req-\d+)/)[1];
+  const req = await page.locator('[data-test="raised"]').getAttribute('data-request');
+  assert.match(await page.locator('[data-test="raised"]').textContent(), new RegExp(`^Request ${Number(req.slice(4))} sent to the store`));
   assert.match(await page.locator('[data-test="raised"]').textContent(), /for 1 item under level: Examination gloves, medium \d+\./);
   const mine = page.locator(`[data-test="ward-requests"] [data-request="${req}"]`);
   assert.equal(await mine.getAttribute('data-state'), 'open', 'the ward sees its request waiting');
   await cmd(page, 'ospeli_stock_issue', { requestId: req }, 'storekeeper');
   await page.waitForFunction((r) => document.querySelector(`[data-test="ward-requests"] [data-request="${r}"]`)?.dataset.state === 'issued', req);
-  assert.match(await mine.textContent(), /Issued/);
+  assert.match(await mine.locator('[data-test="state"]').textContent(), /^Issued from the store$/, 'issued, never "arrived"');
+  // Issued is not arrived: the count says the gloves are on their way, and to count them once on the shelf.
+  await page.waitForSelector('[data-test="count-list"] > li[data-item="gloves-m"] [data-test="on-its-way"]');
+  assert.match(await gloves.locator('[data-test="on-its-way"]').textContent(), /^Issued from the store \d+ h ago: on its way\. Count it once it is on the shelf\.$/);
+  assert.match(await page.locator('[data-test="count-list"] > li').first().locator('[data-test="at-level"]').textContent(), /^At level: \d+$/);
   assert.deepEqual(errors, []);
   await context.close();
 });
@@ -162,9 +181,13 @@ test('the supply chain manager\'s first five minutes on a 390 px phone: sees wha
   const stats = page.locator('[data-test="stats"]');
   const sb = await stats.boundingBox();
   assert.ok(sb.y < 844, 'the counts start on the first screen');
-  assert.match(await stats.textContent(), /Under level\d+in \d+ places.*Requests waiting\d+oldest .*Open orders\d+longest at one step .*Stock-outs open1/);
+  assert.match(await stats.textContent(), /Short now\d+item lines in \d+ wards?.*Requests waiting\d+oldest .*Open orders\d+longest at one step .*Stock-outs open1/);
   assert.match(await page.locator('[data-test="stuck"]').textContent(), /What is stuck.*Waiting for approval/s);
-  assert.match(await page.locator('[data-test="short"]').textContent(), /What is short \(\d+ items\)/);
+  // Short means nothing left, below half the top-up level, a late request or a store item not on order: not every top-up.
+  const ov = await cmd(page, 'ospeli_stores_overview', {}, 'supply-manager');
+  assert.ok(ov.short.lines.length < ov.counts.underLevel, `${ov.short.lines.length} short lines, not the ${ov.counts.underLevel} under their level`);
+  assert.equal(await page.locator('[data-test="short"] li[data-kind]').count(), Math.min(10, ov.short.lines.length));
+  assert.match(await page.locator('[data-test="short"]').textContent(), /What is short \(\d+ lines?\).*below 50% of its top-up level/s);
   assert.deepEqual(await phoneProblems(page), [], 'manager view on a phone: phone rules');
   // Acts: the order that is approved is marked as ordered, from the stuck list.
   const btn = page.locator('[data-test="stuck"] [data-cmd="ospeli_stores_order_step"][data-step="ordered"]').first();
@@ -179,8 +202,17 @@ test('the supply chain manager\'s first five minutes on a 390 px phone: sees wha
   // And a level, from the guide's suggestion, with the usage shown.
   const sugg = page.locator('[data-test="suggestion"][data-rule="level-check"]').first();
   assert.match(await sugg.textContent(), /Used in the last \d+ days: \d+/);
-  await sugg.locator('[data-cmd="ospeli_stock_level_set"]').tap();
-  await page.waitForFunction(async () => (await window.ospeli.core.events({ type: 'stock.level-set' })).at(-1).actorRole === 'supply-manager' && (await window.ospeli.core.events({ type: 'stock.level-set' })).at(-1).at > '2026-11-10');
+  // The suggestion fills in the level form and saves nothing; the person checks it and taps Save.
+  const levels0 = await page.evaluate(async () => (await window.ospeli.core.events({ type: 'stock.level-set' })).length);
+  await sugg.locator('[data-test="follow"]').tap();
+  await page.waitForFunction(() => document.querySelector('[data-test="tool-level"]')?.open);
+  await page.waitForTimeout(300);
+  assert.equal(await page.evaluate(async () => (await window.ospeli.core.events({ type: 'stock.level-set' })).length), levels0, 'one tap on a suggestion saves nothing');
+  const level = Number(await page.locator('[data-test="tool-level"] [data-test="level-input"]').inputValue());
+  assert.ok(level > 0 && await page.locator('#lvl-place').inputValue() && await page.locator('#lvl-item').inputValue(), 'the form is filled in');
+  await page.locator('[data-test="set-level-save"]').tap();
+  await page.waitForFunction(async (n) => (await window.ospeli.core.events({ type: 'stock.level-set' })).length === n + 1, levels0);
+  assert.equal(await page.evaluate(async () => (await window.ospeli.core.events({ type: 'stock.level-set' })).at(-1).data.level), level);
   assert.deepEqual(errors, []);
   await context.close();
 });
@@ -189,7 +221,10 @@ test('the manager view at 1280 px: measures with their sources, the guide switch
   const { context, page, errors } = await openPage(env, { width: 1280, clock: CLOCK, path: '#/stores' });
   await asRole(page, 'supply-manager', 'manage');
   assert.equal(await page.locator('[data-kpi]').count(), 4);
-  assert.match(await page.locator('[data-test="planned"]').textContent(), /Inventory turns: Planned, not built/);
+  assert.equal(await page.locator('[data-test="planned"]').count(), 0, 'inventory turns is in the overview read, not on screen');
+  assert.match(await page.locator('[data-kpi="stores-tracer-stock-out-rate"]').textContent(), /sees zero only when a count or a movement records it.*Main store: /s);
+  assert.match(await page.locator('[data-kpi="stores-fill-rate"]').textContent(), /request lines issued in full in the end \(after any part issues\)/);
+  assert.match(await page.locator('[data-kpi="stores-request-wait"]').textContent(), /to issued from the store/);
   assert.match(await page.locator('[data-kpi="stores-tracer-stock-out-rate"]').textContent(), /KPI dictionary D-17/);
   const guide = page.locator('[data-test="guide"]');
   assert.equal(await guide.getAttribute('data-on'), 'true');
@@ -205,11 +240,30 @@ test('the manager view at 1280 px: measures with their sources, the guide switch
   await page.locator('[data-test="suggestion"][data-rule="order-waiting"] [data-cmd="ospeli_stores_order_remind"]').click();
   await page.waitForFunction(async () => (await window.ospeli.core.events({ type: 'stores.order-reminded' })).length === 1);
   await asRole(page, 'ops-manager', 'orders');
-  assert.match(await page.locator('[data-test="reminders"]').textContent(), /Reminder: ord-\d+ waiting for approval/);
+  assert.match(await page.locator('[data-test="reminders"]').textContent(), /Reminder: Order \d+ waiting for approval/);
   const approve = page.locator('[data-cmd="ospeli_stores_order_step"][data-step="approved"]').first();
   const order = await approve.locator('xpath=ancestor::li[@data-order]').getAttribute('data-order');
   await approve.click();
   await page.waitForFunction(async (o) => (await window.ospeli.core.events({ subject: o })).at(-1)?.data?.step === 'approved', order);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('the stock-out log opens on the nurse\'s own ward, with a way to all wards; closing says "Back in stock" and whether care was affected', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/stores' });
+  const open = (await cmd(page, 'ospeli_stock_outs', { state: 'open' }, 'ward-nurse')).stockOuts[0];
+  await page.evaluate(() => { localStorage.setItem('ospeli-stores-ward', 'ward-c1'); });
+  await asRole(page, 'ward-nurse', 'outs');
+  assert.match(await page.locator('[data-test="outs-scope"]').textContent(), /Showing Ward C1 \(maternity\)\./);
+  assert.equal(await page.locator(`[data-out="${open.id}"]`).count(), open.placeId === 'ward-c1' ? 1 : 0, 'another ward\'s stock-out is not in the first list');
+  await page.locator('[data-test="outs-all"]').tap();
+  await page.waitForSelector(`[data-test="outs-open"] [data-out="${open.id}"]`);
+  const li = page.locator(`[data-test="outs-open"] [data-out="${open.id}"]`);
+  assert.deepEqual(await li.locator('[data-cmd="ospeli_stock_out_end"]').allTextContents(), ['Back in stock: care was affected', 'Back in stock: care not affected']);
+  await li.locator('[data-care="no"]').tap();
+  await page.waitForFunction(async (id) => (await window.ospeli.core.events({ subject: id })).at(-1).type === 'stock.stock-out-ended', open.id);
+  assert.equal(await page.evaluate(async (id) => (await window.ospeli.core.events({ subject: id })).at(-1).data.careAffected, open.id), false);
+  assert.deepEqual(await phoneProblems(page), []);
   assert.deepEqual(errors, []);
   await context.close();
 });
