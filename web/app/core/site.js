@@ -37,6 +37,17 @@ export class MirrorAdapter {
     for (const s of SITE_STORES) await this.inner.clear(s);
     await this.inner.putMany('meta', [...SITE_META, SYNC_STATE].map((id) => ({ id, value: null })));
   }
+  async _carriesOn(answer, state) {
+    const run = (list, after) => Array.isArray(list) && list.every((x, i) => x && x.seq === after + i + 1);
+    if (!run(answer.events, state.events) || !run(answer.audit, state.audit)) return false;
+    if (typeof answer.rev === 'number' && typeof state.rev === 'number' && answer.rev < state.rev) return false;
+    if (answer.audit.length && state.audit > 0) {
+      const last = await this.inner.last('audit');
+      if (!last || answer.audit[0].prev !== last.hash) return false;
+    }
+    for (let i = 1; i < answer.audit.length; i += 1) if (answer.audit[i].prev !== answer.audit[i - 1].hash) return false;
+    return true;
+  }
   // Apply one answer from GET /api/v1/sync. Returns what changed: null, 'events' or 'reset'.
   async apply(answer, at) {
     const state = await this.syncState();
@@ -47,6 +58,13 @@ export class MirrorAdapter {
       // that is not a full one cannot be put on top of the old copy: ask again from nothing.
       if (!answer.full) { await this.wipe(); return 'again'; }
       for (const s of SITE_STORES) await this.inner.clear(s);
+    } else if (!(await this._carriesOn(answer, state))) {
+      // An answer that is not a full one must carry on exactly where this copy ends: the next
+      // event, the next audit entry, linked to the last one held. An older answer sent again,
+      // or one changed on the way, would otherwise overwrite history this device already has
+      // (security sweep, 17 Nov). The copy is dropped and asked for again from nothing.
+      await this.wipe();
+      return 'again';
     }
     await this.inner.putMany('entities', answer.entities);
     await this.inner.putMany('events', answer.events);

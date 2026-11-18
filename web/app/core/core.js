@@ -67,6 +67,8 @@ export function findIdentifierValues(data) {
   return hits;
 }
 export const EXPORT_VERSION = 1;
+const EVENT_KEYS = new Set(['seq', 'type', 'subject', 'actorRole', 'at', 'recordedAt', 'data']);
+const AUDIT_KEYS = new Set(['seq', 'at', 'actorRole', 'actorType', 'agent', 'via', 'device', 'action', 'target', 'detail', 'prev', 'hash']);
 
 const checkActor = (actorRole) => {
   if (actorRole !== 'system' && !roleById(actorRole)) throw new Error(`unknown actor role ${actorRole}`);
@@ -409,7 +411,17 @@ export class Core {
       const v = validateEvent(ev);
       if (v.length) errs.push(`event ${ev?.seq ?? i}: ${v.join('; ')}`);
       if (ev.seq !== i + 1) errs.push(`event ${i + 1}: sequence broken`);
+      // Only the fields Ospeli writes. Any other field would be stored as it is and never read
+      // by the personal-detail checks, which look at subject and data (security sweep, 17 Nov).
+      // The answer gives the place, never the field's name or value.
+      if (ev && typeof ev === 'object' && Object.keys(ev).some((k) => !EVENT_KEYS.has(k))) errs.push(`event ${i + 1}: has a field Ospeli does not write`);
     });
+    // The same for the audit entries: a field outside the check code is not covered by it, so
+    // it could carry anything and the self-check would still pass.
+    data.audit.forEach((e, i) => {
+      if (!e || typeof e !== 'object' || Object.keys(e).some((k) => !AUDIT_KEYS.has(k))) errs.push(`audit entry ${i + 1}: has a field Ospeli does not write`);
+    });
+    if (data.exportedAt != null && !(typeof data.exportedAt === 'string' && ISO_TIME.test(data.exportedAt) && !Number.isNaN(Date.parse(data.exportedAt)))) errs.push('exportedAt must be a time stamp');
     const chain = await verifyChain(data.audit);
     if (!chain.ok) errs.push(`audit trail broken at entry ${chain.at}: ${chain.reason}`);
     return errs.slice(0, 20);
