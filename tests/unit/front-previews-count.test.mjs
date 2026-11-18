@@ -8,8 +8,9 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 const web = new URL('../../web/', import.meta.url);
 const html = readFileSync(new URL('index.html', web), 'utf8');
 const demos = readdirSync(new URL('demo/', web)).filter((d) => statSync(new URL(`demo/${d}`, web)).isDirectory());
-// The old standalone pages of the two areas that are built in the app are not previews.
-const OLD_PAGES_OF_BUILT = ['bed-board', 'process-map'];
+// The old standalone pages of the areas that are built in the app are not previews (the last three
+// since 17 and 18 Nov, issue #118: their pages now link into the app).
+const OLD_PAGES_OF_BUILT = ['bed-board', 'process-map', 'support-tasks', 'stores-stock', 'feedback'];
 
 test('#70: the phone previews row and the desktop "And N more" card name the same number of real previews', () => {
   const list = html.split('<nav class="pv-list"')[1].split('</nav>')[0];
