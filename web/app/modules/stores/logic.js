@@ -206,8 +206,8 @@ export function requestWaitHours(stock, { since, until, see = all }) {
   const v = requestWait(stock, { since, until, pick: (q) => supplies(q) && see(q.placeId) });
   return { value: v.value, numerator: null, denominator: v.n, n: v.n, open: v.open, longestOpen: v.longestOpenHours };
 }
-// 3. Order cycle time: order requested to the first receipt against it, median days. Orders not
-// received yet are shown beside it, never dropped: how many, and the longest so far.
+// 3. Order cycle time: order requested to the receipt that completes it (every line received), median days. Orders not
+// received in full yet (part received included) are shown beside it, never dropped: how many, and the longest so far.
 export function orderCycleTime(orders, { since, until }) {
   const [from, to] = [Date.parse(since), Date.parse(until)];
   const list = [...orders.values()];
