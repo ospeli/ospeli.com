@@ -52,9 +52,9 @@ test('the pack adds its kinds of task to the shared task object; porter, cleaner
 });
 
 test('a transport assistant journey through the commands: asked for, collected, delivered; the measure counts it with hand-checked minutes', async () => {
-  const { run, advance } = await site();
-  const before = (await run('ospeli_support_overview', {}, 'porter')).kpis.find((x) => x.id === 'porter-request-to-done');
-  assert.ok(before.n > 100, 'the example hospital has transport history');
+  const { core, run, advance } = await site();
+  const history = await core.events();
+  assert.ok((await run('ospeli_support_overview', {}, 'porter')).kpis.find((x) => x.id === 'porter-request-to-done').n > 100, 'the example hospital has transport history');
   const ask = await run('ospeli_tasks_request', { kind: 'patient-move', locationId: 'ward-a1-bed-04', toLocationId: 'dept-imaging', detail: 'Wheelchair' }, 'ward-nurse');
   assert.deepEqual([ask.status, ask.team, ask.state], ['done', 'transport', 'requested']);
   const q = await run('ospeli_tasks_list', { team: 'transport' }, 'porter');
@@ -70,6 +70,8 @@ test('a transport assistant journey through the commands: asked for, collected, 
   const after = await run('ospeli_support_overview', {}, 'porter');
   out('ospeli_support_overview', after);
   const k = after.kpis.find((x) => x.id === 'porter-request-to-done');
+  // The 7-day window slides with the clock while the job is done: count the history over the window the overview used.
+  const before = porterRequestToDone(history, after.period);
   assert.equal(k.n, before.n + 1, 'the measure counts the job');
   const by = (o) => Object.fromEntries(o.breakdown.map((b) => [b.id, b.n]));
   assert.equal(by(k)['patient-move'], by(before)['patient-move'] + 1);
