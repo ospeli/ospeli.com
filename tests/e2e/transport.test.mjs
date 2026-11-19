@@ -82,7 +82,7 @@ test('a ward books a transfer and the desk assigns a vehicle', async () => {
   await page.click('#q-send');
   const got = await api(page, 'get');
   assert.equal(got.openTransfers.length, n + 1);
-  const t = got.openTransfers.find((x) => x.to === 'Community care home' && x.from === 'Ward 3' && x.status === 'booked');
+  const t = got.openTransfers.find((x) => x.to === 'Community residential care' && x.from === 'Ward 3' && x.status === 'booked');
   assert.ok(t, 'the new booking is open');
   assert.match(t.patientCode, /^PT-/);
   assert.match(await page.locator('#ward-requests .rq').first().textContent(), /Waiting for a vehicle/);

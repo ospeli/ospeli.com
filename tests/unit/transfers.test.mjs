@@ -209,7 +209,7 @@ test('guide rule 2 on the real fleet: a failed check suggests taking the vehicle
   const failed = ALL_ITEMS.filter((x) => x !== 'tyres');
   out('ospeli_transfers_vehicle_check', await run('ospeli_transfers_vehicle_check', { vehicleId: 'asset-vehicle-3', passed: failed, failed: ['tyres'] }, 'driver'));
   const s = (await run('ospeli_transfers_board', {}, 'fleet-supervisor')).guide.suggestions.find((x) => x.rule === 'check-failed');
-  assert.match(s.text, /^Vehicle 3 failed its daily check: Tyres and wheels\. Take it off the road/);
+  assert.match(s.text, /^Vehicle 3 failed its daily check: Tyres and wheels\. Take it out of service/);
   assert.deepEqual(s.actions.map((a) => a.command), ['ospeli_transfers_vehicle_status', 'ospeli_workorders_report_fault']);
   const report = s.actions[1];
   assert.deepEqual(report.input, { assetId: 'asset-vehicle-3', fault: 'Tyre or wheel damage' }, 'no priority chosen in advance');
@@ -222,7 +222,7 @@ test('guide rule 2 on the real fleet: a failed check suggests taking the vehicle
   assert.equal(after.length, 0, 'taken off the road: the suggestion goes');
   // Before it is taken off the road, an open work order for the same fault means no second report is offered.
   const r = ruleCheckFailed({ fleet: new Map([['v', { id: 'v', name: 'Vehicle 9', offRoad: null, lastStatusAt: null, lastCheck: { at: END, passed: [], failed: ['lift'] } }]]), openFaults: new Map([['v', ['Patient lift or ramp not working']]]) });
-  assert.deepEqual(r[0].actions.map((a) => a.label), ['Take off the road']);
+  assert.deepEqual(r[0].actions.map((a) => a.label), ['Take out of service']);
   assert.match(r[0].why, /already open: Patient lift or ramp not working/);
 });
 

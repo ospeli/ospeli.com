@@ -324,7 +324,7 @@ test('a ward nurse books a journey for a booked time at 390 px: the time list of
   // Another device writes something: the page is drawn again, and what this nurse picked stays.
   await run(page, 'ospeli_transfers_vehicle_check', { vehicleId: 'asset-vehicle-1', passed: ['tyres', 'lights', 'brakes', 'fuel', 'body', 'lift', 'fixings', 'kit', 'clean'] }, 'driver');
   await page.waitForTimeout(600);
-  assert.deepEqual(await page.locator('.trf-form [aria-pressed="true"]').evaluateAll((l) => l.map((x) => x.textContent)), ['Discharge', 'Care home', 'At a booked time', 'Walks (may need a hand)']);
+  assert.deepEqual(await page.locator('.trf-form [aria-pressed="true"]').evaluateAll((l) => l.map((x) => x.textContent)), ['Discharge', 'Residential or nursing care', 'At a booked time', 'Walks (may need a hand)']);
   assert.equal(await page.locator('[data-test="req-slot"] option:checked').textContent(), 'Today 15:00');
   await page.locator('[data-escort="carer"]').tap();
   await page.locator('[data-equipment="none"]').tap();

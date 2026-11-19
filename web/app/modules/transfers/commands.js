@@ -46,8 +46,8 @@ export const KPIS = [
     source: 'local definition (published definitions of handover delay vary widely: Fouche PF et al., Emerg Med J 2026, PMID 42242732)',
     target: null, targetText: 'No target set: track the trend.' },
   { id: 'fleet-availability', name: 'Fleet availability', unit: '%',
-    definition: `In-service vehicle-hours divided by scheduled vehicle-hours in the period, in all and by site. Off-road time runs between the vehicle being taken off the road and being back in service. Scheduled hours: ${String(SCHEDULED.startHour).padStart(2, '0')}:00 to ${SCHEDULED.endHour}:00 site time every day for each vehicle (an example setting, not a standard).`,
-    counts: 'Scheduled vehicle-hours the vehicle was not off the road.', outOf: 'Scheduled vehicle-hours.',
+    definition: `In-service vehicle-hours divided by scheduled vehicle-hours in the period, in all and by site. Out-of-service time runs between the vehicle being taken out of service and being back in service. Scheduled hours: ${String(SCHEDULED.startHour).padStart(2, '0')}:00 to ${SCHEDULED.endHour}:00 site time every day for each vehicle (an example setting, not a standard).`,
+    counts: 'Scheduled vehicle-hours the vehicle was not out of service.', outOf: 'Scheduled vehicle-hours.',
     leavesOut: 'Hours outside the scheduled hours. Crewed vehicle-hours are shown beside it as their own figure, not folded in.',
     source: 'local definition (the shared availability measure, applied to vehicles)', target: null, targetText: 'No target set: track the trend.' },
 ];
@@ -109,7 +109,7 @@ function vehicleOut(v, s) {
   const today = v.lastCheck && whenText(v.lastCheck.at, now, w.offsetMinutes).startsWith('today');
   return {
     id: v.id, name: currentWords(v.name), siteId: v.siteId, siteName: site ? currentWords(site.name) : null, state: st.state,
-    stateName: { 'off-road': 'Off the road', 'on-job': 'On a job', free: 'Free' }[st.state], crewed: v.crewed,
+    stateName: { 'off-road': 'Out of service', 'on-job': 'On a job', free: 'Free' }[st.state], crewed: v.crewed,
     offRoad: v.offRoad ? { since: v.offRoad.since, sinceText: whenText(v.offRoad.since, now, w.offsetMinutes), reason: v.offRoad.reason, reasonName: OFF_ROAD_NAME[v.offRoad.reason] } : null,
     currentJob: st.current?.id || null, assignedJobs: st.assigned.map((t) => t.id),
     lastCheck: v.lastCheck ? { at: v.lastCheck.at, atText: whenText(v.lastCheck.at, now, w.offsetMinutes), today: !!today, passed: v.lastCheck.passed.length,
@@ -202,7 +202,7 @@ async function checkRequest(core, input, events) {
     if (w.siteOf(input.fromPlace)?.id === input.toSite) throw new CommandError('invalid-input', 'The destination is the same site as the pickup. A move inside a site is a patient move in Cleaning and transport, not a vehicle journey.');
   }
   if (input.type === 'between-sites' && !hasSite) throw new CommandError('invalid-input', 'A journey between our sites goes to one of our sites: give toSite.');
-  if (input.type === 'to-provider' && (!hasOut || input.toOutside === 'home')) throw new CommandError('invalid-input', 'A journey to another provider goes to another hospital, a care home, a hospice or somewhere else: give toOutside.');
+  if (input.type === 'to-provider' && (!hasOut || input.toOutside === 'home')) throw new CommandError('invalid-input', 'A journey to another provider goes to another hospital, residential or nursing care, a hospice or somewhere else: give toOutside.');
   if (input.type === 'discharge' && !hasOut) throw new CommandError('invalid-input', 'A discharge leaves the organisation: give toOutside (home, care-home, hospice, other-hospital or other).');
   if (input.needed === 'booked') {
     const t = Date.parse(input.bookedFor); const now = Date.parse(core.now());
@@ -238,7 +238,7 @@ async function checkAssign(core, input, events) {
   if (!v) throw new CommandError('not-found', `No vehicle with that id. Vehicles: ${w.vehicles.map((x) => x.id).join(', ') || 'none on this device'}.`);
   if (t.vehicleId === v.id) throw new CommandError('conflict', `${t.id} is already with ${currentWords(v.name)}.`);
   const fleet = deriveFleet(evs, w.vehicles, { now: core.now(), shift: shiftAt(core.now(), w.offsetMinutes, w.shifts) });
-  if (fleet.get(v.id).offRoad) throw new CommandError('conflict', `${currentWords(v.name)} is off the road. Pick a vehicle that is on the road.`);
+  if (fleet.get(v.id).offRoad) throw new CommandError('conflict', `${currentWords(v.name)} is out of service. Pick a vehicle that is in service.`);
 }
 async function checkStep(core, input, events) {
   const t = await transferFor(core, input, events);
@@ -269,7 +269,7 @@ async function checkCrew(core, input, events) {
   const { w, v } = await vehicleFor(core, input.vehicleId);
   const shift = shiftAt(core.now(), w.offsetMinutes, w.shifts);
   const f = deriveFleet(events ?? await core.events(), w.vehicles, { now: core.now(), shift }).get(v.id);
-  if (input.crewed && f.offRoad) throw new CommandError('conflict', `${currentWords(v.name)} is off the road. Pick a vehicle that is on the road.`);
+  if (input.crewed && f.offRoad) throw new CommandError('conflict', `${currentWords(v.name)} is out of service. Pick a vehicle that is in service.`);
   if (input.crewed && f.crewed) throw new CommandError('conflict', `${currentWords(v.name)} is already crewed for this shift. Nothing new was saved; its jobs are the same for every crew phone.`, { alreadyCrewed: true });
   if (!input.crewed && !f.crewed) throw new CommandError('conflict', `${currentWords(v.name)} is not crewed this shift. Nothing to release.`);
   return { w, v, shift };
@@ -291,8 +291,8 @@ async function checkStatus(core, input, events) {
   const f = deriveFleet(events ?? await core.events(), w.vehicles, { now: core.now(), shift: null }).get(v.id);
   const list = input.status === 'off-road' ? OFF_ROAD_NAME : BACK_NAME;
   if (!list[input.reason]) throw new CommandError('invalid-input', `For ${input.status}, the reason is one of: ${Object.keys(list).join(', ')}.`);
-  if (input.status === 'off-road' && f.offRoad) throw new CommandError('conflict', `${currentWords(v.name)} is already off the road.`);
-  if (input.status === 'back' && !f.offRoad) throw new CommandError('conflict', `${currentWords(v.name)} is already on the road.`);
+  if (input.status === 'off-road' && f.offRoad) throw new CommandError('conflict', `${currentWords(v.name)} is already out of service.`);
+  if (input.status === 'back' && !f.offRoad) throw new CommandError('conflict', `${currentWords(v.name)} is already in service.`);
 }
 
 // Who a transfer is about, for agents: the ward it leaves from.
@@ -319,7 +319,7 @@ const SUGGESTION = { type: 'object', required: ['rule', 'id', 'text', 'why', 'ba
 export const COMMANDS = [
   {
     name: 'ospeli_transfers_board',
-    summary: 'The dispatch board in one call: journeys waiting for a vehicle (in the order they are needed: a booked time, or when an as-soon-as-possible request was made), journeys with a vehicle, every vehicle (free, on a job or off the road; crewed this shift or not; its last daily check), the four measures with their definitions and sources, and the guide\'s suggestions with their reasons and basis (empty while the guide is off). Also the pick lists, places and bookable times. Measures journeys and vehicles, never drivers. Read-only.',
+    summary: 'The dispatch board in one call: journeys waiting for a vehicle (in the order they are needed: a booked time, or when an as-soon-as-possible request was made), journeys with a vehicle, every vehicle (free, on a job or out of service; crewed this shift or not; its last daily check), the four measures with their definitions and sources, and the guide\'s suggestions with their reasons and basis (empty while the guide is off). Also the pick lists, places and bookable times. Measures journeys and vehicles, never drivers. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, properties: {
       days: { type: 'integer', minimum: 1, maximum: 30, description: 'The period for the measures: the last this many days. Default 7.' },
@@ -336,7 +336,7 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_transfers_jobs',
-    summary: 'One vehicle\'s jobs for the crew: the journey under way first, then the rest in the order they are needed, each with pickup, destination, mobility, escort, equipment and the next step to tap. Also whether the vehicle is crewed this shift or off the road. Read-only.',
+    summary: 'One vehicle\'s jobs for the crew: the journey under way first, then the rest in the order they are needed, each with pickup, destination, mobility, escort, equipment and the next step to tap. Also whether the vehicle is crewed this shift or out of service. Read-only.',
     kind: 'read', roles: ['driver', 'transport-coordinator', 'fleet-supervisor'], approval: false,
     input: { type: 'object', additionalProperties: false, required: ['vehicleId'], properties: { vehicleId: VEHICLE, limit: LIMIT(20, 100, 'jobs') } },
     output: { type: 'object', required: ['asOf', 'vehicle', 'shift', 'jobs', 'total', 'truncated'], properties: {
@@ -391,7 +391,7 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_transfers_assign',
-    summary: 'Give a journey to a vehicle (or move it to another vehicle before pickup). The vehicle must be on the road; whether it is crewed this shift is shown on the board. It then shows in that vehicle\'s jobs. An agent\'s call becomes a proposal for a person.',
+    summary: 'Give a journey to a vehicle (or move it to another vehicle before pickup). The vehicle must be in service; whether it is crewed this shift is shown on the board. It then shows in that vehicle\'s jobs. An agent\'s call becomes a proposal for a person.',
     kind: 'write', roles: ['transport-coordinator'], approval: true,
     input: { type: 'object', additionalProperties: false, required: ['transferId', 'vehicleId'], properties: { transferId: TRF, vehicleId: VEHICLE, expectedState: STATE_IN } },
     output: { type: 'object', required: ['status'], properties: { status: WRITE_STATUS, transferId: TRF, vehicleId: ID, dispatchMinutes: { type: 'integer' }, events: EVENT_SEQS, proposal: PROPOSAL_OUT } },
@@ -489,7 +489,7 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_transfers_vehicle_check',
-    summary: 'Record a vehicle\'s daily check: every item on the example check list marked pass or fail (picks only). A failed item shows as a guide suggestion to take the vehicle off the road and to report a fault; nothing else happens by itself. The list is an example set, set locally, not a standard. An agent\'s call becomes a proposal for a person.',
+    summary: 'Record a vehicle\'s daily check: every item on the example check list marked pass or fail (picks only). A failed item shows as a guide suggestion to take the vehicle out of service and to report a fault; nothing else happens by itself. The list is an example set, set locally, not a standard. An agent\'s call becomes a proposal for a person.',
     kind: 'write', roles: ['fleet-supervisor', 'driver'], approval: true,
     input: { type: 'object', additionalProperties: false, required: ['vehicleId'], properties: { vehicleId: VEHICLE,
       passed: { type: 'array', maxItems: CHECK_ITEMS.length, items: { type: 'string', enum: CHECK_ITEMS.map((x) => x.id) }, description: `Items that passed. Every item is in passed or failed: ${CHECK_ITEMS.map((x) => x.id).join(', ')}.` },
@@ -509,11 +509,11 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_transfers_vehicle_status',
-    summary: 'Take a vehicle off the road (status off-road) or bring it back (status back), with a reason from a list. Off-road time lowers fleet availability. Journeys already given to it show "vehicle off the road" so the coordinator can give them to another vehicle. An agent\'s call becomes a proposal for a person.',
+    summary: 'Take a vehicle out of service (status off-road) or bring it back (status back), with a reason from a list. Off-road time lowers fleet availability. Journeys already given to it show "vehicle out of service" so the coordinator can give them to another vehicle. An agent\'s call becomes a proposal for a person.',
     kind: 'write', roles: ['fleet-supervisor', 'transport-coordinator'], approval: true,
     input: { type: 'object', additionalProperties: false, required: ['vehicleId', 'status', 'reason'], properties: { vehicleId: VEHICLE,
       status: { type: 'string', enum: ['off-road', 'back'], description: 'off-road or back (in service).' },
-      reason: { type: 'string', enum: [...new Set([...OFF_ROAD_REASONS, ...BACK_REASONS].map((x) => x.id))], description: `Off the road: ${OFF_ROAD_REASONS.map((x) => x.id).join(', ')}. Back: ${BACK_REASONS.map((x) => x.id).join(', ')}.` } } },
+      reason: { type: 'string', enum: [...new Set([...OFF_ROAD_REASONS, ...BACK_REASONS].map((x) => x.id))], description: `Out of service: ${OFF_ROAD_REASONS.map((x) => x.id).join(', ')}. Back: ${BACK_REASONS.map((x) => x.id).join(', ')}.` } } },
     output: { type: 'object', required: ['status'], properties: { status: WRITE_STATUS, vehicleId: ID, onRoad: { type: 'boolean' }, events: EVENT_SEQS, proposal: PROPOSAL_OUT } },
     target: (input) => ({ id: input.vehicleId, word: 'vehicle' }),
     async precheck(core, input) { await checkStatus(core, input); },
@@ -569,7 +569,7 @@ export async function prepareExample(core, command, { run }) {
 // Generic patterns only, entirely fictional: about eight journeys a day, discharges peaking in the
 // afternoon, journeys between the three sites and to outside categories; each vehicle checked each
 // morning and crewed for the day shift; a few delays for no escort clustered late in the day in
-// the last two weeks; one vehicle off the road for two days after a failed check. At the end: a
+// the last two weeks; one vehicle out of service for two days after a failed check. At the end: a
 // few journeys waiting, one given to a vehicle not yet crewed, one under way, one free crewed vehicle.
 const JOURNEYS_PER_HOUR = [0, 0, 0, 0, 0, 0, 0, 0.3, 0.6, 0.8, 0.9, 0.8, 0.7, 0.8, 1, 1.1, 1, 0.6, 0.3, 0, 0, 0, 0, 0];
 const TYPE_W = [['discharge', 45], ['between-sites', 30], ['to-provider', 15], ['appointment', 10]];
@@ -593,14 +593,14 @@ export function seed({ r, startMs, endMs, entities }) {
   const offFrom = lastDay - 12 * DAY; const offTo = lastDay - 10 * DAY;
 
   // Vehicles: a morning check and a day-shift crew each day; vehicle 2 fails its tyres one morning
-  // and is off the road for two days.
+  // and is out of service for two days.
   for (let d = dayStart(startMs) + DAY; d <= lastDay; d += DAY) {
     for (const v of vehicles) {
       const checkAt = d + 7 * HOUR + r.int(5, 40) * MIN;
       if (checkAt > endMs || checkAt < startMs) continue;
       const end = d === lastDay;
       if (v === v2 && end) continue; // vehicle 2's crew has not started yet today
-      if (v === v2 && d > offFrom && d < offTo) continue; // off the road
+      if (v === v2 && d > offFrom && d < offTo) continue; // out of service
       const failed = v === v2 && d === offFrom ? ['tyres'] : [];
       ev(checkAt, 'transfers.vehicle-checked', v, r.chance(0.8) ? 'driver' : 'fleet-supervisor', { passed: CHECK_ITEMS.map((x) => x.id).filter((x) => !failed.includes(x)), failed });
       if (failed.length) { ev(checkAt + 20 * MIN, 'transfers.vehicle-off-road', v, 'fleet-supervisor', { reason: 'failed-check' }); continue; }

@@ -338,7 +338,13 @@ OLD_WORDS = [(re.compile(r"\bbed managers?\b", re.I), "Bed manager", "Patient fl
              # Issue #56: three terms from one health system's vocabulary ("theatres" waits: see the issue).
              (re.compile(r"\bdid[- ]not[- ]attend\b", re.I), "did not attend / did-not-attend", "no-show / missed appointment"),
              (re.compile(r"\bout-of-area\b", re.I), "out-of-area", "away from the home area"),
-             (re.compile(r"\bdistrict (?:managers?|view)\b", re.I), "district manager / district view", "area manager / area view")]
+             (re.compile(r"\bdistrict (?:managers?|view)\b", re.I), "district manager / district view", "area manager / area view"),
+             # Issue #136: words from the two newest modules. The ids 'care-home' and 'off-road' stay,
+             # so stored journeys and vehicle events still load; they are hyphenated and never match.
+             (re.compile(r"\b[Cc]are homes?\b"), "care home", "residential or nursing care"),
+             (re.compile(r"\b(?:off|on) the road\b", re.I), "off the road / on the road", "out of service / in service"),
+             (re.compile(r"\bNFPA\b"), "NFPA (one country's standard as the only one named)", "a national or insurer's standard for standby power"),
+             (re.compile(r"\bMonday[- ]to[- ]Sunday\b", re.I), "Monday to Sunday", "Every week, with the week's first day said once")]
 
 def js_strings(src):
     """The string and template literals of a script, joined; comments and code are left out."""

@@ -1902,7 +1902,7 @@
   "group": "Infrastructure and support",
   "month": "Mar 2027",
   "oneLine": "Books, tracks and closes every patient journey between sites, and the vehicles.",
-  "today": "Transfers are often booked by phone and chased through the day. It is often unclear which vehicle is free or off the road. Patients can wait for an escort, and discharges slip to the next day.",
+  "today": "Transfers are often booked by phone and chased through the day. It is often unclear which vehicle is free or out of service. Patients can wait for an escort, and discharges slip to the next day.",
   "todaySystem": "A dispatch system handles emergency calls, but planned transfers between sites are often still booked by phone and not timed.",
   "withOspeli": "Transfer requests go into one queue with the vehicle, crew and escort they need. Vehicle status is live. Each journey's steps are timed, and vehicle faults raise work orders.",
   "people": [
@@ -1934,7 +1934,7 @@
    },
    {
     "name": "Dispatch board",
-    "shows": "Requests waiting, vehicles free, on a job or off the road, crews on shift."
+    "shows": "Requests waiting, vehicles free, on a job or out of service, crews on shift."
    },
    {
     "name": "My jobs (phone)",
@@ -1951,7 +1951,7 @@
    "Arrived, departed, arrived at destination: times each journey step.",
    "Handover at destination: ends the journey, frees the vehicle.",
    "Vehicle daily check and defects: catches faults before use.",
-   "Vehicle off the road and back: drives fleet availability.",
+   "Vehicle out of service and back: drives fleet availability.",
    "Transfer delayed or cancelled with reason: finds escort and vehicle gaps."
   ],
   "kpis": [
@@ -2002,7 +2002,7 @@
   ],
   "guide": [
    "When discharges are booked for transport later than the bed is needed, suggests earlier slots or grouping journeys, citing bed-board demand.",
-   "When a vehicle's daily check shows a defect, suggests taking it off the road and raises a draft work order.",
+   "When a vehicle's daily check shows a defect, suggests taking it out of service and raises a draft work order.",
    "When delays often cite no escort, suggests reviewing escort cover at the busiest times, showing the pattern."
   ],
   "playbooks": [

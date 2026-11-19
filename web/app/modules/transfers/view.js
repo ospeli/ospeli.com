@@ -3,7 +3,7 @@
 //   #/transfers/jobs     My jobs (driver, on a phone): pick the vehicle once a shift, the next job, one big button
 //   #/transfers/board    Dispatch board (transport coordinator; patient flow coordinator; read-only for others)
 //   #/transfers/request  Book a transfer (ward nurse, ED nurse in charge): picks only, nothing typed
-//   #/transfers/fleet    Fleet status (fleet supervisor): daily checks, off the road and back, availability
+//   #/transfers/fleet    Fleet status (fleet supervisor): daily checks, out of service and back, availability
 // The role decides which screens it has and which opens first. Measures journeys and vehicles, never people.
 import { h, setKids, fmtWait, moduleStyle } from '../ui.js';
 import { roleById } from '../../core/model.js';
@@ -141,7 +141,7 @@ function jobsScreen(ctx) {
         return h('button', { class: `btn btn-big trf-vbtn${off ? ' is-off' : ''}`, type: 'button', 'data-cmd': 'ospeli_transfers_vehicle_crew', 'data-vehicle': v.id, disabled: off || !mayCrew,
           onclick: (e) => { e.currentTarget.disabled = true; pick(v); } },
         h('span', { class: 'trf-vname' }, v.name),
-        h('span', { class: 'trf-vsub' }, off ? `Off the road: ${v.offRoad.reasonName.toLowerCase()}` : `${v.checkFailing ? 'FAILED CHECK · ' : ''}${v.siteName} · ${n ? `${n} ${n === 1 ? 'job' : 'jobs'}` : 'no job yet'}${v.crewed ? ' · crewed' : ''}`));
+        h('span', { class: 'trf-vsub' }, off ? `Out of service: ${v.offRoad.reasonName.toLowerCase()}` : `${v.checkFailing ? 'FAILED CHECK · ' : ''}${v.siteName} · ${n ? `${n} ${n === 1 ? 'job' : 'jobs'}` : 'no job yet'}${v.crewed ? ' · crewed' : ''}`));
       })));
   }
 
@@ -159,7 +159,7 @@ function jobsScreen(ctx) {
       detailsBox('End of shift', 'release', 'release', h('p', { class: 'meta' }, `Release ${v.name} when your shift ends, so the board shows it has no crew.`),
         h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_transfers_vehicle_crew', 'data-test': 'release-vehicle', onclick: () => release(v) }, `Release ${v.name}`)));
     const warn = [
-      v.state === 'off-road' ? h('p', { class: 'card notice trf-alert', 'data-test': 'off-road' }, `${v.name} is off the road (${v.offRoad.reasonName.toLowerCase()}). Do not use it. The coordinator will move its jobs.`) : null,
+      v.state === 'off-road' ? h('p', { class: 'card notice trf-alert', 'data-test': 'off-road' }, `${v.name} is out of service (${v.offRoad.reasonName.toLowerCase()}). Do not use it. The coordinator will move its jobs.`) : null,
       v.checkFailing && v.state !== 'off-road' ? h('p', { class: 'card notice trf-alert', 'data-test': 'failed-check' }, `${v.name} failed its daily check: ${v.lastCheck.failed.map((x) => x.name).join('; ')}. Tell the coordinator before you drive it.`) : null,
       !v.lastCheck?.today ? h('p', { class: 'trf-checkdue', 'data-test': 'check-due' }, h('a', { href: '#/transfers/fleet' }, 'Daily check not done today: do it now')) : null,
     ];
@@ -230,7 +230,7 @@ function boardScreen(ctx) {
     const departed = ['on-the-way', 'at-destination'].includes(t.state);
     return h('li', { class: `trf-row${t.late ? ' is-late' : ''}${t.vehicleOffRoad ? ' is-late' : ''}`, 'data-transfer': t.id, 'data-type': t.type },
       h('div', { class: 'trf-row-text' }, facts(t),
-        t.vehicleId ? h('p', { class: 'trf-onv' }, stateChip(t), ` ${t.vehicleName}`, t.vehicleOffRoad ? h('b', { class: 'trf-warn', 'data-test': 'vehicle-off-road' }, ': vehicle off the road, give it to another') : null) : null,
+        t.vehicleId ? h('p', { class: 'trf-onv' }, stateChip(t), ` ${t.vehicleName}`, t.vehicleOffRoad ? h('b', { class: 'trf-warn', 'data-test': 'vehicle-off-road' }, ': vehicle out of service, give it to another') : null) : null,
         h('p', { class: 'trf-id meta' }, t.id)),
       h('div', { class: 'trf-row-acts' },
         mayAssign && ['waiting', 'assigned'].includes(t.state) ? assignBox(t) : null,
@@ -252,7 +252,7 @@ function boardScreen(ctx) {
         h('div', { class: 'stat', 'data-count': 'vehicles' }, h('span', {}, 'Free vehicles'), h('b', {}, `${c.vehiclesFree} of ${d.vehicles.length}`), h('span', {}, `${d.vehicles.filter((v) => v.state === 'free' && v.crewed).length} crewed`)),
         h('div', { class: `stat${c.vehiclesOffRoad || c.late ? ' is-alert' : ''}`, 'data-count': 'road' }, h('span', {}, 'Journeys under way'), h('b', {}, String(c.onTheRoad)),
           h('span', {}, [c.vehiclesOffRoad ? `${c.vehiclesOffRoad} off road` : null, c.late ? `${c.late} late` : null].filter(Boolean).join(', ') || 'none late'))),
-      h('p', { class: 'meta trf-countline', 'data-test': 'count-line' }, `Discharges waiting for transport: ${c.dischargesWaiting}. Given to a vehicle, not yet at pickup: ${c.assigned}. Off the road: ${c.vehiclesOffRoad}.`),
+      h('p', { class: 'meta trf-countline', 'data-test': 'count-line' }, `Discharges waiting for transport: ${c.dischargesWaiting}. Given to a vehicle, not yet at pickup: ${c.assigned}. Out of service: ${c.vehiclesOffRoad}.`),
       readOnly ? h('p', { class: 'meta', 'data-test': 'read-only' }, `${roleById(ctx.role).name} can see the board. Vehicles are given by ${roleNames('ospeli_transfers_assign')}.`) : null,
       h('section', { class: 'section', 'aria-labelledby': 'trf-q-h' }, h('h2', { id: 'trf-q-h' }, `Waiting for a vehicle (${shown(d.waiting).length})`),
         h('p', { class: 'meta' }, 'In the order they are needed: a booked time, or when an as-soon-as-possible request was made.'),
@@ -335,7 +335,7 @@ function describeProposal(p, data) {
     case 'ospeli_transfers_cancel': return `Cancel (${p.input.reason}): ${job}`;
     case 'ospeli_transfers_vehicle_crew': return `${p.input.crewed ? 'Crew' : 'Release'} ${v(p.input.vehicleId)} for this shift`;
     case 'ospeli_transfers_vehicle_check': return `Daily check of ${v(p.input.vehicleId)}: ${(p.input.failed || []).length} failed`;
-    case 'ospeli_transfers_vehicle_status': return `${p.input.status === 'off-road' ? 'Take off the road' : 'Back in service'}: ${v(p.input.vehicleId)}`;
+    case 'ospeli_transfers_vehicle_status': return `${p.input.status === 'off-road' ? 'Take out of service' : 'Back in service'}: ${v(p.input.vehicleId)}`;
     default: return p.command;
   }
 }
@@ -476,12 +476,12 @@ function fleetScreen(ctx) {
     return h('li', { class: `card trf-vcard st-${v.state}`, 'data-vehicle': v.id, 'data-state': v.state },
       h('p', { class: 'trf-vhead' }, h('b', {}, v.name), h('span', { class: 'meta' }, ` ${v.siteName}`), h('span', { class: `chip trf-vst st-${v.state}`, 'data-test': 'vehicle-state' }, vehicleWords(v)), h('span', { class: `chip${v.crewed ? ' trf-ok' : ''}` }, v.crewed ? 'Crewed' : 'No crew')),
       v.checkFailing && !v.offRoad ? h('p', { class: 'trf-warn', 'data-test': 'failed-check' }, `Failed its daily check: ${v.lastCheck.failed.map((x) => x.name).join('; ')}. Do not send it until it is fixed.`) : null,
-      v.offRoad ? h('p', { class: 'trf-warn' }, `Off the road since ${v.offRoad.sinceText}: ${v.offRoad.reasonName.toLowerCase()}.`) : null,
+      v.offRoad ? h('p', { class: 'trf-warn' }, `Out of service since ${v.offRoad.sinceText}: ${v.offRoad.reasonName.toLowerCase()}.`) : null,
       h('p', { class: 'meta', 'data-test': 'last-check' }, v.lastCheck ? `Daily check ${v.lastCheck.atText}: ${v.lastCheck.failed.length ? `failed ${v.lastCheck.failed.map((x) => x.name).join('; ')}` : `all ${v.lastCheck.passed} items passed`}.` : 'No daily check recorded.'),
       v.lastCheck?.today ? null : h('p', { class: 'chip trf-due' }, 'Check due today'),
       mayStatus ? (v.offRoad
         ? detailsBox('Back in service', 'back', `back:${v.id}`, h('p', { class: 'meta' }, 'Why is it safe to use again?'), reasonButtons(data.picks.backReasons, (r) => act('ospeli_transfers_vehicle_status', { vehicleId: v.id, status: 'back', reason: r.id }, `${v.name} back in service`), { 'data-cmd': 'ospeli_transfers_vehicle_status' }))
-        : detailsBox('Take off the road', 'off-road', `off:${v.id}`, h('p', { class: 'meta' }, 'Why?'), reasonButtons(data.picks.offRoadReasons, (r) => act('ospeli_transfers_vehicle_status', { vehicleId: v.id, status: 'off-road', reason: r.id }, `${v.name} off the road`), { 'data-cmd': 'ospeli_transfers_vehicle_status' })))
+        : detailsBox('Take out of service', 'off-road', `off:${v.id}`, h('p', { class: 'meta' }, 'Why?'), reasonButtons(data.picks.offRoadReasons, (r) => act('ospeli_transfers_vehicle_status', { vehicleId: v.id, status: 'off-road', reason: r.id }, `${v.name} out of service`), { 'data-cmd': 'ospeli_transfers_vehicle_status' })))
         : null);
   }
   function checkForm() {
@@ -500,7 +500,7 @@ function fleetScreen(ctx) {
       const v = data.vehicles.find((x) => x.id === ui.vehicle);
       act('ospeli_transfers_vehicle_check', { vehicleId: ui.vehicle, passed: ids('pass'), failed: ids('fail') }, `Check saved: ${v.name}`, { onDone: (out) => {
         ui.result = h('div', { class: `card trf-result${out.failed.length ? ' is-below' : ''}`, 'data-test': 'chk-result' }, h('p', {}, h('b', {}, `Saved: ${v.name}, ${out.failed.length ? `${out.failed.length} failed` : 'all passed'}.`)),
-          out.failed.length ? h('p', {}, `Failed: ${out.failed.map((f) => f.name).join('; ')}. Do not use it: take it off the road and report the fault to the fleet supervisor or the repair team.`) : null);
+          out.failed.length ? h('p', {}, `Failed: ${out.failed.map((f) => f.name).join('; ')}. Do not use it: take it out of service and report the fault to the fleet supervisor or the repair team.`) : null);
         marks.clear();
       } });
     } },

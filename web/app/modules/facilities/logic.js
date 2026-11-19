@@ -40,20 +40,20 @@ export const CHECK_FIELDS = ['result', 'runMinutes', 'levelPct', 'levelBand'];
 export const PLACE_TYPES = ['site', 'building', 'department'];
 
 // ---- the check schedule: plain data, shaped { checkKind, assetKind or placeId, everyDays } ----
-// An example setting, not a standard. A site sets its own. For sites that follow NFPA 110, its
-// monthly generator load test (at least 30 % of nameplate for 30 minutes) is the reference a site
-// sets its own interval from; the weekly run here is a common local practice, not that standard.
+// An example setting, not a standard. A site sets its own; a site that follows a national or
+// insurer's standard for standby power sets its generator test interval from that standard
+// (#136: no one country's standard is named). The weekly run here is an example, not a standard.
 export const SCHEDULE = [
   { checkKind: 'generator-test', assetKind: 'generator', everyDays: 7 },
   { checkKind: 'fuel-level', assetKind: 'generator', everyDays: 7 },
   { checkKind: 'water-level', placeId: 'bld-main-plant', everyDays: 7 },
   { checkKind: 'gas-check', placeId: 'bld-main-plant', everyDays: 1 },
 ];
-export const SCHEDULE_NOTE = 'The check schedule is an example setting, not a standard: each site sets its own. A site that follows NFPA 110 sets its generator tests from that standard (a monthly load test of at least 30 % of nameplate for 30 minutes).';
+export const SCHEDULE_NOTE = 'The check schedule is an example setting, not a standard: each site sets its own. A site that follows a national or insurer\'s standard for standby power sets its generator tests from that standard. In this example a week starts on Monday.';
 // Due periods are counted from a fixed Monday at midnight, site time: a weekly check is due once
 // each Monday-to-Sunday week, a daily check once each day.
 export const SLOT_ANCHOR = Date.UTC(2026, 0, 5); // Monday 5 Jan 2026, 00:00 local
-export const everyText = (n) => (n === 1 ? 'Every day' : n === 7 ? 'Every week (Monday to Sunday)' : `Every ${n} days`);
+export const everyText = (n) => (n === 1 ? 'Every day' : n === 7 ? 'Every week' : `Every ${n} days`);
 
 // The things the schedule covers on this site: one row per check kind and asset or place.
 // assets: [{ id, kind, name }], places: Map(id -> { id, name }).

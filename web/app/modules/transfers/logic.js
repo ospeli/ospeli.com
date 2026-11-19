@@ -12,15 +12,15 @@ import { median, MIN, HOUR, DAY } from '../../core/kit.js';
 
 // ---- pick lists (nothing is typed, so no clinical note or personal detail can go in) ----
 export const TYPES = [
-  { id: 'discharge', name: 'Discharge', hint: 'Going home, or to a care home or hospice' },
+  { id: 'discharge', name: 'Discharge', hint: 'Going home, to residential or nursing care, or to a hospice' },
   { id: 'between-sites', name: 'Between our sites', hint: 'To another site of this organisation' },
-  { id: 'to-provider', name: 'To another provider', hint: 'Another hospital, a care home or a hospice' },
+  { id: 'to-provider', name: 'To another provider', hint: 'Another hospital, residential or nursing care, or a hospice' },
   { id: 'appointment', name: 'Appointment', hint: 'To an appointment elsewhere; book the return as its own journey' },
 ];
 // Outside destinations are categories, never a provider's name or an address.
 export const OUTSIDE = [
   { id: 'other-hospital', name: 'Another hospital' },
-  { id: 'care-home', name: 'Care home' },
+  { id: 'care-home', name: 'Residential or nursing care' },
   { id: 'hospice', name: 'Hospice' },
   { id: 'home', name: 'Home (no address kept here)' },
   { id: 'other', name: 'Somewhere else' },
@@ -234,7 +234,7 @@ export function jobsOf(transfers, vehicleId) {
   return [...mine.filter((t) => UNDER_WAY.includes(t.state)).sort(byNeed), ...mine.filter((t) => t.state === 'assigned').sort(byNeed)];
 }
 
-// ---- vehicles: off the road, checks and crewing, from the events ----
+// ---- vehicles: out of service, checks and crewing, from the events ----
 // vehicles: [{ id, name, parentId }] (assets of kind vehicle). Returns Map(id -> vehicle state).
 export function deriveFleet(events, vehicles, { now, shift }) {
   const out = new Map(vehicles.map((v) => [v.id, { id: v.id, name: v.name, siteId: v.parentId, offRoad: null, offRoadSpans: [], lastCheck: null, lastStatusAt: null, crewSpans: [], crewed: false }]));
@@ -261,13 +261,13 @@ export function deriveFleet(events, vehicles, { now, shift }) {
   }
   return out;
 }
-// The vehicle as a coordinator sees it: off the road, on a job, or free; crewed or not.
+// The vehicle as a coordinator sees it: out of service, on a job, or free; crewed or not.
 export function vehicleState(v, transfers) {
   const jobs = jobsOf(transfers, v.id);
   const current = jobs.find((t) => UNDER_WAY.includes(t.state)) || null;
   return { state: v.offRoad ? 'off-road' : current ? 'on-job' : 'free', current, assigned: jobs.filter((t) => t.state === 'assigned'), jobs };
 }
-// A failed check stands until the vehicle is next taken off the road or brought back.
+// A failed check stands until the vehicle is next taken out of service or brought back.
 export const checkFailing = (v) => !!v.lastCheck?.failed.length && (!v.lastStatusAt || v.lastStatusAt < v.lastCheck.at);
 
 // ---- KPIs: each (transfers or events, { since, until, ... }) -> { value, numerator, denominator, n, ... } ----
@@ -355,7 +355,7 @@ export const GUIDE_RULES = [
   { id: 'discharge-later', name: 'A discharge waits while beds are needed',
     basis: `Example setting, not a standard: a fixed rule. A discharge booked more than ${EARLIER_MINUTES} minutes from now, from a ward where the bed board shows patients waiting for a bed, is pointed out with a free crewed vehicle if there is one, and another journey to the same place needed within ${GROUP_MINUTES} minutes of it. Advice only: the ward and the coordinator decide.` },
   { id: 'check-failed', name: 'A vehicle failed its daily check',
-    basis: 'The site\'s own vehicle check policy (set locally); the check list here is an example set. ISO 39001 is a road safety management frame a site may run; Ospeli does not apply it. The rule suggests taking the vehicle off the road and offers a fault report that a person sends, with a priority the person picks.' },
+    basis: 'The site\'s own vehicle check policy (set locally); the check list here is an example set. ISO 39001 is a road safety management frame a site may run; Ospeli does not apply it. The rule suggests taking the vehicle out of service and offers a fault report that a person sends, with a priority the person picks.' },
   { id: 'escort-cover', name: 'Delays for no escort keep happening at one time of day',
     basis: `Example setting, not a standard: ${ESCORT_COUNT} or more delays or cancellations for "No escort" in the last ${ESCORT_LOOKBACK_DAYS} days in the same time band. Advice only; it shows when, never who.` },
 ];
@@ -363,7 +363,7 @@ const BASIS = Object.fromEntries(GUIDE_RULES.map((r) => [r.id, r.basis]));
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 // Rule 1. waitingByWard: Map(wardId -> patients waiting for a bed there, with no bed held), from
-// deriveBoard (core/beds.js). freeVehicles: [{ id, name }] free, crewed and on the road now.
+// deriveBoard (core/beds.js). freeVehicles: [{ id, name }] free, crewed and in service now.
 export function ruleDischargeLater({ transfers, waitingByWard, freeVehicles, now, offsetMinutes, placeName, destName }) {
   const open = [...transfers.values()].filter((t) => ['waiting', 'assigned'].includes(t.state));
   const out = [];
@@ -395,12 +395,12 @@ export function ruleCheckFailed({ fleet, openFaults = new Map() }) {
     const fault = v.lastCheck.failed.map((x) => DEFECT_FOR[x]).find(Boolean) || DEFECT_DEFAULT;
     const open = openFaults.get(v.id) || [];
     const actions = [];
-    if (!v.offRoad) actions.push({ label: 'Take off the road', command: 'ospeli_transfers_vehicle_status', input: { vehicleId: v.id, status: 'off-road', reason: 'failed-check' } });
+    if (!v.offRoad) actions.push({ label: 'Take out of service', command: 'ospeli_transfers_vehicle_status', input: { vehicleId: v.id, status: 'off-road', reason: 'failed-check' } });
     if (!open.includes(fault)) actions.push({ label: 'Report a fault', command: 'ospeli_workorders_report_fault', input: { assetId: v.id, fault }, needs: 'priority' });
     out.push({
       rule: 'check-failed', id: `check-failed:${v.id}:${v.lastCheck.at}`, vehicleId: v.id,
-      text: `${v.name} failed its daily check: ${items.join('; ')}.${v.offRoad ? '' : ' Take it off the road until it is fixed.'}`,
-      why: `${v.offRoad ? `${v.name} is off the road. ` : ''}${open.length ? `A work order is already open: ${open.join('; ')}.` : 'No work order is open for it yet.'}`,
+      text: `${v.name} failed its daily check: ${items.join('; ')}.${v.offRoad ? '' : ' Take it out of service until it is fixed.'}`,
+      why: `${v.offRoad ? `${v.name} is out of service. ` : ''}${open.length ? `A work order is already open: ${open.join('; ')}.` : 'No work order is open for it yet.'}`,
       basis: BASIS['check-failed'], actions, action: actions[0] || null,
     });
   }

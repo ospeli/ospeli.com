@@ -15300,7 +15300,7 @@
     },
     {
       "name": "ospeli_transfers_board",
-      "summary": "The dispatch board in one call: journeys waiting for a vehicle (in the order they are needed: a booked time, or when an as-soon-as-possible request was made), journeys with a vehicle, every vehicle (free, on a job or off the road; crewed this shift or not; its last daily check), the four measures with their definitions and sources, and the guide's suggestions with their reasons and basis (empty while the guide is off). Also the pick lists, places and bookable times. Measures journeys and vehicles, never drivers. Read-only.",
+      "summary": "The dispatch board in one call: journeys waiting for a vehicle (in the order they are needed: a booked time, or when an as-soon-as-possible request was made), journeys with a vehicle, every vehicle (free, on a job or out of service; crewed this shift or not; its last daily check), the four measures with their definitions and sources, and the guide's suggestions with their reasons and basis (empty while the guide is off). Also the pick lists, places and bookable times. Measures journeys and vehicles, never drivers. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -15593,7 +15593,7 @@
     },
     {
       "name": "ospeli_transfers_jobs",
-      "summary": "One vehicle's jobs for the crew: the journey under way first, then the rest in the order they are needed, each with pickup, destination, mobility, escort, equipment and the next step to tap. Also whether the vehicle is crewed this shift or off the road. Read-only.",
+      "summary": "One vehicle's jobs for the crew: the journey under way first, then the rest in the order they are needed, each with pickup, destination, mobility, escort, equipment and the next step to tap. Also whether the vehicle is crewed this shift or out of service. Read-only.",
       "kind": "read",
       "roles": [
         "driver",
@@ -15742,7 +15742,7 @@
               "home",
               "other"
             ],
-            "description": "An outside destination as a category, never a name or address. Give this or toSite. One of: other-hospital (Another hospital), care-home (Care home), hospice (Hospice), home (Home (no address kept here)), other (Somewhere else)."
+            "description": "An outside destination as a category, never a name or address. Give this or toSite. One of: other-hospital (Another hospital), care-home (Residential or nursing care), hospice (Hospice), home (Home (no address kept here)), other (Somewhere else)."
           },
           "needed": {
             "type": "string",
@@ -15859,7 +15859,7 @@
     },
     {
       "name": "ospeli_transfers_assign",
-      "summary": "Give a journey to a vehicle (or move it to another vehicle before pickup). The vehicle must be on the road; whether it is crewed this shift is shown on the board. It then shows in that vehicle's jobs. An agent's call becomes a proposal for a person.",
+      "summary": "Give a journey to a vehicle (or move it to another vehicle before pickup). The vehicle must be in service; whether it is crewed this shift is shown on the board. It then shows in that vehicle's jobs. An agent's call becomes a proposal for a person.",
       "kind": "write",
       "roles": [
         "transport-coordinator"
@@ -16319,7 +16319,7 @@
     },
     {
       "name": "ospeli_transfers_vehicle_check",
-      "summary": "Record a vehicle's daily check: every item on the example check list marked pass or fail (picks only). A failed item shows as a guide suggestion to take the vehicle off the road and to report a fault; nothing else happens by itself. The list is an example set, set locally, not a standard. An agent's call becomes a proposal for a person.",
+      "summary": "Record a vehicle's daily check: every item on the example check list marked pass or fail (picks only). A failed item shows as a guide suggestion to take the vehicle out of service and to report a fault; nothing else happens by itself. The list is an example set, set locally, not a standard. An agent's call becomes a proposal for a person.",
       "kind": "write",
       "roles": [
         "fleet-supervisor",
@@ -16435,7 +16435,7 @@
     },
     {
       "name": "ospeli_transfers_vehicle_status",
-      "summary": "Take a vehicle off the road (status off-road) or bring it back (status back), with a reason from a list. Off-road time lowers fleet availability. Journeys already given to it show \"vehicle off the road\" so the coordinator can give them to another vehicle. An agent's call becomes a proposal for a person.",
+      "summary": "Take a vehicle out of service (status off-road) or bring it back (status back), with a reason from a list. Off-road time lowers fleet availability. Journeys already given to it show \"vehicle out of service\" so the coordinator can give them to another vehicle. An agent's call becomes a proposal for a person.",
       "kind": "write",
       "roles": [
         "fleet-supervisor",
@@ -16478,7 +16478,7 @@
               "service-done",
               "checked-safe"
             ],
-            "description": "Off the road: failed-check, fault, service, other. Back: repaired, service-done, checked-safe, other."
+            "description": "Out of service: failed-check, fault, service, other. Back: repaired, service-done, checked-safe, other."
           }
         }
       },

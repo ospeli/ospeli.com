@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Patient transport demo · Ospeli</title>
-<meta name="description" content="Book, dispatch and track patient transfers between sites, and keep the fleet on the road: a phone booking for wards, a transport desk board, a crew phone and a manager view. Fictional example data; runs in your browser.">
+<meta name="description" content="Book, dispatch and track patient transfers between sites, and keep the fleet in service: a phone booking for wards, a transport desk board, a crew phone and a manager view. Fictional example data; runs in your browser.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Ospeli">
 <meta property="og:title" content="Patient transport demo · Ospeli">
-<meta property="og:description" content="Book, dispatch and track patient transfers between sites, and keep the fleet on the road: a phone booking for wards, a transport desk board, a crew phone and a manager view. Fictional example data; runs in your browser.">
+<meta property="og:description" content="Book, dispatch and track patient transfers between sites, and keep the fleet in service: a phone booking for wards, a transport desk board, a crew phone and a manager view. Fictional example data; runs in your browser.">
 <meta property="og:url" content="https://ospeli.com/demo/transport/">
 <meta property="og:image" content="https://ospeli.com/og.png">
 <meta property="og:image:width" content="1200">
@@ -213,7 +213,7 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
 <main class="wrap">
   <span class="badge">Preview · fictional example data</span>
   <h1>Patient transport: book, dispatch, track</h1>
-  <p class="lead">Wards book a transfer between sites on a phone and see when it is coming. The transport desk matches requests to vehicles and crews. Crews tap each step. The manager sees on-time pickups and which vehicles are off the road. The guide suggests shared journeys and flags vehicle checks; a person decides.</p>
+  <p class="lead">Wards book a transfer between sites on a phone and see when it is coming. The transport desk matches requests to vehicles and crews. Crews tap each step. The manager sees on-time pickups and which vehicles are out of service. The guide suggests shared journeys and flags vehicle checks; a person decides.</p>
 
   <div class="roles" role="group" aria-label="Whose view">
     <button type="button" id="r-ward" data-role="ward" aria-pressed="false">Ward</button>
@@ -267,7 +267,7 @@ var STORE = 'ospeli.transport.v1';
 // ---------- Fixed reference data (fictional) ----------
 var LOC = {
   W1: 'Ward 1', W2: 'Ward 2', W3: 'Ward 3', W4: 'Ward 4', W5: 'Ward 5', ED: 'Emergency department', DL: 'Discharge lounge',
-  ER: 'East site · Rehab unit', EO: 'East site · Outpatients', NS: 'North site · Day unit', CH: 'Community care home', HM: 'Home address'
+  ER: 'East site · Rehab unit', EO: 'East site · Outpatients', NS: 'North site · Day unit', CH: 'Community residential care', HM: 'Home address'
 };
 var BOOKERS = ['W1', 'W2', 'W3', 'W4', 'W5', 'ED', 'DL', 'ER'];
 var DESTS = ['ER', 'EO', 'NS', 'CH', 'HM', 'W1', 'W2', 'W3', 'W4', 'W5'];
@@ -350,7 +350,7 @@ function seed() {
     ['req', 'asg', 'col', 'arr', 'done'].forEach(function (k) { if (j[k]) ev.push({ t: j[k], text: eventText(s, j, k) }); });
     j.delays.forEach(function (d) { ev.push({ t: d.t, text: 'Delay recorded for ' + j.code + ': ' + d.reason }); });
   });
-  ev.push({ t: T - 152 * M, text: 'Daily check VAN-3: defect, ramp or tail-lift. Fleet supervisor took it off the road; draft work order WO-2040 raised.' });
+  ev.push({ t: T - 152 * M, text: 'Daily check VAN-3: defect, ramp or tail-lift. Fleet supervisor took it out of service; draft work order WO-2040 raised.' });
   ev.sort(function (a, b) { return b.t - a.t; });
   s.log = ev.slice(0, 50);
   return s;
@@ -390,7 +390,7 @@ function vJobs(v) {
   return openJobs().filter(function (j) { return j.veh === v.id; }).sort(function (a, b) { return (rank[status(a)] - rank[status(b)]) || byNeeded(a, b); });
 }
 function vState(v) { return isOff(v) ? 'off' : vJobs(v).length ? 'busy' : 'free'; }
-var VSTATE_WORD = { off: 'Off the road', busy: 'On a job', free: 'Free' };
+var VSTATE_WORD = { off: 'Out of service', busy: 'On a job', free: 'Free' };
 function need(jobs) {
   var n = { stretcher: 0, wheelchair: 0, seats: 0 };
   jobs.forEach(function (j) { if (j.mob === 'walking') n.seats++; else n[j.mob]++; if (j.esc) n.seats++; });
@@ -451,7 +451,7 @@ function suggest() {
     var j0 = risk[0], v0 = bestVehicle([j0]), id0 = 'risk-' + j0.id;
     out.push({ id: id0, kind: 'time', who: 'desk',
       title: j0.code + ' is needed ' + (dueMin(j0) >= 0 ? 'in ' + fmt(dueMin(j0)) : fmt(-dueMin(j0)) + ' ago') + ' and has no vehicle',
-      text: LOC[j0.from] + ' → ' + LOC[j0.to] + ', ' + MOB[j0.mob].toLowerCase() + '. ' + (v0 ? v0.id + ' (' + VTYPES[v0.type].label.toLowerCase() + ', ' + VSTATE_WORD[vState(v0)].toLowerCase() + ') fits.' : 'No vehicle on the road fits right now.') + (risk.length > 1 ? ' ' + (risk.length - 1) + ' more booking' + (risk.length > 2 ? 's are' : ' is') + ' close to time.' : ''),
+      text: LOC[j0.from] + ' → ' + LOC[j0.to] + ', ' + MOB[j0.mob].toLowerCase() + '. ' + (v0 ? v0.id + ' (' + VTYPES[v0.type].label.toLowerCase() + ', ' + VSTATE_WORD[vState(v0)].toLowerCase() + ') fits.' : 'No vehicle in service fits right now.') + (risk.length > 1 ? ' ' + (risk.length - 1) + ' more booking' + (risk.length > 2 ? 's are' : ' is') + ' close to time.' : ''),
       why: 'Time needed is within ' + set.riskMin + ' min (example setting, not a standard) and no vehicle is assigned. Order is by the time the ward needs, not by anything clinical.',
       acts: [v0 ? { label: 'Propose: assign ' + v0.id, primary: true, fn: function () { propose({ id: id0, kind: 'assign', who: 'desk', job: j0.id, veh: v0.id, text: 'Assign ' + v0.id + ' (' + v0.crew + ') to ' + j0.code + ', needed ' + hhmm(j0.needed) + '.' }); } } : null,
         { label: 'Show on the desk board', fn: function () { state.role = 'desk'; render(); document.getElementById('view-h').scrollIntoView({ block: 'start' }); } }] });
@@ -472,23 +472,23 @@ function suggest() {
         acts: [{ label: 'Propose: both on ' + v.id, primary: true, fn: function () { propose({ id: id, kind: 'combine', who: 'desk', jobs: [x.id, y.id], veh: v.id, text: 'Put ' + x.code + ' and ' + y.code + ' on one journey with ' + v.id + ' (' + v.crew + ') to ' + LOC[x.to] + '.' }); } }] });
     })(x, y, v);
   }
-  // 3. A reported fault on a vehicle that is still on the road.
+  // 3. A reported fault on a vehicle that is still in service.
   state.vehicles.filter(function (v) { return !isOff(v) && v.faults.some(function (f) { return f.open; }); }).forEach(function (v) {
     var f = v.faults.filter(function (f) { return f.open; }).slice(-1)[0], id = 'fault-' + v.id + '-' + f.t;
     out.push({ id: id, kind: 'fleet', who: 'manager',
-      title: v.id + ': fault reported, still on the road',
+      title: v.id + ': fault reported, still in service',
       text: f.text + ', reported ' + hhmm(f.t) + '. ' + vJobs(v).length + ' job' + (vJobs(v).length === 1 ? '' : 's') + ' on this vehicle.',
       why: 'A defect was logged and the vehicle has not been checked off. Jobs not yet collected would go back to the desk.',
-      acts: [{ label: 'Propose: off the road + draft work order', primary: true, fn: function () { propose({ id: id, kind: 'offroad', who: 'manager', veh: v.id, reason: 'Fault: ' + f.text, text: 'Take ' + v.id + ' off the road and raise a draft work order for: ' + f.text + '.' }); } }] });
+      acts: [{ label: 'Propose: out of service + draft work order', primary: true, fn: function () { propose({ id: id, kind: 'offroad', who: 'manager', veh: v.id, reason: 'Fault: ' + f.text, text: 'Take ' + v.id + ' out of service and raise a draft work order for: ' + f.text + '.' }); } }] });
   });
   // 4. Service overdue on a vehicle still in use.
   state.vehicles.filter(function (v) { return !isOff(v) && v.serviceDays < 0; }).forEach(function (v) {
     var id = 'service-' + v.id, n = vJobs(v).length;
     out.push({ id: id, kind: 'fleet', who: 'manager',
       title: v.id + ': service ' + (-v.serviceDays) + ' day' + (v.serviceDays === -1 ? '' : 's') + ' overdue',
-      text: 'Still in use' + (n ? ' with ' + n + ' job' + (n > 1 ? 's' : '') + ' open' : '') + '. ' + (bestVehicle([{ mob: 'stretcher', esc: true }], v.id) ? 'Another ambulance is on the road to cover stretcher journeys.' : 'No other vehicle can take stretchers right now.'),
+      text: 'Still in use' + (n ? ' with ' + n + ' job' + (n > 1 ? 's' : '') + ' open' : '') + '. ' + (bestVehicle([{ mob: 'stretcher', esc: true }], v.id) ? 'Another ambulance is in service to cover stretcher journeys.' : 'No other vehicle can take stretchers right now.'),
       why: 'The service date in the fleet record has passed. Booking it in is the manager\'s decision.',
-      acts: [{ label: 'Propose: book service after this job', primary: true, fn: function () { propose({ id: id, kind: 'offroad', who: 'manager', veh: v.id, reason: 'Booked in for service', service: true, text: 'Take ' + v.id + ' off the road for its service once its current journey is handed over, and raise a draft work order.' }); } }] });
+      acts: [{ label: 'Propose: book service after this job', primary: true, fn: function () { propose({ id: id, kind: 'offroad', who: 'manager', veh: v.id, reason: 'Booked in for service', service: true, text: 'Take ' + v.id + ' out of service for servicing once its current journey is handed over, and raise a draft work order.' }); } }] });
   });
   // 5. Delays that cite no escort.
   var esc = []; state.jobs.forEach(function (j) { j.delays.forEach(function (d) { if (d.reason === 'No escort ready') esc.push(d.t); }); });
@@ -523,7 +523,7 @@ function decide(p, yes) {
     if (js.some(function (j) { return !j || j.veh; }) || !usable(v)) { render(); toast('Things changed: one booking already has a vehicle.'); return; }
     js.forEach(function (j) { j.group = p.id; assign(j, v, 'desk (shared journey)'); });
   } else if (p.kind === 'offroad') {
-    if (isOff(v)) { render(); toast(v.id + ' is already off the road.'); return; }
+    if (isOff(v)) { render(); toast(v.id + ' is already out of service.'); return; }
     takeOff(v, p.reason, 'Manager');
   } else if (p.kind === 'review') {
     state.reviews.push({ t: now(), text: p.text });
@@ -571,23 +571,23 @@ function addDelay(j, reason, by) {
 function takeOff(v, reason, by) {
   var w = 'WO-' + (++state.wo);
   v.off.push({ from: now(), to: null, reason: reason, wo: w });
-  vJobs(v).filter(function (j) { return !j.col; }).forEach(function (j) { unassign(j, v.id + ' off the road'); });
+  vJobs(v).filter(function (j) { return !j.col; }).forEach(function (j) { unassign(j, v.id + ' out of service'); });
   if (v.faults) v.faults.forEach(function (f) { f.open = false; });
-  addLog(by + ' took ' + v.id + ' off the road: ' + reason + '. Draft work order ' + w + ' raised for fleet maintenance.' + (vJobs(v).length ? ' The journey in progress is finished first.' : ''));
+  addLog(by + ' took ' + v.id + ' out of service: ' + reason + '. Draft work order ' + w + ' raised for fleet maintenance.' + (vJobs(v).length ? ' The journey in progress is finished first.' : ''));
 }
 function backOnRoad(v) {
   var o = offNow(v); if (!o) return;
   o.to = now();
   if (/service/i.test(o.reason)) v.serviceDays = 182;
   v.check = 'pass';
-  addLog('Manager put ' + v.id + ' back on the road' + (/service/i.test(o.reason) ? ' after its service' : '') + '. Work order ' + o.wo + ' closed.');
-  render(); toast(v.id + ' is back on the road.');
+  addLog('Manager put ' + v.id + ' back in service' + (/service/i.test(o.reason) ? ' after its service' : '') + '. Work order ' + o.wo + ' closed.');
+  render(); toast(v.id + ' is back in service.');
 }
 function reportFault(v, text, unsafe) {
   v.faults.push({ text: text, t: now(), open: true });
   addLog(v.crew + ' reported a fault on ' + v.id + ': ' + text + (unsafe ? ' · unsafe to use' : ' · can keep running'));
   if (unsafe) takeOff(v, 'Unsafe to use: ' + text, v.crew);
-  render(); toast(unsafe ? v.id + ' is off the road. Jobs not yet collected went back to the desk.' : 'Fault logged. The manager decides whether it comes off the road.');
+  render(); toast(unsafe ? v.id + ' is out of service. Jobs not yet collected went back to the desk.' : 'Fault logged. The manager decides whether it comes out of service.');
 }
 function logCheck(v, ok) {
   v.check = ok ? 'pass' : 'defect';
@@ -599,9 +599,9 @@ function logCheck(v, ok) {
 // ---------- Render ----------
 var HINTS = {
   ward: 'A ward\'s phone. Book a transfer in five taps: where to, when, mobility, escort, urgency. Then watch it move from booked to handed over.',
-  desk: 'The transport desk. Requests in order of the time needed, vehicles and crews free, on a job or off the road. Assign a vehicle; record delays with a reason.',
+  desk: 'The transport desk. Requests in order of the time needed, vehicles and crews free, on a job or out of service. Assign a vehicle; record delays with a reason.',
   crew: 'A crew\'s phone. Your jobs in order. Tap Collected, Arrived and Handed over. Report a delay or a vehicle fault in two taps.',
-  manager: 'The transport manager. On-time pickups, journeys per vehicle, vehicles off the road and service dates. Measures journeys and vehicles, never individual drivers.'
+  manager: 'The transport manager. On-time pickups, journeys per vehicle, vehicles out of service and service dates. Measures journeys and vehicles, never individual drivers.'
 };
 var TITLES = { ward: 'Book a transfer', desk: 'Dispatch board', crew: 'My jobs', manager: 'Transport and fleet' };
 function render() {
@@ -629,7 +629,7 @@ function renderKpis() {
     ['wait', k.transferWaitMin == null ? '–' : fmt(k.transferWaitMin), 'Transfer wait', 'median of ' + k.collectedCount + ' journeys', 'Transfer booked → patient collected (departed), median, this shift. The manager view shows it by mobility type. Local definition.'],
     ['ontime', k.onTimePickupPct == null ? '–' : k.onTimePickupPct + '%', 'On-time pickup', k.onTimeCount + ' of ' + k.collectedCount + ' collected', 'Pickups collected by the time needed / pickups collected, this shift. Local definition.'],
     ['handover', k.handoverMin == null ? '–' : fmt(k.handoverMin), 'Handover time', 'median of ' + k.handedOverCount, 'Vehicle arrived at destination → handover complete and vehicle free, median, this shift. Local definition.'],
-    ['fleet', k.fleetAvailabilityPct == null ? '–' : k.fleetAvailabilityPct + '%', 'Fleet availability', k.vehiclesOffRoad + ' of ' + state.vehicles.length + ' off the road now', 'Vehicle-hours on the road / scheduled vehicle-hours, since the shift started. Local definition.']
+    ['fleet', k.fleetAvailabilityPct == null ? '–' : k.fleetAvailabilityPct + '%', 'Fleet availability', k.vehiclesOffRoad + ' of ' + state.vehicles.length + ' out of service now', 'Vehicle-hours in service / scheduled vehicle-hours, since the shift started. Local definition.']
   ];
   tiles.forEach(function (t) {
     var open = state.kpiOpen === t[0];
@@ -731,7 +731,7 @@ function vehCard(v, manager) {
     var f = v.faults.filter(function (f) { return f.open; });
     if (f.length && !o) kids.push(el('p', { class: 'warn', text: 'Open fault: ' + f.map(function (x) { return x.text; }).join('; ') }));
     var acts = [];
-    if (o) acts.push(el('button', { type: 'button', class: 'small primary', id: 'back-' + v.id, onclick: function () { backOnRoad(v); }, text: /service/i.test(o.reason) ? 'Service done, back on the road' : 'Repaired, back on the road' }));
+    if (o) acts.push(el('button', { type: 'button', class: 'small primary', id: 'back-' + v.id, onclick: function () { backOnRoad(v); }, text: /service/i.test(o.reason) ? 'Service done, back in service' : 'Repaired, back in service' }));
     if (!o && !v.check) { acts.push(el('button', { type: 'button', class: 'small', id: 'chk-ok-' + v.id, onclick: function () { logCheck(v, true); }, text: 'Check: pass' })); acts.push(el('button', { type: 'button', class: 'small', id: 'chk-bad-' + v.id, onclick: function () { logCheck(v, false); }, text: 'Check: defect' })); }
     if (acts.length) kids.push(el('div', { class: 'acts' }, acts));
   }
@@ -743,7 +743,7 @@ function deskView() {
   frag.appendChild(el('div', { class: 'pills' }, [
     el('span', { class: 'pill' + (k.waitingForVehicle ? ' hot' : ''), text: k.waitingForVehicle + ' waiting for a vehicle' }),
     el('span', { class: 'pill free', text: free + ' vehicle' + (free === 1 ? '' : 's') + ' free' }),
-    el('span', { class: 'pill', text: k.vehiclesOffRoad + ' off the road' }),
+    el('span', { class: 'pill', text: k.vehiclesOffRoad + ' out of service' }),
     k.lateNow ? el('span', { class: 'pill hot', text: k.lateNow + ' past time needed' }) : null
   ]));
   frag.appendChild(el('h3', { class: 'sec', text: 'Vehicles and crews' }));
@@ -758,7 +758,7 @@ function deskView() {
       sel.appendChild(el('option', { value: '', text: 'Choose a vehicle…' }));
       state.vehicles.forEach(function (v) {
         var ok = usable(v) && fits(v, [j]);
-        sel.appendChild(el('option', { value: v.id, disabled: ok ? false : 'disabled', text: v.id + ' · ' + (isOff(v) ? 'off the road' : !fits(v, [j]) ? 'does not fit' : VSTATE_WORD[vState(v)].toLowerCase()) }));
+        sel.appendChild(el('option', { value: v.id, disabled: ok ? false : 'disabled', text: v.id + ' · ' + (isOff(v) ? 'out of service' : !fits(v, [j]) ? 'does not fit' : VSTATE_WORD[vState(v)].toLowerCase()) }));
       });
       var best = bestVehicle([j]); if (best) sel.value = best.id;
       ctl.appendChild(el('div', { class: 'pair' }, [sel, el('button', { type: 'button', class: 'small primary', id: 'go-' + j.id, onclick: function () {
@@ -799,8 +799,8 @@ function crewView() {
   var o = offNow(v), js = vJobs(v);
   frag.appendChild(el('div', { class: 'pills' }, [el('span', { class: 'pill' + (o ? ' hot' : vState(v) === 'free' ? ' free' : ''), text: VSTATE_WORD[vState(v)] }), el('span', { class: 'pill', text: js.length + ' job' + (js.length === 1 ? '' : 's') }), el('span', { class: 'pill', text: VTYPES[v.type].label })]));
   if (o) {
-    frag.appendChild(el('h3', { class: 'sec', text: 'Off the road' }));
-    frag.appendChild(el('p', { class: 'empty', text: o.reason + ' since ' + hhmm(o.from) + '. Work order ' + o.wo + '. No jobs are sent to this vehicle until the manager puts it back on the road.' }));
+    frag.appendChild(el('h3', { class: 'sec', text: 'Out of service' }));
+    frag.appendChild(el('p', { class: 'empty', text: o.reason + ' since ' + hhmm(o.from) + '. Work order ' + o.wo + '. No jobs are sent to this vehicle until the manager puts it back in service.' }));
   }
   frag.appendChild(el('h3', { class: 'sec', text: 'Your jobs, in order' }));
   if (!js.length && !o) frag.appendChild(el('p', { class: 'empty', text: 'No jobs. The transport desk will send the next one here.' }));
@@ -836,7 +836,7 @@ function crewView() {
       el('label', { class: 'f', for: 'fault-pick' }, ['What is wrong?', fs]),
       el('label', { class: 'check', for: 'fault-unsafe' }, [un, 'Unsafe to use: stop using it now']),
       el('button', { type: 'button', class: 'primary', id: 'fault-send', onclick: function () { reportFault(v, fs.value, un.checked); }, text: 'Report fault on ' + v.id }),
-      el('p', { class: 'fine', text: 'If it is safe to keep going, the manager decides whether it comes off the road. Follow your local procedure for any journey in progress.' })])]));
+      el('p', { class: 'fine', text: 'If it is safe to keep going, the manager decides whether it comes out of service. Follow your local procedure for any journey in progress.' })])]));
   }
   return frag;
 }

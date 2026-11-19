@@ -38,7 +38,7 @@ export const KPIS = [
     definition: 'The core measure "planned checks done by due date" (KPI dictionary D-13) for check type generator-test: scheduled generator tests recorded (pass or fail) by their due date, divided by generator tests due in the period. Each generator is due once in each period of its schedule. A failed test counts as done for this measure (the test was carried out); failed tests are counted beside it, and the generator stays in Needs attention until a later test passes. A test recorded late counts for the period it was recorded in and does not fill the period it missed.',
     counts: 'Generator test periods with a test recorded inside them, settled in the period.', outOf: 'Generator test periods settled in the period: done, or ended with no test.',
     leavesOut: 'The current period while it is still open and no test has been recorded.',
-    source: 'local definition (KPI dictionary D-13). The schedule is an example setting; a site that follows NFPA 110 sets its own from that standard.',
+    source: 'local definition (KPI dictionary D-13). The schedule is an example setting; a site that follows a national or insurer\'s standard for standby power sets its own from that standard.',
     target: null, targetText: 'No target set here. Your site sets its own (example setting, not a standard).' },
   { id: 'utility-outage-hours', name: 'Utility outage hours', unit: 'hours',
     definition: 'For each utility, the hours from outage started to outage ended that fall in the month, summed. An outage still open counts up to now and is marked still open. Planned shutdowns are summed apart and are not in the total.',
