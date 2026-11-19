@@ -289,10 +289,10 @@ for (const width of [360, 390]) {
     assert.doesNotMatch(before.text, /swipe/i);
     // Six Built (three newer ones since 17 and 18 Nov, issue #118), six Preview. On a phone the first
     // three are rows; the newer three open from the one closed list, tagged Built, to keep the page short.
-    assert.equal(before.labels.filter((l) => l === 'Built').length, 7);
-    assert.equal(before.labels.filter((l) => l === 'Preview').length, 6);
+    assert.equal(before.labels.filter((l) => l === 'Built').length, 8);
+    assert.equal(before.labels.filter((l) => l === 'Preview').length, 5);
     assert.deepEqual(before.built.map((b) => b.name), ['Bed board', 'Medical equipment and maintenance', 'Process mapping']);
-    assert.deepEqual(before.builtInList, ['app/#/support', 'app/#/stores', 'app/#/feedback', 'app/#/facilities']);
+    assert.deepEqual(before.builtInList, ['app/#/support', 'app/#/stores', 'app/#/transfers', 'app/#/feedback', 'app/#/facilities']);
     for (const b of before.built) {
       assert.ok(b.width >= width - 48 && b.left >= 0 && b.right <= width, `${b.name}: a full-width row on screen (${Math.round(b.width)}px)`);
       assert.ok(b.linkShown && b.linkH >= 44, `${b.name}: link is ${Math.round(b.linkH)}px tall`);
@@ -472,6 +472,7 @@ for (const width of [360, 1280]) {
       ['Process mapping', 'app/#/process', 'Open the app'],
       ['Cleaning and transport', 'app/#/support', 'Open the app'],
       ['Stores and supplies', 'app/#/stores', 'Open the app'],
+      ['Transfers and vehicles', 'app/#/transfers', 'Open the app'],
       ['Patient feedback', 'app/#/feedback', 'Open the app'],
       ['Facilities and utilities', 'app/#/facilities', 'Open the app'],
     ]);

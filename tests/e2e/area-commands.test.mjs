@@ -16,6 +16,7 @@ const built = {
   'supply-chain-stores': ['ospeli_stores_', 'ospeli_stock_'],
   'patient-experience': ['ospeli_experience_'],
   'facilities-utilities': ['ospeli_facilities_'],
+  'patient-transport': ['ospeli_transfers_'],
 };
 
 let env;
