@@ -28,6 +28,7 @@ import {
 } from './processmap.js';
 import {
   MAX_WALK_STEPS, WALK_STEP_CHIPS, WALK_ROLE_CHIPS, newWalk, walkState, sinceAt, stepStart, stepDone, isDoubleTap, clockMoved, nameLast, undoLast, walkSteps, walkTotals,
+  walkUnder, pausedSec, pauseWalk, resumeWalk, waitShareOf, WALK_BEFORE, PLANNED_WAIT_RULE,
   mapStepsFromWalk, stepsInSeconds, dropStaleSeconds, suggestWalk, longestWaits, MIN_LONGEST_WAIT_SEC,
 } from './walk.js';
 
@@ -916,6 +917,9 @@ const MAP_STEP = {
     workSec: { type: 'integer', minimum: 0, description: 'On a map made from a walk: the measured hands-on time in seconds.' },
     interrupted: { type: 'boolean', description: 'On a walk, the work stopped before the step was finished.' },
     edited: { type: 'boolean', description: 'A measured time on this step was changed by hand.' },
+    plannedWait: { type: 'boolean', description: `The wait before this step was marked by a person as planned or required. It still counts as waiting; it is left out of the longest wait. ${PLANNED_WAIT_RULE}` },
+    waitNotSeenSec: { type: 'integer', minimum: 1, description: 'On a map made from a walk: seconds of the gap before this step that were not seen (the walk was paused). Not part of waitSec. A wait with this is not named as the longest wait.' },
+    workNotSeenSec: { type: 'integer', minimum: 1, description: 'On a map made from a walk: seconds inside this step that were not seen (the walk was paused). Not part of workSec.' },
   },
 };
 const MAP_STATS = {
@@ -1064,14 +1068,19 @@ COMMAND_LIST.push(
       id: MAP_ID, title: { type: 'string' }, start: { type: 'string' }, revision: { type: 'integer' }, changed: { type: 'boolean', description: 'Proposed differs from Today.' },
       tried: { type: 'array', items: { type: 'string' } },
       walk: { type: 'object', description: 'Present when the map was made from one walk (ospeli_walks_finish). One walk is one observation, not a measurement of the process.', required: ['id', 'startedAt', 'finishedAt'],
-        properties: { id: { type: 'string' }, startedAt: TIME, finishedAt: TIME, clockMoved: { type: 'boolean', description: 'Present and true when a tap was stamped earlier than the tap before it: the device clock was set back during the walk, so its times cannot be relied on.' } } },
-      today: { type: 'object', required: ['stats'], properties: { stats: MAP_STATS, statsSec: { type: 'object', description: 'For a map made from a walk: the same numbers in seconds, from the measured times.' }, steps: { type: 'array', items: MAP_STEP } } },
+        properties: { id: { type: 'string' }, startedAt: TIME, finishedAt: TIME, clockMoved: { type: 'boolean', description: 'Present and true when a tap was stamped earlier than the tap before it: the device clock was set back during the walk, so its times cannot be relied on.' },
+          notSeenSec: { type: 'integer', minimum: 1, description: 'Seconds of the walk that were not seen (the person walking paused and stepped out). Inside start to finish; neither waiting nor hands-on.' },
+          guidanceSeen: { type: 'boolean', description: 'The person confirmed the before-you-walk points before the first tap. Absent on walks made before this was recorded.' } } },
+      today: { type: 'object', required: ['stats'], properties: { stats: MAP_STATS, statsSec: { type: 'object', description: 'For a map made from a walk: the same numbers in seconds, from the measured times. elapsed is the observed time (waiting plus hands-on); notSeenSec is the paused time beside it, so start to finish is elapsed + notSeenSec. waitShare is waiting as a % of the observed time. plannedWaitSec is the part of wait a person marked planned or required (still inside wait).' }, steps: { type: 'array', items: MAP_STEP } } },
       proposed: { type: 'object', required: ['stats'], properties: { stats: MAP_STATS, statsSec: { type: 'object' }, steps: { type: 'array', items: MAP_STEP } } } } },
     async run(core, input) {
       const { map } = await loadMap(core, input.mapId);
       const part = (list) => {
         const { timed, ...stats } = analyse(list);
-        const sec = map.walk ? (({ timed: t2, ...x }) => ({ statsSec: x }))(analyse(stepsInSeconds(list))) : {};
+        const inSec = stepsInSeconds(list);
+        const sec = map.walk ? (({ timed: t2, ...x }) => ({ statsSec: { ...x, waitShare: waitShareOf(x.wait, x.work),
+          plannedWaitSec: inSec.reduce((n, y) => n + (y.plannedWait ? y.wait || 0 : 0), 0),
+          notSeenSec: inSec.reduce((n, y) => n + (y.waitNotSeenSec || 0) + (y.workNotSeenSec || 0), 0) } }))(analyse(inSec)) : {};
         return input.format === 'short' ? { stats, ...sec } : { stats, ...sec, steps: list };
       };
       return { id: map.id, title: map.title, start: map.start, revision: map.revision, ...(map.walk ? { walk: map.walk } : {}),
@@ -1189,12 +1198,20 @@ COMMAND_LIST.push(
       work: { ...MINUTES, description: 'New working time of the step, in whole minutes.' },
       msg: { type: 'boolean', description: 'true when the step only passes on information (a call, message or form).' },
       par: { type: 'boolean', description: 'true when the step starts alongside the step before it instead of after it.' },
+      plannedWait: { type: 'boolean', description: `true to mark the wait before this step as planned or required, false to take the mark off. It records what staff said, not a judgement by Ospeli. The wait still counts as waiting; it is left out of the longest wait. The mark is a fact about the step, so it is kept on both versions of the map. ${PLANNED_WAIT_RULE}` },
       notAName: NOT_A_NAME },
     example: { version: 'proposed', stepId: 'map-001-s3', wait: 60 },
     mutate(map, input) {
       const v = input.version || 'today'; const s = map[v][stepIndex(map, v, input.stepId)];
       for (const k of ['name', 'role']) if (input[k] != null) s[k] = input[k].trim();
       for (const k of ['wait', 'work', 'msg', 'par']) if (input[k] != null) s[k] = input[k];
+      if (input.plannedWait != null) {
+        for (const ver of ['today', 'proposed']) {
+          const x = map[ver].find((y) => y.id === s.id);
+          if (!x) continue;
+          if (input.plannedWait) x.plannedWait = true; else delete x.plannedWait;
+        }
+      }
       return { stepId: s.id };
     },
   }),
@@ -1283,22 +1300,34 @@ const WALK_VIEW = {
   description: 'A walk. Times are whole seconds between taps, recomputed from the stored tap times.',
   properties: {
     id: WALK_ID, title: { type: 'string' }, status: { type: 'string', enum: ['walking', 'finished', 'discarded'] },
-    state: { type: 'string', enum: ['waiting', 'step'], description: 'waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up.' },
-    startedAt: TIME, finishedAt: { type: ['string', 'null'] }, since: { ...TIME, description: 'When the present wait or step began.' },
+    state: { type: 'string', enum: ['waiting', 'step', 'paused'], description: 'waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up. paused: the person walking has stepped out and nothing is being counted.' },
+    under: { type: 'string', enum: ['waiting', 'step'], description: 'What is under way behind a pause, and what carries on when the person is back.' },
+    sinceNotSeenSec: { type: 'integer', minimum: 0, description: 'Seconds of the present wait or step that were not seen (paused), so far.' },
+    guidanceSeenAt: { type: ['string', 'null'], description: 'When the person confirmed the before-you-walk points (ospeli_walks_get lists them), or null. Only a time is kept: no name, no device.' },
+    startedAt: TIME, finishedAt: { type: ['string', 'null'] }, since: { ...TIME, description: 'When the present wait or step began; while paused, when the pause began.' },
+    presentSince: { ...TIME, description: 'When the present wait or step began, whether or not the walk is paused.' },
     mapId: { type: ['string', 'null'], description: 'The map this walk became, once finished.' },
     clockMoved: { type: 'boolean', description: 'true when the device clock moved back during the walk: its times cannot be trusted.' },
     steps: { type: 'array', items: { type: 'object', required: ['n', 'name', 'role', 'waitSec', 'workSec', 'named'], properties: {
       n: { type: 'integer' }, name: { type: 'string' }, role: { type: 'string' }, msg: { type: 'boolean' }, interrupted: { type: 'boolean' },
       waitSec: { type: 'integer', description: 'Seconds from the end of the step before (or the start of the walk) to this step starting.' },
-      workSec: { type: 'integer', description: 'Seconds from "step starts" to "step done".' }, named: { type: 'boolean' } } } },
-    totals: { type: 'object', required: ['steps', 'workSec', 'waitSec', 'elapsedSec'], properties: { steps: { type: 'integer' }, workSec: { type: 'integer' }, waitSec: { type: 'integer' }, elapsedSec: { type: 'integer' } } },
+      workSec: { type: 'integer', description: 'Seconds from "step starts" to "step done", less any time not seen.' }, named: { type: 'boolean' },
+      waitNotSeenSec: { type: 'integer', description: 'Seconds of the gap before this step that were not seen (paused). Not part of waitSec.' },
+      workNotSeenSec: { type: 'integer', description: 'Seconds inside this step that were not seen (paused). Not part of workSec.' } } } },
+    totals: { type: 'object', required: ['steps', 'workSec', 'waitSec', 'elapsedSec'], properties: { steps: { type: 'integer' }, workSec: { type: 'integer' }, waitSec: { type: 'integer' },
+      notSeenSec: { type: 'integer', description: 'Seconds not seen (paused) inside the steps and waits so far: neither waiting nor hands-on.' }, elapsedSec: { type: 'integer', description: 'The whole walk, start to finish, with any time not seen inside it.' } } },
   },
 };
 const WALK_WRITE_OUTPUT = { type: 'object', required: ['status', 'walk'], properties: { status: { type: 'string', enum: ['done'] }, walk: WALK_VIEW, mapId: MAP_ID, undone: { type: 'string' } } };
 function walkView(w, now) {
   const steps = walkSteps(w).map((s, i) => ({ n: i + 1, ...s, named: !!(w.steps[i].name && w.steps[i].role) }));
-  return { id: w.id, title: w.title, status: w.status, state: walkState(w), startedAt: w.startedAt, finishedAt: w.finishedAt, since: sinceAt(w), mapId: w.mapId, clockMoved: clockMoved(w), steps, totals: walkTotals(w, now) };
+  // The present wait or step began at the last tap that was not a pause; paused time inside it is told apart.
+  const presentFrom = w.current ? w.current.startAt : (w.steps.length ? w.steps[w.steps.length - 1].endAt : w.startedAt);
+  return { id: w.id, title: w.title, status: w.status, state: walkState(w), under: walkUnder(w), startedAt: w.startedAt, finishedAt: w.finishedAt, since: sinceAt(w), presentSince: presentFrom,
+    sinceNotSeenSec: w.status === 'walking' ? pausedSec(w, presentFrom, now, now) : 0, guidanceSeenAt: w.guidanceSeenAt ?? null,
+    mapId: w.mapId, clockMoved: clockMoved(w), steps, totals: walkTotals(w, now) };
 }
+const PAUSED_FIRST = 'The walk is paused. Say you are back first (ospeli_walks_resume).';
 const WALK_PEOPLE_ONLY = 'People only: a walk is a person\'s own observation on site, so this command is for people, not for agents.';
 // One shape for every tap on the walk in progress: find it, change it, save, audit (ids only).
 function walkWrite({ name, summary, props = {}, required = [], audit, mutate, example = {}, check }) {
@@ -1337,6 +1366,7 @@ COMMAND_LIST.push(
     input: { type: 'object', additionalProperties: false, properties: { walkId: WALK_ID } },
     output: { type: 'object', required: ['walk', 'stepChips', 'roleChips'], properties: {
       walk: { type: ['object', 'null'] }, now: TIME,
+      before: { type: 'array', items: { type: 'string' }, description: 'The points a person confirms before the first tap of a walk, the stop rule first. Fixed text.' },
       stepChips: { type: 'array', items: { type: 'string' }, description: 'Up to 6 step names to offer: ones used on this device first, then example ones.' },
       roleChips: { type: 'array', items: { type: 'string' }, description: 'Up to 6 roles to offer: the ones used in this walk first.' } } },
     async run(core, input) {
@@ -1346,7 +1376,7 @@ COMMAND_LIST.push(
       const uniq = (list) => [...new Set(list.filter(Boolean))];
       const used = [...store.walks].reverse().flatMap((x) => [...x.steps].reverse());
       const mine = w ? [...w.steps].reverse() : [];
-      return { walk: w ? walkView(w, core.now()) : null, now: core.now(),
+      return { walk: w ? walkView(w, core.now()) : null, now: core.now(), before: WALK_BEFORE,
         stepChips: uniq([...used.map((s) => s.name), ...WALK_STEP_CHIPS]).slice(0, 6),
         roleChips: uniq([...mine.map((s) => s.role), ...used.map((s) => s.role), ...WALK_ROLE_CHIPS]).slice(0, 6) };
     },
@@ -1357,7 +1387,9 @@ COMMAND_LIST.push(
     summary: `Start a walk: follow one patient visit or one item from start to finish and time each step as it happens. The clock starts now, and the walk begins in "waiting". One walk at a time on a device. ${WALK_PEOPLE_ONLY}`,
     kind: 'write', roles: ALL_ROLES, approval: true, agents: false,
     input: { type: 'object', additionalProperties: false, properties: {
-      title: { ...STEP_TEXT, maxLength: 80, description: 'What is being followed, e.g. "Morning clinic visit". Never a person\'s name. Defaults to "Walk 1", "Walk 2"…' }, notAName: NOT_A_NAME } },
+      title: { ...STEP_TEXT, maxLength: 80, description: 'What is being followed, e.g. "Morning clinic visit". Never a person\'s name. Defaults to "Walk 1", "Walk 2"…' },
+      guidanceSeen: { type: 'boolean', description: 'true when the person has confirmed the before-you-walk points that ospeli_walks_get lists (the patient was asked and can stop it, staff know, the stop rule). Only the time is kept. A map from a walk started without it says so.' },
+      notAName: NOT_A_NAME } },
     output: WALK_WRITE_OUTPUT,
     check: checkText,
     async run(core, input, { actor }) {
@@ -1368,7 +1400,7 @@ COMMAND_LIST.push(
         const open = store.walks.find((w) => w.status === 'walking');
         if (open) throw new CommandError('conflict', `A walk is already in progress on this device (${open.title}). Continue it, finish it or delete it first.`, { existing: open.id });
         const id = `walk-${String(store.nextId).padStart(3, '0')}`;
-        const w = newWalk({ id, title: input.title || `Walk ${store.nextId}`, at: core.now(), role: actor.role });
+        const w = newWalk({ id, title: input.title || `Walk ${store.nextId}`, at: core.now(), role: actor.role, guidanceSeen: input.guidanceSeen === true });
         store.nextId += 1;
         store.walks.push(w);
         // Finished and deleted walks are kept for the record, the newest 50.
@@ -1376,15 +1408,32 @@ COMMAND_LIST.push(
         view = walkView(w, core.now());
         return store;
       });
-      await core.recordAs(actor, 'walk.started', view.id, null);
+      await core.recordAs(actor, 'walk.started', view.id, input.guidanceSeen === true ? { guidanceSeen: true } : null);
       return { status: 'done', walk: view };
     },
-    example: { input: { title: 'Morning clinic visit' } },
+    example: { input: { title: 'Morning clinic visit', guidanceSeen: true } },
   },
+  walkWrite({
+    name: 'ospeli_walks_pause', audit: 'walk.paused',
+    summary: 'The person walking steps out now (a private moment): nothing is counted until ospeli_walks_resume. The time in between is kept as "not seen": it is neither waiting nor hands-on, it stays inside start to finish, and a wait that was partly not seen is not named as the longest wait. Works during a wait or a step.',
+    mutate: (w, input, now) => {
+      if (walkState(w) === 'paused') throw new CommandError('conflict', 'The walk is already paused. ospeli_walks_resume carries on.', { state: 'paused' });
+      pauseWalk(w, now);
+    },
+  }),
+  walkWrite({
+    name: 'ospeli_walks_resume', audit: 'walk.resumed',
+    summary: 'The person walking is back: the wait or step that was under way carries on from this moment. The paused time is kept as "not seen".',
+    mutate: (w, input, now) => {
+      if (walkState(w) !== 'paused') throw new CommandError('conflict', 'The walk is not paused.', { state: walkState(w) });
+      resumeWalk(w, now);
+    },
+  }),
   walkWrite({
     name: 'ospeli_walks_step_start', audit: 'walk.step-started',
     summary: 'A step starts now: someone begins doing something to or for the patient or item being followed. The wait before it ends at this moment.',
     mutate: (w, input, now) => {
+      if (walkState(w) === 'paused') throw new CommandError('conflict', PAUSED_FIRST, { state: 'paused' });
       if (w.current) throw new CommandError('conflict', 'A step is already running. Mark it done first.', { state: 'step' });
       if (w.steps.length >= MAX_WALK_STEPS) throw new CommandError('conflict', `A walk holds at most ${MAX_WALK_STEPS} steps. Finish this walk and start another.`);
       stepStart(w, now);
@@ -1395,6 +1444,7 @@ COMMAND_LIST.push(
     summary: 'The running step ends now, and waiting starts again from this moment. Send interrupted: true when the work stopped before it was finished. Name the step afterwards with ospeli_walks_step_name, or leave it for later.',
     props: { interrupted: { type: 'boolean', description: 'The work stopped before the step was finished.' } },
     mutate: (w, input, now) => {
+      if (walkState(w) === 'paused') throw new CommandError('conflict', PAUSED_FIRST, { state: 'paused' });
       if (!w.current) throw new CommandError('conflict', 'No step is running. Start one first.', { state: 'waiting' });
       if (isDoubleTap(w, now)) throw new CommandError('conflict', 'That tap came less than a second after the step started, so it was taken as a double tap. The step is still running.', { state: 'step' });
       stepDone(w, now, { interrupted: input.interrupted === true });
@@ -1411,6 +1461,7 @@ COMMAND_LIST.push(
       nextStarted: { type: 'boolean', description: 'The next step started the moment this one ended.' }, notAName: NOT_A_NAME },
     mutate: (w, input) => {
       if (!w.steps.length) throw new CommandError('conflict', 'No step has ended yet. Start a step and mark it done first.', { state: walkState(w) });
+      if (input.nextStarted && walkState(w) === 'paused') throw new CommandError('conflict', PAUSED_FIRST, { state: 'paused' });
       if (input.nextStarted && w.current) throw new CommandError('conflict', 'The next step is already running.', { state: 'step' });
       if (input.nextStarted && w.steps.length >= MAX_WALK_STEPS) throw new CommandError('conflict', `A walk holds at most ${MAX_WALK_STEPS} steps.`);
       nameLast(w, { name: input.name, role: input.role, msg: typeof input.msg === 'boolean' ? input.msg : undefined, nextStarted: input.nextStarted === true });
@@ -1420,9 +1471,9 @@ COMMAND_LIST.push(
   }),
   walkWrite({
     name: 'ospeli_walks_undo', audit: 'walk.tap-undone',
-    summary: 'Take back the last tap on the walk in progress: a step that just started goes back to waiting; a step that just ended runs again as if it had not been marked done.',
+    summary: 'Take back the last tap on the walk in progress: a step that just started goes back to waiting; a step that just ended runs again as if it had not been marked done; a pause that just began is dropped; a coming back that was just tapped is paused again.',
     mutate: (w) => {
-      if (!w.current && !w.steps.length) throw new CommandError('conflict', 'There is nothing to undo yet.', { state: 'waiting' });
+      if (!w.current && !w.steps.length && !(w.pauses || []).length) throw new CommandError('conflict', 'There is nothing to undo yet.', { state: 'waiting' });
       const undone = undoLast(w);
       return { undone, audit: { undone } };
     },
@@ -1430,7 +1481,7 @@ COMMAND_LIST.push(
   walkWrite({
     name: 'ospeli_walks_discard', audit: 'walk.discarded',
     summary: 'Delete the walk in progress without making a map. Its taps are not kept.',
-    mutate: (w, input, now) => { w.status = 'discarded'; w.finishedAt = now; w.steps = []; w.current = null; },
+    mutate: (w, input, now) => { w.status = 'discarded'; w.finishedAt = now; w.steps = []; w.current = null; w.pauses = []; w.last = null; },
   }),
   {
     name: 'ospeli_walks_finish',
@@ -1449,6 +1500,7 @@ COMMAND_LIST.push(
         const store = walkStore(raw);
         const w = store.walks.find((x) => x.status === 'walking' && (!input.walkId || x.id === input.walkId));
         if (!w) throw new CommandError('not-found', 'No walk is in progress on this device.', { fix: 'ospeli_walks_start starts a walk.' });
+        if (walkState(w) === 'paused') throw new CommandError('conflict', PAUSED_FIRST, { state: 'paused' });
         if (w.current) throw new CommandError('conflict', 'A step is still running. Mark it done, then finish the walk.', { state: 'step' });
         if (!w.steps.length) throw new CommandError('conflict', 'This walk has no steps yet. Time at least one step, or delete the walk.', { state: 'waiting' });
         // The walk ends at its last step: time after the last "step done" tap is not part of it.
@@ -1463,7 +1515,9 @@ COMMAND_LIST.push(
         const m = newMap({ id: mapId, from: 'blank', title: w.title, at: now, role: actor.role });
         m.from = 'walk';
         m.today = mapStepsFromWalk(w, mapId); m.proposed = JSON.parse(JSON.stringify(m.today)); m.nextStep = m.today.length + 1;
-        m.walk = { id: w.id, startedAt: w.startedAt, finishedAt, ...(clockMoved(w) ? { clockMoved: true } : {}) };
+        const tot = walkTotals({ ...w, finishedAt });
+        m.walk = { id: w.id, startedAt: w.startedAt, finishedAt, ...(clockMoved(w) ? { clockMoved: true } : {}),
+          ...(tot.notSeenSec ? { notSeenSec: tot.notSeenSec } : {}), guidanceSeen: !!w.guidanceSeenAt };
         if (left >= 0) maps.maps[left] = m; else maps.maps.push(m);
         await core.setMeta(MAPS_KEY, maps);
         w.status = 'finished'; w.finishedAt = finishedAt; w.mapId = mapId;
@@ -1527,6 +1581,8 @@ const EXAMPLE_NEEDS = {
   ospeli_walks_step_done: `${NEED_WALK} A step must be running: ospeli_walks_step_start starts it.`,
   ospeli_walks_step_name: `${NEED_WALK} At least one step must have ended (ospeli_walks_step_start, then ospeli_walks_step_done).`,
   ospeli_walks_undo: `${NEED_WALK} There must be a tap to undo: a step started or ended.`,
+  ospeli_walks_pause: `${NEED_WALK} It must not be paused already.`,
+  ospeli_walks_resume: `${NEED_WALK} It must be paused: ospeli_walks_pause pauses it.`,
   ospeli_walks_discard: NEED_WALK,
   ospeli_walks_finish: `${NEED_WALK} At least one step must have ended, and none may be running.`,
 };

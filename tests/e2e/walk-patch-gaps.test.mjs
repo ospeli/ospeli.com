@@ -11,6 +11,7 @@ after(async () => { await env.close(); });
 async function openWalk(page) {
   await page.waitForSelector('[data-test="walk-card"]');
   await page.locator('[data-test="walk-start"]').click();
+  await page.locator('[data-test="walk-before-ok"]').click();
   await page.waitForSelector('[data-test="walk"]');
 }
 const state = (page, want) => page.waitForFunction((w) => document.querySelector('[data-test="walk"]')?.dataset.state === w, want);

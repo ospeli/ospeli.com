@@ -9,6 +9,13 @@
 //     to or for the patient or item being followed;
 //   waiting before a step   = the tap that ended the step before (or the start of the walk) to
 //     this step's "Step starts" tap: everything else, even when staff are busy elsewhere.
+//   not seen               = time between "Pause" and "I am back": the person walking stepped out
+//     (a private moment). It is neither waiting nor hands-on. It stays inside start to finish,
+//     is taken out of the step or wait it fell in, and a wait that was partly not seen is never
+//     named as the longest wait;
+//   planned or required wait = a wait a person marked on the map as needed by the process itself.
+//     It still counts as waiting; it is only left out of "longest wait". Ospeli holds no list of
+//     such waits: the mark records what staff said.
 // Times are computed from the stored clock times in whole seconds and rounded only for display;
 // a timer on screen is never the record. One walk is one observation, not the process.
 
@@ -21,34 +28,84 @@ export const MIN_LONGEST_WAIT_SEC = 30;
 
 const secs = (a, b) => Math.max(0, Math.round((Date.parse(b) - Date.parse(a)) / 1000));
 
-export function newWalk({ id, title, at, role }) {
-  return { id, title, startedAt: at, steps: [], current: null, status: 'walking', mapId: null, createdByRole: role, finishedAt: null };
+// What the person walking confirms before the first tap (issue #124; decision record 18 Nov 2026).
+// The stop rule comes first. Nothing about anyone is stored: only the time the points were confirmed.
+export const WALK_BEFORE = [
+  'If care is affected or the patient looks unwell, stop and tell the person in charge.',
+  'The patient was asked, and can stop the walk at any time.',
+  'Staff here know you are timing steps, not people.',
+  'Step out for private moments: tap Pause.',
+  'In a small team, a role can point to one person.',
+  'Not for appraisal or staffing.',
+];
+export const PLANNED_WAIT_RULE = 'Mark it only if the whole wait was needed by the process itself, for example a booked time not yet reached or a test that must finish. If part of it was queueing, leave it unmarked.';
+export const NOT_ALWAYS_WASTE = 'Waiting is not always waste. Some waits are planned or needed.';
+
+// guidanceSeenAt: when the person confirmed the before-you-walk points, or null. No name, no device.
+export function newWalk({ id, title, at, role, guidanceSeen = false }) {
+  return { id, title, startedAt: at, steps: [], current: null, pauses: [], last: null, status: 'walking', mapId: null, createdByRole: role, finishedAt: null, guidanceSeenAt: guidanceSeen ? at : null };
 }
 
-// 'step' while a step is running, otherwise 'waiting'.
-export const walkState = (walk) => (walk.current ? 'step' : 'waiting');
+const openPause = (walk) => (walk.pauses || []).find((p) => !p.endAt) || null;
+// 'paused' while the person has stepped out, 'step' while a step is running, otherwise 'waiting'.
+export const walkState = (walk) => (openPause(walk) ? 'paused' : walk.current ? 'step' : 'waiting');
+// What is under way behind a pause: 'step' or 'waiting'.
+export const walkUnder = (walk) => (walk.current ? 'step' : 'waiting');
 
-// When the present wait (or step) began.
+// Seconds between two moments that fell inside a pause (an open pause runs to `now`).
+export function pausedSec(walk, a, b, now = null) {
+  const A = Date.parse(a); const B = Date.parse(b);
+  let ms = 0;
+  for (const p of walk.pauses || []) {
+    const end = p.endAt || now;
+    if (!end) continue;
+    ms += Math.max(0, Math.min(B, Date.parse(end)) - Math.max(A, Date.parse(p.startAt)));
+  }
+  return Math.max(0, Math.round(ms / 1000));
+}
+
+// The person walking steps out: nothing is counted until they are back.
+export function pauseWalk(walk, at) {
+  if (openPause(walk)) throw new Error('The walk is already paused.');
+  (walk.pauses ||= []).push({ startAt: at });
+  walk.last = 'pause';
+  return walk;
+}
+export function resumeWalk(walk, at) {
+  const p = openPause(walk);
+  if (!p) throw new Error('The walk is not paused.');
+  p.endAt = at;
+  walk.last = 'resume';
+  return walk;
+}
+
+// When the present wait (or step) began; while paused, when the pause began.
 export function sinceAt(walk) {
+  const p = openPause(walk);
+  if (p) return p.startAt;
   if (walk.current) return walk.current.startAt;
   const last = walk.steps[walk.steps.length - 1];
   return last ? last.endAt : walk.startedAt;
 }
 
 export function stepStart(walk, at) {
+  if (openPause(walk)) throw new Error('The walk is paused. Say you are back first.');
   if (walk.current) throw new Error('A step is already running.');
   if (walk.steps.length >= MAX_WALK_STEPS) throw new Error(`A walk holds at most ${MAX_WALK_STEPS} steps.`);
   if (isDoubleStart(walk, at)) throw new Error('That tap came less than a second after the step before ended.');
   walk.current = { startAt: at };
+  walk.last = 'start';
   return walk;
 }
 
 // End the running step. interrupted: the work stopped before it was finished.
 export function stepDone(walk, at, { interrupted = false } = {}) {
+  if (openPause(walk)) throw new Error('The walk is paused. Say you are back first.');
   if (!walk.current) throw new Error('No step is running.');
   if (isDoubleTap(walk, at)) throw new Error('That tap came less than a second after the step started.');
   walk.steps.push({ startAt: walk.current.startAt, endAt: at, name: null, role: null, msg: false, ...(interrupted ? { interrupted: true } : {}) });
   walk.current = null;
+  walk.last = 'done';
   return walk;
 }
 
@@ -78,6 +135,7 @@ export function clockMoved(walk) {
   if (walk.current) taps.push(walk.current.startAt);
   if (walk.finishedAt) taps.push(walk.finishedAt);
   for (let i = 1; i < taps.length; i++) if (Date.parse(taps[i]) < Date.parse(taps[i - 1])) return true;
+  for (const p of walk.pauses || []) if (Date.parse(p.startAt) < Date.parse(walk.startedAt) || (p.endAt && Date.parse(p.endAt) < Date.parse(p.startAt))) return true;
   return false;
 }
 
@@ -99,6 +157,12 @@ export function nameLast(walk, { name, role, msg, nextStarted = false }) {
 // Take back the last tap: a running step goes back to waiting; otherwise the last ended step
 // runs again (its name is dropped with it).
 export function undoLast(walk) {
+  const pauses = walk.pauses || [];
+  // A pause or a coming back is a tap like any other: it can be taken back while it is the last tap.
+  if (walk.last === 'pause' && openPause(walk)) { pauses.pop(); walk.last = null; return 'pause'; }
+  if (walk.last === 'resume' && pauses.length && pauses[pauses.length - 1].endAt) { delete pauses[pauses.length - 1].endAt; walk.last = null; return 'resume'; }
+  if (openPause(walk)) throw new Error('The walk is paused. Say you are back first.');
+  walk.last = null;
   if (walk.current) { walk.current = null; return 'step-start'; }
   const last = walk.steps.pop();
   if (!last) throw new Error('There is nothing to undo.');
@@ -107,19 +171,34 @@ export function undoLast(walk) {
 }
 
 // The measured steps, recomputed from the stored tap times.
+// Time that fell inside a pause is taken out of the wait or the step it fell in and kept beside
+// it as "not seen" (waitNotSeenSec, workNotSeenSec), so nothing is counted that nobody watched.
 export function walkSteps(walk) {
-  return walk.steps.map((s, i) => ({
-    name: s.name || `Step ${i + 1}`, role: s.role || ROLE_NOT_SET, msg: !!s.msg, interrupted: !!s.interrupted,
-    waitSec: secs(i === 0 ? walk.startedAt : walk.steps[i - 1].endAt, s.startAt), workSec: secs(s.startAt, s.endAt),
-  }));
+  return walk.steps.map((s, i) => {
+    const from = i === 0 ? walk.startedAt : walk.steps[i - 1].endAt;
+    const waitNotSeenSec = Math.min(secs(from, s.startAt), pausedSec(walk, from, s.startAt));
+    const workNotSeenSec = Math.min(secs(s.startAt, s.endAt), pausedSec(walk, s.startAt, s.endAt));
+    return {
+      name: s.name || `Step ${i + 1}`, role: s.role || ROLE_NOT_SET, msg: !!s.msg, interrupted: !!s.interrupted,
+      waitSec: secs(from, s.startAt) - waitNotSeenSec, workSec: secs(s.startAt, s.endAt) - workNotSeenSec,
+      ...(waitNotSeenSec ? { waitNotSeenSec } : {}), ...(workNotSeenSec ? { workNotSeenSec } : {}),
+    };
+  });
 }
 
+// elapsedSec is the whole walk, start to finish, with any time not seen inside it.
+// notSeenSec is the paused time inside the steps and waits recorded so far.
 export function walkTotals(walk, now = null) {
   const steps = walkSteps(walk);
   const workSec = steps.reduce((n, s) => n + s.workSec, 0); const waitSec = steps.reduce((n, s) => n + s.waitSec, 0);
+  const notSeenSec = steps.reduce((n, s) => n + (s.waitNotSeenSec || 0) + (s.workNotSeenSec || 0), 0);
   const end = walk.finishedAt || now || (walk.steps.length ? walk.steps[walk.steps.length - 1].endAt : walk.startedAt);
-  return { steps: steps.length, workSec, waitSec, elapsedSec: secs(walk.startedAt, end) };
+  return { steps: steps.length, workSec, waitSec, notSeenSec, elapsedSec: secs(walk.startedAt, end) };
 }
+
+// Share of the observed time that was waiting, as a whole percentage: waiting / (waiting + hands-on).
+// Time not seen is in neither part. Null when nothing was observed.
+export const waitShareOf = (waitSec, workSec) => (waitSec + workSec > 0 ? Math.round((100 * waitSec) / (waitSec + workSec)) : null);
 
 // The steps of the map a finished walk becomes. Minutes are rounded for the map's own fields;
 // the seconds stay beside them and are what the screen and the totals use.
@@ -127,6 +206,7 @@ export function mapStepsFromWalk(walk, mapId) {
   return walkSteps(walk).map((s, i) => ({
     id: `${mapId}-s${i + 1}`, name: s.name, role: s.role, wait: Math.round(s.waitSec / 60), work: Math.round(s.workSec / 60),
     waitSec: s.waitSec, workSec: s.workSec, msg: s.msg, par: false, ...(s.interrupted ? { interrupted: true } : {}),
+    ...(s.waitNotSeenSec ? { waitNotSeenSec: s.waitNotSeenSec } : {}), ...(s.workNotSeenSec ? { workNotSeenSec: s.workNotSeenSec } : {}),
   }));
 }
 
@@ -163,9 +243,13 @@ export function fmtClock(sec) {
 
 // The longest wait or waits on a walked map: every step whose wait equals the longest, when
 // that is at or above the floor. An empty list when no wait reaches the floor.
+// Left out: a wait marked planned or required (it is needed, so it is not the question to ask),
+// and a wait that was partly not seen (its length is not known).
+export const waitCanBeNamed = (x) => !x.plannedWait && !x.waitNotSeenSec;
 export function longestWaits(stepsSec) {
-  const max = Math.max(0, ...stepsSec.map((x) => x.wait || 0));
-  return max >= MIN_LONGEST_WAIT_SEC ? stepsSec.filter((x) => x.wait === max) : [];
+  const open = stepsSec.filter(waitCanBeNamed);
+  const max = Math.max(0, ...open.map((x) => x.wait || 0));
+  return max >= MIN_LONGEST_WAIT_SEC ? open.filter((x) => x.wait === max) : [];
 }
 
 // What the guide says about a walked map. One walk is one observation, so nothing here offers
@@ -175,11 +259,14 @@ export const WALK_BASIS = {
   unnamed: 'Local definition: a step needs a name and a role to be read on a map.',
   limits: 'Method: a process walk in the manner of lean value stream mapping (Rother and Shook, Learning to See). One walk is one observation.',
   clock: 'Local definition: a tap stamped earlier than the tap before it means the device clock was set back.',
+  planned: 'Local definition: a planned or required wait is one a person marked as needed by the process itself. It counts as waiting and is left out of the longest wait. Ospeli keeps no list of such waits.',
+  notSeen: 'Local definition: time between Pause and I am back is not seen. It is neither waiting nor hands-on, and a wait that was partly not seen is not named as the longest wait.',
 };
 export function suggestWalk(list, { clockMoved: moved = false } = {}) {
   const out = [];
   const inSec = stepsInSeconds(list);
   const top = longestWaits(inSec);
+  const left = inSec.some((x) => !waitCanBeNamed(x));
   if (moved) {
     // Times from a clock that was set back cannot be ranked: name no longest wait.
     out.push({ id: 'walk-clock', kind: 'ask', title: 'The phone\'s clock changed during this walk',
@@ -191,7 +278,19 @@ export function suggestWalk(list, { clockMoved: moved = false } = {}) {
       title: top.length === 1 ? `Longest wait on this walk: ${t} before “${top[0].name}”`
         : `Longest wait on this walk, tied: ${t} each, before ${top.map((x) => `“${x.name}”`).join(' and before ')}`,
       text: 'Ask what it was waiting for: a person, information, a room, equipment or supplies, transport, a decision, or a queue. A wait belongs to the process, not to the role that comes next. Then walk it again on another day or at another time before changing anything.',
-      why: 'Calculated from the tap times of this one walk.', basis: WALK_BASIS.longestWait });
+      why: `Calculated from the tap times of this one walk.${left ? ' Waits marked planned or required, and waits that were partly not seen, are left out.' : ''}`, basis: WALK_BASIS.longestWait });
+  }
+  const planned = inSec.filter((x) => x.plannedWait);
+  if (planned.length) {
+    out.push({ id: 'walk-planned', kind: 'ask', title: `${planned.length} ${planned.length === 1 ? 'wait is' : 'waits are'} marked planned or required: ${fmtSeconds(planned.reduce((n, x) => n + (x.wait || 0), 0))}`,
+      text: `${NOT_ALWAYS_WASTE} These still count as waiting and are left out of the longest wait. ${PLANNED_WAIT_RULE}`,
+      why: 'A person marked them on this map. Ospeli does not judge which waits are needed.', basis: WALK_BASIS.planned });
+  }
+  const notSeen = inSec.reduce((n, x) => n + (x.waitNotSeenSec || 0) + (x.workNotSeenSec || 0), 0);
+  if (notSeen) {
+    out.push({ id: 'walk-not-seen', kind: 'ask', title: `${fmtSeconds(notSeen)} of this walk was not seen`,
+      text: 'The walk was paused while the person walking stepped out. That time is inside start to finish, and is counted as neither waiting nor hands-on.',
+      why: 'Calculated from the Pause and I am back taps.', basis: WALK_BASIS.notSeen });
   }
   const unnamed = list.filter((s) => s.role === ROLE_NOT_SET || /^Step \d+$/.test(s.name));
   if (unnamed.length) {

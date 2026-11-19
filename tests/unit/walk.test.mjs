@@ -51,7 +51,7 @@ test('a walk of three steps becomes a map; every time is recomputed from the tap
     ['Seen by a nurse', 'Nurse', 0, 30, true],
     ['Step 3', 'Not set', 200, 12, false],
   ]);
-  assert.deepEqual(done.walk.totals, { steps: 3, workSec: 117, waitSec: 240, elapsedSec: 357 });
+  assert.deepEqual(done.walk.totals, { steps: 3, workSec: 117, waitSec: 240, notSeenSec: 0, elapsedSec: 357 });
 
   // Recompute from what is stored, without the commands: the raw tap times give the same numbers.
   const stored = (await core.getMeta('process-walks')).walks[0];
@@ -64,7 +64,7 @@ test('a walk of three steps becomes a map; every time is recomputed from the tap
   const map = await tap('ospeli_maps_get', { mapId: done.mapId });
   assert.deepEqual(validate(commandByName('ospeli_maps_get').output, map, 'output'), []);
   assert.equal(map.title, 'Morning clinic visit');
-  assert.deepEqual(map.walk, { id: 'walk-001', startedAt: START, finishedAt: stored.finishedAt });
+  assert.deepEqual(map.walk, { id: 'walk-001', startedAt: START, finishedAt: stored.finishedAt, guidanceSeen: false }); // started here without the before-you-walk points (issue #124)
   assert.deepEqual(map.today.steps.map((s) => [s.wait, s.work, s.waitSec, s.workSec]), [[1, 1, 40, 75], [0, 1, 0, 30], [3, 0, 200, 12]]);
   assert.equal(map.today.steps[2].interrupted, true);
   const k = map.today.statsSec;
@@ -171,7 +171,7 @@ test('a walk is for people only: an agent may read it, never start, tap, finish 
   await runCommand(core, 'ospeli_agents_set_access', { allowed: true }, human('coo'));
   await runCommand(core, 'ospeli_agents_add', { name: 'flow-bot', role: 'ops-manager', days: 30 }, human('coo'));
   const bot = { type: 'agent', role: 'ops-manager', agent: 'flow-bot' };
-  for (const name of ['ospeli_walks_start', 'ospeli_walks_step_start', 'ospeli_walks_step_done', 'ospeli_walks_step_name', 'ospeli_walks_undo', 'ospeli_walks_finish', 'ospeli_walks_discard']) {
+  for (const name of ['ospeli_walks_start', 'ospeli_walks_step_start', 'ospeli_walks_step_done', 'ospeli_walks_step_name', 'ospeli_walks_undo', 'ospeli_walks_finish', 'ospeli_walks_discard', 'ospeli_walks_pause', 'ospeli_walks_resume']) {
     const cmd = commandByName(name);
     assert.equal(cmd.agents, false, `${name} is people only`);
     assert.equal(cmd.input.additionalProperties, false);
@@ -186,7 +186,7 @@ test('a walk is for people only: an agent may read it, never start, tap, finish 
   assert.equal(audit.filter((a) => a.action === 'agent.refused').length >= 1, true);
   // Every walk command is listed for agents and people with an example.
   const listed = listCommands().filter((c) => c.name.startsWith('ospeli_walks_'));
-  assert.equal(listed.length, 8);
+  assert.equal(listed.length, 10); // pause and resume added with issue #124
   assert.ok(listed.every((c) => c.example && c.summary.length > 40));
 });
 

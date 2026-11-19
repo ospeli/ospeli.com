@@ -1,7 +1,8 @@
 // Walk mode (backlog PM2): follow one patient visit or one item with a phone and tap as things
 // happen. One screen, one big button. Every tap runs a named command (core/commands.js:
 // ospeli_walks_get, ospeli_walks_step_start, ospeli_walks_step_done, ospeli_walks_step_name,
-// ospeli_walks_undo, ospeli_walks_finish, ospeli_walks_discard); the command stamps the time, and
+// ospeli_walks_undo, ospeli_walks_pause, ospeli_walks_resume, ospeli_walks_finish, ospeli_walks_discard,
+// and ospeli_walks_start from the before-you-walk points); the command stamps the time, and
 // the walk is saved on every tap, so a locked phone, a reload or a handed-over phone loses nothing.
 // The timer on screen is worked out from those saved times; it is never the record.
 import { h } from './ui.js';
@@ -37,6 +38,8 @@ export async function renderWalk(box, ctx) {
 
   const nowMs = () => Date.now() - offset;
   const secsSince = (iso) => Math.max(0, (nowMs() - Date.parse(iso)) / 1000);
+  // The big timer: the present wait or step without any time not seen; while paused, the pause itself.
+  const shown = (w) => (w.state === 'paused' ? secsSince(w.since) : Math.max(0, secsSince(w.presentSince || w.since) - (w.sinceNotSeenSec || 0)));
 
   async function load() {
     data = await ctx.run('ospeli_walks_get', {});
@@ -74,7 +77,7 @@ export async function renderWalk(box, ctx) {
     if (stopped || !data?.walk) return;
     const w = data.walk;
     const t = box.querySelector('[data-test="walk-timer"]'); const total = box.querySelector('[data-test="walk-total"]');
-    if (t) t.textContent = fmtClock(secsSince(w.since));
+    if (t) t.textContent = fmtClock(shown(w));
     if (total) total.textContent = `Whole walk ${fmtClock(secsSince(w.startedAt))}`;
   }
 
@@ -126,14 +129,45 @@ export async function renderWalk(box, ctx) {
   function paint() {
     const w = data?.walk;
     if (!w || w.status !== 'walking') {
-      box.replaceChildren(h('section', { class: 'card', 'data-test': 'walk-none' },
-        h('h2', {}, 'No walk in progress'),
-        h('p', {}, 'Start a walk from the Process maps page.'),
-        h('a', { class: 'btn', href: '#/process' }, 'Go to Process maps')));
+      // Before the first tap (issue #124): the points a person confirms, the stop rule first.
+      // One tap starts the walk and the clock. Nothing about anyone is kept, only the time.
+      box.replaceChildren(h('section', { class: 'card walk-before', 'data-test': 'walk-before', 'aria-labelledby': 'wk-before-h' },
+        h('h1', { id: 'wk-before-h' }, 'Before you walk'),
+        h('ul', { class: 'walk-before-list' }, (data.before || []).map((line, i) => h('li', { class: i === 0 ? 'first' : null }, line))),
+        h('button', { type: 'button', class: 'btn walk-before-ok', 'data-test': 'walk-before-ok', 'data-cmd': 'ospeli_walks_start',
+          onclick: async () => {
+            if (ui.busy) return;
+            ui.busy = true;
+            try { await ctx.run('ospeli_walks_start', { guidanceSeen: true }); await load(); say('Walk started. Waiting.'); }
+            catch (err) { ctx.toast(`Not started. ${err.message}`); }
+            finally { ui.busy = false; }
+            draw(); box.querySelector('[data-test="walk-main"]')?.focus({ preventScroll: true });
+          } }, 'I have done this'),
+        h('p', { class: 'meta walk-before-foot' }, 'The walk and its clock start when you tap. ', h('a', { href: '#/process', 'data-test': 'walk-before-no' }, 'Not now'))));
       return;
     }
+    const paused = w.state === 'paused';
     const step = w.state === 'step';
-    const canUndo = Date.now() < ui.undoUntil && (step || w.steps.length > 0);
+    if (paused) {
+      // The person has stepped out: one state word, one button, nothing counted.
+      box.replaceChildren(h('section', { class: 'walk is-paused', 'data-test': 'walk', 'data-state': 'paused', 'aria-labelledby': 'wk-h' },
+        h('div', { class: 'walk-top' },
+          h('h1', { id: 'wk-h' }, 'Walk paused'),
+          h('p', { class: 'walk-sub' }, `${w.title} · one visit, step by step`)),
+        h('div', { class: 'walk-now', 'aria-live': 'off' },
+          h('span', { class: 'walk-state', 'data-test': 'walk-state' }, 'Paused'),
+          h('span', { class: 'walk-timer', role: 'timer', 'data-test': 'walk-timer' }, fmtClock(shown(w))),
+          h('span', { class: 'walk-meta' }, h('span', { 'data-test': 'walk-total' }, `Whole walk ${fmtClock(secsSince(w.startedAt))}`), ` · ${w.steps.length} ${w.steps.length === 1 ? 'step' : 'steps'} saved`)),
+        h('button', { type: 'button', class: 'btn walk-main', 'data-test': 'walk-main', 'data-cmd': 'ospeli_walks_resume',
+          onclick: async () => { const out = await tap('ospeli_walks_resume'); if (!out) return; say(out.walk.state === 'step' ? 'You are back. The step carries on. Hands-on.' : 'You are back. Waiting.'); showUndo(); draw(); } }, 'I am back'),
+        h('p', { class: 'walk-def', 'data-test': 'walk-def' }, `Paused: nothing is counted. This time shows on the map as “not seen”. ${w.under === 'step' ? 'The step carries on when you are back.' : 'The wait carries on when you are back.'}`),
+        h('div', { class: 'walk-side' },
+          Date.now() < ui.undoUntil ? h('button', { type: 'button', class: 'btn btn-ghost walk-undo', 'data-test': 'walk-undo', 'data-cmd': 'ospeli_walks_undo',
+            onclick: async () => { const out = await tap('ospeli_walks_undo'); if (out) { ui.undoUntil = 0; say('Undone. Not paused.'); ctx.toast('Undone. Not paused.'); draw(); } } }, 'Undo last tap') : null),
+        h('p', { class: 'meta walk-foot' }, 'Time the steps, never the people. People decide; Ospeli suggests.')));
+      return;
+    }
+    const canUndo = Date.now() < ui.undoUntil && (step || w.steps.length > 0 || w.sinceNotSeenSec > 0);
     const main = h('button', { type: 'button', class: 'btn walk-main', 'data-test': 'walk-main', 'data-cmd': step ? 'ospeli_walks_step_done' : 'ospeli_walks_step_start',
       onclick: async () => {
         // A half-answered sheet belongs to the step before: keep what was chosen before moving on.
@@ -151,18 +185,20 @@ export async function renderWalk(box, ctx) {
         h('p', { class: 'walk-sub' }, `${w.title} · one visit, step by step`)),
       h('div', { class: 'walk-now', 'aria-live': 'off' },
         h('span', { class: 'walk-state', 'data-test': 'walk-state' }, step ? 'Hands-on' : 'Waiting'),
-        h('span', { class: 'walk-timer', role: 'timer', 'data-test': 'walk-timer' }, fmtClock(secsSince(w.since))),
+        h('span', { class: 'walk-timer', role: 'timer', 'data-test': 'walk-timer' }, fmtClock(shown(w))),
         h('span', { class: 'walk-meta' }, h('span', { 'data-test': 'walk-total' }, `Whole walk ${fmtClock(secsSince(w.startedAt))}`), ` · ${w.steps.length} ${w.steps.length === 1 ? 'step' : 'steps'} saved`)),
       w.clockMoved ? h('p', { class: 'walk-clock', role: 'alert', 'data-test': 'walk-clock' }, h('b', {}, 'The phone\'s clock changed during this walk.'), ' Its times cannot be relied on. You can finish it, but walk it again.') : null,
       main,
       h('p', { class: 'walk-def', 'data-test': 'walk-def' }, step
         ? 'Hands-on: someone is working on this patient or item.'
-        : 'Waiting: no one is working on this patient or item, even if staff are busy elsewhere.'),
+        : 'Waiting: no one is working on this patient or item right now.'),
       h('div', { class: 'walk-side' },
         step ? h('button', { type: 'button', class: 'btn btn-ghost walk-stop', 'data-test': 'walk-stopped', 'data-cmd': 'ospeli_walks_step_done',
-          onclick: async () => { const out = await tap('ospeli_walks_step_done', { interrupted: true }); if (out) { resetSheet(); ui.sheet = true; say('Step marked as interrupted. Waiting.'); showUndo(); draw(); } } }, 'Interrupted') : null,
+          onclick: async () => { const out = await tap('ospeli_walks_step_done', { interrupted: true }); if (out) { resetSheet(); ui.sheet = true; say('Step marked as interrupted. Waiting.'); showUndo(); draw(); } } }, 'Step interrupted') : null,
+        h('button', { type: 'button', class: 'btn btn-ghost walk-pause', 'data-test': 'walk-pause', 'data-cmd': 'ospeli_walks_pause', 'aria-label': 'Pause: I have stepped out',
+          onclick: async () => { const out = await tap('ospeli_walks_pause'); if (out) { say('Paused. Nothing is counted until you are back.'); showUndo(); draw(); box.querySelector('[data-test="walk-main"]')?.focus({ preventScroll: true }); } } }, 'Pause'),
         canUndo ? h('button', { type: 'button', class: 'btn btn-ghost walk-undo', 'data-test': 'walk-undo', 'data-cmd': 'ospeli_walks_undo',
-          onclick: async () => { const out = await tap('ospeli_walks_undo'); if (out) { resetSheet(); ui.undoUntil = 0; const msg = out.undone === 'step-done' ? 'Undone. The step is running again.' : 'Undone. Waiting again.'; say(msg); ctx.toast(msg); draw(); } } }, 'Undo last tap') : null),
+          onclick: async () => { const out = await tap('ospeli_walks_undo'); if (out) { resetSheet(); ui.undoUntil = 0; const msg = out.undone === 'resume' ? 'Undone. Paused again.' : out.undone === 'step-done' ? 'Undone. The step is running again.' : out.walk.state === 'step' ? 'Undone. The step is running.' : 'Undone. Waiting again.'; say(msg); ctx.toast(msg); draw(); } } }, 'Undo last tap') : null),
       ui.sheet && w.steps.length ? sheet(w) : null,
       h('div', { class: 'walk-end' },
         ui.confirm
@@ -176,7 +212,7 @@ export async function renderWalk(box, ctx) {
           : h('button', { type: 'button', class: 'btn btn-ghost walk-finish', 'data-test': 'walk-finish', disabled: w.steps.length && !step ? null : true,
             onclick: () => { ui.confirm = true; draw(); box.querySelector('[data-test="walk-finish-yes"]')?.focus(); } }, 'Finish walk'),
         !w.steps.length || step ? h('p', { class: 'meta' }, step ? 'Mark the step done before you finish.' : 'Time at least one step before you finish.') : null),
-      h('p', { class: 'meta walk-foot' }, 'Time the steps, never the people. Tell staff what you are doing. People decide; Ospeli suggests.'),
+      h('p', { class: 'meta walk-foot' }, 'Time the steps, never the people. People decide; Ospeli suggests.'),
       h('p', { class: 'meta walk-foot' }, h('button', { type: 'button', class: 'linkish', 'data-test': 'walk-delete', 'data-cmd': 'ospeli_walks_discard',
         onclick: async () => { if (!window.confirm('Delete this walk? Its times are not kept.')) return; const out = await tap('ospeli_walks_discard'); if (out) { ctx.toast('Walk deleted.'); location.hash = '#/process'; } } }, 'Delete this walk'))));
   }

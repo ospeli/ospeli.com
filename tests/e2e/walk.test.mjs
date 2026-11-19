@@ -13,7 +13,7 @@ const noSideways = (page) => page.evaluate(() => document.documentElement.scroll
 const walkState = (page) => page.getAttribute('[data-test="walk"]', 'data-state');
 const stored = (page) => page.evaluate(async () => (await window.ospeli.core.getMeta('process-walks'))?.walks || []);
 
-test('first-time user at 360 px: walk three steps and see the timed map in 15 taps, nothing typed', async () => {
+test('first-time user at 360 px: walk three steps and see the timed map in 16 taps, nothing typed', async () => {
   // A UK-English phone, so the walk's date has one exact form (other devices: locale-41.test.mjs).
   const { context, page, errors } = await openPage(env, { width: 360, height: 780, path: '#/process', touch: true, locale: 'en-GB' });
   let taps = 0;
@@ -25,8 +25,31 @@ test('first-time user at 360 px: walk three steps and see the timed map in 15 ta
   assert.match(await page.textContent('[data-test="walk-card"]'), /Walk it and time it.*No names, no patient details\. Works with no connection\./s);
   const started = Date.now();
   await tap('[data-test="walk-start"]');
-  await page.waitForSelector('[data-test="walk"]');
+  // Before the first tap (issue #124): six short points, the stop rule first, and one button, all
+  // on a 360 by 640 screen with nothing to scroll. One tap starts the walk and its clock.
+  await page.waitForSelector('[data-test="walk-before"]');
   assert.match(page.url(), /#\/process\/walk$/);
+  await page.setViewportSize({ width: 360, height: 640 });
+  const before = await page.evaluate(() => {
+    const box = document.querySelector('[data-test="walk-before"]'); const ok = document.querySelector('[data-test="walk-before-ok"]');
+    const px = (e) => parseFloat(getComputedStyle(e).fontSize);
+    return { lines: [...box.querySelectorAll('li')].map((li) => li.textContent), okBottom: ok.getBoundingClientRect().bottom, okH: ok.getBoundingClientRect().height,
+      smallest: Math.min(...[...box.querySelectorAll('h1, li, p, a, button')].map(px)), inputs: box.querySelectorAll('input, select, textarea').length,
+      targets: [...box.querySelectorAll('button, a')].map((e) => Math.round(e.getBoundingClientRect().height)), words: box.innerText.split(/\s+/).length, scrollY: window.scrollY };
+  });
+  assert.equal(before.lines.length, 6);
+  assert.match(before.lines[0], /^If care is affected or the patient looks unwell, stop and tell the person in charge\.$/);
+  assert.match(before.lines.join(' '), /The patient was asked, and can stop the walk at any time\..*Staff here know.*private moments.*a role can point to one person.*Not for appraisal or staffing\./);
+  assert.ok(before.okBottom <= 640 && before.scrollY === 0, `the button is on the first 360 by 640 screen (${before.okBottom})`);
+  assert.ok(before.okH >= 44 && before.targets.every((x) => x >= 44), `tap targets ${before.targets}`);
+  assert.ok(before.smallest >= 15, `smallest text ${before.smallest}px`);
+  assert.equal(before.inputs, 0, 'nothing to fill in or tick: no consent form, no names');
+  assert.ok(before.words <= 80, `${before.words} words before the walk`);
+  assert.equal((await stored(page)).length, 0, 'no walk and no clock until the button is tapped');
+  await page.setViewportSize({ width: 360, height: 780 });
+  await tap('[data-test="walk-before-ok"]');
+  await page.waitForSelector('[data-test="walk"]');
+  assert.match((await stored(page))[0].guidanceSeenAt, /^\d{4}-/, 'only the time the points were confirmed is kept');
 
   // The walk screen: the state, a big timer and one big button, all on the first screen.
   const look = await page.evaluate(() => {
@@ -76,7 +99,7 @@ test('first-time user at 360 px: walk three steps and see the timed map in 15 ta
   assert.match(await page.textContent('[data-test="walk-confirm"]'), /Finish and see the map\?/);
   await tap('[data-test="walk-finish-yes"]');
   await page.waitForSelector('[data-test="pm-stats"]');
-  assert.equal(taps, 15, 'start 1, three steps of 4 taps, finish 2');
+  assert.equal(taps, 16, 'start 1, the before-you-walk points 1 (issue #124), three steps of 4 taps, finish 2');
   assert.ok(Date.now() - started < 5 * 60 * 1000, 'well under five minutes');
 
   // The map: measured on one walk, in seconds, and it says what one walk can show.
@@ -113,6 +136,7 @@ test('a reload in the middle loses nothing; undo, name it later, work stopped, a
   const { context, page, errors } = await openPage(env, { width: 390, path: '#/process', touch: true });
   await page.waitForSelector('[data-test="walk-start"]');
   await page.tap('[data-test="walk-start"]');
+  await page.tap('[data-test="walk-before-ok"]');
   await page.waitForSelector('[data-test="walk"]');
   await page.tap('[data-test="walk-main"]');
   await page.waitForFunction(() => document.querySelector('[data-test="walk"]')?.dataset.state === 'step');
@@ -207,6 +231,7 @@ test('with no connection the walk still works, and a walk can be deleted (1280px
   await page.waitForFunction(() => navigator.serviceWorker?.controller != null, null, { timeout: 15000 }).catch(() => {});
   await context.setOffline(true);
   await page.click('[data-test="walk-start"]');
+  await page.click('[data-test="walk-before-ok"]');
   await page.waitForSelector('[data-test="walk"]');
   await page.click('[data-test="walk-main"]');
   await page.waitForFunction(() => document.querySelector('[data-test="walk"]')?.dataset.state === 'step');
@@ -227,8 +252,11 @@ test('with no connection the walk still works, and a walk can be deleted (1280px
   assert.equal(w.status, 'discarded'); assert.equal(w.steps.length, 0);
   // The address of the walk screen with no walk in progress is not a dead end.
   await page.goto(`${env.appUrl}#/process/walk`);
-  await page.waitForSelector('[data-test="walk-none"]');
-  assert.match(await page.textContent('[data-test="walk-none"]'), /No walk in progress/);
+  // It offers the before-you-walk points and a way back; no walk starts by opening the address.
+  await page.waitForSelector('[data-test="walk-before"]');
+  assert.equal(await page.locator('[data-test="walk-before-ok"]').count(), 1);
+  assert.equal(await page.getAttribute('[data-test="walk-before-no"]', 'href'), '#/process');
+  assert.equal((await stored(page)).filter((x) => x.status === 'walking').length, 0);
   await context.setOffline(false);
   assert.deepEqual(errors, []);
   await context.close();
@@ -238,6 +266,7 @@ test('a half-answered step is kept when the next step is timed, and "Name it lat
   const { context, page, errors } = await openPage(env, { width: 390, path: '#/process', touch: true });
   await page.waitForSelector('[data-test="walk-start"]');
   await page.tap('[data-test="walk-start"]');
+  await page.tap('[data-test="walk-before-ok"]');
   await page.waitForSelector('[data-test="walk"]');
   const state = (want) => page.waitForFunction((w) => document.querySelector('[data-test="walk"]')?.dataset.state === w, want);
   await page.tap('[data-test="walk-main"]'); await state('step');

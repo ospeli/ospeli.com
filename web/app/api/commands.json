@@ -4474,6 +4474,15 @@
               "clockMoved": {
                 "type": "boolean",
                 "description": "Present and true when a tap was stamped earlier than the tap before it: the device clock was set back during the walk, so its times cannot be relied on."
+              },
+              "notSeenSec": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Seconds of the walk that were not seen (the person walking paused and stepped out). Inside start to finish; neither waiting nor hands-on."
+              },
+              "guidanceSeen": {
+                "type": "boolean",
+                "description": "The person confirmed the before-you-walk points before the first tap. Absent on walks made before this was recorded."
               }
             }
           },
@@ -4538,7 +4547,7 @@
               },
               "statsSec": {
                 "type": "object",
-                "description": "For a map made from a walk: the same numbers in seconds, from the measured times."
+                "description": "For a map made from a walk: the same numbers in seconds, from the measured times. elapsed is the observed time (waiting plus hands-on); notSeenSec is the paused time beside it, so start to finish is elapsed + notSeenSec. waitShare is waiting as a % of the observed time. plannedWaitSec is the part of wait a person marked planned or required (still inside wait)."
               },
               "steps": {
                 "type": "array",
@@ -4605,6 +4614,20 @@
                     "edited": {
                       "type": "boolean",
                       "description": "A measured time on this step was changed by hand."
+                    },
+                    "plannedWait": {
+                      "type": "boolean",
+                      "description": "The wait before this step was marked by a person as planned or required. It still counts as waiting; it is left out of the longest wait. Mark it only if the whole wait was needed by the process itself, for example a booked time not yet reached or a test that must finish. If part of it was queueing, leave it unmarked."
+                    },
+                    "waitNotSeenSec": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "description": "On a map made from a walk: seconds of the gap before this step that were not seen (the walk was paused). Not part of waitSec. A wait with this is not named as the longest wait."
+                    },
+                    "workNotSeenSec": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "description": "On a map made from a walk: seconds inside this step that were not seen (the walk was paused). Not part of workSec."
                     }
                   }
                 }
@@ -4738,6 +4761,20 @@
                     "edited": {
                       "type": "boolean",
                       "description": "A measured time on this step was changed by hand."
+                    },
+                    "plannedWait": {
+                      "type": "boolean",
+                      "description": "The wait before this step was marked by a person as planned or required. It still counts as waiting; it is left out of the longest wait. Mark it only if the whole wait was needed by the process itself, for example a booked time not yet reached or a test that must finish. If part of it was queueing, leave it unmarked."
+                    },
+                    "waitNotSeenSec": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "description": "On a map made from a walk: seconds of the gap before this step that were not seen (the walk was paused). Not part of waitSec. A wait with this is not named as the longest wait."
+                    },
+                    "workNotSeenSec": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "description": "On a map made from a walk: seconds inside this step that were not seen (the walk was paused). Not part of workSec."
                     }
                   }
                 }
@@ -5555,6 +5592,10 @@
             "type": "boolean",
             "description": "true when the step starts alongside the step before it instead of after it."
           },
+          "plannedWait": {
+            "type": "boolean",
+            "description": "true to mark the wait before this step as planned or required, false to take the mark off. It records what staff said, not a judgement by Ospeli. The wait still counts as waiting; it is left out of the longest wait. The mark is a fact about the step, so it is kept on both versions of the map. Mark it only if the whole wait was needed by the process itself, for example a booked time not yet reached or a test that must finish. If part of it was queueing, leave it unmarked."
+          },
           "notAName": {
             "type": "boolean",
             "description": "Send true only after the command asked whether the text holds a person's name and it does not (for example \"Yellow Sticker\"). Maps are shared; never use it to keep a real name."
@@ -6251,6 +6292,13 @@
             "type": "string",
             "format": "date-time"
           },
+          "before": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The points a person confirms before the first tap of a walk, the stop rule first. Fixed text."
+          },
           "stepChips": {
             "type": "array",
             "items": {
@@ -6309,6 +6357,10 @@
             "maxLength": 80,
             "description": "What is being followed, e.g. \"Morning clinic visit\". Never a person's name. Defaults to \"Walk 1\", \"Walk 2\"…"
           },
+          "guidanceSeen": {
+            "type": "boolean",
+            "description": "true when the person has confirmed the before-you-walk points that ospeli_walks_get lists (the patient was asked and can stop it, staff know, the stop rule). Only the time is kept. A map from a walk started without it says so."
+          },
           "notAName": {
             "type": "boolean",
             "description": "Send true only after the command asked whether the text holds a person's name and it does not (for example \"Yellow Sticker\"). Maps are shared; never use it to keep a real name."
@@ -6363,9 +6415,30 @@
                 "type": "string",
                 "enum": [
                   "waiting",
+                  "step",
+                  "paused"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up. paused: the person walking has stepped out and nothing is being counted."
+              },
+              "under": {
+                "type": "string",
+                "enum": [
+                  "waiting",
                   "step"
                 ],
-                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up."
+                "description": "What is under way behind a pause, and what carries on when the person is back."
+              },
+              "sinceNotSeenSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds of the present wait or step that were not seen (paused), so far."
+              },
+              "guidanceSeenAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "When the person confirmed the before-you-walk points (ospeli_walks_get lists them), or null. Only a time is kept: no name, no device."
               },
               "startedAt": {
                 "type": "string",
@@ -6380,7 +6453,12 @@
               "since": {
                 "type": "string",
                 "format": "date-time",
-                "description": "When the present wait or step began."
+                "description": "When the present wait or step began; while paused, when the pause began."
+              },
+              "presentSince": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began, whether or not the walk is paused."
               },
               "mapId": {
                 "type": [
@@ -6427,10 +6505,18 @@
                     },
                     "workSec": {
                       "type": "integer",
-                      "description": "Seconds from \"step starts\" to \"step done\"."
+                      "description": "Seconds from \"step starts\" to \"step done\", less any time not seen."
                     },
                     "named": {
                       "type": "boolean"
+                    },
+                    "waitNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds of the gap before this step that were not seen (paused). Not part of waitSec."
+                    },
+                    "workNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds inside this step that were not seen (paused). Not part of workSec."
                     }
                   }
                 }
@@ -6453,8 +6539,13 @@
                   "waitSec": {
                     "type": "integer"
                   },
+                  "notSeenSec": {
+                    "type": "integer",
+                    "description": "Seconds not seen (paused) inside the steps and waits so far: neither waiting nor hands-on."
+                  },
                   "elapsedSec": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "The whole walk, start to finish, with any time not seen inside it."
                   }
                 }
               }
@@ -6473,8 +6564,491 @@
       },
       "example": {
         "input": {
-          "title": "Morning clinic visit"
+          "title": "Morning clinic visit",
+          "guidanceSeen": true
         }
+      }
+    },
+    {
+      "name": "ospeli_walks_pause",
+      "summary": "The person walking steps out now (a private moment): nothing is counted until ospeli_walks_resume. The time in between is kept as \"not seen\": it is neither waiting nor hands-on, it stays inside start to finish, and a wait that was partly not seen is not named as the longest wait. Works during a wait or a step. People only: a walk is a person's own observation on site, so this command is for people, not for agents.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "walkId": {
+            "type": "string",
+            "pattern": "^walk-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "walk"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done"
+            ]
+          },
+          "walk": {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "status",
+              "state",
+              "startedAt",
+              "since",
+              "steps",
+              "totals"
+            ],
+            "description": "A walk. Times are whole seconds between taps, recomputed from the stored tap times.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^walk-[0-9]{3,}$",
+                "maxLength": 16,
+                "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "walking",
+                  "finished",
+                  "discarded"
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "step",
+                  "paused"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up. paused: the person walking has stepped out and nothing is being counted."
+              },
+              "under": {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "step"
+                ],
+                "description": "What is under way behind a pause, and what carries on when the person is back."
+              },
+              "sinceNotSeenSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds of the present wait or step that were not seen (paused), so far."
+              },
+              "guidanceSeenAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "When the person confirmed the before-you-walk points (ospeli_walks_get lists them), or null. Only a time is kept: no name, no device."
+              },
+              "startedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "finishedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "since": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began; while paused, when the pause began."
+              },
+              "presentSince": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began, whether or not the walk is paused."
+              },
+              "mapId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The map this walk became, once finished."
+              },
+              "clockMoved": {
+                "type": "boolean",
+                "description": "true when the device clock moved back during the walk: its times cannot be trusted."
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "role",
+                    "waitSec",
+                    "workSec",
+                    "named"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "msg": {
+                      "type": "boolean"
+                    },
+                    "interrupted": {
+                      "type": "boolean"
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "Seconds from the end of the step before (or the start of the walk) to this step starting."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Seconds from \"step starts\" to \"step done\", less any time not seen."
+                    },
+                    "named": {
+                      "type": "boolean"
+                    },
+                    "waitNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds of the gap before this step that were not seen (paused). Not part of waitSec."
+                    },
+                    "workNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds inside this step that were not seen (paused). Not part of workSec."
+                    }
+                  }
+                }
+              },
+              "totals": {
+                "type": "object",
+                "required": [
+                  "steps",
+                  "workSec",
+                  "waitSec",
+                  "elapsedSec"
+                ],
+                "properties": {
+                  "steps": {
+                    "type": "integer"
+                  },
+                  "workSec": {
+                    "type": "integer"
+                  },
+                  "waitSec": {
+                    "type": "integer"
+                  },
+                  "notSeenSec": {
+                    "type": "integer",
+                    "description": "Seconds not seen (paused) inside the steps and waits so far: neither waiting nor hands-on."
+                  },
+                  "elapsedSec": {
+                    "type": "integer",
+                    "description": "The whole walk, start to finish, with any time not seen inside it."
+                  }
+                }
+              }
+            }
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
+          },
+          "undone": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {},
+        "needs": "A walk in progress on this device: ospeli_walks_start starts one (ospeli_walks_get shows whether one is open). It must not be paused already."
+      }
+    },
+    {
+      "name": "ospeli_walks_resume",
+      "summary": "The person walking is back: the wait or step that was under way carries on from this moment. The paused time is kept as \"not seen\". People only: a walk is a person's own observation on site, so this command is for people, not for agents.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [],
+        "properties": {
+          "walkId": {
+            "type": "string",
+            "pattern": "^walk-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "walk"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done"
+            ]
+          },
+          "walk": {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "status",
+              "state",
+              "startedAt",
+              "since",
+              "steps",
+              "totals"
+            ],
+            "description": "A walk. Times are whole seconds between taps, recomputed from the stored tap times.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^walk-[0-9]{3,}$",
+                "maxLength": 16,
+                "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "walking",
+                  "finished",
+                  "discarded"
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "step",
+                  "paused"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up. paused: the person walking has stepped out and nothing is being counted."
+              },
+              "under": {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "step"
+                ],
+                "description": "What is under way behind a pause, and what carries on when the person is back."
+              },
+              "sinceNotSeenSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds of the present wait or step that were not seen (paused), so far."
+              },
+              "guidanceSeenAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "When the person confirmed the before-you-walk points (ospeli_walks_get lists them), or null. Only a time is kept: no name, no device."
+              },
+              "startedAt": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "finishedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "since": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began; while paused, when the pause began."
+              },
+              "presentSince": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began, whether or not the walk is paused."
+              },
+              "mapId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The map this walk became, once finished."
+              },
+              "clockMoved": {
+                "type": "boolean",
+                "description": "true when the device clock moved back during the walk: its times cannot be trusted."
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "role",
+                    "waitSec",
+                    "workSec",
+                    "named"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "msg": {
+                      "type": "boolean"
+                    },
+                    "interrupted": {
+                      "type": "boolean"
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "Seconds from the end of the step before (or the start of the walk) to this step starting."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Seconds from \"step starts\" to \"step done\", less any time not seen."
+                    },
+                    "named": {
+                      "type": "boolean"
+                    },
+                    "waitNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds of the gap before this step that were not seen (paused). Not part of waitSec."
+                    },
+                    "workNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds inside this step that were not seen (paused). Not part of workSec."
+                    }
+                  }
+                }
+              },
+              "totals": {
+                "type": "object",
+                "required": [
+                  "steps",
+                  "workSec",
+                  "waitSec",
+                  "elapsedSec"
+                ],
+                "properties": {
+                  "steps": {
+                    "type": "integer"
+                  },
+                  "workSec": {
+                    "type": "integer"
+                  },
+                  "waitSec": {
+                    "type": "integer"
+                  },
+                  "notSeenSec": {
+                    "type": "integer",
+                    "description": "Seconds not seen (paused) inside the steps and waits so far: neither waiting nor hands-on."
+                  },
+                  "elapsedSec": {
+                    "type": "integer",
+                    "description": "The whole walk, start to finish, with any time not seen inside it."
+                  }
+                }
+              }
+            }
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
+          },
+          "undone": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {},
+        "needs": "A walk in progress on this device: ospeli_walks_start starts one (ospeli_walks_get shows whether one is open). It must be paused: ospeli_walks_pause pauses it."
       }
     },
     {
@@ -6566,9 +7140,30 @@
                 "type": "string",
                 "enum": [
                   "waiting",
+                  "step",
+                  "paused"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up. paused: the person walking has stepped out and nothing is being counted."
+              },
+              "under": {
+                "type": "string",
+                "enum": [
+                  "waiting",
                   "step"
                 ],
-                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up."
+                "description": "What is under way behind a pause, and what carries on when the person is back."
+              },
+              "sinceNotSeenSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds of the present wait or step that were not seen (paused), so far."
+              },
+              "guidanceSeenAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "When the person confirmed the before-you-walk points (ospeli_walks_get lists them), or null. Only a time is kept: no name, no device."
               },
               "startedAt": {
                 "type": "string",
@@ -6583,7 +7178,12 @@
               "since": {
                 "type": "string",
                 "format": "date-time",
-                "description": "When the present wait or step began."
+                "description": "When the present wait or step began; while paused, when the pause began."
+              },
+              "presentSince": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began, whether or not the walk is paused."
               },
               "mapId": {
                 "type": [
@@ -6630,10 +7230,18 @@
                     },
                     "workSec": {
                       "type": "integer",
-                      "description": "Seconds from \"step starts\" to \"step done\"."
+                      "description": "Seconds from \"step starts\" to \"step done\", less any time not seen."
                     },
                     "named": {
                       "type": "boolean"
+                    },
+                    "waitNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds of the gap before this step that were not seen (paused). Not part of waitSec."
+                    },
+                    "workNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds inside this step that were not seen (paused). Not part of workSec."
                     }
                   }
                 }
@@ -6656,8 +7264,13 @@
                   "waitSec": {
                     "type": "integer"
                   },
+                  "notSeenSec": {
+                    "type": "integer",
+                    "description": "Seconds not seen (paused) inside the steps and waits so far: neither waiting nor hands-on."
+                  },
                   "elapsedSec": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "The whole walk, start to finish, with any time not seen inside it."
                   }
                 }
               }
@@ -6772,9 +7385,30 @@
                 "type": "string",
                 "enum": [
                   "waiting",
+                  "step",
+                  "paused"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up. paused: the person walking has stepped out and nothing is being counted."
+              },
+              "under": {
+                "type": "string",
+                "enum": [
+                  "waiting",
                   "step"
                 ],
-                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up."
+                "description": "What is under way behind a pause, and what carries on when the person is back."
+              },
+              "sinceNotSeenSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds of the present wait or step that were not seen (paused), so far."
+              },
+              "guidanceSeenAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "When the person confirmed the before-you-walk points (ospeli_walks_get lists them), or null. Only a time is kept: no name, no device."
               },
               "startedAt": {
                 "type": "string",
@@ -6789,7 +7423,12 @@
               "since": {
                 "type": "string",
                 "format": "date-time",
-                "description": "When the present wait or step began."
+                "description": "When the present wait or step began; while paused, when the pause began."
+              },
+              "presentSince": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began, whether or not the walk is paused."
               },
               "mapId": {
                 "type": [
@@ -6836,10 +7475,18 @@
                     },
                     "workSec": {
                       "type": "integer",
-                      "description": "Seconds from \"step starts\" to \"step done\"."
+                      "description": "Seconds from \"step starts\" to \"step done\", less any time not seen."
                     },
                     "named": {
                       "type": "boolean"
+                    },
+                    "waitNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds of the gap before this step that were not seen (paused). Not part of waitSec."
+                    },
+                    "workNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds inside this step that were not seen (paused). Not part of workSec."
                     }
                   }
                 }
@@ -6862,8 +7509,13 @@
                   "waitSec": {
                     "type": "integer"
                   },
+                  "notSeenSec": {
+                    "type": "integer",
+                    "description": "Seconds not seen (paused) inside the steps and waits so far: neither waiting nor hands-on."
+                  },
                   "elapsedSec": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "The whole walk, start to finish, with any time not seen inside it."
                   }
                 }
               }
@@ -7000,9 +7652,30 @@
                 "type": "string",
                 "enum": [
                   "waiting",
+                  "step",
+                  "paused"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up. paused: the person walking has stepped out and nothing is being counted."
+              },
+              "under": {
+                "type": "string",
+                "enum": [
+                  "waiting",
                   "step"
                 ],
-                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up."
+                "description": "What is under way behind a pause, and what carries on when the person is back."
+              },
+              "sinceNotSeenSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds of the present wait or step that were not seen (paused), so far."
+              },
+              "guidanceSeenAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "When the person confirmed the before-you-walk points (ospeli_walks_get lists them), or null. Only a time is kept: no name, no device."
               },
               "startedAt": {
                 "type": "string",
@@ -7017,7 +7690,12 @@
               "since": {
                 "type": "string",
                 "format": "date-time",
-                "description": "When the present wait or step began."
+                "description": "When the present wait or step began; while paused, when the pause began."
+              },
+              "presentSince": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began, whether or not the walk is paused."
               },
               "mapId": {
                 "type": [
@@ -7064,10 +7742,18 @@
                     },
                     "workSec": {
                       "type": "integer",
-                      "description": "Seconds from \"step starts\" to \"step done\"."
+                      "description": "Seconds from \"step starts\" to \"step done\", less any time not seen."
                     },
                     "named": {
                       "type": "boolean"
+                    },
+                    "waitNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds of the gap before this step that were not seen (paused). Not part of waitSec."
+                    },
+                    "workNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds inside this step that were not seen (paused). Not part of workSec."
                     }
                   }
                 }
@@ -7090,8 +7776,13 @@
                   "waitSec": {
                     "type": "integer"
                   },
+                  "notSeenSec": {
+                    "type": "integer",
+                    "description": "Seconds not seen (paused) inside the steps and waits so far: neither waiting nor hands-on."
+                  },
                   "elapsedSec": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "The whole walk, start to finish, with any time not seen inside it."
                   }
                 }
               }
@@ -7118,7 +7809,7 @@
     },
     {
       "name": "ospeli_walks_undo",
-      "summary": "Take back the last tap on the walk in progress: a step that just started goes back to waiting; a step that just ended runs again as if it had not been marked done. People only: a walk is a person's own observation on site, so this command is for people, not for agents.",
+      "summary": "Take back the last tap on the walk in progress: a step that just started goes back to waiting; a step that just ended runs again as if it had not been marked done; a pause that just began is dropped; a coming back that was just tapped is paused again. People only: a walk is a person's own observation on site, so this command is for people, not for agents.",
       "kind": "write",
       "roles": [
         "ward-nurse",
@@ -7205,9 +7896,30 @@
                 "type": "string",
                 "enum": [
                   "waiting",
+                  "step",
+                  "paused"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up. paused: the person walking has stepped out and nothing is being counted."
+              },
+              "under": {
+                "type": "string",
+                "enum": [
+                  "waiting",
                   "step"
                 ],
-                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up."
+                "description": "What is under way behind a pause, and what carries on when the person is back."
+              },
+              "sinceNotSeenSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds of the present wait or step that were not seen (paused), so far."
+              },
+              "guidanceSeenAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "When the person confirmed the before-you-walk points (ospeli_walks_get lists them), or null. Only a time is kept: no name, no device."
               },
               "startedAt": {
                 "type": "string",
@@ -7222,7 +7934,12 @@
               "since": {
                 "type": "string",
                 "format": "date-time",
-                "description": "When the present wait or step began."
+                "description": "When the present wait or step began; while paused, when the pause began."
+              },
+              "presentSince": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began, whether or not the walk is paused."
               },
               "mapId": {
                 "type": [
@@ -7269,10 +7986,18 @@
                     },
                     "workSec": {
                       "type": "integer",
-                      "description": "Seconds from \"step starts\" to \"step done\"."
+                      "description": "Seconds from \"step starts\" to \"step done\", less any time not seen."
                     },
                     "named": {
                       "type": "boolean"
+                    },
+                    "waitNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds of the gap before this step that were not seen (paused). Not part of waitSec."
+                    },
+                    "workNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds inside this step that were not seen (paused). Not part of workSec."
                     }
                   }
                 }
@@ -7295,8 +8020,13 @@
                   "waitSec": {
                     "type": "integer"
                   },
+                  "notSeenSec": {
+                    "type": "integer",
+                    "description": "Seconds not seen (paused) inside the steps and waits so far: neither waiting nor hands-on."
+                  },
                   "elapsedSec": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "The whole walk, start to finish, with any time not seen inside it."
                   }
                 }
               }
@@ -7407,9 +8137,30 @@
                 "type": "string",
                 "enum": [
                   "waiting",
+                  "step",
+                  "paused"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up. paused: the person walking has stepped out and nothing is being counted."
+              },
+              "under": {
+                "type": "string",
+                "enum": [
+                  "waiting",
                   "step"
                 ],
-                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up."
+                "description": "What is under way behind a pause, and what carries on when the person is back."
+              },
+              "sinceNotSeenSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds of the present wait or step that were not seen (paused), so far."
+              },
+              "guidanceSeenAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "When the person confirmed the before-you-walk points (ospeli_walks_get lists them), or null. Only a time is kept: no name, no device."
               },
               "startedAt": {
                 "type": "string",
@@ -7424,7 +8175,12 @@
               "since": {
                 "type": "string",
                 "format": "date-time",
-                "description": "When the present wait or step began."
+                "description": "When the present wait or step began; while paused, when the pause began."
+              },
+              "presentSince": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began, whether or not the walk is paused."
               },
               "mapId": {
                 "type": [
@@ -7471,10 +8227,18 @@
                     },
                     "workSec": {
                       "type": "integer",
-                      "description": "Seconds from \"step starts\" to \"step done\"."
+                      "description": "Seconds from \"step starts\" to \"step done\", less any time not seen."
                     },
                     "named": {
                       "type": "boolean"
+                    },
+                    "waitNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds of the gap before this step that were not seen (paused). Not part of waitSec."
+                    },
+                    "workNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds inside this step that were not seen (paused). Not part of workSec."
                     }
                   }
                 }
@@ -7497,8 +8261,13 @@
                   "waitSec": {
                     "type": "integer"
                   },
+                  "notSeenSec": {
+                    "type": "integer",
+                    "description": "Seconds not seen (paused) inside the steps and waits so far: neither waiting nor hands-on."
+                  },
                   "elapsedSec": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "The whole walk, start to finish, with any time not seen inside it."
                   }
                 }
               }
@@ -7608,9 +8377,30 @@
                 "type": "string",
                 "enum": [
                   "waiting",
+                  "step",
+                  "paused"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up. paused: the person walking has stepped out and nothing is being counted."
+              },
+              "under": {
+                "type": "string",
+                "enum": [
+                  "waiting",
                   "step"
                 ],
-                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up."
+                "description": "What is under way behind a pause, and what carries on when the person is back."
+              },
+              "sinceNotSeenSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds of the present wait or step that were not seen (paused), so far."
+              },
+              "guidanceSeenAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "When the person confirmed the before-you-walk points (ospeli_walks_get lists them), or null. Only a time is kept: no name, no device."
               },
               "startedAt": {
                 "type": "string",
@@ -7625,7 +8415,12 @@
               "since": {
                 "type": "string",
                 "format": "date-time",
-                "description": "When the present wait or step began."
+                "description": "When the present wait or step began; while paused, when the pause began."
+              },
+              "presentSince": {
+                "type": "string",
+                "format": "date-time",
+                "description": "When the present wait or step began, whether or not the walk is paused."
               },
               "mapId": {
                 "type": [
@@ -7672,10 +8467,18 @@
                     },
                     "workSec": {
                       "type": "integer",
-                      "description": "Seconds from \"step starts\" to \"step done\"."
+                      "description": "Seconds from \"step starts\" to \"step done\", less any time not seen."
                     },
                     "named": {
                       "type": "boolean"
+                    },
+                    "waitNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds of the gap before this step that were not seen (paused). Not part of waitSec."
+                    },
+                    "workNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds inside this step that were not seen (paused). Not part of workSec."
                     }
                   }
                 }
@@ -7698,8 +8501,13 @@
                   "waitSec": {
                     "type": "integer"
                   },
+                  "notSeenSec": {
+                    "type": "integer",
+                    "description": "Seconds not seen (paused) inside the steps and waits so far: neither waiting nor hands-on."
+                  },
                   "elapsedSec": {
-                    "type": "integer"
+                    "type": "integer",
+                    "description": "The whole walk, start to finish, with any time not seen inside it."
                   }
                 }
               }
