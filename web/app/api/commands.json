@@ -38,7 +38,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -260,7 +262,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -383,7 +387,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1581,7 +1587,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1658,7 +1666,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1800,7 +1810,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1942,7 +1954,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -2049,7 +2063,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": false,
@@ -2284,7 +2300,9 @@
               "cleaner",
               "support-supervisor",
               "storekeeper",
-              "supply-manager"
+              "supply-manager",
+              "facilities-assistant",
+              "facilities-manager"
             ],
             "description": "The one role this agent works for. It is refused if it claims another."
           },
@@ -2451,7 +2469,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -2509,7 +2529,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -2671,7 +2693,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -2828,7 +2852,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -2990,7 +3016,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -3126,7 +3154,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -3371,7 +3401,9 @@
         "bed-manager",
         "ae-nic",
         "estates-tech",
-        "ops-manager"
+        "ops-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -3682,7 +3714,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4155,7 +4189,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4287,7 +4323,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4674,7 +4712,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4998,7 +5038,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -5124,7 +5166,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5218,7 +5262,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5360,7 +5406,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5500,7 +5548,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5613,7 +5663,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5716,7 +5768,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5810,7 +5864,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5904,7 +5960,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5990,7 +6048,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6052,7 +6112,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -6126,7 +6188,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6327,7 +6391,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6524,7 +6590,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6727,7 +6795,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6951,7 +7021,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7148,7 +7220,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7345,7 +7419,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7541,7 +7617,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -7690,7 +7768,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -8592,7 +8672,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -8700,7 +8782,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -8833,7 +8917,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -8940,7 +9026,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -11915,7 +12003,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -12018,7 +12108,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -12257,7 +12349,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -12590,7 +12684,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -12846,7 +12942,9 @@
         "cleaner",
         "support-supervisor",
         "storekeeper",
-        "supply-manager"
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
