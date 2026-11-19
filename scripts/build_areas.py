@@ -22,10 +22,10 @@ GROUP_ORDER = [
 MONTHS = ["Nov 2026", "Dec 2026", "Jan 2027", "Feb 2027", "Mar 2027"]
 # Status in words on every card and page (issue #43):
 #   Built   = runs on the shared core in the app today (beds, engineering work orders, process maps;
-#             first versions of cleaning and transport, stores and supplies, patient feedback).
+#             first versions of cleaning and transport, stores and supplies, patient feedback, facilities).
 #   Preview = a clickable demo on fictional data; not yet built on the core.
 #   Planned = designed, nothing to click yet.
-BUILT = ["A3", "B1", "X1", "B3", "B4", "E4"]
+BUILT = ["A3", "B1", "X1", "B3", "B4", "E4", "B2"]
 # Areas with something to click today.
 # Issue #45: an area page lists assistant commands only when the area is Built, and the list is
 # read from the app's own registry (web/app/api/commands.json), so the page and the app cannot
@@ -37,6 +37,7 @@ COMMAND_PREFIXES = {
     "B3": ["ospeli_support_", "ospeli_tasks_"],
     "B4": ["ospeli_stores_", "ospeli_stock_"],
     "E4": ["ospeli_experience_"],
+    "B2": ["ospeli_facilities_"],
 }
 COMMANDS = ROOT / "app" / "api" / "commands.json"
 
@@ -88,7 +89,7 @@ LIVE = {
     "D4": ("Open the daily operations report preview", "../../demo/daily-report/"),
     "A4": ("Open the theatres preview", "../../demo/theatres/"),
     "A1": ("Open the outpatient clinics preview", "../../demo/clinics/"),
-    "B2": ("Open the facilities preview", "../../demo/facilities/"),
+    "B2": ("Open the app (facilities and utilities)", "../../app/#/facilities"),
     "C1": ("Open the staffing preview", "../../demo/staffing/"),
     "B5": ("Open the patient transport preview", "../../demo/transport/"),
     "A5": ("Open the diagnostics preview", "../../demo/diagnostics/"),
@@ -324,7 +325,7 @@ def index_page(areas):
     if "Planned" in words:
         legend += ' · <span class="st">Planned</span> designed, nothing to try yet'
     body = f"""<h1 style="margin-top:28px">Every area of the operation</h1>
-<p class="lead">Built today: the bed board, engineering work orders, process maps, first versions of cleaning and transport, stores and supplies, and patient feedback, and the KPI library, on one core. Designed on the same core: {more} more areas, each with a preview. Each area page shows who uses it, what it records, how it is measured and what it deliberately does not do.</p>
+<p class="lead">Built today: the bed board, engineering work orders, process maps, first versions of cleaning and transport, stores and supplies, patient feedback and the facilities utilities log, and the KPI library, on one core. Designed on the same core: {more} more areas, each with a preview. Each area page shows who uses it, what it records, how it is measured and what it deliberately does not do.</p>
 <p class="legend">{legend}</p>
 <div class="groups">{''.join(groups)}</div>"""
     return page("Every area · Ospeli", "What is built today and what is in preview across hospital operations, from beds and theatres to facilities, stores, staffing, quality and preparedness.", 1, body)

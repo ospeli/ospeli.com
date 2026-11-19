@@ -8,7 +8,7 @@ import { startApp } from './helpers.mjs';
 let env;
 before(async () => { env = await startApp(); });
 after(async () => { await env.close(); });
-const ROUTES = ['app/#/beds', 'app/#/engineering', 'app/#/process', 'app/#/stores', 'app/#/support', 'app/#/feedback'];
+const ROUTES = ['app/#/beds', 'app/#/engineering', 'app/#/process', 'app/#/stores', 'app/#/support', 'app/#/feedback', 'app/#/facilities'];
 
 test('desktop 1280 px: six Built rows, each opening its module in the app; none of them tagged Preview', async () => {
   const context = await env.browser.newContext({ viewport: { width: 1280, height: 860 } });
@@ -29,7 +29,7 @@ for (const width of [360, 390]) {
     await page.goto(`${env.base}/`);
     await page.locator('.pv-wrap > summary').tap();
     const links = await page.$$eval('.pv-list a', (els) => els.map((a) => ({ href: a.getAttribute('href'), tag: getComputedStyle(a, '::after').content, h: a.getBoundingClientRect().height })));
-    for (const r of ['app/#/stores', 'app/#/support', 'app/#/feedback']) {
+    for (const r of ['app/#/stores', 'app/#/support', 'app/#/feedback', 'app/#/facilities']) {
       const l = links.find((x) => x.href === r);
       assert.ok(l, `${r} is in the list`);
       assert.equal(l.tag, '"Built"');
