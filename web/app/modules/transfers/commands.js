@@ -676,8 +676,8 @@ export function seed({ r, startMs, endMs, entities }) {
   ev(u.at + 8 * MIN, 'transfers.assigned', u.id, 'transport-coordinator', { vehicle: v1 });
   ev(u.at + 35 * MIN, 'transfers.arrived-pickup', u.id, 'driver', { vehicle: v1 });
   ev(u.at + 50 * MIN, 'transfers.departed', u.id, 'driver', { vehicle: v1 });
-  // Given to vehicle 2, whose crew has not picked it yet: a discharge home soon.
-  const g = a(50, { type: 'discharge' }); g.booked = true; g.bookedFor = Math.ceil((endMs + 40 * MIN) / (30 * MIN)) * 30 * MIN; g.toSite = null; g.toOutside = 'home'; req(g);
+  // Given to vehicle 2, whose crew has not picked it yet: a discharge home, as soon as possible.
+  const g = a(50, { type: 'discharge' }); g.booked = false; g.toSite = null; g.toOutside = 'home'; req(g);
   ev(g.at + 10 * MIN, 'transfers.assigned', g.id, 'transport-coordinator', { vehicle: v2 });
   // Waiting for a vehicle: the oldest first.
   for (const [ago, type] of [[42, 'discharge'], [25, 'to-provider'], [12, 'between-sites']]) { const w = a(ago, { type }); w.booked = false; req(w); }
