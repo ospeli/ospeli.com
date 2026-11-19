@@ -4982,7 +4982,7 @@
               "object",
               "null"
             ],
-            "description": "The step with the longest wait before it, in the version asked for. Null when no step has a wait.",
+            "description": "The step with the longest wait before it, in the version asked for. Null when no step has a wait. On a map made from a walk it is taken from the measured seconds, as the guide does: null when no wait reaches 30 seconds (an example setting, not a standard) or when the device clock moved back during the walk.",
             "properties": {
               "stepId": {
                 "type": "string",
@@ -5000,6 +5000,11 @@
                 "type": "integer",
                 "minimum": 0,
                 "maximum": 10080
+              },
+              "waitSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "On a map made from a walk: the measured wait in seconds."
               },
               "shareOfElapsed": {
                 "type": [

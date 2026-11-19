@@ -28,7 +28,7 @@ import {
 } from './processmap.js';
 import {
   MAX_WALK_STEPS, WALK_STEP_CHIPS, WALK_ROLE_CHIPS, newWalk, walkState, sinceAt, stepStart, stepDone, isDoubleTap, clockMoved, nameLast, undoLast, walkSteps, walkTotals,
-  mapStepsFromWalk, stepsInSeconds, dropStaleSeconds, suggestWalk,
+  mapStepsFromWalk, stepsInSeconds, dropStaleSeconds, suggestWalk, longestWaits, MIN_LONGEST_WAIT_SEC,
 } from './walk.js';
 
 // CommandError and the schema pieces every command shares live in kit.js, so a module's own
@@ -1090,8 +1090,8 @@ COMMAND_LIST.push(
       id: MAP_ID, title: { type: 'string' }, revision: { type: 'integer' }, version: VERSION, changed: { type: 'boolean', description: 'Proposed differs from Today.' },
       today: MAP_STATS, proposed: MAP_STATS,
       difference: { type: 'object', description: 'Proposed minus Today, in minutes (handoffs as a count). Negative means Proposed is shorter. A what-if, not a prediction.', required: ['elapsed', 'wait', 'work', 'handoffs'], properties: { elapsed: { type: 'integer' }, wait: { type: 'integer' }, work: { type: 'integer' }, handoffs: { type: 'integer' } } },
-      biggestWait: { type: ['object', 'null'], description: 'The step with the longest wait before it, in the version asked for. Null when no step has a wait.', properties: {
-        stepId: STEP_ID, name: { type: 'string' }, role: { type: 'string' }, wait: MINUTES, shareOfElapsed: { type: ['integer', 'null'], description: 'This wait as a % of start to finish.' } } },
+      biggestWait: { type: ['object', 'null'], description: `The step with the longest wait before it, in the version asked for. Null when no step has a wait. On a map made from a walk it is taken from the measured seconds, as the guide does: null when no wait reaches ${MIN_LONGEST_WAIT_SEC} seconds (an example setting, not a standard) or when the device clock moved back during the walk.`, properties: {
+        stepId: STEP_ID, name: { type: 'string' }, role: { type: 'string' }, wait: MINUTES, waitSec: { type: 'integer', minimum: 0, description: 'On a map made from a walk: the measured wait in seconds.' }, shareOfElapsed: { type: ['integer', 'null'], description: 'This wait as a % of start to finish.' } } },
       guideOn: { type: 'boolean', description: 'False when a person switched the guide off: suggestions is then empty; the numbers still work.' },
       suggestions: { type: 'array', items: SUGGESTION, description: 'The first three suggestions for the version asked for.' },
       suggestionsTotal: { type: 'integer', minimum: 0 } } },
@@ -1100,14 +1100,19 @@ COMMAND_LIST.push(
       const version = input.version || 'today';
       const stats = (list) => { const { timed, ...s } = analyse(list); return s; };
       const t = stats(map.today); const p = stats(map.proposed); const mine = version === 'today' ? t : p;
-      const worst = mine.biggestWaitStepId ? map[version].find((s) => s.id === mine.biggestWaitStepId) : null;
+      // A walked map is read in its measured seconds, by the guide's own rule (#129): two waits that
+      // round to the same minute must not give a different step from the guide in the same answer,
+      // and a walk whose clock was set back names no wait at all.
+      const walkedTop = map.walk ? (map.walk.clockMoved ? null : (longestWaits(stepsInSeconds(map[version]))[0] || null)) : undefined;
+      const worst = walkedTop !== undefined ? (walkedTop ? map[version].find((s) => s.id === walkedTop.id) : null)
+        : (mine.biggestWaitStepId ? map[version].find((s) => s.id === mine.biggestWaitStepId) : null);
       const guideOn = store.guideOn !== false;
       const all = guideOn ? visibleSuggestions(map, map[version]) : [];
       return {
         id: map.id, title: map.title, revision: map.revision, version,
         changed: JSON.stringify(map.today) !== JSON.stringify(map.proposed), today: t, proposed: p,
         difference: { elapsed: p.elapsed - t.elapsed, wait: p.wait - t.wait, work: p.work - t.work, handoffs: p.handoffs - t.handoffs },
-        biggestWait: worst ? { stepId: worst.id, name: worst.name, role: worst.role, wait: worst.wait, shareOfElapsed: mine.elapsed ? Math.round((100 * worst.wait) / mine.elapsed) : null } : null,
+        biggestWait: worst ? { stepId: worst.id, name: worst.name, role: worst.role, wait: worst.wait, ...(worst.waitSec != null ? { waitSec: worst.waitSec } : {}), shareOfElapsed: mine.elapsed ? Math.round((100 * worst.wait) / mine.elapsed) : null } : null,
         guideOn, suggestions: all.slice(0, 3), suggestionsTotal: all.length,
       };
     },
@@ -1449,13 +1454,17 @@ COMMAND_LIST.push(
         // The walk ends at its last step: time after the last "step done" tap is not part of it.
         const finishedAt = w.steps[w.steps.length - 1].endAt;
         const maps = mapStore(await core.getMeta(MAPS_KEY, null));
-        mapId = `map-${String(maps.nextId).padStart(3, '0')}`;
-        maps.nextId += 1;
+        // The map is written before the walk. If the walk's own write then fails (a full device),
+        // the walk stays open and its map is already there: a second finish makes that map again
+        // in place instead of a second map (#129).
+        const left = maps.maps.findIndex((x) => x.walk?.id === w.id);
+        if (left >= 0) mapId = maps.maps[left].id;
+        else { mapId = `map-${String(maps.nextId).padStart(3, '0')}`; maps.nextId += 1; }
         const m = newMap({ id: mapId, from: 'blank', title: w.title, at: now, role: actor.role });
         m.from = 'walk';
         m.today = mapStepsFromWalk(w, mapId); m.proposed = JSON.parse(JSON.stringify(m.today)); m.nextStep = m.today.length + 1;
         m.walk = { id: w.id, startedAt: w.startedAt, finishedAt, ...(clockMoved(w) ? { clockMoved: true } : {}) };
-        maps.maps.push(m);
+        if (left >= 0) maps.maps[left] = m; else maps.maps.push(m);
         await core.setMeta(MAPS_KEY, maps);
         w.status = 'finished'; w.finishedAt = finishedAt; w.mapId = mapId;
         view = walkView(w, now);

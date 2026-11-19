@@ -231,6 +231,10 @@ function verifyAction(records, input, role, now) {
     for (const k of ['what', 'ownerRole', 'dueInDays']) if (input[k] == null) throw new CommandError('invalid-input', `To agree an action, add ${k}.`, { example: { op: 'agree', recordId: r.id, what: 'process-change', ownerRole: 'ward-nurse', dueInDays: 30 } });
     if (input.actionId != null) throw new CommandError('invalid-input', 'A new action gets its id when it is agreed: leave out actionId.');
     if (role && !mayAll) throw new CommandError('forbidden', `${roleName(role)} cannot agree actions on ${r.id.toUpperCase()}. That is for ${roleNames(LEADS)} or the owner role (${roleName(r.ownerRole)}).`, { roles: [...new Set([...LEADS, r.ownerRole])] });
+    // A double tap, or the same form sent from two tabs, is one action (#129), as it is one record.
+    const twin = r.actions.find((x) => !x.closedAt && x.what === input.what && x.ownerRole === input.ownerRole && (x.note ?? null) === (input.note ?? null)
+      && x.agreedByRole === role && Math.abs(Date.parse(now) - Date.parse(x.agreedAt)) < DOUBLE_TAP_SECONDS * 1000);
+    if (twin) throw new CommandError('conflict', `${twin.id} was agreed a moment ago with the same details. No second action was made.`, { existing: twin.id });
     if (r.actions.length >= MAX_ACTIONS) throw new CommandError('conflict', `${r.id.toUpperCase()} already has ${MAX_ACTIONS} actions, the most one record may have.`);
     return { r, a: null, dueAt: new Date(Date.parse(now) + input.dueInDays * DAY).toISOString() };
   }

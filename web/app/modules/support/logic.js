@@ -111,6 +111,11 @@ export function queueMarks(events) {
       if (e.data?.priority === 'urgent') marks.set(e.subject, 'do-next');
       else marks.delete(e.subject);
     }
+    // A mark ends with its job (#129). A bed clean's id is reused for every clean of that bed, so
+    // the mark must not pass to the next clean: any event that ends or begins a clean clears it.
+    else if (e.type === 'task.completed' || e.type === 'task.cancelled') marks.delete(e.subject);
+    else if (e.type === 'bed.vacated' || e.type === 'bed.cleaned' || e.type === 'bed.out-of-service') marks.delete(`clean-${e.subject}`);
+    else if (e.type === 'patient.admitted' && e.data?.bedId) marks.delete(`clean-${e.data.bedId}`);
   }
   return marks;
 }
