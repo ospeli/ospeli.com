@@ -34,7 +34,8 @@ export function validate(schema, value, path = 'input') {
     for (const k of schema.required || []) if (!Object.hasOwn(value, k)) errs.push(`${path}.${k} is required`);
     for (const [k, v] of Object.entries(value)) {
       if (Object.hasOwn(props, k)) errs.push(...validate(props[k], v, `${path}.${k}`));
-      else if (schema.additionalProperties === false) errs.push(`${path}.${k} is not allowed`);
+      // Say what is allowed, so the caller can put it right in one more call (#135).
+      else if (schema.additionalProperties === false) errs.push(`${path}.${k} is not allowed. ${Object.keys(props).length ? `This takes: ${Object.keys(props).join(', ')}.` : 'This takes no input.'}`);
       else if (typeof schema.additionalProperties === 'object') errs.push(...validate(schema.additionalProperties, v, `${path}.${k}`));
     }
   }

@@ -202,6 +202,8 @@ const COMMAND_LIST = [
         beds: { type: 'array', items: BED_STATE_SCHEMA },
         waiting: { type: 'array', items: { type: 'object', required: ['encounter', 'decisionAt'], properties: { encounter: ID, wardId: { type: ['string', 'null'] }, decisionAt: TIME, requestedAt: TIME, allocatedBed: { type: ['string', 'null'] } } } },
         conflicts: { type: 'array', items: { type: 'object' }, description: 'Events that were not applied because the bed held someone else.' },
+        bedsOmitted: { type: 'boolean', description: 'Present and true on a short answer: beds is empty because the bed list was left out, not because the ward has none. total is the number of beds.' },
+        note: { type: 'string', description: 'On a short answer: how to get the bed list.' },
       },
     },
     wardOf: (core, input) => input.wardId ?? null,
@@ -222,6 +224,8 @@ const COMMAND_LIST = [
         beds: cut.items.map((b) => bedOut(board.beds.get(b.id), b)),
         waiting: board.waiting.filter((x) => !x.wardId || wardIds.has(x.wardId) || !allowed),
         conflicts: board.conflicts.filter((c) => wardIds.has(info.get(c.bedId)?.parentId)),
+        // A short answer says the empty list is by request, not an empty ward (#135).
+        ...(input.format === 'short' ? { bedsOmitted: true, note: `Short format: the ${cut.total} beds are left out. Ask again with format "detailed" for every bed.` } : {}),
       };
     },
     example: { input: { wardId: 'ward-a1' } },

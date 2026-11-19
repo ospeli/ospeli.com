@@ -238,6 +238,14 @@
               "type": "object"
             },
             "description": "Events that were not applied because the bed held someone else."
+          },
+          "bedsOmitted": {
+            "type": "boolean",
+            "description": "Present and true on a short answer: beds is empty because the bed list was left out, not because the ward has none. total is the number of beds."
+          },
+          "note": {
+            "type": "string",
+            "description": "On a short answer: how to get the bed list."
           }
         }
       },

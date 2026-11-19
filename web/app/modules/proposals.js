@@ -52,8 +52,8 @@ export function proposalsCard(ctx, { describe, match = () => true }) {
     box.replaceChildren(h('section', { class: 'card proposals', 'aria-labelledby': 'prop-h' },
       h('h2', { id: 'prop-h' }, `Suggested changes (${list.length})`),
       h('p', { class: 'meta' }, mine.length
-        ? 'A bot suggested these. Nothing changes until you say yes. Your yes is recorded under your role.'
-        : `A bot suggested these. ${roleById(ctx.role).name} cannot decide on them.`),
+        ? 'An agent suggested these. Nothing changes until you say yes. Your yes is recorded under your role.'
+        : `An agent suggested these. ${roleById(ctx.role).name} cannot decide on them.`),
       msg ? h('p', { class: 'proposal-msg', role: 'status', 'data-test': 'proposal-msg' }, msg) : null,
       h('ul', { class: 'proposal-list' }, shown.map((p) => {
         // Accept stands alone. The reason belongs to Decline, so it sits with it under a visible label.
