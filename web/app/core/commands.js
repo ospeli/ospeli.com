@@ -932,6 +932,23 @@ const MAP_STATS = {
     biggestWaitStepId: { type: ['string', 'null'] }, roles: { type: 'array', items: { type: 'string' } },
   },
 };
+// ospeli_maps_summary's numbers (#134): the minutes above, and on a map made from a walk the
+// measured seconds as well, the same numbers the person's map screen shows.
+const MAP_SUMMARY_STATS = {
+  ...MAP_STATS,
+  description: 'The minute fields (elapsed, work, wait) are each step rounded to whole minutes, so on a map made from a walk use the *Sec fields: they are the measured times the map screen shows.',
+  properties: {
+    ...MAP_STATS.properties,
+    workShare: { type: ['integer', 'null'], description: 'Hands-on time as a % of start to finish. On a map made from a walk: workSec as a % of the time seen (workSec + waitSec), from the seconds.' },
+    biggestWaitStepId: { type: ['string', 'null'], description: `The step with the longest wait before it. On a map made from a walk: the same step as biggestWait, by the same rule (waits under ${MIN_LONGEST_WAIT_SEC} seconds and planned waits left out; null when the device clock moved back).` },
+    elapsedSec: { type: 'integer', minimum: 0, description: 'Map made from a walk only: start to finish in seconds, the headline on the map screen. Includes notSeenSec.' },
+    workSec: { type: 'integer', minimum: 0, description: 'Map made from a walk only: hands-on seconds, summed.' },
+    waitSec: { type: 'integer', minimum: 0, description: 'Map made from a walk only: waiting seconds, summed (planned waits included).' },
+    notSeenSec: { type: 'integer', minimum: 0, description: 'Map made from a walk only: seconds the walk was paused. Neither waiting nor hands-on; inside elapsedSec.' },
+    plannedWaitSec: { type: 'integer', minimum: 0, description: 'Map made from a walk only: the part of waitSec a person marked planned or required.' },
+    waitShare: { type: ['integer', 'null'], description: 'Map made from a walk only: waitSec as a % of the time seen (workSec + waitSec), as on the map screen.' },
+  },
+};
 const SUGGESTION = {
   type: 'object', required: ['id', 'kind', 'title', 'text', 'why'],
   properties: {
@@ -1097,31 +1114,44 @@ COMMAND_LIST.push(
       mapId: MAP_ID, version: { ...VERSION, description: 'Which version the biggest wait and the suggestions are for: "today" (default) or "proposed". ospeli_maps_try_suggestion only takes suggestion ids from "proposed".' } } },
     output: { type: 'object', required: ['id', 'title', 'revision', 'version', 'changed', 'today', 'proposed', 'difference', 'biggestWait', 'guideOn', 'suggestions', 'suggestionsTotal'], properties: {
       id: MAP_ID, title: { type: 'string' }, revision: { type: 'integer' }, version: VERSION, changed: { type: 'boolean', description: 'Proposed differs from Today.' },
-      today: MAP_STATS, proposed: MAP_STATS,
-      difference: { type: 'object', description: 'Proposed minus Today, in minutes (handoffs as a count). Negative means Proposed is shorter. A what-if, not a prediction.', required: ['elapsed', 'wait', 'work', 'handoffs'], properties: { elapsed: { type: 'integer' }, wait: { type: 'integer' }, work: { type: 'integer' }, handoffs: { type: 'integer' } } },
+      today: MAP_SUMMARY_STATS, proposed: MAP_SUMMARY_STATS,
+      difference: { type: 'object', description: 'Proposed minus Today, in minutes (handoffs as a count); on a map made from a walk also in seconds. Negative means Proposed is shorter. A what-if, not a prediction.', required: ['elapsed', 'wait', 'work', 'handoffs'], properties: { elapsed: { type: 'integer' }, wait: { type: 'integer' }, work: { type: 'integer' }, handoffs: { type: 'integer' },
+        elapsedSec: { type: 'integer', description: 'Map made from a walk only.' }, waitSec: { type: 'integer', description: 'Map made from a walk only.' }, workSec: { type: 'integer', description: 'Map made from a walk only.' } } },
       biggestWait: { type: ['object', 'null'], description: `The step with the longest wait before it, in the version asked for. Null when no step has a wait. On a map made from a walk it is taken from the measured seconds, as the guide does: null when no wait reaches ${MIN_LONGEST_WAIT_SEC} seconds (an example setting, not a standard) or when the device clock moved back during the walk.`, properties: {
-        stepId: STEP_ID, name: { type: 'string' }, role: { type: 'string' }, wait: MINUTES, waitSec: { type: 'integer', minimum: 0, description: 'On a map made from a walk: the measured wait in seconds.' }, atLeast: { type: 'boolean', description: 'Present and true when part of this wait was not seen (the walk was paused): wait and waitSec are then the least it can have been.' }, notSeenSec: { type: 'integer', minimum: 1, description: 'Seconds of this wait that were not seen.' }, shareOfElapsed: { type: ['integer', 'null'], description: 'This wait as a % of start to finish.' } } },
+        stepId: STEP_ID, name: { type: 'string' }, role: { type: 'string' }, wait: MINUTES, tiedWith: { type: 'array', items: STEP_ID, description: 'Map made from a walk only: present when other steps had a wait exactly as long. Their step ids, in step order.' }, waitSec: { type: 'integer', minimum: 0, description: 'On a map made from a walk: the measured wait in seconds.' }, atLeast: { type: 'boolean', description: 'Present and true when part of this wait was not seen (the walk was paused): wait and waitSec are then the least it can have been.' }, notSeenSec: { type: 'integer', minimum: 1, description: 'Seconds of this wait that were not seen.' }, shareOfElapsed: { type: ['integer', 'null'], description: 'This wait as a % of start to finish.' } } },
       guideOn: { type: 'boolean', description: 'False when a person switched the guide off: suggestions is then empty; the numbers still work.' },
       suggestions: { type: 'array', items: SUGGESTION, description: 'The first three suggestions for the version asked for.' },
       suggestionsTotal: { type: 'integer', minimum: 0 } } },
     async run(core, input) {
       const { store, map } = await loadMap(core, input.mapId);
       const version = input.version || 'today';
-      const stats = (list) => { const { timed, ...s } = analyse(list); return s; };
-      const t = stats(map.today); const p = stats(map.proposed); const mine = version === 'today' ? t : p;
       // A walked map is read in its measured seconds, by the guide's own rule (#129): two waits that
       // round to the same minute must not give a different step from the guide in the same answer,
-      // and a walk whose clock was set back names no wait at all.
-      const walkedTop = map.walk ? (map.walk.clockMoved ? null : (longestWaits(stepsInSeconds(map[version]))[0] || null)) : undefined;
-      const worst = walkedTop !== undefined ? (walkedTop ? map[version].find((s) => s.id === walkedTop.id) : null)
-        : (mine.biggestWaitStepId ? map[version].find((s) => s.id === mine.biggestWaitStepId) : null);
+      // and a walk whose clock was set back names no wait at all. Its totals are the measured
+      // seconds the map screen shows, beside the rounded minutes (#134).
+      const topsOf = (list) => (map.walk.clockMoved ? [] : longestWaits(stepsInSeconds(list)));
+      const stats = (list) => {
+        const { timed, ...s } = analyse(list);
+        if (!map.walk) return s;
+        const inSec = stepsInSeconds(list); const x = analyse(inSec);
+        const notSeenSec = inSec.reduce((n, y) => n + (y.waitNotSeenSec || 0) + (y.workNotSeenSec || 0), 0);
+        const seen = x.work + x.wait;
+        return { ...s, workShare: seen ? Math.round((100 * x.work) / seen) : null, biggestWaitStepId: topsOf(list)[0]?.id || null,
+          elapsedSec: x.elapsed + notSeenSec, workSec: x.work, waitSec: x.wait, notSeenSec,
+          plannedWaitSec: inSec.reduce((n, y) => n + (y.plannedWait ? y.wait || 0 : 0), 0), waitShare: waitShareOf(x.wait, x.work) };
+      };
+      const t = stats(map.today); const p = stats(map.proposed); const mine = version === 'today' ? t : p;
+      const tops = map.walk ? topsOf(map[version]) : [];
+      const worst = mine.biggestWaitStepId ? map[version].find((s) => s.id === mine.biggestWaitStepId) : null;
+      const share = (w) => (map.walk ? (mine.elapsedSec ? Math.round((100 * (w.waitSec ?? w.wait * 60)) / mine.elapsedSec) : null) : (mine.elapsed ? Math.round((100 * w.wait) / mine.elapsed) : null));
       const guideOn = store.guideOn !== false;
       const all = guideOn ? visibleSuggestions(map, map[version]) : [];
       return {
         id: map.id, title: map.title, revision: map.revision, version,
         changed: JSON.stringify(map.today) !== JSON.stringify(map.proposed), today: t, proposed: p,
-        difference: { elapsed: p.elapsed - t.elapsed, wait: p.wait - t.wait, work: p.work - t.work, handoffs: p.handoffs - t.handoffs },
-        biggestWait: worst ? { stepId: worst.id, name: worst.name, role: worst.role, wait: worst.wait, ...(worst.waitSec != null ? { waitSec: worst.waitSec } : {}), ...(worst.waitNotSeenSec ? { atLeast: true, notSeenSec: worst.waitNotSeenSec } : {}), shareOfElapsed: mine.elapsed ? Math.round((100 * worst.wait) / mine.elapsed) : null } : null,
+        difference: { elapsed: p.elapsed - t.elapsed, wait: p.wait - t.wait, work: p.work - t.work, handoffs: p.handoffs - t.handoffs,
+          ...(map.walk ? { elapsedSec: p.elapsedSec - t.elapsedSec, waitSec: p.waitSec - t.waitSec, workSec: p.workSec - t.workSec } : {}) },
+        biggestWait: worst ? { stepId: worst.id, name: worst.name, role: worst.role, wait: worst.wait, ...(tops.length > 1 ? { tiedWith: tops.slice(1).map((x) => x.id) } : {}), ...(worst.waitSec != null ? { waitSec: worst.waitSec } : {}), ...(worst.waitNotSeenSec ? { atLeast: true, notSeenSec: worst.waitNotSeenSec } : {}), shareOfElapsed: share(worst) } : null,
         guideOn, suggestions: all.slice(0, 3), suggestionsTotal: all.length,
       };
     },

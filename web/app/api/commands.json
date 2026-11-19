@@ -4921,21 +4921,55 @@
                   "integer",
                   "null"
                 ],
-                "description": "Hands-on time as a % of start to finish."
+                "description": "Hands-on time as a % of start to finish. On a map made from a walk: workSec as a % of the time seen (workSec + waitSec), from the seconds."
               },
               "biggestWaitStepId": {
                 "type": [
                   "string",
                   "null"
-                ]
+                ],
+                "description": "The step with the longest wait before it. On a map made from a walk: the same step as biggestWait, by the same rule (waits under 30 seconds and planned waits left out; null when the device clock moved back)."
               },
               "roles": {
                 "type": "array",
                 "items": {
                   "type": "string"
                 }
+              },
+              "elapsedSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Map made from a walk only: start to finish in seconds, the headline on the map screen. Includes notSeenSec."
+              },
+              "workSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Map made from a walk only: hands-on seconds, summed."
+              },
+              "waitSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Map made from a walk only: waiting seconds, summed (planned waits included)."
+              },
+              "notSeenSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Map made from a walk only: seconds the walk was paused. Neither waiting nor hands-on; inside elapsedSec."
+              },
+              "plannedWaitSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Map made from a walk only: the part of waitSec a person marked planned or required."
+              },
+              "waitShare": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Map made from a walk only: waitSec as a % of the time seen (workSec + waitSec), as on the map screen."
               }
-            }
+            },
+            "description": "The minute fields (elapsed, work, wait) are each step rounded to whole minutes, so on a map made from a walk use the *Sec fields: they are the measured times the map screen shows."
           },
           "proposed": {
             "type": "object",
@@ -4974,25 +5008,59 @@
                   "integer",
                   "null"
                 ],
-                "description": "Hands-on time as a % of start to finish."
+                "description": "Hands-on time as a % of start to finish. On a map made from a walk: workSec as a % of the time seen (workSec + waitSec), from the seconds."
               },
               "biggestWaitStepId": {
                 "type": [
                   "string",
                   "null"
-                ]
+                ],
+                "description": "The step with the longest wait before it. On a map made from a walk: the same step as biggestWait, by the same rule (waits under 30 seconds and planned waits left out; null when the device clock moved back)."
               },
               "roles": {
                 "type": "array",
                 "items": {
                   "type": "string"
                 }
+              },
+              "elapsedSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Map made from a walk only: start to finish in seconds, the headline on the map screen. Includes notSeenSec."
+              },
+              "workSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Map made from a walk only: hands-on seconds, summed."
+              },
+              "waitSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Map made from a walk only: waiting seconds, summed (planned waits included)."
+              },
+              "notSeenSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Map made from a walk only: seconds the walk was paused. Neither waiting nor hands-on; inside elapsedSec."
+              },
+              "plannedWaitSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Map made from a walk only: the part of waitSec a person marked planned or required."
+              },
+              "waitShare": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Map made from a walk only: waitSec as a % of the time seen (workSec + waitSec), as on the map screen."
               }
-            }
+            },
+            "description": "The minute fields (elapsed, work, wait) are each step rounded to whole minutes, so on a map made from a walk use the *Sec fields: they are the measured times the map screen shows."
           },
           "difference": {
             "type": "object",
-            "description": "Proposed minus Today, in minutes (handoffs as a count). Negative means Proposed is shorter. A what-if, not a prediction.",
+            "description": "Proposed minus Today, in minutes (handoffs as a count); on a map made from a walk also in seconds. Negative means Proposed is shorter. A what-if, not a prediction.",
             "required": [
               "elapsed",
               "wait",
@@ -5011,6 +5079,18 @@
               },
               "handoffs": {
                 "type": "integer"
+              },
+              "elapsedSec": {
+                "type": "integer",
+                "description": "Map made from a walk only."
+              },
+              "waitSec": {
+                "type": "integer",
+                "description": "Map made from a walk only."
+              },
+              "workSec": {
+                "type": "integer",
+                "description": "Map made from a walk only."
               }
             }
           },
@@ -5037,6 +5117,16 @@
                 "type": "integer",
                 "minimum": 0,
                 "maximum": 10080
+              },
+              "tiedWith": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^map-[0-9]{3,}-s[0-9]+$",
+                  "maxLength": 28,
+                  "description": "A step id from ospeli_maps_get, e.g. map-001-s3."
+                },
+                "description": "Map made from a walk only: present when other steps had a wait exactly as long. Their step ids, in step order."
               },
               "waitSec": {
                 "type": "integer",
