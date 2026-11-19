@@ -11,11 +11,13 @@ import { ROLES } from '../../web/app/core/model.js';
 import { generateHospital } from '../../web/app/core/generator.js';
 import { validateEvent } from '../../web/app/core/model.js';
 import { MODULES } from '../../web/app/modules/registry.js';
+import { slotCatalogue } from '../../web/app/core/slots.js';
+import { slotCommands } from '../../web/app/core/slot-commands.js';
 
 const APP = fileURLToPath(new URL('../../web/app/', import.meta.url));
 const ROLE_IDS = ROLES.map((r) => r.id);
 const END = '2026-11-06T18:00:00.000Z';
-const CORE_PREFIXES = ['ospeli_beds_', 'ospeli_kpi_', 'ospeli_agents_', 'ospeli_proposals_', 'ospeli_assets_', 'ospeli_workorders_', 'ospeli_maps_', 'ospeli_walks_', 'ospeli_tasks_'];
+const CORE_PREFIXES = ['ospeli_slots_', 'ospeli_beds_', 'ospeli_kpi_', 'ospeli_agents_', 'ospeli_proposals_', 'ospeli_assets_', 'ospeli_workorders_', 'ospeli_maps_', 'ospeli_walks_', 'ospeli_tasks_'];
 
 test('every module pack has an id, its own command prefix and its own event prefix', () => {
   const ids = new Set(); const prefixes = new Set(); const eventPrefixes = new Set();
@@ -125,4 +127,15 @@ test('a module\'s KPIs each have a written definition and a source', () => {
       assert.ok(k.source.length >= 10, `${p.id}: KPI ${k.id} names its source (a standard, a paper with DOI or PMID, or "local definition")`);
     }
   }
+});
+
+test('session and slot types the modules declare pass the shared slot object\'s checks, and its commands are offered only then', () => {
+  const { sessionTypes, slotTypes } = slotCatalogue(MODULE_PACKS, ROLE_IDS); // throws on a malformed type, a reused id or a made-up role
+  const declared = MODULE_PACKS.flatMap((p) => p.SESSION_TYPES || []);
+  assert.equal(sessionTypes.size, declared.length);
+  for (const st of declared) for (const t of st.slotTypes || []) assert.ok(slotTypes[t], `${st.id}: slot type ${t} is declared in SLOT_TYPES`);
+  const offered = listCommands().filter((c) => c.name.startsWith('ospeli_slots_')).map((c) => c.name);
+  assert.deepEqual(offered, slotCommands(MODULE_PACKS).map((c) => c.name));
+  assert.equal(offered.length > 0, declared.length > 0);
+  for (const p of MODULE_PACKS) for (const c of p.COMMANDS || []) assert.ok(!c.name.startsWith('ospeli_slots_'), `${p.id} writes no slot command of its own`);
 });

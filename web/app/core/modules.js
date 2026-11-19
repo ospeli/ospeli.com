@@ -12,6 +12,10 @@
 //   TASK_TEAMS, TASK_KINDS   optional: its kinds of task for the shared task object
 //   STOCK_CATEGORIES, STOCK_ITEMS   optional: its category of stock (with the roles for each verb)
 //                and its example items, for the shared stock item (core/stock.js)
+//   SESSION_TYPES, SLOT_TYPES   optional: its types of session (timed slots, or a capacity with a
+//                visit order; the roles that run, plan, book and mark steps) and of slot, for the
+//                shared appointment or slot object (core/slots.js); also NO_SHOW_GRACE_MINUTES and
+//                SLOT_REASONS (extra reasons to pick from). The module writes no booking command.
 //   KPIS         optional: [{ id, name, unit, definition, source, ... }] with a calculation each
 //   seed         optional: (ctx) => [{ t, type, subject, actorRole, data }] synthetic events for
 //                the example hospital; ctx = { r, startMs, endMs, days, entities, events }

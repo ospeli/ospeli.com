@@ -23,6 +23,8 @@ const PRECACHE = [
   'core/task-commands.js',
   'core/stock.js',
   'core/stock-commands.js',
+  'core/slots.js',
+  'core/slot-commands.js',
   'core/workorders.js',
   'core/processmap.js',
   'core/walk.js',
