@@ -381,7 +381,7 @@ for (const width of [320, 360, 375, 390]) {
 //  - tap targets: a link that sits inside a sentence, meaning an <a> whose parent is a <p> that also
 //    holds words outside any link. A line of running text cannot be 44 px tall. Today that is only
 //    the three links inside the roadmap paragraphs.
-//  - text size: the small uppercase section eyebrows (.eyebrow), which the issue excepts as decoration.
+//  - text size: none; the section eyebrows (.eyebrow) were excepted until #137 and are now held to 15 px too.
 const sizes15 = (page) => page.evaluate(() => {
   const seen = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0 && el.checkVisibility({ contentVisibilityAuto: true, visibilityProperty: true }); };
   const inSentence = (a) => a.tagName === 'A' && a.parentElement.tagName === 'P'
@@ -392,7 +392,7 @@ const sizes15 = (page) => page.evaluate(() => {
   const tw = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   for (let n; (n = tw.nextNode());) {
     const e = n.parentElement;
-    if (!n.textContent.trim() || e.closest('script, style, .eyebrow') || !seen(e)) continue;
+    if (!n.textContent.trim() || e.closest('script, style') || !seen(e)) continue; // the section labels too (#137)
     text.push({ t: n.textContent.trim().slice(0, 30), fs: parseFloat(getComputedStyle(e).fontSize) });
   }
   const cut = [...document.querySelectorAll('.op-k, .sample, .timeline .wk')].filter(seen).filter((e) => { const b = e.getBoundingClientRect(); const p = e.parentElement.getBoundingClientRect(); return b.right > p.right + 0.5; }).map((e) => e.textContent);
@@ -417,7 +417,7 @@ for (const width of [360, 390]) {
       if (state === 'closed') assert.ok(m.screens < 6.85, `page is ${m.screens.toFixed(2)} screens; the bigger captions must not lengthen it`);
     }
     // The named items from the issue, by name.
-    const named = await page.evaluate(() => Object.fromEntries(['.op-k', '.sample', '.steps .short', '.contact small', '.pb .io', '.swipe-hint', '.timeline .wk', 'footer .wrap > span']
+    const named = await page.evaluate(() => Object.fromEntries(['.eyebrow', '.op-k', '.sample', '.steps .short', '.contact small', '.pb .io', '.swipe-hint', '.timeline .wk', 'footer .wrap > span']
       .map((s) => [s, parseFloat(getComputedStyle(document.querySelector(s)).fontSize)])));
     for (const [sel, fs] of Object.entries(named)) assert.ok(fs >= 15, `${sel} is ${fs}px`);
     assert.equal(await page.locator('.board .sample').innerText(), 'ILLUSTRATION', 'the example-data badge stays');
@@ -509,3 +509,24 @@ for (const width of [360, 1280]) {
     await context.close();
   });
 }
+
+// Issue #137: the section labels are 15 px on phones, each still on one line, and the desktop is unchanged.
+test('section labels: 15 px and one line on phones (320, 360, 390 px); desktop size unchanged (issue #137)', async () => {
+  for (const width of [320, 360, 390, 1280]) {
+    const { context, page, errors } = await open(width);
+    const labels = await page.evaluate(() => [...document.querySelectorAll('.eyebrow')].filter((e) => e.getBoundingClientRect().height > 0).map((e) => {
+      const r = document.createRange(); r.selectNodeContents(e);
+      const lines = new Set([...r.getClientRects()].map((x) => Math.round(x.top))).size;
+      return { t: e.textContent.trim(), fs: parseFloat(getComputedStyle(e).fontSize), lines };
+    }));
+    assert.ok(labels.length >= 9, `${labels.length} labels at ${width}px`);
+    if (width < 1000) {
+      assert.deepEqual(labels.filter((x) => x.fs < 15).map((x) => x.t), [], `labels under 15 px at ${width}px`);
+      assert.deepEqual(labels.filter((x) => x.lines > 1).map((x) => x.t), [], `labels on two lines at ${width}px`);
+    } else {
+      assert.ok(labels.every((x) => Math.abs(x.fs - 12.48) < 0.01), `desktop labels stay 0.78rem: ${labels.map((x) => x.fs).join(',')}`);
+    }
+    assert.deepEqual(errors, []);
+    await context.close();
+  }
+});

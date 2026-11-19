@@ -306,7 +306,9 @@ details.acc > summary::-webkit-details-marker { display: none; }
   section .wrap > .head { margin-bottom: 20px; gap: 8px; }
   section .wrap > .head p { font-size: 1rem; }
   h2 { font-size: 1.55rem; }
-  .eyebrow { font-size: 0.72rem; letter-spacing: 0.16em; }
+  /* Section labels at the 15 px floor too (#137); capitals have no descenders, so a tight line
+     height keeps each label as tall as before and the page no longer. */
+  .eyebrow { font-size: 15px; line-height: 1.2; letter-spacing: 0.06em; }
   .logo { height: 40px; }
   header.site .wrap { padding-block: 6px; }
 
@@ -431,8 +433,8 @@ details.acc > summary::-webkit-details-marker { display: none; }
   .hero .wrap { padding-block: 24px 28px; }
   .timeline .short { font-size: 0.95rem; }
 
-  /* Readable captions (issue #15): every caption and label is at least 15 px on phones; only the
-     small section eyebrows stay smaller. Tighter letter spacing keeps the labels on one line. */
+  /* Readable captions (issue #15): every caption and label is at least 15 px on phones, the section
+     eyebrows included (#137). Tighter letter spacing keeps the labels on one line. */
   .op-k, .sample { font-size: 15px; letter-spacing: 0.04em; }
   .timeline .wk { font-size: 15px; letter-spacing: 0.04em; }
   .swipe-hint, .steps .short, .pb .io, .timeline.road p, .contact small, footer .wrap { font-size: 15px; }
@@ -443,6 +445,10 @@ details.acc > summary::-webkit-details-marker { display: none; }
   .ops { padding: 10px; }
   .hero .wrap { padding-block: 24px 24px; }
   .contact { gap: 10px; }
+}
+/* The narrowest phones: no extra letter spacing, so the longest label still fits one line (#137). */
+@media (max-width: 340px) {
+  .eyebrow { letter-spacing: 0; }
 }
 </style>
 
