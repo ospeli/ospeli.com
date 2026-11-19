@@ -185,7 +185,7 @@ test('a ward nurse books a transfer in a few taps on a 390 px phone; nothing is 
   await page.locator('[data-test="req-send"]').tap();
   assert.equal(await page.locator('[data-test="req-status"]').textContent(), 'Choose the kind of journey first.');
   await page.locator('[data-type="between-sites"]').tap();
-  await page.selectOption('[data-test="req-from"]', 'ward-a2');
+  await page.selectOption('[data-test="req-pickup"]', 'ward-a2');
   await page.locator('[data-to="site:site-north"]').tap();
   await page.locator('[data-when="asap"]').tap();
   await page.locator('[data-mobility="wheelchair"]').tap();

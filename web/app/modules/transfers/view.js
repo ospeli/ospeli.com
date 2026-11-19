@@ -340,7 +340,7 @@ function requestScreen(ctx) {
   let data = null;
   let busy = false;
   const form = h('form', { class: 'card trf-form', 'aria-labelledby': 'req-h', 'data-test': 'req-form' });
-  const from = h('select', { id: 'req-from', 'data-test': 'req-from' });
+  const from = h('select', { id: 'req-pickup', 'data-test': 'req-pickup' });
   const slot = h('select', { id: 'req-slot', 'data-test': 'req-slot' });
   const send = h('button', { class: 'btn btn-big', type: 'submit', 'data-cmd': 'ospeli_transfers_request', 'data-test': 'req-send' }, 'Book transfer');
   const groups = {};
@@ -349,8 +349,8 @@ function requestScreen(ctx) {
   const bay = h('input', { type: 'checkbox', id: 'req-bay', 'data-test': 'req-bay' });
   bay.addEventListener('change', () => { pick.bay = bay.checked; });
   let lastFrom = null;
-  try { lastFrom = localStorage.getItem('ospeli-transfers-from'); } catch { /* none */ }
-  from.addEventListener('change', () => { try { if (from.value) localStorage.setItem('ospeli-transfers-from', from.value); } catch { /* still works */ } drawForm(); drawOpen(); });
+  try { lastFrom = localStorage.getItem('ospeli-transfers-pickup'); } catch { /* none */ }
+  from.addEventListener('change', () => { try { if (from.value) localStorage.setItem('ospeli-transfers-pickup', from.value); } catch { /* still works */ } drawForm(); drawOpen(); });
   slot.addEventListener('change', () => { pick.slot = slot.value; });
 
   const choice = (label, pressed, onclick, attrs = {}) => h('button', { class: 'chip-btn trf-choice', type: 'button', 'aria-pressed': String(pressed), onclick, ...attrs }, label);
@@ -381,7 +381,7 @@ function requestScreen(ctx) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (busy) return;
-    const missing = !pick.type ? 'the kind of journey' : !from.value ? 'where from' : !pick.to ? 'where to' : !pick.needed ? 'when' : pick.needed === 'booked' && !pick.slot ? 'the booked time'
+    const missing = !pick.type ? 'the kind of journey' : !from.value ? 'the pickup place' : !pick.to ? 'where to' : !pick.needed ? 'when' : pick.needed === 'booked' && !pick.slot ? 'the booked time'
       : !pick.mobility ? 'how the patient travels' : !pick.escort ? 'the escort' : !pick.equipment.size ? 'the equipment (or No equipment)' : null;
     if (missing) { setKids(status, h('p', { class: 'trf-status' }, `Choose ${missing} first.`)); return; }
     const [kind, dest] = pick.to.split(':');
@@ -427,7 +427,7 @@ function requestScreen(ctx) {
           h('optgroup', { label: 'Departments' }, data.places.departments.map((x) => h('option', { value: x.id }, x.name))));
         if (lastFrom && places.some((x) => x.id === lastFrom)) from.value = lastFrom;
         form.append(h('h2', { id: 'req-h' }, 'Which journey?'), group('type', 'Kind of journey'),
-          h('div', { class: 'field' }, h('label', { for: 'req-from' }, 'From'), from),
+          h('div', { class: 'field' }, h('label', { for: 'req-pickup' }, 'From'), from),
           group('to', 'To'), group('when', 'When'), slotField,
           group('mobility', 'How the patient travels (the ward decides)'), group('escort', 'Escort (the ward decides)'), group('equipment', 'Equipment (tap all that travel)'),
           h('label', { class: 'trf-tick', for: 'req-bay' }, bay, h('span', {}, 'A move to the vehicle bay is already asked for in Cleaning and transport')),
