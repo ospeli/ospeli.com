@@ -56,8 +56,8 @@
 .mod-transfers .trf-vname { font-size: 1.25rem; font-weight: 800; }
 .mod-transfers .trf-vsub { font-size: .9375rem; font-weight: 600; }
 .mod-transfers .btn.trf-vbtn.is-off { background: #F2F2F2; color: #4A5968; border-style: dashed; }
-.mod-transfers .trf-checkdue { margin: 0 0 10px; font-weight: 700; color: #5C3B00; background: var(--mango-tint); border-radius: 8px; padding: 8px 10px; max-width: 640px; }
-.mod-transfers .trf-checkdue a { display: inline-flex; align-items: center; min-height: 44px; }
+.mod-transfers .trf-checkdue { margin: 0 0 10px; font-weight: 700; background: var(--mango-tint); border-radius: 8px; padding: 0 10px; max-width: 640px; }
+.mod-transfers .trf-checkdue a { display: flex; align-items: center; min-height: 44px; color: #5C3B00; }
 .mod-transfers .trf-alert { margin: 0 0 10px; max-width: 640px; }
 
 /* lists */

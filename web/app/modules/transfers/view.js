@@ -103,10 +103,14 @@ function jobsScreen(ctx) {
   let lastStepAt = 0; // when this phone tapped a step, for the pause on the next one
   let timer = null;
   const load = async () => {
-    const b = await ctx.run('ospeli_transfers_board', { format: 'short', limit: 1 });
+    // With a vehicle picked, one small read (its jobs); the whole board only to pick a vehicle.
     let mine = store.get();
-    if (mine && (mine.shiftStart !== b.shift.start || !b.vehicles.some((v) => v.id === mine.vehicleId))) { store.set(null); mine = null; }
-    const jobs = mine ? await ctx.run('ospeli_transfers_jobs', { vehicleId: mine.vehicleId, limit: 20 }) : null;
+    let jobs = null;
+    if (mine) {
+      try { jobs = await ctx.run('ospeli_transfers_jobs', { vehicleId: mine.vehicleId, limit: 20 }); } catch { jobs = null; }
+      if (!jobs || jobs.shift.start !== mine.shiftStart) { store.set(null); mine = null; jobs = null; }
+    }
+    const b = mine ? data?.b || null : await ctx.run('ospeli_transfers_board', { format: 'short', limit: 1 });
     data = { b, mine, jobs };
     draw();
   };
@@ -139,7 +143,8 @@ function jobsScreen(ctx) {
   function draw() {
     clearTimeout(timer);
     if (!data.mine || !data.jobs) { setKids(box, pickScreen()); return; }
-    const { jobs, b } = data;
+    const { jobs } = data;
+    const b = { shift: jobs.shift };
     const v = jobs.vehicle;
     const [next, ...after] = jobs.jobs;
     const since = Date.now() - lastStepAt;
@@ -150,7 +155,7 @@ function jobsScreen(ctx) {
         h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_transfers_vehicle_crew', 'data-test': 'release-vehicle', onclick: () => release(v) }, `Release ${v.name}`)));
     const warn = [
       v.state === 'off-road' ? h('p', { class: 'card notice trf-alert', 'data-test': 'off-road' }, `${v.name} is off the road (${v.offRoad.reasonName.toLowerCase()}). Do not use it. The coordinator will move its jobs.`) : null,
-      !v.lastCheck?.today ? h('p', { class: 'trf-checkdue', 'data-test': 'check-due' }, 'Daily check not done today. ', h('a', { href: '#/transfers/fleet' }, 'Do the daily check')) : null,
+      !v.lastCheck?.today ? h('p', { class: 'trf-checkdue', 'data-test': 'check-due' }, h('a', { href: '#/transfers/fleet' }, 'Daily check not done today: do it now')) : null,
     ];
     let card;
     if (next) {
