@@ -35,9 +35,9 @@ export const KPIS = [
     leavesOut: 'Booked journeys (measured by on-time pickup instead, so a journey booked a day ahead does not look like a long wait); cancelled journeys; journeys not departed yet.',
     source: 'local definition', target: null, targetText: 'No target set: track the trend.' },
   { id: 'on-time-pickup', name: 'On-time pickup', unit: '%',
-    definition: `Booked journeys that departed from pickup no later than ${ON_TIME_WINDOW} minutes after their booked time, divided by booked journeys due in the period.`,
-    counts: `Booked journeys departed within ${ON_TIME_WINDOW} minutes of the booked time (the window is an example setting, not a standard).`,
-    outOf: 'Booked journeys whose booked time is in the period. A journey delayed or cancelled for a transport reason (no vehicle, no escort, no crew, vehicle fault, other) counts as not on time; so does one not departed when its window closed.',
+    definition: `Booked journeys whose vehicle arrived at pickup no later than ${ON_TIME_WINDOW} minutes after the booked time, divided by booked journeys due in the period. Arrival at pickup is measured, not departure: departure also waits on the patient and the ward.`,
+    counts: `Booked journeys whose vehicle arrived at pickup within ${ON_TIME_WINDOW} minutes of the booked time, or before it (the window is an example setting, not a standard).`,
+    outOf: 'Booked journeys whose booked time is in the period. A journey delayed or cancelled for a transport reason (no vehicle, no escort, no crew, vehicle fault, other) counts as not on time; so does one whose vehicle had not arrived when its window closed.',
     leavesOut: 'Journeys delayed or cancelled for the requester\'s reason (patient, paperwork or destination not ready, no longer needed), and journeys whose window has not closed yet.',
     source: 'local definition', target: null, targetText: 'No target set: track the trend.' },
   { id: 'handover-time', name: 'Handover time at destination', unit: 'minutes',
@@ -75,7 +75,7 @@ const minsBetween = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / MIN);
 function transferOut(t, w, now, fleetMap) {
   const step = nextStep(t);
   const site = w.siteOf(t.fromPlace);
-  const late = t.needed === 'booked' ? !t.steps.departed && Date.parse(now) > Date.parse(t.bookedFor) + ON_TIME_WINDOW * MIN : false;
+  const late = t.needed === 'booked' ? !t.steps['arrived-pickup'] && Date.parse(now) > Date.parse(t.bookedFor) + ON_TIME_WINDOW * MIN : false;
   const v = t.vehicleId ? fleetMap?.get(t.vehicleId) : null;
   return {
     id: t.id, type: t.type, typeName: TYPE_NAME[t.type], state: t.state, stateName: STATE_NAMES[t.state],

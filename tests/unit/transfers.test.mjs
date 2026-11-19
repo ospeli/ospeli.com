@@ -288,22 +288,27 @@ test('KPI transfer wait, hand-checked: as-soon-as-possible journeys 30, 50, 10 a
   assert.equal(p90([]), null);
 });
 
-test('KPI on-time pickup, hand-checked: 2 on time of 4 due is 50%; a requester\'s delay left out; a transport delay and a late departure count as not on time; an open window is pending', () => {
+test('KPI on-time pickup, hand-checked: arrival at pickup against the booked time plus 15 min; 2 on time of 4 due is 50%; a requester\'s delay left out; a transport delay and a late arrival count as not on time; an open window is pending', () => {
   const b = (id, booked) => ask(id, at('08:00'), { needed: 'booked', bookedFor: at(booked) });
   const ev = [
-    b('trf-00001', '10:00'), ...go('trf-00001', [at('09:00'), at('09:50'), at('10:10')]), // departed 10 min after: on time
-    b('trf-00002', '11:00'), ...go('trf-00002', [at('10:00'), at('10:40'), at('10:55')]), // early: on time
-    b('trf-00003', '12:00'), ...go('trf-00003', [at('11:00'), at('12:10'), at('12:20')]), // 20 min after: late
+    b('trf-00001', '10:00'), ...go('trf-00001', [at('09:00'), at('10:10'), at('10:30')]), // arrived 10 min after: on time (departed 30 min after: not what is measured)
+    b('trf-00002', '11:00'), ...go('trf-00002', [at('10:00'), at('10:40'), at('10:55')]), // arrived early: on time
+    b('trf-00003', '12:00'), ...go('trf-00003', [at('11:00'), at('12:20'), at('12:25')]), // arrived 20 min after: late
     b('trf-00004', '13:00'), e('transfers.delayed', 'trf-00004', at('12:30'), { reason: 'no-vehicle' }, 'transport-coordinator'), ...go('trf-00004', [at('12:40'), at('12:50'), at('13:05')]), // transport delay: not on time
     b('trf-00005', '14:00'), e('transfers.delayed', 'trf-00005', at('13:30'), { reason: 'patient-not-ready' }, 'transport-coordinator'), // requester's side: left out
-    b('trf-00006', '19:55'), // still waiting, window open at 20:00: pending
+    b('trf-00006', '19:55'), // not arrived, window open at 20:00: pending
     b('trf-00007', '21:00'), // due after the period
     b('trf-00008', '15:00'), e('transfers.cancelled', 'trf-00008', at('14:00'), { reason: 'not-needed' }, 'ward-nurse'), // requester: left out
   ];
   const o = onTimePickup(deriveTransfers(ev), PERIOD);
   assert.deepEqual([o.value, o.numerator, o.denominator, o.leftOut, o.pending, o.transportSide], [50, 2, 4, 2, 1, 1]);
-  // Once the window has closed with no departure, the open one is late.
-  assert.deepEqual([onTimePickup(deriveTransfers(ev), { since: PERIOD.since, until: at('20:15') }).denominator], [5]);
+  // Once the window has closed with no arrival, the open one is late: 2 of 5.
+  const later = onTimePickup(deriveTransfers(ev), { since: PERIOD.since, until: at('20:15') });
+  assert.deepEqual([later.numerator, later.denominator], [2, 5]);
+  // Arrival, not departure: a vehicle there on time whose patient left late is on time.
+  const one = onTimePickup(deriveTransfers([b('trf-00001', '10:00'), ...go('trf-00001', [at('09:00'), at('09:55'), at('11:00')])]), PERIOD);
+  assert.equal(one.value, 100);
+  assert.match(pack.KPIS.find((k) => k.id === 'on-time-pickup').definition, /arrived at pickup/);
 });
 
 test('KPI handover time, hand-checked: 5, 15 and 40 min give a median of 15 and a p90 of 40; not handed over left out', () => {

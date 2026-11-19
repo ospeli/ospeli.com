@@ -287,11 +287,12 @@ export function transferWait(transfers, { since, until }) {
     breakdown: TYPES.map((x) => ({ id: x.id, name: x.name, ...timeStat(list.filter((t) => t.type === x.id).map((t) => mins(t.requestedAt, t.steps.departed))) })) };
 }
 
-// 2. On-time pickup: booked journeys departed no later than the window after their booked time /
-// booked journeys due (booked time) in the period. Left out: a journey delayed or cancelled for a
-// requester's reason, and one still waiting whose window has not closed yet. Counted as not on
-// time: delayed or cancelled for a transport reason, departed late, or not departed when its
-// window closed.
+// 2. On-time pickup: booked journeys whose vehicle arrived at pickup no later than the window after
+// their booked time / booked journeys due (booked time) in the period. Arrival is the transport
+// service's part; departure also waits on the patient and the ward. Left out: a journey delayed or
+// cancelled for a requester's reason, and one not yet arrived whose window has not closed. Counted
+// as not on time: delayed or cancelled for a transport reason, arrived late, or not arrived when
+// its window closed.
 export function onTimePickup(transfers, { since, until, windowMinutes = ON_TIME_WINDOW }) {
   let on = 0; let due = 0; let leftOut = 0; let pending = 0; let transportSide = 0;
   for (const t of transfers.values()) {
@@ -300,8 +301,9 @@ export function onTimePickup(transfers, { since, until, windowMinutes = ON_TIME_
     if (reasons.some((r) => REASON[r]?.side === 'requester')) { leftOut += 1; continue; }
     const closes = Date.parse(t.bookedFor) + windowMinutes * MIN;
     if (reasons.some((r) => REASON[r]?.side === 'transport')) { due += 1; transportSide += 1; continue; }
-    if (t.steps.departed && Date.parse(t.steps.departed) <= closes) { due += 1; on += 1; continue; }
-    if (t.steps.departed || Date.parse(until) >= closes) { due += 1; continue; }
+    const arrived = t.steps['arrived-pickup'];
+    if (arrived && Date.parse(arrived) <= closes) { due += 1; on += 1; continue; }
+    if (arrived || Date.parse(until) >= closes) { due += 1; continue; }
     pending += 1;
   }
   return { value: due ? (100 * on) / due : null, numerator: on, denominator: due, n: due, leftOut, pending, transportSide };

@@ -144,7 +144,7 @@ test('the coordinator\'s first five minutes on a 390 px phone: the queue and fre
   assert.equal(await page.evaluate(() => location.hash), '#/transfers');
   const counts = page.locator('[data-test="board-counts"]');
   await counts.waitFor();
-  assert.match(await counts.textContent(), /Waiting\d+longest \d+ min.*Free vehicles\d of 3\d crewed.*On the road\d/s);
+  assert.match(await counts.textContent(), /Waiting\d+longest \d+ min.*Free vehicles\d of 3\d crewed.*Journeys under way\d/s);
   const first = page.locator('[data-test="queue"] > li').first();
   const fb = await first.boundingBox();
   assert.ok(fb.y < 844, `the first waiting journey starts on the first screen (top at ${Math.round(fb.y)} px)`);
@@ -304,6 +304,87 @@ test('roles with no rights see no action button, and one line that says who can'
   // A driver has no board and books nothing.
   await asRole(page, 'driver', 'jobs');
   assert.deepEqual(await page.locator('.trf-tabs a').evaluateAll((a) => a.map((x) => x.dataset.screen)), ['jobs', 'fleet']);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('a ward nurse books a journey for a booked time at 390 px: the time list offers the next day in half hours; picks survive a redraw', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/transfers' });
+  await asRole(page, 'ward-nurse', 'request');
+  await page.waitForSelector('[data-type="discharge"]');
+  await page.locator('[data-type="discharge"]').tap();
+  await page.selectOption('[data-test="req-pickup"]', 'ward-b2');
+  await page.locator('[data-to="out:care-home"]').tap();
+  await page.locator('[data-when="booked"]').tap();
+  const options = await page.locator('[data-test="req-slot"] option').evaluateAll((o) => o.map((x) => x.textContent));
+  assert.equal(options.length, 49, 'a blank first, then 48 half hours');
+  assert.equal(options[1], 'Today 10:30');
+  await page.selectOption('[data-test="req-slot"]', { label: 'Today 15:00' });
+  await page.locator('[data-mobility="walks"]').tap();
+  // Another device writes something: the page is drawn again, and what this nurse picked stays.
+  await run(page, 'ospeli_transfers_vehicle_check', { vehicleId: 'asset-vehicle-1', passed: ['tyres', 'lights', 'brakes', 'fuel', 'body', 'lift', 'fixings', 'kit', 'clean'] }, 'driver');
+  await page.waitForTimeout(600);
+  assert.deepEqual(await page.locator('.trf-form [aria-pressed="true"]').evaluateAll((l) => l.map((x) => x.textContent)), ['Discharge', 'Care home', 'At a booked time', 'Walks (may need a hand)']);
+  assert.equal(await page.locator('[data-test="req-slot"] option:checked').textContent(), 'Today 15:00');
+  await page.locator('[data-escort="carer"]').tap();
+  await page.locator('[data-equipment="none"]').tap();
+  assert.deepEqual(await phoneProblems(page), [], 'booking: phone rules');
+  await page.locator('[data-test="req-send"]').tap();
+  await page.waitForSelector('[data-test="req-done"]');
+  const ev = await page.evaluate(async () => (await window.ospeli.core.events({ type: 'transfers.requested' })).at(-1));
+  assert.deepEqual([ev.data.needed, ev.data.bookedFor, ev.data.fromPlace, ev.data.toOutside], ['booked', '2026-11-10T19:00:00.000Z', 'ward-b2', 'care-home']);
+  assert.match(await page.locator(`[data-test="req-open"] [data-transfer="${ev.subject}"]`).textContent(), /Booked for today 15:00/);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('with the guide off, a vehicle that failed its daily check still says so: in the vehicle pick list, on its row, on the fleet card and on the driver\'s job card', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/transfers' });
+  await asRole(page, 'transport-coordinator', 'board');
+  await page.waitForSelector('[data-test="guide-switch"]');
+  await page.locator('[data-test="guide-switch"]').tap();
+  await page.waitForSelector('[data-test="guide-off"]');
+  const all = ['tyres', 'lights', 'brakes', 'fuel', 'body', 'lift', 'fixings', 'kit', 'clean'];
+  const r = await run(page, 'ospeli_transfers_vehicle_check', { vehicleId: 'asset-vehicle-3', passed: all.filter((x) => x !== 'brakes'), failed: ['brakes'] }, 'driver');
+  assert.equal(r.status, 'done');
+  const row = page.locator('[data-test="vehicles"] [data-vehicle="asset-vehicle-3"]');
+  await row.locator('[data-test="failed-check"]').waitFor();
+  assert.equal(await row.locator('[data-test="failed-check"]').textContent(), 'Failed check: Brakes');
+  const opts = await page.locator('[data-test="queue"] li').first().locator('[data-test="assign-vehicle"] option').evaluateAll((o) => o.map((x) => x.textContent));
+  assert.ok(opts.some((x) => /^Vehicle 3: .*FAILED CHECK$/.test(x)), opts.join(' | '));
+  assert.ok(!opts.some((x) => /^Vehicle 1: .*FAILED CHECK/.test(x)));
+  // Vehicle 2 has a job given but not started: it says so, not just "Free".
+  assert.equal(await page.locator('[data-test="vehicles"] [data-vehicle="asset-vehicle-2"] [data-test="vehicle-state"]').textContent(), 'Free, 1 next');
+  assert.match(await page.locator('[data-test="board-counts"]').textContent(), /Journeys under way/);
+  await asRole(page, 'fleet-supervisor', 'fleet');
+  assert.match(await page.locator('[data-test="fleet"] [data-vehicle="asset-vehicle-3"] [data-test="failed-check"]').textContent(), /Failed its daily check: Brakes\. Do not send it/);
+  // The driver on vehicle 3, with a job given to it.
+  const w = (await board(page)).waiting[0].id;
+  await run(page, 'ospeli_transfers_assign', { transferId: w, vehicleId: 'asset-vehicle-3' }, 'transport-coordinator');
+  await asRole(page, 'driver', 'jobs');
+  await page.waitForSelector('[data-vehicle="asset-vehicle-3"]');
+  assert.match(await page.locator('[data-test="pick-vehicle"] [data-vehicle="asset-vehicle-3"]').textContent(), /FAILED CHECK/);
+  await page.locator('[data-test="pick-vehicle"] [data-vehicle="asset-vehicle-3"]').tap();
+  await page.waitForSelector('[data-test="next-job"]');
+  assert.match(await page.locator('[data-test="failed-check"]').textContent(), /Vehicle 3 failed its daily check: Brakes\. Tell the coordinator before you drive it\./);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('an open "Mark delayed" panel stays open, with its reasons, when another journey is given a vehicle', async () => {
+  const { context, page, errors } = await openPage(env, { width: 1280, clock: CLOCK, path: '#/transfers' });
+  await asRole(page, 'transport-coordinator', 'board');
+  const rows = page.locator('[data-test="queue"] > li');
+  await rows.nth(1).waitFor();
+  const keep = await rows.nth(1).getAttribute('data-transfer');
+  await rows.nth(1).locator('[data-test="delay"] summary').click();
+  const first = await rows.first().getAttribute('data-transfer');
+  await rows.first().locator('[data-test="assign-vehicle"]').selectOption('asset-vehicle-3');
+  await rows.first().locator('[data-test="assign"]').click();
+  await page.waitForFunction((t) => !document.querySelector(`[data-test="queue"] [data-transfer="${t}"]`), first);
+  assert.equal(await page.locator(`[data-test="queue"] [data-transfer="${keep}"] [data-test="delay"]`).evaluate((d) => d.open), true, 'still open after the redraw');
+  await page.locator(`[data-test="queue"] [data-transfer="${keep}"] [data-test="delay"] [data-reason="no-crew"]`).click();
+  await page.waitForSelector(`[data-transfer="${keep}"] [data-test="delayed"]`);
   assert.deepEqual(errors, []);
   await context.close();
 });
