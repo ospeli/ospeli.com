@@ -39,6 +39,7 @@ export const FAULT_TYPES = {
   boiler: [['Boiler pressure low', 'estates']],
   imaging: [['X-ray detector error', 'biomed']],
   lab: [['Analyser calibration error', 'biomed']],
+  vehicle: [['Vehicle will not start', 'contractor'], ['Defect found at the daily vehicle check', 'contractor'], ['Tyre or wheel damage', 'contractor'], ['Patient lift or ramp not working', 'contractor']],
 };
 export const OTHER_FAULT = 'Other fault (describe to the team in person)';
 export const ALL_FAULTS = [...new Set(Object.values(FAULT_TYPES).flat().map(([t]) => t)), OTHER_FAULT];

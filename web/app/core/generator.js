@@ -98,6 +98,11 @@ const PLANT_ASSETS = [
   ['asset-xray-1', 'General X-ray room 1', 'dept-imaging', 'imaging'],
   ['asset-analyser-1', 'Chemistry analyser 1', 'dept-laboratory', 'lab'],
 ];
+// Vehicles for journeys between sites (the transfers module). A call sign only: never a registration plate.
+// Kept out of the synthetic fault history below, so that history is the same as before they were added.
+const VEHICLES = [
+  ['asset-vehicle-1', 'Vehicle 1', 'site-main'], ['asset-vehicle-2', 'Vehicle 2', 'site-main'], ['asset-vehicle-3', 'Vehicle 3', 'site-north'],
+];
 const FAULTS = {
   'infusion-pump': ['IV pump alarm', 'biomed'], suction: ['Suction unit not pulling', 'biomed'], 'o2-flowmeter': ['Oxygen flowmeter check', 'biomed'],
   'call-bell': ['Nurse call not working', 'estates'], ac: ['AC filter blocked', 'estates'], sink: ['Blocked sink', 'estates'],
@@ -123,6 +128,7 @@ export function buildModel() {
     }
   }
   for (const [id, name, parentId, kind] of PLANT_ASSETS) entities.push({ id, type: 'asset', name, parentId, kind });
+  for (const [id, name, parentId] of VEHICLES) entities.push({ id, type: 'asset', name, parentId, kind: 'vehicle' });
   // One store: the place that holds stock and supplies the wards (the shared stock item, core/stock.js).
   entities.push({ id: 'store-main', type: 'store', name: 'Main store', parentId: 'bld-main-plant' });
   for (const r of [['ward-nurse', 'Ward nurse'], ['bed-manager', 'Patient flow coordinator'], ['estates-tech', 'Facilities technician'], ['ae-nic', 'Emergency department nurse in charge'], ['ops-manager', 'Operations manager'], ['coo', 'COO']]) {
@@ -252,7 +258,7 @@ export function generateHospital({ seed = DEFAULT_SEED, end, days = 30, modules 
   }
 
   // Engineering: faults, work orders and fixes.
-  const assets = entities.filter((e) => e.type === 'asset');
+  const assets = entities.filter((e) => e.type === 'asset' && e.kind !== 'vehicle');
   const woSpans = new Map(); // asset -> [reported, completed] of its work orders so far
   for (let day = 0; day < days; day++) {
     const n = r.int(2, 6);

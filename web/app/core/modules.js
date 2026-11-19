@@ -26,8 +26,9 @@ import * as feedback from '../modules/feedback/commands.js';
 import * as support from '../modules/support/commands.js';
 import * as stores from '../modules/stores/commands.js';
 import * as facilities from '../modules/facilities/commands.js';
+import * as transfers from '../modules/transfers/commands.js';
 
-export const MODULE_PACKS = [feedback, support, stores, facilities];
+export const MODULE_PACKS = [feedback, support, stores, facilities, transfers];
 
 export const MODULE_COMMANDS = MODULE_PACKS.flatMap((p) => p.COMMANDS || []);
 export const packById = (id) => MODULE_PACKS.find((p) => p.id === id) || null;

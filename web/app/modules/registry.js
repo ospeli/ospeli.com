@@ -17,6 +17,7 @@ export const MODULES = [
   { id: 'support', name: 'Cleaning and transport', summary: 'Cleans, moves and deliveries as tracked tasks for each team.', commands: ['ospeli_support_', 'ospeli_tasks_'], load: () => import('./support/view.js') },
   { id: 'stores', name: 'Stores and supplies', summary: 'Count ward stock, raise and issue requests, track orders and stock-outs.', commands: ['ospeli_stores_', 'ospeli_stock_'], load: () => import('./stores/view.js') },
   { id: 'facilities', name: 'Facilities and utilities', summary: 'Log utility checks and outages from a phone, and see what is due.', commands: ['ospeli_facilities_'], load: () => import('./facilities/view.js') },
+  { id: 'transfers', name: 'Transfers and vehicles', summary: 'Book a vehicle journey, see the queue, and time each step with one tap.', commands: ['ospeli_transfers_'], load: () => import('./transfers/view.js') },
   { id: 'agents', name: 'Agents', summary: 'Choose whether AI helpers may read and suggest. Off until you turn it on.', load: () => import('./agents.js') },
   { id: 'data', name: 'Data and audit', summary: 'Export, import, reset and the audit trail.', load: () => import('./data.js') },
 ];
@@ -39,6 +40,9 @@ export const ROLE_MODULES = {
   'supply-manager': ['stores'],
   'facilities-assistant': ['facilities'],
   'facilities-manager': ['facilities'],
+  'driver': ['transfers'],
+  'transport-coordinator': ['transfers'],
+  'fleet-supervisor': ['transfers'],
 };
 
 export const moduleById = (id) => MODULES.find((m) => m.id === id) || null;

@@ -40,7 +40,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -264,7 +267,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -389,7 +395,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1589,7 +1598,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1668,7 +1680,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1812,7 +1827,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1956,7 +1974,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -2065,7 +2086,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": false,
@@ -2302,7 +2326,10 @@
               "storekeeper",
               "supply-manager",
               "facilities-assistant",
-              "facilities-manager"
+              "facilities-manager",
+              "driver",
+              "transport-coordinator",
+              "fleet-supervisor"
             ],
             "description": "The one role this agent works for. It is refused if it claims another."
           },
@@ -2471,7 +2498,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -2531,7 +2561,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -2695,7 +2728,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -2854,7 +2890,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -3018,7 +3057,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -3156,7 +3198,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -3403,7 +3448,9 @@
         "estates-tech",
         "ops-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -3448,6 +3495,10 @@
               "Boiler pressure low",
               "X-ray detector error",
               "Analyser calibration error",
+              "Vehicle will not start",
+              "Defect found at the daily vehicle check",
+              "Tyre or wheel damage",
+              "Patient lift or ramp not working",
               "Other fault (describe to the team in person)"
             ],
             "description": "Pick from the asset's faults (ospeli_assets_list). No free text, so no personal details."
@@ -3716,7 +3767,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4191,7 +4245,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4325,7 +4382,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4714,7 +4774,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -5040,7 +5103,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -5168,7 +5234,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5264,7 +5333,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5408,7 +5480,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5550,7 +5625,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5665,7 +5743,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5770,7 +5851,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5866,7 +5950,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5962,7 +6049,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6050,7 +6140,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6114,7 +6207,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -6190,7 +6286,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6393,7 +6492,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6592,7 +6694,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6797,7 +6902,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7023,7 +7131,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7222,7 +7333,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7421,7 +7535,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7619,7 +7736,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -7770,7 +7890,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -8674,7 +8797,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -8784,7 +8910,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -8919,7 +9048,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -9028,7 +9160,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -12005,7 +12140,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -12110,7 +12248,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -12351,7 +12492,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -12686,7 +12830,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -12944,7 +13091,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -13346,7 +13496,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -13627,7 +13780,10 @@
         "storekeeper",
         "supply-manager",
         "facilities-assistant",
-        "facilities-manager"
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
       ],
       "humanApproval": false,
       "agentsMayCall": true,

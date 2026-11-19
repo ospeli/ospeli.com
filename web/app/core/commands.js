@@ -789,7 +789,7 @@ COMMAND_LIST.push(
   {
     name: 'ospeli_workorders_report_fault',
     summary: 'Report a fault on an asset. Opens a work order with a priority and an SLA due time, and says if it is a repeat fault (failed again after a fix). If a work order is already open for the same fault on the same asset, nothing new is opened: the answer is a conflict that names it in detail.existing.',
-    kind: 'write', roles: ['ward-nurse', 'bed-manager', 'ae-nic', 'estates-tech', 'ops-manager', 'facilities-assistant', 'facilities-manager'], approval: true,
+    kind: 'write', roles: ['ward-nurse', 'bed-manager', 'ae-nic', 'estates-tech', 'ops-manager', 'facilities-assistant', 'facilities-manager', 'driver', 'fleet-supervisor'], approval: true,
     input: { type: 'object', additionalProperties: false, required: ['assetId', 'fault', 'priority'], properties: {
       assetId: { ...ID, description: 'The asset\'s id, for example asset-a1-sink-1. ospeli_assets_list gives the assets with their ids and the faults each can have.' }, fault: { type: 'string', enum: ALL_FAULTS, description: 'Pick from the asset\'s faults (ospeli_assets_list). No free text, so no personal details.' },
       priority: { type: 'string', enum: Object.keys(PRIORITIES), description: `How soon it must be answered: ${Object.keys(PRIORITIES).join(', ')}. Each has its own response time (ospeli_kpi_list, late work orders).` } } },

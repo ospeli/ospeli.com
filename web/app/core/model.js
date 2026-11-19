@@ -35,6 +35,9 @@ export const ROLES = [
   { id: 'supply-manager', name: 'Supply chain manager', home: 'stores', startsOnHome: true },
   { id: 'facilities-assistant', name: 'Facilities assistant', home: 'facilities', startsOnHome: true },
   { id: 'facilities-manager', name: 'Facilities manager', home: 'facilities', startsOnHome: true },
+  { id: 'driver', name: 'Driver', home: 'transfers', startsOnHome: true },
+  { id: 'transport-coordinator', name: 'Transport coordinator', home: 'transfers', startsOnHome: true },
+  { id: 'fleet-supervisor', name: 'Fleet supervisor', home: 'transfers', startsOnHome: true },
 ];
 
 export const roleById = (id) => ROLES.find((r) => r.id === id) || null;
