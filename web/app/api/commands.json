@@ -13328,7 +13328,7 @@
     },
     {
       "name": "ospeli_facilities_overview",
-      "summary": "Utilities at a glance, in one call: what needs attention first (scheduled checks missed with no check since, open outages with how long), every scheduled check with its status (done, due, overdue) and due day, the newest fuel and water readings against the site's levels, outage hours this month by utility, the measures with their definitions and sources, and the guide's suggestions with their reasons (empty while the guide is off). Building and plant faults are Engineering's work orders: use ospeli_workorders_next with team estates. Read-only.",
+      "summary": "Utilities at a glance, in one call: what needs attention first (scheduled checks missed with no check since; the newest check failed, or a medical gas supply level picked as low or on reserve, until a later check is normal; open outages with how long), every scheduled check with its status (done, due, overdue) and due day, the newest fuel and water readings against the site's levels, outage hours this month by utility, the measures with their definitions and sources, and the guide's suggestions with their reasons (empty while the guide is off). Building and plant faults are Engineering's work orders: use ospeli_workorders_next with team estates. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -13403,11 +13403,16 @@
             "type": "object",
             "required": [
               "overdue",
+              "problems",
               "openOutages"
             ],
             "properties": {
               "overdue": {
                 "type": "array"
+              },
+              "problems": {
+                "type": "array",
+                "description": "Each asset or place whose newest check failed, or whose medical gas supply level was picked as low or on reserve, until a later check is normal. It records what was seen; it never says whether a supply is safe."
               },
               "openOutages": {
                 "type": "array"
@@ -13917,9 +13922,12 @@
               15,
               30,
               60,
-              120
+              120,
+              240,
+              480,
+              720
             ],
-            "description": "How many minutes ago the outage started: 0, 15, 30, 60, 120. Leave out for now."
+            "description": "How many minutes ago the outage started: 0, 15, 30, 60, 120, 240, 480, 720. Leave out for now."
           }
         }
       },
@@ -14012,9 +14020,12 @@
               15,
               30,
               60,
-              120
+              120,
+              240,
+              480,
+              720
             ],
-            "description": "How many minutes ago the supply came back: 0, 15, 30, 60, 120. Leave out for now."
+            "description": "How many minutes ago the supply came back: 0, 15, 30, 60, 120, 240, 480, 720. Leave out for now."
           }
         }
       },
@@ -14145,7 +14156,7 @@
     },
     {
       "name": "ospeli_facilities_guide_set",
-      "summary": "Switch the facilities guide on or off for this site. The guide is two fixed rules (fuel or stored water below the site's level; repeat leak or power faults in one place) that suggest; the facilities manager decides. With it off everything else works the same. People only.",
+      "summary": "Switch the facilities guide on or off for this site. The guide is three fixed rules (fuel or stored water below the site's level; repeat leak or power faults in one place; repeat failed tests on one generator) that suggest; the facilities manager decides. With it off everything else works the same. People only.",
       "kind": "write",
       "roles": [
         "facilities-manager"

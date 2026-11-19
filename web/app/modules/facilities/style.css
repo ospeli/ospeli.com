@@ -18,6 +18,8 @@
 .mod-facilities .chip.fac-hot { background: #FBE3DE; color: #8A2412; }
 .mod-facilities .fac-outage, .mod-facilities .fac-missed, .mod-facilities .fac-check.is-overdue, .mod-facilities .fac-reading.is-below { border-left-color: var(--coral) !important; }
 .mod-facilities .fac-check.is-due { border-left-color: var(--mango); }
+.mod-facilities .fac-check.is-problem { border-left-color: var(--coral); }
+.mod-facilities .fac-tile small { display: block; font-weight: 600; font-size: .9375rem; color: var(--ink-soft); margin-top: 2px; }
 .mod-facilities .chip.fac-st-overdue { background: #FBE3DE; color: #8A2412; }
 .mod-facilities .chip.fac-st-due { background: var(--mango-tint); color: var(--ink); }
 .mod-facilities .chip.fac-st-done { background: var(--wash); color: #0B4A3A; }

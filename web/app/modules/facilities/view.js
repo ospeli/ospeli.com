@@ -18,11 +18,12 @@ const roleNames = (ids) => ids.map((r) => roleById(r)?.name || r).join(', ');
 const FRONT_LINE = ['estates-tech', 'facilities-assistant'];
 const GAS_FIRST = 'Follow your site\'s medical gas procedure first. This records the check; it does not say a supply is safe for patients.';
 const TILES = [
-  ['generator-test', 'Generator test'], ['fuel-level', 'Fuel level'], ['water-level', 'Water storage'], ['gas-check', 'Medical gas check'],
+  ['generator-test', 'Generator test'], ['fuel-level', 'Fuel level', 'Generator\'s own tank'], ['water-level', 'Water storage'], ['gas-check', 'Medical gas check'],
   ['outage-start', 'Outage started'], ['outage-end', 'Outage ended'],
 ];
 const PRIORITIES = [['urgent', 'Urgent', 'Unsafe, or stops care now'], ['high', 'High', 'Needed today'], ['routine', 'Routine', 'Can wait for the planned round']];
 const STATUS_WORDS = { overdue: 'Missed', due: 'Due', done: 'Done' };
+const agoLater = (m) => (m < 60 ? `${m} min` : m === 60 ? '1 hour' : `${m / 60} hours`);
 const hoursText = (x) => (x == null ? 'None' : `${Math.round(x * 10) / 10} h`);
 const pctText = (x) => (x == null ? 'Nothing due yet' : `${Math.round(x)}%`);
 
@@ -63,6 +64,8 @@ export async function render(el, ctx) {
       const out = await ctx.run(cmd, input);
       if (words) ctx.toast(words);
       if (after) after(out);
+      ui.justSaved = true;
+      draw(); // show "Saved" where the person tapped at once, then read again
       return out;
     } catch (err) {
       if (after?.onError) after.onError(err); else { ui.msg = `Not saved. ${err.message}`; ctx.toast(ui.msg); }
@@ -85,7 +88,7 @@ export async function render(el, ctx) {
     return h('li', { class: `fac-outage${mine ? ' is-open' : ''}`, 'data-outage': o.id, 'data-test': 'open-outage' },
       h('p', { class: 'fac-what' }, h('b', {}, `${o.utilityName} outage`), h('span', { class: 'chip fac-hot' }, 'Still open')),
       h('p', {}, o.placeName),
-      h('p', { class: 'meta' }, `Since ${o.startedText} (${fmtWait(o.minutes)}). Cause: ${o.causeName}.`),
+      h('p', { class: 'meta' }, `Since ${o.startedText} (${fmtWait(o.minutes)}${o.startBackdatedMinutes ? `; start entered ${agoLater(o.startBackdatedMinutes)} later` : ''}). Cause: ${o.causeName}.`),
       gas ? h('p', { class: 'fac-gas' }, GAS_FIRST) : null,
       mayOutage ? (mine ? endPanel(o) : h('button', { class: 'btn btn-big fac-main', type: 'button', 'data-test': 'outage-end', 'data-outage': o.id,
         onclick: () => { ui.ending = o.id; ui.endPicks = { cause: null, ago: 0 }; draw(); root.querySelector('[data-test="end-cause"] button')?.focus(); } }, 'Outage ended')) : null);
@@ -100,11 +103,12 @@ export async function render(el, ctx) {
       h('div', { class: 'actions' },
         h('button', { class: 'btn btn-big fac-save', type: 'button', 'data-cmd': 'ospeli_facilities_outage_end', 'data-test': 'end-save',
           onclick: () => act('ospeli_facilities_outage_end', { outageId: o.id, ...(p.cause && p.cause !== o.cause ? { cause: p.cause } : {}), ...(p.ago ? { endedMinutesAgo: p.ago } : {}) },
-            `Saved: ${o.utilityName.toLowerCase()} supply back`, () => { ui.ending = null; ui.saved = { text: `Saved: ${o.utilityName} outage ended, ${o.placeName}.` }; }) }, 'Save: supply is back'),
+            `Saved: ${o.utilityName.toLowerCase()} supply back`, () => { ui.ending = null; ui.saved = { text: `Saved: ${o.utilityName} outage ended, ${o.placeName}.`, at: 'outages' }; data.ov.attention.openOutages = data.ov.attention.openOutages.filter((x) => x.id !== o.id); }) }, 'Save: supply is back'),
         h('button', { class: 'btn btn-ghost', type: 'button', 'data-test': 'end-cancel', onclick: () => { ui.ending = null; draw(); } }, 'Not yet')));
   }
-  const openOutages = (list) => (list.length ? h('section', { class: 'section fac-sec', 'aria-labelledby': 'fac-out-h' },
-    h('h2', { id: 'fac-out-h' }, `Open outages (${list.length})`), h('ul', { class: 'fac-list' }, list.map(outageRow))) : null);
+  const savedHere = (at) => ((ui.saved?.at || 'log') === at || (at === 'log' && ui.msg && !ui.saved) ? savedCard() : null);
+  const openOutages = (list) => (list.length || savedHere('outages') ? h('section', { class: 'section fac-sec', 'aria-labelledby': 'fac-out-h' },
+    h('h2', { id: 'fac-out-h' }, `Open outages (${list.length})`), savedHere('outages'), list.length ? h('ul', { class: 'fac-list' }, list.map(outageRow)) : null) : null);
 
   // A row of pick buttons. value: the picked id (or null); onPick(id).
   function choices(test, items, value, onPick, labelledBy) {
@@ -116,7 +120,8 @@ export async function render(el, ctx) {
   // ---------------------------------------------------------------- the log: tiles and forms
   function tiles() {
     const shown = TILES.filter(([id]) => (id.startsWith('outage') ? mayOutage : mayCheck.includes(id)));
-    return h('div', { class: 'fac-tiles', role: 'group', 'aria-label': 'What are you logging?', 'data-test': 'tiles' }, shown.map(([id, label]) => h('button', {
+    const openN = data.ov.attention.openOutages.length;
+    return h('div', { class: 'fac-tiles', role: 'group', 'aria-label': 'What are you logging?', 'data-test': 'tiles' }, shown.map(([id, label, hint]) => h('button', {
       class: 'fac-tile', type: 'button', 'data-tile': id, onclick: () => {
         ui.saved = null; ui.fault = null; ui.msg = null;
         if (id === 'outage-end') {
@@ -124,6 +129,8 @@ export async function render(el, ctx) {
           if (open.length === 1) { ui.ending = open[0].id; ui.endPicks = { cause: null, ago: 0 }; }
           ui.form = open.length ? null : 'none-open';
           draw();
+          const first = root.querySelector('[data-test="open-outage"]');
+          first?.scrollIntoView?.({ block: 'nearest' });
           root.querySelector('[data-test="open-outage"] button, [data-test="none-open"]')?.focus();
           return;
         }
@@ -135,13 +142,14 @@ export async function render(el, ctx) {
         const f = root.querySelector('[data-test="form"]');
         f?.scrollIntoView?.({ block: 'nearest' });
         f?.querySelector('button, select')?.focus();
-      } }, h('span', { class: 'fac-tile-label' }, label))));
+      } }, h('span', { class: 'fac-tile-label' }, label),
+      id === 'outage-end' && openN > 1 ? h('small', { 'data-test': 'pick-above' }, 'Pick the outage above') : hint ? h('small', {}, hint) : null)));
   }
 
   // What the form still needs, in order, or null when it can be saved.
   function missing() {
     const p = ui.picks;
-    if (ui.form === 'outage-start') return !p.utility ? 'the utility' : !p.placeId ? 'the place' : !p.cause ? 'the cause' : null;
+    if (ui.form === 'outage-start') return !p.utility ? 'the supply' : !p.placeId ? 'the place' : !p.cause ? 'the cause' : null;
     const k = CHECK_KINDS[ui.form];
     if (!p.target) return k.target === 'asset' ? 'the generator' : 'the place';
     for (const f of k.needs) if (p[f] == null) return { result: 'the result', runMinutes: 'how long it ran', levelPct: 'the level', levelBand: 'the supply level' }[f];
@@ -184,9 +192,17 @@ export async function render(el, ctx) {
       const k = CHECK_KINDS[ui.form];
       title = k.name;
       const targets = k.target === 'asset' ? ch.assets[ui.form] : ch.places[ui.form];
+      if (!targets.length) {
+        // Nothing to check here yet: say so, with no picks and no button that could never be used.
+        return h('div', { class: 'card fac-form', 'data-test': 'form', 'data-form': ui.form, 'data-empty': 'true' },
+          h('div', { class: 'fac-form-head' }, h('h2', {}, title), back),
+          h('p', { 'data-test': 'no-target' }, h('b', {}, k.target === 'asset' ? 'There is no generator on this site yet.' : 'There is no place for this check on this site yet.')),
+          h('p', {}, 'Plant and places are added when the site is set up, by the person who sets up the site on the ', h('a', { href: '#/data', class: 'fac-a' }, 'Data and audit page'), '.'));
+      }
       body = [
+        ui.form === 'fuel-level' ? h('p', { class: 'meta', 'data-test': 'fuel-note' }, 'The reading on the generator\'s own fuel tank gauge.') : null,
         ui.form === 'gas-check' ? h('p', { class: 'fac-gas', 'data-test': 'gas-first' }, GAS_FIRST) : null,
-        field(k.target === 'asset' ? 'Which generator?' : 'Where?', 'fq-target', targets.length
+        field(k.target === 'asset' ? (ui.form === 'fuel-level' ? 'Which generator\'s tank?' : 'Which generator?') : 'Where?', 'fq-target', targets.length
           ? choices('target', targets.map((x) => [x.id, x.name]), p.target, set('target'), 'fq-target')
           : h('p', { class: 'meta' }, 'Nothing to check on this site yet.')),
         k.needs.includes('result') ? field('Result', 'fq-result', choices('result', Object.entries(RESULTS), p.result, set('result'), 'fq-result')) : null,
@@ -225,7 +241,7 @@ export async function render(el, ctx) {
 
   function savedCard() {
     if (!ui.saved && !ui.msg) return null;
-    return h('div', { class: `card fac-saved${ui.saved?.failed ? ' is-fail' : ''}${ui.msg && !ui.saved ? ' is-msg' : ''}`, role: 'status', 'data-test': 'saved' },
+    return h('div', { tabindex: '-1', class: `card fac-saved${ui.saved?.failed ? ' is-fail' : ''}${ui.msg && !ui.saved ? ' is-msg' : ''}`, role: 'status', 'data-test': 'saved' },
       ui.saved ? h('p', {}, h('b', {}, ui.saved.text)) : null,
       ui.msg ? h('p', { 'data-test': 'msg' }, ui.msg) : null,
       ui.fault ? faultPanel() : null,
@@ -251,16 +267,21 @@ export async function render(el, ctx) {
     if (!logs) return h('p', { class: 'card meta notice', 'data-test': 'read-only' }, `${roleById(role)?.name || role} can see the log. Checks are recorded by ${roleNames(['estates-tech', 'facilities-assistant', 'facilities-manager'])}; outages also by ${roleNames(['ops-manager'])}.`);
     return h('section', { class: 'section fac-sec', 'aria-labelledby': 'fac-log-h', 'data-test': 'log' },
       h('h2', { id: 'fac-log-h' }, ui.form ? 'Log' : 'What are you logging?'),
-      savedCard(),
+      savedHere('log'),
       ui.form ? form() : tiles());
   }
 
   // ---------------------------------------------------------------- the manager's pieces
   function attention() {
-    const { overdue, openOutages: open } = data.ov.attention;
+    const { overdue, problems, openOutages: open } = data.ov.attention;
     return h('section', { class: 'card fac-attention', 'aria-labelledby': 'fac-att-h', 'data-test': 'attention' },
       h('h2', { id: 'fac-att-h' }, 'Needs attention'),
-      !overdue.length && !open.length ? h('p', { 'data-test': 'all-clear' }, 'No check missed and no outage open.') : null,
+      savedHere('outages'),
+      !overdue.length && !open.length && !problems.length ? h('p', { 'data-test': 'all-clear' }, 'No check missed or failed, and no outage open.') : null,
+      problems.length ? h('ul', { class: 'fac-list' }, problems.map((c) => h('li', { class: 'fac-missed', 'data-test': 'problem', 'data-check': `${c.checkKind}:${c.targetId}`, 'data-problem': c.problem.id },
+        h('p', { class: 'fac-what' }, h('b', {}, `${c.checkName}: ${c.targetName}`), h('span', { class: 'chip fac-hot' }, c.problem.id === 'failed' ? 'Failed' : 'Supply low')),
+        h('p', { class: 'meta' }, c.text),
+        c.procedure ? h('p', { class: 'fac-gas' }, c.procedure) : null))) : null,
       overdue.length ? h('ul', { class: 'fac-list' }, overdue.map((c) => h('li', { class: 'fac-missed', 'data-test': 'missed', 'data-check': `${c.checkKind}:${c.targetId}` },
         h('p', { class: 'fac-what' }, h('b', {}, `${c.checkName}: ${c.targetName}`), h('span', { class: 'chip fac-hot' }, 'Missed')),
         h('p', { class: 'meta' }, c.overdueText),
@@ -289,8 +310,10 @@ export async function render(el, ctx) {
     const rows = data.ov.checks;
     return h('section', { class: 'section fac-sec', 'aria-labelledby': 'fac-chk-h', 'data-test': 'checks' },
       h('h2', { id: 'fac-chk-h' }, 'Scheduled checks'),
-      rows.length ? h('ul', { class: 'fac-list fac-checks' }, rows.map((c) => h('li', { class: `fac-check is-${c.status}`, 'data-check': `${c.checkKind}:${c.targetId}`, 'data-status': c.status },
-        h('p', { class: 'fac-what' }, h('b', {}, `${c.checkName}: ${c.targetName}`), h('span', { class: `chip fac-st-${c.status}` }, STATUS_WORDS[c.status])),
+      rows.length ? h('ul', { class: 'fac-list fac-checks' }, rows.map((c) => h('li', { class: `fac-check is-${c.status}${c.problem ? ' is-problem' : ''}`, 'data-check': `${c.checkKind}:${c.targetId}`, 'data-status': c.status },
+        h('p', { class: 'fac-what' }, h('b', {}, `${c.checkName}: ${c.targetName}`), c.status === 'done' && c.problem
+          ? h('span', { class: 'chip fac-hot', 'data-test': 'done-problem' }, c.problem.id === 'failed' ? 'Done: failed' : 'Done: supply low')
+          : h('span', { class: `chip fac-st-${c.status}` }, STATUS_WORDS[c.status])),
         h('p', { class: 'meta' }, c.status === 'overdue' ? c.overdueText : c.status === 'done' ? `Done this period. ${c.everyText}.` : `${c.dueText}. ${c.everyText}.`),
         c.last ? h('p', { class: 'meta' }, `Last: ${c.last.atText}, ${c.last.words}${c.lastFailed ? ' (failed)' : ''}.`) : h('p', { class: 'meta' }, 'No check recorded yet.'))))
         : h('p', { class: 'fac-empty', 'data-test': 'checks-empty' }, 'No scheduled check on this site yet.'),
@@ -372,6 +395,8 @@ export async function render(el, ctx) {
       h('h2', { id: 'fac-rec-h' }, 'Recently logged'),
       list.length ? h('ul', { class: 'fac-list fac-recent' }, list.map((x) => h('li', { 'data-entry': x.id },
         h('p', {}, h('b', {}, x.kind === 'check' ? `${x.checkName}: ${x.words}` : `${x.utilityName} outage${x.open ? ', still open' : `, ${fmtWait(x.minutes)}`}`)),
+        x.kind === 'outage' && (x.startBackdatedMinutes || x.endBackdatedMinutes) ? h('p', { class: 'meta', 'data-test': 'backdated' },
+          [x.startBackdatedMinutes ? `Start entered ${agoLater(x.startBackdatedMinutes)} later` : null, x.endBackdatedMinutes ? `end entered ${agoLater(x.endBackdatedMinutes)} later` : null].filter(Boolean).join('; ') + '.') : null,
         h('p', { class: 'meta' }, `${x.kind === 'check' ? x.targetName : `${x.placeName}. ${x.causeName}`}. ${x.atText}. ${roleById(x.kind === 'check' ? x.byRole : (x.endedByRole || x.startedByRole))?.name || ''}`))))
         : h('p', { class: 'fac-empty', 'data-test': 'log-empty' }, 'Nothing has been logged on this device yet.'));
   }
@@ -386,12 +411,12 @@ export async function render(el, ctx) {
     if (!data) return;
     const focusKey = document.activeElement && root.contains(document.activeElement) ? document.activeElement.dataset?.value : null;
     const open = data.ov.attention.openOutages;
-    const missedCount = data.ov.attention.overdue.length;
+    const missedCount = data.ov.attention.overdue.length + data.ov.attention.problems.length;
     if (!manager) {
       setKids(root, head(), props.el,
         openOutages(open),
         logSection(),
-        missedCount ? h('p', { class: 'card meta notice fac-hint', 'data-test': 'missed-hint' }, `${missedCount} scheduled ${missedCount === 1 ? 'check was' : 'checks were'} missed: see Scheduled checks below.`) : null,
+        missedCount ? h('p', { class: 'card meta notice fac-hint', 'data-test': 'missed-hint' }, `${missedCount} ${missedCount === 1 ? 'check needs' : 'checks need'} attention (missed, failed or supply low): see Scheduled checks below.`) : null,
         checksSection(),
         faultsCard(),
         recent(),
@@ -409,7 +434,12 @@ export async function render(el, ctx) {
         recent(),
         footer());
     }
-    if (focusKey) root.querySelector(`[aria-pressed="true"][data-value="${CSS.escape(focusKey)}"]`)?.focus();
+    if (ui.justSaved) {
+      ui.justSaved = false;
+      const sv = root.querySelector('[data-test="saved"]');
+      sv?.scrollIntoView?.({ block: 'nearest' });
+      sv?.focus({ preventScroll: true });
+    } else if (focusKey) root.querySelector(`[aria-pressed="true"][data-value="${CSS.escape(focusKey)}"]`)?.focus();
   }
 
   await load();

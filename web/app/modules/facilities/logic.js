@@ -120,7 +120,7 @@ export const CAUSES = {
   weather: 'Weather',
   'planned-shutdown': 'Planned shutdown',
 };
-export const AGO_MINUTES = [0, 15, 30, 60, 120];
+export const AGO_MINUTES = [0, 15, 30, 60, 120, 240, 480, 720]; // up to 12 hours: an outage found at shift change
 export const agoText = (m) => (m === 0 ? 'Just now' : m < 60 ? `${m} min ago` : m === 60 ? '1 hour ago' : `${m / 60} hours ago`);
 // facilities.outage-started, subject = outage id: { utility, placeId, cause }; facilities.outage-ended: { cause }.
 export function deriveOutages(events) {
@@ -129,12 +129,14 @@ export function deriveOutages(events) {
     if (e.type === 'facilities.outage-started' && OUTAGE_ID.test(e.subject) && !map.has(e.subject)) {
       const d = e.data || {};
       if (!UTILITIES[d.utility] || typeof d.placeId !== 'string' || !CAUSES[d.cause]) continue;
-      map.set(e.subject, { id: e.subject, utility: d.utility, placeId: d.placeId, cause: d.cause, startedAt: e.at, startedByRole: e.actorRole, endedAt: null, endedByRole: null });
+      map.set(e.subject, { id: e.subject, utility: d.utility, placeId: d.placeId, cause: d.cause, startedAt: e.at, startedByRole: e.actorRole, endedAt: null, endedByRole: null,
+        startBackdatedMinutes: AGO_MINUTES.includes(d.backdatedMinutes) ? d.backdatedMinutes : 0, endBackdatedMinutes: 0 });
     } else if (e.type === 'facilities.outage-ended') {
       const o = map.get(e.subject);
       if (!o || o.endedAt) continue;
       o.endedAt = ms(e.at) < ms(o.startedAt) ? o.startedAt : e.at; // a clock set back never makes a length below zero
       o.endedByRole = e.actorRole;
+      o.endBackdatedMinutes = AGO_MINUTES.includes(e.data?.backdatedMinutes) ? e.data.backdatedMinutes : 0;
       if (CAUSES[e.data?.cause]) o.cause = e.data.cause;
     }
   }
@@ -252,6 +254,24 @@ export function checkStatus(checks, targets, { now, offsetMinutes = 0 }) {
   });
 }
 
+// ---- checks that need a person's attention ----
+// A check whose newest record is a fail, or a medical gas check whose supply level was picked as low
+// or on reserve, stays in "Needs attention" until a later check on the same asset or place is
+// normal. This says what was recorded; it never says whether a supply is safe, and orders nothing.
+export const GAS_LOW_BANDS = ['low', 'reserve'];
+export function checkProblem(c) {
+  if (!c) return null;
+  if (c.result === 'fail') return { id: 'failed', words: 'Failed' };
+  if (c.checkKind === 'gas-check' && GAS_LOW_BANDS.includes(c.levelBand)) return { id: c.levelBand, words: `Supply level picked: ${GAS_BANDS[c.levelBand]}` };
+  return null;
+}
+// Each asset or place whose newest check of a kind is a problem: [{ check, problem }], oldest first.
+export function problemChecks(checks) {
+  const last = new Map();
+  for (const c of checks) last.set(`${c.checkKind}|${c.targetId}`, c);
+  return [...last.values()].map((c) => ({ check: c, problem: checkProblem(c) })).filter((x) => x.problem);
+}
+
 // The newest reading of each fuel or water target.
 export function latestReadings(checks) {
   const m = new Map();
@@ -279,7 +299,7 @@ export function monthBounds(t, off = 0) {
 // Faults counted by rule 2: picked from Engineering's own fault lists (core/workorders.js).
 export const REPEAT_FAULTS = {
   water: { name: 'leak', faults: ['Tap leaking'] },
-  power: { name: 'power', faults: ['Tripped breaker', 'Generator test fault'] },
+  power: { name: 'power', faults: ['Tripped breaker'] },
 };
 export const REPEAT_MIN = 2;
 export const GUIDE_RULES = [
@@ -287,6 +307,8 @@ export const GUIDE_RULES = [
     basis: `Example setting, not a standard: the levels are set by this site's facilities manager (the example starts at ${DEFAULT_LEVELS.fuelPct} % for fuel and ${DEFAULT_LEVELS.waterPct} % for stored water). The rule reads the newest reading only. It cannot yet say whether a delivery is booked: that needs delivery records (supply chain), not built yet.` },
   { id: 'repeat-faults', name: 'Repeat building faults in one place',
     basis: `Example setting, not a standard: ${REPEAT_MIN} or more work orders for leak faults (${REPEAT_FAULTS.water.faults.join(', ')}), or for power faults (${REPEAT_FAULTS.power.faults.join(', ')}), on assets in the same ward, department or building, reported within ${REPEAT_WINDOW_DAYS} days (the same window as Engineering's repeat faults). Advice only.` },
+  { id: 'repeat-failed-tests', name: 'Repeat failed tests on one generator',
+    basis: `Example setting, not a standard: ${REPEAT_MIN} or more failed generator tests on the same generator within ${REPEAT_WINDOW_DAYS} days. Advice only: a person decides whether its maintenance needs a review.` },
   { id: 'severe-weather', name: 'Before severe weather', planned: true,
     basis: 'Planned, not built yet: it needs a warning period to be recorded and the compliance calendar.' },
 ];
@@ -334,4 +356,20 @@ export function ruleRepeatFaults(events, { assets, now, nameOf, wards = null }) 
     });
   }
   return out.sort((a, b) => b.workOrders.length - a.workOrders.length || (a.id < b.id ? -1 : 1));
+}
+
+// Rule 3. Repeat failed tests on one generator within the window: suggest reviewing its maintenance.
+export function ruleRepeatFailedTests(checks, { now, nameOf, offsetMinutes = 0 }) {
+  const t = ms(now);
+  const by = new Map();
+  for (const c of checks) {
+    if (c.checkKind !== 'generator-test' || c.result !== 'fail' || ms(c.at) > t || t - ms(c.at) > REPEAT_WINDOW_DAYS * DAY) continue;
+    by.set(c.targetId, [...(by.get(c.targetId) || []), c]);
+  }
+  return [...by].filter(([, list]) => list.length >= REPEAT_MIN).map(([target, list]) => ({
+    rule: 'repeat-failed-tests', id: `repeat-failed-tests:${target}:${list.at(-1).id}`, checks: list.map((c) => c.id),
+    text: `Review the maintenance of ${nameOf(target)}.`,
+    why: `${list.length} failed tests in ${REPEAT_WINDOW_DAYS} days: ${list.map((c) => dayText(ms(c.at), offsetMinutes)).join('; ')}.`,
+    basis: BASIS['repeat-failed-tests'], action: null,
+  }));
 }

@@ -10,7 +10,7 @@ import { runCommand, CommandError, commandByName } from '../../web/app/core/comm
 import { validate } from '../../web/app/core/schema.js';
 import {
   deriveChecks, deriveOutages, plannedChecksDone, outageHours, checkStatus, ruleLowLevel, ruleRepeatFaults, levelsNow, latestReadings,
-  slotIndex, SCHEDULE,
+  slotIndex, SCHEDULE, problemChecks, ruleRepeatFailedTests, AGO_MINUTES,
 } from '../../web/app/modules/facilities/logic.js';
 
 const END = '2026-11-19T14:00:00.000Z';
@@ -230,11 +230,13 @@ test('guide rule 1: fuel or water below the site\'s level, newest reading only',
   assert.match(s[0].basis, /example setting, not a standard/i);
 });
 
-test('guide rule 2: repeat leak or power faults in one place, for plant in a building as well as on a ward, within 30 days', () => {
-  const assets = new Map([['g1', { parentId: 'bld-plant' }], ['g2', { parentId: 'bld-plant' }], ['s1', { parentId: 'ward-a1' }], ['s2', { parentId: 'ward-a1' }], ['s3', { parentId: 'ward-b1' }], ['l1', { parentId: 'ward-b1' }]]);
+test('guide rule 2: repeat leak or power faults in one place, for plant in a building as well as on a ward, within 30 days; a generator test fault is not a power fault', () => {
+  const assets = new Map([['db1', { parentId: 'bld-plant' }], ['db2', { parentId: 'bld-plant' }], ['g1', { parentId: 'bld-plant' }], ['g2', { parentId: 'bld-plant' }],
+    ['s1', { parentId: 'ward-a1' }], ['s2', { parentId: 'ward-a1' }], ['s3', { parentId: 'ward-b1' }], ['l1', { parentId: 'ward-b1' }]]);
   const f = (wo, asset, title, at) => ev('asset.fault-reported', asset, at, { workOrder: wo, title, trade: 'estates', priority: 'routine' }, 'ward-nurse');
   const events = [
-    f('wo-00001', 'g1', 'Generator test fault', '2026-11-02T10:00:00Z'), f('wo-00002', 'g2', 'Generator test fault', '2026-11-15T10:00:00Z'), // building: 2
+    f('wo-00001', 'db1', 'Tripped breaker', '2026-11-02T10:00:00Z'), f('wo-00002', 'db2', 'Tripped breaker', '2026-11-15T10:00:00Z'), // building: 2
+    f('wo-00009', 'g1', 'Generator test fault', '2026-11-03T10:00:00Z'), f('wo-00010', 'g2', 'Generator test fault', '2026-11-16T10:00:00Z'), // not power faults
     f('wo-00003', 's1', 'Tap leaking', '2026-11-05T10:00:00Z'), f('wo-00004', 's2', 'Tap leaking', '2026-11-18T10:00:00Z'), // ward A1: 2
     f('wo-00005', 's3', 'Tap leaking', '2026-10-01T10:00:00Z'), f('wo-00006', 's3', 'Tap leaking', '2026-11-18T10:00:00Z'), // ward B1: one is too old
     f('wo-00007', 'l1', 'Light fitting out', '2026-11-17T10:00:00Z'), f('wo-00008', 'l1', 'Light fitting out', '2026-11-18T10:00:00Z'), // not a leak or power fault
@@ -245,4 +247,55 @@ test('guide rule 2: repeat leak or power faults in one place, for plant in a bui
   assert.match(s.find((x) => x.id.includes('bld-plant')).text, /electrical supply in bld-plant/);
   // An agent sees the ward groups of its own wards only.
   assert.deepEqual(ruleRepeatFaults(events, { assets, now: '2026-11-20T12:00:00Z', nameOf: (x) => x, wards: new Set(['ward-b1']) }).map((x) => x.id), ['repeat-faults:bld-plant:power']);
+});
+
+test('guide rule 3: two or more failed tests on one generator within 30 days suggest reviewing its maintenance', () => {
+  const checks = deriveChecks([
+    gt('chk-00001', 'g1', '2026-10-10T10:00:00Z', 'fail'), // older than 30 days
+    gt('chk-00002', 'g1', '2026-11-04T10:00:00Z', 'fail'), gt('chk-00003', 'g1', '2026-11-11T10:00:00Z'), gt('chk-00004', 'g1', '2026-11-18T10:00:00Z', 'fail'),
+    gt('chk-00005', 'g2', '2026-10-28T10:00:00Z', 'fail'), gt('chk-00006', 'g2', '2026-11-18T10:00:00Z'), // one only
+  ]);
+  const s = ruleRepeatFailedTests(checks, { now: '2026-11-20T12:00:00Z', nameOf: (x) => x });
+  assert.deepEqual(s.map((x) => [x.id, x.checks]), [['repeat-failed-tests:g1:chk-00004', ['chk-00002', 'chk-00004']]]);
+  assert.match(s[0].text, /Review the maintenance of g1/);
+  assert.match(s[0].why, /2 failed tests in 30 days: Wed 4 Nov; Wed 18 Nov/);
+  assert.match(s[0].basis, /Example setting, not a standard/);
+});
+
+test('needs attention: the newest check failed, or a gas supply level picked low or on reserve, until a later normal check on the same asset or place', () => {
+  const gas = (id, at, result, levelBand, placeId = 'plant') => ev('facilities.check-recorded', id, at, { checkKind: 'gas-check', placeId, result, levelBand });
+  const events = [
+    gt('chk-00001', 'g1', '2026-11-04T10:00:00Z', 'fail'), gt('chk-00002', 'g1', '2026-11-11T10:00:00Z'), // failed, then passed: clear
+    gt('chk-00003', 'g2', '2026-11-11T10:00:00Z'), gt('chk-00004', 'g2', '2026-11-18T10:00:00Z', 'fail'), // newest failed: listed
+    gas('chk-00005', '2026-11-17T08:00:00Z', 'pass', 'low'), gas('chk-00006', '2026-11-18T08:00:00Z', 'pass', 'half'), // low, then normal: clear
+    gas('chk-00007', '2026-11-18T08:00:00Z', 'pass', 'reserve', 'plant-b'), // on reserve: listed
+    ev('facilities.check-recorded', 'chk-00008', '2026-11-18T08:00:00Z', { checkKind: 'fuel-level', assetId: 'g1', levelPct: 10 }), // a reading is the refill rule's, not this list's
+  ];
+  const p = problemChecks(deriveChecks(events));
+  assert.deepEqual(p.map((x) => [x.check.targetId, x.problem.id]).sort(), [['g2', 'failed'], ['plant-b', 'reserve']]);
+  assert.ok(p.every((x) => !/safe/i.test(x.problem.words)), 'nothing is worded as a supply being safe');
+  const after = problemChecks(deriveChecks([...events, gt('chk-00009', 'g2', '2026-11-19T10:00:00Z')]));
+  assert.deepEqual(after.map((x) => x.check.targetId), ['plant-b'], 'a later pass clears the generator');
+});
+
+test('needs attention in the overview: a failed generator test is listed and its check reads as done with a failure; a gas supply on reserve keeps the procedure line', async () => {
+  const { run } = await site();
+  await run('ospeli_facilities_check_record', { checkKind: 'generator-test', assetId: 'asset-generator-1', result: 'fail', runMinutes: 15 }, 'estates-tech');
+  await run('ospeli_facilities_check_record', { checkKind: 'gas-check', placeId: 'bld-main-plant', result: 'pass', levelBand: 'reserve' }, 'estates-tech');
+  const ov = await run('ospeli_facilities_overview', {}, 'facilities-manager');
+  out('ospeli_facilities_overview', ov);
+  assert.deepEqual(ov.attention.problems.map((x) => [x.targetId, x.problem.id]), [['asset-generator-1', 'failed'], ['bld-main-plant', 'reserve']]);
+  assert.match(ov.attention.problems[1].procedure, /Follow your site's medical gas procedure first/);
+  const row = ov.checks.find((c) => c.checkKind === 'generator-test' && c.targetId === 'asset-generator-1');
+  assert.deepEqual([row.status, row.problem.id], ['done', 'failed'], 'done for the measure, failed on screen');
+  assert.match(ov.kpis[0].definition, /counts as done for this measure.*Needs attention until a later test passes/);
+});
+
+test('an outage found at shift change can be recorded up to 12 hours back, and the log says the start was entered later', async () => {
+  const { run } = await site();
+  assert.equal(AGO_MINUTES.at(-1), 720);
+  const s = await run('ospeli_facilities_outage_start', { utility: 'heating-cooling', placeId: 'bld-north-1', cause: 'not-known', startedMinutesAgo: 720 }, 'estates-tech');
+  const e = (await run('ospeli_facilities_log_list', { kind: 'outages', limit: 50 }, 'estates-tech')).entries.find((x) => x.id === s.outageId);
+  assert.equal(e.startBackdatedMinutes, 720);
+  assert.ok(e.minutes >= 720);
 });

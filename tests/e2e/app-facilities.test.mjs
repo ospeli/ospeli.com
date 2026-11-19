@@ -113,9 +113,67 @@ test('a form cannot be saved until every pick is made; a failed generator test o
   await page.waitForSelector('[data-test="fault-done"]');
   assert.match(await page.locator('[data-test="fault-done"]').textContent(), /Reported: WO-\d+, Generator test fault/);
   assert.equal((await cmd(page, 'ospeli_workorders_list', { state: 'all', limit: 500 }, 'coo')).total, wos + 1);
-  // The medical gas form says to follow the site's procedure first.
+  // The medical gas form says to follow the site's procedure first; a supply on reserve is raised.
   await tap(page, '[data-tile="gas-check"]');
   assert.match(await page.locator('[data-test="gas-first"]').textContent(), /Follow your site's medical gas procedure first.*does not say a supply is safe/);
+  await tap(page, '[data-test="result"] [data-value="pass"]');
+  await tap(page, '[data-test="band"] [data-value="reserve"]');
+  await tap(page, '[data-test="save"]');
+  await waitSaved(page, /Saved: Medical gas check/);
+  // The manager sees both in Needs attention; the generator's check reads "Done: failed" in coral.
+  await asRole(page, 'facilities-manager');
+  const att = page.locator('[data-test="attention"]');
+  assert.match(await att.locator('[data-test="problem"][data-check="generator-test:asset-generator-1"]').textContent(), /Generator test: Standby generator 1.*Failed/);
+  const gas = await att.locator('[data-test="problem"][data-problem="reserve"]').textContent();
+  assert.match(gas, /Supply low.*Running on the reserve supply.*Follow your site's medical gas procedure first/);
+  assert.ok(!/safe/i.test((await att.textContent()).replaceAll('it does not say a supply is safe for patients', '')), 'nothing says a supply is safe');
+  const chip = page.locator('[data-check="generator-test:asset-generator-1"][data-status="done"] [data-test="done-problem"]');
+  assert.equal(await chip.textContent(), 'Done: failed');
+  assert.equal(await chip.evaluate((x) => getComputedStyle(x).color), 'rgb(138, 36, 18)', 'coral chip, not the green Done');
+  // A later pass clears it.
+  await cmd(page, 'ospeli_facilities_check_record', { checkKind: 'generator-test', assetId: 'asset-generator-1', result: 'pass', runMinutes: 30 }, 'estates-tech');
+  await page.waitForFunction(() => !document.querySelector('[data-test="problem"][data-check="generator-test:asset-generator-1"]'));
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('small things a person meets: supply wording, Saved where they tapped, honest empty forms, two open outages, a start entered 12 hours later', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/facilities' });
+  await asRole(page, 'estates-tech');
+  assert.match(await page.locator('[data-tile="fuel-level"]').textContent(), /Generator's own tank/);
+  await tap(page, '[data-tile="outage-start"]');
+  assert.equal(await page.locator('[data-test="save"]').textContent(), 'Pick the supply first');
+  await tap(page, '[data-test="utility"] [data-value="heating-cooling"]');
+  await page.locator('[data-test="place"]').selectOption('bld-north-1');
+  await tap(page, '[data-test="cause"] [data-value="not-known"]');
+  await tap(page, '.fac-ago summary');
+  await tap(page, '[data-test="start-ago"] [data-value="720"]');
+  await tap(page, '[data-test="save"]');
+  await waitSaved(page, /Saved: Heating or cooling outage/);
+  const sv = await page.locator('[data-test="saved"]').boundingBox();
+  assert.ok(sv.y >= 0 && sv.y < 844, `Saved shows on screen where the person tapped (at ${Math.round(sv.y)} px)`);
+  assert.match(await page.locator('[data-test="open-outage"]', { hasText: 'Heating' }).textContent(), /start entered 12 hours later/);
+  assert.match(await page.locator('[data-test="recent"] [data-test="backdated"]').first().textContent(), /Start entered 12 hours later/);
+  // Two outages open: the tile says to pick one above.
+  assert.equal(await page.locator('[data-tile="outage-end"] [data-test="pick-above"]').textContent(), 'Pick the outage above');
+  // A site with no generator: no picks and no button that can never be used.
+  await page.evaluate(async () => {
+    for (const id of ['asset-generator-1', 'asset-generator-2']) {
+      const a = await window.ospeli.core.getEntity(id);
+      await window.ospeli.core.putEntity({ ...a, kind: 'retired-plant' }, 'coo');
+    }
+  });
+  await page.reload();
+  await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForFunction(() => document.querySelector('.fac')?.dataset.role === 'estates-tech');
+  for (const kind of ['generator-test', 'fuel-level']) {
+    await tap(page, `[data-tile="${kind}"]`);
+    assert.match(await page.locator('[data-test="no-target"]').textContent(), /There is no generator on this site yet/);
+    assert.equal(await page.locator('[data-test="form"] [data-test="result"], [data-test="form"] [data-test="save"], [data-test="form"] [data-test="level"]').count(), 0);
+    assert.match(await page.locator('[data-test="form"]').textContent(), /sets up the site on the Data and audit page/);
+    assert.deepEqual(await phoneProblems(page), []);
+    await tap(page, '[data-test="back"]');
+  }
   assert.deepEqual(errors, []);
   await context.close();
 });

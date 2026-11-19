@@ -18,7 +18,7 @@ import { faultsFor } from '../../core/workorders.js';
 import {
   CHECK_KINDS, RESULTS, RUN_MINUTES, LEVELS, GAS_BANDS, UTILITIES, CAUSES, AGO_MINUTES, LEVEL_PICKS, PLACE_TYPES, SCHEDULE, SCHEDULE_NOTE,
   GUIDE_RULES, DEFAULT_LEVELS, deriveChecks, deriveOutages, openOutage, nextCheckId, nextOutageId, levelsNow, guideOn, scheduleTargets,
-  plannedChecksDone, outageHours, checkStatus, latestReadings, ruleLowLevel, ruleRepeatFaults, runText, agoText, everyText,
+  plannedChecksDone, outageHours, checkStatus, latestReadings, ruleLowLevel, ruleRepeatFaults, ruleRepeatFailedTests, problemChecks, checkProblem, runText, agoText, everyText,
   whenText, dueDayText, dayText, monthBounds,
 } from './logic.js';
 
@@ -35,7 +35,7 @@ const DOUBLE_TAP = 10 * MIN; // the same check with the same picks within this t
 // Every number has a definition and a source. Targets are example settings unless a cited source sets one.
 export const KPIS = [
   { id: 'generator-test-compliance', name: 'Generator test compliance', unit: '%',
-    definition: 'The core measure "planned checks done by due date" (KPI dictionary D-13) for check type generator-test: scheduled generator tests recorded (pass or fail) by their due date, divided by generator tests due in the period. Each generator is due once in each period of its schedule. A failed test counts as done; failed tests are shown beside it. A test recorded late counts for the period it was recorded in and does not fill the period it missed.',
+    definition: 'The core measure "planned checks done by due date" (KPI dictionary D-13) for check type generator-test: scheduled generator tests recorded (pass or fail) by their due date, divided by generator tests due in the period. Each generator is due once in each period of its schedule. A failed test counts as done for this measure (the test was carried out); failed tests are counted beside it, and the generator stays in Needs attention until a later test passes. A test recorded late counts for the period it was recorded in and does not fill the period it missed.',
     counts: 'Generator test periods with a test recorded inside them, settled in the period.', outOf: 'Generator test periods settled in the period: done, or ended with no test.',
     leavesOut: 'The current period while it is still open and no test has been recorded.',
     source: 'local definition (KPI dictionary D-13). The schedule is an example setting; a site that follows NFPA 110 sets its own from that standard.',
@@ -88,7 +88,7 @@ const outageOut = (o, info, now) => ({
   id: o.id, kind: 'outage', utility: o.utility, utilityName: UTILITIES[o.utility], placeId: o.placeId, placeName: info.nameOf(o.placeId),
   cause: o.cause, causeName: CAUSES[o.cause], planned: o.cause === 'planned-shutdown', startedAt: o.startedAt, endedAt: o.endedAt, at: o.endedAt || o.startedAt,
   open: !o.endedAt, minutes: Math.max(0, Math.round(((o.endedAt ? Date.parse(o.endedAt) : Date.parse(now)) - Date.parse(o.startedAt)) / MIN)),
-  startedByRole: o.startedByRole, endedByRole: o.endedByRole,
+  startedByRole: o.startedByRole, endedByRole: o.endedByRole, startBackdatedMinutes: o.startBackdatedMinutes, endBackdatedMinutes: o.endBackdatedMinutes,
 });
 
 // ---- checks ----
@@ -169,7 +169,12 @@ async function overview(core, input, wards = null) {
     checkKind: s.checkKind, checkName: CHECK_KINDS[s.checkKind].name, targetId: s.targetId, targetName: info.nameOf(s.targetId), everyDays: s.everyDays, everyText: everyText(s.everyDays),
     status: s.status, dueBy: s.dueBy, dueText: `Due by the end of ${dueDayText(Date.parse(s.dueBy), off)}`,
     overdueSince: s.overdueSince, overdueText: s.overdueSince ? `Missed: no check since ${s.last ? dayText(Date.parse(s.last.at), off) : 'the start'}; due by the end of ${dueDayText(Date.parse(s.overdueSince), off)}` : null,
-    missedPeriods: s.missedPeriods, last: lastOut(s.last), lastFailed: s.last?.result === 'fail',
+    missedPeriods: s.missedPeriods, last: lastOut(s.last), lastFailed: s.last?.result === 'fail', problem: checkProblem(s.last),
+  }));
+  const problems = problemChecks(checks).map(({ check: c, problem }) => ({
+    checkKind: c.checkKind, checkName: CHECK_KINDS[c.checkKind].name, targetId: c.targetId, targetName: info.nameOf(c.targetId), problem,
+    last: lastOut(c), text: `${problem.words}: ${whenText(Date.parse(c.at), off)}. In this list until a later check is normal.`,
+    ...(c.checkKind === 'gas-check' ? { procedure: GAS_FIRST } : {}),
   }));
   const rank = { overdue: 0, due: 1, done: 2 };
   rows.sort((a, b) => rank[a.status] - rank[b.status] || Date.parse(a.dueBy) - Date.parse(b.dueBy) || (a.targetName < b.targetName ? -1 : 1));
@@ -199,10 +204,11 @@ async function overview(core, input, wards = null) {
   const suggestions = on ? [
     ...ruleLowLevel(latestReadings(checks), levels, { nameOf: info.nameOf, offsetMinutes: off }),
     ...ruleRepeatFaults(events, { assets: info.assetById, now, nameOf: info.nameOf, wards }),
+    ...ruleRepeatFailedTests(checks, { now, nameOf: info.nameOf, offsetMinutes: off }),
   ] : [];
   return {
     asOf: now, synthetic: await synth(core), offsetMinutes: off,
-    attention: { overdue: rows.filter((r) => r.status === 'overdue'), openOutages: open },
+    attention: { overdue: rows.filter((r) => r.status === 'overdue'), problems, openOutages: open },
     checks: rows, readings, kpis, readOnly: READ_ONLY.map((x) => ({ ...x })), planned: PLANNED.map((x) => ({ ...x })),
     levels: { fuelPct: levels.fuelPct, waterPct: levels.waterPct, setAt: levels.setAt, text: `Fuel ${levels.fuelPct} %, stored water ${levels.waterPct} % (example setting, not a standard; set by this site)` },
     schedule: { note: SCHEDULE_NOTE, items: SCHEDULE.map((s) => ({ ...s })) },
@@ -226,14 +232,14 @@ const AGO = (what) => ({ type: 'integer', enum: AGO_MINUTES, description: `How m
 export const COMMANDS = [
   {
     name: 'ospeli_facilities_overview',
-    summary: 'Utilities at a glance, in one call: what needs attention first (scheduled checks missed with no check since, open outages with how long), every scheduled check with its status (done, due, overdue) and due day, the newest fuel and water readings against the site\'s levels, outage hours this month by utility, the measures with their definitions and sources, and the guide\'s suggestions with their reasons (empty while the guide is off). Building and plant faults are Engineering\'s work orders: use ospeli_workorders_next with team estates. Read-only.',
+    summary: 'Utilities at a glance, in one call: what needs attention first (scheduled checks missed with no check since; the newest check failed, or a medical gas supply level picked as low or on reserve, until a later check is normal; open outages with how long), every scheduled check with its status (done, due, overdue) and due day, the newest fuel and water readings against the site\'s levels, outage hours this month by utility, the measures with their definitions and sources, and the guide\'s suggestions with their reasons (empty while the guide is off). Building and plant faults are Engineering\'s work orders: use ospeli_workorders_next with team estates. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, properties: {
       days: { type: 'integer', minimum: 7, maximum: 90, description: 'The period for generator test compliance: the last this many days. Default 30. Outage hours are always for the current month.' },
       format: FORMAT('the values without their definitions', 'each value with its definition, source and breakdown') } },
     output: { type: 'object', required: ['asOf', 'synthetic', 'attention', 'checks', 'readings', 'kpis', 'readOnly', 'planned', 'levels', 'guide', 'note'], properties: {
       asOf: TIME, synthetic: SYNTHETIC, offsetMinutes: { type: 'integer', description: 'The site\'s offset from UTC, used for due days and months.' },
-      attention: { type: 'object', required: ['overdue', 'openOutages'], properties: { overdue: { type: 'array' }, openOutages: { type: 'array' } } },
+      attention: { type: 'object', required: ['overdue', 'problems', 'openOutages'], properties: { overdue: { type: 'array' }, problems: { type: 'array', description: 'Each asset or place whose newest check failed, or whose medical gas supply level was picked as low or on reserve, until a later check is normal. It records what was seen; it never says whether a supply is safe.' }, openOutages: { type: 'array' } } },
       checks: { type: 'array', items: { type: 'object', required: ['checkKind', 'targetId', 'targetName', 'status', 'dueBy'] } },
       readings: { type: 'array', description: 'The newest fuel and water reading of each tank, with the site\'s level and whether it is below.' },
       kpis: { type: 'array', items: KPI_OUT }, readOnly: { type: 'array' }, planned: { type: 'array' },
@@ -328,7 +334,7 @@ export const COMMANDS = [
         await checkOutageStart(core, input, events, info);
         outageId = nextOutageId(events);
         at = new Date(Date.parse(core.now()) - (input.startedMinutesAgo || 0) * MIN).toISOString();
-        return [{ type: 'facilities.outage-started', subject: outageId, actorRole: actor.role, at, data: { utility: input.utility, placeId: input.placeId, cause: input.cause } }];
+        return [{ type: 'facilities.outage-started', subject: outageId, actorRole: actor.role, at, data: { utility: input.utility, placeId: input.placeId, cause: input.cause, ...(input.startedMinutesAgo ? { backdatedMinutes: input.startedMinutesAgo } : {}) } }];
       });
       await core.recordAs(actor, 'facilities.outage-started', outageId, { utility: input.utility, placeId: input.placeId, cause: input.cause });
       return { status: 'done', outageId, startedAt: at, events: recs.map((r) => r.seq) };
@@ -352,7 +358,7 @@ export const COMMANDS = [
         const o = await findOutage(core, input.outageId, events);
         const end = Math.max(Date.parse(o.startedAt), Date.parse(core.now()) - (input.endedMinutesAgo || 0) * MIN);
         minutes = Math.round((end - Date.parse(o.startedAt)) / MIN);
-        return [{ type: 'facilities.outage-ended', subject: o.id, actorRole: actor.role, at: new Date(end).toISOString(), data: input.cause ? { cause: input.cause } : {} }];
+        return [{ type: 'facilities.outage-ended', subject: o.id, actorRole: actor.role, at: new Date(end).toISOString(), data: { ...(input.cause ? { cause: input.cause } : {}), ...(input.endedMinutesAgo ? { backdatedMinutes: input.endedMinutesAgo } : {}) } }];
       });
       await core.recordAs(actor, 'facilities.outage-ended', input.outageId, input.cause ? { cause: input.cause } : {});
       return { status: 'done', outageId: input.outageId, minutes, events: recs.map((r) => r.seq) };
@@ -388,7 +394,7 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_facilities_guide_set',
-    summary: 'Switch the facilities guide on or off for this site. The guide is two fixed rules (fuel or stored water below the site\'s level; repeat leak or power faults in one place) that suggest; the facilities manager decides. With it off everything else works the same. People only.',
+    summary: 'Switch the facilities guide on or off for this site. The guide is three fixed rules (fuel or stored water below the site\'s level; repeat leak or power faults in one place; repeat failed tests on one generator) that suggest; the facilities manager decides. With it off everything else works the same. People only.',
     kind: 'write', roles: MANAGER, approval: true, agents: false,
     input: { type: 'object', additionalProperties: false, required: ['on'], properties: { on: { type: 'boolean', description: 'true: show the guide\'s suggestions. false: none.' } } },
     output: { type: 'object', required: ['status', 'on'], properties: { status: WRITE_STATUS, on: { type: 'boolean' }, events: EVENT_SEQS } },
