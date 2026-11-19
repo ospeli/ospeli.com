@@ -138,6 +138,21 @@ async function findOutage(core, outageId, events) {
   return o;
 }
 
+// The pick lists a screen needs: the plant assets of each kind, the places of each place check
+// (the scheduled ones, or every building when none is scheduled), and the places an outage can be at.
+function choices(info) {
+  const byType = (t) => [...info.places.values()].filter((p) => p.type === t).map((p) => ({ id: p.id, name: currentWords(p.name), type: p.type }));
+  const out = { assets: {}, places: {}, outagePlaces: [...byType('site'), ...byType('building'), ...byType('department')] };
+  for (const [k, v] of Object.entries(CHECK_KINDS)) {
+    if (v.target === 'asset') out.assets[k] = info.assets.filter((a) => a.kind === v.assetKind).map((a) => ({ id: a.id, name: currentWords(a.name) }));
+    else {
+      const sched = info.targets.filter((t) => t.checkKind === k).map((t) => t.targetId);
+      out.places[k] = (sched.length ? sched.map((x) => info.places.get(x)) : [...info.places.values()].filter((p) => p.type === 'building')).map((p) => ({ id: p.id, name: currentWords(p.name) }));
+    }
+  }
+  return out;
+}
+
 // ---- the overview: due and missed checks, open outages, measures and the guide in one read ----
 async function overview(core, input, wards = null) {
   const now = core.now();
@@ -191,6 +206,7 @@ async function overview(core, input, wards = null) {
     checks: rows, readings, kpis, readOnly: READ_ONLY.map((x) => ({ ...x })), planned: PLANNED.map((x) => ({ ...x })),
     levels: { fuelPct: levels.fuelPct, waterPct: levels.waterPct, setAt: levels.setAt, text: `Fuel ${levels.fuelPct} %, stored water ${levels.waterPct} % (example setting, not a standard; set by this site)` },
     schedule: { note: SCHEDULE_NOTE, items: SCHEDULE.map((s) => ({ ...s })) },
+    choices: choices(info),
     guide: { on, rules: GUIDE_RULES.map((r) => ({ ...r })), suggestions },
     note: NOT_FOR,
   };
@@ -222,6 +238,7 @@ export const COMMANDS = [
       readings: { type: 'array', description: 'The newest fuel and water reading of each tank, with the site\'s level and whether it is below.' },
       kpis: { type: 'array', items: KPI_OUT }, readOnly: { type: 'array' }, planned: { type: 'array' },
       levels: { type: 'object', required: ['fuelPct', 'waterPct'] }, schedule: { type: 'object' },
+      choices: { type: 'object', description: 'Pick lists: the generators for each asset check, the places for each place check, and the places an outage can be at (sites, buildings, departments).' },
       guide: { type: 'object', required: ['on', 'rules', 'suggestions'], properties: { on: { type: 'boolean' }, rules: { type: 'array' }, suggestions: { type: 'array', items: SUGGESTION } } },
       note: { type: 'string' } } },
     async run(core, input, { wards }) { return overview(core, input, wards); },
@@ -248,7 +265,8 @@ export const COMMANDS = [
       if (kind !== 'checks' && !input.checkKind) list.push(...[...deriveOutages(events).values()].map((o) => outageOut(o, info, now)));
       list = list.filter((x) => !since || x.at >= since).sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : (a.id < b.id ? 1 : -1)));
       const cut = page(list, input.limit, 20);
-      const short = (x) => ({ id: x.id, kind: x.kind, at: x.at, what: x.kind === 'check' ? `${x.checkName}: ${x.words}` : `${x.utilityName} outage, ${x.causeName}${x.open ? ', still open' : ''}`, where: x.targetName || x.placeName });
+      for (const x of cut.items) x.atText = whenText(Date.parse(x.at), info.offsetMinutes);
+      const short = (x) => ({ id: x.id, kind: x.kind, at: x.at, atText: x.atText, what: x.kind === 'check' ? `${x.checkName}: ${x.words}` : `${x.utilityName} outage, ${x.causeName}${x.open ? ', still open' : ''}`, where: x.targetName || x.placeName });
       return { asOf: now, synthetic: await synth(core), total: cut.total, truncated: cut.truncated, entries: cut.items.map((x) => (input.format === 'short' ? short(x) : x)) };
     },
     example: { input: { kind: 'checks', checkKind: 'generator-test', limit: 5 } },
@@ -355,6 +373,7 @@ export const COMMANDS = [
       if ((input.fuelPct ?? l.fuelPct) === l.fuelPct && (input.waterPct ?? l.waterPct) === l.waterPct) throw new CommandError('conflict', `The levels are already fuel ${l.fuelPct} % and water ${l.waterPct} %.`);
     },
     async run(core, input, { actor }) {
+      if (input.fuelPct == null && input.waterPct == null) throw new CommandError('invalid-input', 'Send fuelPct, waterPct or both, for example { "fuelPct": 40 }.');
       let next = null;
       const recs = await core.appendChecked(async (events) => {
         const l = levelsNow(events);

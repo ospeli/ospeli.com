@@ -13528,6 +13528,10 @@
           "schedule": {
             "type": "object"
           },
+          "choices": {
+            "type": "object",
+            "description": "Pick lists: the generators for each asset check, the places for each place check, and the places an outage can be at (sites, buildings, departments)."
+          },
           "guide": {
             "type": "object",
             "required": [
