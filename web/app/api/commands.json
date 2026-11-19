@@ -13325,6 +13325,874 @@
           "on": false
         }
       }
+    },
+    {
+      "name": "ospeli_facilities_overview",
+      "summary": "Utilities at a glance, in one call: what needs attention first (scheduled checks missed with no check since, open outages with how long), every scheduled check with its status (done, due, overdue) and due day, the newest fuel and water readings against the site's levels, outage hours this month by utility, the measures with their definitions and sources, and the guide's suggestions with their reasons (empty while the guide is off). Building and plant faults are Engineering's work orders: use ospeli_workorders_next with team estates. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "type": "integer",
+            "minimum": 7,
+            "maximum": 90,
+            "description": "The period for generator test compliance: the last this many days. Default 30. Outage hours are always for the current month."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: the values without their definitions. detailed (default): each value with its definition, source and breakdown."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "attention",
+          "checks",
+          "readings",
+          "kpis",
+          "readOnly",
+          "planned",
+          "levels",
+          "guide",
+          "note"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "offsetMinutes": {
+            "type": "integer",
+            "description": "The site's offset from UTC, used for due days and months."
+          },
+          "attention": {
+            "type": "object",
+            "required": [
+              "overdue",
+              "openOutages"
+            ],
+            "properties": {
+              "overdue": {
+                "type": "array"
+              },
+              "openOutages": {
+                "type": "array"
+              }
+            }
+          },
+          "checks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "checkKind",
+                "targetId",
+                "targetName",
+                "status",
+                "dueBy"
+              ]
+            }
+          },
+          "readings": {
+            "type": "array",
+            "description": "The newest fuel and water reading of each tank, with the site's level and whether it is below."
+          },
+          "kpis": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "unit",
+                "value"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "null when nothing was due in the period."
+                },
+                "numerator": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "denominator": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "n": {
+                  "type": "integer"
+                },
+                "period": {
+                  "type": "object"
+                },
+                "targetText": {
+                  "type": "string"
+                },
+                "failed": {
+                  "type": "integer",
+                  "description": "Generator test periods done with a failed test (counted as done)."
+                },
+                "missed": {
+                  "type": "array",
+                  "description": "Periods that ended with no test."
+                },
+                "breakdown": {
+                  "type": "array",
+                  "description": "Outage hours by utility, with planned shutdowns apart."
+                },
+                "plannedHours": {
+                  "type": "number"
+                },
+                "definition": {
+                  "type": "string"
+                },
+                "counts": {
+                  "type": "string"
+                },
+                "outOf": {
+                  "type": "string"
+                },
+                "leavesOut": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "readOnly": {
+            "type": "array"
+          },
+          "planned": {
+            "type": "array"
+          },
+          "levels": {
+            "type": "object",
+            "required": [
+              "fuelPct",
+              "waterPct"
+            ]
+          },
+          "schedule": {
+            "type": "object"
+          },
+          "guide": {
+            "type": "object",
+            "required": [
+              "on",
+              "rules",
+              "suggestions"
+            ],
+            "properties": {
+              "on": {
+                "type": "boolean"
+              },
+              "rules": {
+                "type": "array"
+              },
+              "suggestions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "rule",
+                    "id",
+                    "text",
+                    "why",
+                    "basis"
+                  ],
+                  "properties": {
+                    "rule": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "why": {
+                      "type": "string"
+                    },
+                    "basis": {
+                      "type": "string"
+                    },
+                    "workOrders": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "action": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "Always null tonight: advice only. A person decides."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "format": "short"
+        }
+      }
+    },
+    {
+      "name": "ospeli_facilities_log_list",
+      "summary": "The utilities log, newest first: checks (generator tests, fuel and water readings, medical gas checks) with what was picked, and outages with their utility, place, cause and length. Filter by kind (checks, outages) and checkKind. Each entry records the role, never a person. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "all",
+              "checks",
+              "outages"
+            ],
+            "description": "all (default), checks or outages."
+          },
+          "checkKind": {
+            "type": "string",
+            "enum": [
+              "generator-test",
+              "fuel-level",
+              "water-level",
+              "gas-check"
+            ],
+            "description": "Only checks of this kind."
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Only entries at or after this time."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: id, what, where and when only. detailed (default): every field."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
+            "description": "At most this many entries. Default 20, 500 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "entries",
+          "total",
+          "truncated"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "kind",
+                "at"
+              ]
+            }
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "kind": "checks",
+          "checkKind": "generator-test",
+          "limit": 5
+        }
+      }
+    },
+    {
+      "name": "ospeli_facilities_check_record",
+      "summary": "Record a utility check, by picks only (nothing typed): a generator test (generator, pass or fail, run time), a fuel level (generator, per cent to the nearest 10), a stored water level (place, per cent) or a medical gas check (place, pass or fail, supply level band). A generator test or a medical gas check is recorded by the facilities technician or manager; a reading may also be taken by the facilities assistant. A failed generator test does not open a work order: report it with ospeli_workorders_report_fault (fault \"Generator test fault\"). A gas check records what was seen after the site's own procedure; it never says a supply is safe. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "estates-tech",
+        "facilities-assistant",
+        "facilities-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "checkKind"
+        ],
+        "properties": {
+          "checkKind": {
+            "type": "string",
+            "enum": [
+              "generator-test",
+              "fuel-level",
+              "water-level",
+              "gas-check"
+            ],
+            "description": "generator-test (needs assetId, result, runMinutes), fuel-level (assetId, levelPct), water-level (placeId, levelPct), gas-check (placeId, result, levelBand)."
+          },
+          "assetId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "For generator-test and fuel-level: the generator, for example asset-generator-1."
+          },
+          "placeId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "For water-level and gas-check: the place of the tank or gas plant, for example bld-main-plant."
+          },
+          "result": {
+            "type": "string",
+            "enum": [
+              "pass",
+              "fail"
+            ],
+            "description": "For generator-test and gas-check: pass or fail."
+          },
+          "runMinutes": {
+            "type": "integer",
+            "enum": [
+              15,
+              30,
+              60
+            ],
+            "description": "For generator-test: how long it ran, 15, 30 or 60 (60 means 60 minutes or more)."
+          },
+          "levelPct": {
+            "type": "integer",
+            "enum": [
+              0,
+              10,
+              20,
+              30,
+              40,
+              50,
+              60,
+              70,
+              80,
+              90,
+              100
+            ],
+            "description": "For fuel-level and water-level: the gauge reading to the nearest 10 per cent, 0 to 100."
+          },
+          "levelBand": {
+            "type": "string",
+            "enum": [
+              "high",
+              "half",
+              "low",
+              "reserve"
+            ],
+            "description": "For gas-check: the main supply's level band: high (More than half), half (About half), low (Low: at the reorder mark), reserve (Running on the reserve supply)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "checkId": {
+            "type": "string",
+            "pattern": "^chk-[0-9]{5,}$",
+            "maxLength": 20
+          },
+          "checkName": {
+            "type": "string"
+          },
+          "words": {
+            "type": "string"
+          },
+          "reportFault": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "After a failed generator test: the fault report a person may send with ospeli_workorders_report_fault (pick a priority first)."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "checkKind": "generator-test",
+          "assetId": "asset-generator-1",
+          "result": "pass",
+          "runMinutes": 30
+        }
+      }
+    },
+    {
+      "name": "ospeli_facilities_outage_start",
+      "summary": "Record that a utility supply stopped: the utility (power, water, medical-gases, medical-air-vacuum, heating-cooling), the site, building or department, and the cause (pick \"not-known\" if it is not known yet; it can be corrected when the outage ends). startedMinutesAgo records an outage noticed a little after it started. One open outage per utility and place: a second is refused and names the first. For medical gases, follow the site's medical gas procedure first; Ospeli raises no alarm and switches nothing. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "estates-tech",
+        "facilities-assistant",
+        "facilities-manager",
+        "ops-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "utility",
+          "placeId",
+          "cause"
+        ],
+        "properties": {
+          "utility": {
+            "type": "string",
+            "enum": [
+              "power",
+              "water",
+              "medical-gases",
+              "medical-air-vacuum",
+              "heating-cooling"
+            ],
+            "description": "The supply that stopped: power (Power), water (Water), medical-gases (Medical gases), medical-air-vacuum (Medical air and vacuum), heating-cooling (Heating or cooling)."
+          },
+          "placeId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "The site, building or department without the supply, for example bld-main-a."
+          },
+          "cause": {
+            "type": "string",
+            "enum": [
+              "not-known",
+              "outside-supply",
+              "equipment-fault",
+              "damage-leak",
+              "weather",
+              "planned-shutdown"
+            ],
+            "description": "not-known (Not known yet), outside-supply (Outside supply failed), equipment-fault (Equipment fault on site), damage-leak (Damage or leak), weather (Weather), planned-shutdown (Planned shutdown). Planned shutdowns are counted apart from outages."
+          },
+          "startedMinutesAgo": {
+            "type": "integer",
+            "enum": [
+              0,
+              15,
+              30,
+              60,
+              120
+            ],
+            "description": "How many minutes ago the outage started: 0, 15, 30, 60, 120. Leave out for now."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "outageId": {
+            "type": "string",
+            "pattern": "^out-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An outage id, for example out-00004. ospeli_facilities_overview lists the open ones."
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "utility": "power",
+          "placeId": "bld-main-a",
+          "cause": "not-known"
+        }
+      }
+    },
+    {
+      "name": "ospeli_facilities_outage_end",
+      "summary": "Record that the supply is back: closes an open outage, so its length counts in the outage hours. The cause may be corrected now (for example from not-known to outside-supply). endedMinutesAgo records an end noticed a little late; it never goes before the start. An outage that has already ended is refused. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "estates-tech",
+        "facilities-assistant",
+        "facilities-manager",
+        "ops-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "outageId"
+        ],
+        "properties": {
+          "outageId": {
+            "type": "string",
+            "pattern": "^out-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An outage id, for example out-00004. ospeli_facilities_overview lists the open ones."
+          },
+          "cause": {
+            "type": "string",
+            "enum": [
+              "not-known",
+              "outside-supply",
+              "equipment-fault",
+              "damage-leak",
+              "weather",
+              "planned-shutdown"
+            ],
+            "description": "The cause, if it is known now. Leave out to keep the one recorded at the start."
+          },
+          "endedMinutesAgo": {
+            "type": "integer",
+            "enum": [
+              0,
+              15,
+              30,
+              60,
+              120
+            ],
+            "description": "How many minutes ago the supply came back: 0, 15, 30, 60, 120. Leave out for now."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "outageId": {
+            "type": "string",
+            "pattern": "^out-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An outage id, for example out-00004. ospeli_facilities_overview lists the open ones."
+          },
+          "minutes": {
+            "type": "integer"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "outageId": "out-00001",
+          "cause": "outside-supply"
+        },
+        "needs": "An open outage: ospeli_facilities_outage_start opens one, and ospeli_facilities_overview (attention.openOutages) lists the open ones with their ids."
+      }
+    },
+    {
+      "name": "ospeli_facilities_levels_set",
+      "summary": "Set the site's levels for the guide's refill suggestion: fuel and stored water, per cent (10 to 90, in tens). The example starts at 50 % for both; it is an example setting, not a standard. People only (the facilities manager).",
+      "kind": "write",
+      "roles": [
+        "facilities-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "fuelPct": {
+            "type": "integer",
+            "enum": [
+              10,
+              20,
+              30,
+              40,
+              50,
+              60,
+              70,
+              80,
+              90
+            ],
+            "description": "Suggest a fuel refill when the newest reading is below this."
+          },
+          "waterPct": {
+            "type": "integer",
+            "enum": [
+              10,
+              20,
+              30,
+              40,
+              50,
+              60,
+              70,
+              80,
+              90
+            ],
+            "description": "Suggest a water refill when the newest reading is below this."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "fuelPct",
+          "waterPct"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "fuelPct": {
+            "type": "integer"
+          },
+          "waterPct": {
+            "type": "integer"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "fuelPct": 40
+        }
+      }
+    },
+    {
+      "name": "ospeli_facilities_guide_set",
+      "summary": "Switch the facilities guide on or off for this site. The guide is two fixed rules (fuel or stored water below the site's level; repeat leak or power faults in one place) that suggest; the facilities manager decides. With it off everything else works the same. People only.",
+      "kind": "write",
+      "roles": [
+        "facilities-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "on"
+        ],
+        "properties": {
+          "on": {
+            "type": "boolean",
+            "description": "true: show the guide's suggestions. false: none."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "on"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "on": {
+            "type": "boolean"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "on": false
+        }
+      }
     }
   ]
 }
