@@ -21,7 +21,7 @@ export class CommandError extends Error {
 
 export const ALL_ROLES = ROLES.map((r) => r.id);
 export const ID = { type: 'string', pattern: '^[a-z0-9][a-z0-9-]*$', maxLength: 64 };
-export const TIME = { type: 'string', format: 'date-time' };
+export const TIME = { type: 'string', format: 'date-time', maxLength: 40 };
 export const SYNTHETIC = { type: 'boolean', description: 'True while the data on this device is synthetic.' };
 
 // List reads never dump a whole table (tool-design rule, issue #39): each takes a limit, and says
