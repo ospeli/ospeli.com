@@ -362,7 +362,9 @@ export function stockCommands(packs = []) {
       // An agent's count is kept with the stock as the agent saw it, and is checked against it when a
       // person accepts (#128 point 2): a delivery saved in between makes the count out of date, so it
       // cannot set the balance back.
-      async snapshot(core, input) { return { seenSeq: input.seenSeq ?? (await ctx(core, input)).stock.lastSeq }; },
+      // The number is never taken above the newest stock event there is: an agent that sent a number
+      // from the future would switch the check off (19 Nov).
+      async snapshot(core, input) { const last = (await ctx(core, input)).stock.lastSeq; return { seenSeq: Math.min(input.seenSeq ?? last, last) }; },
       verify(c) {
         const { input } = c;
         place(c, input.placeId, 'placeId');

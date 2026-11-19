@@ -602,7 +602,8 @@ COMMAND_LIST.push(
       const args = { ...p.input };
       if (p.seenState && commandByName(p.command).input.properties.expectedState && !args.expectedState) args.expectedState = p.seenState;
       if (p.seenRevision && commandByName(p.command).input.properties.expectedRevision && !args.expectedRevision) args.expectedRevision = p.seenRevision;
-      if (p.seenSeq != null && commandByName(p.command).input.properties.seenSeq && args.seenSeq == null) args.seenSeq = p.seenSeq;
+      // The number kept with the proposal wins over a higher one the agent typed (19 Nov).
+      if (p.seenSeq != null && commandByName(p.command).input.properties.seenSeq) args.seenSeq = Math.min(args.seenSeq ?? p.seenSeq, p.seenSeq);
       try {
         const result = await runCommand(core, p.command, args, actor);
         const proposal = await core.decideProposal(p.id, actor, { status: 'accepted', events: result.events || [], command: p.command });
@@ -735,7 +736,7 @@ COMMAND_LIST.push(
       total: TOTAL, truncated: TRUNCATED,
       locations: { type: 'array', items: { type: 'object', required: ['id', 'name', 'type'], properties: { id: ID, name: { type: 'string' }, type: { type: 'string' } } } },
       assets: { type: 'array', items: { type: 'object', required: ['id', 'name', 'kind', 'locationId'], properties: { id: ID, name: { type: 'string' }, kind: { type: 'string' }, locationId: ID, faults: { type: 'array', items: { type: 'string' } } } } } } },
-    wardOf: (core, input) => (String(input.locationId || '').startsWith('ward-') ? input.locationId : null),
+    wardOf: (core, input) => input.locationId ?? null, // the gate keeps only ids that are wards, by type
     async run(core, input, { wards: allowed }) {
       const [assets, places] = await Promise.all([core.listEntities('asset'), placesById(core)]);
       const cut = page(assets.filter((a) => (!input.locationId || a.parentId === input.locationId) && (!allowed || allowed.has(a.parentId))), input.limit, 50);
@@ -763,7 +764,7 @@ COMMAND_LIST.push(
     output: { type: 'object', required: ['asOf', 'synthetic', 'workOrders', 'counts', 'total', 'truncated'], properties: {
       asOf: TIME, synthetic: SYNTHETIC, total: TOTAL, truncated: TRUNCATED, workOrders: { type: 'array', items: WO_SCHEMA },
       counts: { type: 'object', required: ['open', 'overdue', 'repeat'], properties: { open: { type: 'integer' }, overdue: { type: 'integer' }, repeat: { type: 'integer', description: 'Open work orders for a fault that came back on the same asset after it was closed as Fixed in the 30 days before the report.' } } } } },
-    wardOf: (core, input) => (String(input.locationId || '').startsWith('ward-') ? input.locationId : input.assetId ? wardOfAsset(core, input.assetId) : null),
+    wardOf: async (core, input) => [input.locationId ?? null, input.assetId ? await wardOfAsset(core, input.assetId) : null],
     async run(core, input, { wards: allowed }) {
       const now = core.now();
       const [events, assetList, places] = await Promise.all([core.events(), core.listEntities('asset'), placesById(core)]);
@@ -1140,10 +1141,12 @@ COMMAND_LIST.push(
         if (!map.walk) return s;
         const inSec = stepsInSeconds(list); const x = analyse(inSec);
         const notSeenSec = inSec.reduce((n, y) => n + (y.waitNotSeenSec || 0) + (y.workNotSeenSec || 0), 0);
-        const seen = x.work + x.wait;
-        return { ...s, workShare: seen ? Math.round((100 * x.work) / seen) : null, biggestWaitStepId: topsOf(list)[0]?.id || null,
+        // The two shares are of the same whole, so they add up to 100: the hands-on share is what the
+        // waiting share leaves (88 + 13 was possible when each was rounded alone; 19 Nov).
+        const waitShare = waitShareOf(x.wait, x.work);
+        return { ...s, workShare: waitShare == null ? null : 100 - waitShare, biggestWaitStepId: topsOf(list)[0]?.id || null,
           elapsedSec: x.elapsed + notSeenSec, workSec: x.work, waitSec: x.wait, notSeenSec,
-          plannedWaitSec: inSec.reduce((n, y) => n + (y.plannedWait ? y.wait || 0 : 0), 0), waitShare: waitShareOf(x.wait, x.work) };
+          plannedWaitSec: inSec.reduce((n, y) => n + (y.plannedWait ? y.wait || 0 : 0), 0), waitShare };
       };
       const t = stats(map.today); const p = stats(map.proposed); const mine = version === 'today' ? t : p;
       const tops = map.walk ? topsOf(map[version]) : [];
@@ -1889,9 +1892,14 @@ async function runChecked(core, name, input, actor, opts = {}) {
   for (const id of new Set((Array.isArray(claimed) ? claimed : [claimed]).filter((x) => typeof x === 'string' && x))) {
     if ((await core.getEntity(id))?.type === 'ward') wardsNamed.push(id);
   }
+  // The refusal names a ward only when the caller named it. A ward Ospeli looked up (the ward a
+  // journey or a job belongs to) is not said back, or a refusal would tell an agent which ward
+  // each record sits in (19 Nov).
+  const typedByCaller = new Set(Object.values(input || {}).flat().filter((x) => typeof x === 'string'));
   for (const w of wardsNamed) {
-    if (access.wards[w] !== true) refuse('agents-off', `Agent access is off for ward ${w}.`, null, 'ward-off');
-    if (!listed.wards.includes(w)) refuse('forbidden', `Agent ${who.agent} is not allowed on ward ${w}.`, null, 'ward-not-listed');
+    const said = typedByCaller.has(w) ? `ward ${w}` : 'a ward this call touches';
+    if (access.wards[w] !== true) refuse('agents-off', `Agent access is off for ${said}.`, null, 'ward-off');
+    if (!listed.wards.includes(w)) refuse('forbidden', `Agent ${who.agent} is not allowed on ${said}.`, null, 'ward-not-listed');
   }
   const ward = wardsNamed[0] ?? null;
   const allowedWards = new Set(listed.wards.filter((id) => access.wards[id] === true));

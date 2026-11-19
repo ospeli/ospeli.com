@@ -111,6 +111,7 @@ export function slotCommands(packs = []) {
     if (input.visitOrder == null) throw invalid('Send visitOrder: the place in the visit order, 1 for first.');
     return { slotTime: null, visitOrder: input.visitOrder };
   }
+  const sameSet = (a, b) => { const x = [...(a || [])].sort(); const y = [...(b || [])].sort(); return x.length === y.length && x.every((v, i) => v === y[i]); };
   let lookup = null; // the derived record in use while a check runs (set by decide)
   const freeSlots = (s) => (lookup ? slotTimes(s).filter((t) => !placeTaken(lookup, s, { slotTime: t })) : []);
   function freePlace(c, s, want, exceptId = null) {
@@ -205,7 +206,7 @@ export function slotCommands(packs = []) {
       if (type.timed && !slotGrid(data.start, data.minutes, data.slotMinutes).length) throw invalid('The session is shorter than one slot.');
       const twin = [...c.d.sessions.values()].find((s) => s.state !== 'cancelled' && s.sessionType === type.id && s.placeId === (input.placeId ?? null) && s.assetId === (input.assetId ?? null) && s.date === data.date && s.start === data.start);
       if (twin) {
-        if (twin.minutes === data.minutes && twin.runByRole === data.runByRole && (twin.slotMinutes ?? null) === (data.slotMinutes ?? null) && (twin.timed || twin.plannedCapacity === data.capacity)) return { out: { sessionId: twin.id, state: twin.state }, events: [] };
+        if (twin.minutes === data.minutes && twin.runByRole === data.runByRole && (twin.slotMinutes ?? null) === (data.slotMinutes ?? null) && sameSet(twin.slotTypes, data.slotTypes) && (twin.timed || twin.plannedCapacity === data.capacity)) return { out: { sessionId: twin.id, state: twin.state }, events: [] };
         throw conflict(`${twin.id} is already planned for this type, place, date and start. Change that session instead.`, { existing: twin.id });
       }
       const id = nextSessionId(c.events);

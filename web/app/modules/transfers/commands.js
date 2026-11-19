@@ -10,7 +10,7 @@
 
 import {
   CommandError, ALL_ROLES, ID, TIME, SYNTHETIC, LIMIT, TOTAL, TRUNCATED, FORMAT, page, WRITE_STATUS, PROPOSAL_OUT, EVENT_SEQS,
-  isSynthetic, sameMoment, DAY, HOUR, MIN,
+  isSynthetic, sameMoment, wardOfPlace, DAY, HOUR, MIN,
 } from '../../core/kit.js';
 import { currentWords } from '../../core/model.js';
 import { deriveBoard } from '../../core/beds.js';
@@ -102,7 +102,9 @@ async function state(core) {
   const fleet = deriveFleet(events, w.vehicles, { now, shift });
   return { events, w, now, shift, transfers, fleet };
 }
-function vehicleOut(v, s) {
+// `see` is the caller's view of journeys: an agent is shown a vehicle's state, never the ids of
+// journeys from wards it was not given (19 Nov).
+function vehicleOut(v, s, see = () => true) {
   const { w, transfers, now } = s;
   const st = vehicleState(v, transfers);
   const site = w.map.get(v.siteId);
@@ -111,7 +113,7 @@ function vehicleOut(v, s) {
     id: v.id, name: currentWords(v.name), siteId: v.siteId, siteName: site ? currentWords(site.name) : null, state: st.state,
     stateName: { 'off-road': 'Out of service', 'on-job': 'On a job', free: 'Free' }[st.state], crewed: v.crewed,
     offRoad: v.offRoad ? { since: v.offRoad.since, sinceText: whenText(v.offRoad.since, now, w.offsetMinutes), reason: v.offRoad.reason, reasonName: OFF_ROAD_NAME[v.offRoad.reason] } : null,
-    currentJob: st.current?.id || null, assignedJobs: st.assigned.map((t) => t.id),
+    currentJob: st.current && see(st.current) ? st.current.id : null, assignedJobs: st.assigned.filter(see).map((t) => t.id),
     lastCheck: v.lastCheck ? { at: v.lastCheck.at, atText: whenText(v.lastCheck.at, now, w.offsetMinutes), today: !!today, passed: v.lastCheck.passed.length,
       failed: v.lastCheck.failed.map((x) => ({ id: x, name: CHECK_NAME[x] })), byRole: v.lastCheck.byRole } : null,
     checkFailing: checkFailing(v),
@@ -129,7 +131,7 @@ async function board(core, input, wards) {
   const out = (t) => transferOut(t, w, now, fleet);
   const waiting = queueOf(mine);
   const open = [...mine.values()].filter((t) => OPEN_STATES.includes(t.state) && t.state !== 'waiting').sort((a, b) => (neededAt(a) < neededAt(b) ? -1 : 1));
-  const vehicles = [...fleet.values()].map((v) => vehicleOut(v, s));
+  const vehicles = [...fleet.values()].map((v) => vehicleOut(v, s, see));
   const sinceDay = new Date(Date.parse(now) - DAY).toISOString();
   const doneToday = [...mine.values()].filter((t) => t.steps['handed-over'] && t.steps['handed-over'] >= sinceDay).length;
   const values = {
@@ -298,8 +300,13 @@ async function checkStatus(core, input, events) {
 // Who a transfer is about, for agents: the ward it leaves from.
 const wardOfTransfer = async (core, input) => {
   const t = deriveTransfers(await core.events({ type: 'transfers.requested' })).get(input.transferId);
-  return t && t.fromPlace.startsWith('ward-') ? t.fromPlace : null;
+  // By the place's type, never by how its id is spelt: a ward may have any id (19 Nov).
+  return t && typeof t.fromPlace === 'string' ? wardOfPlace(core, t.fromPlace) : null;
 };
+// An agent's proposal keeps the state the journey was in when the agent looked, and is checked
+// against it when a person accepts: a journey that has moved on is not cancelled, delayed or handed
+// to another vehicle on old information (19 Nov; the bed and job commands do the same).
+const snapshotTransfer = async (core, input) => ({ seenState: input.expectedState ?? deriveTransfers(await core.events()).get(input.transferId)?.state ?? null });
 const step = (type, subject, actor, core, data) => ({ type, subject, actorRole: actor.role, at: core.now(), data });
 
 const TRF = { type: 'string', pattern: '^trf-[0-9]{5,}$', maxLength: 20, description: 'A transfer id, for example trf-00012 (ospeli_transfers_board lists them).' };
@@ -349,8 +356,8 @@ export const COMMANDS = [
       const see = visible(s.w, wards);
       const jobs = jobsOf(s.transfers, v.id).filter(see);
       const cut = page(jobs, input.limit, 20);
-      const done = [...s.transfers.values()].filter((t) => t.vehicleId === v.id && t.steps['handed-over'] && t.steps['handed-over'] >= s.shift.start).length;
-      return { asOf: s.now, synthetic: await isSynthetic(core), vehicle: vehicleOut(v, s), shift: { ...s.shift, endText: whenText(s.shift.end, s.now, s.w.offsetMinutes) },
+      const done = [...s.transfers.values()].filter((t) => see(t) && t.vehicleId === v.id && t.steps['handed-over'] && t.steps['handed-over'] >= s.shift.start).length;
+      return { asOf: s.now, synthetic: await isSynthetic(core), vehicle: vehicleOut(v, s, see), shift: { ...s.shift, endText: whenText(s.shift.end, s.now, s.w.offsetMinutes) },
         jobs: cut.items.map((t) => transferOut(t, s.w, s.now, s.fleet)), handedOverThisShift: done, total: cut.total, truncated: cut.truncated };
     },
     example: { input: { vehicleId: 'asset-vehicle-1' } },
@@ -372,7 +379,7 @@ export const COMMANDS = [
       bayMove: { type: 'boolean', description: 'true when a move to the vehicle bay is already asked for in Cleaning and transport. This command does not ask for it.' },
       again: { type: 'boolean', description: 'true to book a second, identical journey (another patient) within two minutes of the first.' } } },
     output: { type: 'object', required: ['status'], properties: { status: WRITE_STATUS, transferId: TRF, queuePosition: { type: 'integer' }, waiting: { type: 'integer' }, events: EVENT_SEQS, proposal: PROPOSAL_OUT } },
-    wardOf: (core, input) => (String(input.fromPlace || '').startsWith('ward-') ? input.fromPlace : null),
+    wardOf: (core, input) => (typeof input.fromPlace === 'string' ? wardOfPlace(core, input.fromPlace) : null),
     async precheck(core, input) { await checkRequest(core, input); },
     async run(core, input, { actor }) {
       let transferId = null;
@@ -394,6 +401,7 @@ export const COMMANDS = [
     summary: 'Give a journey to a vehicle (or move it to another vehicle before pickup). The vehicle must be in service; whether it is crewed this shift is shown on the board. It then shows in that vehicle\'s jobs. An agent\'s call becomes a proposal for a person.',
     kind: 'write', roles: ['transport-coordinator'], approval: true,
     input: { type: 'object', additionalProperties: false, required: ['transferId', 'vehicleId'], properties: { transferId: TRF, vehicleId: VEHICLE, expectedState: STATE_IN } },
+    snapshot: snapshotTransfer,
     output: { type: 'object', required: ['status'], properties: { status: WRITE_STATUS, transferId: TRF, vehicleId: ID, dispatchMinutes: { type: 'integer' }, events: EVENT_SEQS, proposal: PROPOSAL_OUT } },
     target: (input) => ({ id: input.transferId, word: 'transfer' }), wardOf: wardOfTransfer,
     async precheck(core, input) { await checkAssign(core, input); },
@@ -414,6 +422,7 @@ export const COMMANDS = [
     summary: 'Time the next step of a journey, one tap each, in order: arrived-pickup, departed, arrived-destination, handed-over (the handover is operational, with no clinical content; it ends the journey and frees the vehicle). A step out of order is refused with the next valid step. An agent\'s call becomes a proposal for a person.',
     kind: 'write', roles: ['driver', 'transport-coordinator'], approval: true,
     input: { type: 'object', additionalProperties: false, required: ['transferId', 'step'], properties: { transferId: TRF, step: { type: 'string', enum: STEPS.map((x) => x.id), description: 'The next step: arrived-pickup, departed, arrived-destination or handed-over.' }, expectedState: STATE_IN } },
+    snapshot: snapshotTransfer,
     output: { type: 'object', required: ['status'], properties: { status: WRITE_STATUS, transferId: TRF, state: { type: 'string' }, nextStep: { type: ['string', 'null'] }, events: EVENT_SEQS, proposal: PROPOSAL_OUT } },
     target: (input) => ({ id: input.transferId, word: 'transfer' }), wardOf: wardOfTransfer,
     async precheck(core, input) { await checkStep(core, input); },
@@ -435,6 +444,7 @@ export const COMMANDS = [
     summary: 'Mark an open journey delayed, with a reason picked from a list (no vehicle, no escort, no crew, vehicle fault, patient, paperwork or destination not ready, other). It keeps its place; the reason feeds on-time pickup and the guide. Transport coordinator only. An agent\'s call becomes a proposal for a person.',
     kind: 'write', roles: ['transport-coordinator'], approval: true,
     input: { type: 'object', additionalProperties: false, required: ['transferId', 'reason'], properties: { transferId: TRF, reason: enumOf(REASONS, 'Why.'), expectedState: STATE_IN } },
+    snapshot: snapshotTransfer,
     output: { type: 'object', required: ['status'], properties: { status: WRITE_STATUS, transferId: TRF, delays: { type: 'integer' }, events: EVENT_SEQS, proposal: PROPOSAL_OUT } },
     target: (input) => ({ id: input.transferId, word: 'transfer' }), wardOf: wardOfTransfer,
     async precheck(core, input) { await checkDelay(core, input); },
@@ -455,6 +465,7 @@ export const COMMANDS = [
     summary: 'Cancel a journey before it departs, with a reason picked from a list. Refused once the vehicle has departed with the patient. An agent\'s call becomes a proposal for a person.',
     kind: 'write', roles: ['transport-coordinator', 'ward-nurse', 'ae-nic', 'bed-manager'], approval: true,
     input: { type: 'object', additionalProperties: false, required: ['transferId', 'reason'], properties: { transferId: TRF, reason: enumOf(CANCEL_REASONS, 'Why.'), expectedState: STATE_IN } },
+    snapshot: snapshotTransfer,
     output: { type: 'object', required: ['status'], properties: { status: WRITE_STATUS, transferId: TRF, events: EVENT_SEQS, proposal: PROPOSAL_OUT } },
     target: (input) => ({ id: input.transferId, word: 'transfer' }), wardOf: wardOfTransfer,
     async precheck(core, input) { await checkCancel(core, input); },

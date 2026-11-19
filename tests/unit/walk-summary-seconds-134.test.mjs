@@ -81,7 +81,10 @@ test('#134: a paused walk counts the time not seen inside start to finish only',
   assert.equal(sum.today.waitSec, 150);
   assert.equal(sum.today.workSec, 90);
   assert.equal(sum.today.waitShare, 63, '150 of the 240 s seen');
-  assert.equal(sum.today.workShare, 38, '90 of the 240 s seen');
+  // 62.5 and 37.5: rounding each alone gave 63 + 38 = 101. The hands-on share is what the waiting
+  // share (the one the screen shows) leaves, so the two add up to 100 (security and audit, 19 Nov).
+  assert.equal(sum.today.workShare, 37, 'what the waiting share leaves of the 240 s seen');
+  assert.equal(sum.today.waitShare + sum.today.workShare, 100);
 });
 
 test('#134: a drawn map keeps its minutes and gains no seconds fields', async () => {

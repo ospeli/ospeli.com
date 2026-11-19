@@ -166,7 +166,7 @@ export function deriveStock(events, { items = new Map(), categories = {}, offset
   };
   // A move adds at the destination only what the source gave up (#128 point 3): a short line in an
   // imported or older log is counted under problems by take, and never creates stock.
-  const move = (fromPlaceId, toPlaceId, l, e, exp) => { const n = take(fromPlaceId, l, e); if (n > 0) add(toPlaceId, { ...l, ...(exp ? { expiresOn: exp } : {}), qty: n }, e); };
+  const move = (fromPlaceId, toPlaceId, l, e, exp) => { const n = take(fromPlaceId, l, e); if (n > 0) add(toPlaceId, { ...l, ...(exp ? { expiresOn: exp } : {}), qty: n }, e); return n; };
 
   for (const e of events) {
     if (typeof e.type !== 'string' || !e.type.startsWith('stock.')) continue;
@@ -233,8 +233,7 @@ export function deriveStock(events, { items = new Map(), categories = {}, offset
           const want = q.lines.find((x) => x.itemId === l.itemId);
           if (!want || want.issued + l.qty > want.qty) { problems += 1; continue; }
           const exp = holdings.get(key(l.itemId, q.fromPlaceId))?.batches.get(bkey(l))?.expiresOn;
-          move(q.fromPlaceId, q.placeId, l, e, exp);
-          want.issued += l.qty;
+          want.issued += move(q.fromPlaceId, q.placeId, l, e, exp); // what moved, not what the line says
         }
         q.state = q.lines.every((x) => x.issued >= x.qty) ? 'issued' : q.lines.some((x) => x.issued > 0) ? 'part' : 'open';
         if (q.state === 'issued') q.issuedAt = e.at;

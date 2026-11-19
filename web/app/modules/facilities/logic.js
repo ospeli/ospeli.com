@@ -332,13 +332,13 @@ export function ruleLowLevel(readings, levels, { nameOf, offsetMinutes = 0 }) {
 }
 
 // Rule 2. events: the whole log (for deriveWorkOrders); assets: Map(id -> { parentId }); now: ISO.
-export function ruleRepeatFaults(events, { assets, now, nameOf, wards = null }) {
+export function ruleRepeatFaults(events, { assets, now, nameOf, wards = null, isWard = (id) => String(id).startsWith('ward-') }) {
   const t = ms(now);
   const groups = new Map();
   for (const w of deriveWorkOrders(events, now).values()) {
     const cat = Object.entries(REPEAT_FAULTS).find(([, c]) => c.faults.includes(w.title))?.[0];
     const place = assets.get(w.assetId)?.parentId;
-    if (wards && String(place).startsWith('ward-') && !wards.has(place)) continue; // an agent sees its own wards only
+    if (wards && isWard(place) && !wards.has(place)) continue; // an agent sees its own wards only
     if (!cat || !place || t - ms(w.reportedAt) > REPEAT_WINDOW_DAYS * DAY || ms(w.reportedAt) > t) continue;
     const key = `${place}|${cat}`;
     if (!groups.has(key)) groups.set(key, { place, cat, orders: [] });

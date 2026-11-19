@@ -66,7 +66,8 @@ async function siteInfo(core) {
   const assetById = new Map(assets.map((a) => [a.id, a]));
   const anyPlace = new Map(all.filter((e) => ['site', 'building', 'department', 'ward'].includes(e.type)).map((e) => [e.id, e]));
   const nameOf = (x) => { const e = assetById.get(x) || anyPlace.get(x); return e ? currentWords(e.name) : x; };
-  return { places, assets, assetById, offsetMinutes, nameOf, targets: scheduleTargets(SCHEDULE, { assets, places }) };
+  const isWard = (x) => anyPlace.get(x)?.type === 'ward'; // by type, never by how the id is spelt
+  return { places, assets, assetById, offsetMinutes, nameOf, isWard, targets: scheduleTargets(SCHEDULE, { assets, places }) };
 }
 const synth = (core) => isSynthetic(core);
 
@@ -118,7 +119,7 @@ async function checkCheck(core, input, actor, events, info) {
   }
   const evs = events ?? await core.events({ type: 'facilities.check-recorded' });
   const target = input.assetId || input.placeId;
-  const recent = deriveChecks(evs).filter((c) => c.checkKind === input.checkKind && c.targetId === target && Date.parse(core.now()) - Date.parse(c.at) < DOUBLE_TAP).at(-1);
+  const recent = deriveChecks(evs).filter((c) => c.checkKind === input.checkKind && c.targetId === target && Math.abs(Date.parse(core.now()) - Date.parse(c.at)) < DOUBLE_TAP).at(-1); // either side of now: a clock put back must not make every later check a repeat
   if (recent && ['result', 'runMinutes', 'levelPct', 'levelBand'].every((f) => (recent[f] ?? null) === (input[f] ?? null))) {
     throw new CommandError('conflict', `${recent.id} with the same picks was saved a few minutes ago. No second check was saved.`, { existing: recent.id });
   }
@@ -128,8 +129,16 @@ async function checkCheck(core, input, actor, events, info) {
 async function checkOutageStart(core, input, events, info) {
   const i = info ?? await siteInfo(core);
   if (!i.places.has(input.placeId)) throw new CommandError('not-found', 'placeId must be a site, building or department, for example bld-main-a or dept-emergency.');
-  const open = openOutage(deriveOutages(events ?? await core.events()), input.utility, input.placeId);
+  const all = deriveOutages(events ?? await core.events());
+  const open = openOutage(all, input.utility, input.placeId);
   if (open) throw new CommandError('conflict', `${open.id} is already open for ${UTILITIES[input.utility].toLowerCase()} at ${i.nameOf(input.placeId)}, since ${open.startedAt}. End it first, or record the outage at another place.`, { existing: open.id });
+  // An outage entered later may not reach back into one already recorded for the same utility
+  // and place: the same hours would be counted twice (19 Nov).
+  if (input.startedMinutesAgo) {
+    const at = Date.parse(core.now()) - input.startedMinutesAgo * MIN;
+    const before = [...all.values()].filter((o) => o.utility === input.utility && o.placeId === input.placeId && o.endedAt && Date.parse(o.endedAt) > at).sort((a, b) => (a.endedAt < b.endedAt ? 1 : -1))[0];
+    if (before) throw new CommandError('conflict', `${before.id} already records ${UTILITIES[input.utility].toLowerCase()} off at ${i.nameOf(input.placeId)} until ${before.endedAt}. This outage cannot start before that one ended: pick a later start.`, { existing: before.id, endedAt: before.endedAt });
+  }
 }
 async function findOutage(core, outageId, events) {
   const o = deriveOutages(events ?? await core.events()).get(outageId);
@@ -203,7 +212,7 @@ async function overview(core, input, wards = null) {
   const on = guideOn(events);
   const suggestions = on ? [
     ...ruleLowLevel(latestReadings(checks), levels, { nameOf: info.nameOf, offsetMinutes: off }),
-    ...ruleRepeatFaults(events, { assets: info.assetById, now, nameOf: info.nameOf, wards }),
+    ...ruleRepeatFaults(events, { assets: info.assetById, now, nameOf: info.nameOf, wards, isWard: info.isWard }),
     ...ruleRepeatFailedTests(checks, { now, nameOf: info.nameOf, offsetMinutes: off }),
   ] : [];
   return {

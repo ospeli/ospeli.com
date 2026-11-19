@@ -196,9 +196,10 @@ export function deriveTransfers(events) {
       if (!TRF_ID.test(e.subject) || all.has(e.subject) || !TYPE_NAME[d.type] || !MOBILITY_NAME[d.mobility] || !ESCORT_NAME[d.escort]) continue;
       if (!d.fromPlace || (!d.toSite && !OUTSIDE_NAME[d.toOutside])) continue;
       if (!['asap', 'booked'].includes(d.needed) || (d.needed === 'booked' && Number.isNaN(Date.parse(d.bookedFor)))) continue;
+      // bookedFor is kept in one spelling of the moment: times here are compared as text (19 Nov).
       all.set(e.subject, {
         id: e.subject, requestedAt: e.at, byRole: e.actorRole, type: d.type, fromPlace: d.fromPlace, toSite: d.toSite || null, toOutside: d.toSite ? null : d.toOutside,
-        needed: d.needed, bookedFor: d.needed === 'booked' ? d.bookedFor : null, mobility: d.mobility, escort: d.escort,
+        needed: d.needed, bookedFor: d.needed === 'booked' ? new Date(Date.parse(d.bookedFor)).toISOString() : null, mobility: d.mobility, escort: d.escort,
         equipment: (Array.isArray(d.equipment) ? d.equipment : []).filter((x) => EQUIPMENT_NAME[x]), bayMove: d.bayMove === true,
         state: 'waiting', vehicleId: null, assignedAt: null, steps: {}, delays: [], cancelledAt: null, cancelReason: null, cancelRole: null,
       });
@@ -272,7 +273,8 @@ export const checkFailing = (v) => !!v.lastCheck?.failed.length && (!v.lastStatu
 
 // ---- KPIs: each (transfers or events, { since, until, ... }) -> { value, numerator, denominator, n, ... } ----
 const inPeriod = (at, since, until) => !!at && at < until && (since == null || at >= since);
-const mins = (a, b) => (Date.parse(b) - Date.parse(a)) / MIN;
+// Never below zero: a device clock set back between two taps must not give a negative wait.
+const mins = (a, b) => Math.max(0, (Date.parse(b) - Date.parse(a)) / MIN);
 // The 90th percentile by the nearest-rank method: the value at rank ceil(0.9 n) when sorted.
 export const p90 = (xs) => { if (!xs.length) return null; const s = [...xs].sort((a, b) => a - b); return s[Math.ceil(0.9 * s.length) - 1]; };
 const timeStat = (xs) => ({ value: median(xs), p90: p90(xs), n: xs.length });
@@ -413,12 +415,15 @@ export function ruleEscortCover({ transfers, now, offsetMinutes }) {
   const since = Date.parse(now) - ESCORT_LOOKBACK_DAYS * DAY;
   const hits = [];
   for (const t of transfers.values()) {
-    for (const d of t.delays) if (d.reason === 'no-escort' && Date.parse(d.at) >= since && d.at <= now) hits.push(d.at);
-    if (t.cancelReason === 'no-escort' && Date.parse(t.cancelledAt) >= since && t.cancelledAt <= now) hits.push(t.cancelledAt);
+    for (const d of t.delays) if (d.reason === 'no-escort' && Date.parse(d.at) >= since && d.at <= now) hits.push({ at: d.at, id: t.id });
+    if (t.cancelReason === 'no-escort' && Date.parse(t.cancelledAt) >= since && t.cancelledAt <= now) hits.push({ at: t.cancelledAt, id: t.id });
   }
   const out = [];
   for (const b of BANDS) {
-    const mine = hits.filter((at) => bandOf(localHour(at, offsetMinutes)) === b);
+    // Journeys, not events: one journey held up three times and then cancelled is one journey (19 Nov).
+    const seen = new Set();
+    const mine = hits.filter((x) => bandOf(localHour(x.at, offsetMinutes)) === b).sort((x, y) => (x.at < y.at ? -1 : 1))
+      .filter((x) => !seen.has(x.id) && seen.add(x.id)).map((x) => x.at);
     if (mine.length < ESCORT_COUNT) continue;
     const byHour = new Map(); const byDay = new Map();
     for (const at of mine) {
