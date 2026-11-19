@@ -529,6 +529,12 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .role-fixed { font-weight: 700; font-size: .9375rem; color: #0B2F4E; padding: .5rem .75rem; border: 1px solid #c9d3dc; border-radius: 10px; background: #fff; max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .site-bar { order: 9; flex: 0 0 100%; margin: 0; padding: .5rem .75rem; background: #fdf1d7; border-left: 4px solid #EE9B00; border-radius: 6px; color: #0B2F4E; font-weight: 700; font-size: .9375rem; line-height: 1.35; }
 .site-bar[hidden] { display: none; }
+/* Locked export and its import (#93): a passphrase form inside the Export and Import cards. */
+.locked-form { display: grid; gap: 6px; margin: 12px 0 0; max-width: 28rem; }
+.locked-form[hidden] { display: none; }
+.locked-form label { font-weight: 700; }
+.locked-form input[type="password"] { font: inherit; min-height: 44px; padding: 8px 10px; border: 1.5px solid var(--line-strong); border-radius: 10px; width: 100%; min-width: 0; background: #fff; color: var(--navy); }
+.locked-form .actions { margin-top: 6px; }
 .last-export { margin: 10px 0 0; font-size: .9375rem; color: var(--ink-soft); }
 .last-export[data-old="true"] { color: var(--ink); font-weight: 700; border-left: 4px solid #EE9B00; padding-left: 8px; }
 .device-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; font-size: .9375rem; }

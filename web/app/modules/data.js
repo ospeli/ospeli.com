@@ -5,6 +5,7 @@ import { loadSyntheticHospital, currentHour, HOSPITAL_NAME } from '../core/gener
 import { commandByName } from '../core/commands.js';
 import { KPIS } from '../core/kpi.js';
 import { SELF_CHECK_CASES } from '../core/audit.js';
+import { canLock, sealChecked, openText, isLockedFile, passphraseProblem, MIN_PASSPHRASE, NotLockedFileError, DamagedFileError, WrongPassphraseError } from '../core/locked-file.js';
 
 const roleName = (id) => (id === 'system' ? 'System' : roleById(id)?.name || id);
 // Who acted, in words (issue #17): a person in a role, an agent for a role, or the system.
@@ -58,6 +59,7 @@ function whereWords(command, input, places) {
 // Audit actions whose detail a person needs to read in the table. The raw action id stays on the
 // cell as data-action and title.
 export function actionLabel(e, places = new Map()) {
+  if (e.action === 'data.exported' && e.detail?.locked === true) return 'Data exported, locked with a passphrase';
   const plain = { 'data.reset': 'Device data cleared', 'data.exported': 'Data exported', 'data.imported': 'Data imported', 'data.synthetic-loaded': 'Fresh copy loaded' }[e.action];
   if (plain) return plain;
   const d = e.detail || {};
@@ -78,8 +80,10 @@ export function actionLabel(e, places = new Map()) {
   return `Agents switched off by ${e.detail.by} (was ${w.dial === 'advise' ? 'Advise' : 'Off'}, ${n(w.wards, 'ward')}, ${n(w.agents, 'agent')})`;
 }
 
-function download(name, text) {
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+const NEEDS_HTTPS = 'The browser offers its encryption only when the page is opened over https or on this computer itself.';
+
+function download(name, content, type = 'application/json') {
+  const url = URL.createObjectURL(new Blob([content], { type }));
   const a = h('a', { href: url, download: name });
   document.body.append(a);
   a.click();
@@ -142,23 +146,63 @@ export async function render(el, ctx) {
       h('td', { class: 'col-hash' }, h('code', { title: e.hash }, e.hash.slice(0, 12))))) : [h('tr', {}, h('td', { colspan: 5 }, want === 'all' ? 'No entries yet.' : 'No entries by this kind of actor.'))]));
   }
 
-  const file = h('input', { type: 'file', accept: 'application/json,.json', id: 'import-file', class: 'sr-only' });
+  // Import. A plain export is checked and loaded as before. A locked export (#93) asks for its
+  // passphrase first; the passphrase is used once and never kept, and a file that does not open
+  // changes nothing.
+  async function importText(text) {
+    const data = JSON.parse(text);
+    const errs = await core.validateImport(data);
+    if (errs.length) { status.textContent = `Import refused. Nothing was changed. ${errs[0]}`; return; }
+    const agentsOn = await core.agentAccessInUse();
+    if (!confirm(`Replace all data on this device with ${data.entities.length} records and ${data.events.length} events from this file?${agentsOn ? AGENTS_OFF_TOO : ''}`)) return;
+    const res = await core.importData(data, ctx.role);
+    await refresh(); // the trail and its pill first, so "Imported" is never shown beside the old state
+    status.textContent = `Imported ${res.entities} records and ${res.events} events.${agentsOn ? ' Agents are off.' : ''}`;
+    ctx.toast(agentsOn ? 'Import complete. Agents are off.' : 'Import complete');
+  }
+  let lockedBytes = null; // a locked file waiting for its passphrase; dropped as soon as it is used
+  const openPass = h('input', { type: 'password', id: 'import-passphrase', autocomplete: 'off', 'data-test': 'import-passphrase' });
+  const openBtn = h('button', { class: 'btn', type: 'submit', 'data-test': 'import-open' }, 'Open and check');
+  const openForm = h('form', { class: 'locked-form', hidden: true, 'data-test': 'import-locked-form', onsubmit: async (ev) => {
+    ev.preventDefault();
+    if (!lockedBytes) return;
+    openBtn.disabled = true;
+    status.textContent = 'Opening…';
+    try {
+      const text = await openText(lockedBytes, openPass.value);
+      openPass.value = ''; lockedBytes = null; openForm.hidden = true;
+      status.textContent = '';
+      await importText(text);
+    } catch (err) {
+      openPass.value = '';
+      if (err instanceof WrongPassphraseError) status.textContent = 'That passphrase does not open this file. Nothing was changed. Check it and try again.';
+      else {
+        lockedBytes = null; openForm.hidden = true;
+        status.textContent = err instanceof DamagedFileError ? 'This locked file is damaged or was cut short, so it cannot be opened. Nothing was changed. Use another copy.'
+          : `Import refused. Nothing was changed. ${err.message}`;
+      }
+    } finally { openBtn.disabled = false; }
+  } },
+  h('label', { for: 'import-passphrase' }, 'This file is locked. Passphrase'), openPass,
+  h('div', { class: 'actions' }, openBtn));
+  const file = h('input', { type: 'file', accept: 'application/json,.json,.ospeli-locked', id: 'import-file', class: 'sr-only' });
   file.addEventListener('change', async () => {
     const f = file.files[0];
     file.value = '';
     if (!f) return;
+    lockedBytes = null; openForm.hidden = true; openPass.value = '';
     try {
-      const data = JSON.parse(await f.text());
-      const errs = await core.validateImport(data);
-      if (errs.length) { status.textContent = `Import refused. Nothing was changed. ${errs[0]}`; return; }
-      const agentsOn = await core.agentAccessInUse();
-      if (!confirm(`Replace all data on this device with ${data.entities.length} records and ${data.events.length} events from this file?${agentsOn ? AGENTS_OFF_TOO : ''}`)) return;
-      const res = await core.importData(data, ctx.role);
-      await refresh(); // the trail and its pill first, so "Imported" is never shown beside the old state
-      status.textContent = `Imported ${res.entities} records and ${res.events} events.${agentsOn ? ' Agents are off.' : ''}`;
-      ctx.toast(agentsOn ? 'Import complete. Agents are off.' : 'Import complete');
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      if (isLockedFile(bytes)) {
+        if (!canLock()) { status.textContent = `Import refused. Nothing was changed. ${NEEDS_HTTPS}`; return; }
+        lockedBytes = bytes; openForm.hidden = false;
+        status.textContent = 'This file is locked with a passphrase.';
+        openPass.focus();
+        return;
+      }
+      await importText(new TextDecoder().decode(bytes));
     } catch (err) {
-      status.textContent = `Import refused. Nothing was changed. ${err.message}`;
+      status.textContent = `Import refused. Nothing was changed. ${err instanceof NotLockedFileError ? 'This is not an Ospeli export.' : err.message}`;
     }
   });
 
@@ -175,6 +219,44 @@ export async function render(el, ctx) {
     ctx.toast('Export downloaded');
     await refresh();
   } }, 'Export JSON');
+
+  // A locked export (#93): the same file, sealed with a passphrase the person chooses. It is
+  // opened again and compared before it is handed over, so a file that cannot be opened is never
+  // saved. The passphrase is not stored, recorded or shown, and Ospeli cannot reset it.
+  const lockStatus = h('p', { class: 'meta', 'data-test': 'lock-status', role: 'status' });
+  const pass1 = h('input', { type: 'password', id: 'lock-pass-1', autocomplete: 'new-password', 'data-test': 'lock-pass-1' });
+  const pass2 = h('input', { type: 'password', id: 'lock-pass-2', autocomplete: 'new-password', 'data-test': 'lock-pass-2' });
+  const lockSave = h('button', { class: 'btn', type: 'submit', 'data-test': 'lock-save' }, 'Save locked export');
+  const lockForm = h('form', { class: 'locked-form', hidden: true, 'data-test': 'lock-form', onsubmit: async (ev) => {
+    ev.preventDefault();
+    const problem = passphraseProblem(pass1.value);
+    if (problem) { lockStatus.textContent = problem; return; }
+    if (pass1.value !== pass2.value) { lockStatus.textContent = 'The two do not match. Nothing was saved.'; return; }
+    lockSave.disabled = true;
+    lockStatus.textContent = 'Locking and checking the file…';
+    try {
+      // Record the export first, so the file carries its own audit entry (as a plain export does).
+      const [entities, events] = await Promise.all([core.listEntities(), core.events()]);
+      await core.record(ctx.role, 'data.exported', null, { entities: entities.length, events: events.length, locked: true });
+      const data = await core.exportData();
+      const bytes = await sealChecked(JSON.stringify(data), pass1.value);
+      download(`ospeli-export-${data.exportedAt.slice(0, 10)}.ospeli-locked`, bytes, 'application/octet-stream');
+      lockStatus.textContent = 'Saved and checked: the file opens with your passphrase. Keep the passphrase somewhere safe, apart from the file. Without it nobody can open this file, and Ospeli cannot reset it.';
+      lockForm.hidden = true; lockBtn.setAttribute('aria-expanded', 'false');
+      ctx.toast('Locked export downloaded');
+      await refresh();
+    } catch (err) {
+      lockStatus.textContent = err.code === 'check-failed' ? err.message : `The locked export could not be made. Nothing was saved. ${err.message}`;
+    } finally { pass1.value = ''; pass2.value = ''; lockSave.disabled = false; }
+  } },
+  h('p', { class: 'meta' }, `Choose a passphrase of at least ${MIN_PASSPHRASE} characters. Four or five unrelated words work well. Ospeli does not keep it and cannot reset it: if it is lost, this file cannot be opened.`),
+  h('label', { for: 'lock-pass-1' }, 'Passphrase'), pass1,
+  h('label', { for: 'lock-pass-2' }, 'The same passphrase again'), pass2,
+  h('div', { class: 'actions' }, lockSave));
+  const lockBtn = h('button', { class: 'btn btn-ghost', type: 'button', 'data-test': 'lock-open', 'aria-expanded': 'false', onclick: () => { lockForm.hidden = !lockForm.hidden; lockBtn.setAttribute('aria-expanded', String(!lockForm.hidden)); lockStatus.textContent = ''; if (!lockForm.hidden) pass1.focus(); } }, 'Export with a passphrase…');
+  const lockNote = h('p', { class: 'meta', 'data-test': 'lock-note' }, canLock()
+    ? 'An export with a passphrase is locked: the file cannot be read without it. The copy this browser keeps on the device is not locked; that relies on the device\'s own lock.'
+    : `An export with a passphrase is not offered on this page. ${NEEDS_HTTPS}`);
 
   const resetBtn = h('button', { class: 'btn btn-danger', type: 'button', onclick: async () => {
     const agentsOn = await core.agentAccessInUse();
@@ -226,13 +308,14 @@ export async function render(el, ctx) {
       h('div', { class: 'card' },
         h('h2', {}, 'Export'),
         h('p', {}, 'Download everything as one JSON file: the hospital model, the event log and the audit trail.'),
-        h('div', { class: 'actions' }, exportBtn),
+        h('div', { class: 'actions' }, exportBtn, canLock() ? lockBtn : null),
+        canLock() ? lockForm : null, lockStatus, lockNote,
         lastExport),
       h('div', { class: 'card' },
         h('h2', {}, 'Import'),
         h('p', {}, 'Load an Ospeli export file. It is checked first, including the audit trail; a bad file changes nothing.'),
         h('div', { class: 'actions' }, h('label', { class: 'btn btn-ghost', for: 'import-file' }, 'Choose file…'), file),
-        status),
+        openForm, status),
       h('div', { class: 'card' },
         h('h2', {}, HOSPITAL_NAME),
         h('p', {}, 'A fictional hospital with 6 wards, 120 beds and 30 days of generated activity. Every name and number is synthetic.'),
