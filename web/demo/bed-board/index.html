@@ -107,7 +107,9 @@ a.ghost { color: var(--ink); text-decoration: none; }
 .bed .age { font-size: 0.74rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .bed .attrs { font-size: 0.72rem; color: var(--ink-soft); }
 .bed .who { font-size: 0.74rem; font-weight: 700; font-variant-numeric: tabular-nums; }
-.bed.dim { opacity: 0.38; }
+/* Faded by a filter or while choosing a bed: a flat sand tile, never see-through, so its text stays at 4.5:1 or better (#90). */
+.bed.dim { background: #F1EDE4; border-color: var(--line); box-shadow: none; }
+.bed.dim .no, .bed.dim .age, .bed.dim .attrs, .bed.dim .who, .bed.dim .chip { color: #3A4A5A; }
 .bed.match { border-color: var(--hi); box-shadow: inset 0 0 0 2px var(--hi); background: var(--hi-wash); }
 .bed.flash { animation: flash 1.2s ease-out; }
 @keyframes flash { 0% { box-shadow: inset 0 0 0 3px var(--s-available); } 100% { box-shadow: inset 0 0 0 0 transparent; } }
@@ -227,7 +229,7 @@ a.ghost { color: var(--ink); text-decoration: none; }
 <script>
 (function () {
   var STATES = {
-    occupied: 'Occupied', expected_discharge: 'Expected discharge', vacated: 'Vacated, to clean',
+    occupied: 'Occupied', expected_discharge: 'Going home', vacated: 'To clean',
     cleaning: 'Cleaning', available: 'Available', allocated: 'Allocated', out_of_service: 'Out of service'
   };
   var NEXT = {
@@ -358,7 +360,7 @@ a.ghost { color: var(--ink); text-decoration: none; }
       var dim = (S.filter && !b.attrs[S.filter]) || (picking && !isMatch);
       var attrs = Object.keys(b.attrs).map(function (k) { return ATTR[k]; }).join(' · ') || 'Standard';
       var who = b.patient ? (b.state === 'allocated' ? 'For ' + b.patient : b.patient) : (b.reason || '');
-      grid.appendChild(el('button', { type: 'button', class: 'bed' + (isMatch ? ' match' : '') + (dim ? ' dim' : ''), 'data-bed': b.id, 'aria-label': b.no + ', ' + STATES[b.state], onclick: function () { openBed(b.id); } }, [
+      grid.appendChild(el('button', { type: 'button', class: 'bed' + (isMatch ? ' match' : '') + (dim ? ' dim' : ''), 'data-bed': b.id, 'aria-label': 'Bed ' + b.no + ', ' + STATES[b.state] + ', for ' + dur(now() - b.since) + ', ' + attrs + (who ? ', ' + who : ''), onclick: function () { openBed(b.id); } }, [
         el('span', { class: 'row1' }, [el('span', { class: 'no', text: b.no }), el('span', { class: 'age', text: dur(now() - b.since) })]),
         chip(b.state),
         el('span', { class: 'attrs', text: attrs }),

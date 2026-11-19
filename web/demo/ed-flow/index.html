@@ -417,20 +417,20 @@ function patientCard(p) {
   if (over) flags.appendChild(el('span', { class: 'flag coral', text: 'Over the site’s bed wait limit' }));
   if (p.escalated) flags.appendChild(el('span', { class: 'flag mango', text: 'Escalated ' + clock(p.escalated) }));
   if (p.bedReady) flags.appendChild(el('span', { class: 'flag', text: 'Bed ready ' + clock(p.bedReady) }));
-  var acts = el('div', { class: 'acts' }), now = clock(state.now), label = 'Patient ' + p.code + ': ';
+  var acts = el('div', { class: 'acts' }), now = clock(state.now), label = ', Patient ' + p.code + ', ';
   if (n === 'decision') {
     acts.className = 'acts two';
-    acts.appendChild(el('button', { type: 'button', class: 'primary', 'aria-label': label + 'record decision to admit at ' + now, onclick: function () { record(p.id, 'decision', 'admit'); }, text: 'Admit' }));
-    acts.appendChild(el('button', { type: 'button', 'aria-label': label + 'record decision, not admitted, at ' + now, onclick: function () { record(p.id, 'decision', 'home'); }, text: 'Not admitted' }));
+    acts.appendChild(el('button', { type: 'button', class: 'primary', 'aria-label': 'Admit' + label + 'decision recorded at ' + now, onclick: function () { record(p.id, 'decision', 'admit'); }, text: 'Admit' }));
+    acts.appendChild(el('button', { type: 'button', 'aria-label': 'Not admitted' + label + 'decision recorded at ' + now, onclick: function () { record(p.id, 'decision', 'home'); }, text: 'Not admitted' }));
   } else if (n === 'bedreq') {
     var sid = 'ward-' + p.id, sel = el('select', { id: sid });
     sel.appendChild(el('option', { value: '', text: 'Choose a ward' }));
     WARDS.forEach(function (w) { sel.appendChild(el('option', { value: w, text: w })); });
     acts.appendChild(el('label', { for: sid }, ['Ward to request', sel]));
-    acts.appendChild(el('button', { type: 'button', class: 'primary', 'aria-label': label + 'record bed requested at ' + now, onclick: function () { if (!sel.value) { sel.focus(); toast('Choose a ward first.'); return; } record(p.id, 'bedreq', sel.value); }, text: 'Bed requested · ' + now }));
+    acts.appendChild(el('button', { type: 'button', class: 'primary', 'aria-label': 'Bed requested · ' + now + label + 'for the ward chosen', onclick: function () { if (!sel.value) { sel.focus(); toast('Choose a ward first.'); return; } record(p.id, 'bedreq', sel.value); }, text: 'Bed requested · ' + now }));
   } else if (n) {
     var st = STEPS.filter(function (s) { return s.k === n; })[0];
-    acts.appendChild(el('button', { type: 'button', class: 'primary', 'aria-label': label + 'record ' + st.verb.toLowerCase() + ' at ' + now, onclick: function () { record(p.id, n); }, text: 'Record ' + st.verb.toLowerCase() + ' · ' + now }));
+    acts.appendChild(el('button', { type: 'button', class: 'primary', 'aria-label': 'Record ' + st.verb.toLowerCase() + ' · ' + now + label.replace(/, $/, ''), onclick: function () { record(p.id, n); }, text: 'Record ' + st.verb.toLowerCase() + ' · ' + now }));
   }
   return el('article', { class: 'pt' + (over ? ' over' : ''), 'aria-label': 'Patient ' + p.code }, [
     el('div', { class: 'pt-top' }, [el('b', { text: 'Patient ' + p.code }), el('span', { text: 'here ' + fmt(state.now - p.ev.arrive) })]),
@@ -463,8 +463,8 @@ function renderFlow(v) {
       el('div', { class: 'who' }, [el('b', { text: 'Patient ' + p.code }), el('p', { text: 'Decision to admit ' + clock(p.ev.decision) + ' · ' + meta }), flags.length ? el('div', { class: 'flags', style: 'margin:6px 0 0' }, flags) : null]),
       el('div', { class: 'big', text: fmt(state.now - p.ev.decision) }, [el('span', { text: 'since decision' })]),
       el('div', { class: 'ctl' }, [
-        el('button', { type: 'button', class: 'small', disabled: (p.escalated || !p.ward) ? 'disabled' : false, 'aria-label': 'Escalate Patient ' + p.code, onclick: function () { act(function () { p.escalated = state.now; addLog('Patient ' + p.code + ' bed request escalated (' + p.ward + ')', 'Patient flow coordinator'); }, 'Escalated.'); }, text: p.escalated ? 'Escalated' : 'Escalate' }),
-        el('button', { type: 'button', class: 'small sea', disabled: (p.bedReady || !p.ward) ? 'disabled' : false, 'aria-label': 'Bed ready for Patient ' + p.code, onclick: function () { act(function () { p.bedReady = state.now; addLog('Patient ' + p.code + ': bed ready on ' + p.ward + '; department told', 'Patient flow coordinator'); }, 'Bed ready. The department can see it.'); }, text: 'Bed ready' })
+        el('button', { type: 'button', class: 'small', disabled: (p.escalated || !p.ward) ? 'disabled' : false, 'aria-label': (p.escalated ? 'Escalated' : 'Escalate') + ', Patient ' + p.code, onclick: function () { act(function () { p.escalated = state.now; addLog('Patient ' + p.code + ' bed request escalated (' + p.ward + ')', 'Patient flow coordinator'); }, 'Escalated.'); }, text: p.escalated ? 'Escalated' : 'Escalate' }),
+        el('button', { type: 'button', class: 'small sea', disabled: (p.bedReady || !p.ward) ? 'disabled' : false, 'aria-label': 'Bed ready, Patient ' + p.code, onclick: function () { act(function () { p.bedReady = state.now; addLog('Patient ' + p.code + ': bed ready on ' + p.ward + '; department told', 'Patient flow coordinator'); }, 'Bed ready. The department can see it.'); }, text: 'Bed ready' })
       ])
     ]));
   });
