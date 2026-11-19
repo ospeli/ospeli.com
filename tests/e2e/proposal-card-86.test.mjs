@@ -61,7 +61,7 @@ for (const width of [360, 390]) {
     await page.waitForSelector(YES, { timeout: 15000 });
     const n = (await site.core.proposals()).filter((p) => p.status === 'pending').length;
     assert.equal(await page.locator('#prop-h').textContent(), `Suggested changes (${n})`);
-    assert.equal(await page.locator('[data-test="proposals"] .proposals > p.meta').textContent(), 'A bot suggested these. Nothing changes until you say yes. Your yes is recorded under your role.');
+    assert.equal(await page.locator('[data-test="proposals"] .proposals > p.meta').textContent(), 'An agent suggested these. Nothing changes until you say yes. Your yes is recorded under your role.');
     assert.equal(await page.locator(YES).first().isEnabled(), true);
     assert.equal(await page.locator('[data-test="proposal-offline"]').count(), 0);
 
