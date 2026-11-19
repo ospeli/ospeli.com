@@ -41,6 +41,7 @@ test('Pause at 360 px: one tap out, one tap back, the paused time is "not seen" 
   // Paused: one state word, one big button, and it does not look like waiting.
   assert.equal(await page.textContent('[data-test="walk-state"]'), 'Paused');
   assert.equal(await page.textContent('[data-test="walk-main"]'), 'I am back');
+  assert.equal(await page.textContent('#wk-h'), 'Walk in progress', 'the state is said once, in the big word');
   assert.match(await page.textContent('[data-test="walk-def"]'), /Paused: nothing is counted\. This time shows on the map as “not seen”\. The wait carries on when you are back\./);
   assert.equal(await page.locator('[data-test="walk-pause"], [data-test="walk-finish"], [data-test="walk-stopped"]').count(), 0, 'nothing else to tap while paused');
   const look = await page.evaluate(() => {
@@ -78,7 +79,7 @@ test('Pause at 360 px: one tap out, one tap back, the paused time is "not seen" 
   assert.match(answer, /Longest wait: 6 min 4\d s before “Seen by a doctor”/, 'the wait that was partly not seen is not the one named');
   assert.match(answer, /Waiting is not always waste\. Some waits are planned or needed\./);
   const list = (await page.textContent('[data-test="step-list"]')).replace(/\s+/g, ' ');
-  assert.match(list, /Waits 2 min 3\d s · 5 min( \d s)? more not seen/);
+  assert.match(list, /Waits 2 min 3\d s or more · 5 min( \d s)? more not seen/);
   // The bar: four kinds would be three here, each named in words with its time.
   const legend = (await page.textContent('[data-test="bar-legend"]')).replace(/\s+/g, ' ');
   assert.match(legend, /Waiting \d+ min.*Hands-on work 6 min.*Not seen 5 min/);
@@ -125,7 +126,8 @@ test('a wait is marked planned or required in two taps at 360 px; it still count
   assert.match(answer, /Longest wait: 7 min( \d s)? before “Seen by a doctor”/);
   assert.match((await page.textContent('[data-step$="-s1"]')).replace(/\s+/g, ' '), /Waits 15 min( \d s)? · planned or required/);
   assert.equal(await page.locator('[data-test="bar-today"] i.p').count(), 1);
-  assert.match(await page.textContent('[data-test="bar-legend"]'), /Planned or required wait 15 min/);
+  // With a planned wait on the map the legend's parts add up to the headline: other waiting + planned = waiting.
+  assert.match(await page.textContent('[data-test="bar-legend"]'), /Other waiting 7 min.*Planned or required wait 15 min/s);
   // Marking a wait is not a proposed change, and the map still says "Measured on one walk".
   assert.equal(await page.textContent('[data-test="v-proposed"]'), 'Proposed');
   assert.match(await page.textContent('[data-test="walk-badge"]'), /^Measured on one walk$/);
@@ -159,6 +161,34 @@ test('with the guide off, Pause, the planned mark and the answer card still work
   await page.tap('[data-test="wait-btn"]'); await page.tap('[data-test="wait-planned"]');
   await page.waitForSelector('[data-test="walk-planned"]');
   assert.match(await page.textContent('[data-test="walk-longest"]'), /No wait of 30 seconds or more/);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+// Domain lead, 19 Nov: a shorter wait is never named as the longest while a longer, partly seen one is on the map.
+test('the longest wait was partly not seen: it is named as "at least" its seen part, on the card and on the step (390 px)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, path: '#/process', touch: true, locale: 'en-GB', clock: '2026-11-19T09:00:00' });
+  await start(page);
+  await step(page, 'Seen by a nurse', 'Nurse', 240, 120);
+  await page.clock.fastForward(420 * 1000);
+  await page.tap('[data-test="walk-pause"]'); await state(page, 'paused');
+  await page.clock.fastForward(300 * 1000);
+  await page.tap('[data-test="walk-main"]'); await state(page, 'waiting');
+  await step(page, 'Seen by a doctor', 'Doctor', 240, 120);
+  // During a step the two side buttons are told apart in one line, and both are full-size targets.
+  await page.clock.fastForward(60 * 1000);
+  await page.tap('[data-test="walk-main"]'); await state(page, 'step');
+  assert.equal(await page.textContent('[data-test="walk-which"]'), 'Step interrupted: the work stopped. Pause: you stepped out.');
+  const side = await page.evaluate(() => [...document.querySelectorAll('[data-test="walk-stopped"], [data-test="walk-pause"]')].map((e) => [e.textContent, Math.round(e.getBoundingClientRect().height)]));
+  assert.deepEqual(side.map((x) => x[0]), ['Step interrupted', 'Pause']); assert.ok(side.every((x) => x[1] >= 44));
+  await page.clock.fastForward(60 * 1000);
+  await page.tap('[data-test="walk-main"]'); await page.waitForSelector('[data-test="walk-sheet"]');
+  await page.tap('[data-test="walk-later"]');
+  await page.tap('[data-test="walk-finish"]'); await page.tap('[data-test="walk-finish-yes"]');
+  await page.waitForSelector('[data-test="walk-answer"]');
+  assert.match((await page.textContent('[data-test="walk-longest"]')).replace(/\s+/g, ' '), /^Longest wait: at least 11 min( \d s)? before “Seen by a doctor” \(5 min( \d s)? more of it not seen\)$/);
+  assert.equal(await page.locator('[data-test="step-list"] .wait.hot').count(), 1);
+  assert.match((await page.textContent('[data-step$="-s2"] .wait')).replace(/\s+/g, ' '), /Waits 11 min( \d s)? or more · 5 min( \d s)? more not seen · the longest wait on this walk/);
   assert.deepEqual(errors, []);
   await context.close();
 });

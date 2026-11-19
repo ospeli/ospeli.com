@@ -4622,7 +4622,7 @@
                     "waitNotSeenSec": {
                       "type": "integer",
                       "minimum": 1,
-                      "description": "On a map made from a walk: seconds of the gap before this step that were not seen (the walk was paused). Not part of waitSec. A wait with this is not named as the longest wait."
+                      "description": "On a map made from a walk: seconds of the gap before this step that were not seen (the walk was paused). Not part of waitSec. The seen part is the least the wait can have been: when it is the longest it is named as \"at least\" that long."
                     },
                     "workNotSeenSec": {
                       "type": "integer",
@@ -4769,7 +4769,7 @@
                     "waitNotSeenSec": {
                       "type": "integer",
                       "minimum": 1,
-                      "description": "On a map made from a walk: seconds of the gap before this step that were not seen (the walk was paused). Not part of waitSec. A wait with this is not named as the longest wait."
+                      "description": "On a map made from a walk: seconds of the gap before this step that were not seen (the walk was paused). Not part of waitSec. The seen part is the least the wait can have been: when it is the longest it is named as \"at least\" that long."
                     },
                     "workNotSeenSec": {
                       "type": "integer",
@@ -5042,6 +5042,15 @@
                 "type": "integer",
                 "minimum": 0,
                 "description": "On a map made from a walk: the measured wait in seconds."
+              },
+              "atLeast": {
+                "type": "boolean",
+                "description": "Present and true when part of this wait was not seen (the walk was paused): wait and waitSec are then the least it can have been."
+              },
+              "notSeenSec": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Seconds of this wait that were not seen."
               },
               "shareOfElapsed": {
                 "type": [
@@ -6571,7 +6580,7 @@
     },
     {
       "name": "ospeli_walks_pause",
-      "summary": "The person walking steps out now (a private moment): nothing is counted until ospeli_walks_resume. The time in between is kept as \"not seen\": it is neither waiting nor hands-on, it stays inside start to finish, and a wait that was partly not seen is not named as the longest wait. Works during a wait or a step. People only: a walk is a person's own observation on site, so this command is for people, not for agents.",
+      "summary": "The person walking steps out now (a private moment): nothing is counted until ospeli_walks_resume. The time in between is kept as \"not seen\": it is neither waiting nor hands-on, it stays inside start to finish, and a wait that was partly not seen is compared by its seen part and named as \"at least\" that long. Works during a wait or a step. People only: a walk is a person's own observation on site, so this command is for people, not for agents.",
       "kind": "write",
       "roles": [
         "ward-nurse",

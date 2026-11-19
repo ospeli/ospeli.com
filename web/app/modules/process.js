@@ -7,7 +7,7 @@
 // Deep link: #/process/<mapId>. The guide is rule-based, says why, and has an off switch.
 import { h } from './ui.js';
 import { fmtMinutes, EXAMPLES } from '../core/processmap.js';
-import { fmtSeconds, stepsInSeconds, longestWaits, MIN_LONGEST_WAIT_SEC, PLANNED_WAIT_RULE, NOT_ALWAYS_WASTE } from '../core/walk.js';
+import { fmtSeconds, stepsInSeconds, longestWaits, waitWords, notSeenWords, MIN_LONGEST_WAIT_SEC, PLANNED_WAIT_RULE, NOT_ALWAYS_WASTE } from '../core/walk.js';
 import { renderWalk } from './walk.js';
 import { proposalsCard } from './proposals.js';
 
@@ -184,7 +184,7 @@ export async function render(el, ctx) {
       extra.planned ? h('p', { class: 'wa-line', 'data-test': 'walk-planned' }, `Of the waiting, ${T(extra.planned)} was marked planned or required.`) : null,
       extra.notSeen ? h('p', { class: 'wa-line', 'data-test': 'walk-not-seen' }, `${T(extra.notSeen)} not seen (walk paused): not counted as waiting or hands-on.`) : null,
       moved ? null : top.length
-        ? h('p', { class: 'wa-line wa-wait', 'data-test': 'walk-longest' }, h('b', {}, top.length === 1 ? 'Longest wait: ' : 'Longest waits, tied: '), `${T(top[0].wait)} before ${top.map((x) => `“${x.name}”`).join(' and ')}`)
+        ? h('p', { class: 'wa-line wa-wait', 'data-test': 'walk-longest' }, h('b', {}, top.length === 1 ? 'Longest wait: ' : 'Longest waits, tied: '), top.length === 1 ? `${waitWords(top[0])} before “${top[0].name}”${notSeenWords(top[0])}` : `${T(top[0].wait)}${top.some((x) => x.waitNotSeenSec) ? ' or more' : ''} before ${top.map((x) => `“${x.name}”`).join(' and ')}`)
         : h('p', { class: 'wa-line', 'data-test': 'walk-longest' }, `No wait of ${MIN_LONGEST_WAIT_SEC} seconds or more on this walk.`),
       h('p', { class: 'wa-line wa-waste', 'data-test': 'walk-waste' }, NOT_ALWAYS_WASTE),
       h('p', { class: 'wa-line', 'data-test': 'walk-handoffs' }, `${a.handoffs} ${a.handoffs === 1 ? 'handoff' : 'handoffs'} between roles`),
@@ -218,7 +218,7 @@ export async function render(el, ctx) {
       bar(NOW, statsOf(m.today), scale, 'bar-today', xToday),
       m.changed ? bar('Proposed', statsOf(m.proposed), scale, 'bar-proposed', xProp) : null,
       h('p', { class: 'legend meta', 'data-test': 'bar-legend' },
-        key('w', `Waiting ${T(a.wait - extra.planned)}`),
+        key('w', `${extra.planned ? 'Other waiting' : 'Waiting'} ${T(a.wait - extra.planned)}`),
         extra.planned ? key('p', `Planned or required wait ${T(extra.planned)}`) : null,
         key('k', `Hands-on work ${T(a.work)}`),
         extra.notSeen ? key('n', `Not seen ${T(extra.notSeen)}`) : null),
@@ -298,10 +298,10 @@ export async function render(el, ctx) {
   // The wait before a step. On a walked map it opens one choice: mark the wait as planned or
   // required (ospeli_maps_step_update with plannedWait). Two taps; the rule is shown with the choice.
   function waitLine(s, hot, m) {
-    const seen = s.waitNotSeenSec ? ` · ${T(s.waitNotSeenSec)} more not seen` : '';
+    const seen = s.waitNotSeenSec ? ` or more · ${T(s.waitNotSeenSec)} more not seen` : '';
     if (!(s.wait || s.par || s.waitNotSeenSec || s.plannedWait)) return null;
     const text = s.par ? `Starts alongside the step before${s.wait ? `, after ${T(s.wait)}` : ''}`
-      : `Waits ${T(s.wait)}${s.plannedWait ? ' · planned or required' : ''}${seen}${hot ? (T === fmtSeconds ? ' · the longest wait on this walk' : ' · the biggest wait') : ''}`;
+      : `Waits ${T(s.wait)}${seen}${s.plannedWait ? ' · planned or required' : ''}${hot ? (T === fmtSeconds ? ' · the longest wait on this walk' : ' · the biggest wait') : ''}`;
     const cls = `wait${hot ? ' hot' : ''}${s.plannedWait ? ' planned' : ''}`;
     if (!walkedNow || s.par) return h('div', { class: cls }, text);
     const open = ui.waitOpen === s.id;

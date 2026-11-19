@@ -142,8 +142,8 @@ export async function renderWalk(box, ctx) {
             catch (err) { ctx.toast(`Not started. ${err.message}`); }
             finally { ui.busy = false; }
             draw(); box.querySelector('[data-test="walk-main"]')?.focus({ preventScroll: true });
-          } }, 'I have done this'),
-        h('p', { class: 'meta walk-before-foot' }, 'The walk and its clock start when you tap. ', h('a', { href: '#/process', 'data-test': 'walk-before-no' }, 'Not now'))));
+          } }, 'Done. Start the walk'),
+        h('p', { class: 'meta walk-before-foot' }, 'The clock starts when you tap. ', h('a', { href: '#/process', 'data-test': 'walk-before-no' }, 'Not now'))));
       return;
     }
     const paused = w.state === 'paused';
@@ -152,7 +152,7 @@ export async function renderWalk(box, ctx) {
       // The person has stepped out: one state word, one button, nothing counted.
       box.replaceChildren(h('section', { class: 'walk is-paused', 'data-test': 'walk', 'data-state': 'paused', 'aria-labelledby': 'wk-h' },
         h('div', { class: 'walk-top' },
-          h('h1', { id: 'wk-h' }, 'Walk paused'),
+          h('h1', { id: 'wk-h' }, 'Walk in progress'),
           h('p', { class: 'walk-sub' }, `${w.title} · one visit, step by step`)),
         h('div', { class: 'walk-now', 'aria-live': 'off' },
           h('span', { class: 'walk-state', 'data-test': 'walk-state' }, 'Paused'),
@@ -199,6 +199,7 @@ export async function renderWalk(box, ctx) {
           onclick: async () => { const out = await tap('ospeli_walks_pause'); if (out) { say('Paused. Nothing is counted until you are back.'); showUndo(); draw(); box.querySelector('[data-test="walk-main"]')?.focus({ preventScroll: true }); } } }, 'Pause'),
         canUndo ? h('button', { type: 'button', class: 'btn btn-ghost walk-undo', 'data-test': 'walk-undo', 'data-cmd': 'ospeli_walks_undo',
           onclick: async () => { const out = await tap('ospeli_walks_undo'); if (out) { resetSheet(); ui.undoUntil = 0; const msg = out.undone === 'resume' ? 'Undone. Paused again.' : out.undone === 'step-done' ? 'Undone. The step is running again.' : out.walk.state === 'step' ? 'Undone. The step is running.' : 'Undone. Waiting again.'; say(msg); ctx.toast(msg); draw(); } } }, 'Undo last tap') : null),
+      step ? h('p', { class: 'meta walk-foot walk-which', 'data-test': 'walk-which' }, 'Step interrupted: the work stopped. Pause: you stepped out.') : null,
       ui.sheet && w.steps.length ? sheet(w) : null,
       h('div', { class: 'walk-end' },
         ui.confirm

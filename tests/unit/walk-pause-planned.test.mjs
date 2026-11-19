@@ -89,7 +89,7 @@ test('a pause in a wait and a pause in a step: not seen is neither waiting nor h
   assert.equal(sec.elapsed + sec.notSeenSec, 900, 'start to finish keeps the time not seen');
   // The waiting share is of the observed time only: 350 of 480, not 350 of 900 and not 650 of 900.
   assert.equal(sec.waitShare, 73); assert.equal(waitShareOf(350, 130), 73);
-  // The first wait (150 s seen) was partly not seen, so it is never the longest wait; the 200 s one is.
+  // The first wait was partly not seen and its seen part (150 s) is shorter than the 200 s one, which is named.
   const top = longestWaits(stepsInSeconds(map.today.steps));
   assert.deepEqual(top.map((x) => x.name), ['Seen by a doctor']);
   const sum = await tap('ospeli_maps_summary', { mapId: done.mapId });
@@ -100,15 +100,36 @@ test('a pause in a wait and a pause in a step: not seen is neither waiting nor h
   assert.match(seen.basis, /^Local definition/);
 });
 
-test('a wait that was partly not seen is not named even when it is the only long wait', async () => {
+// Domain lead, 19 Nov: the seen part of a wait is the least it can have been. A shorter wait must
+// never be named as the longest while a wait at least twice as long sits on the same map.
+test('a wait that was partly not seen is compared by its seen part and named as "at least" that long', async () => {
   const { tick, tap } = await setup();
   await tap('ospeli_walks_start');
-  tick(400); await tap('ospeli_walks_pause'); tick(10); await tap('ospeli_walks_resume');
-  tick(5); await tap('ospeli_walks_step_start'); tick(20); await tap('ospeli_walks_step_done');
+  tick(300); await tap('ospeli_walks_step_start'); tick(20); await tap('ospeli_walks_step_done');   // 5 min, seen in full
+  await tap('ospeli_walks_step_name', { name: 'Seen by a nurse', role: 'Nurse' });
+  tick(900); await tap('ospeli_walks_pause'); tick(360); await tap('ospeli_walks_resume');         // 15 min seen, 6 min not seen
+  tick(720); await tap('ospeli_walks_step_start'); tick(20); await tap('ospeli_walks_step_done');   // 12 min more seen: 27 min seen
+  await tap('ospeli_walks_step_name', { name: 'Seen by a doctor', role: 'Doctor' });
   const { mapId } = await tap('ospeli_walks_finish');
   const sum = await tap('ospeli_maps_summary', { mapId });
-  assert.equal(sum.biggestWait, null);
-  assert.ok(!sum.suggestions.some((s) => /^Longest wait/.test(s.title)));
+  assert.equal(sum.biggestWait.name, 'Seen by a doctor');
+  assert.equal(sum.biggestWait.waitSec, 1620); assert.equal(sum.biggestWait.atLeast, true); assert.equal(sum.biggestWait.notSeenSec, 360);
+  assert.deepEqual(validate(commandByName('ospeli_maps_summary').output, sum, 'output'), []);
+  assert.equal(sum.suggestions[0].title, 'Longest wait on this walk: at least 27 min before “Seen by a doctor” (6 min more of it not seen)');
+  assert.match(sum.suggestions[0].why, /Part of this wait was not seen, so it was at least this long\./);
+});
+
+test('a partly seen wait whose seen part is shorter than a wait seen in full is not the one named', async () => {
+  const { tick, tap } = await setup();
+  await tap('ospeli_walks_start');
+  tick(100); await tap('ospeli_walks_pause'); tick(600); await tap('ospeli_walks_resume');
+  tick(5); await tap('ospeli_walks_step_start'); tick(20); await tap('ospeli_walks_step_done');
+  await tap('ospeli_walks_step_name', { name: 'Seen by a nurse', role: 'Nurse' });
+  tick(200); await tap('ospeli_walks_step_start'); tick(20); await tap('ospeli_walks_step_done');
+  await tap('ospeli_walks_step_name', { name: 'Seen by a doctor', role: 'Doctor' });
+  const { mapId } = await tap('ospeli_walks_finish');
+  const sum = await tap('ospeli_maps_summary', { mapId });
+  assert.equal(sum.biggestWait.name, 'Seen by a doctor'); assert.equal(sum.biggestWait.atLeast, undefined);
 });
 
 test('while paused nothing else can be tapped, and a pause or a coming back can be undone', async () => {
@@ -159,7 +180,7 @@ test('a planned or required wait still counts as waiting, is left out of the lon
   const notes = (await tap('ospeli_maps_suggest', { mapId, version: 'today' })).suggestions;
   const planned = notes.find((n) => n.id === 'walk-planned');
   assert.match(planned.title, /^1 wait is marked planned or required: 10 min$/);
-  assert.match(planned.text, /Waiting is not always waste/);
+  assert.match(planned.text, /These still count as waiting and are left out of the longest wait\./);
   assert.match(planned.basis, /Ospeli keeps no list of such waits/);
   // The mark comes off again, and the audit trail has both changes as a person's.
   map = await tap('ospeli_maps_get', { mapId });

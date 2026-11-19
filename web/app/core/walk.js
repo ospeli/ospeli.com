@@ -11,8 +11,8 @@
 //     this step's "Step starts" tap: everything else, even when staff are busy elsewhere.
 //   not seen               = time between "Pause" and "I am back": the person walking stepped out
 //     (a private moment). It is neither waiting nor hands-on. It stays inside start to finish,
-//     is taken out of the step or wait it fell in, and a wait that was partly not seen is never
-//     named as the longest wait;
+//     is taken out of the step or wait it fell in. The seen part of a wait that was partly not
+//     seen is a floor: such a wait is compared by its seen part and named as "at least" that long;
 //   planned or required wait = a wait a person marked on the map as needed by the process itself.
 //     It still counts as waiting; it is only left out of "longest wait". Ospeli holds no list of
 //     such waits: the mark records what staff said.
@@ -243,9 +243,13 @@ export function fmtClock(sec) {
 
 // The longest wait or waits on a walked map: every step whose wait equals the longest, when
 // that is at or above the floor. An empty list when no wait reaches the floor.
-// Left out: a wait marked planned or required (it is needed, so it is not the question to ask),
-// and a wait that was partly not seen (its length is not known).
-export const waitCanBeNamed = (x) => !x.plannedWait && !x.waitNotSeenSec;
+// Left out: a wait marked planned or required (it is needed, so it is not the question to ask).
+// A wait that was partly not seen is compared by its seen part, which is the least it can have
+// been, and is then named as "at least" that long: a shorter wait is never named over it.
+export const waitCanBeNamed = (x) => !x.plannedWait;
+// How a named wait reads: "27 min", or "at least 27 min" with the part not seen beside it.
+export const waitWords = (x) => (x.waitNotSeenSec ? `at least ${fmtSeconds(x.wait)}` : fmtSeconds(x.wait));
+export const notSeenWords = (x) => (x.waitNotSeenSec ? ` (${fmtSeconds(x.waitNotSeenSec)} more of it not seen)` : '');
 export function longestWaits(stepsSec) {
   const open = stepsSec.filter(waitCanBeNamed);
   const max = Math.max(0, ...open.map((x) => x.wait || 0));
@@ -260,7 +264,7 @@ export const WALK_BASIS = {
   limits: 'Method: a process walk in the manner of lean value stream mapping (Rother and Shook, Learning to See). One walk is one observation.',
   clock: 'Local definition: a tap stamped earlier than the tap before it means the device clock was set back.',
   planned: 'Local definition: a planned or required wait is one a person marked as needed by the process itself. It counts as waiting and is left out of the longest wait. Ospeli keeps no list of such waits.',
-  notSeen: 'Local definition: time between Pause and I am back is not seen. It is neither waiting nor hands-on, and a wait that was partly not seen is not named as the longest wait.',
+  notSeen: 'Local definition: time between Pause and I am back is not seen. It is neither waiting nor hands-on. A wait that was partly not seen is compared by the part that was seen and named as "at least" that long.',
 };
 export function suggestWalk(list, { clockMoved: moved = false } = {}) {
   const out = [];
@@ -275,15 +279,15 @@ export function suggestWalk(list, { clockMoved: moved = false } = {}) {
   } else if (top.length) {
     const t = fmtSeconds(top[0].wait);
     out.push({ id: `walk-wait-${top[0].id}`, kind: 'ask', stepId: top[0].id,
-      title: top.length === 1 ? `Longest wait on this walk: ${t} before “${top[0].name}”`
-        : `Longest wait on this walk, tied: ${t} each, before ${top.map((x) => `“${x.name}”`).join(' and before ')}`,
+      title: top.length === 1 ? `Longest wait on this walk: ${waitWords(top[0])} before “${top[0].name}”${notSeenWords(top[0])}`
+        : `Longest wait on this walk, tied: ${t} each${top.some((x) => x.waitNotSeenSec) ? ' or more' : ''}, before ${top.map((x) => `“${x.name}”`).join(' and before ')}`,
       text: 'Ask what it was waiting for: a person, information, a room, equipment or supplies, transport, a decision, or a queue. A wait belongs to the process, not to the role that comes next. Then walk it again on another day or at another time before changing anything.',
-      why: `Calculated from the tap times of this one walk.${left ? ' Waits marked planned or required, and waits that were partly not seen, are left out.' : ''}`, basis: WALK_BASIS.longestWait });
+      why: `Calculated from the tap times of this one walk.${left ? ' Waits marked planned or required are left out.' : ''}${top.some((x) => x.waitNotSeenSec) ? ' Part of this wait was not seen, so it was at least this long.' : ''}`, basis: WALK_BASIS.longestWait });
   }
   const planned = inSec.filter((x) => x.plannedWait);
   if (planned.length) {
     out.push({ id: 'walk-planned', kind: 'ask', title: `${planned.length} ${planned.length === 1 ? 'wait is' : 'waits are'} marked planned or required: ${fmtSeconds(planned.reduce((n, x) => n + (x.wait || 0), 0))}`,
-      text: `${NOT_ALWAYS_WASTE} These still count as waiting and are left out of the longest wait. ${PLANNED_WAIT_RULE}`,
+      text: `These still count as waiting and are left out of the longest wait. ${PLANNED_WAIT_RULE}`,
       why: 'A person marked them on this map. Ospeli does not judge which waits are needed.', basis: WALK_BASIS.planned });
   }
   const notSeen = inSec.reduce((n, x) => n + (x.waitNotSeenSec || 0) + (x.workNotSeenSec || 0), 0);

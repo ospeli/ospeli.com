@@ -918,7 +918,7 @@ const MAP_STEP = {
     interrupted: { type: 'boolean', description: 'On a walk, the work stopped before the step was finished.' },
     edited: { type: 'boolean', description: 'A measured time on this step was changed by hand.' },
     plannedWait: { type: 'boolean', description: `The wait before this step was marked by a person as planned or required. It still counts as waiting; it is left out of the longest wait. ${PLANNED_WAIT_RULE}` },
-    waitNotSeenSec: { type: 'integer', minimum: 1, description: 'On a map made from a walk: seconds of the gap before this step that were not seen (the walk was paused). Not part of waitSec. A wait with this is not named as the longest wait.' },
+    waitNotSeenSec: { type: 'integer', minimum: 1, description: 'On a map made from a walk: seconds of the gap before this step that were not seen (the walk was paused). Not part of waitSec. The seen part is the least the wait can have been: when it is the longest it is named as "at least" that long.' },
     workNotSeenSec: { type: 'integer', minimum: 1, description: 'On a map made from a walk: seconds inside this step that were not seen (the walk was paused). Not part of workSec.' },
   },
 };
@@ -1100,7 +1100,7 @@ COMMAND_LIST.push(
       today: MAP_STATS, proposed: MAP_STATS,
       difference: { type: 'object', description: 'Proposed minus Today, in minutes (handoffs as a count). Negative means Proposed is shorter. A what-if, not a prediction.', required: ['elapsed', 'wait', 'work', 'handoffs'], properties: { elapsed: { type: 'integer' }, wait: { type: 'integer' }, work: { type: 'integer' }, handoffs: { type: 'integer' } } },
       biggestWait: { type: ['object', 'null'], description: `The step with the longest wait before it, in the version asked for. Null when no step has a wait. On a map made from a walk it is taken from the measured seconds, as the guide does: null when no wait reaches ${MIN_LONGEST_WAIT_SEC} seconds (an example setting, not a standard) or when the device clock moved back during the walk.`, properties: {
-        stepId: STEP_ID, name: { type: 'string' }, role: { type: 'string' }, wait: MINUTES, waitSec: { type: 'integer', minimum: 0, description: 'On a map made from a walk: the measured wait in seconds.' }, shareOfElapsed: { type: ['integer', 'null'], description: 'This wait as a % of start to finish.' } } },
+        stepId: STEP_ID, name: { type: 'string' }, role: { type: 'string' }, wait: MINUTES, waitSec: { type: 'integer', minimum: 0, description: 'On a map made from a walk: the measured wait in seconds.' }, atLeast: { type: 'boolean', description: 'Present and true when part of this wait was not seen (the walk was paused): wait and waitSec are then the least it can have been.' }, notSeenSec: { type: 'integer', minimum: 1, description: 'Seconds of this wait that were not seen.' }, shareOfElapsed: { type: ['integer', 'null'], description: 'This wait as a % of start to finish.' } } },
       guideOn: { type: 'boolean', description: 'False when a person switched the guide off: suggestions is then empty; the numbers still work.' },
       suggestions: { type: 'array', items: SUGGESTION, description: 'The first three suggestions for the version asked for.' },
       suggestionsTotal: { type: 'integer', minimum: 0 } } },
@@ -1121,7 +1121,7 @@ COMMAND_LIST.push(
         id: map.id, title: map.title, revision: map.revision, version,
         changed: JSON.stringify(map.today) !== JSON.stringify(map.proposed), today: t, proposed: p,
         difference: { elapsed: p.elapsed - t.elapsed, wait: p.wait - t.wait, work: p.work - t.work, handoffs: p.handoffs - t.handoffs },
-        biggestWait: worst ? { stepId: worst.id, name: worst.name, role: worst.role, wait: worst.wait, ...(worst.waitSec != null ? { waitSec: worst.waitSec } : {}), shareOfElapsed: mine.elapsed ? Math.round((100 * worst.wait) / mine.elapsed) : null } : null,
+        biggestWait: worst ? { stepId: worst.id, name: worst.name, role: worst.role, wait: worst.wait, ...(worst.waitSec != null ? { waitSec: worst.waitSec } : {}), ...(worst.waitNotSeenSec ? { atLeast: true, notSeenSec: worst.waitNotSeenSec } : {}), shareOfElapsed: mine.elapsed ? Math.round((100 * worst.wait) / mine.elapsed) : null } : null,
         guideOn, suggestions: all.slice(0, 3), suggestionsTotal: all.length,
       };
     },
@@ -1415,7 +1415,7 @@ COMMAND_LIST.push(
   },
   walkWrite({
     name: 'ospeli_walks_pause', audit: 'walk.paused',
-    summary: 'The person walking steps out now (a private moment): nothing is counted until ospeli_walks_resume. The time in between is kept as "not seen": it is neither waiting nor hands-on, it stays inside start to finish, and a wait that was partly not seen is not named as the longest wait. Works during a wait or a step.',
+    summary: 'The person walking steps out now (a private moment): nothing is counted until ospeli_walks_resume. The time in between is kept as "not seen": it is neither waiting nor hands-on, it stays inside start to finish, and a wait that was partly not seen is compared by its seen part and named as "at least" that long. Works during a wait or a step.',
     mutate: (w, input, now) => {
       if (walkState(w) === 'paused') throw new CommandError('conflict', 'The walk is already paused. ospeli_walks_resume carries on.', { state: 'paused' });
       pauseWalk(w, now);
