@@ -1,1 +1,136 @@
-/* Transfers and vehicles: every rule starts with .mod-transfers (skeleton; the builder writes this file). */
+/* Transfers and vehicles. Every rule starts with .mod-transfers. Shell colours only (brand kit v3.1).
+   Phone first for drivers and wards: text 15 px or more, every control at least 44 px tall, the job's one
+   button 64 px tall and full width, readable at arm's length with gloves on. Each step's button has its
+   own colour, and the step list above it grows, so a second tap never lands on the next step unseen. */
+.mod-transfers.trf { font-size: 1rem; }
+.mod-transfers .meta, .mod-transfers .chip, .mod-transfers .chip-btn, .mod-transfers .stat span, .mod-transfers .btn-small { font-size: .9375rem; }
+.mod-transfers .page-head { margin-bottom: 8px; }
+.mod-transfers .trf-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; }
+.mod-transfers .trf-tabs a { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 14px; border-radius: 999px; border: 1.5px solid var(--line-strong);
+  background: var(--surface); color: var(--navy); text-decoration: none; font-weight: 800; font-size: .9375rem; }
+.mod-transfers .trf-tabs a[aria-current="page"] { background: var(--navy); border-color: var(--navy); color: #fff; }
+
+/* one journey */
+.mod-transfers .trf-what, .mod-transfers .trf-where, .mod-transfers .trf-wait, .mod-transfers .trf-onv, .mod-transfers .trf-id, .mod-transfers .trf-bay, .mod-transfers .trf-pos { margin: 0; overflow-wrap: anywhere; }
+.mod-transfers .trf-what { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.mod-transfers .trf-type { font-weight: 800; }
+.mod-transfers .trf-where { font-size: 1.0625rem; }
+.mod-transfers .trf-site, .mod-transfers .trf-pos, .mod-transfers .trf-bay { color: var(--ink-soft); font-size: .9375rem; }
+.mod-transfers .trf-needs { list-style: none; display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 2px 0 0; padding: 0; }
+.mod-transfers .chip { white-space: normal; }
+.mod-transfers .chip.trf-when.is-booked { background: var(--mango-tint); color: #5C3B00; }
+.mod-transfers .chip.trf-late, .mod-transfers .chip.trf-delay { background: #FBE3DE; color: #8A2412; }
+.mod-transfers .chip.trf-ok { background: #DDF1EA; color: #0B4A3A; }
+.mod-transfers .chip.trf-due { background: var(--mango-tint); color: #5C3B00; justify-self: start; margin: 0; }
+.mod-transfers .chip.st-off-road { background: #FBE3DE; color: #8A2412; }
+.mod-transfers .chip.st-free { background: #DDF1EA; color: #0B4A3A; }
+.mod-transfers .chip.st-on-job, .mod-transfers .chip.st-on-the-way, .mod-transfers .chip.st-at-pickup, .mod-transfers .chip.st-at-destination { background: #DCE6EF; }
+.mod-transfers .trf-wait { font-weight: 700; }
+.mod-transfers .trf-warn { color: #8A2412; font-weight: 800; margin: 0; }
+
+/* the driver's card: one job, one big button */
+.mod-transfers .trf-vbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 12px; margin: 0 0 10px; }
+.mod-transfers .trf-vbar p { margin: 0; font-size: 1.0625rem; }
+.mod-transfers .trf-card { display: grid; gap: 8px; background: var(--surface); border: 1.5px solid var(--navy); border-left: 8px solid var(--sea); border-radius: var(--radius);
+  padding: 14px; margin: 0 0 16px; max-width: 640px; min-width: 0; }
+.mod-transfers .trf-card.is-under-way { background: #E6F4F3; border-color: var(--sea-ink); border-left-color: var(--sea-ink); }
+.mod-transfers .trf-card p { margin: 0; }
+.mod-transfers .trf-label { font-weight: 800; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .08em; font-size: .9375rem; margin: 0; }
+.mod-transfers .trf-card .trf-type { font-size: 1.35rem; line-height: 1.2; }
+.mod-transfers .trf-card .trf-where { font-size: 1.15rem; }
+.mod-transfers .trf-hint { color: var(--ink-soft); }
+.mod-transfers .trf-empty { font-size: 1.15rem; font-weight: 800; margin: 0; }
+.mod-transfers .trf-steps { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 2px; }
+.mod-transfers .trf-steps li { display: flex; justify-content: space-between; gap: 8px; padding: 4px 8px; border-radius: 8px; color: var(--ink-soft); }
+.mod-transfers .trf-steps li.is-done { color: #0B4A3A; font-weight: 700; }
+.mod-transfers .trf-steps li.is-done span:first-child::before { content: "✓ "; }
+.mod-transfers .trf-steps li.is-next { background: var(--mango-tint); color: var(--navy); font-weight: 800; }
+.mod-transfers .btn.trf-main { min-height: 64px; font-size: 1.25rem; width: 100%; }
+.mod-transfers .btn.trf-main.s-pickup { background: var(--navy); border-color: var(--navy); color: #fff; }
+.mod-transfers .btn.trf-main.s-depart { background: var(--sea-ink); border-color: var(--sea-ink); color: #fff; border-radius: 999px; }
+.mod-transfers .btn.trf-main.s-arrive { background: #fff; border: 3px solid var(--navy); color: var(--navy); }
+.mod-transfers .btn.trf-main.s-hand { background: var(--mango); border-color: var(--mango); color: var(--navy); border-radius: 999px; }
+.mod-transfers .btn.trf-main:disabled { background: #E4E4E4; border-color: #B8B8B8; color: #4A5968; border-style: dashed; cursor: default; }
+.mod-transfers .trf-vpick { display: grid; gap: 10px; }
+.mod-transfers .btn.trf-vbtn { min-height: 72px; width: 100%; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; text-align: left; padding: 10px 16px; }
+.mod-transfers .trf-vname { font-size: 1.25rem; font-weight: 800; }
+.mod-transfers .trf-vsub { font-size: .9375rem; font-weight: 600; }
+.mod-transfers .btn.trf-vbtn.is-off { background: #F2F2F2; color: #4A5968; border-style: dashed; }
+.mod-transfers .trf-checkdue { margin: 0 0 10px; font-weight: 700; color: #5C3B00; background: var(--mango-tint); border-radius: 8px; padding: 8px 10px; max-width: 640px; }
+.mod-transfers .trf-checkdue a { display: inline-flex; align-items: center; min-height: 44px; }
+.mod-transfers .trf-alert { margin: 0 0 10px; max-width: 640px; }
+
+/* lists */
+.mod-transfers .trf-list h2 { margin: 16px 0 8px; }
+.mod-transfers .trf-list ul, .mod-transfers .trf-rows, .mod-transfers .trf-vlist, .mod-transfers .trf-vcards { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mod-transfers .trf-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px 12px; flex-wrap: wrap; background: var(--surface);
+  border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.mod-transfers .trf-row.is-late { border-left-color: var(--coral); }
+.mod-transfers .trf-row-text { display: grid; gap: 3px; flex: 1 1 240px; min-width: 0; }
+.mod-transfers .trf-row-acts { display: grid; gap: 4px; flex: 1 1 220px; min-width: 0; max-width: 360px; }
+.mod-transfers .trf-assign { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.mod-transfers .trf-assign select, .mod-transfers .trf-form select { font: inherit; min-height: 44px; padding: 6px 10px; border: 1.5px solid var(--line-strong); border-radius: 10px;
+  background: var(--surface); color: var(--ink); max-width: 100%; min-width: 0; flex: 1 1 160px; }
+.mod-transfers .trf-status { margin: 0; font-weight: 700; flex-basis: 100%; }
+.mod-transfers .trf-status:empty { display: none; }
+.mod-transfers .trf-more > summary, .mod-transfers .trf-def > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 800; color: var(--sea-ink); }
+.mod-transfers .trf-more p, .mod-transfers .trf-def p { margin: 0 0 6px; }
+.mod-transfers .trf-def p { font-size: .9375rem; color: var(--ink-soft); }
+.mod-transfers .trf-reasons { display: flex; flex-wrap: wrap; gap: 6px; }
+.mod-transfers .trf-vrow { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 10px; padding: 8px 12px; }
+.mod-transfers .trf-vrow.st-off-road, .mod-transfers .trf-vcard.st-off-road { border-left-color: var(--coral); }
+.mod-transfers .trf-vcard { display: grid; gap: 6px; border-left: 6px solid var(--sea); }
+.mod-transfers .trf-vcard p { margin: 0; }
+.mod-transfers .trf-vhead { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.mod-transfers .trf-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 6px; max-width: 760px; }
+.mod-transfers .trf-counts .stat { padding: 8px 10px; min-width: 0; overflow-wrap: anywhere; }
+.mod-transfers .trf-counts .stat span { display: block; }
+.mod-transfers .trf-counts .stat b { font-size: 1.45rem; }
+.mod-transfers .trf-countline { margin: 0 0 8px; }
+.mod-transfers .trf-counts .stat.is-alert { border-color: var(--coral); background: #FDF0EC; }
+.mod-transfers .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.mod-transfers .chip-btn { min-height: 44px; }
+
+/* guide and measures */
+.mod-transfers .trf-guide { border-left: 5px solid var(--seafoam); margin: 12px 0 8px; }
+.mod-transfers .trf-guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mod-transfers .trf-guide-head h2 { margin: 0; }
+.mod-transfers .guide-switch[aria-pressed="false"] { border-style: dashed; color: var(--ink-soft); }
+.mod-transfers .trf-sugg { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.mod-transfers .trf-sugg li { border: 1px solid var(--line); border-left: 4px solid var(--mango); border-radius: 10px; padding: 10px 12px; overflow-wrap: anywhere; }
+.mod-transfers .trf-sugg p { margin: 0 0 4px; }
+.mod-transfers .trf-ask { border: 1.5px solid var(--line-strong); border-left: 5px solid var(--mango); border-radius: 10px; padding: 8px 10px; background: var(--surface); }
+.mod-transfers .trf-ask p { margin: 0 0 6px; }
+.mod-transfers .trf-kpis { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+.mod-transfers .trf-kpi p { margin: 0 0 4px; }
+.mod-transfers .trf-kpi-name { font-weight: 800; }
+.mod-transfers .trf-kpi-value { font-size: 1.7rem; font-weight: 800; line-height: 1.1; }
+.mod-transfers .trf-breakdown { margin: 4px 0; padding-left: 18px; font-size: .9375rem; }
+
+/* forms: book a transfer, daily check */
+.mod-transfers .trf-form { display: grid; gap: 12px; max-width: 640px; min-width: 0; }
+.mod-transfers .trf-form h2 { margin: 0; }
+.mod-transfers .trf-form .field { display: grid; gap: 4px; min-width: 0; }
+.mod-transfers .trf-form .field[hidden] { display: none; }
+.mod-transfers .trf-form .field label, .mod-transfers .trf-form .label { font-weight: 800; }
+.mod-transfers .trf-form select { width: 100%; }
+.mod-transfers .trf-choices { display: flex; flex-wrap: wrap; gap: 6px; }
+.mod-transfers .trf-choices .meta { margin: 0; }
+.mod-transfers .trf-choice { min-height: 48px; font-size: 1rem; text-align: left; }
+.mod-transfers .trf-tick { display: flex; gap: 10px; align-items: center; min-height: 48px; font-weight: 700; cursor: pointer; }
+.mod-transfers .trf-tick input { width: 26px; height: 26px; flex: none; }
+.mod-transfers .trf-result { border-left: 5px solid var(--sea); margin-top: 6px; }
+.mod-transfers .trf-result.is-below { border-left-color: var(--coral); }
+.mod-transfers .trf-result p { margin: 0 0 4px; }
+.mod-transfers .trf-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.mod-transfers .trf-items li { display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 1px solid var(--line); border-left: 5px solid var(--line-strong);
+  border-radius: 10px; padding: 6px 8px 6px 12px; background: var(--surface); }
+.mod-transfers .trf-items li.is-pass { border-left-color: var(--sea); }
+.mod-transfers .trf-items li.is-fail { border-left-color: var(--coral); background: #FDF0EC; }
+.mod-transfers .trf-item-name { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.mod-transfers .trf-pf { display: flex; gap: 6px; flex: none; }
+.mod-transfers .trf-mark { font: inherit; font-weight: 800; min-height: 48px; min-width: 64px; border-radius: 10px; border: 1.5px solid var(--line-strong); background: var(--surface); color: var(--navy); cursor: pointer; }
+.mod-transfers .trf-mark.trf-pass[aria-pressed="true"] { background: var(--sea-ink); border-color: var(--sea-ink); color: #fff; }
+.mod-transfers .trf-mark.trf-fail[aria-pressed="true"] { background: #A3301A; border-color: #A3301A; color: #fff; }
+.mod-transfers .trf-score { font-weight: 800; margin: 0; }
+.mod-transfers .notice { margin: 10px 0; }
