@@ -14364,6 +14364,1288 @@
           "on": false
         }
       }
+    },
+    {
+      "name": "ospeli_transfers_board",
+      "summary": "The dispatch board in one call: journeys waiting for a vehicle (in the order they are needed: a booked time, or when an as-soon-as-possible request was made), journeys with a vehicle, every vehicle (free, on a job or off the road; crewed this shift or not; its last daily check), the four measures with their definitions and sources, and the guide's suggestions with their reasons and basis (empty while the guide is off). Also the pick lists, places and bookable times. Measures journeys and vehicles, never drivers. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 30,
+            "description": "The period for the measures: the last this many days. Default 7."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: no pick lists, places or definitions. detailed (default): the measures with definitions, plus pick lists, places and bookable times."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
+            "description": "At most this many journeys in each list. Default 50, 500 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "shift",
+          "counts",
+          "waiting",
+          "open",
+          "vehicles",
+          "kpis",
+          "guide",
+          "total",
+          "truncated"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "period": {
+            "type": "object"
+          },
+          "shift": {
+            "type": "object"
+          },
+          "counts": {
+            "type": "object"
+          },
+          "waiting": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "type",
+                "state",
+                "pickup",
+                "destination",
+                "needed",
+                "mobility",
+                "escort",
+                "equipment"
+              ]
+            }
+          },
+          "open": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "type",
+                "state",
+                "pickup",
+                "destination",
+                "needed",
+                "mobility",
+                "escort",
+                "equipment"
+              ]
+            },
+            "description": "Journeys with a vehicle, not yet handed over."
+          },
+          "vehicles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "state",
+                "crewed"
+              ]
+            }
+          },
+          "kpis": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "unit",
+                "value",
+                "n"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "null when nothing was counted in the period."
+                },
+                "p90": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "numerator": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "denominator": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "n": {
+                  "type": "integer"
+                },
+                "target": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "targetText": {
+                  "type": "string"
+                },
+                "breakdown": {
+                  "type": "array"
+                },
+                "definition": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "planned": {
+            "type": "array"
+          },
+          "guide": {
+            "type": "object",
+            "required": [
+              "on",
+              "rules",
+              "suggestions"
+            ],
+            "properties": {
+              "on": {
+                "type": "boolean"
+              },
+              "rules": {
+                "type": "array"
+              },
+              "suggestions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "rule",
+                    "id",
+                    "text",
+                    "why",
+                    "basis"
+                  ],
+                  "properties": {
+                    "rule": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "why": {
+                      "type": "string"
+                    },
+                    "basis": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "The first command a person may run to follow it; null: advice only. actions lists them all. A fault report needs a priority the person picks."
+                    },
+                    "actions": {
+                      "type": "array"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "picks": {
+            "type": "object"
+          },
+          "places": {
+            "type": "object"
+          },
+          "slots": {
+            "type": "array"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "days": 7,
+          "format": "short"
+        }
+      }
+    },
+    {
+      "name": "ospeli_transfers_jobs",
+      "summary": "One vehicle's jobs for the crew: the journey under way first, then the rest in the order they are needed, each with pickup, destination, mobility, escort, equipment and the next step to tap. Also whether the vehicle is crewed this shift or off the road. Read-only.",
+      "kind": "read",
+      "roles": [
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "vehicleId"
+        ],
+        "properties": {
+          "vehicleId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "A vehicle's id, for example asset-vehicle-2 (ospeli_transfers_board lists the vehicles)."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "description": "At most this many jobs. Default 20, 100 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "vehicle",
+          "shift",
+          "jobs",
+          "total",
+          "truncated"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "vehicle": {
+            "type": "object"
+          },
+          "shift": {
+            "type": "object"
+          },
+          "jobs": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "type",
+                "state",
+                "pickup",
+                "destination",
+                "needed",
+                "mobility",
+                "escort",
+                "equipment"
+              ]
+            }
+          },
+          "handedOverThisShift": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "vehicleId": "asset-vehicle-1"
+        }
+      }
+    },
+    {
+      "name": "ospeli_transfers_request",
+      "summary": "Book a journey in a vehicle: from a ward or department, to one of our sites or an outside category (never a name or an address), as soon as possible or for a booked time, with how the patient travels, who escorts them and the equipment, all picked from lists. No typed text and no clinical notes. The ward sets mobility and escort; Ospeli records the pick. A move on foot inside a site is a Cleaning and transport job instead. The same journey sent twice within two minutes is one booking unless \"again\" is true (a second patient). An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "ae-nic",
+        "bed-manager",
+        "transport-coordinator"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "type",
+          "fromPlace",
+          "needed",
+          "mobility",
+          "escort",
+          "equipment"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "discharge",
+              "between-sites",
+              "to-provider",
+              "appointment"
+            ],
+            "description": "What kind of journey. One of: discharge (Discharge), between-sites (Between our sites), to-provider (To another provider), appointment (Appointment)."
+          },
+          "fromPlace": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "The ward or department the patient leaves from, for example ward-a1."
+          },
+          "toSite": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "One of our sites, for example site-north. Give this or toOutside."
+          },
+          "toOutside": {
+            "type": "string",
+            "enum": [
+              "other-hospital",
+              "care-home",
+              "hospice",
+              "home",
+              "other"
+            ],
+            "description": "An outside destination as a category, never a name or address. Give this or toSite. One of: other-hospital (Another hospital), care-home (Care home), hospice (Hospice), home (Home (no address kept here)), other (Somewhere else)."
+          },
+          "needed": {
+            "type": "string",
+            "enum": [
+              "asap",
+              "booked"
+            ],
+            "description": "asap: as soon as possible (the wait starts now). booked: at bookedFor."
+          },
+          "bookedFor": {
+            "type": "string",
+            "format": "date-time",
+            "description": "For a booked journey: when the patient must leave, up to seven days ahead."
+          },
+          "mobility": {
+            "type": "string",
+            "enum": [
+              "walks",
+              "wheelchair",
+              "stretcher",
+              "two-crew",
+              "special"
+            ],
+            "description": "How the patient travels, as the ward set it. One of: walks (Walks (may need a hand)), wheelchair (Wheelchair), stretcher (Stretcher), two-crew (Needs two crew to move), special (Special handling: agree with the coordinator)."
+          },
+          "escort": {
+            "type": "string",
+            "enum": [
+              "none",
+              "carer",
+              "nurse",
+              "clinician"
+            ],
+            "description": "Who travels with the patient, as the ward set it. One of: none (No escort), carer (Relative or carer), nurse (Nurse or nursing assistant), clinician (Doctor or other clinician)."
+          },
+          "equipment": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 6,
+            "items": {
+              "type": "string",
+              "enum": [
+                "none",
+                "oxygen",
+                "pump",
+                "wide",
+                "aids",
+                "belongings"
+              ]
+            },
+            "description": "What must travel. [\"none\"] for nothing. One or more of: none, oxygen, pump, wide, aids, belongings."
+          },
+          "bayMove": {
+            "type": "boolean",
+            "description": "true when a move to the vehicle bay is already asked for in Cleaning and transport. This command does not ask for it."
+          },
+          "again": {
+            "type": "boolean",
+            "description": "true to book a second, identical journey (another patient) within two minutes of the first."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "transferId": {
+            "type": "string",
+            "pattern": "^trf-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A transfer id, for example trf-00012 (ospeli_transfers_board lists them)."
+          },
+          "queuePosition": {
+            "type": "integer"
+          },
+          "waiting": {
+            "type": "integer"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "type": "between-sites",
+          "fromPlace": "ward-a3",
+          "toSite": "site-north",
+          "needed": "asap",
+          "mobility": "wheelchair",
+          "escort": "none",
+          "equipment": [
+            "none"
+          ]
+        }
+      }
+    },
+    {
+      "name": "ospeli_transfers_assign",
+      "summary": "Give a journey to a vehicle (or move it to another vehicle before pickup). The vehicle must be on the road; whether it is crewed this shift is shown on the board. It then shows in that vehicle's jobs. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "transport-coordinator"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "vehicleId"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^trf-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A transfer id, for example trf-00012 (ospeli_transfers_board lists them)."
+          },
+          "vehicleId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "A vehicle's id, for example asset-vehicle-2 (ospeli_transfers_board lists the vehicles)."
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "waiting",
+              "assigned",
+              "at-pickup",
+              "on-the-way",
+              "at-destination",
+              "handed-over",
+              "cancelled"
+            ],
+            "description": "Optional: the state you saw. If it has changed since, nothing is saved and you are told."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "transferId": {
+            "type": "string",
+            "pattern": "^trf-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A transfer id, for example trf-00012 (ospeli_transfers_board lists them)."
+          },
+          "vehicleId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
+          },
+          "dispatchMinutes": {
+            "type": "integer"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "transferId": "trf-00001",
+          "vehicleId": "asset-vehicle-1"
+        },
+        "needs": "A journey waiting for a vehicle: book one with ospeli_transfers_request, or find one in ospeli_transfers_board (waiting)."
+      }
+    },
+    {
+      "name": "ospeli_transfers_step",
+      "summary": "Time the next step of a journey, one tap each, in order: arrived-pickup, departed, arrived-destination, handed-over (the handover is operational, with no clinical content; it ends the journey and frees the vehicle). A step out of order is refused with the next valid step. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "driver",
+        "transport-coordinator"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "step"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^trf-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A transfer id, for example trf-00012 (ospeli_transfers_board lists them)."
+          },
+          "step": {
+            "type": "string",
+            "enum": [
+              "arrived-pickup",
+              "departed",
+              "arrived-destination",
+              "handed-over"
+            ],
+            "description": "The next step: arrived-pickup, departed, arrived-destination or handed-over."
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "waiting",
+              "assigned",
+              "at-pickup",
+              "on-the-way",
+              "at-destination",
+              "handed-over",
+              "cancelled"
+            ],
+            "description": "Optional: the state you saw. If it has changed since, nothing is saved and you are told."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "transferId": {
+            "type": "string",
+            "pattern": "^trf-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A transfer id, for example trf-00012 (ospeli_transfers_board lists them)."
+          },
+          "state": {
+            "type": "string"
+          },
+          "nextStep": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "transferId": "trf-00001",
+          "step": "arrived-pickup"
+        },
+        "needs": "A journey with a vehicle and no step yet: ospeli_transfers_request, then ospeli_transfers_assign; or find one in ospeli_transfers_jobs."
+      }
+    },
+    {
+      "name": "ospeli_transfers_delay",
+      "summary": "Mark an open journey delayed, with a reason picked from a list (no vehicle, no escort, no crew, vehicle fault, patient, paperwork or destination not ready, other). It keeps its place; the reason feeds on-time pickup and the guide. Transport coordinator only. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "transport-coordinator"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "reason"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^trf-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A transfer id, for example trf-00012 (ospeli_transfers_board lists them)."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "no-vehicle",
+              "no-escort",
+              "no-crew",
+              "vehicle-fault",
+              "patient-not-ready",
+              "paperwork-not-ready",
+              "destination-not-ready",
+              "other"
+            ],
+            "description": "Why. One of: no-vehicle (No vehicle free), no-escort (No escort), no-crew (No crew), vehicle-fault (Vehicle fault), patient-not-ready (Patient not ready), paperwork-not-ready (Paperwork not ready), destination-not-ready (Destination not ready), other (Other)."
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "waiting",
+              "assigned",
+              "at-pickup",
+              "on-the-way",
+              "at-destination",
+              "handed-over",
+              "cancelled"
+            ],
+            "description": "Optional: the state you saw. If it has changed since, nothing is saved and you are told."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "transferId": {
+            "type": "string",
+            "pattern": "^trf-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A transfer id, for example trf-00012 (ospeli_transfers_board lists them)."
+          },
+          "delays": {
+            "type": "integer"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "transferId": "trf-00001",
+          "reason": "no-escort"
+        },
+        "needs": "An open journey: book one with ospeli_transfers_request, or find one in ospeli_transfers_board."
+      }
+    },
+    {
+      "name": "ospeli_transfers_cancel",
+      "summary": "Cancel a journey before it departs, with a reason picked from a list. Refused once the vehicle has departed with the patient. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "transport-coordinator",
+        "ward-nurse",
+        "ae-nic",
+        "bed-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "transferId",
+          "reason"
+        ],
+        "properties": {
+          "transferId": {
+            "type": "string",
+            "pattern": "^trf-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A transfer id, for example trf-00012 (ospeli_transfers_board lists them)."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "no-vehicle",
+              "no-escort",
+              "no-crew",
+              "vehicle-fault",
+              "patient-not-ready",
+              "paperwork-not-ready",
+              "destination-not-ready",
+              "other",
+              "not-needed"
+            ],
+            "description": "Why. One of: no-vehicle (No vehicle free), no-escort (No escort), no-crew (No crew), vehicle-fault (Vehicle fault), patient-not-ready (Patient not ready), paperwork-not-ready (Paperwork not ready), destination-not-ready (Destination not ready), other (Other), not-needed (No longer needed)."
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "waiting",
+              "assigned",
+              "at-pickup",
+              "on-the-way",
+              "at-destination",
+              "handed-over",
+              "cancelled"
+            ],
+            "description": "Optional: the state you saw. If it has changed since, nothing is saved and you are told."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "transferId": {
+            "type": "string",
+            "pattern": "^trf-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A transfer id, for example trf-00012 (ospeli_transfers_board lists them)."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "transferId": "trf-00001",
+          "reason": "not-needed"
+        },
+        "needs": "A journey not yet departed: book one with ospeli_transfers_request, or find one in ospeli_transfers_board."
+      }
+    },
+    {
+      "name": "ospeli_transfers_vehicle_crew",
+      "summary": "A crew picks a vehicle for this shift (crewed: true), or releases it at the end (crewed: false). Records the vehicle, the shift and the role, never who. One crewing per vehicle and shift: a second crew phone picking the same vehicle is told it is already crewed and nothing new is saved. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "driver",
+        "transport-coordinator"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "vehicleId",
+          "crewed"
+        ],
+        "properties": {
+          "vehicleId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "A vehicle's id, for example asset-vehicle-2 (ospeli_transfers_board lists the vehicles)."
+          },
+          "crewed": {
+            "type": "boolean",
+            "description": "true: crewed for this shift. false: released."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "vehicleId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
+          },
+          "crewed": {
+            "type": "boolean"
+          },
+          "shift": {
+            "type": "object"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "vehicleId": "asset-vehicle-2",
+          "crewed": true
+        }
+      }
+    },
+    {
+      "name": "ospeli_transfers_vehicle_check",
+      "summary": "Record a vehicle's daily check: every item on the example check list marked pass or fail (picks only). A failed item shows as a guide suggestion to take the vehicle off the road and to report a fault; nothing else happens by itself. The list is an example set, set locally, not a standard. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "fleet-supervisor",
+        "driver"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "vehicleId"
+        ],
+        "properties": {
+          "vehicleId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "A vehicle's id, for example asset-vehicle-2 (ospeli_transfers_board lists the vehicles)."
+          },
+          "passed": {
+            "type": "array",
+            "maxItems": 9,
+            "items": {
+              "type": "string",
+              "enum": [
+                "tyres",
+                "lights",
+                "brakes",
+                "fuel",
+                "body",
+                "lift",
+                "fixings",
+                "kit",
+                "clean"
+              ]
+            },
+            "description": "Items that passed. Every item is in passed or failed: tyres, lights, brakes, fuel, body, lift, fixings, kit, clean."
+          },
+          "failed": {
+            "type": "array",
+            "maxItems": 9,
+            "items": {
+              "type": "string",
+              "enum": [
+                "tyres",
+                "lights",
+                "brakes",
+                "fuel",
+                "body",
+                "lift",
+                "fixings",
+                "kit",
+                "clean"
+              ]
+            },
+            "description": "Items that failed."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "vehicleId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
+          },
+          "failed": {
+            "type": "array"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "vehicleId": "asset-vehicle-1",
+          "passed": [
+            "tyres",
+            "lights",
+            "brakes",
+            "fuel",
+            "body",
+            "lift",
+            "fixings",
+            "kit",
+            "clean"
+          ],
+          "failed": []
+        }
+      }
+    },
+    {
+      "name": "ospeli_transfers_vehicle_status",
+      "summary": "Take a vehicle off the road (status off-road) or bring it back (status back), with a reason from a list. Off-road time lowers fleet availability. Journeys already given to it show \"vehicle off the road\" so the coordinator can give them to another vehicle. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "fleet-supervisor",
+        "transport-coordinator"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "vehicleId",
+          "status",
+          "reason"
+        ],
+        "properties": {
+          "vehicleId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "A vehicle's id, for example asset-vehicle-2 (ospeli_transfers_board lists the vehicles)."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "off-road",
+              "back"
+            ],
+            "description": "off-road or back (in service)."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "failed-check",
+              "fault",
+              "service",
+              "other",
+              "repaired",
+              "service-done",
+              "checked-safe"
+            ],
+            "description": "Off the road: failed-check, fault, service, other. Back: repaired, service-done, checked-safe, other."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "vehicleId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
+          },
+          "onRoad": {
+            "type": "boolean"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "vehicleId": "asset-vehicle-3",
+          "status": "off-road",
+          "reason": "service"
+        }
+      }
+    },
+    {
+      "name": "ospeli_transfers_guide_set",
+      "summary": "Switch the transfers guide on or off for this site. The guide is three fixed rules (a discharge booked late while beds are needed, a failed daily check, delays for no escort at one time of day) that suggest; a person decides. With it off everything else works the same. People only.",
+      "kind": "write",
+      "roles": [
+        "transport-coordinator",
+        "fleet-supervisor"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "on"
+        ],
+        "properties": {
+          "on": {
+            "type": "boolean",
+            "description": "true: show the guide's suggestions. false: none."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "on"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "on": {
+            "type": "boolean"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "on": false
+        }
+      }
     }
   ]
 }
