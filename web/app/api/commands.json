@@ -2659,6 +2659,13 @@
                     "null"
                   ]
                 },
+                "seenSeq": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "For a stock count: the newest stock event when the agent proposed it. On accept, a count of stock that moved since is refused as out of date."
+                },
                 "decidedAt": {
                   "type": "string",
                   "format": "date-time"
@@ -2822,6 +2829,13 @@
                   "string",
                   "null"
                 ]
+              },
+              "seenSeq": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "For a stock count: the newest stock event when the agent proposed it. On accept, a count of stock that moved since is refused as out of date."
               },
               "decidedAt": {
                 "type": "string",
@@ -2995,6 +3009,13 @@
                   "string",
                   "null"
                 ]
+              },
+              "seenSeq": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "For a stock count: the newest stock event when the agent proposed it. On accept, a count of stock that moved since is refused as out of date."
               },
               "decidedAt": {
                 "type": "string",

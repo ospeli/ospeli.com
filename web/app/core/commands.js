@@ -543,7 +543,7 @@ const PROPOSAL = {
   properties: {
     id: ID, command: { type: 'string' }, input: { type: 'object' }, agent: { type: 'string' }, role: ID, at: TIME,
     status: { type: 'string', enum: ['pending', 'accepting', 'accepted', 'declined', 'expired'] },
-    wardId: { type: ['string', 'null'] }, seenState: { type: ['string', 'null'] },
+    wardId: { type: ['string', 'null'] }, seenState: { type: ['string', 'null'] }, seenSeq: { type: ['integer', 'null'], description: 'For a stock count: the newest stock event when the agent proposed it. On accept, a count of stock that moved since is refused as out of date.' },
     decidedAt: TIME, decidedByRole: ID, reason: { type: ['string', 'null'] }, events: { type: 'array', items: { type: 'integer' } },
     canDecide: { type: 'boolean', description: 'Whether the caller\'s role may accept or decline it.' },
     agentOnList: { type: 'boolean', description: 'False when the agent that asked has since been removed or has passed its end date. Check before accepting.' },
@@ -598,6 +598,7 @@ COMMAND_LIST.push(
       const args = { ...p.input };
       if (p.seenState && commandByName(p.command).input.properties.expectedState && !args.expectedState) args.expectedState = p.seenState;
       if (p.seenRevision && commandByName(p.command).input.properties.expectedRevision && !args.expectedRevision) args.expectedRevision = p.seenRevision;
+      if (p.seenSeq != null && commandByName(p.command).input.properties.seenSeq && args.seenSeq == null) args.seenSeq = p.seenSeq;
       try {
         const result = await runCommand(core, p.command, args, actor);
         const proposal = await core.decideProposal(p.id, actor, { status: 'accepted', events: result.events || [], command: p.command });

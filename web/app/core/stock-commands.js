@@ -159,11 +159,11 @@ export function stockCommands(packs = []) {
   const WRITE_OUT = (props = {}) => ({ type: 'object', required: ['status'], properties: { status: WRITE_STATUS, events: EVENT_SEQS, proposal: PROPOSAL_OUT, ...props } });
   // One write: verify (for a person, a proposal, a dry run and an acceptance), then one checked
   // append and one audit entry holding ids and picks only.
-  function write({ name, summary, verbs, people = false, props, required, out = {}, target, ward = 'placeId', check, verify, make, example }) {
+  function write({ name, summary, verbs, people = false, props, required, out = {}, target, ward = 'placeId', check, verify, make, snapshot, example }) {
     return {
       name, summary, kind: 'write', approval: true, ...(people ? { agents: false } : {}), roles: union(...verbs),
       input: { type: 'object', additionalProperties: false, required, properties: props },
-      output: WRITE_OUT(out), ...(target ? { target } : {}), ...(check ? { check } : {}), wardOf: ward === 'request' || ward === 'stockOut' ? wardOfRecord(ward) : wardOf(ward),
+      output: WRITE_OUT(out), ...(target ? { target } : {}), ...(check ? { check } : {}), ...(snapshot ? { snapshot } : {}), wardOf: ward === 'request' || ward === 'stockOut' ? wardOfRecord(ward) : wardOf(ward),
       async precheck(core, input, { actor } = {}) { await verify(await ctx(core, input, actor?.role)); },
       async run(core, input, { actor }) {
         if (check) check(input);
@@ -359,6 +359,10 @@ export function stockCommands(packs = []) {
       out: { placeId: ID, counted: { type: 'integer' }, underLevel: { type: 'array', description: 'Counted items now under their level: { itemId, level, usable, shortBy }.' },
         requestId: { type: ['string', 'null'], description: 'The request raised for what is short, or null when none was needed or possible.' }, requested: { type: 'array' }, requestNote: { type: ['string', 'null'] } },
       target: (input) => ({ id: input.placeId, word: 'place' }),
+      // An agent's count is kept with the stock as the agent saw it, and is checked against it when a
+      // person accepts (#128 point 2): a delivery saved in between makes the count out of date, so it
+      // cannot set the balance back.
+      async snapshot(core, input) { return { seenSeq: input.seenSeq ?? (await ctx(core, input)).stock.lastSeq }; },
       verify(c) {
         const { input } = c;
         place(c, input.placeId, 'placeId');

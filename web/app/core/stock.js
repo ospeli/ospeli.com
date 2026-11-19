@@ -162,7 +162,11 @@ export function deriveStock(events, { items = new Map(), categories = {}, offset
     if (n < line.qty) problems += 1;
     b.qty -= n; if (fromHold) b.held -= n;
     if (used && n) h.use.push({ at: ms(e.at), qty: n });
+    return n;
   };
+  // A move adds at the destination only what the source gave up (#128 point 3): a short line in an
+  // imported or older log is counted under problems by take, and never creates stock.
+  const move = (fromPlaceId, toPlaceId, l, e, exp) => { const n = take(fromPlaceId, l, e); if (n > 0) add(toPlaceId, { ...l, ...(exp ? { expiresOn: exp } : {}), qty: n }, e); };
 
   for (const e of events) {
     if (typeof e.type !== 'string' || !e.type.startsWith('stock.')) continue;
@@ -210,7 +214,7 @@ export function deriveStock(events, { items = new Map(), categories = {}, offset
       }
       case 'stock.transferred': {
         const ls = lines(d);
-        for (const l of ls) { const from = holdings.get(key(l.itemId, d.fromPlaceId)); const exp = from?.batches.get(bkey(l))?.expiresOn; take(d.fromPlaceId, l, e); add(d.toPlaceId, exp ? { ...l, expiresOn: exp } : l, e); }
+        for (const l of ls) { const from = holdings.get(key(l.itemId, d.fromPlaceId)); const exp = from?.batches.get(bkey(l))?.expiresOn; move(d.fromPlaceId, d.toPlaceId, l, e, exp); }
         transfers.push({ id: e.subject, at: e.at, byRole: e.actorRole, fromPlaceId: d.fromPlaceId, toPlaceId: d.toPlaceId, lines: ls.map((l) => ({ ...l })), ref: d.ref ?? null });
         break;
       }
@@ -229,7 +233,7 @@ export function deriveStock(events, { items = new Map(), categories = {}, offset
           const want = q.lines.find((x) => x.itemId === l.itemId);
           if (!want || want.issued + l.qty > want.qty) { problems += 1; continue; }
           const exp = holdings.get(key(l.itemId, q.fromPlaceId))?.batches.get(bkey(l))?.expiresOn;
-          take(q.fromPlaceId, l, e); add(q.placeId, exp ? { ...l, expiresOn: exp } : l, e);
+          move(q.fromPlaceId, q.placeId, l, e, exp);
           want.issued += l.qty;
         }
         q.state = q.lines.every((x) => x.issued >= x.qty) ? 'issued' : q.lines.some((x) => x.issued > 0) ? 'part' : 'open';
