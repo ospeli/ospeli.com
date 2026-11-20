@@ -149,8 +149,12 @@ export async function render(el, ctx) {
   // Import. A plain export is checked and loaded as before. A locked export (#93) asks for its
   // passphrase first; the passphrase is used once and never kept, and a file that does not open
   // changes nothing.
+  const NOT_EXPORT = 'Import refused. Nothing was changed. This is not an Ospeli export file.';
   async function importText(text) {
-    const data = JSON.parse(text);
+    // A file that is not an export is told in plain words, never with the parser's own message (#150).
+    let data;
+    try { data = JSON.parse(text); } catch { status.textContent = NOT_EXPORT; return; }
+    if (!data || typeof data !== 'object' || Array.isArray(data) || !Array.isArray(data.entities) || !Array.isArray(data.events)) { status.textContent = NOT_EXPORT; return; }
     const errs = await core.validateImport(data);
     if (errs.length) { status.textContent = `Import refused. Nothing was changed. ${errs[0]}`; return; }
     const agentsOn = await core.agentAccessInUse();

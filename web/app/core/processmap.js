@@ -81,7 +81,11 @@ export function newMap({ id, from = 'blank', title, at, role }) {
 // like a personal detail: phone numbers, email addresses, long ID numbers, dates of birth.
 // A record number is a label (MRN, ID, No., record or hospital number) followed by six or more
 // digits; a short phone number is a calling word followed by six or more digits (issue #38).
-const RECORD_NUMBER = /\b(?:MRN|NHS|ID|IDs|No|Nr|Num|Number|Ref|Reference|Record|Chart|Case|Account|Policy|Insurance)\b[\s.:#-]*(?:(?:no|nr|num|number)\b[\s.:#-]*)?\d{6,}\b/i;
+// A label that only ever names a record (MRN, NHS, ID, record, chart, case) is enough with three or
+// more digits: many small sites use four- or five-digit numbers (#150). "Room 12", "Bed 14B" and
+// "No 12 bus" still pass.
+const RECORD_NUMBER = { test: (t) => /\b(?:MRN|NHS|ID|IDs|No|Nr|Num|Number|Ref|Reference|Record|Chart|Case|Account|Policy|Insurance)\b[\s.:#-]*(?:(?:no|nr|num|number)\b[\s.:#-]*)?\d{6,}\b/i.test(t)
+  || /\b(?:MRN|NHS|ID|IDs|Record|Chart|Case)\b[\s.:#-]*(?:(?:no|nr|num|number)\b[\s.:#-]*)?\d{3,}\b/i.test(t) };
 const CALL_NUMBER = /\b(?:phone|call|ring|tel|telephone|text|page|fax|ext|extension|mobile|cell|whatsapp)\b\D{0,12}(\d[\d\s().-]{4,}\d)/gi;
 const PERSONAL = [
   [/[\w.+-]+@[\w-]+\.[\w.]+/, 'an email address'],

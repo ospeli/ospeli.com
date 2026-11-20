@@ -809,6 +809,14 @@ function linenScreen(ctx, { places, names }) {
     const m = ui.meal;
     const missing = !m.ward ? 'the ward' : !m.meal ? 'the meal' : [m.ordered, m.delivered, m.returned].some((v) => !Number.isInteger(v)) ? 'all three numbers' : null;
     if (missing) { m.result = { error: `Fill in ${missing} first.` }; draw(); return; }
+    // More delivered than ordered is often a slip on − or +: ask once, then save what was entered (#150).
+    const key = JSON.stringify([m.ward, m.day, m.meal, m.ordered, m.delivered, m.returned]);
+    if (m.delivered > m.ordered && m.checked !== key) {
+      m.checked = key;
+      m.result = { ask: `Delivered (${m.delivered}) is more than ordered (${m.ordered}). Is that right? Check the numbers, or tap Save again to keep them.` };
+      draw(); return;
+    }
+    m.checked = null;
     act(async () => {
     const date = m.day === 'today' ? data.meals.today : prevDay(data.meals.today);
     try {
@@ -923,7 +931,7 @@ function linenScreen(ctx, { places, names }) {
         h('div', { class: 'sup-meal-nums' }, nums.map(([key, label]) => h('div', { class: 'field sup-meal-n' }, h('span', { class: 'label' }, label),
           stepper({ get: () => m[key], set: (v) => { m[key] = v === undefined ? NaN : v; }, label: `${label}, meals`, test: `meal-${key}` })))),
         save,
-        m.result ? h('p', { class: 'sup-status', role: 'status', 'data-test': 'meal-result' }, m.result.error || m.result.ok) : null,
+        m.result ? h('p', { class: 'sup-status', role: 'status', 'data-test': 'meal-result' }, m.result.error || m.result.ask || m.result.ok) : null,
       ] : h('p', { class: 'meta', 'data-test': 'read-only' }, `${roleById(ctx.role).name} can see the meal counts. They are recorded by ${roleNames(commandByName('ospeli_support_meals_record').roles)}.`));
   }
 
