@@ -143,6 +143,46 @@ async function prepare(core, c) {
       default: assert.fail(`${name}: add what this stock example needs to the test`);
     }
   }
+  // The shared patient code and slot objects: a person's own steps make what the example needs.
+  if (name.startsWith('ospeli_codes_') || name.startsWith('ospeli_slots_')) {
+    const cmd = (n) => listCommands().find((x) => x.name === n);
+    const as = (n, input, role) => runCommand(core, n, input, human(role ?? cmd(n).roles[0]));
+    const openCmd = cmd('ospeli_codes_open');
+    assert.ok(openCmd, `${name}: its example needs a patient code, so a module must declare a kind of episode (CODE_KINDS)`);
+    const kinds = (await as('ospeli_codes_kinds', {}, 'coo')).kinds;
+    const openCode = async (kind = kinds[0]) => (await as('ospeli_codes_open', { kind: kind.id, service: kind.services[0].id, source: kind.sources[0], again: true }, kind.openRoles[0])).code;
+    if (name.startsWith('ospeli_codes_')) {
+      assert.match(c.example.needs, /ospeli_codes_|example ids/, `${name}: the needs line says where a code comes from`);
+      switch (name.slice('ospeli_codes_'.length)) {
+        case 'stage': {
+          // Walk the kind's own order until the example's stage may follow.
+          const kind = kinds.find((k) => k.stages.some((st) => st.id === c.example.input.stage));
+          const code = await openCode(kind);
+          const want = kind.stages.find((st) => st.id === c.example.input.stage);
+          let at = kind.openStage;
+          for (let hops = 0; hops < 20 && at !== want.id && !want.after.includes(at); hops++) {
+            const next = kind.stages.find((st) => st.id !== at && (at == null ? !st.after.length : st.after.includes(at)));
+            assert.ok(next, `${name}: no stage leads from ${at} towards ${want.id}`);
+            await as('ospeli_codes_stage', { code, stage: next.id }, next.roles[0]);
+            at = next.id;
+          }
+          return { code };
+        }
+        case 'due_set': { const kind = kinds.find((k) => k.dueBy); return { code: await openCode(kind), dueBy: new Date(Date.parse(core.now()) + 7 * 864e5).toISOString().slice(0, 10) }; }
+        case 'link': { const kind = kinds.find((k) => k.links); return { code: await openCode(kind), otherCode: await openCode(kind) }; }
+        default: return { code: await openCode() };
+      }
+    }
+    assert.match(c.example.needs, /ospeli_slots_/, `${name}: the needs line names the slot command that finds or makes what is needed`);
+    const plan = cmd('ospeli_slots_session_plan');
+    const sessionId = (await as(plan.name, structuredClone(plan.example.input))).sessionId;
+    if (name === 'ospeli_slots_appointments' || name === 'ospeli_slots_session_change') return { sessionId };
+    const book = cmd('ospeli_slots_book');
+    const code = await openCode();
+    if (name === 'ospeli_slots_book') return { sessionId, code };
+    const appointmentId = (await as(book.name, { ...structuredClone(book.example.input), sessionId, code })).appointmentId;
+    return name === 'ospeli_slots_move' ? { appointmentId, sessionId } : { appointmentId };
+  }
   // A module's own commands: the module says how to put in place what its example needs.
   const pack = MODULE_PACKS.find((p) => name.startsWith(p.PREFIX));
   if (pack) {

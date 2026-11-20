@@ -288,7 +288,7 @@ export function codeCommands(packs = []) {
       kind: 'read', roles: ALL_ROLES, approval: false,
       input: { type: 'object', additionalProperties: false, properties: {
         kind: { ...KIND, description: `Only this kind of episode: ${kindIds.join(', ')}.` }, service: { ...SERVICE, description: `Only this service: ${serviceIds.join(', ')}.` },
-        state: { type: 'string', enum: ['open', 'closed', 'all'], description: 'Default: open.' },
+        state: { type: 'string', enum: ['open', 'closed', 'all'], description: 'Which codes to list: open (still being followed), closed, or all. Default: open.' },
         booked: { type: 'boolean', description: 'false: only codes with no appointment open now (the list to book from). true: only codes with one.' },
         overdue: { type: 'boolean', description: 'true: only open codes whose due-by date has passed.' },
         limit: LIMIT(100, 500, 'codes') } },
