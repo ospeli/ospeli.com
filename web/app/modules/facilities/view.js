@@ -24,7 +24,8 @@ const TILES = [
 const PRIORITIES = [['urgent', 'Urgent', 'Unsafe, or stops care now'], ['high', 'High', 'Needed today'], ['routine', 'Routine', 'Can wait for the planned round']];
 const STATUS_WORDS = { overdue: 'Missed', due: 'Due', done: 'Done' };
 const agoLater = (m) => (m < 60 ? `${m} min` : m === 60 ? '1 hour' : `${m / 60} hours`);
-const hoursText = (x) => (x == null ? 'None' : `${Math.round(x * 10) / 10} h`);
+// Outage time as people say it, "15 min" or "1 h 30 min" (#140: "0.3 h + 0.3 h" under "0.5 h" did not add up).
+const hoursText = (mins) => (mins == null ? 'None' : fmtWait(mins));
 const pctText = (x) => (x == null ? 'Nothing due yet' : `${Math.round(x)}%`);
 
 export async function render(el, ctx) {
@@ -345,9 +346,9 @@ export async function render(el, ctx) {
           def(gen)),
         h('div', { class: 'card fac-kpi', 'data-kpi': out.id, 'data-value': String(out.value) },
           h('p', { class: 'fac-kpi-name' }, `${out.name}, ${out.period.month}`),
-          h('p', { class: 'fac-kpi-value' }, hoursText(out.value)),
+          h('p', { class: 'fac-kpi-value' }, hoursText(out.minutes)),
           h('ul', { class: 'fac-hours', 'data-test': 'hours' }, out.breakdown.filter((b) => b.outages).map((b) => h('li', { 'data-utility': b.id },
-            `${b.name}: ${hoursText(b.hours)}${b.plannedHours ? ` (planned shutdown ${hoursText(b.plannedHours)}, not in the total)` : ''}${b.open ? ', still open' : ''}`))),
+            `${b.name}: ${hoursText(b.minutes)}${b.plannedMinutes ? ` (planned shutdown ${hoursText(b.plannedMinutes)}, not in the total)` : ''}${b.open ? ', still open' : ''}`))),
           out.breakdown.some((b) => b.outages) ? null : h('p', { class: 'meta' }, 'No outage this month.'),
           def(out))),
       h('ul', { class: 'fac-planned' },

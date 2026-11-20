@@ -14959,10 +14959,17 @@
                 },
                 "breakdown": {
                   "type": "array",
-                  "description": "Outage hours by utility, with planned shutdowns apart."
+                  "description": "Outage time by utility, with planned shutdowns apart: minutes (whole) and hours (those minutes over 60). The lines add up to the total minutes."
                 },
                 "plannedHours": {
                   "type": "number"
+                },
+                "minutes": {
+                  "type": "integer",
+                  "description": "Outage hours only: the total in whole minutes, the sum of the breakdown lines."
+                },
+                "plannedMinutes": {
+                  "type": "integer"
                 },
                 "definition": {
                   "type": "string"

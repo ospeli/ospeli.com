@@ -190,18 +190,22 @@ async function overview(core, input, wards = null) {
   const open = [...outages.values()].filter((o) => !o.endedAt).sort((a, b) => (a.startedAt < b.startedAt ? -1 : 1)).map((o) => ({ ...outageOut(o, info, now), startedText: whenText(Date.parse(o.startedAt), off) }));
   const month = monthBounds(t, off);
   const hours = outageHours(outages, { since: new Date(month.start).toISOString(), until: now });
+  const byMin = hours.byUtility.map((r) => ({ ...r, minutes: Math.round(r.hours * 60), plannedMinutes: Math.round(r.plannedHours * 60) }));
   const gen = plannedChecksDone(checks, { since, until: now, targets: info.targets, offsetMinutes: off, checkKind: 'generator-test' });
   const kpiValues = {
     'generator-test-compliance': { value: gen.value, numerator: gen.numerator, denominator: gen.denominator, n: gen.n, failed: gen.failed,
       missed: gen.missed.map((m) => ({ ...m, targetName: info.nameOf(m.targetId), dueText: dueDayText(Date.parse(m.due), off) })), period: { since, until: now, days } },
-    'utility-outage-hours': { value: Math.round(hours.value * 10) / 10, numerator: null, denominator: null, n: hours.n, plannedHours: Math.round(hours.plannedHours * 10) / 10,
-      breakdown: hours.byUtility.map((r) => ({ id: r.id, name: r.name, hours: Math.round(r.hours * 10) / 10, plannedHours: Math.round(r.plannedHours * 10) / 10, outages: r.outages, open: r.open })),
+    // Each utility is rounded to whole minutes once and the total is their sum, so the lines under the
+    // total always add up to it (ospeli/ospeli#140); hours are those minutes over 60, the total to one decimal.
+    'utility-outage-hours': { value: Math.round(byMin.reduce((n, r) => n + r.minutes, 0) / 6) / 10, minutes: byMin.reduce((n, r) => n + r.minutes, 0), numerator: null, denominator: null, n: hours.n,
+      plannedHours: Math.round(byMin.reduce((n, r) => n + r.plannedMinutes, 0) / 6) / 10, plannedMinutes: byMin.reduce((n, r) => n + r.plannedMinutes, 0),
+      breakdown: byMin.map((r) => ({ id: r.id, name: r.name, hours: r.minutes / 60, minutes: r.minutes, plannedHours: r.plannedMinutes / 60, plannedMinutes: r.plannedMinutes, outages: r.outages, open: r.open })),
       period: { since: new Date(month.start).toISOString(), until: now, month: month.name } },
   };
   const kpis = KPIS.map((k) => {
     const v = kpiValues[k.id];
     const base = { id: k.id, name: k.name, unit: k.unit, value: v.value, numerator: v.numerator, denominator: v.denominator, n: v.n, period: v.period, targetText: k.targetText };
-    return input.format === 'short' ? base : { ...base, ...(v.failed != null ? { failed: v.failed, missed: v.missed } : {}), ...(v.breakdown ? { breakdown: v.breakdown, plannedHours: v.plannedHours } : {}),
+    return input.format === 'short' ? base : { ...base, ...(v.failed != null ? { failed: v.failed, missed: v.missed } : {}), ...(v.breakdown ? { breakdown: v.breakdown, minutes: v.minutes, plannedHours: v.plannedHours, plannedMinutes: v.plannedMinutes } : {}),
       definition: k.definition, counts: k.counts, outOf: k.outOf, leavesOut: k.leavesOut, source: k.source };
   });
   const levels = levelsNow(events);
@@ -231,7 +235,8 @@ const KPI_OUT = { type: 'object', required: ['id', 'name', 'unit', 'value'], pro
   id: { type: 'string' }, name: { type: 'string' }, unit: { type: 'string' }, value: { type: ['number', 'null'], description: 'null when nothing was due in the period.' },
   numerator: { type: ['number', 'null'] }, denominator: { type: ['number', 'null'] }, n: { type: 'integer' }, period: { type: 'object' }, targetText: { type: 'string' },
   failed: { type: 'integer', description: 'Generator test periods done with a failed test (counted as done).' }, missed: { type: 'array', description: 'Periods that ended with no test.' },
-  breakdown: { type: 'array', description: 'Outage hours by utility, with planned shutdowns apart.' }, plannedHours: { type: 'number' },
+  breakdown: { type: 'array', description: 'Outage time by utility, with planned shutdowns apart: minutes (whole) and hours (those minutes over 60). The lines add up to the total minutes.' }, plannedHours: { type: 'number' },
+  minutes: { type: 'integer', description: 'Outage hours only: the total in whole minutes, the sum of the breakdown lines.' }, plannedMinutes: { type: 'integer' },
   definition: { type: 'string' }, counts: { type: 'string' }, outOf: { type: 'string' }, leavesOut: { type: 'string' }, source: { type: 'string' } } };
 const SUGGESTION = { type: 'object', required: ['rule', 'id', 'text', 'why', 'basis'], properties: {
   rule: { type: 'string' }, id: { type: 'string' }, text: { type: 'string' }, why: { type: 'string' }, basis: { type: 'string' },
