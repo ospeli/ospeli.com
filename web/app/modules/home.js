@@ -45,7 +45,7 @@ export async function render(el, ctx) {
       h('h2', { id: 'dec-h' }, `Waiting for your decision (${total})`),
       h('p', { class: 'meta' }, 'An agent suggested these. Nothing changes until a person accepts or declines.'),
       h('ul', { class: 'decision-list' }, pages.map((x) => h('li', {},
-        h('a', { href: `#/${x.id}` }, `${moduleById(x.id).name}: ${proposalWords(x.count)}`))))));
+        h('a', { href: x.href }, `${moduleById(x.id).name}${x.screenName ? `, ${x.screenName}` : ''}: ${proposalWords(x.count)}`))))));
   };
   await drawWaiting();
   const off = ctx.core.onChange(({ kind }) => { if (kind === 'proposals' || kind === 'reset') drawWaiting(); });

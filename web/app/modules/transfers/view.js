@@ -9,18 +9,12 @@ import { h, setKids, fmtWait, moduleStyle } from '../ui.js';
 import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
+import { SCREENS, screensFor as screensOf, shownOn } from '../screens.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
 const roleNames = (cmd) => (commandByName(cmd)?.roles || []).map((r) => roleById(r)?.name || r).join(', ');
-const TITLES = { jobs: 'My jobs', board: 'Dispatch board', request: 'Book a transfer', fleet: 'Fleet status' };
-function screensFor(role) {
-  if (role === 'driver') return ['jobs', 'fleet'];
-  if (role === 'transport-coordinator') return ['board', 'request', 'fleet'];
-  if (role === 'fleet-supervisor') return ['fleet', 'board'];
-  if (role === 'ward-nurse' || role === 'ae-nic') return ['request', 'board'];
-  if (role === 'bed-manager') return ['board', 'request'];
-  return ['board', 'fleet'];
-}
+const TITLES = SCREENS.transfers.titles;
+const screensFor = (role) => screensOf('transfers', role);
 const LOCK_MS = 3e3; // the next step's button cannot be tapped this long after a step (a second tap is not the next step)
 const ORDINAL = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'];
 const fmtKpi = (k) => (k.value == null ? 'None yet' : k.unit === '%' ? `${Math.round(k.value)}%` : `${Math.round(k.value)} min`);
@@ -200,7 +194,7 @@ function boardScreen(ctx) {
   const box = h('div', { class: 'trf-board' });
   const ui = { filter: 'all', pickedVehicle: new Map(), status: new Map() }; // kept across redraws
   let data = null;
-  const props = proposalsCard(ctx, { match: (p) => /^ospeli_transfers_/.test(p.command), describe: (p) => describeProposal(p, data) });
+  const props = proposalsCard(ctx, { match: (p) => shownOn('transfers', p).includes('board'), describe: (p) => describeProposal(p, data) });
   const load = async () => {
     data = await ctx.run('ospeli_transfers_board', { days: 7, limit: 200 });
     draw();
@@ -461,7 +455,7 @@ function fleetScreen(ctx) {
   const marks = new Map(); // item -> 'pass' | 'fail'
   const ui = { vehicle: '', askRest: false, result: null };
   let data = null;
-  const props = proposalsCard(ctx, { match: (p) => /^ospeli_transfers_vehicle_/.test(p.command), describe: (p) => describeProposal(p, data) });
+  const props = proposalsCard(ctx, { match: (p) => shownOn('transfers', p).includes('fleet'), describe: (p) => describeProposal(p, data) });
   const load = async () => {
     data = await ctx.run('ospeli_transfers_board', { days: 30, limit: 1 });
     if (!ui.vehicle) { const mine = store.get(); if (mine && data.vehicles.some((v) => v.id === mine.vehicleId)) ui.vehicle = mine.vehicleId; }

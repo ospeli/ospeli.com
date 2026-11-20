@@ -5,13 +5,22 @@
 import { h } from './ui.js';
 import { roleById } from '../core/model.js';
 import { since } from '../core/beds.js';
-import { declineReasonsFor } from '../core/commands.js';
+import { declineReasonsFor, commandByName } from '../core/commands.js';
 import { MODULES } from './registry.js';
+import { SCREENS, decideAt } from './screens.js';
 
 const SHOW_FIRST = 3;
 
 // describe(p) -> one line in plain words; match(p) -> whether this page shows it.
-export function proposalsCard(ctx, { describe, match = () => true }) {
+export function proposalsCard(ctx, { describe: describeOwn, match = () => true }) {
+  // A card never shows a raw command name (#148): a page with no words of its own for a command
+  // says what the command does, from its summary.
+  const describe = (p) => {
+    const s = describeOwn(p);
+    if (s && s !== p.command && !/^ospeli_\w+$/.test(s)) return s;
+    const what = (commandByName(p.command)?.summary || 'A change').split(/[.:]/)[0];
+    return `Suggested: ${what.charAt(0).toLowerCase()}${what.slice(1)}`;
+  };
   const box = h('div', { 'data-test': 'proposals' });
   let list = [];
   let busy = false;
@@ -81,12 +90,33 @@ export function proposalsCard(ctx, { describe, match = () => true }) {
 // Issue #52: which proposals wait for this role, by the page where each is decided. One read
 // (ospeli_proposals_list already says canDecide); Today and the menu both use it.
 // A module's page decides the proposals for its own commands (registry: `commands`, a prefix or a list of them).
+// Issue #148: each line is the screen that shows the proposal with Accept and Decline, one line per
+// screen however many command prefixes lead there, and a proposal no screen of this role shows is not counted.
 const DECIDED_ON = [['ospeli_beds_', 'beds'], ['ospeli_workorders_', 'engineering'], ['ospeli_maps_', 'process'],
   ...MODULES.flatMap((m) => [].concat(m.commands || []).map((prefix) => [prefix, m.id]))];
+const moduleOf = (command) => DECIDED_ON.find(([prefix]) => command.startsWith(prefix))?.[1] || null;
 export async function waitingDecisions(ctx) {
   let list = [];
   try { list = (await ctx.run('ospeli_proposals_list', { status: 'pending', limit: 200 })).proposals.filter((p) => p.canDecide); } catch { list = []; }
-  const pages = DECIDED_ON.map(([prefix, id]) => ({ id, count: list.filter((p) => p.command.startsWith(prefix)).length })).filter((x) => x.count > 0);
-  return { total: pages.reduce((n, x) => n + x.count, 0), pages };
+  let linenIds = new Set();
+  if (list.some((p) => p.command.startsWith('ospeli_stock_'))) {
+    try { linenIds = new Set((await ctx.run('ospeli_stock_items', { category: 'linen', limit: 500 })).items.map((i) => i.id)); } catch { /* no linen on this site */ }
+  }
+  const byHref = new Map();
+  for (const p of list) {
+    const at = decideAt(p, ctx.role, moduleOf, { linenIds });
+    if (!at) continue;
+    const href = at.screen ? `#/${at.moduleId}/${at.screen}` : `#/${at.moduleId}`;
+    const page = byHref.get(href) || { id: at.moduleId, screen: at.screen, screenName: at.screen ? SCREENS[at.moduleId].titles[at.screen] : null, href, count: 0 };
+    page.count += 1;
+    byHref.set(href, page);
+  }
+  // In the menu's order of modules, as before (#52), then by screen.
+  const order = (id) => DECIDED_ON.findIndex(([, m]) => m === id);
+  const pages = [...byHref.values()].sort((a, b) => order(a.id) - order(b.id) || String(a.screen).localeCompare(String(b.screen)));
+  // The menu shows one count per module: the screens of one module added up.
+  const modules = [];
+  for (const x of pages) { const m = modules.find((y) => y.id === x.id); if (m) m.count += x.count; else modules.push({ id: x.id, count: x.count }); }
+  return { total: pages.reduce((n, x) => n + x.count, 0), pages, modules };
 }
 export const proposalWords = (n) => `${n} proposal${n === 1 ? '' : 's'}`;

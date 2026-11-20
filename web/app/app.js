@@ -48,10 +48,10 @@ function buildNav() {
 let countToken = 0;
 async function showWaiting(ctx) {
   const token = ++countToken;
-  const { pages } = await waitingDecisions(ctx);
+  const { modules } = await waitingDecisions(ctx);
   if (token !== countToken) return;
   for (const a of document.querySelectorAll('#nav-list a')) {
-    const n = pages.find((x) => x.id === a.dataset.module)?.count || 0;
+    const n = modules.find((x) => x.id === a.dataset.module)?.count || 0;
     let tag = a.querySelector('.nav-count');
     if (!n) { tag?.remove(); continue; }
     if (!tag) { tag = document.createElement('span'); tag.className = 'nav-count'; a.append(tag); }

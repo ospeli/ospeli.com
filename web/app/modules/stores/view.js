@@ -11,6 +11,7 @@ import { h, setKids, fmtWait, moduleStyle } from '../ui.js';
 import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
+import { SCREENS, screensFor as screensOf } from '../screens.js';
 import { STEP_ROLES, STEP_NAMES, UNITS } from './logic.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
@@ -20,14 +21,8 @@ const roleNames = (ids) => ids.map(roleName).join(' or ');
 // A request or an order named in plain words; the id itself stays in data attributes.
 const reqName = (id) => `Request ${Number(String(id).replace(/^req-/, '')) || id}`;
 const ordName = (id) => `Order ${Number(String(id).replace(/^ord-/, '')) || id}`;
-const TITLES = { count: 'Ward stock count', requests: 'Requests and issues', receive: 'Receive a delivery', orders: 'Order tracker', outs: 'Stock-out log', manage: 'Supplies overview' };
-function screensFor(role) {
-  if (role === 'ward-nurse') return ['count', 'outs'];
-  if (role === 'storekeeper') return ['requests', 'receive', 'outs', 'orders'];
-  if (role === 'supply-manager') return ['manage', 'orders', 'requests', 'outs'];
-  if (role === 'ops-manager' || role === 'coo') return ['manage', 'orders', 'outs'];
-  return ['manage', 'requests', 'orders', 'outs'];
-}
+const TITLES = SCREENS.stores.titles;
+const screensFor = (role) => screensOf('stores', role);
 const MAX = 100000;
 const hoursText = (hrs) => (hrs == null ? '' : fmtWait(hrs * 60));
 const daysText = (d) => (d == null ? '' : d < 1 ? `${Math.max(1, Math.round(d * 24))} h` : `${Math.round(d * 10) / 10} days`);
@@ -188,6 +183,8 @@ const matchMine = (p) => /^ospeli_(stores|stock)_/.test(p.command);
 // ---------------------------------------------------------------- Ward stock count (phone)
 function countScreen(ctx, shared) {
   const box = h('div', { class: 'sto-count' });
+  // A ward's own agent may suggest a count or a request: the ward decides it here (#148).
+  const props = proposalsCard(ctx, { match: (p) => matchMine(p) && p.canDecide, describe: (p) => describe(p, shared) });
   const mayCount = can(ctx.role, 'ospeli_stock_count');
   const known = () => ui.wards.some(([id]) => id === ui.ward);
   const ui = { ward: ctx.rest[1] || store.get('ospeli-stores-ward') || '', wards: [], values: new Map(), moved: new Set(), result: null, open: new Set(), checked: null };
@@ -200,6 +197,7 @@ function countScreen(ctx, shared) {
     const reqs = ui.ward ? await ctx.run('ospeli_stock_requests', { placeId: ui.ward, state: 'all', limit: 20 }) : null;
     data = { levels, rows: levels.levels.filter((r) => r.placeId === ui.ward && r.level), reqs };
     draw();
+    await props.load();
   };
   const act = actions(ctx, load);
   const saveBtn = h('button', { class: 'btn btn-big sto-save', type: 'button', 'data-cmd': 'ospeli_stock_count', 'data-test': 'count-save' });
@@ -302,7 +300,7 @@ function countScreen(ctx, shared) {
           ` ${q.state === 'issued' ? `in ${hoursText(q.waitHours)}, ${when(q.issuedAt)}` : q.state === 'cancelled' ? `(${q.cancelReason})` : `for ${hoursText(q.waitHours)}`}`),
         keepOpen(ui.open, q.id, `${plural(q.lines.length, 'item')} asked for`, h('ul', { class: 'sto-mini' }, q.lines.map((l) => h('li', {}, `${l.itemName}: ${l.issued} of ${l.qty} issued from the store`))))))) : h('p', { class: 'meta' }, 'No request from this ward yet.'));
   }
-  return { el: box, load };
+  return { el: h('div', {}, props.el, box), load };
 }
 
 // ---------------------------------------------------------------- Requests and issues (storekeeper, phone)
