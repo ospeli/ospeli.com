@@ -126,3 +126,49 @@
 .mod-support .sup-ask-again { border: 1.5px solid var(--line-strong); border-left: 5px solid var(--mango); border-radius: 10px; padding: 8px 10px; background: var(--surface); }
 .mod-support .sup-ask-again p { margin: 0 0 6px; }
 .mod-support .btn.sup-instead { flex: 0 0 auto; }
+
+/* Linen and meals (slice 2): phone first. Each linen line reads "Bed sheet 12 of 30, top up 18"
+   with a bar; the count is a 48 px stepper; the two main buttons are full width. */
+.mod-support .sup-linen { display: grid; gap: 14px; max-width: 760px; min-width: 0; }
+.mod-support .sup-linen > .sup-manager { max-width: none; }
+.mod-support .sup-linen .sup-form h2 { font-size: 1.25rem; }
+.mod-support .sup-linen-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mod-support .sup-linen-rows > li { display: grid; gap: 6px; border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 10px; padding: 10px 12px; background: var(--surface); min-width: 0; }
+.mod-support .sup-linen-rows > li.is-under { border-left-color: var(--mango); }
+.mod-support .sup-lin-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin: 0; }
+.mod-support .sup-lin-line b { font-size: 1.15rem; flex: 1 1 auto; }
+.mod-support .sup-lin-n { font-size: 1.15rem; font-weight: 800; }
+.mod-support .sup-bar { display: block; height: 8px; border-radius: 4px; background: var(--sand); overflow: hidden; }
+.mod-support .sup-bar > span { display: block; height: 100%; background: var(--sea); }
+.mod-support .is-under .sup-bar > span { background: var(--mango); }
+.mod-support .sup-lin-count { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.mod-support .sup-stepper-wrap { display: inline-grid; gap: 2px; }
+.mod-support .sup-stepper { display: inline-flex; align-items: stretch; gap: 6px; }
+.mod-support .sup-step { font: inherit; font-size: 1.5rem; font-weight: 800; line-height: 1; min-width: 52px; min-height: 48px; border-radius: 10px; border: 1.5px solid var(--line-strong);
+  background: var(--surface); color: var(--navy); cursor: pointer; touch-action: manipulation; }
+.mod-support .sup-num { font: inherit; font-size: 1.25rem; font-weight: 800; width: 4.2em; min-height: 48px; text-align: center; border: 1.5px solid var(--line-strong); border-radius: 10px;
+  background: var(--surface); color: var(--ink); -moz-appearance: textfield; appearance: textfield; }
+.mod-support .sup-num::-webkit-outer-spin-button, .mod-support .sup-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.mod-support .sup-num[aria-invalid="true"] { border-color: #A3301A; }
+.mod-support .sup-bad { color: #8A2412; font-weight: 700; font-size: .9375rem; }
+.mod-support .btn.sup-topup { min-height: 56px; font-size: 1.1rem; width: 100%; background: var(--surface); color: var(--navy); border: 2px solid var(--navy); }
+.mod-support .sup-ask-topup { display: grid; gap: 6px; }
+.mod-support .sup-ask-topup p { margin: 0; }
+.mod-support .sup-meal-nums { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); }
+.mod-support .sup-meal-n { min-width: 0; }
+.mod-support .sup-manager h3 { margin: 14px 0 8px; font-size: 1.05rem; }
+.mod-support .sup-manager .sup-guide h3 { margin: 0; }
+.mod-support .sup-lin-stats { margin-bottom: 12px; }
+.mod-support .sup-lin-stats .stat b { font-size: 1.35rem; }
+.mod-support .sup-areas-under { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mod-support .sup-areas-under .sup-row { border-left-color: var(--mango); }
+.mod-support .sup-row-text p { margin: 0; }
+.mod-support .sup-under-items { overflow-wrap: anywhere; }
+.mod-support .sup-meal-waste { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.mod-support .sup-meal-waste > li { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); min-width: 0; }
+.mod-support .sup-mw-head { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; margin: 0 0 6px; }
+.mod-support .sup-mw-meals { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
+.mod-support .sup-linen .sup-kpis { margin-top: 12px; }
+.mod-support .sup-link { display: inline-flex; align-items: center; min-height: 44px; font-weight: 800; color: var(--sea-ink); }
+.mod-support .sup-waiting h3 { margin: 10px 0 6px; font-size: 1.05rem; }
+.mod-support .stat .sup-link { padding: 0; justify-content: flex-start; background: none; border: 0; cursor: pointer; text-decoration: underline; font: inherit; font-weight: 800; color: var(--sea-ink); }

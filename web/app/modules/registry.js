@@ -14,7 +14,7 @@ export const MODULES = [
   { id: 'knowledge', name: 'Knowledge', week: 4, summary: 'What works, with sources.', soon: 'Search operational evidence offline. Every card shows its source, setting and who reviewed it.' },
   { id: 'playbooks', name: 'Playbooks', week: 4, summary: 'Daily flow report and bottleneck finder.', soon: 'A printable daily flow report and a bottleneck finder that shows the longest waits between steps.' },
   { id: 'feedback', name: 'Patient feedback', summary: 'Complaints, compliments and feedback cards, with replies and themes.', commands: ['ospeli_experience_'], load: () => import('./feedback/view.js') },
-  { id: 'support', name: 'Cleaning and transport', summary: 'Cleans, moves and deliveries as tracked tasks for each team.', commands: ['ospeli_support_', 'ospeli_tasks_'], load: () => import('./support/view.js') },
+  { id: 'support', name: 'Cleaning and transport', summary: 'Cleans, moves and deliveries as tracked tasks, plus linen counts and meal counts by ward.', commands: ['ospeli_support_', 'ospeli_tasks_'], load: () => import('./support/view.js') },
   { id: 'stores', name: 'Stores and supplies', summary: 'Count ward stock, raise and issue requests, track orders and stock-outs.', commands: ['ospeli_stores_', 'ospeli_stock_'], load: () => import('./stores/view.js') },
   { id: 'facilities', name: 'Facilities and utilities', summary: 'Log utility checks and outages from a phone, and see what is due.', commands: ['ospeli_facilities_'], load: () => import('./facilities/view.js') },
   { id: 'transfers', name: 'Transfers and vehicles', summary: 'Book a vehicle journey, see the queue, and time each step with one tap.', commands: ['ospeli_transfers_'], load: () => import('./transfers/view.js') },
@@ -24,7 +24,7 @@ export const MODULES = [
 
 // Which modules each role uses most, in order. Shown first on the Today page.
 export const ROLE_MODULES = {
-  'ward-nurse': ['beds', 'stores', 'transfers', 'engineering', 'incidents', 'sops'],
+  'ward-nurse': ['beds', 'stores', 'support', 'transfers', 'engineering', 'incidents', 'sops'],
   'bed-manager': ['beds', 'ae', 'dashboard', 'playbooks'],
   'estates-tech': ['engineering', 'facilities', 'sops', 'incidents'],
   'ae-nic': ['ae', 'beds', 'transfers', 'incidents', 'sops'],
