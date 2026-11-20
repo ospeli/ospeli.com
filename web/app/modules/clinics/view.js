@@ -86,7 +86,10 @@ const proposals = (ctx) => proposalsCard(ctx, { match: (p) => /^ospeli_(clinics|
 // ---------------------------------------------------------------- Clinic queue (phone)
 function queueScreen(ctx) {
   const box = h('div', { class: 'cl-queue' });
-  const ui = { sessionId: null, find: '', lockUntil: new Map(), active: new Set() }; // active: rows shown open during this visit stay in place
+  const ui = { sessionId: null, find: '', lockUntil: new Map(), active: new Set(), keepHeight: new Map(), stay: new Set() }; // active: rows shown open during this visit stay in place
+  // A row a person acted on keeps its place and its height for this visit, so a second tap never lands
+  // on another patient's button that slid up under the finger.
+  const hold = (e, p) => { ui.stay.add(p.appointmentId); ui.keepHeight.set(p.appointmentId, Math.round(e.currentTarget.closest('li')?.getBoundingClientRect().height || 0)); };
   let data = null;
   let timer = null;
   const props = proposals(ctx);
@@ -129,6 +132,7 @@ function queueScreen(ctx) {
     const stepBtn = (step, label, cls, extra = {}) => h('button', { class: `btn cl-main ${cls}`, type: 'button', 'data-cmd': 'ospeli_slots_step', 'data-step': step, 'data-test': 'main-action',
       disabled: off || extra.locked, 'aria-label': `${label}: ${p.label}, booked ${p.slotTime}`,
       onclick: (e) => {
+        hold(e, p);
         e.currentTarget.disabled = true;
         act('ospeli_slots_step', { appointmentId: p.appointmentId, step, expectedState: p.state }, `${p.label}: ${label.toLowerCase()}`, {
           onDone: () => { if (step === 'called') ui.lockUntil.set(p.appointmentId, Date.now() + LOCK_MS); },
@@ -163,22 +167,25 @@ function queueScreen(ctx) {
       extra.push(detailsBox('Did not come?', 'missed', `missed:${p.appointmentId}`,
         h('p', { class: 'cl-hint' }, `Record a missed appointment only if ${p.label} has not arrived. Pick why:`),
         h('div', { class: 'cl-reasons' }, data.picks.missedReasons.map((reason) => h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_slots_step', 'data-step': 'no-show', 'data-reason': reason, disabled: off,
-          onclick: () => act('ospeli_slots_step', { appointmentId: p.appointmentId, step: 'no-show', reason, expectedState: 'booked' }, `${p.label}: missed appointment`) }, reason)))));
+          onclick: (e) => { hold(e, p); e.currentTarget.disabled = true; act('ospeli_slots_step', { appointmentId: p.appointmentId, step: 'no-show', reason, expectedState: 'booked' }, `${p.label}: missed appointment`); } }, reason)))));
     }
     if (desk && p.state === 'arrived') {
       extra.push(detailsBox('Left, or marked by mistake?', 'left', `left:${p.appointmentId}`,
         h('p', { class: 'cl-hint' }, `If ${p.label} has gone home without being called (the slot stays counted as used):`),
         h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_slots_cancel', disabled: off,
-          onclick: () => act('ospeli_slots_cancel', { appointmentId: p.appointmentId, by: 'patient', reason: data.picks.leftReason, expectedState: 'arrived' }, `${p.label}: left before being seen`) }, 'Yes, left before being seen'),
-        h('p', { class: 'cl-hint', 'data-test': 'wrong-arrived' }, 'Marked arrived by mistake? "Left before being seen" is not right either: tell the clinic nurse. A correction step is planned.')));
+          onclick: (e) => { hold(e, p); e.currentTarget.disabled = true; act('ospeli_slots_cancel', { appointmentId: p.appointmentId, by: 'patient', reason: data.picks.leftReason, expectedState: 'arrived' }, `${p.label}: left before being seen`); } }, 'Yes, left before being seen'),
+        h('p', { class: 'cl-hint', 'data-test': 'wrong-arrived' }, 'Marked arrived by mistake? "Left before being seen" is not right either: tell the outpatient manager. A correction step is planned.')));
     }
     if (desk && p.state === 'no-show') extra.push(h('p', { class: 'cl-hint', 'data-test': 'wrong-missed' }, 'Marked missed by mistake? Tell the outpatient manager. A correction step is planned.'));
     const done = ['finished', 'no-show', 'cancelled'].includes(p.state);
-    return h('li', { class: `cl-row st-${p.state}${done ? ' is-done' : ''}`, 'data-appointment': p.appointmentId, 'data-state': p.state, 'data-code': p.code },
+    const li = h('li', { class: `cl-row st-${p.state}${done ? ' is-done' : ''}`, 'data-appointment': p.appointmentId, 'data-state': p.state, 'data-code': p.code },
       h('div', { class: 'cl-row-text' },
         h('p', { class: 'cl-who' }, h('b', { class: 'cl-time' }, p.slotTime), h('b', {}, p.label), h('span', { class: 'chip' }, p.slotTypeWord), p.rebook ? h('span', { class: 'chip' }, 'Rebooked') : null),
         h('p', { class: 'cl-state' }, stateLine(p))),
       h('div', { class: 'cl-row-act' }, mainButton(p), extra));
+    const px = ui.keepHeight.get(p.appointmentId);
+    if (px) li.style.minHeight = `${px}px`;
+    return li;
   }
   function draw() {
     if (!data) return;
@@ -192,7 +199,7 @@ function queueScreen(ctx) {
     const n = c.counts;
     const pick = data.clinics.length > 1 ? h('div', { class: 'cl-pick', role: 'group', 'aria-label': 'Which clinic' }, data.clinics.map((x) => h('button', {
       class: 'chip-btn', type: 'button', 'aria-pressed': String(x.sessionId === data.sessionId), 'data-session': x.sessionId,
-      onclick: () => { ui.sessionId = x.sessionId; ui.active.clear(); load(); } }, `${x.serviceWord.replace(/ clinic$/, '')} ${x.start}`))) : null;
+      onclick: () => { ui.sessionId = x.sessionId; ui.active.clear(); ui.stay.clear(); load(); } }, `${x.serviceWord.replace(/ clinic$/, '')} ${x.start}`))) : null;
     // A row done before this visit folds away; a row this person saw open keeps its place, so a
     // second tap never lands on the row that moved up under it.
     // The desk works the patients still to come; the nurse works everyone here or to come. A row
@@ -201,8 +208,8 @@ function queueScreen(ctx) {
     for (const p of data.patients) if (mine.includes(p.state)) ui.active.add(p.appointmentId);
     const isDone = (p) => ['finished', 'no-show', 'cancelled'].includes(p.state);
     const list = ui.find ? data.patients : data.patients.filter((p) => ui.active.has(p.appointmentId));
-    const hereNow = ui.find || !desk ? [] : data.patients.filter((p) => !ui.active.has(p.appointmentId) && !isDone(p));
-    const folded = ui.find ? [] : data.patients.filter((p) => !ui.active.has(p.appointmentId) && isDone(p));
+    const hereNow = ui.find || !desk ? [] : data.patients.filter((p) => !ui.active.has(p.appointmentId) && (!isDone(p) || ui.stay.has(p.appointmentId)));
+    const folded = ui.find ? [] : data.patients.filter((p) => !ui.active.has(p.appointmentId) && isDone(p) && !ui.stay.has(p.appointmentId));
     setKids(box,
       props.el,
       offlineNote(data.offlineNote),
@@ -213,7 +220,7 @@ function queueScreen(ctx) {
         h('div', { class: 'cl-counts', 'data-test': 'counts' },
           h('div', { class: 'stat', 'data-count': 'to-come' }, h('span', {}, 'To come'), h('b', {}, String(n.toCome))),
           h('div', { class: `stat${n.longestPastBookedMinutes >= LATE_MINUTES ? ' is-alert' : ''}`, 'data-count': 'waiting' }, h('span', {}, 'Waiting'), h('b', {}, String(n.waiting)),
-            h('span', {}, n.longestWaitMinutes != null ? `longest ${fmtWait(n.longestWaitMinutes)}` : 'nobody yet')),
+            h('span', { 'data-test': 'waiting-sub' }, !n.waiting ? 'nobody yet' : n.longestPastBookedMinutes ? `${fmtWait(n.longestPastBookedMinutes)} past booked time` : 'none past booked time')),
           h('div', { class: 'stat', 'data-count': 'done' }, h('span', {}, 'Finished'), h('b', {}, String(n.finished)), h('span', {}, `${n.withClinician} in now, ${n.missed} missed`)))),
       desk ? findBox() : null,
       desk && !ui.find ? h('h3', { class: 'cl-sec' }, `Still to come (${list.length})`) : null,
@@ -429,7 +436,9 @@ function summaryScreen(ctx) {
     const here = open.filter((a) => a.state !== 'booked');
     const moves = c.moves || [];
     const reason = ui.cancelReason.get(c.sessionId) || null;
-    return detailsBox('Cancel this clinic', 'cancel-clinic', `cancel:${c.sessionId}`,
+    // While the cancel list is open, "Fill N empty" is not offered on the same clinic.
+    const wasOpen = openPanels.has(`cancel:${c.sessionId}`);
+    const box_ = detailsBox('Cancel this clinic', 'cancel-clinic', `cancel:${c.sessionId}`,
       open.length ? [
         h('p', {}, h('b', {}, `${open.length} still booked. Move or cancel each one first, so nobody vanishes from a list.`)),
         h('p', { class: 'cl-hint', 'data-test': 'tell-patient' }, 'Tell each patient by your usual means: Ospeli sends no messages.'),
@@ -454,6 +463,8 @@ function summaryScreen(ctx) {
           onclick: () => act('ospeli_slots_session_change', { sessionId: c.sessionId, change: 'cancelled', reason, expectedState: c.state }, `${c.name}: cancelled (${reason?.toLowerCase()})`) },
         reason ? 'Cancel the clinic' : 'Pick a reason first'),
       ]);
+    box_.addEventListener('toggle', () => { if (box_.open !== wasOpen) draw(); });
+    return box_;
   }
   // After the clinic's end: each appointment still booked, waiting or in is closed with the shared
   // commands before the clinic is marked held, so nobody is left open on a list.
@@ -463,10 +474,12 @@ function summaryScreen(ctx) {
       onclick: (e) => { e.currentTarget.disabled = true; act('ospeli_slots_step', { appointmentId: a.appointmentId, step: s, expectedState: a.state, ...(extra.reason ? { reason: extra.reason } : {}) }, `${a.label}: ${label.toLowerCase()}`); } }, label);
     return h('section', { class: 'cl-close', 'data-test': 'close-out' },
       h('p', {}, h('b', {}, `Still open (${c.open.length}): close each one, then mark the clinic held.`)),
+      c.open.some((a) => a.state === 'called') ? h('p', { class: 'cl-hint', 'data-test': 'late-finish' }, 'A Finished tapped now is recorded at this time, after the clinic\'s end, so the overrun figure will include it.') : null,
       h('ul', { class: 'cl-moves' }, c.open.map((a) => h('li', { 'data-appointment': a.appointmentId, 'data-state': a.state },
         h('p', {}, h('b', {}, `${a.slotTime} ${a.label}`), ` · ${a.stateName}`),
         mayStep ? h('div', { class: 'cl-reasons' },
-          a.state === 'called' ? step(a, 'finished', 'Finished') : null,
+          a.state === 'called' ? step(a, 'finished', 'Finished (recorded now, late)') : null,
+          a.state === 'arrived' ? h('p', { class: 'cl-hint', 'data-test': 'not-tapped' }, 'Seen but not tapped through? A "seen, times not recorded" step is planned (not built yet). Until then leave this row open; the clinic cannot be marked held.') : null,
           a.state === 'arrived' ? h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_slots_cancel',
             onclick: (e) => { e.currentTarget.disabled = true; act('ospeli_slots_cancel', { appointmentId: a.appointmentId, by: 'patient', reason: data.picks.leftReason, expectedState: 'arrived' }, `${a.label}: left before being seen`); } }, 'Left before being seen') : null,
           a.state === 'booked' && a.mayMarkMissed ? data.picks.missedReasons.map((r) => step(a, 'no-show', `Missed appointment: ${r.toLowerCase()}`, { reason: r, attrs: { 'data-reason': r } })) : null)
@@ -490,7 +503,7 @@ function summaryScreen(ctx) {
         h('p', { class: 'cl-hint' }, startWords, endWords ? ` ${endWords}` : ''),
         closeOut(c),
         h('div', { class: 'cl-reasons' },
-          c.empty && mayBook && open && !c.ended ? h('a', { class: 'btn btn-small', href: `#/clinics/referrals/${c.service}`, 'data-test': 'fill-empty' }, `Fill ${c.empty} empty from the waiting list`) : null,
+          c.empty && mayBook && open && !c.ended && !openPanels.has(`cancel:${c.sessionId}`) ? h('a', { class: 'btn btn-small', href: `#/clinics/referrals/${c.service}`, 'data-test': 'fill-empty' }, `Fill ${c.empty} empty from the waiting list`) : null,
           mayPlan && c.mayMarkHeld ? h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_slots_session_change', 'data-test': 'mark-held',
             onclick: () => act('ospeli_slots_session_change', { sessionId: c.sessionId, change: 'held', expectedState: c.state }, `${c.name}: held`) }, 'Mark the clinic as held') : null),
         mayPlan && open && !c.ended ? cancelFlow(c) : null,
