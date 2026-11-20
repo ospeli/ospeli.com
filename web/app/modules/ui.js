@@ -51,3 +51,30 @@ export function fmtWait(minutes) {
   if (hrs < 48) return `${hrs} h ${String(m % 60).padStart(2, '0')} min`;
   return `${Math.floor(hrs / 24)} d ${hrs % 24} h`;
 }
+
+// A quick second or third tap on a dialog button must not fall through to what lies under it
+// once the dialog has closed (issue #147: a double tap on "Patient has left" opened the next
+// bed's dialog with the same button under the finger). Installed once for the whole app, so
+// every module's dialog has it. A click outside any open dialog, within 600 ms and 40 px of a
+// click inside a dialog (or of a click already swallowed), does nothing. Taps somewhere else,
+// and keyboard presses (which have no spot), are never held back.
+export const TAP_GUARD_MS = 600;
+export const TAP_GUARD_PX = 40;
+export function installDialogTapGuard(doc = document) {
+  if (doc.__ospeliTapGuard) return;
+  doc.__ospeliTapGuard = true;
+  let last = null; // { x, y, t } of the last tap that was inside a dialog, or swallowed
+  doc.addEventListener('click', (e) => {
+    if (e.detail === 0) return; // keyboard or a script's click(): no spot to compare
+    const now = Date.now();
+    const inDialog = e.target instanceof Element && e.target.closest('dialog[open]');
+    if (inDialog) { last = { x: e.clientX, y: e.clientY, t: now }; return; }
+    if (last && now - last.t < TAP_GUARD_MS && Math.hypot(e.clientX - last.x, e.clientY - last.y) < TAP_GUARD_PX) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      last = { x: last.x, y: last.y, t: now }; // a run of taps in one spot is held back until it pauses
+      return;
+    }
+    last = null;
+  }, true);
+}

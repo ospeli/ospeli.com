@@ -7,6 +7,7 @@ import { renderSoon } from './modules/soon.js';
 import { loadSyntheticHospital, currentHour, setupUnfinished } from './core/generator.js';
 import { runCommand, listCommands, describeCommand, CommandError } from './core/commands.js';
 import { waitingDecisions, proposalWords } from './modules/proposals.js';
+import { installDialogTapGuard } from './modules/ui.js';
 
 const $ = (sel) => document.querySelector(sel);
 const main = $('#main');
@@ -96,6 +97,8 @@ function setMenu(open, { focusButton = false } = {}) {
   $('#menu-btn').setAttribute('aria-expanded', String(open));
   if (!open && focusButton) $('#menu-btn').focus();
 }
+
+installDialogTapGuard(); // issue #147: a quick extra tap never falls through a closed dialog
 
 // Escape closes the phone menu and returns focus to the Menu button (issue #8).
 document.addEventListener('keydown', (e) => {
