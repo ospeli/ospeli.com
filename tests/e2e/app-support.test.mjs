@@ -411,7 +411,7 @@ for (const width of [360, 390, 1280]) {
 }
 
 // Adoption check (ospeli/ospeli#112): the front line's first five minutes, untrained, on a phone.
-test('a cleaner\'s first five minutes on a 390 px touch screen: picks the ward, counts its linen and saves (the top-up is asked for in the same step), asks for the rest, and records a meal count', async () => {
+test('a cleaner\'s first five minutes on a 390 px touch screen: picks the ward, counts from the number on record and saves (nothing is asked for by itself), asks for the top-up in one tap, can cancel it, and records a meal count', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/support' });
   await asRole(page, 'cleaner', 'jobs');
   await page.locator('.sup-tabs a[data-screen="linen"]').tap();
@@ -419,34 +419,55 @@ test('a cleaner\'s first five minutes on a 390 px touch screen: picks the ward, 
   assert.equal(await page.locator('[data-test="linen-rows"]').count(), 0, 'nothing is chosen for the person: the ward is picked first');
   await page.selectOption('[data-test="linen-area"]', 'ward-c1');
   await page.waitForSelector('[data-test="linen-rows"] li');
+  assert.match(await page.locator('[data-test="linen-count"] [data-test="levels-note"]').textContent(), /set by your support services supervisor\. The ones here are example settings, not a standard\./);
   // Lowest first, each line "Item n of level, top up m", the first one on the first screen.
   const first = page.locator('[data-test="linen-rows"] li').first();
   assert.match(await first.textContent(), /^\w[\w ]+\d+ of \d+top up \d+/);
   const fb = await first.boundingBox();
   assert.ok(fb.y + fb.height <= 844, `the first linen line is on the first screen (bottom at ${Math.round(fb.y + fb.height)} px)`);
   assert.deepEqual(await phoneProblems(page), [], 'linen screen: phone rules');
-  // Count two items: one with + taps, one typed on the number pad.
-  const [a, b] = await page.locator('[data-test="linen-rows"] li').evaluateAll((ls) => ls.slice(0, 2).map((l) => l.dataset.item));
-  for (let i = 0; i < 3; i++) await page.locator(`[data-item="${a}"] [data-step="up"]`).tap();
+  // The box starts from the number on record: + gives one more, not 1.
+  const rows = await page.locator('[data-test="linen-rows"] li').evaluateAll((ls) => ls.map((l) => [l.dataset.item, Number(l.querySelector('[data-test="linen-have"]').textContent.match(/^(\d+) of (\d+)/)[1]), Number(l.querySelector('[data-test="linen-have"]').textContent.match(/of (\d+)/)[1])]));
+  const [[a, aHave, aLevel], [b]] = rows;
+  assert.match(await page.locator(`[data-item="${a}"] [data-test="on-record"]`).textContent(), new RegExp(`on record: ${aHave}\\)$`));
+  await page.locator(`[data-item="${a}"] [data-step="up"]`).tap();
+  assert.equal(await page.locator(`[data-item="${a}"] [data-test="linen-count-input"]`).inputValue(), String(aHave + 1));
   await page.locator(`[data-item="${b}"] [data-test="linen-count-input"]`).fill('5');
   assert.equal(await page.locator('[data-test="linen-save"]').textContent(), 'Save count (2 items)');
+  // Saving shows "Saving…" on a button that is off until the answer.
+  await page.evaluate(() => {
+    window.__saw = [];
+    const watch = () => { const b = document.querySelector('[data-test="linen-save"]'); if (b) window.__saw.push([b.textContent, b.disabled]); };
+    new MutationObserver(watch).observe(document.querySelector('.sup-linen'), { subtree: true, childList: true, characterData: true, attributes: true });
+  });
+  const requestsBefore = await page.evaluate(async () => (await window.ospeli.core.events({ type: 'stock.requested' })).length);
   await page.locator('[data-test="linen-save"]').tap();
   await page.waitForSelector('[data-test="linen-result"]');
-  assert.match(await page.locator('[data-test="linen-result"]').textContent(), /Saved: 2 items counted at Ward C1 \(maternity\)\.Top-up asked for in the same step \(req-\d+\)/);
+  assert.ok((await page.evaluate(() => window.__saw)).some(([t, d]) => t === 'Saving…' && d === true), 'the button said Saving… and was off');
+  assert.match(await page.locator('[data-test="linen-result"]').textContent(), /^Saved: 2 items counted at Ward C1 \(maternity\)\./);
   const counted = await ev(page, 'stock.counted');
-  assert.deepEqual([counted.subject, counted.actorRole, counted.data.lines], ['ward-c1', 'cleaner', [{ itemId: a, qty: 3 }, { itemId: b, qty: 5 }]]);
-  const asked = await ev(page, 'stock.requested');
-  assert.deepEqual([asked.data.placeId, asked.data.raisedBy, asked.data.lines.map((l) => l.itemId).sort()], ['ward-c1', 'count', [a, b].sort()]);
-  await page.waitForSelector(`[data-item="${a}"] [data-test="top-up-waiting"]`);
-  // The rest under level: one tap asks for exactly what is short, and it says what it asked for.
-  const will = await page.locator('[data-test="will-ask"]').textContent();
-  assert.match(will, /^Asks the store for: .+\d\.$/);
+  assert.deepEqual([counted.subject, counted.actorRole, counted.data.lines], ['ward-c1', 'cleaner', [{ itemId: a, qty: aHave + 1 }, { itemId: b, qty: 5 }]]);
+  assert.equal(await page.evaluate(async () => (await window.ospeli.core.events({ type: 'stock.requested' })).length), requestsBefore, 'saving a count asks for nothing by itself');
+  assert.match(await page.locator('[data-test="linen-under-line"]').first().textContent(), new RegExp(`is ${aLevel - aHave - 1} under its level\\.$`));
+  assert.equal(await page.locator(`[data-item="${a}"] [data-test="linen-have"]`).textContent(), `${aHave + 1} of ${aLevel}`, 'the edited line is drawn at once');
+  // One clear button asks for exactly what is short.
+  assert.match(await page.locator('[data-test="will-ask"]').textContent(), /^Asks the store for: .+\d\.$/);
   await page.locator('[data-test="linen-ask"]').tap();
   await page.waitForSelector('[data-test="linen-ask-result"]');
-  assert.match(await page.locator('[data-test="linen-ask-result"]').textContent(), /^Top-up asked for \(req-\d+\): .+ The store issues it\.$/);
-  const second = await ev(page, 'stock.requested');
-  assert.deepEqual([second.data.raisedBy, second.actorRole], ['request', 'cleaner']);
+  assert.match(await page.locator('[data-test="linen-ask-result"]').textContent(), /^Top-up asked for: .+ The store issues it\.$/);
+  assert.doesNotMatch(await page.locator('[data-test="linen-count"]').textContent(), /req-\d/, 'no request ids on the cleaner\'s card');
+  const q = await ev(page, 'stock.requested');
+  assert.deepEqual([q.data.raisedBy, q.actorRole, q.data.placeId], ['request', 'cleaner', 'ward-c1']);
+  assert.match(await page.locator(`[data-item="${a}"] [data-test="top-up-waiting"]`).textContent(), /^Top-up asked for just now: waiting for the store\.$/);
   assert.match(await page.locator('[data-test="no-ask"]').textContent(), /already asked for everything under level/, 'a second tap has nothing left to ask for');
+  // A wrong top-up can be withdrawn: one confirm, the reason.
+  const waiting = page.locator(`[data-test="linen-waiting"] li[data-request="${q.subject}"]`);
+  await waiting.locator('[data-test="cancel-top-up"] summary').tap();
+  await waiting.locator('[data-reason="Asked for by mistake"]').tap();
+  await page.waitForFunction((r) => !document.querySelector(`[data-test="linen-waiting"] li[data-request="${r}"]`), q.subject);
+  const gone = await ev(page, 'stock.request-cancelled');
+  assert.deepEqual([gone.subject, gone.actorRole, gone.data.reason], [q.subject, 'cleaner', 'Asked for by mistake']);
+  assert.match(await page.locator('[data-test="linen-ask-result"]').textContent(), /Top-up cancelled/);
   // Meals: the ward is the same; pick the meal, three numbers, save.
   assert.match(await page.locator('[data-test="meals-note"]').textContent(), /Diets and allergies are not handled here/);
   await page.locator('[data-test="meal-save"]').tap();
@@ -483,6 +504,16 @@ test('the supervisor\'s first five minutes on Linen and meals at 390 px: sees wh
   assert.match(await page.locator('[data-kpi="meal-waste"]').textContent(), /Source: local definition/);
   assert.match(await page.locator('[data-test="linen-suggestion"][data-rule="meals-returned"]').textContent(), /Check the midday meal numbers ordered for Ward B1 \(general surgery\) with the ward\./);
   assert.ok(await page.locator('[data-test="linen-suggestion"][data-rule="linen-two-counts"]').count() >= 1);
+  assert.match(await page.locator('[data-test="linen-manager"] [data-test="levels-note"]').textContent(), /example settings, not a standard/);
+  await page.locator('[data-test="to-meal-waste"]').tap();
+  await page.waitForFunction(() => { const r = document.querySelector('#lin-meal-h').getBoundingClientRect(); return r.top >= 0 && r.top < 200; });
+  // Recording a stock-out: nothing is picked for the person; the button waits for a cause.
+  const zero = page.locator('[data-test="linen-zero"] li').first();
+  await zero.locator('summary').tap();
+  assert.equal(await zero.locator('[data-test="cause"]').inputValue(), '');
+  assert.equal(await zero.locator('[data-cmd="ospeli_stock_out_start"]').isDisabled(), true);
+  await zero.locator('[data-test="cause"]').selectOption('Not delivered');
+  assert.equal(await zero.locator('[data-cmd="ospeli_stock_out_start"]').isDisabled(), false);
   assert.deepEqual(await phoneProblems(page), [], 'the manager view on a phone');
   // Act: one tap asks for exactly what Ward C1 is short of.
   const btn = under.locator('[data-test="manager-ask"]');
@@ -518,6 +549,13 @@ test('Linen and meals: the store issues the top-up from the same screen; a role 
   await issue.click();
   await page.waitForFunction((r) => !document.querySelector(`[data-cmd="ospeli_stock_issue"][data-request="${r}"]`), req);
   assert.deepEqual([(await ev(page, 'stock.issued')).subject, (await ev(page, 'stock.issued')).actorRole], [req, 'storekeeper']);
+  // Issued is not arrived (#113), and the time is the real one: under a minute is "just now", not "1 h ago".
+  await page.evaluate(() => localStorage.setItem('ospeli-support-linen-area', 'ward-c1'));
+  await toLinen(page, 'cleaner');
+  await page.waitForSelector('[data-item="blanket"] [data-test="on-its-way"]');
+  assert.equal(await page.locator('[data-item="blanket"] [data-test="on-its-way"]').textContent(), 'Issued from the store just now: on its way. Count it once it is on the shelf.');
+  await page.clock.fastForward('25:00');
+  await page.waitForFunction(() => /Issued from the store (25|26) min ago/.test(document.querySelector('[data-item="blanket"] [data-test="on-its-way"]')?.textContent || ''));
   await page.evaluate(() => localStorage.setItem('ospeli-support-linen-area', 'ward-c1'));
   await toLinen(page, 'bed-manager');
   assert.deepEqual(await page.locator('.sup-linen [data-cmd]').count(), 0, 'no action button');

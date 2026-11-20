@@ -55,7 +55,7 @@ export const KPIS = [
     definition: `Area-shifts with a linen item at zero divided by area-shifts, for the wards and departments that hold linen. An area-shift is one area for one shift: ${SHIFT_NOTE} It counts as a stock-out when any linen item there had nothing usable at any time in the shift: a count of zero until the next top-up is issued, or a stock-out a person declared. A top-up counts from when it is issued, which may be before it is on the shelf.`,
     counts: 'Area-shifts in which any linen item was at zero.',
     outOf: 'Area-shifts that began in the period, from each area\'s first linen record. The shift going on now counts up to now.',
-    leavesOut: 'The store that supplies the areas, other modules\' stock, and areas with no linen record. A shift with no count is not left out and not guessed: it keeps the balance of the last count and the top-ups issued since. How many shifts had no count is shown beside the value.',
+    leavesOut: 'The store that supplies the areas, other modules\' stock, and areas with no linen record. A shift with no count is not left out and not guessed: it keeps the balance of the last count and the top-ups issued since. A shift nobody counted keeps the last count, so it may hide a stock-out. How many shifts had no count is shown beside the value.',
     source: 'local definition', target: null, targetText: 'No target set: track the trend.' },
   { id: 'meal-waste', name: 'Meal waste', unit: '%',
     definition: 'Meals returned uneaten divided by meals delivered, for each ward, for each meal (breakfast, midday, evening) and in all. Counts only: no patient, no diet, no allergy.',
@@ -454,9 +454,9 @@ export function seed({ r, startMs, endMs, entities }) {
 
 // ---- linen: thirty days of counts against top-up levels, top-ups from the store, a few nights at zero ----
 // Generic patterns only, entirely fictional. Four wards count their linen twice a day (before each
-// shift ends), now and then a count is missed; a count under the top-up level raises a top-up
-// request in the same step (as ospeli_stock_count does) and the storekeeper issues it from the
-// store within a few hours, in the day. Clean linen comes back to the store from the
+// shift ends), now and then a count is missed; what is under the top-up level is asked for just
+// after the count (as the screen does: the count asks for nothing by itself) and the storekeeper
+// issues it from the store within a few hours, in the day. Clean linen comes back to the store from the
 // laundry every morning. On a few nights a ward runs out of an item before the morning count, and
 // once a ward declares it. At the end: on one ward towels were under level on the last two counts
 // (the newest top-up still waiting); on another the top-up raised by the last count but one was
@@ -523,7 +523,7 @@ function seedLinen(r, startMs, endMs, entities, offset) {
       const ask = open ? [] : items.filter((i) => counted[i] < LINEN_LEVEL[i]).map((i) => ({ itemId: i, qty: LINEN_LEVEL[i] - counted[i] }));
       if (ask.length) {
         const id = `req-${++reqN}`;
-        emit(t, 'stock.requested', id, 'cleaner', { placeId: w, fromPlaceId: S, lines: ask, raisedBy: 'count' });
+        emit(t + 2 * MIN, 'stock.requested', id, 'cleaner', { placeId: w, fromPlaceId: S, lines: ask, raisedBy: 'request' }); // asked for after the count, as on screen
         const start = hourOf(t) < 7 ? at(t, 7) : t; // the store issues in the day
         const held = n === keep.length - 2 && w === gCancel; // scripted: not issued, then cancelled after the next count
         const issueAt = held ? Infinity : start + Math.round(r.lognormal(90, 0.5)) * MIN;

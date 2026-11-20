@@ -170,3 +170,5 @@
 .mod-support .sup-mw-meals { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
 .mod-support .sup-linen .sup-kpis { margin-top: 12px; }
 .mod-support .sup-link { display: inline-flex; align-items: center; min-height: 44px; font-weight: 800; color: var(--sea-ink); }
+.mod-support .sup-waiting h3 { margin: 10px 0 6px; font-size: 1.05rem; }
+.mod-support .stat .sup-link { padding: 0; justify-content: flex-start; background: none; border: 0; cursor: pointer; text-decoration: underline; font: inherit; font-weight: 800; color: var(--sea-ink); }
