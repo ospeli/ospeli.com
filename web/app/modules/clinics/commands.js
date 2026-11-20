@@ -375,7 +375,7 @@ export function seed({ r, startMs, endMs, entities }) {
     for (const t of templates.filter((x) => x.weekday === weekdayOf(date))) {
       const s = { ...t, id: `ses-${pad(++nSes)}`, templateId: t.id, date, startMs: at(date, t.start), slots: slotGrid(t.start, t.minutes, t.slotMinutes), taken: new Map(), state: 'planned', removed: [] };
       s.endMs = s.startMs + t.minutes * MIN;
-      s.plannedAt = Math.max(startMs + 2 * HOUR + nSes * MIN, s.startMs - 21 * DAY);
+      s.plannedAt = Math.max(startMs + 2 * HOUR + (nSes - 900) * MIN, s.startMs - 21 * DAY);
       if (s.plannedAt >= endMs || s.startMs < startMs + DAY) { nSes--; continue; }
       sessions.push(s);
       push(s.plannedAt, 'session.planned', s.id, 'outpatient-manager', { sessionType: SESSION_TYPE, service: t.service, placeId: PLACE, date, runByRole: 'clinic-nurse',
