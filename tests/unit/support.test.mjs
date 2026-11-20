@@ -338,8 +338,9 @@ test('guide rule "failed twice": the last two audits under the example pass mark
 
 test('synthetic history: audits for every ward and four departments, ids in time order, ward B2 under the pass mark twice at the end', () => {
   const { events } = generateHospital({ end: END });
-  const mine = events.filter((e) => e.type.startsWith('support.'));
-  assert.ok(mine.every((e) => e.type === 'support.audit-recorded'));
+  // Slice 2 (19 Nov) adds meal records to the module's own events: the audits are the rest.
+  assert.ok(events.filter((e) => e.type.startsWith('support.')).every((e) => ['support.audit-recorded', 'support.meals-recorded'].includes(e.type)));
+  const mine = events.filter((e) => e.type === 'support.audit-recorded');
   const audits = deriveAudits(mine);
   assert.equal(audits.length, mine.length, 'every seeded audit is well formed');
   assert.deepEqual([...new Set(audits.map((x) => x.locationId))].sort(), ['dept-emergency', 'dept-imaging', 'dept-outpatients', 'dept-theatres', 'ward-a1', 'ward-a2', 'ward-a3', 'ward-b1', 'ward-b2', 'ward-c1']);
@@ -360,7 +361,9 @@ test('an older example hospital with none of this module\'s history: honest empt
   assert.deepEqual([k['porter-request-to-done'].value, k['porter-request-to-done'].n], [null, 0]);
   assert.deepEqual([k['cleanliness-audit-score'].value, k['cleanliness-audit-score'].n], [null, 0]);
   assert.ok(k['support-bed-turnaround'].n > 0, 'bed cleans come from the bed events, which it has');
-  assert.deepEqual(ov.planned.map((p) => [p.id, p.status, p.value]), [['linen-stock-outs', 'planned', undefined], ['meal-waste', 'planned', undefined]]);
+  // Slice 2 (19 Nov): linen stock-outs and meal waste are built, so nothing is planned; with no meal record the waste is honestly empty.
+  assert.deepEqual(ov.planned, []);
+  assert.deepEqual([k['meal-waste'].value, k['meal-waste'].n], [null, 0]);
   const list = await run('ospeli_support_audits_list', {}, 'cleaner');
   assert.deepEqual([list.total, list.areas.length], [0, 0]);
   const places = await run('ospeli_support_places', {}, 'ward-nurse');

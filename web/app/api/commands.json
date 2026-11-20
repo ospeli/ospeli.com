@@ -9820,9 +9820,10 @@
           "category": {
             "type": "string",
             "enum": [
+              "linen",
               "supplies"
             ],
-            "description": "Only items of this category: supplies. Leave out for every category."
+            "description": "Only items of this category: linen, supplies. Leave out for every category."
           },
           "coldChain": {
             "type": "boolean",
@@ -9945,9 +9946,10 @@
           "category": {
             "type": "string",
             "enum": [
+              "linen",
               "supplies"
             ],
-            "description": "Only items of this category: supplies. Leave out for every category."
+            "description": "Only items of this category: linen, supplies. Leave out for every category."
           },
           "coldChain": {
             "type": "boolean",
@@ -10197,9 +10199,10 @@
           "category": {
             "type": "string",
             "enum": [
+              "linen",
               "supplies"
             ],
-            "description": "Only items of this category: supplies. Leave out for every category."
+            "description": "Only items of this category: linen, supplies. Leave out for every category."
           },
           "state": {
             "type": "string",
@@ -10278,6 +10281,8 @@
       "kind": "write",
       "roles": [
         "ward-nurse",
+        "cleaner",
+        "support-supervisor",
         "storekeeper",
         "supply-manager"
       ],
@@ -10414,7 +10419,7 @@
           "placeId": "ward-a1",
           "lines": [
             {
-              "itemId": "gloves-m",
+              "itemId": "bed-sheet",
               "qty": 4
             }
           ]
@@ -10427,6 +10432,8 @@
       "kind": "write",
       "roles": [
         "ward-nurse",
+        "cleaner",
+        "support-supervisor",
         "supply-manager"
       ],
       "humanApproval": true,
@@ -10524,7 +10531,7 @@
           "placeId": "ward-a1",
           "lines": [
             {
-              "itemId": "gloves-m",
+              "itemId": "bed-sheet",
               "qty": 10
             }
           ]
@@ -10648,6 +10655,8 @@
       "kind": "write",
       "roles": [
         "ward-nurse",
+        "cleaner",
+        "support-supervisor",
         "storekeeper",
         "supply-manager"
       ],
@@ -10854,7 +10863,7 @@
           "placeId": "ward-a1",
           "lines": [
             {
-              "itemId": "gloves-m",
+              "itemId": "bed-sheet",
               "qty": 20
             }
           ],
@@ -10867,6 +10876,7 @@
       "summary": "Write stock off at a place with a reason from the list (expired, damaged, heat or freeze exposure, lost, count difference). It leaves the balance for good. With fromHold true it is taken from stock on hold. A person decides that stock is not fit to use; this records it. An agent's call becomes a proposal for a person.",
       "kind": "write",
       "roles": [
+        "support-supervisor",
         "storekeeper",
         "supply-manager"
       ],
@@ -10985,13 +10995,13 @@
           "placeId": "ward-a1",
           "lines": [
             {
-              "itemId": "gloves-m",
+              "itemId": "bed-sheet",
               "qty": 1
             }
           ],
           "reason": "Damaged or broken"
         },
-        "needs": "Stock of the item at the place. gloves-m at ward-a1 is an example: ospeli_stock_levels with { \"placeId\": \"ward-a1\" } shows what is there, and ospeli_stock_receive or ospeli_stock_count puts stock in place."
+        "needs": "Stock of the item at the place. bed-sheet at ward-a1 is an example: ospeli_stock_levels with { \"placeId\": \"ward-a1\" } shows what is there, and ospeli_stock_receive or ospeli_stock_count puts stock in place."
       }
     },
     {
@@ -10999,6 +11009,7 @@
       "summary": "Put stock on hold at a place while someone looks into it (a cold chain excursion, damaged packaging, a recall notice). Held stock stays on the shelf but is not usable: it cannot be issued, moved or used until a person releases it or writes it off. An agent's call becomes a proposal for a person.",
       "kind": "write",
       "roles": [
+        "support-supervisor",
         "supply-manager"
       ],
       "humanApproval": true,
@@ -11109,13 +11120,13 @@
           "placeId": "ward-a1",
           "lines": [
             {
-              "itemId": "gloves-m",
+              "itemId": "bed-sheet",
               "qty": 1
             }
           ],
           "reason": "Damaged packaging"
         },
-        "needs": "Stock of the item at the place. gloves-m at ward-a1 is an example: ospeli_stock_levels with { \"placeId\": \"ward-a1\" } shows what is there, and ospeli_stock_receive or ospeli_stock_count puts stock in place."
+        "needs": "Stock of the item at the place. bed-sheet at ward-a1 is an example: ospeli_stock_levels with { \"placeId\": \"ward-a1\" } shows what is there, and ospeli_stock_receive or ospeli_stock_count puts stock in place."
       }
     },
     {
@@ -11123,6 +11134,7 @@
       "summary": "Release stock from hold so it is usable again. People only: the person who has looked into it decides; Ospeli records the decision and never makes it.",
       "kind": "write",
       "roles": [
+        "support-supervisor",
         "supply-manager"
       ],
       "humanApproval": true,
@@ -11222,7 +11234,7 @@
           "placeId": "ward-a1",
           "lines": [
             {
-              "itemId": "gloves-m",
+              "itemId": "bed-sheet",
               "qty": 1
             }
           ]
@@ -11235,6 +11247,7 @@
       "summary": "Move stock from one place on the site to another in one step (between wards, between stores, out to a session and back): it leaves the first place and arrives at the second together, so it can never be half done. Refused above what is usable. An agent's call becomes a proposal for a person.",
       "kind": "write",
       "roles": [
+        "support-supervisor",
         "storekeeper",
         "supply-manager"
       ],
@@ -11364,12 +11377,12 @@
           "toPlaceId": "ward-a2",
           "lines": [
             {
-              "itemId": "gloves-m",
+              "itemId": "bed-sheet",
               "qty": 1
             }
           ]
         },
-        "needs": "Stock of the item at the place. gloves-m at ward-a1 is an example: ospeli_stock_levels with { \"placeId\": \"ward-a1\" } shows what is there, and ospeli_stock_receive or ospeli_stock_count puts stock in place."
+        "needs": "Stock of the item at the place. bed-sheet at ward-a1 is an example: ospeli_stock_levels with { \"placeId\": \"ward-a1\" } shows what is there, and ospeli_stock_receive or ospeli_stock_count puts stock in place."
       }
     },
     {
@@ -11378,6 +11391,8 @@
       "kind": "write",
       "roles": [
         "ward-nurse",
+        "cleaner",
+        "support-supervisor",
         "storekeeper",
         "supply-manager"
       ],
@@ -11450,7 +11465,7 @@
       },
       "example": {
         "input": {
-          "itemId": "gloves-m",
+          "itemId": "bed-sheet",
           "placeId": "ward-a1",
           "cause": "Not delivered"
         },
@@ -11463,6 +11478,8 @@
       "kind": "write",
       "roles": [
         "ward-nurse",
+        "cleaner",
+        "support-supervisor",
         "storekeeper",
         "supply-manager"
       ],
@@ -11534,6 +11551,7 @@
       "summary": "Set the top-up level of an item at a place: the number the place is topped back up to, and the line a count is compared with. 0 clears it. People only: a guide may suggest a level, a person sets it.",
       "kind": "write",
       "roles": [
+        "support-supervisor",
         "supply-manager"
       ],
       "humanApproval": true,
@@ -11616,7 +11634,7 @@
       },
       "example": {
         "input": {
-          "itemId": "gloves-m",
+          "itemId": "bed-sheet",
           "placeId": "ward-a1",
           "level": 37
         },
@@ -11628,6 +11646,7 @@
       "summary": "Add an item this site keeps that is not on the list: a generic name, its one unit and its category. People only. The name is a thing, never a person, a brand or a supplier; a name that reads like a person's is asked about once.",
       "kind": "write",
       "roles": [
+        "support-supervisor",
         "supply-manager"
       ],
       "humanApproval": true,
@@ -11657,9 +11676,10 @@
           "category": {
             "type": "string",
             "enum": [
+              "linen",
               "supplies"
             ],
-            "description": "The category it belongs to: supplies."
+            "description": "The category it belongs to: linen, supplies."
           },
           "tracer": {
             "type": "boolean",
@@ -11724,7 +11744,7 @@
         "input": {
           "name": "Example dressing pack, small",
           "unit": "pack",
-          "category": "supplies"
+          "category": "linen"
         }
       }
     },
@@ -13252,7 +13272,7 @@
     },
     {
       "name": "ospeli_support_overview",
-      "summary": "Cleaning and transport at a glance, in one call: the three measures with their definitions and sources (bed turnaround, transport request to completion, cleanliness audit score), open jobs per team with the longest wait, and the guide's suggestions with their reasons and basis (empty while the guide is off). Linen and meal measures are listed as planned, with no value. Measures jobs and waits, never people. Read-only.",
+      "summary": "Cleaning and transport at a glance, in one call: the five measures with their definitions and sources (bed turnaround, transport request to completion, cleanliness audit score, linen stock-outs, meal waste), open jobs per team with the longest wait, and the guide's suggestions with their reasons and basis (empty while the guide is off). A linen suggestion carries the ospeli_stock_request a person may send. Measures jobs, waits and counts, never people. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -13398,6 +13418,8 @@
           },
           "planned": {
             "type": "array",
+            "description": "Measures planned but not built yet, with no value. Empty now: all five are built.",
+            "maxItems": 10,
             "items": {
               "type": "object",
               "required": [
@@ -13406,6 +13428,10 @@
                 "status"
               ]
             }
+          },
+          "taskKpis": {
+            "type": "array",
+            "description": "The ids of the three job measures (the task board shows these; Linen and meals shows the other two)."
           },
           "teams": {
             "type": "array",
@@ -13779,8 +13805,266 @@
       }
     },
     {
+      "name": "ospeli_support_meals_list",
+      "summary": "Meal counts: for each ward, date and meal (breakfast, midday, evening) how many were ordered, delivered and returned uneaten, newest first, with meal waste (returned uneaten / delivered) by ward and meal over the period. Counts only: no patient, no diet, no allergy; those stay with the site's own catering and clinical process. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "wardId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "One ward, for example ward-a1."
+          },
+          "days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 30,
+            "description": "Today and the days before it, this many in all. Default 7."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
+            "description": "At most this many meal records. Default 100, 500 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "today",
+          "dates",
+          "records",
+          "waste",
+          "meals",
+          "note",
+          "total",
+          "truncated"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "today": {
+            "type": "string",
+            "description": "Today's date at the site, YYYY-MM-DD."
+          },
+          "dates": {
+            "type": "object",
+            "description": "{ from, to }: the dates covered."
+          },
+          "records": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "wardId",
+                "date",
+                "meal",
+                "ordered",
+                "delivered",
+                "returned"
+              ]
+            }
+          },
+          "waste": {
+            "type": "object",
+            "description": "Meal waste over the dates: value (%), numerator (returned uneaten), denominator (delivered), by meal (breakdown) and by ward (byWard, each with byMeal)."
+          },
+          "meals": {
+            "type": "array"
+          },
+          "settings": {
+            "type": "object"
+          },
+          "note": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "wardId": "ward-a1",
+          "days": 7,
+          "limit": 10
+        }
+      }
+    },
+    {
+      "name": "ospeli_support_meals_record",
+      "summary": "Record the meal count for one ward, day and meal: how many meals were ordered, delivered and returned uneaten (whole numbers, nothing typed). Recording the same ward, day and meal again corrects it: the latest wins and both stay in the log. Counts only: no patient, no diet, no allergy. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "cleaner",
+        "support-supervisor"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "wardId",
+          "meal",
+          "ordered",
+          "delivered",
+          "returned"
+        ],
+        "properties": {
+          "wardId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "The ward, for example ward-a1."
+          },
+          "date": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "maxLength": 10,
+            "description": "The day, as YYYY-MM-DD in the site's own time. Leave it out for today. Today or the 6 days before."
+          },
+          "meal": {
+            "type": "string",
+            "enum": [
+              "breakfast",
+              "midday",
+              "evening"
+            ],
+            "description": "The meal: breakfast, midday or evening."
+          },
+          "ordered": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 500,
+            "description": "Meals ordered for the ward: a whole number from 0 to 500."
+          },
+          "delivered": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 500,
+            "description": "Meals delivered to the ward: a whole number from 0 to 500."
+          },
+          "returned": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 500,
+            "description": "Meals returned uneaten (not more than delivered): a whole number from 0 to 500."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "wardId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64
+          },
+          "date": {
+            "type": "string"
+          },
+          "meal": {
+            "type": "string"
+          },
+          "replaced": {
+            "type": "boolean",
+            "description": "true when this corrected an earlier record for the same ward, day and meal."
+          },
+          "previous": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "The record it corrected: { ordered, delivered, returned }."
+          },
+          "wastePercent": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "wardId": "ward-a1",
+          "meal": "midday",
+          "ordered": 20,
+          "delivered": 19,
+          "returned": 3
+        }
+      }
+    },
+    {
       "name": "ospeli_support_guide_set",
-      "summary": "Switch the cleaning and transport guide on or off for this site. The guide is a set of fixed rules that suggest which cleans to do first, when a team is busier than usual and when an area should be audited again; a person decides. With it off everything else works the same. People only.",
+      "summary": "Switch the cleaning and transport guide on or off for this site. The guide is a set of fixed rules that suggest which cleans to do first, when a team is busier than usual, when an area should be audited again, when linen stays under its top-up level and when many meals come back uneaten; a person decides. With it off everything else works the same. People only.",
       "kind": "write",
       "roles": [
         "support-supervisor",

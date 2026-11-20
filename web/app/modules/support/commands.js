@@ -18,13 +18,19 @@ import {
   TEAMS, KINDS, TEAM_OF, TEAM_NAMES, RISK_CATEGORIES, RISK_NAME, AUDIT_ELEMENTS, ELEMENT_NAME, AUDIT_PLACE_TYPES, AUDIT_SET_NOTE, PASS_MARK,
   BED_TURNAROUND_TARGET, GUIDE_RULES, deriveAudits, nextAuditId, guideOn, queueMarks, bedTurnaround, porterRequestToDone, auditScore,
   ruleCleansFirst, ruleTeamBusy, ruleAuditFailedTwice,
+  STOCK_CATEGORIES, STOCK_ITEMS, LINEN, deriveLinen, linenStockOuts, SHIFT_NOTE, localDate, addDays, MEALS, MEAL_NAME, MEAL_MAX, MEAL_BACK_DAYS, MEALS_NOTE,
+  mealProblem, deriveMeals, mealWaste, ruleLinenTwoCounts, ruleMealsReturned, MEAL_USUAL_PCT, MEAL_DAYS,
 } from './logic.js';
+import { validDate, DATE_PATTERN } from '../../core/stock.js';
 
 export const id = 'support';
 export const PREFIX = 'ospeli_support_';
 export const EVENT_PREFIX = 'support.';
 export const TASK_TEAMS = TEAMS;
 export const TASK_KINDS = KINDS;
+// Linen is the shared stock item: this pack adds its category and example items (logic.js) and
+// writes no stock command; counts, top-up levels, requests, issues and stock-outs are ospeli_stock_*.
+export { STOCK_CATEGORIES, STOCK_ITEMS };
 
 // Every number has a definition and a source. Targets are example settings unless a cited source sets one.
 export const KPIS = [
@@ -45,17 +51,25 @@ export const KPIS = [
     leavesOut: 'Items not checked in an audit.',
     source: 'Your site\'s cleanliness standard (set locally). The list of items and the types of area here are an example set, not a standard.',
     target: PASS_MARK, targetText: `${PASS_MARK}% pass mark (example setting, not a standard)` },
+  { id: 'linen-stock-outs', name: 'Linen stock-outs', unit: '%',
+    definition: `Area-shifts with a linen item at zero divided by area-shifts, for the wards and departments that hold linen. An area-shift is one area for one shift: ${SHIFT_NOTE} It counts as a stock-out when any linen item there had nothing usable at any time in the shift: a count of zero until the next top-up is issued, or a stock-out a person declared. A top-up counts from when it is issued, which may be before it is on the shelf.`,
+    counts: 'Area-shifts in which any linen item was at zero.',
+    outOf: 'Area-shifts that began in the period, from each area\'s first linen record. The shift going on now counts up to now.',
+    leavesOut: 'The store that supplies the areas, other modules\' stock, and areas with no linen record. A shift with no count is not left out and not guessed: it keeps the balance of the last count and the top-ups issued since. How many shifts had no count is shown beside the value.',
+    source: 'local definition', target: null, targetText: 'No target set: track the trend.' },
+  { id: 'meal-waste', name: 'Meal waste', unit: '%',
+    definition: 'Meals returned uneaten divided by meals delivered, for each ward, for each meal (breakfast, midday, evening) and in all. Counts only: no patient, no diet, no allergy.',
+    counts: 'Meals returned uneaten.', outOf: 'Meals delivered, on the meal records dated in the period (today and the days before it).',
+    leavesOut: 'A ward\'s meal with no record that day (left out, never counted as zero), and earlier versions of a record that was recorded again (the latest wins).',
+    source: 'local definition', target: null, targetText: 'No target set: track the trend.' },
 ];
-// Planned with the shared stock item (module B4): listed so a reader knows they are coming, with no value.
-const PLANNED_KPIS = [
-  { id: 'linen-stock-outs', name: 'Linen stock-outs', status: 'planned', note: 'Planned, not built yet: it needs the shared stock item.' },
-  { id: 'meal-waste', name: 'Meal waste', status: 'planned', note: 'Planned, not built yet: it needs the shared stock item.' },
-];
+const TASK_KPIS = ['support-bed-turnaround', 'porter-request-to-done', 'cleanliness-audit-score'];
 
 // ---- places ----
 async function placeMap(core) {
   return new Map((await core.listEntities()).filter((e) => ['site', 'building', 'department', 'ward', 'bed'].includes(e.type)).map((e) => [e.id, e]));
 }
+const siteOffset = async (core) => (await core.listEntities()).find((e) => e.type === 'site' && e.utcOffsetMinutes != null)?.utcOffsetMinutes ?? 0;
 const nameOf = (map, id) => {
   const p = map.get(id);
   if (!p) return id;
@@ -101,7 +115,7 @@ async function overview(core, input, wards) {
   const now = core.now();
   const days = input.days ?? 7;
   const since = new Date(Date.parse(now) - days * DAY).toISOString();
-  const [events, map] = await Promise.all([core.events(), placeMap(core)]);
+  const [events, map, offsetMinutes] = await Promise.all([core.events(), placeMap(core), siteOffset(core)]);
   const bedList = [...map.values()].filter((p) => p.type === 'bed');
   const beds = new Map(bedList.map((b) => [b.id, b.parentId]));
   const see = visible(map, wards);
@@ -122,6 +136,13 @@ async function overview(core, input, wards) {
     'porter-request-to-done': porterRequestToDone(events, { since, until: now, tasks: mine }),
     'cleanliness-audit-score': auditScore(events, { since, until: now, audits }),
   };
+  // Linen and meals: the shared stock item's linen, and the meal records, for the same days.
+  const linen = deriveLinen(events, offsetMinutes);
+  const isArea = (pid) => ['ward', 'department'].includes(map.get(pid)?.type) && see(pid);
+  const today = localDate(Date.parse(now), offsetMinutes);
+  const meals = deriveMeals(events);
+  values['linen-stock-outs'] = linenStockOuts(events, { since, until: now, offsetMinutes, stock: linen, isArea });
+  values['meal-waste'] = mealWaste(events, { fromDate: addDays(today, -(days - 1)), toDate: today, see: isArea, records: meals });
   // Bed demand is a fact from the bed board, shown with the guide on or off: patients waiting for a
   // bed on each ward with no bed held, and the beds free there now.
   const board = deriveBoard(bedList, events);
@@ -140,19 +161,59 @@ async function overview(core, input, wards) {
       ...ruleCleansFirst({ openCleans, patientsWaiting, freeBeds, wardName }),
       ...ruleTeamBusy(teams),
       ...ruleAuditFailedTwice(audits, (pid) => nameOf(map, pid)),
+      ...ruleLinenTwoCounts(events, { stock: linen, now, isArea, placeName: (pid) => nameOf(map, pid), itemName: (iid) => linen.items.get(iid)?.name || iid }),
+      ...ruleMealsReturned(meals, { toDate: today, see: isArea, placeName: (pid) => nameOf(map, pid) }),
     ];
   }
   const kpis = KPIS.map((k) => {
     const v = values[k.id];
     const base = { id: k.id, name: k.name, unit: k.unit, value: v.value, numerator: v.numerator, denominator: v.denominator, n: v.n, target: k.target, targetText: k.targetText };
-    return input.format === 'short' ? base : { ...base, breakdown: v.breakdown, ...(v.byPriority ? { byPriority: v.byPriority } : {}), ...(v.leftOut ? { leftOut: v.leftOut } : {}),
+    const linenMore = k.id === 'linen-stock-outs' ? { uncounted: v.uncounted, byShift: v.byShift, shifts: SHIFT_NOTE }
+      : k.id === 'meal-waste' ? { byWard: v.byWard.map((w) => ({ ...w, name: nameOf(map, w.id), byMeal: w.byMeal.map((m) => ({ ...m, name: MEAL_NAME[m.id] })) })), dates: { from: addDays(today, -(days - 1)), to: today } } : {};
+    if (k.id === 'linen-stock-outs') base.uncounted = v.uncounted;
+    return input.format === 'short' ? base : { ...base, breakdown: k.id === 'linen-stock-outs' ? v.breakdown.map((b) => ({ ...b, name: nameOf(map, b.id) })) : v.breakdown, ...linenMore,
+      ...(v.byPriority ? { byPriority: v.byPriority } : {}), ...(v.leftOut ? { leftOut: v.leftOut } : {}),
       definition: k.definition, counts: k.counts, outOf: k.outOf, leavesOut: k.leavesOut, source: k.source };
   });
   return {
-    asOf: now, synthetic: await synth(core), period: { since, until: now, days }, kpis, planned: PLANNED_KPIS.map((x) => ({ ...x })), teams, bedDemand, marks,
+    asOf: now, synthetic: await synth(core), period: { since, until: now, days }, kpis, planned: [], teams, bedDemand, marks,
     guide: { on, rules: GUIDE_RULES.map((r) => ({ ...r })), suggestions },
-    note: 'Measures jobs and waits, never individual cleaners or transport assistants. Does not set isolation or infection decisions or patient diets.',
+    taskKpis: [...TASK_KPIS],
+    note: `Measures jobs, waits, linen and meal counts, never individual cleaners or transport assistants. Does not set isolation or infection decisions or patient diets. ${MEALS_NOTE}`,
   };
+}
+
+
+// ---- meals: counts per ward, date and meal; never a person, a diet or an allergy ----
+const MEAL = { type: 'string', enum: MEALS.map((m) => m.id), description: 'The meal: breakfast, midday or evening.' };
+const MEAL_N = (what) => ({ type: 'integer', minimum: 0, maximum: MEAL_MAX, description: `${what}: a whole number from 0 to ${MEAL_MAX}.` });
+const DATE = { type: 'string', pattern: DATE_PATTERN, maxLength: 10 };
+const MEAL_REPEAT = 2 * MIN; // the same numbers again within this time are a double tap, not a correction
+const mealOut = (x, map) => ({ wardId: x.wardId, wardName: nameOf(map, x.wardId), date: x.date, meal: x.meal, mealName: MEAL_NAME[x.meal], ordered: x.ordered, delivered: x.delivered, returned: x.returned,
+  wastePercent: x.delivered ? Math.round((1000 * x.returned) / x.delivered) / 10 : null, at: x.at, byRole: x.byRole, corrected: x.versions > 1 });
+async function checkMeal(core, input, events) {
+  const ward = input.wardId ? await core.getEntity(input.wardId) : null;
+  if (!ward || ward.type !== 'ward') throw new CommandError('not-found', 'No ward with that id. Use a ward id, for example ward-a1 (ospeli_support_places lists the wards).');
+  const today = localDate(Date.parse(core.now()), await siteOffset(core));
+  const date = input.date ?? today;
+  if (!validDate(date)) throw new CommandError('invalid-input', `date is a calendar date as YYYY-MM-DD, for example ${today}. Leave it out for today.`);
+  if (date > today) throw new CommandError('invalid-input', `A meal cannot be recorded for a day that has not come yet. Today here is ${today}.`);
+  const first = addDays(today, -(MEAL_BACK_DAYS - 1));
+  if (date < first) throw new CommandError('invalid-input', `A meal can be recorded or corrected for today and the ${MEAL_BACK_DAYS - 1} days before (from ${first}; an example setting, not a standard).`);
+  const why = mealProblem(input);
+  if (why) throw new CommandError('invalid-input', why);
+  const evs = events ?? await core.events({ type: 'support.meals-recorded' });
+  const t = Date.parse(core.now());
+  for (let i = evs.length - 1; i >= 0; i--) {
+    const e = evs[i];
+    if (t - Date.parse(e.at) >= MEAL_REPEAT) break;
+    const d = e.data || {};
+    if (e.type === 'support.meals-recorded' && e.subject === input.wardId && d.date === date && d.meal === input.meal && d.ordered === input.ordered && d.delivered === input.delivered && d.returned === input.returned) {
+      throw new CommandError('conflict', 'These numbers for this ward, day and meal were saved a moment ago. Nothing new was saved.', { already: true });
+    }
+  }
+  const previous = deriveMeals(evs).find((x) => x.wardId === input.wardId && x.date === date && x.meal === input.meal) || null;
+  return { date, previous };
 }
 
 const KPI_OUT = { type: 'object', required: ['id', 'name', 'unit', 'value'], properties: {
@@ -192,14 +253,15 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_support_overview',
-    summary: 'Cleaning and transport at a glance, in one call: the three measures with their definitions and sources (bed turnaround, transport request to completion, cleanliness audit score), open jobs per team with the longest wait, and the guide\'s suggestions with their reasons and basis (empty while the guide is off). Linen and meal measures are listed as planned, with no value. Measures jobs and waits, never people. Read-only.',
+    summary: 'Cleaning and transport at a glance, in one call: the five measures with their definitions and sources (bed turnaround, transport request to completion, cleanliness audit score, linen stock-outs, meal waste), open jobs per team with the longest wait, and the guide\'s suggestions with their reasons and basis (empty while the guide is off). A linen suggestion carries the ospeli_stock_request a person may send. Measures jobs, waits and counts, never people. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, properties: {
       days: { type: 'integer', minimum: 1, maximum: 30, description: 'The period for the measures: the last this many days. Default 7.' },
       format: FORMAT('the values without their definitions', 'each value with its definition, source and breakdown') } },
     output: { type: 'object', required: ['asOf', 'synthetic', 'period', 'kpis', 'planned', 'teams', 'guide'], properties: {
       asOf: TIME, synthetic: SYNTHETIC, period: { type: 'object' }, kpis: { type: 'array', items: KPI_OUT },
-      planned: { type: 'array', items: { type: 'object', required: ['id', 'name', 'status'] } },
+      planned: { type: 'array', description: 'Measures planned but not built yet, with no value. Empty now: all five are built.', maxItems: 10, items: { type: 'object', required: ['id', 'name', 'status'] } },
+      taskKpis: { type: 'array', description: 'The ids of the three job measures (the task board shows these; Linen and meals shows the other two).' },
       teams: { type: 'array', items: { type: 'object', required: ['id', 'name', 'open', 'waiting', 'inProgress', 'urgent', 'longestWaitMinutes'] } },
       guide: { type: 'object', required: ['on', 'rules', 'suggestions'], properties: { on: { type: 'boolean' }, rules: { type: 'array' }, suggestions: { type: 'array', items: SUGGESTION } } },
       bedDemand: { type: 'array', description: 'For each ward: patients waiting for a bed there with no bed held, and beds free now. A fact from the bed board, with the guide on or off.' },
@@ -278,8 +340,73 @@ export const COMMANDS = [
     example: { input: { locationId: 'ward-a1', riskCategory: 'high', passed: ['floor', 'bed-frame', 'bedside', 'high-touch', 'hand-wash', 'toilet', 'bins', 'curtains', 'dispensers'], failed: ['high-surfaces'] } },
   },
   {
+    name: 'ospeli_support_meals_list',
+    summary: 'Meal counts: for each ward, date and meal (breakfast, midday, evening) how many were ordered, delivered and returned uneaten, newest first, with meal waste (returned uneaten / delivered) by ward and meal over the period. Counts only: no patient, no diet, no allergy; those stay with the site\'s own catering and clinical process. Read-only.',
+    kind: 'read', roles: ALL_ROLES, approval: false,
+    input: { type: 'object', additionalProperties: false, properties: {
+      wardId: { ...ID, description: 'One ward, for example ward-a1.' },
+      days: { type: 'integer', minimum: 1, maximum: 30, description: 'Today and the days before it, this many in all. Default 7.' },
+      limit: LIMIT(100, 500, 'meal records') } },
+    output: { type: 'object', required: ['asOf', 'synthetic', 'today', 'dates', 'records', 'waste', 'meals', 'note', 'total', 'truncated'], properties: {
+      asOf: TIME, synthetic: SYNTHETIC, today: { type: 'string', description: 'Today\'s date at the site, YYYY-MM-DD.' }, dates: { type: 'object', description: '{ from, to }: the dates covered.' },
+      records: { type: 'array', items: { type: 'object', required: ['wardId', 'date', 'meal', 'ordered', 'delivered', 'returned'] } },
+      waste: { type: 'object', description: 'Meal waste over the dates: value (%), numerator (returned uneaten), denominator (delivered), by meal (breakdown) and by ward (byWard, each with byMeal).' },
+      meals: { type: 'array' }, settings: { type: 'object' }, note: { type: 'string' }, total: TOTAL, truncated: TRUNCATED } },
+    wardOf: (core, input) => (input.wardId ? wardOfPlace(core, input.wardId) : null),
+    async run(core, input, { wards }) {
+      const map = await placeMap(core);
+      if (input.wardId && map.get(input.wardId)?.type !== 'ward') throw new CommandError('not-found', 'No ward with that id. ospeli_support_places lists the wards.');
+      const days = input.days ?? 7;
+      const today = localDate(Date.parse(core.now()), await siteOffset(core));
+      const from = addDays(today, -(days - 1));
+      const see = (w) => map.get(w)?.type === 'ward' && (!wards || wards.has(w)) && (!input.wardId || w === input.wardId);
+      const all = deriveMeals(await core.events({ type: 'support.meals-recorded' })).filter((x) => see(x.wardId) && x.date >= from && x.date <= today);
+      const order = Object.fromEntries(MEALS.map((m, i) => [m.id, i]));
+      all.sort((a, b) => (a.date !== b.date ? (a.date < b.date ? 1 : -1) : order[b.meal] - order[a.meal] || (nameOf(map, a.wardId) < nameOf(map, b.wardId) ? -1 : 1)));
+      const cut = page(all, input.limit, 100);
+      const w = mealWaste([], { fromDate: from, toDate: today, records: all });
+      return {
+        asOf: core.now(), synthetic: await synth(core), today, dates: { from, to: today }, total: cut.total, truncated: cut.truncated,
+        records: cut.items.map((x) => mealOut(x, map)),
+        waste: { ...w, byWard: w.byWard.map((x) => ({ ...x, name: nameOf(map, x.id), byMeal: x.byMeal.map((m) => ({ ...m, name: MEAL_NAME[m.id] })) })) },
+        meals: MEALS.map((m) => ({ ...m })), settings: { backDays: MEAL_BACK_DAYS, usualPercent: MEAL_USUAL_PCT, usualDays: MEAL_DAYS, note: 'Example settings, not standards.' },
+        note: MEALS_NOTE,
+      };
+    },
+    example: { input: { wardId: 'ward-a1', days: 7, limit: 10 } },
+  },
+  {
+    name: 'ospeli_support_meals_record',
+    summary: 'Record the meal count for one ward, day and meal: how many meals were ordered, delivered and returned uneaten (whole numbers, nothing typed). Recording the same ward, day and meal again corrects it: the latest wins and both stay in the log. Counts only: no patient, no diet, no allergy. An agent\'s call becomes a proposal for a person.',
+    kind: 'write', roles: ['ward-nurse', 'cleaner', 'support-supervisor'], approval: true,
+    input: { type: 'object', additionalProperties: false, required: ['wardId', 'meal', 'ordered', 'delivered', 'returned'], properties: {
+      wardId: { ...ID, description: 'The ward, for example ward-a1.' },
+      date: { ...DATE, description: `The day, as YYYY-MM-DD in the site's own time. Leave it out for today. Today or the ${MEAL_BACK_DAYS - 1} days before.` },
+      meal: MEAL, ordered: MEAL_N('Meals ordered for the ward'), delivered: MEAL_N('Meals delivered to the ward'), returned: MEAL_N('Meals returned uneaten (not more than delivered)') } },
+    output: { type: 'object', required: ['status'], properties: {
+      status: WRITE_STATUS, wardId: ID, date: { type: 'string' }, meal: { type: 'string' }, replaced: { type: 'boolean', description: 'true when this corrected an earlier record for the same ward, day and meal.' },
+      previous: { type: ['object', 'null'], description: 'The record it corrected: { ordered, delivered, returned }.' }, wastePercent: { type: ['number', 'null'] },
+      events: EVENT_SEQS, proposal: PROPOSAL_OUT } },
+    target: (input) => ({ id: `meals:${input.wardId}:${input.date || 'today'}:${input.meal}`, word: 'meal record' }),
+    wardOf: (core, input) => wardOfPlace(core, input.wardId),
+    async precheck(core, input) { await checkMeal(core, input); },
+    async run(core, input, { actor }) {
+      let res = null;
+      const recs = await core.appendChecked(async (events) => {
+        res = await checkMeal(core, input, events);
+        return [{ type: 'support.meals-recorded', subject: input.wardId, actorRole: actor.role, at: core.now(),
+          data: { date: res.date, meal: input.meal, ordered: input.ordered, delivered: input.delivered, returned: input.returned } }];
+      });
+      await core.recordAs(actor, 'support.meals-recorded', input.wardId, { date: res.date, meal: input.meal, ordered: input.ordered, delivered: input.delivered, returned: input.returned, replaced: !!res.previous });
+      const p = res.previous;
+      return { status: 'done', wardId: input.wardId, date: res.date, meal: input.meal, replaced: !!p, previous: p ? { ordered: p.ordered, delivered: p.delivered, returned: p.returned } : null,
+        wastePercent: input.delivered ? Math.round((1000 * input.returned) / input.delivered) / 10 : null, events: recs.map((r) => r.seq) };
+    },
+    example: { input: { wardId: 'ward-a1', meal: 'midday', ordered: 20, delivered: 19, returned: 3 } },
+  },
+  {
     name: 'ospeli_support_guide_set',
-    summary: 'Switch the cleaning and transport guide on or off for this site. The guide is a set of fixed rules that suggest which cleans to do first, when a team is busier than usual and when an area should be audited again; a person decides. With it off everything else works the same. People only.',
+    summary: 'Switch the cleaning and transport guide on or off for this site. The guide is a set of fixed rules that suggest which cleans to do first, when a team is busier than usual, when an area should be audited again, when linen stays under its top-up level and when many meals come back uneaten; a person decides. With it off everything else works the same. People only.',
     kind: 'write', roles: ['support-supervisor', 'ops-manager', 'coo'], approval: true, agents: false,
     input: { type: 'object', additionalProperties: false, required: ['on'], properties: { on: { type: 'boolean', description: 'true: show the guide\'s suggestions. false: none.' } } },
     output: { type: 'object', required: ['status', 'on'], properties: { status: WRITE_STATUS, on: { type: 'boolean' }, events: EVENT_SEQS } },
@@ -318,7 +445,131 @@ export function seed({ r, startMs, endMs, entities }) {
   const localHour = (t) => Math.floor((((t + offset) % DAY) + DAY) % DAY / HOUR);
   const atLocal = (t, hour) => { const local = t + offset; return local - (local % DAY) + hour * HOUR + r.int(0, 59) * MIN - offset; };
   const has = (id) => entities.some((e) => e.id === id);
-  return [...seedAudits(r, startMs, endMs, has, atLocal), ...seedTasks(r, startMs, endMs, entities, localHour)];
+  // In this order, so the linen and meals history (added on 19 Nov) draws from the random stream
+  // after the jobs and audits and leaves them exactly as they were.
+  const audits = seedAudits(r, startMs, endMs, has, atLocal);
+  const tasks = seedTasks(r, startMs, endMs, entities, localHour);
+  return [...audits, ...tasks, ...seedLinen(r, startMs, endMs, entities, offset), ...seedMeals(r, startMs, endMs, entities, offset, atLocal)];
+}
+
+// ---- linen: thirty days of counts against top-up levels, top-ups from the store, a few nights at zero ----
+// Generic patterns only, entirely fictional. Four wards count their linen twice a day (before each
+// shift ends), now and then a count is missed; a count under the top-up level raises a top-up
+// request in the same step (as ospeli_stock_count does) and the storekeeper issues it from the
+// store within a few hours, in the day. Clean linen comes back to the store from the
+// laundry every morning. On a few nights a ward runs out of an item before the morning count, and
+// once a ward declares it. At the end: on one ward towels were under level on the last two counts
+// (the newest top-up still waiting); on another the top-up raised by the last count but one was
+// never issued and was cancelled after the last count, so the guide has a top-up to offer.
+// Request and stock-out ids start at 100001 so they never meet another module's seeded ids.
+const LINEN_WARDS = ['ward-a1', 'ward-a3', 'ward-b1', 'ward-c1'];
+const LINEN_LEVEL = { 'bed-sheet': 40, pillowcase: 30, blanket: 12, towel: 30, 'patient-gown': 24 }; // top-up levels, example settings
+const LINEN_USE = { 'bed-sheet': 22, pillowcase: 14, blanket: 3, towel: 18, 'patient-gown': 10 }; // a day, on a ward of average use
+const LINEN_BUSY = [1, 0.9, 1.1, 1.2];
+function seedLinen(r, startMs, endMs, entities, offset) {
+  const midnight = (t) => t + offset - ((((t + offset) % DAY) + DAY) % DAY) - offset; // local midnight before t
+  const at = (t, hour, minute = 0) => midnight(t) + hour * HOUR + minute * MIN;
+  const hourOf = (t) => Math.floor((t - midnight(t)) / HOUR);
+  const store = entities.find((e) => e.type === 'store');
+  const wards = LINEN_WARDS.filter((w) => entities.some((e) => e.id === w && e.type === 'ward'));
+  if (!store || wards.length < 2) return []; // an older example hospital with no store: no linen history
+  const S = store.id;
+  const items = STOCK_ITEMS.map((it) => it.id);
+  const out = [];
+  const emit = (t, type, subject, actorRole, data) => { if (t >= startMs && t <= endMs) out.push({ t: Math.round(t / 1000) * 1000, type, subject, actorRole, data }); };
+  let reqN = 100000; let soN = 100000;
+  // The store: an opening stock, then the laundry's delivery each morning.
+  const total = Object.fromEntries(items.map((i) => [i, wards.reduce((n, w, k) => n + LINEN_USE[i] * (LINEN_BUSY[k] ?? 1), 0)]));
+  emit(startMs + 5 * MIN, 'stock.received', S, 'storekeeper', { lines: items.map((i) => ({ itemId: i, qty: Math.ceil(total[i] * 4) })), source: 'Transfer from outside', orderRef: null });
+  for (let d = startMs + DAY; d <= endMs; d += DAY) {
+    emit(at(d, 5, r.int(0, 40)), 'stock.received', S, 'storekeeper', { lines: items.map((i) => ({ itemId: i, qty: Math.ceil(total[i] * 1.5) })), source: 'Transfer from outside', orderRef: null });
+  }
+  const [gWait, gCancel] = [wards[2 % wards.length], wards[3 % wards.length]];
+  wards.forEach((w, k) => {
+    const busy = LINEN_BUSY[k] ?? 1;
+    const bal = Object.fromEntries(items.map((i) => [i, LINEN_LEVEL[i] - r.int(0, Math.ceil(LINEN_LEVEL[i] * 0.3))]));
+    // The opening count, then the levels a second later (a level set before any count would read as zero stock).
+    const t0 = startMs + (20 + 3 * k) * MIN;
+    emit(t0, 'stock.counted', w, 'support-supervisor', { lines: items.map((i) => ({ itemId: i, qty: bal[i] })) });
+    for (const i of items) emit(t0 + 1000, 'stock.level-set', w, 'support-supervisor', { itemId: i, level: LINEN_LEVEL[i] });
+    // Count times: before each shift ends, about 06:30 and 18:30 local.
+    const times = [];
+    for (let d = startMs; d <= endMs; d += DAY) for (const hr of [6, 18]) { const t = at(d, hr, r.int(0, 50)); if (t > t0 + HOUR && t <= endMs) times.push(t); }
+    times.sort((a, b) => a - b);
+    const keep = times.filter((t, n) => n >= times.length - 2 || !r.chance(0.05)); // now and then a count is missed
+    // Nights a ward ran out before the morning count (night count index -> item at zero).
+    const zeroAt = new Map();
+    // One in the first three weeks and one in the last week (never on the last two counts), always found at the morning count.
+    const mornings = keep.map((t, n) => [t, n]).filter(([t, n]) => hourOf(t) < 12 && n > 1 && n < keep.length - 2);
+    const early = mornings.filter(([t]) => t < endMs - 8 * DAY); const late = mornings.filter(([t]) => t >= endMs - 7 * DAY);
+    for (const list of [early, k < 2 ? late : []]) if (list.length) zeroAt.set(r.pick(list)[1], r.pick(['towel', 'bed-sheet', 'patient-gown']));
+    let last = t0; let open = null; // the request waiting for this ward: { id, lines, issueAt }
+    keep.forEach((t, n) => {
+      if (open && open.issueAt <= t) { for (const l of open.lines) bal[l.itemId] += l.qty; open = null; }
+      const hours = (t - last) / HOUR; last = t;
+      for (const i of items) bal[i] = Math.max(0, bal[i] - LINEN_USE[i] * busy * (hours / 24) * (0.6 + r.int(0, 80) / 100));
+      const counted = Object.fromEntries(items.map((i) => [i, Math.floor(bal[i])]));
+      if (zeroAt.has(n)) counted[zeroAt.get(n)] = 0;
+      const lastTwo = n >= keep.length - 2;
+      if (lastTwo && w === gWait) counted.towel = Math.min(counted.towel, 11 + (n % 2) * 2);
+      if (lastTwo && w === gCancel) counted.pillowcase = Math.min(counted.pillowcase, 9 + (n % 2) * 3);
+      for (const i of items) bal[i] = counted[i];
+      emit(t, 'stock.counted', w, r.pick(['cleaner', 'cleaner', 'ward-nurse']), { lines: items.map((i) => ({ itemId: i, qty: counted[i] })) });
+      if (zeroAt.has(n) && n === [...zeroAt.keys()][0] && k === 0) {
+        const id = `so-${++soN}`;
+        emit(t + 10 * MIN, 'stock.stock-out-started', id, 'cleaner', { itemId: zeroAt.get(n), placeId: w, cause: 'Used faster than expected' });
+        zeroAt.set(n, { id, item: zeroAt.get(n) });
+      }
+      const ask = open ? [] : items.filter((i) => counted[i] < LINEN_LEVEL[i]).map((i) => ({ itemId: i, qty: LINEN_LEVEL[i] - counted[i] }));
+      if (ask.length) {
+        const id = `req-${++reqN}`;
+        emit(t, 'stock.requested', id, 'cleaner', { placeId: w, fromPlaceId: S, lines: ask, raisedBy: 'count' });
+        const start = hourOf(t) < 7 ? at(t, 7) : t; // the store issues in the day
+        const held = n === keep.length - 2 && w === gCancel; // scripted: not issued, then cancelled after the next count
+        const issueAt = held ? Infinity : start + Math.round(r.lognormal(90, 0.5)) * MIN;
+        open = { id, lines: ask, issueAt };
+        if (!held) emit(issueAt, 'stock.issued', id, 'storekeeper', { fromPlaceId: S, lines: ask });
+        const so = zeroAt.get(n);
+        if (so?.id && !held) emit(issueAt + 30 * MIN, 'stock.stock-out-ended', so.id, 'cleaner', { careAffected: false });
+        if (held && w === gCancel && keep.length) emit(keep.at(-1) + 20 * MIN, 'stock.request-cancelled', id, 'support-supervisor', { reason: 'Supplied another way' });
+      }
+    });
+  });
+  return out;
+}
+
+// ---- meals: thirty days of counts for the same wards ----
+// Generic patterns only, entirely fictional: about as many meals ordered as beds in use, nearly all
+// delivered, a few in ten returned uneaten; now and then a meal is not recorded (left out, never
+// read as zero), and one record is corrected. On one ward more midday meals come back over the last
+// ten days, so the guide has something real to say.
+const MEAL_TIMES = { breakfast: 9, midday: 13, evening: 19 }; // local hour the count is recorded, after the trays come back
+const MEAL_RETURN = { breakfast: 0.07, midday: 0.1, evening: 0.09 };
+function seedMeals(r, startMs, endMs, entities, offset, atLocal) {
+  const wards = LINEN_WARDS.filter((w) => entities.some((e) => e.id === w && e.type === 'ward'));
+  const high = wards[2 % Math.max(1, wards.length)];
+  const out = [];
+  let corrected = false;
+  for (let d = startMs; d <= endMs; d += DAY) {
+    for (const w of wards) {
+      for (const m of MEALS) {
+        const t = atLocal(d, MEAL_TIMES[m.id]) + r.int(30, 59) * MIN;
+        if (t < startMs || t > endMs || r.chance(0.04)) continue;
+        const ordered = r.int(15, 20);
+        const delivered = Math.max(0, ordered - (r.chance(0.2) ? r.int(1, 2) : 0) + (r.chance(0.08) ? 1 : 0));
+        const rate = MEAL_RETURN[m.id] * (w === high && m.id === 'midday' && endMs - t < 10 * DAY ? 2.8 : 1);
+        const returned = Math.min(delivered, Math.round(delivered * rate * (0.5 + r.int(0, 100) / 100)));
+        const date = new Date(t + offset).toISOString().slice(0, 10);
+        const actorRole = r.pick(['ward-nurse', 'cleaner']);
+        out.push({ t, type: 'support.meals-recorded', subject: w, actorRole, data: { date, meal: m.id, ordered, delivered, returned } });
+        if (!corrected && d > startMs + 4 * DAY && m.id === 'midday') {
+          corrected = true; // counted again half an hour later: one more tray came back
+          out.push({ t: t + 30 * MIN, type: 'support.meals-recorded', subject: w, actorRole, data: { date, meal: m.id, ordered, delivered, returned: Math.min(delivered, returned + 1) } });
+        }
+      }
+    }
+  }
+  return out.filter((e) => e.t >= startMs && e.t <= endMs);
 }
 
 function seedAudits(r, startMs, endMs, has, atLocal) {

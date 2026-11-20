@@ -7,6 +7,8 @@
 // that did it, never a person, and nothing here counts or ranks a member of staff.
 
 import { deriveTasks, completionStats, BED_CLEAN } from '../../core/tasks.js';
+import { stockCatalogue, deriveStock, zeroIntervals, openRequestFor, usableOf, holdingOf, validDate } from '../../core/stock.js';
+import { ALL_ROLES } from '../../core/kit.js';
 
 // ---- kinds of task (configuration for the shared task object, core/tasks.js) ----
 // Bed cleans are not here: a vacated bed is a clean task by itself (core). These are the jobs a
@@ -249,6 +251,242 @@ export function ruleAuditFailedTwice(audits, placeName) {
       why: `The last two audits scored ${Math.round(a.score)}% and ${Math.round(b.score)}%, under the example pass mark of ${PASS_MARK}%.${both.length ? ` Failed both times: ${both.join("; ")}.` : ''}`,
       basis: BASIS['audit-failed-twice'], action: null,
     });
+  }
+  return out;
+}
+
+// ================================================================ Linen and meals (slice 2)
+// Linen is the shared stock item (core/stock.js): this module adds the category and a few example
+// items, and every count, top-up level, request, issue and stock-out goes through the shared
+// ospeli_stock_* commands. Nothing here moves stock; it only reads the log. Meals are counts for a
+// ward, a date and a meal (ordered, delivered, returned uneaten), never a person, a diet or an
+// allergy: those stay with the site's own catering and clinical process.
+
+// Who may do what with linen. Every verb is listed; [] means nobody does it here. Clean linen is
+// kept in the site's store (the example hospital has one store and no linen room), so the
+// storekeeper receives it from the laundry and issues top-ups; the support services supervisor
+// sets the top-up levels and looks after the rest.
+const SUPERVISOR = ['support-supervisor'];
+const STORE = ['storekeeper'];
+const ON_THE_WARD = ['cleaner', 'ward-nurse', 'support-supervisor'];
+export const STOCK_CATEGORIES = {
+  linen: { name: 'Linen', roles: {
+    count: ON_THE_WARD, request: ON_THE_WARD, issue: STORE, receive: STORE, transfer: SUPERVISOR, use: [],
+    writeOff: SUPERVISOR, hold: SUPERVISOR, release: SUPERVISOR, levels: SUPERVISOR, itemAdd: SUPERVISOR,
+  } },
+};
+// A few generic example items, counted one by one. No brand, supplier or price.
+export const STOCK_ITEMS = [
+  { id: 'bed-sheet', name: 'Bed sheet', unit: 'each', category: 'linen' },
+  { id: 'pillowcase', name: 'Pillowcase', unit: 'each', category: 'linen' },
+  { id: 'blanket', name: 'Blanket', unit: 'each', category: 'linen' },
+  { id: 'towel', name: 'Towel', unit: 'each', category: 'linen' },
+  { id: 'patient-gown', name: 'Patient gown', unit: 'each', category: 'linen' },
+];
+export const LINEN = 'linen';
+export const LINEN_CATALOGUE = stockCatalogue([{ id: 'support', STOCK_CATEGORIES, STOCK_ITEMS }], ALL_ROLES);
+// Linen only, from the shared stock item's own reading of the log: another module's stock is left out.
+export const deriveLinen = (events, offsetMinutes = 0) => deriveStock(events.filter((e) => typeof e.type === 'string' && e.type.startsWith('stock.')),
+  { items: LINEN_CATALOGUE.items, categories: LINEN_CATALOGUE.categories, offsetMinutes });
+
+// The shift pattern behind "area-shifts": an example setting, set locally (the example hospital's
+// own day and night shifts). Hours are the site's local time.
+export const SHIFTS = [{ id: 'day', name: 'Day shift', start: 7, end: 19 }, { id: 'night', name: 'Night shift', start: 19, end: 31 }];
+export const SHIFT_NOTE = 'Day shift 07:00 to 19:00 and night shift 19:00 to 07:00, local time (example setting, set locally).';
+// Shifts that begin in [fromMs, toMs): [{ id, name, start, end }] in milliseconds.
+export function shiftsBetween(fromMs, toMs, offsetMinutes = 0) {
+  const off = offsetMinutes * MIN_MS;
+  const out = [];
+  const first = Math.floor((fromMs + off) / DAY_MS) * DAY_MS - DAY_MS - off; // local midnight, a day early
+  for (let d = first; d < toMs; d += DAY_MS) {
+    for (const s of SHIFTS) {
+      const start = d + s.start * HOUR_MS;
+      if (start >= fromMs && start < toMs) out.push({ id: s.id, name: s.name, start, end: d + s.end * HOUR_MS });
+    }
+  }
+  return out.sort((a, b) => a.start - b.start);
+}
+export const localDate = (ms, offsetMinutes = 0) => new Date(ms + offsetMinutes * MIN_MS).toISOString().slice(0, 10);
+export const addDays = (date, n) => new Date(Date.parse(`${date}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
+const MIN_MS = 60e3; const HOUR_MS = 36e5; const DAY_MS = 864e5;
+const overlaps = (list, a, b) => list.some(([x, y]) => Math.min(y, b) - Math.max(x, a) > 0);
+
+// KPI linen stock-outs: area-shifts with a linen item at zero / area-shifts (spec; local definition).
+// An area is a place `isArea` keeps (wards and departments, never the store that supplies them) that
+// has a linen record. An area-shift counts from the area's first linen record; the shift going on
+// now counts up to `until`. It is a stock-out when any linen item there had nothing usable at any
+// moment of the shift (the balances: a count of zero until the next top-up is issued), or a person
+// had declared a stock-out of it. A shift with no count is neither left out nor guessed: it keeps
+// the balance of the last count and the top-ups issued since; how many had no count is `uncounted`.
+export function linenStockOuts(events, { since, until, offsetMinutes = 0, stock = null, isArea = () => true }) {
+  const s = stock ?? deriveLinen(events, offsetMinutes);
+  const [from, to] = [Date.parse(since), Date.parse(until)];
+  const areas = new Map(); // place -> { start, zero: [[a, b]], counts: [t] }
+  for (const h of s.holdings.values()) {
+    if (s.items.get(h.itemId)?.category !== LINEN || !isArea(h.placeId)) continue;
+    const a = areas.get(h.placeId) || { start: Infinity, zero: [], counts: [] };
+    a.start = Math.min(a.start, Date.parse(h.firstAt));
+    a.zero.push(...zeroIntervals(h, to, s.offsetMinutes));
+    areas.set(h.placeId, a);
+  }
+  for (const so of s.stockOuts.values()) {
+    const a = areas.get(so.placeId);
+    if (a && s.items.get(so.itemId)?.category === LINEN) a.zero.push([Date.parse(so.startedAt), so.endedAt ? Date.parse(so.endedAt) : to]);
+  }
+  const linenIds = new Set([...s.items.values()].filter((it) => it.category === LINEN).map((it) => it.id));
+  for (const e of events) {
+    if (e.type !== 'stock.counted' || !areas.has(e.subject)) continue;
+    if ((e.data?.lines || []).some((l) => linenIds.has(l?.itemId))) areas.get(e.subject).counts.push(Date.parse(e.at));
+  }
+  const shifts = shiftsBetween(from, to, offsetMinutes);
+  const tally = () => ({ numerator: 0, denominator: 0 });
+  const total = tally(); const byShift = Object.fromEntries(SHIFTS.map((x) => [x.id, tally()])); const byArea = new Map();
+  let uncounted = 0;
+  for (const [placeId, a] of areas) {
+    const mine = tally();
+    for (const sh of shifts) {
+      const end = Math.min(sh.end, to);
+      if (end <= a.start) continue;
+      const begin = Math.max(sh.start, a.start);
+      const out = overlaps(a.zero, begin, end);
+      for (const t of [total, byShift[sh.id], mine]) { t.denominator += 1; if (out) t.numerator += 1; }
+      if (!a.counts.some((t) => t >= begin && t < end)) uncounted += 1;
+    }
+    byArea.set(placeId, mine);
+  }
+  const pct = (t) => (t.denominator ? (100 * t.numerator) / t.denominator : null);
+  return { value: pct(total), numerator: total.numerator, denominator: total.denominator, n: total.denominator, uncounted,
+    byShift: SHIFTS.map((x) => ({ id: x.id, name: x.name, ...byShift[x.id], value: pct(byShift[x.id]) })),
+    breakdown: [...byArea].map(([id, t]) => ({ id, ...t, value: pct(t), n: t.denominator })) };
+}
+
+// ---- meals: counts per ward, date and meal; never a person, a diet or an allergy ----
+export const MEALS = [{ id: 'breakfast', name: 'Breakfast' }, { id: 'midday', name: 'Midday meal' }, { id: 'evening', name: 'Evening meal' }];
+export const MEAL_NAME = Object.fromEntries(MEALS.map((m) => [m.id, m.name]));
+export const MEAL_MAX = 500; // more than any ward serves at one meal: a bound on the numbers, not a setting
+export const MEAL_BACK_DAYS = 7; // a meal can be recorded or corrected for today and the 6 days before (example setting, not a standard)
+export const MEALS_NOTE = 'Counts only. Diets and allergies are not handled here: they stay with your site\'s own catering and clinical process.';
+const okCount = (n) => Number.isInteger(n) && n >= 0 && n <= MEAL_MAX;
+// What is wrong with a meal record's numbers, or null.
+export function mealProblem({ ordered, delivered, returned }) {
+  if (![ordered, delivered, returned].every(okCount)) return `Each number is a whole number from 0 to ${MEAL_MAX}.`;
+  if (returned > delivered) return `Returned uneaten (${returned}) cannot be more than delivered (${delivered}).`;
+  return null;
+}
+// The latest record for each ward, date and meal (recording again corrects it; both stay in the log).
+// A record that does not fit (an edited import) is left out.
+export function deriveMeals(events) {
+  const m = new Map();
+  for (const e of events) {
+    if (e.type !== 'support.meals-recorded') continue;
+    const d = e.data || {};
+    if (typeof e.subject !== 'string' || !validDate(d.date) || !MEAL_NAME[d.meal] || mealProblem(d)) continue;
+    const k = `${e.subject}|${d.date}|${d.meal}`;
+    const prev = m.get(k);
+    m.set(k, { wardId: e.subject, date: d.date, meal: d.meal, ordered: d.ordered, delivered: d.delivered, returned: d.returned, at: e.at, byRole: e.actorRole, versions: (prev?.versions || 0) + 1 });
+  }
+  return [...m.values()];
+}
+// KPI meal waste: meals returned uneaten / meals delivered (spec; local definition), over the meal
+// records dated fromDate to toDate (YYYY-MM-DD, both included). A meal with no record is left out,
+// never counted as zero.
+export function mealWaste(events, { fromDate, toDate, see = () => true, records = null }) {
+  const list = (records ?? deriveMeals(events)).filter((x) => x.date >= fromDate && x.date <= toDate && see(x.wardId));
+  const sum = (xs) => xs.reduce((t, x) => ({ numerator: t.numerator + x.returned, denominator: t.denominator + x.delivered, n: t.n + 1 }), { numerator: 0, denominator: 0, n: 0 });
+  const pct = (t) => (t.denominator ? (100 * t.numerator) / t.denominator : null);
+  const total = sum(list);
+  const wards = [...new Set(list.map((x) => x.wardId))].sort();
+  return { value: pct(total), ...total,
+    breakdown: MEALS.map((m) => { const t = sum(list.filter((x) => x.meal === m.id)); return { id: m.id, name: m.name, ...t, value: pct(t) }; }),
+    byWard: wards.map((w) => { const mine = list.filter((x) => x.wardId === w); const t = sum(mine);
+      return { id: w, ...t, value: pct(t), byMeal: MEALS.map((m) => { const u = sum(mine.filter((x) => x.meal === m.id)); return { id: m.id, ...u, value: pct(u) }; }) }; }) };
+}
+
+// ---- guide rules for linen and meals: fixed rules, example settings, a person acts ----
+export const MEAL_DAYS = 7; // "recent days" for the meals rule
+export const MEAL_USUAL_PCT = 15; // usual share returned uneaten, per ward and meal
+export const MEAL_MIN_RECORDS = 3; // at least this many days recorded before the rule says anything
+export const MEAL_MIN_DELIVERED = 30; // and at least this many meals delivered
+GUIDE_RULES.push(
+  { id: 'linen-two-counts', name: 'Linen under its top-up level twice',
+    basis: 'Example setting, not a standard: a fixed rule. An item\'s last two counts in an area were both under its top-up level and it is still under. With no top-up waiting, the guide offers one for exactly what is short; with one waiting, it says so. A person decides.' },
+  { id: 'meals-returned', name: 'Many meals returned uneaten',
+    basis: `Example setting, not a standard: over the last ${MEAL_DAYS} days, with at least ${MEAL_MIN_RECORDS} days recorded and ${MEAL_MIN_DELIVERED} meals delivered, more than ${MEAL_USUAL_PCT}% of one ward's meal came back uneaten (the usual level, set locally). Advice only.` },
+);
+BASIS['linen-two-counts'] = GUIDE_RULES.find((r) => r.id === 'linen-two-counts').basis;
+BASIS['meals-returned'] = GUIDE_RULES.find((r) => r.id === 'meals-returned').basis;
+export const TASK_RULES = ['cleans-first', 'team-busy', 'audit-failed-twice'];
+
+// Rule 4. stock: deriveLinen(...); now: ISO time; isArea(placeId) and see(placeId) keep the areas
+// to look at; placeName(id), itemName(id) give the words.
+export function ruleLinenTwoCounts(events, { stock, now, isArea = () => true, see = () => true, placeName = (x) => x, itemName = (x) => x }) {
+  const linen = new Set([...stock.items.values()].filter((it) => it.category === LINEN).map((it) => it.id));
+  const level = new Map(); const counts = new Map(); // item|place -> level; -> [{ qty, level }]
+  for (const e of events) {
+    if (e.type === 'stock.level-set' && linen.has(e.data?.itemId)) level.set(`${e.data.itemId}|${e.subject}`, e.data.level || null);
+    else if (e.type === 'stock.counted' && isArea(e.subject)) {
+      for (const l of e.data?.lines || []) {
+        if (!linen.has(l?.itemId) || !Number.isInteger(l.qty)) continue;
+        const k = `${l.itemId}|${e.subject}`;
+        counts.set(k, [...(counts.get(k) || []).slice(-1), { qty: l.qty, level: level.get(k) ?? null }]);
+      }
+    }
+  }
+  const byPlace = new Map();
+  for (const [k, list] of counts) {
+    const [itemId, placeId] = k.split('|');
+    if (list.length < 2 || !see(placeId) || !list.every((c) => c.level && c.qty < c.level)) continue;
+    const h = holdingOf(stock, itemId, placeId);
+    const usable = usableOf(stock, itemId, placeId, now);
+    if (!h?.level || usable >= h.level) continue; // topped up since
+    const p = byPlace.get(placeId) || { ask: [], waiting: [] };
+    const open = openRequestFor(stock, itemId, placeId);
+    if (open) p.waiting.push({ itemId, usable, level: h.level, request: open }); else p.ask.push({ itemId, usable, level: h.level });
+    byPlace.set(placeId, p);
+  }
+  const out = [];
+  const words = (xs) => andList(xs.map((x) => `${itemName(x.itemId).toLowerCase()} (${x.usable} of ${x.level})`));
+  for (const [placeId, p] of [...byPlace].sort((a, b) => (placeName(a[0]) < placeName(b[0]) ? -1 : 1))) {
+    const place = placeName(placeId);
+    if (p.ask.length) {
+      const lines = p.ask.sort((a, b) => (a.itemId < b.itemId ? -1 : 1)).map((x) => ({ itemId: x.itemId, qty: x.level - x.usable }));
+      out.push({ rule: 'linen-two-counts', id: `linen-two-counts:${placeId}`,
+        text: `Ask for a linen top-up for ${place}: ${andList(lines.map((l) => `${itemName(l.itemId).toLowerCase()} ${l.qty}`))}.`,
+        why: `Under the top-up level on the last two counts, and no top-up is waiting: ${words(p.ask)}.`,
+        basis: BASIS['linen-two-counts'],
+        action: { label: 'Ask for this top-up', command: 'ospeli_stock_request', inputs: [{ placeId, lines }] } });
+    }
+    if (p.waiting.length) {
+      const ids = [...new Set(p.waiting.map((x) => x.request.id))];
+      const hrs = Math.max(...p.waiting.map((x) => (Date.parse(now) - Date.parse(x.request.at)) / HOUR_MS));
+      out.push({ rule: 'linen-two-counts', id: `linen-two-counts:${placeId}:waiting`,
+        text: `Check the linen top-up for ${place}: ${andList(ids)} ${ids.length === 1 ? 'is' : 'are'} still waiting.`,
+        why: `Under the top-up level on the last two counts: ${words(p.waiting)}. The top-up was asked for ${Math.round(hrs)} h ago and is not issued in full yet.`,
+        basis: BASIS['linen-two-counts'], action: null });
+    }
+  }
+  return out;
+}
+
+// Rule 5. records: deriveMeals(...); toDate: today's local date; placeName(id) gives the words.
+export function ruleMealsReturned(records, { toDate, see = () => true, placeName = (x) => x }) {
+  const fromDate = addDays(toDate, -(MEAL_DAYS - 1));
+  const groups = new Map();
+  for (const x of records) {
+    if (x.date < fromDate || x.date > toDate || !see(x.wardId)) continue;
+    const k = `${x.wardId}|${x.meal}`;
+    groups.set(k, [...(groups.get(k) || []), x]);
+  }
+  const out = [];
+  for (const [k, list] of [...groups].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+    const [wardId, meal] = k.split('|');
+    const t = list.reduce((s, x) => ({ o: s.o + x.ordered, d: s.d + x.delivered, r: s.r + x.returned }), { o: 0, d: 0, r: 0 });
+    if (list.length < MEAL_MIN_RECORDS || t.d < MEAL_MIN_DELIVERED || (100 * t.r) / t.d <= MEAL_USUAL_PCT) continue;
+    const name = MEAL_NAME[meal].toLowerCase();
+    out.push({ rule: 'meals-returned', id: `meals-returned:${wardId}:${meal}`,
+      text: `Check the ${name} numbers ordered for ${placeName(wardId)} with the ward.`,
+      why: `${Math.round((100 * t.r) / t.d)}% came back uneaten over the last ${MEAL_DAYS} days (${t.r} of ${t.d} delivered, ${plural(list.length, 'day')} recorded), above the usual level of ${MEAL_USUAL_PCT}% set here (example setting, not a standard). On average ${Math.round(t.o / list.length)} ordered and ${Math.round(t.d / list.length)} delivered a day.`,
+      basis: BASIS['meals-returned'], action: null });
   }
   return out;
 }

@@ -364,7 +364,7 @@ function kpiSection(ov) {
   return h('section', { class: 'section', 'aria-labelledby': 'sup-kpi-h' },
     h('h2', { id: 'sup-kpi-h' }, `Measures, last ${ov.period.days} days`),
     h('p', { class: 'meta' }, 'Calculated from the event log on this device. They count jobs and waits for the team, never a person.'),
-    h('div', { class: 'sup-kpis' }, ov.kpis.map((k) => h('div', { class: 'card sup-kpi', 'data-kpi': k.id, 'data-n': k.n },
+    h('div', { class: 'sup-kpis' }, ov.kpis.filter((k) => !ov.taskKpis || ov.taskKpis.includes(k.id)).map((k) => h('div', { class: 'card sup-kpi', 'data-kpi': k.id, 'data-n': k.n },
       h('p', { class: 'sup-kpi-name' }, k.name),
       h('p', { class: 'sup-kpi-value' }, fmtKpi(k)),
       h('p', { class: 'meta' }, k.unit === '%' ? `${k.numerator ?? 0} of ${k.denominator ?? 0} items passed, ${k.n} audits` : `Median of ${k.n} ${k.id === 'support-bed-turnaround' ? 'bed cleans' : 'jobs'} done`),
