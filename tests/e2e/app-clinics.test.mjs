@@ -115,7 +115,14 @@ test('the clinic receptionist\'s first five minutes on a 390 px touch screen: op
   assert.match(await page.locator('.cl-sec').first().textContent(), /^Still to come \(\d+\)$/);
   const here = page.locator('[data-test="here-now"] > li[data-state="arrived"]').first();
   await here.locator('[data-test="left"] > summary').tap();
-  assert.match(await here.locator('[data-test="wrong-arrived"]').textContent(), /tell the outpatient manager\. A correction step is planned/);
+  assert.match(await here.locator('[data-test="wrong-arrived"]').textContent(), /^Marked arrived by mistake\? Undo it: Patient P\d+ goes back to not arrived yet\. The mistake and the undo both stay in the record\.$/);
+  // A wrong Arrived is put right at the desk (ospeli/ospeli#144): back to booked, the mistake and the undo both in the log.
+  const hereId = await here.getAttribute('data-appointment');
+  await here.locator('[data-test="undo-arrived"]').tap();
+  await page.waitForSelector(`[data-appointment="${hereId}"][data-state="booked"]`);
+  const undone = await page.evaluate(async (s) => (await window.ospeli.core.events({ subject: s })).map((e) => [e.type, e.actorRole, e.data?.undo ?? null]), hereId);
+  assert.deepEqual(undone.slice(-2), [['appointment.arrived', 'clinic-receptionist', null], ['appointment.step-undone', 'clinic-receptionist', 'arrived']]);
+  assert.equal(await page.locator(`[data-appointment="${hereId}"] [data-step="arrived"]`).count(), 1, 'Arrived can be marked again');
   // An early arrival's long wait is shown with the booked time; the colour follows the time past it.
   const early = await page.evaluate(() => [...document.querySelectorAll('[data-test="here-now"] [data-test="wait"]')].map((x) => [x.textContent, x.className]));
   assert.ok(early.every(([t, cls]) => /booked \d\d:\d\d, arrived \d\d:\d\d/.test(t) && (/past booked time/.test(t) ? true : !/st-late/.test(cls))), JSON.stringify(early));
@@ -147,6 +154,29 @@ test('the clinic nurse calls in and finishes; Finished waits three seconds after
   assert.deepEqual((await page.evaluate(async (s) => (await window.ospeli.core.events({ subject: s })).slice(-2).map((e) => [e.type, e.actorRole]), id)), [['appointment.called', 'clinic-nurse'], ['appointment.finished', 'clinic-nurse']]);
   const m1 = (await run(page, 'ospeli_clinics_day_summary', { format: 'short' }, 'clinic-nurse')).kpis.find((k) => k.id === 'clinic-wait').n;
   assert.equal(m1, m0 + 1, 'waiting time in clinic counts the call');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('the clinic nurse puts right a patient called in by mistake: Undo Call in sends them back to waiting with the arrival time kept (ospeli/ospeli#144)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
+  await openAs(page, 'clinic-nurse');
+  await page.waitForSelector('[data-test="queue"]');
+  const call = page.locator('[data-step="called"]').first();
+  const id = await call.locator('xpath=ancestor::li[1]').getAttribute('data-appointment');
+  const arrivedAt = (await run(page, 'ospeli_clinics_queue', {}, 'clinic-nurse')).patients.find((p) => p.appointmentId === id).arrivedAt;
+  await call.tap();
+  await page.waitForSelector(`[data-appointment="${id}"][data-state="called"]`);
+  const row = page.locator(`[data-appointment="${id}"]`);
+  await row.locator('[data-test="wrong-called"] > summary').tap();
+  assert.deepEqual(await phoneProblems(page), [], 'undo panel: phone rules');
+  await row.locator('[data-test="undo-called"]').tap();
+  await page.waitForSelector(`[data-appointment="${id}"][data-state="arrived"]`);
+  const p = (await run(page, 'ospeli_clinics_queue', {}, 'clinic-nurse')).patients.find((x) => x.appointmentId === id);
+  assert.deepEqual([p.state, p.arrivedAt, p.calledAt], ['arrived', arrivedAt, null], 'back to waiting; the arrival time is kept');
+  const evs = await page.evaluate(async (s) => (await window.ospeli.core.events({ subject: s })).slice(-2).map((e) => [e.type, e.actorRole]), id);
+  assert.deepEqual(evs, [['appointment.called', 'clinic-nurse'], ['appointment.step-undone', 'clinic-nurse']], 'the wrong step and the undo both stay in the log');
+  assert.equal(await row.locator('[data-step="called"]').count(), 1, 'Call in is offered again');
   assert.deepEqual(errors, []);
   await context.close();
 });
@@ -439,9 +469,10 @@ test('after a clinic\'s end the manager closes each open appointment with the sh
   const co = gm().locator('[data-test="close-out"]');
   if (await co.locator('li[data-state="arrived"]').count()) {
     const li = co.locator('li[data-state="arrived"]').first();
-    assert.match(await li.locator('[data-test="not-tapped"]').textContent(), /"seen, times not recorded" step is planned \(not built yet\).*cannot be marked held/);
-    assert.equal(await li.locator('button').count(), 1, 'Left before being seen stays available, after the plain line');
+    assert.match(await co.locator('[data-test="not-tapped"]').textContent(), /"Seen, no times" closes the visit as attended with no call or finish time\. The start, wait and overrun figures leave it out and say how many\./);
+    assert.deepEqual(await li.locator('button').allTextContents(), ['Seen, no times', 'Left before being seen'], 'Seen, no times first, then Left before being seen');
   }
+  const noTimesExpected = await co.locator('li[data-state="arrived"]').count();
   if (await co.locator('li[data-state="called"]').count()) {
     assert.equal(await co.locator('li[data-state="called"] button').first().textContent(), 'Finished (recorded now, late)');
     assert.match(await co.locator('[data-test="late-finish"]').textContent(), /overrun figure will include it/);
@@ -457,6 +488,11 @@ test('after a clinic\'s end the manager closes each open appointment with the sh
   assert.match(await gm().locator('[data-test="day-sum"]').textContent(), /^Used (\d+).*\+ empty (\d+) = (\d+) offered/);
   const [, u, e, o] = (await gm().locator('[data-test="day-sum"]').textContent()).match(/^Used (\d+).*\+ empty (\d+) = (\d+) offered/);
   assert.equal(+u + +e, +o, 'the figures add up');
+  // Patients closed as "Seen, no times" are counted, and the end figure says it is only the earliest end.
+  if (noTimesExpected) {
+    assert.match(await gm().locator('[data-test="no-times-count"]').textContent(), new RegExp(`^${noTimesExpected} seen with no times \\(Seen, no times\\), left out of the start and end figures\\.`));
+    assert.match(await gm().locator('[data-test="start-end"]').textContent(), /at least\.|may have ended later\.|^No call time recorded\.$|recorded call/);
+  }
   assert.deepEqual(errors, []);
   await context.close();
 });
@@ -491,7 +527,15 @@ test('the desk: after "Did not come?" or "Left before being seen" saves, the row
   }
   await tapAndCheck('[data-test="queue"] > li[data-state="booked"]:has([data-test="missed"])', '[data-test="missed"] > summary', '[data-reason="Did not arrive"]', 'no-show');
   await tapAndCheck('[data-test="here-now"] > li[data-state="arrived"]', '[data-test="left"] > summary', '[data-cmd="ospeli_slots_cancel"]', 'cancelled');
-  assert.match(await page.locator('[data-test="wrong-missed"]').first().textContent(), /Tell the outpatient manager/);
+  // A missed appointment marked too soon is undone on the same day (ospeli/ospeli#144): back to booked, Arrived offered again.
+  const missed = page.locator('li[data-state="no-show"]:has([data-test="wrong-missed"])').first();
+  const missedId = await missed.getAttribute('data-appointment');
+  await missed.locator('[data-test="wrong-missed"] > summary').tap();
+  assert.deepEqual(await missed.locator('[data-test="undo-no-show"]').allTextContents(), ['Undo: marked by mistake', 'Undo: patient arrived late']);
+  await missed.locator('[data-test="undo-no-show"][data-reason="Patient arrived late"]').tap();
+  await page.waitForSelector(`[data-appointment="${missedId}"][data-state="booked"]`);
+  const last = await page.evaluate(async (s) => (await window.ospeli.core.events({ subject: s })).at(-1), missedId);
+  assert.deepEqual([last.type, last.data.undo, last.data.reason], ['appointment.step-undone', 'no-show', 'Patient arrived late']);
   assert.deepEqual(errors, []);
   await context.close();
 });

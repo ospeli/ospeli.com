@@ -119,8 +119,8 @@ test('the five measures, recomputed from a hand-built log through the shared hel
   assert.deepEqual(r.byService, { 'general-medicine': { n: 2, medianDays: 8.5 }, diabetes: { n: 1, medianDays: 4 }, eye: { n: 1, medianDays: 6 } });
   assert.equal(referralToFirst(cd, index, p).medianDays, null, 'four referrals are fewer than the small-number rule of five: no median');
   // 4. Wait in clinic: 10, 15, 40, 12 and 15 (today's patient called, not yet finished) -> median 15.
-  assert.deepEqual(clinicWait(d, p), { n: 5, medianMinutes: 15 });
-  assert.deepEqual(clinicWait(d, { ...p, service: 'diabetes' }), { n: 1, medianMinutes: 40 });
+  assert.deepEqual(clinicWait(d, p), { n: 5, medianMinutes: 15, leftOut: 0 }, 'nobody closed as "Seen, no times" in this log');
+  assert.deepEqual(clinicWait(d, { ...p, service: 'diabetes' }), { n: 1, medianMinutes: 40, leftOut: 0 });
   // 5. Start punctuality: first call 5 min (on time), 30 min (late), 10 min (on time) -> 2 of 3 held.
   assert.deepEqual(startPunctuality(d, p), { value: 2 / 3, numerator: 2, denominator: 3, nobodyCalled: 0 });
 });
@@ -588,4 +588,54 @@ test('A2: a booking made by mistake is cancelled by the site as "Booked in error
   await run('ospeli_codes_close', { code: opened.code, reason: 'Opened in error' }, 'booking-clerk');
   assert.ok(!(await list()).some((x) => x.code === opened.code), 'off the list');
   assert.equal((await core.events({ subject: opened.code })).at(-1).data.reason, 'Opened in error');
+});
+
+test('#144 on the module: a wrong Call in is undone, a patient seen but not tapped through is closed as "Seen, no times", and the day says how many and which way its figures lean', async () => {
+  // Today's antenatal clinic (13:00 to 14:00) in the hand-built log: pc-00008 arrived 12:55, called 13:10, never finished. Now 14:00.
+  const { run } = await site(handLog());
+  const q = async () => (await run('ospeli_clinics_queue', { sessionId: 'ses-00005' }, 'clinic-nurse')).patients.find((x) => x.appointmentId === 'apt-00008');
+  let p = await q();
+  assert.deepEqual([p.state, p.mayUndo, p.noTimes], ['called', true, false]);
+  await run('ospeli_slots_step_correct', { appointmentId: 'apt-00008', undo: 'called', expectedState: 'called' }, 'clinic-nurse');
+  p = await q();
+  assert.deepEqual([p.state, p.clocks.arrived, p.calledAt], ['arrived', '12:55', null], 'back to waiting, the arrival kept');
+  await run('ospeli_slots_step', { appointmentId: 'apt-00008', step: 'seen-no-times', expectedState: 'arrived' }, 'outpatient-manager');
+  const full = await run('ospeli_clinics_queue', { sessionId: 'ses-00005' }, 'clinic-nurse');
+  out('ospeli_clinics_queue', full);
+  p = full.patients.find((x) => x.appointmentId === 'apt-00008');
+  assert.deepEqual([p.state, p.stateName, p.noTimes, p.mayUndo, p.finishedAt], ['finished', 'Seen, no times', true, false, null]);
+  const s = await run('ospeli_clinics_day_summary', { date: '2026-11-06' }, 'outpatient-manager');
+  out('ospeli_clinics_day_summary', s);
+  const c = s.clinics.find((x) => x.sessionId === 'ses-00005');
+  // Hand-checked: one patient, attended with no times; the only call was undone, so no call time; no finish time, so no
+  // overrun minutes, and the end can only be "at least"; one step undone; nobody open, so it may be marked held.
+  assert.deepEqual([c.used, c.empty, c.capacity, c.attended, c.noTimes, c.corrections, c.firstCalledMinutes, c.firstCalledAtMost, c.overrunMinutes, c.overrunAtLeast, c.openCount, c.mayMarkHeld],
+    [1, 2, 3, 1, 1, 1, null, false, null, true, 0, true]);
+  assert.equal(s.picks.noTimesName, 'Seen, no times');
+  // The wait measure leaves the patient out and says so: the five earlier waits are unchanged.
+  const E = handLog();
+  E.push(ev('appointment.step-undone', 'apt-00008', at('2026-11-06', '13:50'), { undo: 'called', reason: 'Marked by mistake' }, 'clinic-nurse'),
+    ev('appointment.seen-no-times', 'apt-00008', at('2026-11-06', '13:55'), null, 'outpatient-manager'));
+  assert.deepEqual(clinicWait(derive(E), { since: SINCE, until: NOW }), { n: 4, medianMinutes: 13.5, leftOut: 1 }, 'waits 10, 12, 15, 40: median 13.5; one left out');
+  assert.equal(s.kpis.find((k) => k.id === 'clinic-wait').n, 4, 'four waits (10, 15, 40, 12) once the undone call is gone');
+});
+
+test('#144 on the module: a missed appointment marked by mistake is undone at the desk on the same day, with "Patient arrived late", and the patient can then arrive', async () => {
+  const { run, advance } = await site([], { modules: true, end: TUE });
+  advance(50); // 10:50 at the site: the 10:30 patient is past the booked time and the grace
+  const queue = await run('ospeli_clinics_queue', {}, 'clinic-receptionist');
+  const p = queue.patients.find((x) => x.mayMarkMissed);
+  assert.ok(p, 'a patient past the grace');
+  await run('ospeli_slots_step', { appointmentId: p.appointmentId, step: 'no-show', reason: 'Did not arrive', expectedState: 'booked' }, 'clinic-receptionist');
+  const missed = (await run('ospeli_clinics_queue', { sessionId: queue.sessionId }, 'clinic-receptionist')).patients.find((x) => x.appointmentId === p.appointmentId);
+  assert.deepEqual([missed.state, missed.mayUndo], ['no-show', true]);
+  await run('ospeli_slots_step_correct', { appointmentId: p.appointmentId, undo: 'no-show', reason: 'Patient arrived late', expectedState: 'no-show' }, 'clinic-receptionist');
+  await run('ospeli_slots_step', { appointmentId: p.appointmentId, step: 'arrived', expectedState: 'booked' }, 'clinic-receptionist');
+  const after = (await run('ospeli_clinics_queue', { sessionId: queue.sessionId }, 'clinic-receptionist')).patients.find((x) => x.appointmentId === p.appointmentId);
+  assert.equal(after.state, 'arrived');
+  const day = (await run('ospeli_clinics_day_summary', {}, 'outpatient-manager')).clinics.find((x) => x.sessionId === queue.sessionId);
+  assert.equal(day.corrections, 1, 'the undo is counted');
+  assert.equal(day.used + day.empty, day.capacity, 'the figures still add up');
+  // An agent cannot undo a step: the command is for people only.
+  await assert.rejects(run('ospeli_slots_step_correct', { appointmentId: p.appointmentId, undo: 'arrived' }, { type: 'agent', role: 'clinic-receptionist', agentId: 'agent-x' }), (e) => e instanceof CommandError);
 });

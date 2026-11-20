@@ -20556,6 +20556,22 @@
                 },
                 "counts": {
                   "type": "object"
+                },
+                "noTimes": {
+                  "type": "integer",
+                  "description": "Day summary: patients closed as \"Seen, no times\" (seen, but the call and finish were not tapped). They are left out of the start, wait and overrun figures."
+                },
+                "firstCalledAtMost": {
+                  "type": "boolean",
+                  "description": "Day summary: true when a patient seen with no times arrived before the first recorded call, so the first call may have been sooner than shown."
+                },
+                "overrunAtLeast": {
+                  "type": "boolean",
+                  "description": "Day summary: true when some patients have no finish time, so the last recorded finish is only the earliest the clinic can have ended."
+                },
+                "corrections": {
+                  "type": "integer",
+                  "description": "Day summary: steps undone in this clinic (marked by mistake). The wrong step and the undo both stay in the log."
                 }
               }
             }
@@ -20641,6 +20657,14 @@
                   ],
                   "description": "Booked or arrived: minutes past the booked slot time now (0 before it)."
                 },
+                "noTimes": {
+                  "type": "boolean",
+                  "description": "true: closed as \"Seen, no times\": seen, but the call and finish were not tapped, so there is no call or finish time."
+                },
+                "mayUndo": {
+                  "type": "boolean",
+                  "description": "true: the last step (arrived, called, or a missed appointment) may be undone with ospeli_slots_step_correct while the clinic is not yet marked held."
+                },
                 "late": {
                   "type": "boolean",
                   "description": "Still waiting or not arrived 15 minutes or more past the booked time (an example setting, not a standard)."
@@ -20696,7 +20720,7 @@
     },
     {
       "name": "ospeli_clinics_day_summary",
-      "summary": "Each clinic's day in numbers: slots in the template, used, empty, cancelled and missed; patients waiting now; first patient called against the planned start; overrun past the planned end; sessions cancelled or reduced with the reason; and for a session that still has bookings, each one with the next free slots of the same service (Move or Cancel). Also the five measures with definitions and sources, the guide's suggestions with their basis (empty while the guide is off), and the templates (read-only). Clinics and waits, never a clinician. Read-only.",
+      "summary": "Each clinic's day in numbers: slots in the template, used, empty, cancelled and missed; patients waiting now; first patient called against the planned start; overrun past the planned end (each saying how many patients were closed as \"Seen, no times\" and which way that leans the figure); steps undone; sessions cancelled or reduced with the reason; and for a session that still has bookings, each one with the next free slots of the same service (Move or Cancel). Also the five measures with definitions and sources, the guide's suggestions with their basis (empty while the guide is off), and the templates (read-only). Clinics and waits, never a clinician. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -20844,6 +20868,22 @@
                 },
                 "counts": {
                   "type": "object"
+                },
+                "noTimes": {
+                  "type": "integer",
+                  "description": "Day summary: patients closed as \"Seen, no times\" (seen, but the call and finish were not tapped). They are left out of the start, wait and overrun figures."
+                },
+                "firstCalledAtMost": {
+                  "type": "boolean",
+                  "description": "Day summary: true when a patient seen with no times arrived before the first recorded call, so the first call may have been sooner than shown."
+                },
+                "overrunAtLeast": {
+                  "type": "boolean",
+                  "description": "Day summary: true when some patients have no finish time, so the last recorded finish is only the earliest the clinic can have ended."
+                },
+                "corrections": {
+                  "type": "integer",
+                  "description": "Day summary: steps undone in this clinic (marked by mistake). The wrong step and the undo both stay in the log."
                 }
               }
             }

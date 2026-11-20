@@ -116,6 +116,8 @@ export function dayOf(d, s, now) {
   const count = (f) => appts.filter(f).length;
   const waiting = appts.filter((a) => a.state === 'arrived').map((a) => minutesBetween(a.arrivedAt, now));
   const open = appts.filter((a) => ['booked', 'arrived', 'called'].includes(a.state));
+  const first = firstCalledVsStart(d, { sessionId: s.id });
+  const end = overrun(d, { sessionId: s.id });
   return {
     // Used + empty = offered, always: a missed appointment and a patient who left before being seen
     // used their slot; a cancelled booking's slot is empty again, or refilled by another booking.
@@ -125,7 +127,11 @@ export function dayOf(d, s, now) {
     attended: count((a) => a.arrivedAt), finished: count((a) => a.state === 'finished'),
     toCome: count((a) => a.state === 'booked'), waitingNow: waiting.length, longestWaitMinutes: waiting.length ? Math.max(...waiting) : null,
     withClinician: count((a) => a.state === 'called'), leftBeforeSeen: count((a) => a.state === 'cancelled' && a.arrivedAt),
-    firstCalledMinutes: firstCalledVsStart(d, { sessionId: s.id }).minutes, overrunMinutes: open.length ? null : overrun(d, { sessionId: s.id }).minutes, // only once nobody is still booked, waiting or in
+    firstCalledMinutes: first.minutes, overrunMinutes: open.length ? null : end.minutes, // only once nobody is still booked, waiting or in
+    // Patients closed as "Seen, no times" have no call or finish time: the start figure may be later than
+    // the truth (atMost) and the overrun only the earliest the clinic can have ended (atLeast).
+    noTimes: count((a) => a.state === 'finished' && a.noTimes), firstCalledAtMost: Boolean(first.atMost), overrunAtLeast: !open.length && Boolean(end.atLeast),
+    corrections: appts.reduce((n, a) => n + (a.corrections?.length || 0), 0),
     open,
   };
 }

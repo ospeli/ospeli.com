@@ -17,7 +17,7 @@ import {
 } from '../../core/kit.js';
 import { currentWords } from '../../core/model.js';
 import {
-  SLOT_EVENT_TYPES, SESSION_STATES, APPOINTMENT_STATES, LEFT_REASON, DATE_PATTERN, SESSION_ID_PATTERN, slotCatalogue, deriveSlots, validDate, localDate, addDays,
+  SLOT_EVENT_TYPES, SESSION_STATES, APPOINTMENT_STATES, LEFT_REASON, NO_TIMES_NAME, UNDO_REASONS, DATE_PATTERN, SESSION_ID_PATTERN, slotCatalogue, deriveSlots, validDate, localDate, addDays,
   slotGrid, localInstant, weekdayOf, waitMinutes, noShowFromMs, templateOn, dueMs,
 } from '../../core/slots.js';
 import { CODE_EVENT_TYPES, deriveCodes, appointmentsByCode, codeLabel } from '../../core/codes.js';
@@ -134,6 +134,8 @@ const PATIENT_OUT = { type: 'object', required: ['appointmentId', 'code', 'label
   arrivedAt: NULLABLE('string'), calledAt: NULLABLE('string'), finishedAt: NULLABLE('string'),
   waitMinutes: { type: ['integer', 'null'], description: 'Minutes from arrived to called, or to now while still waiting.' },
   pastBookedMinutes: { type: ['integer', 'null'], description: 'Booked or arrived: minutes past the booked slot time now (0 before it).' },
+  noTimes: { type: 'boolean', description: 'true: closed as "Seen, no times": seen, but the call and finish were not tapped, so there is no call or finish time.' },
+  mayUndo: { type: 'boolean', description: 'true: the last step (arrived, called, or a missed appointment) may be undone with ospeli_slots_step_correct while the clinic is not yet marked held.' },
   late: { type: 'boolean', description: 'Still waiting or not arrived 15 minutes or more past the booked time (an example setting, not a standard).' },
   mayMarkMissed: { type: 'boolean', description: 'true: still booked after the booked time plus the grace, so "Missed appointment" may be recorded.' },
   clocks: { type: 'object', description: 'The site\'s own clock (HH:MM) for arrived, called and finished; null until then.' },
@@ -141,7 +143,11 @@ const PATIENT_OUT = { type: 'object', required: ['appointmentId', 'code', 'label
 const CLINIC_OUT = { type: 'object', required: ['sessionId', 'service', 'name', 'start', 'state'], properties: {
   sessionId: { type: 'string' }, service: { type: 'string' }, serviceWord: { type: 'string' }, name: { type: 'string', description: 'The clinic: a service at a place, never a person.' },
   placeId: NULLABLE('string'), date: { type: 'string' }, start: { type: 'string' }, end: { type: 'string' }, state: { type: 'string' }, stateName: { type: 'string' }, reason: NULLABLE('string'),
-  runningNow: { type: 'boolean' }, counts: { type: 'object' } } };
+  runningNow: { type: 'boolean' }, counts: { type: 'object' },
+  noTimes: { type: 'integer', description: 'Day summary: patients closed as "Seen, no times" (seen, but the call and finish were not tapped). They are left out of the start, wait and overrun figures.' },
+  firstCalledAtMost: { type: 'boolean', description: 'Day summary: true when a patient seen with no times arrived before the first recorded call, so the first call may have been sooner than shown.' },
+  overrunAtLeast: { type: 'boolean', description: 'Day summary: true when some patients have no finish time, so the last recorded finish is only the earliest the clinic can have ended.' },
+  corrections: { type: 'integer', description: 'Day summary: steps undone in this clinic (marked by mistake). The wrong step and the undo both stay in the log.' } } };
 
 function clinicOut(st, s) {
   const day = dayOf(st.d, s, st.now);
@@ -157,7 +163,8 @@ function patientOut(st, { a }) {
   const from = noShowFromMs(st.d, a);
   const past = ['booked', 'arrived'].includes(a.state) ? pastBooked(st, a) : null;
   return { appointmentId: a.id, code: a.code, label: codeLabel(a.code), slotTime: a.slotTime, slotType: a.slotType, slotTypeWord: SLOT_TYPES[a.slotType] || a.slotType,
-    state: a.state, stateName: a.state === 'cancelled' ? LEFT_REASON : APPOINTMENT_STATES[a.state].name, arrivedAt: a.arrivedAt, calledAt: a.calledAt, finishedAt: a.finishedAt,
+    state: a.state, stateName: a.state === 'cancelled' ? LEFT_REASON : a.noTimes ? NO_TIMES_NAME : APPOINTMENT_STATES[a.state].name, noTimes: Boolean(a.noTimes),
+    mayUndo: a.state === 'arrived' || a.state === 'called' || (a.state === 'no-show' && !a.rebookedBy), arrivedAt: a.arrivedAt, calledAt: a.calledAt, finishedAt: a.finishedAt,
     clocks: { arrived: siteClock(st, a.arrivedAt), called: siteClock(st, a.calledAt), finished: siteClock(st, a.finishedAt) },
     waitMinutes: waitMinutes(a, st.now), pastBookedMinutes: past, late: past != null && past >= LATE_MINUTES, mayMarkMissed: a.state === 'booked' && from != null && Date.parse(st.now) >= from, missedFrom: from == null ? null : new Date(from).toISOString(), rebook: Boolean(a.rebookOf) };
 }
@@ -184,7 +191,7 @@ async function queue(core, input) {
     asOf: st.now, synthetic: await isSynthetic(core), date, clinics: clinics.map((s) => clinicOut(st, s)),
     sessionId: chosen?.id ?? null, clinic: chosen ? clinicOut(st, chosen) : null,
     patients: cut.items.map((p) => patientOut(st, p)), total: cut.total, truncated: cut.truncated,
-    graceMinutes: NO_SHOW_GRACE_MINUTES, picks: { missedReasons: noShowPicks(), leftReason: LEFT_REASON },
+    graceMinutes: NO_SHOW_GRACE_MINUTES, picks: { missedReasons: noShowPicks(), leftReason: LEFT_REASON, noTimesName: NO_TIMES_NAME, undoReasons: [...UNDO_REASONS] },
     offlineNote: OFFLINE, note: NOT_FOR,
   };
 }
@@ -240,6 +247,7 @@ async function daySummary(core, input) {
     const day = dayOf(st.d, s, st.now);
     const base = { ...clinicOut(st, s), templateSlots: day.templateSlots, capacity: day.capacity, used: day.used, empty: day.empty, cancelled: day.cancelled, missed: day.missed,
       attended: day.attended, leftBeforeSeen: day.leftBeforeSeen, firstCalledMinutes: day.firstCalledMinutes, overrunMinutes: day.overrunMinutes,
+      noTimes: day.noTimes, firstCalledAtMost: day.firstCalledAtMost, overrunAtLeast: day.overrunAtLeast, corrections: day.corrections,
       ended: nowMs >= s.endMs, openCount: day.open.length,
       // Held only once nobody is still booked, waiting or in: each open one is closed first.
       mayMarkHeld: (s.state === 'planned' || s.state === 'reduced') && st.today >= s.date && nowMs >= s.startMs && !day.open.length };
@@ -271,7 +279,7 @@ async function daySummary(core, input) {
     guide: { on, rules: GUIDE_RULES.map((r) => ({ ...r })), suggestions },
     ...(short ? {} : { templates: templatesOut(st), planned: PLANNED.map((x) => ({ ...x })),
       picks: { sessionChange: [...catalogue().reasons.sessionChange], cancelForSession: 'Session cancelled or reduced', bookedInError: 'Booked in error', openedInError: 'Opened in error',
-        missedReasons: noShowPicks(), leftReason: LEFT_REASON, moveNoticeHours: MOVE_NOTICE_HOURS, lateMinutes: LATE_MINUTES, onTimeMinutes: ON_TIME_MINUTES, minGroup: MIN_GROUP } }),
+        missedReasons: noShowPicks(), leftReason: LEFT_REASON, noTimesName: NO_TIMES_NAME, moveNoticeHours: MOVE_NOTICE_HOURS, lateMinutes: LATE_MINUTES, onTimeMinutes: ON_TIME_MINUTES, minGroup: MIN_GROUP } }),
     note: NOT_FOR,
   };
 }
@@ -299,7 +307,7 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_clinics_day_summary',
-    summary: 'Each clinic\'s day in numbers: slots in the template, used, empty, cancelled and missed; patients waiting now; first patient called against the planned start; overrun past the planned end; sessions cancelled or reduced with the reason; and for a session that still has bookings, each one with the next free slots of the same service (Move or Cancel). Also the five measures with definitions and sources, the guide\'s suggestions with their basis (empty while the guide is off), and the templates (read-only). Clinics and waits, never a clinician. Read-only.',
+    summary: 'Each clinic\'s day in numbers: slots in the template, used, empty, cancelled and missed; patients waiting now; first patient called against the planned start; overrun past the planned end (each saying how many patients were closed as "Seen, no times" and which way that leans the figure); steps undone; sessions cancelled or reduced with the reason; and for a session that still has bookings, each one with the next free slots of the same service (Move or Cancel). Also the five measures with definitions and sources, the guide\'s suggestions with their basis (empty while the guide is off), and the templates (read-only). Clinics and waits, never a clinician. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, properties: {
       date: DATE('The day to summarise. Default: today.'),
