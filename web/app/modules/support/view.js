@@ -4,23 +4,26 @@
 //   #/support/board  Task board (supervisor, patient flow coordinator, wards): every open job by area
 //   #/support/ask    Ask for help (charge nurse): a job in a few taps; #/support/ask/<ward id> preselects the ward
 //   #/support/audit  Cleaning audit (supervisor on a phone; others may read the results)
+//   #/support/linen  Linen and meals (cleaner, ward: count linen, ask for a top-up, record meals;
+//                    supervisor: what is under level, at zero, waiting, and meal waste by ward)
 // The role decides which screens it has and which opens first. Measures jobs and waits, never people.
 import { h, setKids, fmtWait, moduleStyle } from '../ui.js';
 import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
+import { TASK_RULES } from './logic.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
 const roleNames = (ids) => ids.map((r) => roleById(r)?.name || r).join(', ');
 const TEAM_OF_ROLE = { porter: 'transport', cleaner: 'cleaning' };
-const TITLES = { jobs: 'My team\'s jobs', board: 'Task board', ask: 'Ask for help', audit: 'Cleaning audit' };
+const TITLES = { jobs: 'My team\'s jobs', board: 'Task board', ask: 'Ask for help', audit: 'Cleaning audit', linen: 'Linen and meals' };
 // Transport assistants and cleaners get their own queue and nothing that balances the work between teams.
 function screensFor(role) {
   if (role === 'porter') return ['jobs'];
-  if (role === 'cleaner') return ['jobs', 'audit'];
-  if (role === 'ward-nurse' || role === 'ae-nic') return ['ask', 'board', 'audit'];
-  if (role === 'support-supervisor' || role === 'bed-manager') return ['board', 'audit', 'ask'];
-  return ['board', 'audit'];
+  if (role === 'cleaner') return ['jobs', 'audit', 'linen'];
+  if (role === 'ward-nurse' || role === 'ae-nic') return ['ask', 'board', 'audit', 'linen'];
+  if (role === 'support-supervisor' || role === 'bed-manager') return ['board', 'audit', 'ask', 'linen'];
+  return ['board', 'audit', 'linen'];
 }
 const ORDINAL = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'];
 const ordinal = (n) => ORDINAL[n - 1] || `Number ${n}`;
@@ -54,7 +57,7 @@ export async function render(el, ctx) {
   const names = placeNames(places);
   const tabs = screens.length > 1 ? h('nav', { class: 'sup-tabs', 'aria-label': 'Cleaning and transport' },
     screens.map((s) => h('a', { href: `#/support/${s}`, 'data-screen': s, 'aria-current': s === screen ? 'page' : null }, TITLES[s]))) : null;
-  const view = { jobs: jobsScreen, board: boardScreen, ask: askScreen, audit: auditScreen }[screen](ctx, { places, names });
+  const view = { jobs: jobsScreen, board: boardScreen, ask: askScreen, audit: auditScreen, linen: linenScreen }[screen](ctx, { places, names });
   // The shell moves the page's children into <main>, so the module's class goes on its own wrapper too.
   el.append(h('div', { class: 'mod-support sup', 'data-screen': screen, 'data-role': ctx.role }, head, tabs, view.el));
   await view.load();
@@ -275,6 +278,8 @@ function boardScreen(ctx, { names }) {
   }
 
   function guideCard(g) {
+    const mine = g.suggestions.filter((s) => TASK_RULES.includes(s.rule));
+    const elsewhere = g.suggestions.length - mine.length;
     const mayAct = (s) => s.action && can(ctx.role, s.action.command);
     const mayToggle = can(ctx.role, 'ospeli_support_guide_set');
     return h('section', { class: 'card sup-guide', 'data-test': 'guide', 'data-on': String(g.on), 'aria-labelledby': 'sup-guide-h' },
@@ -282,11 +287,12 @@ function boardScreen(ctx, { names }) {
         mayToggle ? h('button', { class: 'btn btn-ghost btn-small guide-switch', type: 'button', 'aria-pressed': String(g.on), 'data-cmd': 'ospeli_support_guide_set', 'data-test': 'guide-switch', onclick: () => setGuide(!g.on) }, g.on ? 'Guide on: switch off' : 'Guide off: switch on') : null),
       g.on ? [
         h('p', { class: 'meta' }, 'Fixed rules, not AI. They suggest; you decide. Nothing changes until you tap.'),
-        g.suggestions.length ? h('ul', { class: 'sup-sugg' }, g.suggestions.map((s) => h('li', { 'data-rule': s.rule, 'data-test': 'suggestion' },
+        mine.length ? h('ul', { class: 'sup-sugg' }, mine.map((s) => h('li', { 'data-rule': s.rule, 'data-test': 'suggestion' },
           h('p', {}, h('b', {}, s.text)), h('p', { class: 'meta' }, s.why),
           mayAct(s) ? h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': s.action.command, 'data-test': 'follow', onclick: () => follow(s) }, s.action.inputs.length === 1 ? 'Do this clean next' : `Do these ${s.action.inputs.length} cleans next`) : null,
           h('details', { class: 'sup-def' }, h('summary', {}, 'Why this rule'), h('p', {}, s.basis)))))
           : h('p', { 'data-test': 'no-suggestion' }, 'Nothing to suggest right now.'),
+        elsewhere ? h('p', { class: 'meta', 'data-test': 'more-suggestions' }, `${elsewhere} more about linen and meals: `, h('a', { class: 'sup-link', href: '#/support/linen' }, 'see Linen and meals'), '.') : null,
       ] : h('p', { 'data-test': 'guide-off' }, 'The guide is off. Jobs, measures and audits work the same.'),
       mayToggle ? null : h('p', { class: 'meta' }, 'The Support services supervisor, Operations manager or COO can switch the guide on or off.'));
   }
@@ -342,7 +348,6 @@ function boardScreen(ctx, { names }) {
         groups.size ? h('div', { class: 'sup-groups', 'data-test': 'board' }, [...groups].map(([area, items]) => h('section', { class: 'sup-group', 'data-area': area },
           h('h3', {}, names.get(area) || items[0].locationName, h('span', {}, ` ${items.length}`)), h('ul', {}, items.map((t) => row(t, now, info))))))
           : h('p', { class: 'sup-empty', 'data-test': 'board-empty' }, 'No open jobs.')),
-      h('p', { class: 'card meta notice', 'data-test': 'planned' }, 'Linen and meals: planned, not built yet.'),
       kpiSection(ov));
   }
   return { el: box, load };
@@ -372,7 +377,7 @@ function kpiSection(ov) {
       k.breakdown?.length ? h('ul', { class: 'sup-breakdown' }, k.breakdown.filter((b) => b.n).map((b) => h('li', {}, `${b.name}: ${fmtKpi({ ...b, unit: k.unit })} (${b.n})`))) : null,
       h('details', { class: 'sup-def' }, h('summary', {}, 'How it is counted'),
         h('p', {}, k.definition), h('p', {}, `Counts: ${k.counts}`), h('p', {}, `Leaves out: ${k.leavesOut}`), h('p', {}, `Source: ${k.source}`), h('p', {}, `Target: ${k.targetText}`))))),
-    h('ul', { class: 'sup-planned' }, ov.planned.map((p) => h('li', { class: 'meta' }, `${p.name}: ${p.note}`))));
+    ov.planned.length ? h('ul', { class: 'sup-planned' }, ov.planned.map((p) => h('li', { class: 'meta' }, `${p.name}: ${p.note}`))) : null);
 }
 
 function describeProposal(p, data, names) {
@@ -641,3 +646,322 @@ function auditScreen(ctx, { places, names }) {
     history);
   return { el: box, load };
 }
+
+// ---------------------------------------------------------------- Linen and meals
+// Linen is the shared stock item: every count, top-up, issue and stock-out here is an
+// ospeli_stock_* command, filtered to the linen category. Meals are counts for a ward, a day and a
+// meal. Front line (cleaner, ward): count an area's linen and ask for a top-up, then the meal
+// count. Supervisor: what is under level, at zero and waiting, and meal waste by ward and meal.
+const FRONT_LINE = ['cleaner', 'ward-nurse', 'ae-nic'];
+const ISSUED_RECENT_HOURS = 4; // an issue this recent may still be on its way (example setting, not a standard), as in Stores
+const MEAL_DAY = { today: 'Today', yesterday: 'Yesterday' };
+const already = (err) => err?.code === 'conflict' && (err.detail?.already === true || err.detail?.confirm === 'again');
+const hrsAgo = (iso, now) => Math.max(0, (Date.parse(now) - Date.parse(iso)) / 36e5);
+const pct = (n, d) => (d ? `${Math.round((100 * n) / d)}%` : '–');
+const fmtPct = (v) => (v == null ? 'None yet' : `${Math.round(v)}%`);
+
+// A whole number: − and + (each 48 px), or typed with the number pad. A number the field marks wrong
+// is said beside it and never saved.
+function stepper({ get, set, label, max = 500, test = null }) {
+  const input = h('input', { type: 'number', inputmode: 'numeric', min: 0, max, step: 1, placeholder: '–', class: 'sup-num', 'aria-label': label, 'data-test': test });
+  const msg = h('span', { class: 'sup-bad', role: 'alert', hidden: true });
+  const mark = (why) => { if (why) { input.setAttribute('aria-invalid', 'true'); msg.textContent = why; msg.hidden = false; } else { input.removeAttribute('aria-invalid'); msg.textContent = ''; msg.hidden = true; } };
+  const show = () => { const v = get(); input.value = v == null ? '' : String(v); mark(null); };
+  input.addEventListener('input', () => {
+    const raw = input.value.trim();
+    if (raw === '' && !input.validity.badInput) { mark(null); set(null); return; }
+    const n = Number(raw);
+    const why = !/^\d+$/.test(raw) ? 'Use a whole number, for example 4.' : n > max ? `The most this takes is ${max}.` : null;
+    mark(why);
+    set(why ? undefined : n);
+  });
+  input.addEventListener('blur', () => { if (input.getAttribute('aria-invalid') !== 'true') show(); });
+  show();
+  const step = (d) => { const v = Number.isInteger(get()) ? get() : null; set(Math.min(max, Math.max(0, (v ?? (d > 0 ? 0 : 1)) + d))); show(); };
+  return h('span', { class: 'sup-stepper-wrap' }, h('span', { class: 'sup-stepper' },
+    h('button', { type: 'button', class: 'sup-step', 'aria-label': `One less: ${label}`, 'data-step': 'down', onclick: () => step(-1) }, '−'),
+    input,
+    h('button', { type: 'button', class: 'sup-step', 'aria-label': `One more: ${label}`, 'data-step': 'up', onclick: () => step(1) }, '+')), msg);
+}
+
+function linenScreen(ctx, { places, names }) {
+  const box = h('div', { class: 'sup-linen' });
+  const front = FRONT_LINE.includes(ctx.role);
+  const wardIds = new Set(places.wards.map((w) => w.id));
+  const isArea = (pid) => names.has(pid) && !names.get(pid).includes(', '); // a ward or department, never a bed
+  const ui = {
+    area: store.get('ospeli-support-linen-area'), counts: new Map(), result: null, askResult: null,
+    meal: { ward: null, day: 'today', meal: null, ordered: null, delivered: null, returned: null, result: null },
+  };
+  let data = null;
+  let busy = false;
+  const props = proposalsCard(ctx, { match: (p) => p.command === 'ospeli_support_meals_record' || (data && linenProposal(p)), describe: (p) => describeLinen(p) });
+  const linenIds = () => new Set(data.items.items.map((i) => i.id));
+  const itemName = (id) => data.items.items.find((i) => i.id === id)?.name || id;
+  const may = (verb) => !!data.items.categories.find((c) => c.id === 'linen')?.roles[verb]?.includes(ctx.role);
+  const linenLines = (q) => q.lines.filter((l) => linenIds().has(l.itemId));
+  function linenProposal(p) {
+    const ids = linenIds();
+    if (Array.isArray(p.input.lines)) return p.input.lines.some((l) => ids.has(l.itemId));
+    if (p.command === 'ospeli_stock_out_start') return ids.has(p.input.itemId);
+    if (p.input.requestId) return data.waiting.some((q) => q.id === p.input.requestId);
+    return false;
+  }
+  function describeLinen(p) {
+    const i = p.input;
+    if (p.command === 'ospeli_support_meals_record') return `Meal count: ${names.get(i.wardId) || 'a ward'}, ${lower(MEAL_NAMES[i.meal] || 'a meal')}${i.date ? ` on ${i.date}` : ''}: ${i.ordered} ordered, ${i.delivered} delivered, ${i.returned} returned uneaten`;
+    const lines = (i.lines || []).map((l) => `${itemName(l.itemId).toLowerCase()} ${l.qty}`).join(', ');
+    if (p.command === 'ospeli_stock_count') return `Linen count: ${names.get(i.placeId) || 'an area'}: ${lines}`;
+    if (p.command === 'ospeli_stock_request') return `Linen top-up for ${names.get(i.placeId) || 'an area'}: ${lines}`;
+    if (p.command === 'ospeli_stock_issue') return `Issue linen top-up ${i.requestId}`;
+    if (p.command === 'ospeli_stock_out_start') return `Linen stock-out: ${itemName(i.itemId).toLowerCase()} at ${names.get(i.placeId) || 'an area'}`;
+    return p.command;
+  }
+
+  const load = async () => {
+    const [items, levels, waiting, issued, outs, meals, ov] = await Promise.all([
+      ctx.run('ospeli_stock_items', { category: 'linen', limit: 500 }),
+      ctx.run('ospeli_stock_levels', { category: 'linen', format: 'short', limit: 500 }),
+      ctx.run('ospeli_stock_requests', { limit: 200 }),
+      ctx.run('ospeli_stock_requests', { state: 'issued', limit: 100 }),
+      ctx.run('ospeli_stock_outs', { category: 'linen', state: 'open', limit: 50 }),
+      ctx.run('ospeli_support_meals_list', { days: 7, limit: 500 }),
+      ctx.run('ospeli_support_overview', { days: 7 })]);
+    const ids = new Set(items.items.map((i) => i.id));
+    const mine = (q) => q.lines.some((l) => ids.has(l.itemId));
+    data = { items, levels, outs, meals, ov, waiting: waiting.requests.filter(mine), issued: issued.requests.filter(mine) };
+    // The areas that keep linen (with a top-up level), lowest first.
+    const byArea = new Map();
+    for (const r of levels.levels) {
+      if (!isArea(r.placeId) || !r.level) continue;
+      if (!byArea.has(r.placeId)) byArea.set(r.placeId, []);
+      byArea.get(r.placeId).push(r);
+    }
+    const ratio = (r) => r.usable / r.level;
+    for (const list of byArea.values()) list.sort((a, b) => ratio(a) - ratio(b) || (a.itemName < b.itemName ? -1 : 1));
+    data.areas = [...byArea].sort((a, b) => ratio(a[1][0]) - ratio(b[1][0]) || ((names.get(a[0]) || '') < (names.get(b[0]) || '') ? -1 : 1));
+    if (ui.area && !byArea.has(ui.area)) ui.area = null;
+    if (!ui.meal.ward) ui.meal.ward = wardIds.has(ui.area) ? ui.area : null;
+    draw();
+    await props.load();
+  };
+
+  // The request still waiting for an item at a place, and an issue recent enough to be on its way (#113).
+  const waitingFor = (placeId, itemId) => data.waiting.find((q) => q.placeId === placeId && q.lines.some((l) => l.itemId === itemId && l.left > 0)) || null;
+  const onItsWay = (placeId, itemId) => data.issued.find((q) => q.placeId === placeId && q.issuedAt && hrsAgo(q.issuedAt, data.levels.asOf) < ISSUED_RECENT_HOURS && q.lines.some((l) => l.itemId === itemId && l.issued > 0)) || null;
+  const toAsk = (placeId) => (data.areas.find(([a]) => a === placeId)?.[1] || []).filter((r) => r.usable < r.level && !waitingFor(placeId, r.itemId)).map((r) => ({ itemId: r.itemId, qty: r.level - r.usable }));
+
+  async function act(fn) {
+    if (busy) return;
+    busy = true;
+    try { await fn(); } finally { busy = false; await load(); }
+  }
+  const saveCount = () => act(async () => {
+    const lines = [...ui.counts].filter(([, v]) => Number.isInteger(v)).map(([itemId, qty]) => ({ itemId, qty }));
+    if (!lines.length) { ui.result = { error: 'Count at least one item first: tap + or type the number on the shelf.' }; return; }
+    try {
+      const out = await ctx.run('ospeli_stock_count', { placeId: ui.area, lines, seenSeq: data.levels.asOfSeq });
+      ui.counts.clear();
+      ui.result = out.status === 'proposed' ? { ok: 'Sent for a person to accept.' } : { ok: `Saved: ${lines.length} ${lines.length === 1 ? 'item' : 'items'} counted at ${names.get(ui.area)}.`,
+        asked: out.requestId ? `Top-up asked for in the same step (${out.requestId}): ${out.requested.map((l) => `${itemName(l.itemId).toLowerCase()} ${l.qty}`).join(', ')}.` : out.requestNote || (out.underLevel.length ? null : 'Nothing counted is under its top-up level.') };
+      ctx.toast('Linen count saved');
+    } catch (err) {
+      ui.result = { error: err.code === 'conflict' && err.detail?.changed ? `Not saved: linen moved here since this screen opened (a top-up or another count). The numbers are fresh now: count ${err.detail.changed.map((x) => itemName(x).toLowerCase()).join(', ')} again.` : `Not saved. ${err.message}` };
+    }
+  });
+  const askTopUp = (placeId, lines, where = 'area') => act(async () => {
+    try {
+      const out = await ctx.run('ospeli_stock_request', { placeId, lines });
+      const words = `${lines.map((l) => `${itemName(l.itemId).toLowerCase()} ${l.qty}`).join(', ')}`;
+      ui.askResult = { where, placeId, ok: out.status === 'proposed' ? 'Sent for a person to accept.' : `Top-up asked for (${out.requestId}): ${words}. The store issues it.` };
+      ctx.toast('Top-up asked for');
+    } catch (err) {
+      ui.askResult = { where, placeId, error: err.code === 'conflict' && err.detail?.existing ? `Already asked for: ${err.detail.existing} is waiting. Nothing new was sent.` : `Not saved. ${err.message}` };
+    }
+  });
+  const issue = (q) => act(async () => {
+    try { await ctx.run('ospeli_stock_issue', { requestId: q.id, expectedState: q.state }); ctx.toast(`Issued: ${q.id}`); } catch (err) { ctx.toast(err.detail?.state === 'issued' ? 'Already issued.' : `Not saved. ${err.message}`); }
+  });
+  const declare = (row, cause) => act(async () => {
+    try { await ctx.run('ospeli_stock_out_start', { itemId: row.itemId, placeId: row.placeId, cause }); ctx.toast('Stock-out recorded'); } catch (err) { ctx.toast(err.detail?.existing ? 'Already recorded.' : `Not saved. ${err.message}`); }
+  });
+  const setGuide = (on) => act(async () => { try { await ctx.run('ospeli_support_guide_set', { on }); ctx.toast(`Guide ${on ? 'on' : 'off'}`); } catch (err) { ctx.toast(`Not saved. ${err.message}`); } });
+  const saveMeal = () => act(async () => {
+    const m = ui.meal;
+    const missing = !m.ward ? 'the ward' : !m.meal ? 'the meal' : [m.ordered, m.delivered, m.returned].some((v) => !Number.isInteger(v)) ? 'all three numbers' : null;
+    if (missing) { m.result = { error: `Fill in ${missing} first.` }; return; }
+    const date = m.day === 'today' ? data.meals.today : prevDay(data.meals.today);
+    try {
+      const out = await ctx.run('ospeli_support_meals_record', { wardId: m.ward, date, meal: m.meal, ordered: m.ordered, delivered: m.delivered, returned: m.returned });
+      m.result = { ok: out.status === 'proposed' ? 'Sent for a person to accept.' : `${out.replaced ? 'Corrected' : 'Saved'}: ${names.get(m.ward)}, ${lower(MEAL_DAY[m.day])}, ${lower(MEAL_NAMES[m.meal])}: ${m.returned} of ${m.delivered} returned uneaten (${pct(m.returned, m.delivered)}).` };
+      Object.assign(m, { ordered: null, delivered: null, returned: null });
+      ctx.toast('Meal count saved');
+    } catch (err) {
+      m.result = already(err) ? { ok: 'Already saved a moment ago. Nothing new was saved.' } : { error: `Not saved. ${err.message}` };
+    }
+  });
+
+  function draw() {
+    if (!data.items.stores.length && !data.areas.length) {
+      setKids(box, h('p', { class: 'card notice', 'data-test': 'linen-empty' }, 'No linen is kept on this device yet: the example hospital here has no store and no linen top-up levels. Meals can still be counted below.'), mealsCard());
+      return;
+    }
+    // A redraw (after a save, another tab, the minute tick) keeps the field a person is in.
+    const a = document.activeElement;
+    const key = a && box.contains(a) ? [a.closest('[data-item]')?.dataset.item || '', a.dataset.test || a.id || a.dataset.step || ''] : null;
+    const manager = managerView();
+    setKids(box, props.el,
+      front ? [countCard(), mealsCard(), manager] : [manager, countCard(), mealsCard()],
+      h('p', { class: 'card meta notice', 'data-test': 'linen-not-for' }, `${MEALS_WORDS} Measures linen and meal counts by ward, never a person.`));
+    if (key) {
+      const scope = key[0] ? box.querySelector(`[data-item="${CSS.escape(key[0])}"]`) : box;
+      const el = scope && [...scope.querySelectorAll('input, select, button')].find((x) => (x.dataset.test || x.id || x.dataset.step || '') === key[1]);
+      el?.focus();
+    }
+  }
+
+  // ---- front line: one area's linen, lowest first, with one button to save the count and one to ask for a top-up
+  function countCard() {
+    const mayCount = may('count'); const mayAsk = may('request');
+    const pick = h('select', { id: 'lin-area', 'data-test': 'linen-area' }, h('option', { value: '' }, 'Choose your area'),
+      data.areas.map(([a]) => new Option(names.get(a), a, false, a === ui.area)));
+    pick.addEventListener('change', () => { ui.area = pick.value || null; store.set('ospeli-support-linen-area', ui.area); ui.counts.clear(); ui.result = null; ui.askResult = null; if (wardIds.has(ui.area)) ui.meal.ward = ui.area; draw(); box.querySelector('#lin-area')?.focus(); });
+    const head = [h('h2', { id: 'lin-count-h' }, 'Linen'), h('div', { class: 'field' }, h('label', { for: 'lin-area' }, 'Area'), pick)];
+    if (!data.areas.length) return h('section', { class: 'card sup-form', 'aria-labelledby': 'lin-count-h', 'data-test': 'linen-count' }, head, h('p', { class: 'meta', 'data-test': 'linen-no-levels' }, 'No area has a linen top-up level yet. The support services supervisor sets them.'));
+    if (!ui.area) return h('section', { class: 'card sup-form', 'aria-labelledby': 'lin-count-h', 'data-test': 'linen-count' }, head, h('p', { class: 'meta' }, 'Choose your area to see its linen against the top-up levels.'));
+    const rows = data.areas.find(([a]) => a === ui.area)[1];
+    const now = data.levels.asOf;
+    const list = h('ul', { class: 'sup-linen-rows', 'data-test': 'linen-rows' }, rows.map((r) => {
+      const under = r.usable < r.level;
+      const q = waitingFor(r.placeId, r.itemId); const way = onItsWay(r.placeId, r.itemId);
+      return h('li', { 'data-item': r.itemId, class: under ? 'is-under' : null },
+        h('p', { class: 'sup-lin-line' }, h('b', {}, r.itemName), h('span', { class: 'sup-lin-n', 'data-test': 'linen-have' }, `${r.usable} of ${r.level}`),
+          h('span', { class: `chip ${under ? 'sup-below' : 'sup-ok'}`, 'data-test': 'linen-topup' }, under ? `top up ${r.level - r.usable}` : 'at level')),
+        h('span', { class: 'sup-bar', 'aria-hidden': 'true' }, h('span', { style: `width:${Math.min(100, Math.round((100 * r.usable) / r.level))}%` })),
+        way ? h('p', { class: 'sup-fact', 'data-test': 'on-its-way' }, `Issued from the store ${Math.max(1, Math.round(hrsAgo(way.issuedAt, now)))} h ago: on its way. Count it once it is on the shelf.`)
+          : q ? h('p', { class: 'meta', 'data-test': 'top-up-waiting' }, `Top-up asked for ${fmtWait(Math.round(hrsAgo(q.raisedAt, now) * 60))} ago (${q.id}): ${q.state === 'part' ? 'part issued from the store' : 'waiting for the store'}.`) : null,
+        mayCount ? h('div', { class: 'sup-lin-count' }, h('span', { class: 'meta' }, 'Count now'),
+          stepper({ get: () => ui.counts.get(r.itemId) ?? null, set: (v) => { if (v == null) ui.counts.delete(r.itemId); else ui.counts.set(r.itemId, v); label(); }, label: `${r.itemName}, how many are on the shelf`, test: 'linen-count-input' })) : null);
+    }));
+    const save = h('button', { class: 'btn btn-big sup-main', type: 'button', 'data-cmd': 'ospeli_stock_count', 'data-test': 'linen-save', onclick: () => saveCount() });
+    function label() { const n = [...ui.counts.values()].filter(Number.isInteger).length; save.textContent = n ? `Save count (${n} ${n === 1 ? 'item' : 'items'})` : 'Save count'; }
+    label();
+    const ask = toAsk(ui.area);
+    const anyWaiting = rows.some((r) => r.usable < r.level && waitingFor(ui.area, r.itemId));
+    const askBox = !mayAsk ? null : ask.length
+      ? h('div', { class: 'sup-ask-topup' }, h('p', { class: 'meta', 'data-test': 'will-ask' }, `Asks the store for: ${ask.map((l) => `${itemName(l.itemId).toLowerCase()} ${l.qty}`).join(', ')}.`),
+        h('button', { class: 'btn btn-big sup-topup', type: 'button', 'data-cmd': 'ospeli_stock_request', 'data-test': 'linen-ask', onclick: () => askTopUp(ui.area, ask) }, `Ask for a top-up (${ask.length} ${ask.length === 1 ? 'item' : 'items'})`))
+      : h('p', { class: 'meta', 'data-test': 'no-ask' }, anyWaiting ? 'A top-up is already asked for everything under level.' : 'Nothing is under its top-up level.');
+    const res = ui.result ? h('div', { class: `card sup-result${ui.result.error ? ' is-below' : ''}`, role: 'status', 'data-test': 'linen-result' },
+      h('p', {}, h('b', {}, ui.result.error || ui.result.ok)), ui.result.asked ? h('p', { 'data-test': 'linen-asked' }, ui.result.asked) : null) : null;
+    const askRes = ui.askResult?.where === 'area' && ui.askResult.placeId === ui.area ? h('p', { class: 'sup-status', role: 'status', 'data-test': 'linen-ask-result' }, ui.askResult.error || ui.askResult.ok) : null;
+    return h('section', { class: 'card sup-form', 'aria-labelledby': 'lin-count-h', 'data-test': 'linen-count' }, head,
+      mayCount ? h('p', { class: 'sup-hint' }, 'Count what is on the shelf, then save. Anything under its top-up level is asked for when you save. Leave an item blank if you did not count it.')
+        : h('p', { class: 'meta', 'data-test': 'read-only' }, `${roleById(ctx.role).name} can see the linen. It is counted by ${roleNames(data.items.categories.find((c) => c.id === 'linen').roles.count)}.`),
+      list, res, mayCount ? save : null, askBox, askRes);
+  }
+
+  // ---- meals: one ward, one day, one meal; three whole numbers
+  function mealsCard() {
+    const m = ui.meal;
+    const mayRecord = can(ctx.role, 'ospeli_support_meals_record');
+    const ward = h('select', { id: 'meal-ward', 'data-test': 'meal-ward' }, h('option', { value: '' }, 'Choose the ward'), places.wards.map((w) => new Option(w.name, w.id, false, w.id === m.ward)));
+    ward.addEventListener('change', () => { m.ward = ward.value || null; m.result = null; draw(); box.querySelector('#meal-ward')?.focus(); });
+    const chips = (list, key, test) => h('div', { class: 'sup-choices', role: 'group', 'aria-label': test }, list.map(([id, label]) => h('button', {
+      class: 'chip-btn sup-choice', type: 'button', 'aria-pressed': String(m[key] === id), 'data-test': `${test}-${id}`,
+      onclick: () => { m[key] = id; m.result = null; draw(); box.querySelector(`[data-test="${test}-${id}"]`)?.focus(); } }, label)));
+    const date = m.day === 'today' ? data?.meals.today : prevDay(data?.meals.today);
+    const saved = m.ward && m.meal ? data?.meals.records.find((x) => x.wardId === m.ward && x.date === date && x.meal === m.meal) : null;
+    const nums = [['ordered', 'Ordered'], ['delivered', 'Delivered'], ['returned', 'Returned uneaten']];
+    const save = h('button', { class: 'btn btn-big', type: 'button', 'data-cmd': 'ospeli_support_meals_record', 'data-test': 'meal-save', onclick: () => saveMeal() }, saved ? 'Save the correction' : 'Save meal count');
+    return h('section', { class: 'card sup-form', 'aria-labelledby': 'meal-h', 'data-test': 'meals' },
+      h('h2', { id: 'meal-h' }, 'Meals'),
+      h('p', { class: 'meta', 'data-test': 'meals-note' }, MEALS_WORDS),
+      mayRecord ? [
+        h('div', { class: 'field' }, h('label', { for: 'meal-ward' }, 'Ward'), ward),
+        h('div', { class: 'field' }, h('span', { class: 'label' }, 'Day'), chips(Object.entries(MEAL_DAY), 'day', 'meal-day')),
+        h('div', { class: 'field' }, h('span', { class: 'label' }, 'Meal'), chips(Object.entries(MEAL_NAMES), 'meal', 'meal-pick')),
+        saved ? h('p', { class: 'sup-fact', 'data-test': 'meal-saved' }, `Saved already: ${saved.ordered} ordered, ${saved.delivered} delivered, ${saved.returned} returned uneaten. Record again to correct it.`) : null,
+        h('div', { class: 'sup-meal-nums' }, nums.map(([key, label]) => h('div', { class: 'field sup-meal-n' }, h('span', { class: 'label' }, label),
+          stepper({ get: () => m[key], set: (v) => { m[key] = v === undefined ? NaN : v; }, label: `${label}, meals`, test: `meal-${key}` })))),
+        save,
+        m.result ? h('p', { class: 'sup-status', role: 'status', 'data-test': 'meal-result' }, m.result.error || m.result.ok) : null,
+      ] : h('p', { class: 'meta', 'data-test': 'read-only' }, `${roleById(ctx.role).name} can see the meal counts. They are recorded by ${roleNames(commandByName('ospeli_support_meals_record').roles)}.`));
+  }
+
+  // ---- the supervisor's view: what is under level, at zero and waiting; meal waste by ward and meal
+  function managerView() {
+    const k = Object.fromEntries(data.ov.kpis.map((x) => [x.id, x]));
+    const under = data.areas.map(([a, rows]) => [a, rows.filter((r) => r.usable < r.level)]).filter(([, rows]) => rows.length);
+    const now = data.levels.asOf;
+    const atZero = [...data.outs.stockOuts.map((s) => ({ ...s, declared: true })), ...data.outs.notDeclared.filter((x) => isArea(x.placeId)).map((x) => ({ ...x, declared: false }))];
+    const waiting = data.waiting.filter((q) => isArea(q.placeId));
+    const g = data.ov.guide;
+    const mine = g.suggestions.filter((s) => !TASK_RULES.includes(s.rule));
+    const mayToggle = can(ctx.role, 'ospeli_support_guide_set');
+    const causes = data.items.picks.stockOutCauses;
+    const mayDeclare = can(ctx.role, 'ospeli_stock_out_start') && (may('count') || may('issue') || may('levels'));
+    const meal = k['meal-waste']; const lin = k['linen-stock-outs'];
+    return h('section', { class: 'section sup-manager', 'aria-labelledby': 'lin-man-h', 'data-test': 'linen-manager' },
+      h('h2', { id: 'lin-man-h' }, 'Linen and meals at a glance'),
+      h('div', { class: 'stats sup-lin-stats', 'data-test': 'linen-stats' },
+        h('div', { class: 'stat', 'data-stat': 'under' }, h('span', {}, 'Linen under level'), h('b', {}, String(under.reduce((n, [, r]) => n + r.length, 0))), h('span', {}, `items in ${under.length} ${under.length === 1 ? 'area' : 'areas'}`)),
+        h('div', { class: 'stat', 'data-stat': 'zero' }, h('span', {}, 'Linen at zero now'), h('b', {}, String(atZero.length)), h('span', {}, `${data.outs.stockOuts.length} declared`)),
+        h('div', { class: 'stat', 'data-stat': 'waiting' }, h('span', {}, 'Top-ups waiting'), h('b', {}, String(waiting.length)), h('span', {}, waiting.length ? `oldest ${fmtWait(Math.round(hrsAgo(waiting[0].raisedAt, now) * 60))}` : 'none waiting')),
+        h('div', { class: 'stat', 'data-stat': 'meal-waste' }, h('span', {}, 'Meals returned uneaten'), h('b', {}, fmtPct(meal.value)), h('span', {}, `${meal.numerator} of ${meal.denominator} delivered, ${data.ov.period.days} days`))),
+      // The guide: the linen and meal rules, each with its basis; a prefilled button a person taps.
+      h('section', { class: 'card sup-guide', 'data-test': 'linen-guide', 'data-on': String(g.on), 'aria-labelledby': 'lin-guide-h' },
+        h('div', { class: 'sup-guide-head' }, h('h3', { id: 'lin-guide-h' }, 'Guide'),
+          mayToggle ? h('button', { class: 'btn btn-ghost btn-small guide-switch', type: 'button', 'aria-pressed': String(g.on), 'data-cmd': 'ospeli_support_guide_set', 'data-test': 'linen-guide-switch', onclick: () => setGuide(!g.on) }, g.on ? 'Guide on: switch off' : 'Guide off: switch on') : null),
+        g.on ? [
+          h('p', { class: 'meta' }, 'Fixed rules, not AI. They suggest; you decide. Nothing changes until you tap.'),
+          mine.length ? h('ul', { class: 'sup-sugg' }, mine.map((s) => h('li', { 'data-rule': s.rule, 'data-test': 'linen-suggestion', 'data-id': s.id },
+            h('p', {}, h('b', {}, s.text)), h('p', { class: 'meta' }, s.why),
+            s.action && can(ctx.role, s.action.command) && may('request') ? h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': s.action.command, 'data-test': 'linen-follow',
+              onclick: () => act(async () => { try { for (const input of s.action.inputs) await ctx.run(s.action.command, input); ctx.toast('Top-up asked for'); } catch (err) { ctx.toast(err.detail?.existing ? 'Already asked for.' : `Not saved. ${err.message}`); } }) }, s.action.label) : null,
+            h('details', { class: 'sup-def' }, h('summary', {}, 'Why this rule'), h('p', {}, s.basis)))))
+            : h('p', { 'data-test': 'linen-no-suggestion' }, 'Nothing to suggest about linen or meals right now.'),
+        ] : h('p', { 'data-test': 'linen-guide-off' }, 'The guide is off. Counts, top-ups and meals work the same.')),
+      h('section', { class: 'section', 'aria-labelledby': 'lin-under-h' }, h('h3', { id: 'lin-under-h' }, `Under the top-up level (${under.length} ${under.length === 1 ? 'area' : 'areas'})`),
+        under.length ? h('ul', { class: 'sup-areas-under', 'data-test': 'linen-under' }, under.map(([a, rows]) => {
+          const ask = toAsk(a);
+          const qs = [...new Set(rows.map((r) => waitingFor(a, r.itemId)).filter(Boolean))];
+          return h('li', { class: 'sup-row', 'data-area': a },
+            h('div', { class: 'sup-row-text' }, h('p', { class: 'sup-what' }, h('b', {}, names.get(a))),
+              h('p', { class: 'sup-under-items' }, rows.map((r) => `${r.itemName} ${r.usable} of ${r.level}`).join(' · ')),
+              qs.map((q) => h('p', { class: 'meta', 'data-request': q.id }, `${q.id}: ${q.state === 'part' ? 'part issued' : 'waiting'} ${fmtWait(Math.round(hrsAgo(q.raisedAt, now) * 60))}, ${linenLines(q).map((l) => `${itemName(l.itemId).toLowerCase()} ${l.left}`).join(', ')}`)),
+              !qs.length ? h('p', { class: 'sup-fact', 'data-test': 'none-asked' }, 'No top-up asked for') : null,
+              ui.askResult?.where === 'manager' && ui.askResult.placeId === a ? h('p', { class: 'sup-status', role: 'status' }, ui.askResult.error || ui.askResult.ok) : null),
+            h('div', { class: 'sup-row-acts' },
+              ask.length && may('request') ? h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_stock_request', 'data-test': 'manager-ask', onclick: () => askTopUp(a, ask, 'manager') }, `Ask for a top-up (${ask.length})`) : null,
+              may('issue') ? qs.map((q) => h('button', { class: 'btn btn-small sup-done', type: 'button', 'data-cmd': 'ospeli_stock_issue', 'data-request': q.id, onclick: () => issue(q) }, `Issue ${q.id}`)) : null));
+        })) : h('p', { class: 'sup-empty', 'data-test': 'linen-all-at-level' }, 'Every area is at or over its linen top-up level.'),
+        may('issue') || !waiting.length ? null : h('p', { class: 'meta' }, `Top-ups are issued from the store by ${roleNames(data.items.categories.find((c) => c.id === 'linen').roles.issue)}. Issued is not yet on the shelf: the area's next count shows it.`)),
+      h('section', { class: 'section', 'aria-labelledby': 'lin-zero-h' }, h('h3', { id: 'lin-zero-h' }, `Linen at zero now (${atZero.length})`),
+        atZero.length ? h('ul', { class: 'sup-list-plain', 'data-test': 'linen-zero' }, atZero.map((x) => h('li', { class: 'sup-row is-urgent', 'data-zero': `${x.itemId}@${x.placeId}` },
+          h('div', { class: 'sup-row-text' }, h('p', {}, h('b', {}, `${x.itemName}, ${names.get(x.placeId) || x.placeName}`)),
+            h('p', { class: 'meta' }, x.declared ? `Stock-out ${x.id} declared ${fmtWait(Math.round(x.hours * 60))} ago: ${lower(x.cause)}` : `Nothing usable since ${fmtWait(Math.round(hrsAgo(x.since, now) * 60))} ago (the last count). Not declared as a stock-out.`)),
+          !x.declared && mayDeclare ? h('details', { class: 'sup-cancel' }, h('summary', {}, 'Record as a stock-out'),
+            h('div', { class: 'sup-cancel-body' }, (() => { const sel = h('select', { 'aria-label': `Cause: ${x.itemName}, ${names.get(x.placeId)}` }, causes.map((c) => new Option(c, c)));
+              return [sel, h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_stock_out_start', onclick: () => declare(x, sel.value) }, 'Record it')]; })())) : null)))
+          : h('p', { class: 'meta', 'data-test': 'linen-none-zero' }, 'No linen item is at zero in any area now.')),
+      h('section', { class: 'section', 'aria-labelledby': 'lin-meal-h' }, h('h3', { id: 'lin-meal-h' }, `Meal waste by ward and meal, last ${data.ov.period.days} days`),
+        h('p', { class: 'meta' }, `Meals returned uneaten / meals delivered. A meal with no record is left out, never counted as zero. The guide's usual level is ${data.meals.settings.usualPercent}% (example setting, not a standard).`),
+        meal.byWard?.length ? h('ul', { class: 'sup-meal-waste', 'data-test': 'meal-waste' }, meal.byWard.map((w) => h('li', { 'data-ward': w.id },
+          h('p', { class: 'sup-mw-head' }, h('b', {}, w.name), h('span', {}, `${fmtPct(w.value)} (${w.numerator} of ${w.denominator})`)),
+          h('p', { class: 'sup-mw-meals' }, w.byMeal.map((x) => h('span', { class: `chip${x.value != null && x.value > data.meals.settings.usualPercent ? ' sup-below' : ''}`, 'data-meal': x.id }, `${x.name}: ${fmtPct(x.value)}`))))))
+          : h('p', { class: 'meta', 'data-test': 'meal-waste-empty' }, 'No meal has been counted in these days.')),
+      h('div', { class: 'sup-kpis', 'data-test': 'linen-kpis' }, [lin, meal].map((x) => h('div', { class: 'card sup-kpi', 'data-kpi': x.id, 'data-n': x.n },
+        h('p', { class: 'sup-kpi-name' }, x.name), h('p', { class: 'sup-kpi-value' }, fmtPct(x.value)),
+        x.id === 'linen-stock-outs' ? [h('p', { class: 'meta' }, `${x.numerator} of ${x.denominator} area-shifts with a linen item at zero`),
+          h('p', { class: 'meta', 'data-test': 'by-shift' }, x.byShift.map((b) => `${b.name}: ${fmtPct(b.value)} (${b.numerator} of ${b.denominator})`).join(' · ')),
+          h('p', { class: 'meta', 'data-test': 'uncounted' }, `${x.uncounted} area-shifts had no count: each keeps the last count and the top-ups issued since.`)]
+          : h('p', { class: 'meta' }, `${x.numerator} of ${x.denominator} meals delivered came back uneaten`),
+        h('details', { class: 'sup-def' }, h('summary', {}, 'How it is counted'),
+          h('p', {}, x.definition), h('p', {}, `Counts: ${x.counts}`), h('p', {}, `Out of: ${x.outOf}`), h('p', {}, `Leaves out: ${x.leavesOut}`), h('p', {}, `Source: ${x.source}`), h('p', {}, `Target: ${x.targetText}`))))));
+  }
+  return { el: box, load };
+}
+const MEAL_NAMES = { breakfast: 'Breakfast', midday: 'Midday meal', evening: 'Evening meal' };
+const MEALS_WORDS = 'Counts only. Diets and allergies are not handled here: they stay with your site\'s own catering and clinical process.';
+const prevDay = (date) => (date ? new Date(Date.parse(`${date}T00:00:00Z`) - 864e5).toISOString().slice(0, 10) : null);

@@ -263,7 +263,7 @@ test('a bed vacated on the bed board is in the cleaner\'s queue with no one aski
   await context.close();
 });
 
-test('the supervisor\'s board at 1280 px: teams, the guide and its switch, "do this next" kept apart from a ward\'s urgent ask, hand back, honest measures, linen and meals planned', async () => {
+test('the supervisor\'s board at 1280 px: teams, the guide and its switch, "do this next" kept apart from a ward\'s urgent ask, hand back, honest measures, linen and meals on their own screen', async () => {
   const { context, page, errors } = await openPage(env, { width: 1280, clock: CLOCK, path: '#/support' });
   await asRole(page, 'support-supervisor', 'board');
   await page.waitForSelector('[data-test="team-counts"] .stat');
@@ -273,7 +273,9 @@ test('the supervisor\'s board at 1280 px: teams, the guide and its switch, "do t
   assert.match(await page.locator('[data-kpi="support-bed-turnaround"] [data-test="left-out"]').textContent(), /before a clean was recorded/);
   assert.match(await page.locator('[data-kpi="porter-request-to-done"] [data-test="by-priority"]').textContent(), /^Urgent: \d+ min \(\d+\) · Normal: \d+ min \(\d+\)$/);
   assert.match(await page.locator('[data-kpi="porter-request-to-done"]').textContent(), /handed back keeps the time it was first asked for/);
-  assert.equal(await page.locator('[data-test="planned"]').textContent(), 'Linen and meals: planned, not built yet.');
+  // Slice 2 (19 Nov): linen and meals are built, so the "planned" line is gone; their suggestions are on their own screen.
+  assert.equal(await page.locator('[data-test="planned"]').count(), 0);
+  assert.match(await page.locator('[data-test="more-suggestions"]').textContent(), /more about linen and meals: see Linen and meals/);
   assert.match(await page.locator('[data-test="suggestion"][data-rule="audit-failed-twice"]').textContent(), /Re-audit Ward B2 \(orthopaedics\) by \d+ \w+ \d{4}\..*70% and 80%.*Failed both times/s);
 
   // The ward's own urgent ask: "Urgent", and nothing here undoes it.
@@ -345,7 +347,8 @@ test('a role with no rights sees no action button, and one line that says who ca
   // A cleaner reads the audit results but records none, and has no board.
   await asRole(page, 'cleaner', 'audit');
   assert.equal(await page.locator('[data-test="aud-save"]').count(), 0);
-  assert.deepEqual(await page.locator('.sup-tabs a').evaluateAll((a) => a.map((x) => x.dataset.screen)), ['jobs', 'audit']);
+  // Slice 2 (19 Nov): the cleaner also counts linen and meals on the ward.
+  assert.deepEqual(await page.locator('.sup-tabs a').evaluateAll((a) => a.map((x) => x.dataset.screen)), ['jobs', 'audit', 'linen']);
   // A transport assistant has no button on a cleaning job: the transport assistant's queue holds transport jobs only.
   await asRole(page, 'porter', 'jobs');
   await page.waitForSelector('[data-test="next-job"]');
@@ -382,6 +385,144 @@ test('the supervisor\'s first five minutes on a 390 px phone: opens on the modul
   assert.deepEqual([ev.type, ev.actorRole], ['task.prioritised', 'support-supervisor']);
   assert.ok(await noSideways(page) <= 0, 'no sideways scroll');
   assert.deepEqual(await phoneProblems(page), [], 'the board on a phone: targets 44 px or more, text 15 px or more');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+// ---------------------------------------------------------------- Linen and meals (slice 2, 19 Nov)
+async function toLinen(page, role) {
+  await asRole(page, role, 'linen');
+  await page.waitForSelector('[data-test="linen-count"]');
+}
+const ev = (page, type) => page.evaluate(async (t) => (await window.ospeli.core.events({ type: t })).at(-1), type);
+
+for (const width of [360, 390, 1280]) {
+  test(`Linen and meals renders for every role at ${width} px with no sideways scroll and no console error`, async () => {
+    const { context, page, errors } = await openPage(env, { width, touch: width < 500, clock: CLOCK, path: '#/support' });
+    await page.evaluate(() => localStorage.setItem('ospeli-support-linen-area', 'ward-c1'));
+    for (const role of ['cleaner', 'ward-nurse', 'support-supervisor', 'storekeeper', 'coo', 'bed-manager']) {
+      await toLinen(page, role);
+      const o = await noSideways(page);
+      assert.ok(o <= 0, `${role} linen scrolls sideways by ${o} px`);
+    }
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}
+
+// Adoption check (ospeli/ospeli#112): the front line's first five minutes, untrained, on a phone.
+test('a cleaner\'s first five minutes on a 390 px touch screen: picks the ward, counts its linen and saves (the top-up is asked for in the same step), asks for the rest, and records a meal count', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/support' });
+  await asRole(page, 'cleaner', 'jobs');
+  await page.locator('.sup-tabs a[data-screen="linen"]').tap();
+  await page.waitForSelector('[data-test="linen-count"]');
+  assert.equal(await page.locator('[data-test="linen-rows"]').count(), 0, 'nothing is chosen for the person: the ward is picked first');
+  await page.selectOption('[data-test="linen-area"]', 'ward-c1');
+  await page.waitForSelector('[data-test="linen-rows"] li');
+  // Lowest first, each line "Item n of level, top up m", the first one on the first screen.
+  const first = page.locator('[data-test="linen-rows"] li').first();
+  assert.match(await first.textContent(), /^\w[\w ]+\d+ of \d+top up \d+/);
+  const fb = await first.boundingBox();
+  assert.ok(fb.y + fb.height <= 844, `the first linen line is on the first screen (bottom at ${Math.round(fb.y + fb.height)} px)`);
+  assert.deepEqual(await phoneProblems(page), [], 'linen screen: phone rules');
+  // Count two items: one with + taps, one typed on the number pad.
+  const [a, b] = await page.locator('[data-test="linen-rows"] li').evaluateAll((ls) => ls.slice(0, 2).map((l) => l.dataset.item));
+  for (let i = 0; i < 3; i++) await page.locator(`[data-item="${a}"] [data-step="up"]`).tap();
+  await page.locator(`[data-item="${b}"] [data-test="linen-count-input"]`).fill('5');
+  assert.equal(await page.locator('[data-test="linen-save"]').textContent(), 'Save count (2 items)');
+  await page.locator('[data-test="linen-save"]').tap();
+  await page.waitForSelector('[data-test="linen-result"]');
+  assert.match(await page.locator('[data-test="linen-result"]').textContent(), /Saved: 2 items counted at Ward C1 \(maternity\)\.Top-up asked for in the same step \(req-\d+\)/);
+  const counted = await ev(page, 'stock.counted');
+  assert.deepEqual([counted.subject, counted.actorRole, counted.data.lines], ['ward-c1', 'cleaner', [{ itemId: a, qty: 3 }, { itemId: b, qty: 5 }]]);
+  const asked = await ev(page, 'stock.requested');
+  assert.deepEqual([asked.data.placeId, asked.data.raisedBy, asked.data.lines.map((l) => l.itemId).sort()], ['ward-c1', 'count', [a, b].sort()]);
+  await page.waitForSelector(`[data-item="${a}"] [data-test="top-up-waiting"]`);
+  // The rest under level: one tap asks for exactly what is short, and it says what it asked for.
+  const will = await page.locator('[data-test="will-ask"]').textContent();
+  assert.match(will, /^Asks the store for: .+\d\.$/);
+  await page.locator('[data-test="linen-ask"]').tap();
+  await page.waitForSelector('[data-test="linen-ask-result"]');
+  assert.match(await page.locator('[data-test="linen-ask-result"]').textContent(), /^Top-up asked for \(req-\d+\): .+ The store issues it\.$/);
+  const second = await ev(page, 'stock.requested');
+  assert.deepEqual([second.data.raisedBy, second.actorRole], ['request', 'cleaner']);
+  assert.match(await page.locator('[data-test="no-ask"]').textContent(), /already asked for everything under level/, 'a second tap has nothing left to ask for');
+  // Meals: the ward is the same; pick the meal, three numbers, save.
+  assert.match(await page.locator('[data-test="meals-note"]').textContent(), /Diets and allergies are not handled here/);
+  await page.locator('[data-test="meal-save"]').tap();
+  await page.waitForSelector('[data-test="meal-result"]');
+  assert.equal(await page.locator('[data-test="meal-result"]').textContent(), 'Fill in the meal first.', 'the button says what is missing');
+  await page.locator('[data-test="meal-pick-evening"]').tap();
+  await page.locator('[data-test="meal-ordered"]').fill('18');
+  await page.locator('[data-test="meal-delivered"]').fill('17');
+  for (let i = 0; i < 2; i++) await page.locator('[data-test="meal-returned"]').locator('xpath=..').locator('[data-step="up"]').tap();
+  await page.locator('[data-test="meal-save"]').tap();
+  await page.waitForFunction(() => /^Saved: Ward C1/.test(document.querySelector('[data-test="meal-result"]')?.textContent || ''));
+  assert.equal(await page.locator('[data-test="meal-result"]').textContent(), 'Saved: Ward C1 (maternity), today, evening meal: 2 of 17 returned uneaten (12%).');
+  const meal = await ev(page, 'support.meals-recorded');
+  assert.deepEqual([meal.subject, meal.actorRole, meal.data.meal, meal.data.ordered, meal.data.delivered, meal.data.returned], ['ward-c1', 'cleaner', 'evening', 18, 17, 2]);
+  assert.deepEqual(await phoneProblems(page), [], 'after saving: phone rules');
+  assert.ok(await noSideways(page) <= 0);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+// Adoption check (ospeli/ospeli#112): the manager's first five minutes on a phone.
+test('the supervisor\'s first five minutes on Linen and meals at 390 px: sees what is under level, at zero and the meal waste by ward and meal, and asks for the top-up in one tap; the guide switch leaves the rest working', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/support' });
+  await toLinen(page, 'support-supervisor');
+  // The status first: under level, at zero, waiting, and meal waste, on the first screen.
+  const stats = page.locator('[data-test="linen-stats"]');
+  assert.match(await stats.textContent(), /Linen under level\d+items in \d+ areas?Linen at zero now\d+\d+ declaredTop-ups waiting\d+.*Meals returned uneaten\d+%\d+ of \d+ delivered, 7 days/);
+  assert.ok((await stats.boundingBox()).y < 844, 'the status starts on the first screen');
+  const under = page.locator('[data-test="linen-under"] li[data-area="ward-c1"]');
+  assert.match(await under.textContent(), /Ward C1 \(maternity\).*of 30.*No top-up asked for/s);
+  assert.match(await page.locator('[data-test="meal-waste"] li[data-ward="ward-b1"]').textContent(), /Ward B1 \(general surgery\)\d+%.*Midday meal: \d+%/s);
+  assert.equal(await page.locator('[data-test="meal-waste"] li[data-ward="ward-b1"] [data-meal="midday"]').getAttribute('class'), 'chip sup-below', 'above the usual level is marked');
+  assert.match(await page.locator('[data-kpi="linen-stock-outs"]').textContent(), /\d+%\d+ of \d+ area-shifts with a linen item at zero.*Day shift: .*Night shift: .*had no count.*Source: local definition/s);
+  assert.match(await page.locator('[data-kpi="meal-waste"]').textContent(), /Source: local definition/);
+  assert.match(await page.locator('[data-test="linen-suggestion"][data-rule="meals-returned"]').textContent(), /Check the midday meal numbers ordered for Ward B1 \(general surgery\) with the ward\./);
+  assert.ok(await page.locator('[data-test="linen-suggestion"][data-rule="linen-two-counts"]').count() >= 1);
+  assert.deepEqual(await phoneProblems(page), [], 'the manager view on a phone');
+  // Act: one tap asks for exactly what Ward C1 is short of.
+  const btn = under.locator('[data-test="manager-ask"]');
+  assert.match(await btn.textContent(), /^Ask for a top-up \(\d\)$/);
+  await btn.tap();
+  await page.waitForFunction(() => !document.querySelector('[data-test="linen-under"] li[data-area="ward-c1"] [data-test="manager-ask"]'));
+  const q = await ev(page, 'stock.requested');
+  assert.deepEqual([q.data.placeId, q.actorRole, q.data.raisedBy], ['ward-c1', 'support-supervisor', 'request']);
+  assert.match(await under.textContent(), /req-\d+: waiting/);
+  assert.equal(await page.locator('[data-test="linen-suggestion"][data-id="linen-two-counts:ward-c1"]').count(), 0, 'the offer goes once it is asked for');
+  assert.equal(await under.locator('[data-cmd="ospeli_stock_issue"]').count(), 0, 'the store issues it, not the supervisor');
+  // The guide off: no suggestion; counts, top-ups, meals and measures the same.
+  await page.locator('[data-test="linen-guide-switch"]').tap();
+  await page.waitForSelector('[data-test="linen-guide-off"]');
+  assert.equal(await page.locator('[data-test="linen-suggestion"]').count(), 0);
+  assert.equal(await page.locator('[data-kpi]').count(), 2);
+  assert.equal(await page.locator('[data-test="meal-save"]').count(), 1);
+  await page.locator('[data-test="linen-guide-switch"]').tap();
+  await page.waitForSelector('[data-test="linen-suggestion"]');
+  assert.ok(await noSideways(page) <= 0);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('Linen and meals: the store issues the top-up from the same screen; a role with no rights sees no action button and says who can', async () => {
+  const { context, page, errors } = await openPage(env, { width: 1280, clock: CLOCK, path: '#/support' });
+  const req = await page.evaluate(async () => {
+    const { runCommand } = await import('/app/core/commands.js');
+    return (await runCommand(window.ospeli.core, 'ospeli_stock_request', { placeId: 'ward-c1', lines: [{ itemId: 'blanket', qty: 4 }] }, { type: 'human', role: 'ward-nurse' })).requestId;
+  });
+  await toLinen(page, 'storekeeper');
+  const issue = page.locator(`[data-cmd="ospeli_stock_issue"][data-request="${req}"]`);
+  await issue.click();
+  await page.waitForFunction((r) => !document.querySelector(`[data-cmd="ospeli_stock_issue"][data-request="${r}"]`), req);
+  assert.deepEqual([(await ev(page, 'stock.issued')).subject, (await ev(page, 'stock.issued')).actorRole], [req, 'storekeeper']);
+  await page.evaluate(() => localStorage.setItem('ospeli-support-linen-area', 'ward-c1'));
+  await toLinen(page, 'bed-manager');
+  assert.deepEqual(await page.locator('.sup-linen [data-cmd]').count(), 0, 'no action button');
+  assert.match(await page.locator('[data-test="linen-count"] [data-test="read-only"]').textContent(), /Patient flow coordinator can see the linen\. It is counted by /);
+  assert.match(await page.locator('[data-test="meals"] [data-test="read-only"]').textContent(), /recorded by Ward nurse, Cleaner, Support services supervisor/);
   assert.deepEqual(errors, []);
   await context.close();
 });
