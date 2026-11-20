@@ -75,6 +75,7 @@ const shortWord = (w) => typeof w === 'string' && w.trim() && w.length <= 40;
 // Put the modules' session types and slot types together. A type is refused (throws at load, so
 // a test catches it) when it is malformed, reuses an id, or names a role or a kind of place that
 // does not exist (roleIds null: the roles are not checked, for a caller that only replays the log). packs: [{ id, SESSION_TYPES?, SLOT_TYPES?, NO_SHOW_GRACE_MINUTES?, SLOT_REASONS? }].
+// A session type may list `services` (a pick list { id: word }): then each session names one.
 export function slotCatalogue(packs = [], roleIds = []) {
   const sessionTypes = new Map();
   const slotTypes = {};
@@ -106,11 +107,18 @@ export function slotCatalogue(packs = [], roleIds = []) {
         if (!Array.isArray(st[list]) || !st[list].length) bad(`${list} is required`);
         for (const r of st[list]) if (roleIds && !roleIds.includes(r)) bad(`unknown role ${r} in ${list}`);
       }
+      // Optional: the services a session of this type is held for (an eye clinic, a skin clinic),
+      // a pick list. With it, every template and session of the type names one service, and two
+      // clinics may run in the same place at the same time.
+      if (st.services != null) {
+        const sv = st.services && typeof st.services === 'object' ? Object.entries(st.services) : [];
+        if (!sv.length || !sv.every(([id, w]) => TYPE_ID.test(id) && shortWord(w))) bad('services, when given, is a pick list { id: word } with at least one service');
+      }
       if (st.areas != null) {
         if (st.timed) bad('areas are for a session with a visit order, not for timed slots');
         if (!Array.isArray(st.areas) || !st.areas.length || !st.areas.every((a) => typeof a === 'string' && a.length <= 20 && AREA.test(a))) bad('areas must be short zone codes such as "North 2": letters, then an optional number, never an address');
       }
-      sessionTypes.set(st.id, { ...st, areas: st.areas ? [...st.areas] : null, graceMinutes: grace, module: p.id });
+      sessionTypes.set(st.id, { ...st, areas: st.areas ? [...st.areas] : null, services: st.services ? { ...st.services } : null, graceMinutes: grace, module: p.id });
     }
   }
   return { sessionTypes, slotTypes, reasons };
@@ -159,8 +167,8 @@ export function templateOn(template, date) {
 // Replay the event log. Returns { templates, sessions, appointments, codes, offsetMinutes }, each
 // a Map by id in the order first seen. An event that does not fit the record it names (a step
 // out of order, a second booking with the same id) is ignored, so a bad import cannot bend a list.
-//   template    { id, sessionType, placeId, weekday, versions: [{ start, minutes, slotMinutes, slotTypes, released, from, at }] }
-//   session     { id, sessionType, timed, placeId, assetId, date, start, minutes, slotMinutes, slotTypes, capacity, plannedCapacity,
+//   template    { id, sessionType, service, placeId, weekday, versions: [{ start, minutes, slotMinutes, slotTypes, released, from, at }] }
+//   session     { id, sessionType, service, timed, placeId, assetId, date, start, minutes, slotMinutes, slotTypes, capacity, plannedCapacity,
 //                 removed, runByRole, templateId, released, state, reason, plannedAt, closedAt, startMs, endMs, appointments: [id] }
 //   appointment { id, sessionId, sessionType, slotTime, visitOrder, area, code, slotType, bookedFrom, rebookOf, rebookedBy, requestRef,
 //                 state, bookedAt, bookedByRole, arrivedAt, calledAt, finishedAt, closedAt, noShowReason, cancelBy, cancelReason, moves, reminders }
@@ -181,14 +189,14 @@ export function deriveSlots(events, { packs = [], offsetMinutes = 0, catalogue =
         const v = { start: d.start, minutes: d.minutes, slotMinutes: d.slotMinutes, slotTypes: [...(d.slotTypes || [])], released: d.released !== false, from: d.from, at: e.at };
         const t = templates.get(e.subject);
         if (t) t.versions.push(v);
-        else templates.set(e.subject, { id: e.subject, sessionType: d.sessionType, placeId: d.placeId, weekday: d.weekday, versions: [v] });
+        else templates.set(e.subject, { id: e.subject, sessionType: d.sessionType, service: d.service ?? null, placeId: d.placeId, weekday: d.weekday, versions: [v] });
         break;
       }
       case 'session.planned': {
         if (sessions.has(e.subject) || !validDate(d.date) || !HHMM.test(d.start || '')) break;
         const timed = d.slotMinutes != null;
         sessions.set(e.subject, place({
-          id: e.subject, sessionType: d.sessionType, timed, placeId: d.placeId ?? null, assetId: d.assetId ?? null, date: d.date, start: d.start, minutes: d.minutes,
+          id: e.subject, sessionType: d.sessionType, service: d.service ?? null, timed, placeId: d.placeId ?? null, assetId: d.assetId ?? null, date: d.date, start: d.start, minutes: d.minutes,
           slotMinutes: timed ? d.slotMinutes : null, slotTypes: [...(d.slotTypes || [])], capacity: timed ? null : d.capacity, plannedCapacity: null, removed: [],
           runByRole: d.runByRole, templateId: d.templateId ?? null, released: d.released !== false, state: 'planned', reason: null,
           plannedAt: e.at, closedAt: null, appointments: [],

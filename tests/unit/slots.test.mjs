@@ -588,3 +588,44 @@ t('agents: every write is a proposal, sessions are site-wide, and tonight no mod
     code('forbidden'), 'an agent allowed on one ward only cannot propose a site-wide booking');
   assert.equal(await core.eventCount() >= n0, true);
 });
+
+// ---- added 19 Nov (module crew, night 5): a session may be held for a service ----
+t('a type of session that lists services names one on every template and session, so two clinics can share a place and a time', async () => {
+  const SPACK = { id: 'testservices', SESSION_TYPES: [
+    { id: 'svc-clinic', word: 'Clinic', timed: true, placeTypes: ['department'], services: { 'svc-eyes': 'Eye clinic', 'svc-skin': 'Skin clinic' },
+      runByRoles: ['ops-manager'], planRoles: ['ops-manager'], bookRoles: ['receptionist'], stepRoles: ['receptionist'] },
+    { id: 'svc-round', word: 'Round', timed: false, placeTypes: ['site'], runByRoles: ['ward-nurse'], planRoles: ['ops-manager'], bookRoles: ['ops-manager'], stepRoles: ['ward-nurse'] }],
+    SLOT_TYPES: { 'svc-new': 'New' } };
+  assert.throws(() => slots.slotCatalogue([{ id: 'm', SESSION_TYPES: [{ ...SPACK.SESSION_TYPES[0], services: {} }] }], ROLE_IDS), /services/);
+  const S = Object.fromEntries(slotMod.slotCommands([SPACK]).map((c) => [c.name, c]));
+  const go = async (core, name, input, role = 'ops-manager') => {
+    const errs = validate(S[name].input, input);
+    if (errs.length) throw new CommandError('invalid-input', errs.join('; '));
+    return S[name].run(core, input, { actor: human(role), wards: null });
+  };
+  const { core } = await site();
+  const plan = (over) => go(core, 'ospeli_slots_session_plan', { sessionType: 'svc-clinic', placeId: 'dept-outpatients', date: MON, start: '09:00', minutes: 80, slotMinutes: 20, runByRole: 'ops-manager', ...over });
+  await assert.rejects(plan({}), (err) => code('invalid-input')(err) && err.detail.services.join() === 'svc-eyes,svc-skin');
+  await assert.rejects(plan({ service: 'svc-teeth' }), code('invalid-input'));
+  const eyes = await plan({ service: 'svc-eyes' });
+  const skin = await plan({ service: 'svc-skin' });
+  assert.notEqual(eyes.sessionId, skin.sessionId, 'same place, date and start, another service: another session');
+  assert.deepEqual([(await plan({ service: 'svc-eyes' })).sessionId, (await plan({ service: 'svc-eyes' })).events.length], [eyes.sessionId, 0], 'the same session planned twice answers with the first');
+  await assert.rejects(go(core, 'ospeli_slots_session_plan', { sessionType: 'svc-round', service: 'svc-eyes', placeId: 'site-north', date: MON, start: '08:30', minutes: 240, capacity: 4, runByRole: 'ward-nurse' }), code('invalid-input'), 'a type with no services takes none');
+  const list = await go(core, 'ospeli_slots_sessions', { from: MON, to: MON, service: 'svc-skin' }, 'coo');
+  assert.deepEqual(list.sessions.map((s) => [s.id, s.service, s.serviceWord]), [[skin.sessionId, 'svc-skin', 'Skin clinic']]);
+  // A template carries its service to the sessions planned from it, and keeps it when changed.
+  const tpl = { sessionType: 'svc-clinic', service: 'svc-eyes', placeId: 'dept-outpatients', weekday: 3, start: '09:00', minutes: 80, slotMinutes: 20, slotTypes: ['svc-new'], released: true, from: MON };
+  const t1 = await go(core, 'ospeli_slots_template_set', tpl);
+  const t2 = await go(core, 'ospeli_slots_template_set', { ...tpl, service: 'svc-skin' });
+  assert.notEqual(t1.templateId, t2.templateId);
+  await assert.rejects(go(core, 'ospeli_slots_template_set', { ...tpl, templateId: t1.templateId, service: 'svc-skin', minutes: 100 }), code('invalid-input'), 'a change keeps the service');
+  await assert.rejects(go(core, 'ospeli_slots_template_set', { ...tpl, service: undefined }), code('invalid-input'));
+  const fromTpl = await go(core, 'ospeli_slots_session_plan', { sessionType: 'svc-clinic', placeId: 'dept-outpatients', date: WED, runByRole: 'ops-manager', templateId: t2.templateId });
+  await assert.rejects(go(core, 'ospeli_slots_session_plan', { sessionType: 'svc-clinic', service: 'svc-eyes', placeId: 'dept-outpatients', date: WED, runByRole: 'ops-manager', templateId: t2.templateId }), code('invalid-input'));
+  const d = slots.deriveSlots(await core.events(), { packs: [SPACK], offsetMinutes: OFFSET });
+  assert.equal(d.sessions.get(fromTpl.sessionId).service, 'svc-skin');
+  assert.equal(d.templates.get(t1.templateId).service, 'svc-eyes');
+  const types = await go(core, 'ospeli_slots_types', {}, 'coo');
+  assert.deepEqual(types.sessionTypes.map((x) => x.services && x.services.map((v) => v.id)), [['svc-eyes', 'svc-skin'], null]);
+});

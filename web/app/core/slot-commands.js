@@ -57,6 +57,19 @@ export function slotCommands(packs = []) {
   const CAPACITY = { type: 'integer', minimum: 1, maximum: MAX_CAPACITY, description: `How many patients the session can take (a session with a visit order, not timed slots). From 1 to ${MAX_CAPACITY}.` };
   const SLOT_TIME = HHMM('The slot to take, one of the session\'s free slots (ospeli_slots_sessions lists them). Only for a session with timed slots.');
   const VISIT_ORDER = { type: 'integer', minimum: 1, maximum: MAX_CAPACITY, description: 'The place in the visit order: 1 is first. Only for a session with a capacity and a visit order (a round), which has no slot times.' };
+  // Services: only for the types of session that list them (a clinic for one service).
+  const serviceWords = Object.assign({}, ...types.map((t) => t.services || {}));
+  const serviceIds = Object.keys(serviceWords);
+  const SERVICE = serviceIds.length ? { service: { type: 'string', enum: serviceIds, description: `The service the session is held for, picked from the list: ${serviceIds.map((id) => `${id} (${serviceWords[id]})`).join(', ')}. Needed for a type of session that lists services (ospeli_slots_types), and only for those. With a templateId, leave it out: the template gives it.` } } : {};
+  // The service a template or a session asks for, checked against its type. null: the type has none.
+  function serviceFor(type, service) {
+    if (!type.services) {
+      if (service != null) throw invalid(`A ${type.word.toLowerCase()} is not held for a service: leave service out.`);
+      return null;
+    }
+    if (service == null || !type.services[service]) throw invalid(`A ${type.word.toLowerCase()} is held for one service. Send service: ${Object.keys(type.services).join(', ')}.`, { services: Object.keys(type.services) });
+    return service;
+  }
   const SESSION_STATE = { type: 'string', enum: Object.keys(SESSION_STATES) };
   const APPOINTMENT_STATE = { type: 'string', enum: Object.keys(APPOINTMENT_STATES) };
   const EXPECTED = (schema, what) => ({ ...schema, description: `The state the caller last saw. If the ${what} has changed since, the command is refused (conflict). The same step sent twice still answers done.` });
@@ -138,6 +151,7 @@ export function slotCommands(packs = []) {
       if (!p || !PLACE_KINDS.includes(p.type)) throw new CommandError('not-found', 'No place with that id. Use a site, building, department or ward id, for example dept-outpatients.');
       if (!type.placeTypes.includes(p.type)) throw invalid(`A ${type.word.toLowerCase()} is held in a ${type.placeTypes.join(' or ')}, not a ${p.type}.`, { placeTypes: type.placeTypes });
       if (!validDate(input.from)) throw invalid('from is not a real date. Use YYYY-MM-DD, for example "2026-11-09".');
+      const service = serviceFor(type, input.service);
       if (input.slotMinutes > input.minutes) throw invalid('slotMinutes cannot be longer than the session (minutes).');
       if (new Set(input.slotTypes).size !== input.slotTypes.length) throw invalid('slotTypes lists a type twice.');
       const version = { start: input.start, minutes: input.minutes, slotMinutes: input.slotMinutes, slotTypes: [...input.slotTypes], released: input.released, from: input.from };
@@ -146,20 +160,20 @@ export function slotCommands(packs = []) {
       if (id) {
         const t = c.d.templates.get(id);
         if (!t) throw new CommandError('not-found', 'No template with that id. Leave templateId out to make a new template.');
-        if (t.sessionType !== input.sessionType || t.placeId !== input.placeId || t.weekday !== input.weekday) throw invalid('A change to a template keeps its type of session, place and weekday. For another place or day, make a new template (leave templateId out).', { sessionType: t.sessionType, placeId: t.placeId, weekday: t.weekday });
+        if (t.sessionType !== input.sessionType || t.placeId !== input.placeId || t.weekday !== input.weekday || (t.service ?? null) !== service) throw invalid('A change to a template keeps its type of session, service, place and weekday. For another service, place or day, make a new template (leave templateId out).', { sessionType: t.sessionType, service: t.service ?? null, placeId: t.placeId, weekday: t.weekday });
         const latest = t.versions.reduce((a, b) => (b.from >= a.from ? b : a));
         if (same(strip(latest), version)) return { out: { templateId: id }, events: [] };
         if (input.from < latest.from) throw conflict(`This template already has a change that starts on ${latest.from}. A new change starts on or after that date.`, { from: latest.from });
       } else {
-        const twin = [...c.d.templates.values()].find((t) => t.sessionType === input.sessionType && t.placeId === input.placeId && t.weekday === input.weekday
+        const twin = [...c.d.templates.values()].find((t) => t.sessionType === input.sessionType && (t.service ?? null) === service && t.placeId === input.placeId && t.weekday === input.weekday
           && t.versions.reduce((a, b) => (b.from >= a.from ? b : a)).start === input.start);
         if (twin) {
           if (same(strip(twin.versions.reduce((a, b) => (b.from >= a.from ? b : a))), version)) return { out: { templateId: twin.id }, events: [] };
-          throw conflict(`${twin.id} is already the template for this type, place, weekday and start. Send templateId to change it.`, { existing: twin.id });
+          throw conflict(`${twin.id} is already the template for this type${service ? ', service' : ''}, place, weekday and start. Send templateId to change it.`, { existing: twin.id });
         }
         id = nextTemplateId(c.events);
       }
-      return { out: { templateId: id }, events: [ev('slot.template-set', id, role, c.now, { templateId: id, sessionType: input.sessionType, placeId: input.placeId, weekday: input.weekday, ...version })],
+      return { out: { templateId: id }, events: [ev('slot.template-set', id, role, c.now, { templateId: id, sessionType: input.sessionType, ...(service ? { service } : {}), placeId: input.placeId, weekday: input.weekday, ...version })],
         audit: ['slot.template-set', id, { sessionType: input.sessionType, placeId: input.placeId, weekday: input.weekday, from: input.from }] };
     },
 
@@ -183,6 +197,8 @@ export function slotCommands(packs = []) {
         const t = c.d.templates.get(input.templateId);
         if (!t) throw new CommandError('not-found', 'No template with that id. Leave templateId out to plan a one-off session.');
         if (t.sessionType !== type.id || t.placeId !== input.placeId) throw invalid('This template is for another type of session or another place.', { sessionType: t.sessionType, placeId: t.placeId });
+        if (input.service != null && input.service !== (t.service ?? null)) throw invalid('This template is for another service. Leave service out: the template gives it.', { service: t.service ?? null });
+        if (t.service) data.service = t.service;
         if (weekdayOf(input.date) !== t.weekday) throw invalid(`This template is for weekday ${t.weekday} (Monday is 1); ${input.date} is weekday ${weekdayOf(input.date)}.`, { weekday: t.weekday });
         const v = templateOn(t, input.date);
         if (!v) throw conflict('This template does not start until after that date.', { from: t.versions[0].from });
@@ -192,6 +208,8 @@ export function slotCommands(packs = []) {
         Object.assign(data, { start: v.start, minutes: v.minutes, slotMinutes: v.slotMinutes, slotTypes: [...v.slotTypes], released: v.released, templateId: t.id });
       } else {
         if (!input.start || !input.minutes) throw invalid('Send start and minutes, or a templateId that gives them.', { example: { start: '09:00', minutes: 180 } });
+        const service = serviceFor(type, input.service);
+        if (service) data.service = service;
         Object.assign(data, { start: input.start, minutes: input.minutes, released: true, ...(input.slotTypes ? { slotTypes: [...new Set(input.slotTypes)] } : {}) });
         if (type.timed) {
           if (input.capacity != null) throw invalid(`A ${type.word.toLowerCase()} has timed slots: send slotMinutes (or a templateId), not capacity.`);
@@ -204,10 +222,10 @@ export function slotCommands(packs = []) {
         }
       }
       if (type.timed && !slotGrid(data.start, data.minutes, data.slotMinutes).length) throw invalid('The session is shorter than one slot.');
-      const twin = [...c.d.sessions.values()].find((s) => s.state !== 'cancelled' && s.sessionType === type.id && s.placeId === (input.placeId ?? null) && s.assetId === (input.assetId ?? null) && s.date === data.date && s.start === data.start);
+      const twin = [...c.d.sessions.values()].find((s) => s.state !== 'cancelled' && s.sessionType === type.id && (s.service ?? null) === (data.service ?? null) && s.placeId === (input.placeId ?? null) && s.assetId === (input.assetId ?? null) && s.date === data.date && s.start === data.start);
       if (twin) {
         if (twin.minutes === data.minutes && twin.runByRole === data.runByRole && (twin.slotMinutes ?? null) === (data.slotMinutes ?? null) && sameSet(twin.slotTypes, data.slotTypes) && (twin.timed || twin.plannedCapacity === data.capacity)) return { out: { sessionId: twin.id, state: twin.state }, events: [] };
-        throw conflict(`${twin.id} is already planned for this type, place, date and start. Change that session instead.`, { existing: twin.id });
+        throw conflict(`${twin.id} is already planned for this type${data.service ? ', service' : ''}, place, date and start. Change that session instead.`, { existing: twin.id });
       }
       const id = nextSessionId(c.events);
       return { out: { sessionId: id, state: 'planned' }, events: [ev('session.planned', id, role, c.now, data)],
@@ -397,7 +415,7 @@ export function slotCommands(packs = []) {
 
   // ---- what the reads answer with ----
   const SESSION_OUT = { type: 'object', required: ['id', 'sessionType', 'date', 'start', 'minutes', 'state', 'capacity', 'booked', 'free'], properties: {
-    id: SESSION_ID, sessionType: { type: 'string' }, typeWord: { type: 'string' }, timed: { type: 'boolean', description: 'true: timed slots. false: a capacity and a visit order.' },
+    id: SESSION_ID, sessionType: { type: 'string' }, typeWord: { type: 'string' }, service: { type: ['string', 'null'], description: 'The service the session is held for, when its type lists services.' }, serviceWord: NULLABLE('string'), timed: { type: 'boolean', description: 'true: timed slots. false: a capacity and a visit order.' },
     placeId: NULLABLE('string'), placeName: NULLABLE('string'), assetId: NULLABLE('string'),
     date: { type: 'string', description: 'The site\'s own date, YYYY-MM-DD.' }, start: { type: 'string', description: 'The site\'s own clock, HH:MM.' }, minutes: { type: 'integer' },
     startsAt: TIME, endsAt: TIME, state: SESSION_STATE, stateName: { type: 'string' },
@@ -424,7 +442,7 @@ export function slotCommands(packs = []) {
   function sessionOut(c, s, short) {
     const fill = sessionFill(c.d, s.id);
     const offered = s.slotTypes.length ? s.slotTypes : slotTypeIds;
-    const base = { id: s.id, sessionType: s.sessionType, typeWord: sessionTypes.get(s.sessionType)?.word || s.sessionType, timed: s.timed, placeId: s.placeId, placeName: placeName(c, s.placeId ?? s.assetId),
+    const base = { id: s.id, sessionType: s.sessionType, typeWord: sessionTypes.get(s.sessionType)?.word || s.sessionType, service: s.service ?? null, serviceWord: s.service ? (sessionTypes.get(s.sessionType)?.services?.[s.service] ?? s.service) : null, timed: s.timed, placeId: s.placeId, placeName: placeName(c, s.placeId ?? s.assetId),
       date: s.date, start: s.start, minutes: s.minutes, state: s.state, stateName: SESSION_STATES[s.state].name, released: s.released, capacity: fill.capacity, booked: fill.booked, free: s.state === 'planned' || s.state === 'reduced' ? fill.free : 0 };
     if (short) return base;
     return { ...base, assetId: s.assetId, startsAt: new Date(s.startMs).toISOString(), endsAt: new Date(s.endMs).toISOString(), reason: s.reason, runByRole: s.runByRole, templateId: s.templateId, slotTypes: [...offered],
@@ -444,7 +462,7 @@ export function slotCommands(packs = []) {
   const NEED_SESSION = 'A session that is planned and released, with a free place. ses-00001 is an example id: ospeli_slots_sessions lists the sessions with their free slots, and ospeli_slots_session_plan plans one.';
   const NEED_APPOINTMENT = 'A booked appointment. apt-00001 is an example id: ospeli_slots_appointments with a sessionId lists a session\'s appointments, and ospeli_slots_book makes one.';
   const planExample = firstTimed
-    ? { sessionType: first.id, placeId: 'dept-outpatients', date: '2026-11-09', start: '09:00', minutes: 80, slotMinutes: 20, runByRole: first.runByRoles[0] }
+    ? { sessionType: first.id, ...(first.services ? { service: Object.keys(first.services)[0] } : {}), placeId: 'dept-outpatients', date: '2026-11-09', start: '09:00', minutes: 80, slotMinutes: 20, runByRole: first.runByRoles[0] }
     : { sessionType: first.id, placeId: 'site-north', date: '2026-11-09', start: '08:30', minutes: 240, capacity: 8, runByRole: first.runByRoles[0] };
 
   const list = [
@@ -457,6 +475,7 @@ export function slotCommands(packs = []) {
         sessionTypes: { type: 'array', items: { type: 'object', required: ['id', 'word', 'timed'], properties: {
           id: { type: 'string' }, word: { type: 'string' }, timed: { type: 'boolean', description: 'true: timed slots from a template. false: a capacity and a visit order.' },
           placeTypes: { type: 'array', items: { type: 'string' } }, areas: { type: ['array', 'null'], items: { type: 'string' }, description: 'Zone codes to pick from for a visit. Never an address.' },
+          services: { type: ['array', 'null'], items: { type: 'object', required: ['id', 'word'], properties: { id: { type: 'string' }, word: { type: 'string' } } }, description: 'The services a session of this type is held for. null: the type has none, and a session names no service.' },
           runByRoles: { type: 'array', items: { type: 'string' } }, planRoles: { type: 'array', items: { type: 'string' } }, bookRoles: { type: 'array', items: { type: 'string' } }, stepRoles: { type: 'array', items: { type: 'string' } },
           graceMinutes: { type: 'integer', description: 'Minutes after the booked time before no-show may be recorded. Example setting, not a standard.' } } } },
         slotTypes: { type: 'array', items: { type: 'object', required: ['id', 'word'], properties: { id: { type: 'string' }, word: { type: 'string' } } } },
@@ -466,7 +485,7 @@ export function slotCommands(packs = []) {
         bookedFrom: { type: 'array', items: { type: 'string' } }, reminderReplies: { type: 'array', items: { type: 'string' } } } },
       async run() {
         return {
-          sessionTypes: types.map((t) => ({ id: t.id, word: t.word, timed: t.timed, placeTypes: [...t.placeTypes], areas: t.areas ? [...t.areas] : null,
+          sessionTypes: types.map((t) => ({ id: t.id, word: t.word, timed: t.timed, placeTypes: [...t.placeTypes], areas: t.areas ? [...t.areas] : null, services: t.services ? Object.entries(t.services).map(([id, word]) => ({ id, word })) : null,
             runByRoles: [...t.runByRoles], planRoles: [...t.planRoles], bookRoles: [...t.bookRoles], stepRoles: [...t.stepRoles], graceMinutes: t.graceMinutes })),
           slotTypes: slotTypeIds.map((id) => ({ id, word: slotTypes[id] })),
           reasons: { sessionChange: [...reasons.sessionChange], appointmentCancel: [...reasons.appointmentCancel], noShow: [...reasons.noShow] },
@@ -483,6 +502,7 @@ export function slotCommands(packs = []) {
         from: DATE('The first date to list. Default: today.'), to: DATE(`The last date to list. Default: seven days after "from". At most ${MAX_RANGE_DAYS} days.`),
         sessionType: { ...SESSION_TYPE, description: `Only this type of session: ${typeIds.join(', ')}. Leave out for every type.` },
         placeId: { ...ID, description: 'Only sessions held at this place (or on this asset), for example dept-outpatients.' },
+        ...(serviceIds.length ? { service: { type: 'string', enum: serviceIds, description: `Only sessions held for this service: ${serviceIds.join(', ')}.` } } : {}),
         state: { ...SESSION_STATE, description: 'Only sessions in this state: planned, reduced, held or cancelled. Leave out for all.' },
         format: FORMAT('where, when, state and the counts', 'each slot, the slot types, who runs it (role only) and the reason for a change too'),
         limit: LIMIT(50, 500, 'sessions') } },
@@ -497,7 +517,7 @@ export function slotCommands(packs = []) {
         if (to > addDays(from, MAX_RANGE_DAYS)) throw invalid(`Ask for at most ${MAX_RANGE_DAYS} days at a time.`);
         if (input.placeId && !c.entities.has(input.placeId)) throw new CommandError('not-found', 'No place with that id. Use a site, building, department or ward id, for example dept-outpatients.');
         const mine = [...c.d.sessions.values()].filter((s) => s.date >= from && s.date <= to && (!input.sessionType || s.sessionType === input.sessionType)
-          && (!input.placeId || s.placeId === input.placeId || s.assetId === input.placeId) && (!input.state || s.state === input.state))
+          && (!input.placeId || s.placeId === input.placeId || s.assetId === input.placeId) && (!input.state || s.state === input.state) && (!input.service || s.service === input.service))
           .sort((a, b) => a.startMs - b.startMs || (a.id < b.id ? -1 : 1));
         const cut = page(mine, input.limit, 50);
         return { asOf: c.now, synthetic: await isSynthetic(core), from, to, sessions: cut.items.map((s) => sessionOut(c, s, input.format === 'short')), total: cut.total, truncated: cut.truncated };
@@ -543,7 +563,7 @@ export function slotCommands(packs = []) {
       verb: 'session_plan', roles: union('planRoles'), target: null,
       summary: 'Plan one session: a type, a place, a date and who runs it (a role, never a person). From a template (send templateId) it takes the template\'s start, length and slots as they stand on that date; a later change to the template never rewrites it. Without a template, send start and minutes, and slotMinutes for timed slots or capacity for a visit order. The same session planned twice answers with the first.',
       required: ['sessionType', 'date', 'runByRole'],
-      properties: { sessionType: SESSION_TYPE, placeId: PLACE, assetId: ASSET, date: DATE('The day of the session.'), start: HHMM('When it starts. Leave out with a templateId.'), minutes: { ...MINUTES, description: `${MINUTES.description} Leave out with a templateId.` },
+      properties: { sessionType: SESSION_TYPE, ...SERVICE, placeId: PLACE, assetId: ASSET, date: DATE('The day of the session.'), start: HHMM('When it starts. Leave out with a templateId.'), minutes: { ...MINUTES, description: `${MINUTES.description} Leave out with a templateId.` },
         slotMinutes: { ...SLOT_MINUTES, description: `${SLOT_MINUTES.description} Only for a one-off session with timed slots and no template.` }, slotTypes: { ...SLOT_TYPES_IN, description: 'Only without a template: the slot types this session offers. Leave out to offer every type.' },
         capacity: CAPACITY, runByRole: { type: 'string', enum: union('runByRoles'), description: 'The role that runs the session, one of the type\'s runByRoles (ospeli_slots_types). A role, never a person.' },
         templateId: { ...TEMPLATE_ID, description: 'The template to plan from. The date must fall on the template\'s weekday.' } },
@@ -610,11 +630,11 @@ export function slotCommands(packs = []) {
       summary: 'Set the weekly pattern for a session with timed slots: the weekday, start, length, slot length, slot types and whether its sessions open for booking at once ("released"). Leave templateId out for a new template; send it to change one from a date ("from") onwards. Sessions already planned keep the slots they were planned with. People only: an agent cannot set a template.',
       required: ['sessionType', 'placeId', 'weekday', 'start', 'minutes', 'slotMinutes', 'slotTypes', 'released', 'from'],
       properties: { templateId: { ...TEMPLATE_ID, description: 'Only to change a template: its id. Leave out to make a new one.' },
-        sessionType: { type: 'string', enum: types.filter((t) => t.timed).map((t) => t.id), description: 'The type of session, one with timed slots.' }, placeId: PLACE,
+        sessionType: { type: 'string', enum: types.filter((t) => t.timed).map((t) => t.id), description: 'The type of session, one with timed slots.' }, ...SERVICE, placeId: PLACE,
         weekday: { type: 'integer', minimum: 1, maximum: 7, description: 'The day of the week: 1 is Monday, 7 is Sunday.' }, start: HHMM('When the session starts.'), minutes: MINUTES, slotMinutes: SLOT_MINUTES,
         slotTypes: SLOT_TYPES_IN, released: { type: 'boolean', description: 'true: sessions planned from this template are open for booking at once. false: each is planned "not released" until a planner releases it.' },
         from: DATE('The first date this version applies to.') },
-      example: { input: { sessionType: firstTimed.id, placeId: 'dept-outpatients', weekday: 1, start: '09:00', minutes: 80, slotMinutes: 20, slotTypes: [slotTypeIds[0] ?? 'none'], released: true, from: '2026-11-09' } },
+      example: { input: { sessionType: firstTimed.id, ...(firstTimed.services ? { service: Object.keys(firstTimed.services)[0] } : {}), placeId: 'dept-outpatients', weekday: 1, start: '09:00', minutes: 80, slotMinutes: 20, slotTypes: [slotTypeIds[0] ?? 'none'], released: true, from: '2026-11-09' } },
     }));
   }
   return list;
