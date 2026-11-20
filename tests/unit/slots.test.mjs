@@ -222,7 +222,8 @@ t('two tabs booking the last slot write once', async () => {
   const n0 = await a.eventCount();
   const tries = await Promise.allSettled([
     book(a, { sessionId: r, visitOrder: 1, area: 'North 1', slotType: 'test-home-visit', code: 'pc-00001' }, 'ops-manager'),
-    book(b, { sessionId: r, visitOrder: 2, area: 'North 1', slotType: 'test-home-visit', code: 'pc-00002' }, 'ops-manager'),
+    // Both ask for the one place: since ospeli/ospeli#142 a visit order is a place from 1 to the planned capacity, so "2 of 1" is refused as input.
+    book(b, { sessionId: r, visitOrder: 1, area: 'North 1', slotType: 'test-home-visit', code: 'pc-00002' }, 'ops-manager'),
   ]);
   assert.equal(tries.filter((x) => x.status === 'fulfilled').length, 1, 'one booking wins');
   assert.ok(code('conflict')(tries.find((x) => x.status === 'rejected').reason), 'the other is told the session is full');
@@ -296,13 +297,14 @@ t('utilisation, no-show rate and wait in clinic with hand-checked numbers, filte
   const d = await book(core, { sessionId: r, visitOrder: 1, area: 'North 1', slotType: 'test-home-visit', code: 'pc-00004' }, 'ops-manager');
   const go = async (hhmm, id, s, role = 'receptionist', extra) => { time.now = at(MON, hhmm); return step(core, id, s, role, extra); };
   await go('08:55', a.appointmentId, 'arrived');
-  await run(core, 'ospeli_slots_session_change', { sessionId, change: 'held' }, 'ops-manager');
   await go('09:10', a.appointmentId, 'called');
   await go('09:15', b.appointmentId, 'arrived');
   await go('09:25', a.appointmentId, 'finished');
   await go('09:35', b.appointmentId, 'called');
   await go('09:50', b.appointmentId, 'finished');
   await go('09:56', c.appointmentId, 'no-show', 'receptionist', { reason: slots.NO_SHOW_REASONS[0] });
+  // Held once every patient has a final status (ospeli/ospeli#142 point 3, #144 point 3); before that it is refused.
+  await run(core, 'ospeli_slots_session_change', { sessionId, change: 'held' }, 'ops-manager');
   await go('11:00', d.appointmentId, 'no-show', 'ward-nurse', { reason: slots.NO_SHOW_REASONS[0] });
 
   const derived = await derive(core);

@@ -241,8 +241,10 @@ export function firstAttendedAfter(d, index, code, stage) {
   const reached = c?.stages.find((s) => s.stage === stage);
   if (!reached) return null;
   let first = null;
-  for (const a of index?.get(code) || []) if (a.finishedAt && a.finishedAt >= reached.at && (!first || a.finishedAt < first.finishedAt)) first = a;
-  return { fromAt: reached.at, attendedAt: first?.finishedAt ?? null, appointmentId: first?.id ?? null, days: first ? (Date.parse(first.finishedAt) - Date.parse(reached.at)) / DAY : null };
+  // A visit closed as "seen, no times" was attended: it counts from the patient's arrival, the one true time it has.
+  const when = (a) => a.finishedAt ?? (a.noTimes ? a.arrivedAt : null);
+  for (const a of index?.get(code) || []) if (when(a) && when(a) >= reached.at && (!first || when(a) < when(first))) first = a;
+  return { fromAt: reached.at, attendedAt: first ? when(first) : null, appointmentId: first?.id ?? null, days: first ? (Date.parse(when(first)) - Date.parse(reached.at)) / DAY : null };
 }
 
 // How long the code spent in each stage, in order: [{ stage, from, to, minutes }]. The last
@@ -282,6 +284,7 @@ export function timelineOf(d, code, { index = null, events = [] } = {}) {
     step(a.arrivedAt, 'arrived', 'Arrived');
     step(a.calledAt, 'called', 'Called');
     step(a.finishedAt, 'finished', 'Finished');
+    if (a.noTimes) step(a.closedAt, 'seen-no-times', 'Seen, no times');
     if (a.state === 'no-show') step(a.closedAt, 'no-show', 'Missed appointment', { reason: a.noShowReason ?? null });
     if (a.state === 'cancelled') step(a.closedAt, 'cancelled', 'Cancelled', { reason: a.cancelReason ?? null });
   }

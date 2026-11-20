@@ -43,6 +43,15 @@ export const APPOINTMENT_STATES = {
   cancelled: { name: 'Cancelled' },
 };
 export const OPEN_APPOINTMENT_STATES = ['booked', 'arrived', 'called'];
+// A patient who was seen but whose Call in and Finished nobody tapped: the appointment is finished
+// with no call or finish time (`noTimes`). The words a list shows for it.
+export const NO_TIMES_NAME = 'Seen, no times';
+// A step marked by mistake can be undone by a person: the step it undoes, and the state it goes back to.
+// Nothing is erased: the wrong step and the undo both stay in the log.
+export const UNDO_STEPS = { arrived: 'booked', called: 'arrived', 'no-show': 'booked' };
+export const UNDO_REASON_DEFAULT = 'Marked by mistake';
+// "Patient arrived late" is for a missed appointment only: the patient came after it was recorded.
+export const UNDO_REASONS = [UNDO_REASON_DEFAULT, 'Patient arrived late'];
 // Every reason is a pick from a list, so no personal detail can be typed. A module may add
 // reasons of its own (SLOT_REASONS in its pack); it can never take one away.
 export const SESSION_CHANGE_REASONS = ['Staff short', 'Room or vehicle not available', 'Weather or access', 'Other'];
@@ -61,7 +70,7 @@ export const SLOT_PLACE_TYPES = ['site', 'building', 'department', 'ward', 'bed'
 export const SLOT_EVENT_TYPES = [
   'slot.template-set', 'session.planned', 'session.held', 'session.cancelled', 'session.reduced', 'session.released',
   'appointment.booked', 'appointment.moved', 'appointment.cancelled', 'appointment.arrived', 'appointment.called', 'appointment.finished',
-  'appointment.no-show', 'appointment.reminder-recorded',
+  'appointment.no-show', 'appointment.reminder-recorded', 'appointment.seen-no-times', 'appointment.step-undone',
   // Read only, never written here: the patient code object's own events.
   'code.opened', 'code.closed',
 ];
@@ -171,7 +180,10 @@ export function templateOn(template, date) {
 //   session     { id, sessionType, service, timed, placeId, assetId, date, start, minutes, slotMinutes, slotTypes, capacity, plannedCapacity,
 //                 removed, runByRole, templateId, released, state, reason, plannedAt, closedAt, startMs, endMs, appointments: [id] }
 //   appointment { id, sessionId, sessionType, slotTime, visitOrder, area, code, slotType, bookedFrom, rebookOf, rebookedBy, requestRef,
-//                 state, bookedAt, bookedByRole, arrivedAt, calledAt, finishedAt, closedAt, noShowReason, cancelBy, cancelReason, moves, reminders }
+//                 state, bookedAt, placedAt, bookedByRole, arrivedAt, calledAt, finishedAt, closedAt, noTimes, attendedAt, noShowReason, cancelBy,
+//                 cancelReason, moves, reminders, corrections: [{ undo, reason, at, byRole, stepAt }] }
+// placedAt: when the booking was put in the place it has now (booked, or last moved). noTimes: seen, but the
+// call and finish were not tapped, so finishedAt is null. attendedAt: the finish, or for noTimes the arrival.
 export function deriveSlots(events, { packs = [], offsetMinutes = 0, catalogue = null } = {}) {
   const { sessionTypes } = catalogue || slotCatalogue(packs, null);
   const templates = new Map();
@@ -222,8 +234,8 @@ export function deriveSlots(events, { packs = [], offsetMinutes = 0, catalogue =
         appointments.set(e.subject, {
           id: e.subject, sessionId: s.id, sessionType: d.sessionType ?? s.sessionType, slotTime: d.slotTime ?? null, visitOrder: d.visitOrder ?? null, area: d.area ?? null,
           code: d.code, slotType: d.slotType, bookedFrom: d.bookedFrom ?? null, rebookOf: d.rebookOf ?? null, rebookedBy: null, requestRef: d.requestRef ?? null,
-          state: 'booked', bookedAt: e.at, bookedByRole: e.actorRole, arrivedAt: null, calledAt: null, finishedAt: null, closedAt: null,
-          noShowReason: null, cancelBy: null, cancelReason: null, moves: 0, reminders: [],
+          state: 'booked', bookedAt: e.at, placedAt: e.at, bookedByRole: e.actorRole, arrivedAt: null, calledAt: null, finishedAt: null, closedAt: null,
+          noTimes: false, attendedAt: null, noShowReason: null, cancelBy: null, cancelReason: null, moves: 0, reminders: [], corrections: [],
         });
         s.appointments.push(e.subject);
         const old = d.rebookOf ? appointments.get(d.rebookOf) : null;
@@ -235,12 +247,30 @@ export function deriveSlots(events, { packs = [], offsetMinutes = 0, catalogue =
         if (!a || a.state !== 'booked' || !s) break;
         const from = sessions.get(a.sessionId);
         if (from && from !== s) { from.appointments = from.appointments.filter((x) => x !== a.id); s.appointments.push(a.id); }
-        Object.assign(a, { sessionId: s.id, slotTime: d.slotTime ?? null, visitOrder: d.visitOrder ?? null, moves: a.moves + 1 });
+        Object.assign(a, { sessionId: s.id, slotTime: d.slotTime ?? null, visitOrder: d.visitOrder ?? null, moves: a.moves + 1, placedAt: e.at });
         break;
       }
       case 'appointment.arrived': { const a = appointments.get(e.subject); if (a?.state === 'booked') Object.assign(a, { state: 'arrived', arrivedAt: e.at }); break; }
       case 'appointment.called': { const a = appointments.get(e.subject); if (a?.state === 'arrived') Object.assign(a, { state: 'called', calledAt: e.at }); break; }
-      case 'appointment.finished': { const a = appointments.get(e.subject); if (a?.state === 'called') Object.assign(a, { state: 'finished', finishedAt: e.at, closedAt: e.at }); break; }
+      case 'appointment.finished': { const a = appointments.get(e.subject); if (a?.state === 'called') Object.assign(a, { state: 'finished', finishedAt: e.at, closedAt: e.at, attendedAt: e.at }); break; }
+      // Seen, but not tapped through: attended and finished, with no call or finish time made up.
+      case 'appointment.seen-no-times': {
+        const a = appointments.get(e.subject);
+        if (a && (a.state === 'arrived' || a.state === 'called')) Object.assign(a, { state: 'finished', noTimes: true, closedAt: e.at, attendedAt: a.arrivedAt });
+        break;
+      }
+      // A step marked by mistake, undone by a person. An undo that does not fit the record is ignored.
+      case 'appointment.step-undone': {
+        const a = appointments.get(e.subject);
+        if (!a || a.state !== d.undo || !UNDO_STEPS[d.undo]) break;
+        if (d.undo === 'no-show' && !openSession(a.sessionId)) break;
+        const stepAt = d.undo === 'arrived' ? a.arrivedAt : d.undo === 'called' ? a.calledAt : a.closedAt;
+        a.corrections.push({ undo: d.undo, reason: UNDO_REASONS.includes(d.reason) ? d.reason : UNDO_REASON_DEFAULT, at: e.at, byRole: e.actorRole, stepAt });
+        if (d.undo === 'arrived') Object.assign(a, { state: 'booked', arrivedAt: null });
+        else if (d.undo === 'called') Object.assign(a, { state: 'arrived', calledAt: null });
+        else Object.assign(a, { state: 'booked', closedAt: null, noShowReason: null });
+        break;
+      }
       case 'appointment.no-show': { const a = appointments.get(e.subject); if (a?.state === 'booked') Object.assign(a, { state: 'no-show', closedAt: e.at, noShowReason: d.reason ?? null }); break; }
       case 'appointment.cancelled': {
         const a = appointments.get(e.subject);
@@ -287,11 +317,21 @@ export function dueMs(d, a) {
   const s = d.sessions.get(a.sessionId);
   return s ? (a.slotTime ? localInstant(s.date, a.slotTime, d.offsetMinutes) : s.startMs) : null;
 }
-// The earliest moment a no-show may be recorded: due plus the type's grace.
-export const noShowFromMs = (d, a) => { const due = dueMs(d, a); return due == null ? null : due + (d.sessionTypes.get(a.sessionType)?.graceMinutes ?? NO_SHOW_GRACE_DEFAULT) * MIN; };
-// Minutes from arrived to called, or to `now` while still waiting; null before arriving.
+// The earliest moment a no-show may be recorded: the type's grace after the time the patient was
+// given. For a booking made or moved into a place whose time had already passed, the grace
+// counts from that booking or move, so nobody is "missed" before the time they were told.
+export const noShowFromMs = (d, a) => {
+  const due = dueMs(d, a);
+  if (due == null) return null;
+  const placed = a.placedAt ? Date.parse(a.placedAt) : -Infinity;
+  return Math.max(due, placed) + (d.sessionTypes.get(a.sessionType)?.graceMinutes ?? NO_SHOW_GRACE_DEFAULT) * MIN;
+};
+// true: the grace runs from when the booking was placed, not from its slot time.
+export const placedLate = (d, a) => { const due = dueMs(d, a); return due != null && a.placedAt != null && Date.parse(a.placedAt) > due; };
+// Minutes from arrived to called, or to `now` while still waiting; null before arriving, and
+// null for a patient seen with no call time recorded (no wait is made up).
 export function waitMinutes(a, now) {
-  if (!a.arrivedAt) return null;
+  if (!a.arrivedAt || (a.noTimes && !a.calledAt)) return null;
   const end = a.calledAt || (a.state === 'arrived' ? now : a.closedAt) || now;
   return Math.max(0, Math.round((Date.parse(end) - Date.parse(a.arrivedAt)) / MIN));
 }
@@ -338,24 +378,51 @@ export function noShowRate(d, { since, until, sessionType = null } = {}) {
   }
   return rate(missed, due);
 }
-// Arrived to called, for appointments called in the period: { n, medianMinutes }.
+// Arrived to called, for appointments called in the period: { n, medianMinutes, leftOut }.
+// leftOut: patients seen with no call time recorded (closed in the period); they have no wait
+// to count, and the figure says how many. Local definition.
 export function waitInClinic(d, { since, until, sessionType = null } = {}) {
   const inPeriod = period({ since, until });
-  const waits = [...d.appointments.values()].filter((a) => a.calledAt && a.arrivedAt && inPeriod(Date.parse(a.calledAt)) && (!sessionType || a.sessionType === sessionType))
+  const mine = [...d.appointments.values()].filter((a) => !sessionType || a.sessionType === sessionType);
+  const waits = mine.filter((a) => a.calledAt && a.arrivedAt && inPeriod(Date.parse(a.calledAt)))
     .map((a) => Math.max(0, Date.parse(a.calledAt) - Date.parse(a.arrivedAt)) / MIN);
-  return { n: waits.length, medianMinutes: median(waits) };
+  const leftOut = mine.filter((a) => a.noTimes && !a.calledAt && inPeriod(Date.parse(a.closedAt))).length;
+  return { n: waits.length, medianMinutes: median(waits), leftOut };
 }
-// Minutes from the session's planned start to the first patient called (below zero: called early). null: nobody called yet.
+// Start of a session, two ways (both local definitions; below zero: called early; null: nobody called yet):
+//   minutes                 first patient called, against the planned start: the delay patients feel. The headline.
+//   minutesFromFirstArrival first patient called, against the later of the planned start and the first arrival,
+//                           so a session whose first booked patients did not come is not shown as starting late.
+//   nobodyHereAtStart       true when no patient had arrived by the planned start (null: nobody arrived at all).
+//   leftOut                 patients seen with no call time recorded: they cannot be the first call.
 export function firstCalledVsStart(d, { sessionId }) {
   const s = d.sessions.get(sessionId);
-  const called = appointmentsOf(d, sessionId).filter((a) => a.calledAt).map((a) => Date.parse(a.calledAt));
-  return { minutes: s && called.length ? (Math.min(...called) - s.startMs) / MIN : null };
+  const mine = appointmentsOf(d, sessionId);
+  const called = mine.filter((a) => a.calledAt).map((a) => Date.parse(a.calledAt));
+  const arrived = mine.filter((a) => a.arrivedAt).map((a) => Date.parse(a.arrivedAt));
+  const firstArrival = arrived.length ? Math.min(...arrived) : null;
+  const firstCall = s && called.length ? Math.min(...called) : null;
+  return {
+    minutes: firstCall == null ? null : (firstCall - s.startMs) / MIN,
+    minutesFromFirstArrival: firstCall == null ? null : (firstCall - Math.max(s.startMs, firstArrival ?? s.startMs)) / MIN,
+    nobodyHereAtStart: s && firstArrival != null ? firstArrival > s.startMs : null,
+    leftOut: mine.filter((a) => a.noTimes && !a.calledAt).length,
+  };
 }
-// Minutes from the session's planned end to the last patient finished (below zero: ended early). null: nobody finished yet.
+// Minutes from the session's planned end to the last patient finished (below zero: ended early). null: nobody
+// finished yet. Only a finish tapped at its own time counts; leftOut says how many patients were seen with no
+// finish time recorded, so tidying up after a clinic never shows as an overrun. Local definition.
 export function overrun(d, { sessionId }) {
   const s = d.sessions.get(sessionId);
-  const done = appointmentsOf(d, sessionId).filter((a) => a.finishedAt).map((a) => Date.parse(a.finishedAt));
-  return { minutes: s && done.length ? (Math.max(...done) - s.endMs) / MIN : null };
+  const mine = appointmentsOf(d, sessionId);
+  const done = mine.filter((a) => a.finishedAt).map((a) => Date.parse(a.finishedAt));
+  return { minutes: s && done.length ? (Math.max(...done) - s.endMs) / MIN : null, leftOut: mine.filter((a) => a.noTimes).length };
+}
+// How many of a session's attended patients were closed as "seen, no times": a figure about the
+// record's quality, shown beside the measures. { noTimes, attended }
+export function noTimesCount(d, { sessionId }) {
+  const done = appointmentsOf(d, sessionId).filter((a) => a.state === 'finished');
+  return { noTimes: done.filter((a) => a.noTimes).length, attended: done.length };
 }
 // Bookings made in the period that replace a cancelled or missed appointment.
 export function rebookCount(d, { since, until, sessionType = null } = {}) {

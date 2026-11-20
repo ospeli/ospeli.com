@@ -17,7 +17,7 @@ import {
 import { roleById, currentWords } from './model.js';
 import {
   TEMPLATE_ID_PATTERN, SESSION_ID_PATTERN, APPOINTMENT_ID_PATTERN, CODE_PATTERN, DATE_PATTERN, HHMM_PATTERN, AREA_PATTERN,
-  SESSION_STATES, APPOINTMENT_STATES, LEFT_REASON, BOOKED_FROM, REMINDER_REPLIES, CANCEL_BY, MAX_SESSION_MINUTES, MAX_CAPACITY, SLOT_EVENT_TYPES,
+  SESSION_STATES, APPOINTMENT_STATES, LEFT_REASON, NO_TIMES_NAME, UNDO_STEPS, UNDO_REASONS, UNDO_REASON_DEFAULT, placedLate, localInstant, BOOKED_FROM, REMINDER_REPLIES, CANCEL_BY, MAX_SESSION_MINUTES, MAX_CAPACITY, SLOT_EVENT_TYPES,
   slotCatalogue, deriveSlots, validDate, weekdayOf, localDate, addDays, slotGrid, slotTimes, capacityOf, holdsPlace, isOpenAppointment, templateOn,
   nextTemplateId, nextSessionId, nextAppointmentId, codeState, appointmentsOf, placeTaken, sessionFill, dueMs, noShowFromMs, waitMinutes,
 } from './slots.js';
@@ -56,7 +56,7 @@ export function slotCommands(packs = []) {
   const SLOT_TYPES_IN = { type: 'array', minItems: 1, maxItems: 20, items: { type: 'string', enum: slotTypeIds.length ? slotTypeIds : ['none'] }, description: 'The slot types this session offers. A booking must pick one of them.' };
   const CAPACITY = { type: 'integer', minimum: 1, maximum: MAX_CAPACITY, description: `How many patients the session can take (a session with a visit order, not timed slots). From 1 to ${MAX_CAPACITY}.` };
   const SLOT_TIME = HHMM('The slot to take, one of the session\'s free slots (ospeli_slots_sessions lists them). Only for a session with timed slots.');
-  const VISIT_ORDER = { type: 'integer', minimum: 1, maximum: MAX_CAPACITY, description: 'The place in the visit order: 1 is first. Only for a session with a capacity and a visit order (a round), which has no slot times.' };
+  const VISIT_ORDER = { type: 'integer', minimum: 1, maximum: MAX_CAPACITY, description: 'The place in the visit order: a place from 1 to the capacity the session was planned with, 1 first. Only for a session with a capacity and a visit order (a round), which has no slot times.' };
   // Services: only for the types of session that list them (a clinic for one service).
   const serviceWords = Object.assign({}, ...types.map((t) => t.services || {}));
   const serviceIds = Object.keys(serviceWords);
@@ -86,6 +86,16 @@ export function slotCommands(packs = []) {
   }
   const placeName = (c, id) => { const p = id ? c.entities.get(id) : null; return p ? currentWords(p.name) : id ?? null; };
   const ev = (type, subject, role, at, data = null) => ({ type, subject, actorRole: role, at, data });
+  // A moment as the site's own clock, "09:45", for a refusal a person reads.
+  const siteClock = (c, ms) => new Date(ms + c.offsetMinutes * MIN).toISOString().slice(11, 16);
+  // Timed slots carry a time and no date, so a session with timed slots ends at midnight or before.
+  function endsByMidnight(type, start, minutes) {
+    if (type.timed && Number(start.slice(0, 2)) * 60 + Number(start.slice(3)) + minutes > 24 * 60) {
+      throw invalid(`Ospeli cannot yet plan timed slots past midnight. End this ${type.word.toLowerCase()} at midnight or before, and plan the time after midnight as a second session on the next day.`, { latestEnd: '24:00' });
+    }
+  }
+  // What a person can do with an appointment that has no final status yet.
+  const waysOut = (a) => (a.state === 'booked' ? ['no-show', 'cancel'] : a.state === 'called' ? ['finished', 'seen-no-times', 'left'] : ['seen-no-times', 'left']);
   const invalid = (why, detail = null) => new CommandError('invalid-input', why, detail);
   const conflict = (why, detail = null) => new CommandError('conflict', why, detail);
   const typeOf = (id) => {
@@ -133,6 +143,7 @@ export function slotCommands(packs = []) {
     const mine = exceptId && c.d.appointments.get(exceptId)?.sessionId === s.id;
     if (!s.timed && !mine && fill.booked >= fill.capacity) throw conflict('This session is full.', { capacity: fill.capacity, booked: fill.booked });
     const taken = placeTaken(c.d, s, want, exceptId);
+    if (!s.timed && want.visitOrder > s.plannedCapacity) throw invalid(`This session was planned with ${s.plannedCapacity} place${s.plannedCapacity === 1 ? '' : 's'}: the visit order is a place from 1 to ${s.plannedCapacity}.`, { places: s.plannedCapacity });
     if (taken) throw conflict(s.timed ? 'That slot is already taken.' : 'That place in the visit order is already taken.', s.timed ? { free: freeSlots(s).slice(0, 12) } : { takenOrders: appointmentsOf(c.d, s.id).filter(holdsPlace).map((a) => a.visitOrder).sort((x, y) => x - y) });
   }
   function codeOpenElsewhere(c, s, code, exceptId = null) {
@@ -153,6 +164,7 @@ export function slotCommands(packs = []) {
       if (!validDate(input.from)) throw invalid('from is not a real date. Use YYYY-MM-DD, for example "2026-11-09".');
       const service = serviceFor(type, input.service);
       if (input.slotMinutes > input.minutes) throw invalid('slotMinutes cannot be longer than the session (minutes).');
+      endsByMidnight(type, input.start, input.minutes);
       if (new Set(input.slotTypes).size !== input.slotTypes.length) throw invalid('slotTypes lists a type twice.');
       const version = { start: input.start, minutes: input.minutes, slotMinutes: input.slotMinutes, slotTypes: [...input.slotTypes], released: input.released, from: input.from };
       const strip = (v) => ({ start: v.start, minutes: v.minutes, slotMinutes: v.slotMinutes, slotTypes: v.slotTypes, released: v.released, from: v.from });
@@ -221,6 +233,7 @@ export function slotCommands(packs = []) {
           data.capacity = input.capacity;
         }
       }
+      endsByMidnight(type, data.start, data.minutes);
       if (type.timed && !slotGrid(data.start, data.minutes, data.slotMinutes).length) throw invalid('The session is shorter than one slot.');
       const twin = [...c.d.sessions.values()].find((s) => s.state !== 'cancelled' && s.sessionType === type.id && (s.service ?? null) === (data.service ?? null) && s.placeId === (input.placeId ?? null) && s.assetId === (input.assetId ?? null) && s.date === data.date && s.start === data.start);
       if (twin) {
@@ -250,6 +263,12 @@ export function slotCommands(packs = []) {
       if (change === 'released') return done(s.state, 'session.released', null);
       if (change === 'held') {
         if (localDate(c.now, c.offsetMinutes) < s.date) throw conflict(`This session is on ${s.date}. "Held" records that it ran, so it cannot be set before its day.`, { date: s.date });
+        // "Held" is final, so every patient needs a final status first: nobody is left booked, waiting or in a room on the record.
+        const open = appointmentsOf(c.d, s.id).filter(isOpenAppointment);
+        if (open.length) {
+          throw conflict(`${open.length} patient${open.length === 1 ? '' : 's'} in this session ${open.length === 1 ? 'has' : 'have'} no final status. Mark each one Finished, Seen (no times), Left before being seen, Missed appointment or Cancelled, or undo a wrong tap. Then mark the session as held.`,
+            { open: open.map((a) => ({ appointmentId: a.id, code: a.code, state: a.state, can: waysOut(a) })) });
+        }
         return done('held', 'session.held', null);
       }
       if (change === 'cancelled') {
@@ -355,8 +374,18 @@ export function slotCommands(packs = []) {
       if (step === 'no-show' && !input.reason) throw invalid(`A no-show needs a reason: ${reasons.noShow.join(', ')}.`, { reasons: reasons.noShow });
       if (step !== 'no-show' && input.reason) throw invalid(`"${step}" takes no reason: leave it out.`);
       // The same step again answers done and writes nothing, even if the caller's view is old.
-      if (a.state === step) return { out: { appointmentId: a.id, state: a.state }, events: [] };
+      if (a.state === step || (step === 'seen-no-times' && a.state === 'finished' && a.noTimes)) return { out: { appointmentId: a.id, state: a.state }, events: [] };
       if (input.expectedState && a.state !== input.expectedState) throw conflict('This appointment changed since you opened it.', { state: a.state });
+      if (step === 'seen-no-times') {
+        // For a patient who was seen but not tapped through. From the patient's own booked time on,
+        // so it cannot stand in for the real steps before the visit could have happened.
+        if (a.state === 'booked') throw conflict('This patient has not been marked arrived. If they were seen, mark Arrived first. If they did not come, record a missed appointment.', { state: a.state });
+        if (!isOpenAppointment(a)) throw conflict(`This appointment is ${APPOINTMENT_STATES[a.state].name.toLowerCase()}: no more steps.`, { state: a.state });
+        const due = dueMs(c.d, a);
+        if (Date.parse(c.now) < due) throw conflict(`"${NO_TIMES_NAME}" is for a patient who was seen but not tapped through. It can be used from the patient's booked time, ${siteClock(c, due)}.`, { from: new Date(due).toISOString() });
+        return { out: { appointmentId: a.id, state: 'finished' }, events: [ev('appointment.seen-no-times', a.id, role, c.now, null)],
+          audit: ['appointment.seen-no-times', a.id, { sessionId: a.sessionId, from: a.state }] };
+      }
       const need = { arrived: 'booked', called: 'arrived', finished: 'called', 'no-show': 'booked' }[step];
       if (a.state !== need) {
         const why = !isOpenAppointment(a) ? `This appointment is ${APPOINTMENT_STATES[a.state].name.toLowerCase()}: no more steps.`
@@ -366,10 +395,44 @@ export function slotCommands(packs = []) {
       }
       if (step === 'no-show') {
         const from = noShowFromMs(c.d, a);
-        if (Date.parse(c.now) < from) throw conflict(`A no-show can be recorded from ${type.graceMinutes} minutes after the booked time (example setting, not a standard). Before then the patient may still arrive.`, { from: new Date(from).toISOString() });
+        if (Date.parse(c.now) < from) {
+          throw conflict(placedLate(c.d, a)
+            ? `This booking was put in this place at ${siteClock(c, Date.parse(a.placedAt))}. A missed appointment can be recorded from ${siteClock(c, from)}: ${type.graceMinutes} minutes later (example setting, not a standard).`
+            : `A no-show can be recorded from ${type.graceMinutes} minutes after the booked time (example setting, not a standard). Before then the patient may still arrive.`, { from: new Date(from).toISOString() });
+        }
       }
       return { out: { appointmentId: a.id, state: step }, events: [ev(`appointment.${step}`, a.id, role, c.now, step === 'no-show' ? { reason: input.reason } : null)],
         audit: [`appointment.${step}`, a.id, { sessionId: a.sessionId, ...(input.reason ? { reason: input.reason } : {}) }] };
+    },
+
+    // A step marked by mistake, undone by a person at the desk. The wrong step stays in the log.
+    step_correct(c, input, role) {
+      const a = appointmentOr404(c, input.appointmentId);
+      const type = typeOf(a.sessionType);
+      may(type, ['stepRoles'], role, 'correct a step in');
+      const { undo } = input;
+      const back = UNDO_STEPS[undo];
+      const reason = input.reason ?? UNDO_REASON_DEFAULT;
+      if (reason !== UNDO_REASON_DEFAULT && undo !== 'no-show') throw invalid(`"${reason}" is for undoing a missed appointment. Leave reason out here.`, { reasons: [UNDO_REASON_DEFAULT] });
+      // The same undo again (a double tap) answers done and writes nothing.
+      if (a.state === back && a.corrections.at(-1)?.undo === undo && !input.expectedState) return { out: { appointmentId: a.id, state: a.state }, events: [] };
+      if (a.state === back && a.corrections.at(-1)?.undo === undo && input.expectedState === undo) return { out: { appointmentId: a.id, state: a.state }, events: [] };
+      if (input.expectedState && a.state !== input.expectedState) throw conflict('This appointment changed since you opened it.', { state: a.state });
+      const s = c.d.sessions.get(a.sessionId);
+      if (!s || (s.state !== 'planned' && s.state !== 'reduced')) throw conflict(`This session is marked as ${SESSION_STATES[s?.state]?.name.toLowerCase() || 'closed'}: its steps can no longer be corrected.`, { sessionState: s?.state ?? null });
+      if (a.state !== undo) {
+        if (undo === 'arrived' && a.state === 'called') throw conflict('This patient has already been called in, so Arrived cannot be undone. If the wrong patient was called in, undo Called in first.', { state: a.state, canUndo: 'called' });
+        const can = Object.keys(UNDO_STEPS).find((k) => k === a.state) ?? null;
+        throw conflict(`This appointment is ${APPOINTMENT_STATES[a.state].name.toLowerCase()}, so there is no "${APPOINTMENT_STATES[undo].name}" to undo.${a.state === 'finished' ? ' A finished appointment is not corrected.' : ''}`, { state: a.state, canUndo: can });
+      }
+      if (undo === 'no-show') {
+        if (localDate(c.now, c.offsetMinutes) !== s.date) throw conflict('A missed appointment can be undone on the same day only. After that, book the patient again (ospeli_slots_book with rebookOf).', { date: s.date });
+        if (a.rebookedBy) throw conflict(`This missed appointment was already booked again as ${a.rebookedBy}. Use that appointment.`, { existing: a.rebookedBy });
+        if (codeState(c.d, a.code) === 'closed') throw conflict('This patient code is closed. A new visit gets a new code.');
+        codeOpenElsewhere(c, s, a.code, a.id);
+      }
+      return { out: { appointmentId: a.id, state: back }, events: [ev('appointment.step-undone', a.id, role, c.now, { undo, reason })],
+        audit: ['appointment.step-undone', a.id, { sessionId: a.sessionId, undo, reason }] };
     },
 
     reminder_record(c, input, role) {
@@ -433,7 +496,10 @@ export function slotCommands(packs = []) {
     code: CODE, slotType: { type: 'string' }, state: APPOINTMENT_STATE, stateName: { type: 'string' }, bookedFrom: NULLABLE('string'),
     dueAt: { type: ['string', 'null'], description: 'When the appointment is due: its slot time, or the session\'s start for a visit order.' },
     bookedAt: TIME, arrivedAt: NULLABLE('string'), calledAt: NULLABLE('string'), finishedAt: NULLABLE('string'), closedAt: NULLABLE('string'),
-    waitMinutes: { type: ['integer', 'null'], description: 'Minutes from arrived to called, or to now while still waiting. null before arriving.' },
+    waitMinutes: { type: ['integer', 'null'], description: 'Minutes from arrived to called, or to now while still waiting. null before arriving, and null for a patient seen with no call time recorded: no wait is made up.' },
+    noTimes: { type: 'boolean', description: `true: closed as "${NO_TIMES_NAME}". The patient was seen but the call and the finish were not tapped, so there is no finish time and the appointment is left out of the waiting, start and overrun figures.` },
+    noShowFrom: { type: ['string', 'null'], description: 'While booked: the earliest moment a missed appointment may be recorded. The grace after the booked time, or after the booking or move if that came later. null in any other state.' },
+    corrections: { type: 'integer', minimum: 0, description: 'How many steps of this appointment a person has undone (marked by mistake). The wrong step and the undo stay in the log.' },
     overdue: { type: 'boolean', description: 'true: still booked after the booked time plus the grace, so no-show may be recorded. Worked out from now; never a stored state.' },
     reason: { type: ['string', 'null'], description: 'The reason picked for a cancel or a no-show.' }, cancelBy: NULLABLE('string'),
     rebookOf: NULLABLE('string'), rebookedBy: NULLABLE('string'), moves: { type: 'integer', minimum: 0 },
@@ -453,7 +519,8 @@ export function slotCommands(packs = []) {
     const due = dueMs(c.d, a);
     const seesArea = type && role && (type.bookRoles.includes(role) || type.stepRoles.includes(role));
     return { id: a.id, sessionId: a.sessionId, sessionType: a.sessionType, date: s?.date ?? null, slotTime: a.slotTime, visitOrder: a.visitOrder, area: seesArea ? a.area : null,
-      code: a.code, slotType: a.slotType, state: a.state, stateName: APPOINTMENT_STATES[a.state].name, bookedFrom: a.bookedFrom, dueAt: due == null ? null : new Date(due).toISOString(),
+      code: a.code, slotType: a.slotType, state: a.state, stateName: a.noTimes ? NO_TIMES_NAME : APPOINTMENT_STATES[a.state].name, noTimes: a.noTimes,
+      noShowFrom: a.state === 'booked' && noShowFromMs(c.d, a) != null ? new Date(noShowFromMs(c.d, a)).toISOString() : null, corrections: a.corrections.length, bookedFrom: a.bookedFrom, dueAt: due == null ? null : new Date(due).toISOString(),
       bookedAt: a.bookedAt, arrivedAt: a.arrivedAt, calledAt: a.calledAt, finishedAt: a.finishedAt, closedAt: a.closedAt, waitMinutes: waitMinutes(a, c.now),
       overdue: a.state === 'booked' && Date.parse(c.now) >= noShowFromMs(c.d, a), reason: a.noShowReason ?? a.cancelReason ?? null, cancelBy: a.cancelBy,
       rebookOf: a.rebookOf, rebookedBy: a.rebookedBy, moves: a.moves, reminderReply: a.reminders.at(-1)?.reply ?? null };
@@ -571,7 +638,7 @@ export function slotCommands(packs = []) {
     }),
     write({
       verb: 'session_change', roles: union('planRoles'), target: (input) => ({ id: input.sessionId, word: 'session' }),
-      summary: 'Change a planned session: "held" records that it ran (on or after its day), "reduced" makes it smaller with a reason (a smaller capacity, or free slots taken out; never below what is booked), "cancelled" ends it with a reason, "released" opens a session planned from a not-released template for booking. Cancel is refused while any booking is still open, and the answer lists them, so nobody vanishes from a list. Held and cancelled are final.',
+      summary: 'Change a planned session: "held" records that it ran (on or after its day; refused while any patient has no final status, and the answer lists each one with what can be done), "reduced" makes it smaller with a reason (a smaller capacity, or free slots taken out; never below what is booked), "cancelled" ends it with a reason, "released" opens a session planned from a not-released template for booking. Cancel is refused while any booking is still open, and the answer lists them, so nobody vanishes from a list. Held and cancelled are final.',
       required: ['sessionId', 'change'],
       properties: { sessionId: SESSION_ID, change: { type: 'string', enum: ['held', 'reduced', 'cancelled', 'released'], description: 'held: it ran. reduced: fewer places. cancelled: it will not run. released: open it for booking.' },
         reason: { type: 'string', enum: reasons.sessionChange, description: `Needed for reduced and cancelled: ${reasons.sessionChange.join(', ')}.` },
@@ -610,11 +677,19 @@ export function slotCommands(packs = []) {
     }),
     write({
       verb: 'step', roles: union('stepRoles'), target: (input) => ({ id: input.appointmentId, word: 'appointment' }),
-      summary: 'Mark one step of an appointment: arrived, then called, then finished, in that order; or no-show, with a reason, only for a patient who never arrived and only after the booked time plus the grace (an example setting, not a standard). Each step is written once with its time; the same step sent twice answers done and writes nothing. No clinical step and no outcome is recorded.',
+      summary: `Mark one step of an appointment: arrived, then called, then finished, in that order; or no-show, with a reason, only for a patient who never arrived and only after the booked time plus the grace (an example setting, not a standard; for a booking made or moved into a time already past, the grace counts from that booking or move). "seen-no-times" closes a patient who arrived and was seen but was not tapped through, from their booked time on: attended and finished with no call or finish time, left out of the waiting, start and overrun figures, which say how many. Each step is written once with its time; the same step sent twice answers done and writes nothing. No clinical step and no outcome is recorded.`,
       required: ['appointmentId', 'step'],
-      properties: { appointmentId: APPOINTMENT_ID, step: { type: 'string', enum: ['arrived', 'called', 'finished', 'no-show'], description: 'arrived: the patient is here. called: called in from the wait. finished: the visit is over. no-show: never arrived.' },
+      properties: { appointmentId: APPOINTMENT_ID, step: { type: 'string', enum: ['arrived', 'called', 'finished', 'no-show', 'seen-no-times'], description: `arrived: the patient is here. called: called in from the wait. finished: the visit is over, tapped at the time it ended. no-show: never arrived. seen-no-times: "${NO_TIMES_NAME}", for a patient who was seen but not tapped through.` },
         reason: { type: 'string', enum: reasons.noShow, description: `Only for no-show, and needed then: ${reasons.noShow.join(', ')}.` }, expectedState: EXPECTED(APPOINTMENT_STATE, 'appointment') },
       example: { input: { appointmentId: 'apt-00001', step: 'arrived' }, needs: NEED_APPOINTMENT },
+    }),
+    write({
+      verb: 'step_correct', roles: union('stepRoles'), people: true, target: (input) => ({ id: input.appointmentId, word: 'appointment' }),
+      summary: 'Undo a step marked by mistake. Undo "arrived": back to booked, only before the patient is called in. Undo "called": back to arrived, keeping the arrival time, only before finished. Undo "no-show" (a missed appointment): back to booked, only on the same day and before the session is marked held. Nothing is erased: the wrong step and the undo both stay in the log with the time and the role, and every figure is worked out again. Once the session is held, steps can no longer be corrected. People only.',
+      required: ['appointmentId', 'undo'],
+      properties: { appointmentId: APPOINTMENT_ID, undo: { type: 'string', enum: Object.keys(UNDO_STEPS), description: 'The step to undo, which must be the state the appointment is in now: arrived, called or no-show.' },
+        reason: { type: 'string', enum: UNDO_REASONS, description: `Optional pick. Default: "${UNDO_REASON_DEFAULT}". "Patient arrived late" is for undoing a missed appointment only.` }, expectedState: EXPECTED(APPOINTMENT_STATE, 'appointment') },
+      example: { input: { appointmentId: 'apt-00001', undo: 'arrived' }, needs: 'An appointment marked arrived by mistake and not yet called in. apt-00001 is an example id: ospeli_slots_appointments with a sessionId lists a session\'s appointments.' },
     }),
     write({
       verb: 'reminder_record', roles: union('bookRoles'), target: (input) => ({ id: input.appointmentId, word: 'appointment' }),
