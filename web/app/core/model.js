@@ -38,6 +38,10 @@ export const ROLES = [
   { id: 'driver', name: 'Driver', home: 'transfers', startsOnHome: true },
   { id: 'transport-coordinator', name: 'Transport coordinator', home: 'transfers', startsOnHome: true },
   { id: 'fleet-supervisor', name: 'Fleet supervisor', home: 'transfers', startsOnHome: true },
+  { id: 'clinic-receptionist', name: 'Clinic receptionist', home: 'clinics', startsOnHome: true },
+  { id: 'clinic-nurse', name: 'Clinic nurse', home: 'clinics', startsOnHome: true },
+  { id: 'booking-clerk', name: 'Booking clerk', home: 'clinics', startsOnHome: true },
+  { id: 'outpatient-manager', name: 'Outpatient manager', home: 'clinics', startsOnHome: true },
 ];
 
 export const roleById = (id) => ROLES.find((r) => r.id === id) || null;
