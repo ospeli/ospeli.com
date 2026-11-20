@@ -339,7 +339,7 @@ const TEMPLATES = [
   ['eye', [2, 4], '09:00', 180, 15],
   ['antenatal', [1, 4], '13:30', 150, 15],
 ];
-const REFERRALS_PER_WEEK = { 'general-medicine': 48, diabetes: 20, eye: 20, antenatal: 16 };
+const REFERRALS_PER_WEEK = { 'general-medicine': 48, diabetes: 20, eye: 20, antenatal: 13 };
 const MISSED_SHARE = { 'general-medicine': 0.07, diabetes: 0.2, eye: 0.06, antenatal: 0.04 };
 const BUNCHED = { 'general-medicine': 0.75, diabetes: 0.25, eye: 0.2, antenatal: 0.15 };
 const PLACE = 'dept-outpatients';
@@ -352,8 +352,10 @@ export function seed({ r, startMs, endMs, entities }) {
   const dateOf = (t) => localDate(new Date(t).toISOString(), off);
   const at = (date, hhmm) => localInstant(date, hhmm, off);
   const pad = (n) => String(n).padStart(5, '0');
-  let nTpl = 0; let nSes = 0; let nApt = 0; let nCode = 0;
-  const first = dateOf(startMs); const last = addDays(dateOf(endMs), 8);
+  // Seeded records are numbered from 901 (appointments from 9001), so the ids the shared objects'
+  // own examples and tests name (pc-00001, ses-00001, apt-00001) are never taken by the history.
+  let nTpl = 900; let nSes = 900; let nApt = 9000; let nCode = 900;
+  const first = dateOf(startMs); const last = addDays(dateOf(endMs), 21);
 
   push(startMs + 10 * MIN, 'clinics.guide-set', GUIDE_SUBJECT, 'outpatient-manager', { on: true });
   // Templates, set when the history begins.
@@ -464,6 +466,16 @@ export function seed({ r, startMs, endMs, entities }) {
     a.cancelledAt = t; // its slot stays empty: a short-notice cancel is a slot nobody else gets
     push(t, 'appointment.cancelled', a.id, 'booking-clerk', { by: 'patient', reason: 'Patient asked to cancel' });
     book(c, t + 20 * MIN, addDays(dateOf(t), 3), { bookedFrom: 'rebook', rebookOf: a.id });
+  }
+
+  // Two short-notice cancellations by patients in the day before the end, for clinics in the next
+  // two days: their slots stay empty unless someone books them.
+  const soon = sessions.filter((s) => s.state !== 'cancelled' && s.startMs > endMs && s.startMs <= endMs + 2 * DAY)
+    .flatMap((s) => [...s.taken.values()].filter((a) => !a.cancelledAt && !a.dropped && a.bookedAt < endMs - DAY && a.code.appts.at(-1) === a));
+  for (let i = 0; i < 2 && soon.length; i++) {
+    const a = soon.splice(r.int(0, soon.length - 1), 1)[0];
+    a.cancelledAt = endMs - r.int(60, 1200) * MIN;
+    push(a.cancelledAt, 'appointment.cancelled', a.id, 'booking-clerk', { by: 'patient', reason: 'Patient asked to cancel' });
   }
 
   // The clinic days, in time order: arrivals, calls and finishes, one clinician working through in
