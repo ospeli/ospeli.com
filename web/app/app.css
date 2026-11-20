@@ -345,6 +345,8 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .walk-answer .wa-line { font-size: 1.05rem; }
 .walk-answer .wa-note { font-size: .9375rem; color: var(--ink); margin-top: 4px; }
 .walk-answer.is-warn { border-left-color: #EE9B00; }
+/* A walk whose clock moved: the notice leads, so the time under it is not the biggest thing on the screen. */
+.walk-answer.is-warn .wa-big b { font-size: 1.15rem; }
 .walk-clock { background: #FDF3DC; border: 1.5px solid #EE9B00; border-radius: 10px; padding: 8px 10px; font-size: 1rem; color: var(--ink); }
 .bars h3, .guide h3 { margin: 0 0 8px; }
 .bar-row { display: grid; gap: 4px; margin-bottom: 8px; }

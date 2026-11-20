@@ -131,13 +131,15 @@ test('"Seen, no times": a patient seen but not tapped through is closed as atten
   const w = slots.waitInClinic(d, { until: at(MON, '23:00') });
   assert.deepEqual([w.n, w.medianMinutes, w.leftOut], [2, 12.5, 1]);
   // Overrun: only patient 1 has a true finish (09:25, 55 minutes before the planned end). The tidy-up at 10:50 is not an overrun.
-  assert.deepEqual(slots.overrun(d, { sessionId: s.sessionId }), { minutes: -55, leftOut: 2 });
-  // Start: first true call 09:05 against 09:00.
-  assert.equal(slots.firstCalledVsStart(d, { sessionId: s.sessionId }).minutes, 5);
+  // With patients left out, 09:25 is only the earliest the session can have ended: atLeast, never "ended 55 minutes early" (Domain lead, 20 Nov).
+  assert.deepEqual(slots.overrun(d, { sessionId: s.sessionId }), { minutes: -55, leftOut: 2, atLeast: true });
+  // Start: first true call 09:05 against 09:00. The patient left out arrived at 09:10, after that call, so the figure does not lean.
+  const st = slots.firstCalledVsStart(d, { sessionId: s.sessionId });
+  assert.deepEqual([st.minutes, st.leftOut, st.atMost], [5, 1, false]);
   // Attendance: all three attended; none missed, none left.
   assert.equal(slots.noShowRate(d, { until: at(MON, '23:00') }).numerator, 0);
   assert.deepEqual(slots.leftBeforeSeen(d, { until: at(MON, '23:00') }), { value: 0, numerator: 0, denominator: 3 });
-  assert.deepEqual(slots.noTimesCount(d, { sessionId: s.sessionId }), { noTimes: 2, attended: 3 });
+  assert.deepEqual(slots.noTimesCount(d, { sessionId: s.sessionId }), { noTimes: 2, attended: 3, corrections: 0 });
   // The list shows it under its own words and with no made-up wait.
   const list = await run(core, 'ospeli_slots_appointments', { sessionId: s.sessionId }, 'receptionist');
   assert.deepEqual(list.appointments.map((x) => [x.stateName, x.noTimes, x.waitMinutes]), [['Finished', false, 10], ['Seen, no times', true, null], ['Seen, no times', true, 15]]);
@@ -154,7 +156,20 @@ test('a Finished tapped at its true time after the planned end still counts as a
   await assert.rejects(step(core, b.appointmentId, 'seen-no-times'), (e) => code('conflict')(e) && /not been marked arrived/.test(e.message));
   await step(core, a.appointmentId, 'arrived'); await step(core, a.appointmentId, 'called');
   time.now = at(MON, '10:40'); await step(core, a.appointmentId, 'finished');
-  assert.deepEqual(slots.overrun(await derive(core), { sessionId: s.sessionId }), { minutes: 20, leftOut: 0 });
+  assert.deepEqual(slots.overrun(await derive(core), { sessionId: s.sessionId }), { minutes: 20, leftOut: 0, atLeast: false });
+});
+
+test('the start figure says "at most" when a patient with no call time arrived before the first recorded call', async () => {
+  const { core, time } = await site();
+  const s = await clinic(core);
+  const a = await book(core, { sessionId: s.sessionId, slotTime: '09:00', code: 'pc-00001' });
+  const b = await book(core, { sessionId: s.sessionId, slotTime: '09:20', code: 'pc-00002' });
+  time.now = at(MON, '08:58'); await step(core, a.appointmentId, 'arrived'); // seen first, never tapped through
+  time.now = at(MON, '09:15'); await step(core, b.appointmentId, 'arrived');
+  time.now = at(MON, '09:30'); await step(core, b.appointmentId, 'called');
+  time.now = at(MON, '09:31'); await step(core, a.appointmentId, 'seen-no-times');
+  // The first recorded call is 09:30, but the 08:58 patient may have been called before it: 30 minutes or fewer.
+  assert.deepEqual(slots.firstCalledVsStart(await derive(core), { sessionId: s.sessionId }), { minutes: 30, minutesFromFirstArrival: 30, nobodyHereAtStart: false, leftOut: 1, atMost: true });
 });
 
 test('start punctuality shows both: against the planned start, and against the later of the start and the first arrival', async () => {
@@ -165,7 +180,7 @@ test('start punctuality shows both: against the planned start, and against the l
   // The 09:00 patient never comes. The 09:20 patient arrives at 09:18 and is called at 09:22.
   time.now = at(MON, '09:18'); await step(core, b.appointmentId, 'arrived');
   time.now = at(MON, '09:22'); await step(core, b.appointmentId, 'called');
-  assert.deepEqual(slots.firstCalledVsStart(await derive(core), { sessionId: s.sessionId }), { minutes: 22, minutesFromFirstArrival: 4, nobodyHereAtStart: true, leftOut: 0 });
+  assert.deepEqual(slots.firstCalledVsStart(await derive(core), { sessionId: s.sessionId }), { minutes: 22, minutesFromFirstArrival: 4, nobodyHereAtStart: true, leftOut: 0, atMost: false });
   assert.equal(a.state, 'booked');
 });
 

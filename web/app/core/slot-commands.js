@@ -143,7 +143,7 @@ export function slotCommands(packs = []) {
     const mine = exceptId && c.d.appointments.get(exceptId)?.sessionId === s.id;
     if (!s.timed && !mine && fill.booked >= fill.capacity) throw conflict('This session is full.', { capacity: fill.capacity, booked: fill.booked });
     const taken = placeTaken(c.d, s, want, exceptId);
-    if (!s.timed && want.visitOrder > s.plannedCapacity) throw invalid(`This session was planned with ${s.plannedCapacity} place${s.plannedCapacity === 1 ? '' : 's'}: the visit order is a place from 1 to ${s.plannedCapacity}.`, { places: s.plannedCapacity });
+    if (!s.timed && want.visitOrder > s.plannedCapacity) throw invalid(`This session was planned with ${s.plannedCapacity} place${s.plannedCapacity === 1 ? '' : 's'}: choose a place from 1 to ${s.plannedCapacity}.`, { places: s.plannedCapacity });
     if (taken) throw conflict(s.timed ? 'That slot is already taken.' : 'That place in the visit order is already taken.', s.timed ? { free: freeSlots(s).slice(0, 12) } : { takenOrders: appointmentsOf(c.d, s.id).filter(holdsPlace).map((a) => a.visitOrder).sort((x, y) => x - y) });
   }
   function codeOpenElsewhere(c, s, code, exceptId = null) {
@@ -266,7 +266,7 @@ export function slotCommands(packs = []) {
         // "Held" is final, so every patient needs a final status first: nobody is left booked, waiting or in a room on the record.
         const open = appointmentsOf(c.d, s.id).filter(isOpenAppointment);
         if (open.length) {
-          throw conflict(`${open.length} patient${open.length === 1 ? '' : 's'} in this session ${open.length === 1 ? 'has' : 'have'} no final status. Mark each one Finished, Seen (no times), Left before being seen, Missed appointment or Cancelled, or undo a wrong tap. Then mark the session as held.`,
+          throw conflict(`${open.length} patient${open.length === 1 ? '' : 's'} in this session ${open.length === 1 ? 'has' : 'have'} no final status. Mark each one Finished, ${NO_TIMES_NAME}, Left before being seen, Missed appointment or Cancelled, or undo a wrong tap. Then mark the session as held.`,
             { open: open.map((a) => ({ appointmentId: a.id, code: a.code, state: a.state, can: waysOut(a) })) });
         }
         return done('held', 'session.held', null);
@@ -379,8 +379,8 @@ export function slotCommands(packs = []) {
       if (step === 'seen-no-times') {
         // For a patient who was seen but not tapped through. From the patient's own booked time on,
         // so it cannot stand in for the real steps before the visit could have happened.
-        if (a.state === 'booked') throw conflict('This patient has not been marked arrived. If they were seen, mark Arrived first. If they did not come, record a missed appointment.', { state: a.state });
-        if (!isOpenAppointment(a)) throw conflict(`This appointment is ${APPOINTMENT_STATES[a.state].name.toLowerCase()}: no more steps.`, { state: a.state });
+        if (a.state === 'booked') throw conflict('This patient has not been marked arrived. If they did not come, record a missed appointment. If they were seen, mark Arrived first: it records the time you tap it, not the time they came.', { state: a.state });
+        if (!isOpenAppointment(a)) throw conflict(`This appointment is ${APPOINTMENT_STATES[a.state].name.toLowerCase()}. No more steps can be marked.`, { state: a.state });
         const due = dueMs(c.d, a);
         if (Date.parse(c.now) < due) throw conflict(`"${NO_TIMES_NAME}" is for a patient who was seen but not tapped through. It can be used from the patient's booked time, ${siteClock(c, due)}.`, { from: new Date(due).toISOString() });
         return { out: { appointmentId: a.id, state: 'finished' }, events: [ev('appointment.seen-no-times', a.id, role, c.now, null)],
@@ -398,7 +398,7 @@ export function slotCommands(packs = []) {
         if (Date.parse(c.now) < from) {
           throw conflict(placedLate(c.d, a)
             ? `This booking was put in this place at ${siteClock(c, Date.parse(a.placedAt))}. A missed appointment can be recorded from ${siteClock(c, from)}: ${type.graceMinutes} minutes later (example setting, not a standard).`
-            : `A no-show can be recorded from ${type.graceMinutes} minutes after the booked time (example setting, not a standard). Before then the patient may still arrive.`, { from: new Date(from).toISOString() });
+            : `A missed appointment can be recorded from ${type.graceMinutes} minutes after the booked time (example setting, not a standard). Before then the patient may still arrive.`, { from: new Date(from).toISOString() });
         }
       }
       return { out: { appointmentId: a.id, state: step }, events: [ev(`appointment.${step}`, a.id, role, c.now, step === 'no-show' ? { reason: input.reason } : null)],
@@ -413,20 +413,20 @@ export function slotCommands(packs = []) {
       const { undo } = input;
       const back = UNDO_STEPS[undo];
       const reason = input.reason ?? UNDO_REASON_DEFAULT;
-      if (reason !== UNDO_REASON_DEFAULT && undo !== 'no-show') throw invalid(`"${reason}" is for undoing a missed appointment. Leave reason out here.`, { reasons: [UNDO_REASON_DEFAULT] });
+      if (reason !== UNDO_REASON_DEFAULT && undo !== 'no-show') throw invalid(`"${reason}" is for undoing a missed appointment. Do not give a reason here.`, { reasons: [UNDO_REASON_DEFAULT] });
       // The same undo again (a double tap) answers done and writes nothing.
       if (a.state === back && a.corrections.at(-1)?.undo === undo && !input.expectedState) return { out: { appointmentId: a.id, state: a.state }, events: [] };
       if (a.state === back && a.corrections.at(-1)?.undo === undo && input.expectedState === undo) return { out: { appointmentId: a.id, state: a.state }, events: [] };
       if (input.expectedState && a.state !== input.expectedState) throw conflict('This appointment changed since you opened it.', { state: a.state });
       const s = c.d.sessions.get(a.sessionId);
-      if (!s || (s.state !== 'planned' && s.state !== 'reduced')) throw conflict(`This session is marked as ${SESSION_STATES[s?.state]?.name.toLowerCase() || 'closed'}: its steps can no longer be corrected.`, { sessionState: s?.state ?? null });
+      if (!s || (s.state !== 'planned' && s.state !== 'reduced')) throw conflict(`This session is marked as ${SESSION_STATES[s?.state]?.name.toLowerCase() || 'closed'}: its steps can no longer be corrected. If a step is wrong, tell the person who runs this session.`, { sessionState: s?.state ?? null });
       if (a.state !== undo) {
         if (undo === 'arrived' && a.state === 'called') throw conflict('This patient has already been called in, so Arrived cannot be undone. If the wrong patient was called in, undo Called in first.', { state: a.state, canUndo: 'called' });
         const can = Object.keys(UNDO_STEPS).find((k) => k === a.state) ?? null;
-        throw conflict(`This appointment is ${APPOINTMENT_STATES[a.state].name.toLowerCase()}, so there is no "${APPOINTMENT_STATES[undo].name}" to undo.${a.state === 'finished' ? ' A finished appointment is not corrected.' : ''}`, { state: a.state, canUndo: can });
+        throw conflict(`This appointment is ${APPOINTMENT_STATES[a.state].name.toLowerCase()}, so there is no "${APPOINTMENT_STATES[undo].name}" to undo.${a.state === 'finished' ? ' A finished appointment cannot be corrected. If it is wrong, tell the person who runs this session.' : ''}`, { state: a.state, canUndo: can });
       }
       if (undo === 'no-show') {
-        if (localDate(c.now, c.offsetMinutes) !== s.date) throw conflict('A missed appointment can be undone on the same day only. After that, book the patient again (ospeli_slots_book with rebookOf).', { date: s.date });
+        if (localDate(c.now, c.offsetMinutes) !== s.date) throw conflict('A missed appointment can be undone on the same day only. After that, book the patient again from this missed appointment.', { date: s.date, fix: 'ospeli_slots_book with rebookOf' });
         if (a.rebookedBy) throw conflict(`This missed appointment was already booked again as ${a.rebookedBy}. Use that appointment.`, { existing: a.rebookedBy });
         if (codeState(c.d, a.code) === 'closed') throw conflict('This patient code is closed. A new visit gets a new code.');
         codeOpenElsewhere(c, s, a.code, a.id);

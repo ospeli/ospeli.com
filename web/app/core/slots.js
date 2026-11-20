@@ -395,6 +395,8 @@ export function waitInClinic(d, { since, until, sessionType = null } = {}) {
 //                           so a session whose first booked patients did not come is not shown as starting late.
 //   nobodyHereAtStart       true when no patient had arrived by the planned start (null: nobody arrived at all).
 //   leftOut                 patients seen with no call time recorded: they cannot be the first call.
+//   atMost                  true when one of those arrived before the first recorded call: they may have been
+//                           called first, so the true delay is this many minutes or fewer. Show it as "at most".
 export function firstCalledVsStart(d, { sessionId }) {
   const s = d.sessions.get(sessionId);
   const mine = appointmentsOf(d, sessionId);
@@ -407,29 +409,34 @@ export function firstCalledVsStart(d, { sessionId }) {
     minutesFromFirstArrival: firstCall == null ? null : (firstCall - Math.max(s.startMs, firstArrival ?? s.startMs)) / MIN,
     nobodyHereAtStart: s && firstArrival != null ? firstArrival > s.startMs : null,
     leftOut: mine.filter((a) => a.noTimes && !a.calledAt).length,
+    atMost: firstCall != null && mine.some((a) => a.noTimes && !a.calledAt && Date.parse(a.arrivedAt) < firstCall),
   };
 }
 // Minutes from the session's planned end to the last patient finished (below zero: ended early). null: nobody
 // finished yet. Only a finish tapped at its own time counts; leftOut says how many patients were seen with no
-// finish time recorded, so tidying up after a clinic never shows as an overrun. Local definition.
+// finish time recorded, so tidying up after a clinic never shows as an overrun. With any left out, the last
+// recorded finish is only the earliest the session can have ended: atLeast is true, and a screen says
+// "ended at least N minutes after" or "no earlier than", never "ended early". Local definition.
 export function overrun(d, { sessionId }) {
   const s = d.sessions.get(sessionId);
   const mine = appointmentsOf(d, sessionId);
   const done = mine.filter((a) => a.finishedAt).map((a) => Date.parse(a.finishedAt));
-  return { minutes: s && done.length ? (Math.max(...done) - s.endMs) / MIN : null, leftOut: mine.filter((a) => a.noTimes).length };
+  const leftOut = mine.filter((a) => a.noTimes).length;
+  return { minutes: s && done.length ? (Math.max(...done) - s.endMs) / MIN : null, leftOut, atLeast: leftOut > 0 };
 }
-// How many of a session's attended patients were closed as "seen, no times": a figure about the
-// record's quality, shown beside the measures. { noTimes, attended }
+// How many of a session's attended patients were closed as "seen, no times", and how many steps a
+// person undone: figures about the record's quality, shown beside the measures so a session where most
+// patients have no times is not trusted. Local definition. { noTimes, attended, corrections }
 export function noTimesCount(d, { sessionId }) {
   const done = appointmentsOf(d, sessionId).filter((a) => a.state === 'finished');
-  return { noTimes: done.filter((a) => a.noTimes).length, attended: done.length };
+  return { noTimes: done.filter((a) => a.noTimes).length, attended: done.length, corrections: appointmentsOf(d, sessionId).reduce((n, a) => n + a.corrections.length, 0) };
 }
 // Bookings made in the period that replace a cancelled or missed appointment.
 export function rebookCount(d, { since, until, sessionType = null } = {}) {
   const inPeriod = period({ since, until });
   return [...d.appointments.values()].filter((a) => a.rebookOf && inPeriod(Date.parse(a.bookedAt)) && (!sessionType || a.sessionType === sessionType)).length;
 }
-// Patients who arrived and left before being seen, out of those who arrived, for appointments due in the period.
+// Patients who arrived and left before being seen, out of those who arrived, for appointments due in the period. Local definition.
 export function leftBeforeSeen(d, { since, until, sessionType = null } = {}) {
   const inPeriod = period({ since, until });
   const arrived = [...d.appointments.values()].filter((a) => a.arrivedAt && inPeriod(dueMs(d, a)) && (!sessionType || a.sessionType === sessionType));

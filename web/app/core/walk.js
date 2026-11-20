@@ -26,10 +26,11 @@ export const MIN_STEP_MS = 1000;
 // Waits shorter than this are not named as the longest wait (a stated local definition, not a standard).
 export const MIN_LONGEST_WAIT_SEC = 30;
 
-// Whole seconds from the start of the walk to a tap. Every time on a walk is a difference of two
-// of these, so waiting, hands-on and not seen always add up to start to finish. (Rounding each
-// part alone drifted a second or two on a long walk with taps between whole seconds; #141.)
-const offSec = (walk, t) => Math.round((Date.parse(t) - Date.parse(walk.startedAt)) / 1000);
+// Whole seconds a stopwatch started with the walk would show at a tap. Every recorded time on a
+// walk is a difference of two of these, so waiting, hands-on and not seen always add up to start
+// to finish. (Rounding each part alone drifted a second or two on a long walk with taps between
+// whole seconds; #141.)
+const offSec = (walk, t) => Math.floor((Date.parse(t) - Date.parse(walk.startedAt)) / 1000);
 const secs = (walk, a, b) => Math.max(0, offSec(walk, b) - offSec(walk, a));
 // The latest moment any tap on the walk was stamped with.
 function latestTap(walk) {
@@ -66,15 +67,22 @@ export const walkUnder = (walk) => (walk.current ? 'step' : 'waiting');
 
 // Seconds between two moments that fell inside a pause (an open pause runs to `now`).
 export function pausedSec(walk, a, b, now = null) {
-  const A = offSec(walk, a); const B = offSec(walk, b);
-  let sec = 0;
+  const A = Date.parse(a); const B = Date.parse(b);
+  let ms = 0;
   for (const p of walk.pauses || []) {
     const end = p.endAt || now;
     // A pause stamped by a clock that had been set back cannot be placed: it takes nothing out of any step.
     if (!end || p.clockBack) continue;
-    sec += Math.max(0, Math.min(B, offSec(walk, end)) - Math.max(A, offSec(walk, p.startAt)));
+    ms += Math.max(0, Math.min(B, Date.parse(end)) - Math.max(A, Date.parse(p.startAt)));
   }
-  return Math.max(0, sec);
+  return Math.max(0, Math.round(ms / 1000));
+}
+// The same for a recorded wait or step, in the walk's whole seconds, so the parts add up.
+function pausedWhole(walk, a, b) {
+  const A = offSec(walk, a); const B = offSec(walk, b);
+  let sec = 0;
+  for (const p of walk.pauses || []) if (p.endAt && !p.clockBack) sec += Math.max(0, Math.min(B, offSec(walk, p.endAt)) - Math.max(A, offSec(walk, p.startAt)));
+  return sec;
 }
 
 // The person walking steps out: nothing is counted until they are back.
@@ -194,8 +202,8 @@ export function undoLast(walk) {
 export function walkSteps(walk) {
   return walk.steps.map((s, i) => {
     const from = i === 0 ? walk.startedAt : walk.steps[i - 1].endAt;
-    const waitNotSeenSec = Math.min(secs(walk, from, s.startAt), pausedSec(walk, from, s.startAt));
-    const workNotSeenSec = Math.min(secs(walk, s.startAt, s.endAt), pausedSec(walk, s.startAt, s.endAt));
+    const waitNotSeenSec = Math.min(secs(walk, from, s.startAt), pausedWhole(walk, from, s.startAt));
+    const workNotSeenSec = Math.min(secs(walk, s.startAt, s.endAt), pausedWhole(walk, s.startAt, s.endAt));
     return {
       name: s.name || `Step ${i + 1}`, role: s.role || ROLE_NOT_SET, msg: !!s.msg, interrupted: !!s.interrupted,
       waitSec: secs(walk, from, s.startAt) - waitNotSeenSec, workSec: secs(walk, s.startAt, s.endAt) - workNotSeenSec,
