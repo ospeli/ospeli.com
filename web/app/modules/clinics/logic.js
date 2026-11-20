@@ -85,15 +85,19 @@ export const clinicWait = (d, { since, until, service = null }) => waitInClinic(
 //    sessions held in which anyone was called. Helper firstCalledVsStart for each session.
 export function startPunctuality(d, { since, until, service = null, windowMinutes = ON_TIME_MINUTES }) {
   const lo = since == null ? -Infinity : Date.parse(since); const hi = Date.parse(until);
-  let onTime = 0; let held = 0; let nobodyCalled = 0;
+  // noCallTimes: held sessions with patients seen ("Seen, no times") but no call time at all: seen, not "nobody called".
+  // lateMaybe: counted late on the first recorded call, but a patient seen with no times arrived before it, so the
+  // clinic may have started on time (firstCalledVsStart's atMost).
+  let onTime = 0; let held = 0; let nobodyCalled = 0; let noCallTimes = 0; let lateMaybe = 0;
   for (const s of clinicView(d, service).sessions.values()) {
     if (s.state !== 'held' || !(s.startMs >= lo && s.startMs < hi)) continue;
-    const { minutes } = firstCalledVsStart(d, { sessionId: s.id });
-    if (minutes == null) { nobodyCalled++; continue; }
+    const { minutes, leftOut, atMost } = firstCalledVsStart(d, { sessionId: s.id });
+    if (minutes == null) { if (leftOut) noCallTimes++; else nobodyCalled++; continue; }
     held++;
     if (minutes <= windowMinutes) onTime++;
+    else if (atMost) lateMaybe++;
   }
-  return { value: held ? onTime / held : null, numerator: onTime, denominator: held, nobodyCalled };
+  return { value: held ? onTime / held : null, numerator: onTime, denominator: held, nobodyCalled, noCallTimes, lateMaybe };
 }
 
 // ---- the queue for one clinic session ----

@@ -20947,6 +20947,22 @@
                   "type": "array",
                   "description": "The same figure for each clinic (service at a place). A clinic with too few cases shows null (small-number rule)."
                 },
+                "leftOut": {
+                  "type": "integer",
+                  "description": "Waiting time in clinic only: patients closed as \"Seen, no times\" with no call time, left out of the median."
+                },
+                "nobodyCalled": {
+                  "type": "integer",
+                  "description": "Start punctuality only: sessions held in which nobody was called."
+                },
+                "noCallTimes": {
+                  "type": "integer",
+                  "description": "Start punctuality only: sessions held whose patients were seen but closed with no call time (\"Seen, no times\"); left out."
+                },
+                "lateMaybe": {
+                  "type": "integer",
+                  "description": "Start punctuality only: sessions counted late on the first recorded call that may have started on time, because a patient seen with no times arrived before that call."
+                },
                 "definition": {
                   "type": "string"
                 },

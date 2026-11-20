@@ -122,7 +122,7 @@ test('the five measures, recomputed from a hand-built log through the shared hel
   assert.deepEqual(clinicWait(d, p), { n: 5, medianMinutes: 15, leftOut: 0 }, 'nobody closed as "Seen, no times" in this log');
   assert.deepEqual(clinicWait(d, { ...p, service: 'diabetes' }), { n: 1, medianMinutes: 40, leftOut: 0 });
   // 5. Start punctuality: first call 5 min (on time), 30 min (late), 10 min (on time) -> 2 of 3 held.
-  assert.deepEqual(startPunctuality(d, p), { value: 2 / 3, numerator: 2, denominator: 3, nobodyCalled: 0 });
+  assert.deepEqual(startPunctuality(d, p), { value: 2 / 3, numerator: 2, denominator: 3, nobodyCalled: 0, noCallTimes: 0, lateMaybe: 0 });
 });
 
 test('the day summary shows the same measures from the log, with definitions and sources, and each clinic\'s day', async () => {
@@ -618,6 +618,12 @@ test('#144 on the module: a wrong Call in is undone, a patient seen but not tapp
     ev('appointment.seen-no-times', 'apt-00008', at('2026-11-06', '13:55'), null, 'outpatient-manager'));
   assert.deepEqual(clinicWait(derive(E), { since: SINCE, until: NOW }), { n: 4, medianMinutes: 13.5, leftOut: 1 }, 'waits 10, 12, 15, 40: median 13.5; one left out');
   assert.equal(s.kpis.find((k) => k.id === 'clinic-wait').n, 4, 'four waits (10, 15, 40, 12) once the undone call is gone');
+  assert.equal(s.kpis.find((k) => k.id === 'clinic-wait').leftOut, 1, 'the wait measure says how many it left out');
+  assert.match(s.kpis.find((k) => k.id === 'clinic-wait').leavesOut, /"Seen, no times"/);
+  // Marked held: a clinic whose only patient was seen with no times is not "nobody called".
+  await run('ospeli_slots_session_change', { sessionId: 'ses-00005', change: 'held', expectedState: 'planned' }, 'outpatient-manager');
+  const sp = (await run('ospeli_clinics_day_summary', { date: '2026-11-06' }, 'outpatient-manager')).kpis.find((k) => k.id === 'clinic-start-punctuality');
+  assert.deepEqual([sp.numerator, sp.denominator, sp.nobodyCalled, sp.noCallTimes, sp.lateMaybe], [2, 3, 0, 1, 0]);
 });
 
 test('#144 on the module: a missed appointment marked by mistake is undone at the desk on the same day, with "Patient arrived late", and the patient can then arrive', async () => {
@@ -638,4 +644,23 @@ test('#144 on the module: a missed appointment marked by mistake is undone at th
   assert.equal(day.used + day.empty, day.capacity, 'the figures still add up');
   // An agent cannot undo a step: the command is for people only.
   await assert.rejects(run('ospeli_slots_step_correct', { appointmentId: p.appointmentId, undo: 'arrived' }, { type: 'agent', role: 'clinic-receptionist', agentId: 'agent-x' }), (e) => e instanceof CommandError);
+});
+
+test('#144 start punctuality: a clinic counted late on its first recorded call, where a patient seen with no times arrived before that call, is flagged as maybe on time', () => {
+  // ses-00001 starts 09:00. Add pc-00010 booked 09:00 in a new held session ses-00009, arrived 08:50, closed "Seen, no times";
+  // pc-00011 arrived 09:00, first recorded call 09:40 (40 min late, beyond the 15-minute example window).
+  const E = handLog();
+  E.push(ev('session.planned', 'ses-00009', '2026-10-20T12:00:00.000Z', { sessionType: 'clinic', service: 'eye', placeId: 'dept-outpatients', date: '2026-11-05', start: '13:00', minutes: 60, slotMinutes: 20, slotTypes: ['new', 'follow-up'], runByRole: 'clinic-nurse', released: true }, 'outpatient-manager'));
+  for (const c of ['pc-00010', 'pc-00011']) E.push(ev('code.opened', c, '2026-10-28T12:00:00.000Z', { kind: 'outpatient-referral', service: 'eye', source: 'referral', placeId: 'dept-outpatients' }));
+  E.push(ev('appointment.booked', 'apt-00091', '2026-10-31T12:00:00.000Z', { sessionId: 'ses-00009', sessionType: 'clinic', slotTime: '13:00', code: 'pc-00010', slotType: 'new', bookedFrom: 'referral' }),
+    ev('appointment.booked', 'apt-00092', '2026-10-31T12:00:00.000Z', { sessionId: 'ses-00009', sessionType: 'clinic', slotTime: '13:20', code: 'pc-00011', slotType: 'new', bookedFrom: 'referral' }),
+    ev('appointment.arrived', 'apt-00091', at('2026-11-05', '12:50'), null, 'clinic-receptionist'),
+    ev('appointment.arrived', 'apt-00092', at('2026-11-05', '13:00'), null, 'clinic-receptionist'),
+    ev('appointment.called', 'apt-00092', at('2026-11-05', '13:40'), null, 'clinic-nurse'),
+    ev('appointment.finished', 'apt-00092', at('2026-11-05', '13:55'), null, 'clinic-nurse'),
+    ev('appointment.seen-no-times', 'apt-00091', at('2026-11-05', '14:00'), null, 'outpatient-manager'),
+    ev('session.held', 'ses-00009', at('2026-11-05', '16:00'), null, 'outpatient-manager'));
+  const d = derive(E.sort((x, y) => Date.parse(x.at) - Date.parse(y.at)));
+  // Held with a call: S1 (5 min), S2 (30), S3 (10), ses-00009 (40, maybe on time) -> 2 of 4 on time, 1 late-maybe.
+  assert.deepEqual(startPunctuality(d, { since: SINCE, until: NOW }), { value: 0.5, numerator: 2, denominator: 4, nobodyCalled: 0, noCallTimes: 0, lateMaybe: 1 });
 });

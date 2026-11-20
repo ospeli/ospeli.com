@@ -22,6 +22,8 @@ function screensFor(role) {
   if (role === 'outpatient-manager') return ['summary', 'referrals', 'queue', 'templates'];
   return ['summary', 'queue', 'referrals', 'templates'];
 }
+const UNDO_WORDS = { arrived: (l) => `${l} back to not arrived yet`, called: (l) => `${l} back to waiting`, 'no-show': (l) => `${l} back to not arrived yet: tap Arrived when they are here` };
+const keepPx = (el, px) => { if (px) el.style.minHeight = `${px}px`; return el; };
 const LOCK_MS = 3e3; // after "Call in", the same place's "Finished" cannot be tapped this long
 const LONG_WAIT_DAYS = 21; // a long wait on the list is marked (example setting, not a standard)
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -86,7 +88,7 @@ const proposals = (ctx) => proposalsCard(ctx, { match: (p) => /^ospeli_(clinics|
 // ---------------------------------------------------------------- Clinic queue (phone)
 function queueScreen(ctx) {
   const box = h('div', { class: 'cl-queue' });
-  const ui = { sessionId: null, find: '', lockUntil: new Map(), active: new Set(), keepHeight: new Map(), stay: new Set() }; // active: rows shown open during this visit stay in place
+  const ui = { sessionId: null, find: '', lockUntil: new Map(), active: new Set(), keepHeight: new Map(), stay: new Set(), undone: new Set() }; // active: rows shown open during this visit stay in place
   // A row a person acted on keeps its place and its height for this visit, so a second tap never lands
   // on another patient's button that slid up under the finger.
   const hold = (e, p) => { ui.stay.add(p.appointmentId); ui.keepHeight.set(p.appointmentId, Math.round(e.currentTarget.closest('li')?.getBoundingClientRect().height || 0)); };
@@ -116,7 +118,10 @@ function queueScreen(ctx) {
     onclick: (e) => {
       hold(e, p);
       e.currentTarget.disabled = true;
-      act('ospeli_slots_step_correct', { appointmentId: p.appointmentId, undo, expectedState: p.state, ...(reason ? { reason } : {}) }, `${p.label}: ${label.toLowerCase()}`, {
+      // After an undo the row's panels start closed, so nothing that writes opens under the finger.
+      for (const k of ['missed', 'unmiss', 'left', 'uncall']) openPanels.delete(`${k}:${p.appointmentId}`);
+      ui.undone.add(p.appointmentId);
+      act('ospeli_slots_step_correct', { appointmentId: p.appointmentId, undo, expectedState: p.state, ...(reason ? { reason } : {}) }, UNDO_WORDS[undo](p.label), {
         onError: (err) => { if (err.code === 'conflict') { ctx.toast(`Not undone: ${err.message}`); return true; } return false; } });
     } }, label);
 
@@ -175,7 +180,8 @@ function queueScreen(ctx) {
   function row(p) {
     const off = offline();
     const extra = [];
-    if (desk && p.state === 'booked' && p.mayMarkMissed) {
+    if (desk && p.state === 'booked' && ui.undone.has(p.appointmentId)) extra.push(h('p', { class: 'cl-hint', 'data-test': 'undone' }, 'Back to not arrived yet. Tap Arrived when the patient is here.'));
+    else if (desk && p.state === 'booked' && p.mayMarkMissed) {
       extra.push(detailsBox('Did not come?', 'missed', `missed:${p.appointmentId}`,
         h('p', { class: 'cl-hint' }, `Record a missed appointment only if ${p.label} has not arrived. Pick why:`),
         h('div', { class: 'cl-reasons' }, data.picks.missedReasons.map((reason) => h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_slots_step', 'data-step': 'no-show', 'data-reason': reason, disabled: off,
@@ -438,7 +444,7 @@ function referralsScreen(ctx) {
 // ---------------------------------------------------------------- Clinic day (outpatient manager)
 function summaryScreen(ctx) {
   const box = h('div', { class: 'cl-summary' });
-  const ui = { offset: 0, today: null, cancelReason: new Map() };
+  const ui = { offset: 0, today: null, cancelReason: new Map(), closed: new Map() }; // closed: sessionId -> rows closed during this visit
   let data = null;
   const props = proposals(ctx);
   const mayPlan = can(ctx.role, 'ospeli_slots_session_change');
@@ -489,23 +495,32 @@ function summaryScreen(ctx) {
   }
   // After the clinic's end: each appointment still booked, waiting or in is closed with the shared
   // commands before the clinic is marked held, so nobody is left open on a list.
+  // A row closed during this visit stays where it was, greyed with what was recorded, so the next
+  // patient's buttons never slide up under the finger (a close-out step has no undo).
   function closeOut(c) {
-    if (!c.ended || !c.open?.length || !(c.state === 'planned' || c.state === 'reduced')) return null;
+    const kept = ui.closed.get(c.sessionId) || new Map();
+    if (!c.ended || !(c.state === 'planned' || c.state === 'reduced') || (!c.open?.length && !kept.size)) return null;
+    const openIds = new Set(c.open.map((a) => a.appointmentId));
+    const rows = [...c.open, ...[...kept.values()].filter((a) => !openIds.has(a.appointmentId))].sort((x, y) => (x.slotTime < y.slotTime ? -1 : x.slotTime > y.slotTime ? 1 : x.appointmentId < y.appointmentId ? -1 : 1));
+    const remember = (e, a, words) => { if (!ui.closed.has(c.sessionId)) ui.closed.set(c.sessionId, kept); kept.set(a.appointmentId, { ...a, closedWords: words, px: Math.round(e.currentTarget.closest('li')?.getBoundingClientRect().height || 0) }); };
     const step = (a, s, label, extra = {}) => h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_slots_step', 'data-step': s, ...extra.attrs,
-      onclick: (e) => { e.currentTarget.disabled = true; act('ospeli_slots_step', { appointmentId: a.appointmentId, step: s, expectedState: a.state, ...(extra.reason ? { reason: extra.reason } : {}) }, `${a.label}: ${label.toLowerCase()}`); } }, label);
+      onclick: (e) => { remember(e, a, label); e.currentTarget.disabled = true; act('ospeli_slots_step', { appointmentId: a.appointmentId, step: s, expectedState: a.state, ...(extra.reason ? { reason: extra.reason } : {}) }, `${a.label}: ${label.toLowerCase()}`); } }, label);
+    // The hints read every row shown, closed here or not, so none vanishes and moves the list up.
     return h('section', { class: 'cl-close', 'data-test': 'close-out' },
-      h('p', {}, h('b', {}, `Still open (${c.open.length}): close each one, then mark the clinic held.`)),
-      c.open.some((a) => a.state === 'called') ? h('p', { class: 'cl-hint', 'data-test': 'late-finish' }, 'A Finished tapped now is recorded at this time, after the clinic\'s end, so the overrun figure will include it.') : null,
-      c.open.some((a) => a.state === 'arrived' || a.state === 'called') ? h('p', { class: 'cl-hint', 'data-test': 'not-tapped' }, `Seen but not tapped through? "${data.picks.noTimesName}" closes the visit as attended with no call or finish time. The start, wait and overrun figures leave it out and say how many.`) : null,
-      h('ul', { class: 'cl-moves' }, c.open.map((a) => h('li', { 'data-appointment': a.appointmentId, 'data-state': a.state },
+      h('p', {}, h('b', {}, c.open.length ? `Still open (${c.open.length}): close each one, then mark the clinic held.` : 'All closed: the clinic can be marked held.')),
+      rows.some((a) => a.state === 'booked') ? h('p', { class: 'cl-hint', 'data-test': 'seen-not-arrived' }, 'Seen but never marked Arrived? Do not record a missed appointment: mark Arrived on the ', h('a', { href: '#/clinics/queue' }, 'clinic queue'), ', then come back here for "Seen, no times".') : null,
+      rows.some((a) => a.state === 'called') ? h('p', { class: 'cl-hint', 'data-test': 'late-finish' }, 'A Finished tapped now is recorded at this time, after the clinic\'s end, so the overrun figure will include it.') : null,
+      rows.some((a) => a.state === 'arrived' || a.state === 'called') ? h('p', { class: 'cl-hint', 'data-test': 'not-tapped' }, `Seen but not tapped through? "${data.picks.noTimesName}" closes the visit as attended with no call or finish time. The start, wait and overrun figures leave it out and say how many.`) : null,
+      h('ul', { class: 'cl-moves' }, rows.map((a) => (!openIds.has(a.appointmentId) ? keepPx(h('li', { class: 'is-done', 'data-appointment': a.appointmentId, 'data-state': 'closed', 'data-test': 'closed-here' },
+        h('p', {}, h('b', {}, `${a.slotTime} ${a.label}`), ` · Closed: ${a.closedWords}`)), a.px) : h('li', { 'data-appointment': a.appointmentId, 'data-state': a.state },
         h('p', {}, h('b', {}, `${a.slotTime} ${a.label}`), ` · ${a.stateName}`),
         mayStep ? h('div', { class: 'cl-reasons' },
           a.state === 'called' ? step(a, 'finished', 'Finished (recorded now, late)') : null,
           a.state === 'arrived' || a.state === 'called' ? step(a, 'seen-no-times', data.picks.noTimesName, { attrs: { 'data-test': 'seen-no-times' } }) : null,
           a.state === 'arrived' ? h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_slots_cancel',
-            onclick: (e) => { e.currentTarget.disabled = true; act('ospeli_slots_cancel', { appointmentId: a.appointmentId, by: 'patient', reason: data.picks.leftReason, expectedState: 'arrived' }, `${a.label}: left before being seen`); } }, 'Left before being seen') : null,
+            onclick: (e) => { remember(e, a, 'Left before being seen'); e.currentTarget.disabled = true; act('ospeli_slots_cancel', { appointmentId: a.appointmentId, by: 'patient', reason: data.picks.leftReason, expectedState: 'arrived' }, `${a.label}: left before being seen`); } }, 'Left before being seen') : null,
           a.state === 'booked' && a.mayMarkMissed ? data.picks.missedReasons.map((r) => step(a, 'no-show', `Missed appointment: ${r.toLowerCase()}`, { reason: r, attrs: { 'data-reason': r } })) : null)
-          : h('p', { class: 'cl-hint' }, `Closed by ${roleNames('ospeli_slots_step')}.`)))));
+          : h('p', { class: 'cl-hint' }, `Closed by ${roleNames('ospeli_slots_step')}.`))))));
   }
   function clinicCard(c) {
     // With patients closed as "Seen, no times", the start figure may be later than the truth and the end
@@ -516,7 +531,7 @@ function summaryScreen(ctx) {
     const endWords = c.overrunMinutes == null ? null
       : c.overrunAtLeast ? (c.overrunMinutes > 0 ? `Last recorded finish ${fmtWait(c.overrunMinutes)} after the planned end, at least.` : 'Last recorded finish by the planned end; the clinic may have ended later.')
       : c.overrunMinutes > 0 ? `Last patient finished ${fmtWait(c.overrunMinutes)} after the planned end.` : 'Finished by the planned end.';
-    const trust = [c.noTimes ? `${c.noTimes} seen with no times (${data.picks.noTimesName}), left out of the start and end figures.` : null,
+    const trust = [c.noTimes ? `${c.noTimes} seen with no times (${data.picks.noTimesName}): left out of the end figure, and of the start figure when never called in.` : null,
       c.corrections ? `${c.corrections} ${c.corrections === 1 ? 'step' : 'steps'} undone as marked by mistake.` : null].filter(Boolean);
     const open = c.state === 'planned' || c.state === 'reduced';
     const usedOf = [c.missed ? `missed ${c.missed}` : null, c.leftBeforeSeen ? `left before being seen ${c.leftBeforeSeen}` : null].filter(Boolean);
@@ -583,8 +598,8 @@ function guideCard(ctx, g, act) {
 function kpiSection(d) {
   const sub = (k) => {
     if (k.id === 'referral-to-first-appointment') return `Median of ${k.n} referrals first seen in the period. Still waiting counts every open referral not seen yet, booked or not.`;
-    if (k.id === 'clinic-wait') return `Median of ${k.n} patients, arrived to called.`;
-    if (k.id === 'clinic-start-punctuality') return `${k.numerator} of ${k.denominator} clinics held started on time (window ${d.picks.onTimeMinutes} min, example setting).${k.nobodyCalled ? ` ${k.nobodyCalled} held with nobody called left out.` : ''}`;
+    if (k.id === 'clinic-wait') return `Median of ${k.n} patients, arrived to called.${k.leftOut ? ` ${k.leftOut} seen with no times (${d.picks.noTimesName}) left out.` : ''}`;
+    if (k.id === 'clinic-start-punctuality') return `${k.numerator} of ${k.denominator} clinics held started on time (window ${d.picks.onTimeMinutes} min, example setting).${k.lateMaybe ? ` ${k.lateMaybe} counted late may have started on time: a patient seen with no times arrived before the first recorded call.` : ''}${k.nobodyCalled ? ` ${k.nobodyCalled} held with nobody called left out.` : ''}${k.noCallTimes ? ` ${k.noCallTimes} held with patients seen but no call time left out.` : ''}`;
     if (k.id === 'slot-utilisation') return `${k.numerator} of ${k.denominator} released slots used in clinics held.`;
     return `${k.numerator} of ${k.denominator} appointments due were missed.`;
   };

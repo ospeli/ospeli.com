@@ -78,13 +78,13 @@ export const KPIS = [
   { id: 'clinic-wait', name: 'Waiting time in clinic', unit: 'minutes',
     definition: 'Minutes between "Arrived" and "Called in", median, in all and by clinic, for patients called in the period.',
     counts: 'Clinic appointments called in the period that were marked arrived first.',
-    outOf: 'None (a median).', leavesOut: `Patients not called yet (shown live on the queue). A clinic with fewer than ${MIN_GROUP} patients called shows no median (small-number rule, an example setting).`,
+    outOf: 'None (a median).', leavesOut: `Patients not called yet (shown live on the queue), and patients closed as "Seen, no times" with no call time (their number is shown beside it). A clinic with fewer than ${MIN_GROUP} patients called shows no median (small-number rule, an example setting).`,
     source: 'local definition (shared helper waitInClinic, core/slots.js)', target: null, targetText: NO_TARGET },
   { id: 'clinic-start-punctuality', name: 'Clinic start punctuality', unit: '%',
     definition: `Clinic sessions held in the period whose first patient was called no later than ${ON_TIME_MINUTES} minutes after the planned start (earlier counts as on time), divided by clinic sessions held in which anyone was called. The ${ON_TIME_MINUTES}-minute window is an example setting, not a standard.`,
     counts: `Sessions held whose first "Called in" came within ${ON_TIME_MINUTES} minutes of the planned start, or before it.`,
     outOf: 'Clinic sessions marked held in the period with at least one patient called.',
-    leavesOut: 'Sessions held in which nobody was called (their number is shown beside it), cancelled sessions and sessions not yet marked held.',
+    leavesOut: 'Sessions held in which nobody was called, and sessions held whose patients were all closed as "Seen, no times" with no call time (each number is shown beside it), cancelled sessions and sessions not yet marked held. A session counted late on its first recorded call, where a patient seen with no times arrived before that call, may have started on time: their number is shown beside it.',
     source: 'local definition (shared helper firstCalledVsStart, core/slots.js, also used for theatre sessions)', target: null, targetText: NO_TARGET },
 ];
 const PLANNED = [
@@ -124,6 +124,10 @@ const KPI_OUT = { type: 'object', required: ['id', 'name', 'unit', 'value'], pro
   id: { type: 'string' }, name: { type: 'string' }, unit: { type: 'string' }, value: { type: ['number', 'null'], description: 'null when nothing was counted in the period, or the group is too small to show.' },
   numerator: NULLABLE('number'), denominator: NULLABLE('number'), n: NULLABLE('integer'), waiting: { type: ['integer', 'null'], description: 'Referral to first appointment only: open referrals with no finished visit yet, shown beside the median.' },
   byService: { type: 'array', description: 'The same figure for each clinic (service at a place). A clinic with too few cases shows null (small-number rule).' },
+  leftOut: { type: 'integer', description: 'Waiting time in clinic only: patients closed as "Seen, no times" with no call time, left out of the median.' },
+  nobodyCalled: { type: 'integer', description: 'Start punctuality only: sessions held in which nobody was called.' },
+  noCallTimes: { type: 'integer', description: 'Start punctuality only: sessions held whose patients were seen but closed with no call time ("Seen, no times"); left out.' },
+  lateMaybe: { type: 'integer', description: 'Start punctuality only: sessions counted late on the first recorded call that may have started on time, because a patient seen with no times arrived before that call.' },
   definition: { type: 'string' }, counts: { type: 'string' }, outOf: { type: 'string' }, leavesOut: { type: 'string' }, source: { type: 'string' }, targetText: { type: 'string' } } };
 const SUGGESTION = { type: 'object', required: ['rule', 'id', 'text', 'why', 'basis'], properties: {
   rule: { type: 'string' }, id: { type: 'string' }, text: { type: 'string' }, why: { type: 'string' }, basis: { type: 'string' },
@@ -213,15 +217,16 @@ function kpisOut(st, { since, until }, short) {
     'referral-to-first-appointment': { value: ref.medianDays, n: ref.n, waiting: ref.waiting, numerator: null, denominator: null,
       byService: services.map((s) => ({ service: s, name: SERVICES[s], value: ref.byService[s]?.medianDays ?? null, n: ref.byService[s]?.n ?? 0,
         waiting: referralToFirst({ ...st.codesD, codes: new Map([...st.codesD.codes].filter(([, c]) => c.service === s)) }, st.index, { since, until }).waiting })) },
-    'clinic-wait': { value: wait.medianMinutes, n: wait.n, numerator: null, denominator: null,
+    'clinic-wait': { value: wait.medianMinutes, n: wait.n, leftOut: wait.leftOut, numerator: null, denominator: null,
       byService: services.map((s) => { const w = clinicWait(st.d, { since, until, service: s }); return { service: s, name: SERVICES[s], value: w.n >= MIN_GROUP ? w.medianMinutes : null, n: w.n, tooFew: w.n < MIN_GROUP }; }) },
-    'clinic-start-punctuality': (() => { const r = ratio((o) => startPunctuality(st.d, o)); return { ...r, nobodyCalled: startPunctuality(st.d, { since, until }).nobodyCalled }; })(),
+    'clinic-start-punctuality': (() => { const r = ratio((o) => startPunctuality(st.d, o)); const all = startPunctuality(st.d, { since, until }); return { ...r, nobodyCalled: all.nobodyCalled, noCallTimes: all.noCallTimes, lateMaybe: all.lateMaybe }; })(),
   };
   return KPIS.map((k) => {
     const v = values[k.id];
     const base = { id: k.id, name: k.name, unit: k.unit, value: v.value, numerator: v.numerator, denominator: v.denominator, n: v.n, waiting: v.waiting ?? null, targetText: k.targetText };
     if (short) return base;
-    return { ...base, byService: v.byService, ...(v.nobodyCalled != null ? { nobodyCalled: v.nobodyCalled } : {}), definition: k.definition, counts: k.counts, outOf: k.outOf, leavesOut: k.leavesOut, source: k.source };
+    return { ...base, byService: v.byService, ...(v.nobodyCalled != null ? { nobodyCalled: v.nobodyCalled, noCallTimes: v.noCallTimes, lateMaybe: v.lateMaybe } : {}),
+      ...(v.leftOut != null ? { leftOut: v.leftOut } : {}), definition: k.definition, counts: k.counts, outOf: k.outOf, leavesOut: k.leavesOut, source: k.source };
   });
 }
 function templatesOut(st) {

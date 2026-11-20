@@ -477,12 +477,26 @@ test('after a clinic\'s end the manager closes each open appointment with the sh
     assert.equal(await co.locator('li[data-state="called"] button').first().textContent(), 'Finished (recorded now, late)');
     assert.match(await co.locator('[data-test="late-finish"]').textContent(), /overrun figure will include it/);
   }
-  for (let i = 0; i < 20 && await gm().locator('[data-test="close-out"] li').count(); i++) {
-    const li = gm().locator('[data-test="close-out"] li').first();
+  // Each row closed stays where it was, greyed (a close-out step has no undo): a second tap on the same
+  // spot a moment later lands on no other patient's button and writes nothing.
+  const writes = () => page.evaluate(async () => (await window.ospeli.core.events({ type: ['appointment.finished', 'appointment.seen-no-times', 'appointment.cancelled', 'appointment.no-show'] })).length);
+  let closedHere = 0;
+  for (let i = 0; i < 20 && await gm().locator('[data-test="close-out"] li:not([data-state="closed"])').count(); i++) {
+    const li = gm().locator('[data-test="close-out"] li:not([data-state="closed"])').first();
     const id = await li.getAttribute('data-appointment');
-    await li.locator('button').first().tap();
-    await page.waitForFunction((a) => !document.querySelector(`[data-test="close-out"] [data-appointment="${a}"]`), id);
+    const btn = li.locator('button').first();
+    await btn.scrollIntoViewIfNeeded();
+    const b = await btn.boundingBox();
+    const n0 = await writes();
+    await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+    await page.waitForSelector(`[data-test="close-out"] [data-appointment="${id}"][data-state="closed"]`);
+    closedHere++;
+    await page.waitForTimeout(300);
+    await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+    await page.waitForTimeout(400);
+    assert.equal(await writes(), n0 + 1, `the second tap after closing ${id} wrote nothing`);
   }
+  assert.equal(await gm().locator('[data-test="closed-here"]').count(), closedHere, 'every row closed here is still shown, greyed');
   await gm().locator('[data-test="mark-held"]').tap();
   await page.waitForSelector('[data-test="clinics"] > li[data-service="general-medicine"][data-state="held"]');
   assert.match(await gm().locator('[data-test="day-sum"]').textContent(), /^Used (\d+).*\+ empty (\d+) = (\d+) offered/);
@@ -490,7 +504,7 @@ test('after a clinic\'s end the manager closes each open appointment with the sh
   assert.equal(+u + +e, +o, 'the figures add up');
   // Patients closed as "Seen, no times" are counted, and the end figure says it is only the earliest end.
   if (noTimesExpected) {
-    assert.match(await gm().locator('[data-test="no-times-count"]').textContent(), new RegExp(`^${noTimesExpected} seen with no times \\(Seen, no times\\), left out of the start and end figures\\.`));
+    assert.match(await gm().locator('[data-test="no-times-count"]').textContent(), new RegExp(`^${noTimesExpected} seen with no times \\(Seen, no times\\): left out of the end figure, and of the start figure when never called in\\.`));
     assert.match(await gm().locator('[data-test="start-end"]').textContent(), /at least\.|may have ended later\.|^No call time recorded\.$|recorded call/);
   }
   assert.deepEqual(errors, []);
@@ -532,10 +546,19 @@ test('the desk: after "Did not come?" or "Left before being seen" saves, the row
   const missedId = await missed.getAttribute('data-appointment');
   await missed.locator('[data-test="wrong-missed"] > summary').tap();
   assert.deepEqual(await missed.locator('[data-test="undo-no-show"]').allTextContents(), ['Undo: marked by mistake', 'Undo: patient arrived late']);
-  await missed.locator('[data-test="undo-no-show"][data-reason="Patient arrived late"]').tap();
+  const ub = await missed.locator('[data-test="undo-no-show"][data-reason="Patient arrived late"]').boundingBox();
+  await page.touchscreen.tap(ub.x + ub.width / 2, ub.y + ub.height / 2);
   await page.waitForSelector(`[data-appointment="${missedId}"][data-state="booked"]`);
+  // No panel that writes opens again under the finger; the row says what to do next.
+  assert.equal(await page.locator(`[data-appointment="${missedId}"] [data-test="missed"]`).count(), 0, 'no "Did not come?" right after the undo');
+  assert.equal(await page.locator(`[data-appointment="${missedId}"] [data-test="undone"]`).textContent(), 'Back to not arrived yet. Tap Arrived when the patient is here.');
   const last = await page.evaluate(async (s) => (await window.ospeli.core.events({ subject: s })).at(-1), missedId);
   assert.deepEqual([last.type, last.data.undo, last.data.reason], ['appointment.step-undone', 'no-show', 'Patient arrived late']);
+  // A second tap on the same spot a moment later writes nothing (the round-3 trap: it marked the patient missed again).
+  await page.waitForTimeout(300);
+  await page.touchscreen.tap(ub.x + ub.width / 2, ub.y + ub.height / 2);
+  await page.waitForTimeout(500);
+  assert.equal((await page.evaluate(async (s) => (await window.ospeli.core.events({ subject: s })).at(-1), missedId)).type, 'appointment.step-undone', 'the second tap wrote nothing');
   assert.deepEqual(errors, []);
   await context.close();
 });
