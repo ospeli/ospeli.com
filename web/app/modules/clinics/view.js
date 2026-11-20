@@ -11,7 +11,7 @@ import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
 import { SERVICES } from './commands.js';
-import { CODE_KIND, nextFreeSlots, sessionsFromRead, slotWords, shortDate, addDays } from './logic.js';
+import { CODE_KIND, nextFreeSlots, sessionsFromRead, slotWords, shortDate, addDays, firstAppointmentList, rowsFromList, waitedWords, LATE_MINUTES } from './logic.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
 const roleNames = (cmd) => (commandByName(cmd)?.roles || []).map((r) => roleById(r)?.name || r).join(', ');
@@ -25,6 +25,7 @@ function screensFor(role) {
 const LOCK_MS = 3e3; // after "Call in", the same place's "Finished" cannot be tapped this long
 const LONG_WAIT_DAYS = 21; // a long wait on the list is marked (example setting, not a standard)
 const WEEKDAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 const offline = () => document.documentElement.dataset.site === 'offline';
 const fmtKpi = (k) => (k.value == null ? (k.tooFew ? 'Too few to show' : 'None yet') : k.unit === '%' ? `${Math.round(k.value * 100)}%` : k.unit === 'days' ? `${Math.round(k.value)} days` : `${Math.round(k.value)} min`);
 
@@ -143,8 +144,13 @@ function queueScreen(ctx) {
     return null;
   }
   function stateLine(p) {
-    if (p.state === 'booked') return p.mayMarkMissed ? h('span', { class: 'cl-st st-late' }, 'Not arrived, past the booked time') : h('span', { class: 'cl-st' }, 'Not arrived yet');
-    if (p.state === 'arrived') return h('span', { class: 'cl-st st-wait', 'data-test': 'wait' }, `Waiting ${fmtWait(p.waitMinutes ?? 0)} (arrived ${p.clocks.arrived})`);
+    if (p.state === 'booked') return p.late ? h('span', { class: 'cl-st st-late' }, `Not arrived, ${fmtWait(p.pastBookedMinutes)} past the booked time`) : h('span', { class: 'cl-st' }, 'Not arrived yet');
+    // The wait runs from arrival; the colour follows the time past the booked slot, so an early
+    // arrival's long wait is not shown as the clinic running late.
+    if (p.state === 'arrived') {
+      return h('span', { class: `cl-st ${p.late ? 'st-late' : 'st-wait'}`, 'data-test': 'wait' }, `Waiting ${fmtWait(p.waitMinutes ?? 0)} · booked ${p.slotTime}, arrived ${p.clocks.arrived}`,
+        p.pastBookedMinutes ? h('span', { class: 'cl-past', 'data-test': 'past-booked' }, ` · past booked time: ${fmtWait(p.pastBookedMinutes)}`) : null);
+    }
     if (p.state === 'called') return h('span', { class: 'cl-st st-in' }, `With the clinician since ${p.clocks.called} (waited ${fmtWait(p.waitMinutes ?? 0)})`);
     if (p.state === 'finished') return h('span', { class: 'cl-st st-done' }, `Finished ${p.clocks.finished}`);
     if (p.state === 'no-show') return h('span', { class: 'cl-st st-missed' }, 'Missed appointment');
@@ -160,11 +166,13 @@ function queueScreen(ctx) {
           onclick: () => act('ospeli_slots_step', { appointmentId: p.appointmentId, step: 'no-show', reason, expectedState: 'booked' }, `${p.label}: missed appointment`) }, reason)))));
     }
     if (desk && p.state === 'arrived') {
-      extra.push(detailsBox('Left before being seen?', 'left', `left:${p.appointmentId}`,
-        h('p', { class: 'cl-hint' }, `Only if ${p.label} has gone home without being called. The slot stays counted as used.`),
+      extra.push(detailsBox('Left, or marked by mistake?', 'left', `left:${p.appointmentId}`,
+        h('p', { class: 'cl-hint' }, `If ${p.label} has gone home without being called (the slot stays counted as used):`),
         h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_slots_cancel', disabled: off,
-          onclick: () => act('ospeli_slots_cancel', { appointmentId: p.appointmentId, by: 'patient', reason: data.picks.leftReason, expectedState: 'arrived' }, `${p.label}: left before being seen`) }, 'Yes, left before being seen')));
+          onclick: () => act('ospeli_slots_cancel', { appointmentId: p.appointmentId, by: 'patient', reason: data.picks.leftReason, expectedState: 'arrived' }, `${p.label}: left before being seen`) }, 'Yes, left before being seen'),
+        h('p', { class: 'cl-hint', 'data-test': 'wrong-arrived' }, 'Marked arrived by mistake? "Left before being seen" is not right either: tell the clinic nurse. A correction step is planned.')));
     }
+    if (desk && p.state === 'no-show') extra.push(h('p', { class: 'cl-hint', 'data-test': 'wrong-missed' }, 'Marked missed by mistake? Tell the outpatient manager. A correction step is planned.'));
     const done = ['finished', 'no-show', 'cancelled'].includes(p.state);
     return h('li', { class: `cl-row st-${p.state}${done ? ' is-done' : ''}`, 'data-appointment': p.appointmentId, 'data-state': p.state, 'data-code': p.code },
       h('div', { class: 'cl-row-text' },
@@ -187,11 +195,14 @@ function queueScreen(ctx) {
       onclick: () => { ui.sessionId = x.sessionId; ui.active.clear(); load(); } }, `${x.serviceWord.replace(/ clinic$/, '')} ${x.start}`))) : null;
     // A row done before this visit folds away; a row this person saw open keeps its place, so a
     // second tap never lands on the row that moved up under it.
-    // The desk works the patients still to arrive; the nurse works everyone here or to come.
+    // The desk works the patients still to come; the nurse works everyone here or to come. A row
+    // first shown in that list keeps its place for this visit, whatever happens to it.
     const mine = desk ? ['booked'] : ['booked', 'arrived', 'called'];
     for (const p of data.patients) if (mine.includes(p.state)) ui.active.add(p.appointmentId);
-    const folded = ui.find ? [] : data.patients.filter((p) => !ui.active.has(p.appointmentId));
-    const list = data.patients.filter((p) => !folded.includes(p));
+    const isDone = (p) => ['finished', 'no-show', 'cancelled'].includes(p.state);
+    const list = ui.find ? data.patients : data.patients.filter((p) => ui.active.has(p.appointmentId));
+    const hereNow = ui.find || !desk ? [] : data.patients.filter((p) => !ui.active.has(p.appointmentId) && !isDone(p));
+    const folded = ui.find ? [] : data.patients.filter((p) => !ui.active.has(p.appointmentId) && isDone(p));
     setKids(box,
       props.el,
       offlineNote(data.offlineNote),
@@ -201,13 +212,15 @@ function queueScreen(ctx) {
         h('p', { class: 'cl-hint' }, `${shortDate(c.date)}, ${c.start} to ${c.end}${c.state === 'cancelled' ? ` · Cancelled: ${c.reason}` : c.state === 'reduced' ? ` · Reduced: ${c.reason}` : ''}`),
         h('div', { class: 'cl-counts', 'data-test': 'counts' },
           h('div', { class: 'stat', 'data-count': 'to-come' }, h('span', {}, 'To come'), h('b', {}, String(n.toCome))),
-          h('div', { class: `stat${n.longestWaitMinutes >= 60 ? ' is-alert' : ''}`, 'data-count': 'waiting' }, h('span', {}, 'Waiting'), h('b', {}, String(n.waiting)),
+          h('div', { class: `stat${n.longestPastBookedMinutes >= LATE_MINUTES ? ' is-alert' : ''}`, 'data-count': 'waiting' }, h('span', {}, 'Waiting'), h('b', {}, String(n.waiting)),
             h('span', {}, n.longestWaitMinutes != null ? `longest ${fmtWait(n.longestWaitMinutes)}` : 'nobody yet')),
           h('div', { class: 'stat', 'data-count': 'done' }, h('span', {}, 'Finished'), h('b', {}, String(n.finished)), h('span', {}, `${n.withClinician} in now, ${n.missed} missed`)))),
-      findBox(),
-      folded.length ? detailsBox(desk ? `Here already, seen or missed (${folded.length})` : `Seen or missed already (${folded.length})`, 'done-rows', `done:${c.sessionId}`, h('ol', { class: 'cl-rows' }, folded.map(row))) : null,
+      desk ? findBox() : null,
+      desk && !ui.find ? h('h3', { class: 'cl-sec' }, `Still to come (${list.length})`) : null,
       list.length ? h('ol', { class: 'cl-rows', 'data-test': 'queue' }, list.map(row))
-        : h('p', { class: 'cl-empty', 'data-test': 'queue-empty' }, ui.find ? `No Patient P${ui.find} in this clinic today.` : folded.length ? 'Everyone booked has been seen or marked.' : 'Nobody is booked into this clinic.'),
+        : h('p', { class: 'cl-empty', 'data-test': 'queue-empty' }, ui.find ? `No Patient P${ui.find} in this clinic today.` : desk ? 'Nobody else is booked to come.' : 'Nobody is waiting or to come.'),
+      hereNow.length ? [h('h3', { class: 'cl-sec' }, `Here now (${hereNow.length})`), h('ol', { class: 'cl-rows', 'data-test': 'here-now' }, hereNow.map(row))] : null,
+      folded.length ? detailsBox(`Seen, left or missed (${folded.length})`, 'done-rows', `done:${c.sessionId}`, h('ol', { class: 'cl-rows' }, folded.map(row))) : null,
       mayStep ? null : h('p', { class: 'cl-hint', 'data-test': 'read-only' }, `${roleById(ctx.role)?.name || 'This role'} can see the queue. Arrivals and calls are marked by ${roleNames('ospeli_slots_step')}.`),
       h('p', { class: 'cl-hint' }, `The list is in booked-time order. "Did not come?" appears ${data.graceMinutes} minutes after the booked time (an example setting, not a standard).`),
       h('p', { class: 'card meta notice', 'data-test': 'not-for' }, data.note));
@@ -220,28 +233,44 @@ function queueScreen(ctx) {
 // ---------------------------------------------------------------- Waiting list (booking clerk)
 function referralsScreen(ctx) {
   const box = h('div', { class: 'cl-referrals' });
-  const ui = { service: SERVICES[ctx.rest[1]] ? ctx.rest[1] : 'all', picked: { service: null, source: null }, ask: null, rebook: new Map(), today: null };
+  // Kept for this visit: the order rows were first shown in, and what this person booked or removed,
+  // so a row never vanishes and lets the next row's button slide under the finger.
+  const ui = { service: SERVICES[ctx.rest[1]] ? ctx.rest[1] : 'all', picked: { service: null, source: null }, ask: null, rebook: new Map(), today: null,
+    order: [], rows: new Map(), bookedNow: new Map(), removedNow: new Set(), scrollTo: null, keepHeight: new Map() };
   let data = null;
   const props = proposals(ctx);
   const mayOpen = can(ctx.role, 'ospeli_codes_open');
   const mayBook = can(ctx.role, 'ospeli_slots_book');
+  const mayCancel = can(ctx.role, 'ospeli_slots_cancel');
+  const mayClose = can(ctx.role, 'ospeli_codes_close');
   const load = async () => {
     if (!ui.today) ui.today = (await ctx.run('ospeli_slots_sessions', { sessionType: 'clinic', format: 'short', limit: 1 })).from;
-    const [codes, sessions] = await Promise.all([
+    const [codes, booked, sessions] = await Promise.all([
       ctx.run('ospeli_codes_list', { kind: CODE_KIND, state: 'open', booked: false, limit: 500 }),
+      ctx.run('ospeli_codes_list', { kind: CODE_KIND, state: 'open', booked: true, limit: 500 }),
       ctx.run('ospeli_slots_sessions', { sessionType: 'clinic', from: ui.today, to: addDays(ui.today, 42), limit: 500 }),
     ]);
-    data = { codes, sessions: sessionsFromRead(sessions.sessions), asOf: sessions.asOf };
+    // Where each booked appointment sits, from the sessions' own slots.
+    const at = new Map();
+    for (const s of sessions.sessions) for (const x of s.slots || []) if (x.appointmentId) at.set(x.appointmentId, { date: s.date, slotTime: x.time, atMs: Date.parse(s.startsAt) + (toMin(x.time) - toMin(s.start)) * 60e3 });
+    data = { codes, booked, at, sessions: sessionsFromRead(sessions.sessions), asOf: sessions.asOf };
     draw();
     await props.load();
   };
+  const toMin = (hhmm) => Number(hhmm.slice(0, 2)) * 60 + Number(hhmm.slice(3));
   const act = runner(ctx, load);
 
   function openForm() {
     const { service, source } = ui.picked;
     const missing = !service ? 'Pick the clinic first' : !source ? 'Pick how it came' : null;
     const send = (again = false) => act('ospeli_codes_open', { kind: CODE_KIND, service, source, ...(again ? { again: true } : {}) }, null, {
-      onDone: (out) => { ctx.toast(`${out.label} added to the ${SERVICES[service]} list`); ui.ask = null; ui.picked = { service: null, source: null }; openPanels.add(`book:${out.code}`); },
+      onDone: (out) => {
+        ctx.toast(`${out.label} added to the ${SERVICES[service]} list`);
+        ui.ask = null; ui.picked = { service: null, source: null };
+        for (const k of [...openPanels]) if (k.startsWith('book:')) openPanels.delete(k);
+        openPanels.add(`book:${out.code}`); ui.scrollTo = out.code;
+        if (ui.service !== 'all' && ui.service !== service) ui.service = 'all';
+      },
       onError: (err) => { if (err.detail?.confirm === 'again') { ui.ask = { service, source, label: err.message }; return true; } return false; } });
     return h('section', { class: 'card cl-form', 'data-test': 'open-referral', 'aria-label': 'Add a new referral' },
       h('p', { class: 'cl-hint' }, 'Ospeli gives it a new patient number. No name, date of birth or reason for the visit is kept.'),
@@ -259,7 +288,7 @@ function referralsScreen(ctx) {
         : h('button', { class: 'btn cl-add', type: 'button', 'data-cmd': 'ospeli_codes_open', 'data-test': 'add-referral', disabled: Boolean(missing), onclick: () => send(false) }, missing || 'Add to the list'));
   }
 
-  // The booking a person taps: the referral's own service only, the next free slots in time order.
+  // The last missed or cancelled appointment, so a new booking is recorded as its rebook.
   async function rebookOf(r) {
     if (!r.appointments) return null;
     if (!ui.rebook.has(r.code)) {
@@ -270,6 +299,7 @@ function referralsScreen(ctx) {
     }
     return ui.rebook.get(r.code);
   }
+  // The booking a person taps: the referral's own service only, the next free slots in time order.
   function bookBox(r) {
     const free = nextFreeSlots(data.sessions, { service: r.service, nowMs: Date.parse(data.asOf), limit: 3 });
     const prior = ui.rebook.get(r.code);
@@ -280,40 +310,99 @@ function referralsScreen(ctx) {
       prior ? h('p', { class: 'cl-hint' }, `Last appointment: ${prior.state.toLowerCase()} on ${shortDate(prior.date)}. This booking replaces it.`) : null,
       free.length ? h('p', { class: 'cl-hint' }, `Next free in the ${r.serviceWord}:`) : h('p', { 'data-test': 'no-free' }, `No free slot in the ${r.serviceWord} in the next six weeks.`),
       h('div', { class: 'cl-reasons' }, free.map((x) => h('button', { class: 'btn btn-small cl-slot', type: 'button', 'data-cmd': 'ospeli_slots_book', 'data-session': x.sessionId, 'data-slot': x.slotTime,
-        onclick: (e) => { e.currentTarget.disabled = true; act('ospeli_slots_book', input(x), `${r.label} booked: ${slotWords(x.date, x.slotTime)}`, { onDone: () => openPanels.delete(`book:${r.code}`) }); } },
+        onclick: (e) => {
+          e.currentTarget.disabled = true;
+          // The row keeps its height for this visit, so the next row's button never slides up under the finger.
+          ui.keepHeight.set(r.code, Math.round(e.currentTarget.closest('li')?.getBoundingClientRect().height || 0));
+          act('ospeli_slots_book', input(x), `${r.label} booked: ${slotWords(x.date, x.slotTime)}`, {
+            onDone: (out) => { openPanels.delete(`book:${r.code}`); ui.bookedNow.set(r.code, { appointmentId: out.appointmentId, words: slotWords(x.date, x.slotTime) }); } });
+        } },
       `Book ${slotWords(x.date, x.slotTime)}`))));
+  }
+  // "Booked by mistake": the shared cancel, by the site, reason "Booked in error", after one confirm.
+  function mistakeBooking(r, appointmentId, words) {
+    if (!mayCancel) return null;
+    return detailsBox('Booked by mistake?', 'booked-mistake', `undo-book:${appointmentId}`,
+      h('p', { class: 'cl-hint' }, `This cancels the booking for ${words} and puts ${r.label} back on the waiting list.`),
+      h('button', { class: 'btn btn-danger btn-small', type: 'button', 'data-cmd': 'ospeli_slots_cancel', 'data-test': 'confirm-unbook',
+        onclick: (e) => { e.currentTarget.disabled = true; act('ospeli_slots_cancel', { appointmentId, by: 'site', reason: 'Booked in error', expectedState: 'booked' }, `${r.label}: booking cancelled (booked in error)`, {
+          onDone: () => { ui.bookedNow.delete(r.code); openPanels.delete(`undo-book:${appointmentId}`); } }); } }, 'Yes, cancel this booking'));
+  }
+  // "Added by mistake": the shared close, reason "Opened in error", after one confirm.
+  function mistakeReferral(r) {
+    if (!mayClose || r.appointments) return null;
+    return detailsBox('Added by mistake?', 'added-mistake', `undo-add:${r.code}`,
+      h('p', { class: 'cl-hint' }, `This removes ${r.label} from the list, recorded as opened in error.`),
+      h('button', { class: 'btn btn-danger btn-small', type: 'button', 'data-cmd': 'ospeli_codes_close', 'data-test': 'confirm-remove',
+        onclick: (e) => { e.currentTarget.disabled = true; ui.keepHeight.set(r.code, Math.round(e.currentTarget.closest('li')?.getBoundingClientRect().height || 0)); act('ospeli_codes_close', { code: r.code, reason: 'Opened in error' }, `${r.label}: removed (added by mistake)`, {
+          onDone: () => { ui.removedNow.add(r.code); openPanels.delete(`undo-add:${r.code}`); } }); } }, `Yes, remove ${r.label}`));
   }
   function row(r) {
     const key = `book:${r.code}`;
     const long = r.waitingDays >= LONG_WAIT_DAYS;
-    return h('li', { class: `cl-ref${long ? ' is-long' : ''}`, 'data-code': r.code, 'data-service': r.service },
-      h('div', { class: 'cl-row-text' },
-        h('p', { class: 'cl-who' }, h('b', {}, r.label), h('span', {}, r.serviceWord)),
-        h('p', { class: 'cl-state' }, h('b', { 'data-test': 'waited' }, `Waiting ${r.waitingDays} ${r.waitingDays === 1 ? 'day' : 'days'}`), long ? h('span', { class: 'chip cl-long' }, 'Long wait') : null,
-          r.appointments ? h('span', { class: 'chip' }, r.lastAttendedAt ? 'Seen before' : 'Missed or cancelled before') : null)),
-      mayBook ? h('div', { class: 'cl-row-act' }, h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'aria-expanded': String(openPanels.has(key)), 'data-test': 'book-open',
-        onclick: () => { if (openPanels.has(key)) openPanels.delete(key); else openPanels.add(key); draw(); } }, openPanels.has(key) ? 'Close' : 'Book'),
-      openPanels.has(key) ? bookBox(r) : null) : null);
+    const done = ui.bookedNow.get(r.code);
+    const removed = ui.removedNow.has(r.code);
+    const head = h('div', { class: 'cl-row-text' },
+      h('p', { class: 'cl-who' }, h('b', {}, r.label), h('span', {}, r.serviceWord)),
+      h('p', { class: 'cl-state' }, h('b', { 'data-test': 'waited' }, cap(waitedWords(r.waitingDays))), long && !done && !removed ? h('span', { class: 'chip cl-long' }, 'Long wait') : null,
+        r.appointments && !done ? h('span', { class: 'chip' }, r.lastAttendedAt ? 'Seen before' : 'Missed or cancelled before') : null));
+    const keep = (el) => { const px = ui.keepHeight.get(r.code); if (px) el.style.minHeight = `${px}px`; return el; };
+    if (removed) return keep(h('li', { class: 'cl-ref is-done', 'data-code': r.code, 'data-service': r.service, 'data-state': 'removed' }, head, h('p', { class: 'cl-booked' }, 'Removed: added by mistake')));
+    if (done) {
+      return keep(h('li', { class: 'cl-ref is-booked', 'data-code': r.code, 'data-service': r.service, 'data-state': 'booked' }, head,
+        h('div', { class: 'cl-row-act' }, h('p', { class: 'cl-booked', 'data-test': 'booked-now' }, `Booked: ${done.words}`), mistakeBooking(r, done.appointmentId, done.words))));
+    }
+    return h('li', { class: `cl-ref${long ? ' is-long' : ''}`, 'data-code': r.code, 'data-service': r.service, 'data-state': 'waiting' }, head,
+      mayBook || mayClose ? h('div', { class: 'cl-row-act' },
+        mayBook ? h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'aria-expanded': String(openPanels.has(key)), 'data-test': 'book-open',
+          onclick: () => {
+            const was = openPanels.has(key);
+            for (const k of [...openPanels]) if (k.startsWith('book:')) openPanels.delete(k); // one Book panel open at a time
+            if (!was) openPanels.add(key);
+            draw();
+          } }, openPanels.has(key) ? 'Close' : 'Book') : null,
+        mayBook && openPanels.has(key) ? bookBox(r) : null,
+        mistakeReferral(r)) : null);
   }
   function draw() {
     if (!data) return;
-    const all = data.codes.codes;
-    const shown = all.filter((r) => ui.service === 'all' || r.service === ui.service);
-    const first = shown.filter((r) => !r.lastAttendedAt);
-    const seen = shown.filter((r) => r.lastAttendedAt);
-    const booked = data.codes.counts.open - data.codes.counts.notBooked;
+    const rows = rowsFromList(data.codes.codes);
+    for (const r of rows) ui.rows.set(r.code, r);
+    // The waiting list's own order (the guide uses the same function), kept in place for this visit.
+    const first = firstAppointmentList(rows);
+    for (const r of first) if (!ui.order.includes(r.code)) ui.order.push(r.code);
+    const still = new Set(first.map((r) => r.code));
+    const shownFirst = ui.order.filter((c) => still.has(c) || ui.bookedNow.has(c) || ui.removedNow.has(c)).map((c) => ui.rows.get(c))
+      .filter((r) => ui.service === 'all' || r.service === ui.service);
+    const seen = rows.filter((r) => r.attended && !r.booked && (ui.service === 'all' || r.service === ui.service));
+    const booked = rowsFromList(data.booked.codes).filter((r) => !ui.bookedNow.has(r.code) && (ui.service === 'all' || r.service === ui.service));
+    const nowMs = Date.parse(data.asOf);
+    const bookedRow = (r) => {
+      const id = r.openAppointments[0];
+      const at = data.at.get(id);
+      const words = at ? slotWords(at.date, at.slotTime) : 'a later date';
+      return h('li', { class: 'cl-ref is-booked', 'data-code': r.code, 'data-service': r.service, 'data-state': 'booked' },
+        h('div', { class: 'cl-row-text' }, h('p', { class: 'cl-who' }, h('b', {}, r.label), h('span', {}, r.serviceWord)), h('p', { class: 'cl-booked' }, `Booked: ${words}`)),
+        at && at.atMs > nowMs ? h('div', { class: 'cl-row-act' }, mistakeBooking(r, id, words)) : null);
+    };
+    const counts = (id) => (id === 'all' ? first.length : first.filter((r) => r.service === id).length);
     setKids(box,
       props.el,
       h('p', { class: 'cl-hint cl-note', 'data-test': 'order-note' }, 'Longest wait first, by wait only: Ospeli does not judge how urgent a referral is. Each referral gets a new number, and Ospeli cannot know whether two numbers are the same person.'),
       mayOpen ? detailsBox('Add a new referral', 'open-referral-box', 'open-form', openForm()) : null,
       h('div', { class: 'chips cl-filter', role: 'group', 'aria-label': 'Which clinic' }, [['all', 'All clinics'], ...Object.entries(SERVICES)].map(([id, word]) => h('button', {
         class: 'chip-btn', type: 'button', 'aria-pressed': String(ui.service === id), 'data-filter': id,
-        onclick: () => { ui.service = id; draw(); box.querySelector(`[data-filter="${id}"]`)?.focus(); } }, `${word.replace(/ clinic$/, '')} (${id === 'all' ? all.length : all.filter((r) => r.service === id).length})`))),
-      h('section', { class: 'section', 'aria-labelledby': 'cl-first-h' }, h('h2', { id: 'cl-first-h' }, `Waiting for a first appointment (${first.length})`),
-        first.length ? h('ul', { class: 'cl-refs', 'data-test': 'waiting' }, first.map(row)) : h('p', { class: 'cl-empty' }, 'Nobody is waiting for a first appointment here.')),
+        onclick: () => { ui.service = id; draw(); box.querySelector(`[data-filter="${id}"]`)?.focus(); } }, `${word.replace(/ clinic$/, '')} (${counts(id)})`))),
+      h('section', { class: 'section', 'aria-labelledby': 'cl-first-h' }, h('h2', { id: 'cl-first-h' }, `Waiting for a first appointment (${shownFirst.filter((r) => still.has(r.code)).length})`),
+        shownFirst.length ? h('ul', { class: 'cl-refs', 'data-test': 'waiting' }, shownFirst.map(row)) : h('p', { class: 'cl-empty' }, 'Nobody is waiting for a first appointment here.')),
       seen.length ? detailsBox(`Seen before, nothing booked (${seen.length})`, 'seen-before', 'seen-before', h('ul', { class: 'cl-refs' }, seen.map(row))) : null,
-      h('p', { class: 'cl-hint', 'data-test': 'booked-count' }, `Already booked: ${booked}. "Long wait" marks ${LONG_WAIT_DAYS} days or more (an example setting, not a standard).`),
+      booked.length ? detailsBox(`Booked (${booked.length})`, 'booked-list', 'booked-list', h('ul', { class: 'cl-refs' }, booked.map(bookedRow))) : null,
+      h('p', { class: 'cl-hint' }, `"Long wait" marks ${LONG_WAIT_DAYS} days or more (an example setting, not a standard).`),
       mayBook ? null : h('p', { class: 'cl-hint', 'data-test': 'read-only' }, `${roleById(ctx.role)?.name || 'This role'} can see the list. Booking is for ${roleNames('ospeli_slots_book')}.`));
+    if (ui.scrollTo) {
+      const el = box.querySelector(`[data-test="waiting"] [data-code="${ui.scrollTo}"]`);
+      if (el) { el.scrollIntoView({ block: 'center' }); ui.scrollTo = null; }
+    }
   }
   return { el: box, load, draw };
 }
@@ -326,6 +415,7 @@ function summaryScreen(ctx) {
   const props = proposals(ctx);
   const mayPlan = can(ctx.role, 'ospeli_slots_session_change');
   const mayBook = can(ctx.role, 'ospeli_slots_book');
+  const mayStep = can(ctx.role, 'ospeli_slots_step');
   const load = async () => {
     if (!ui.today) ui.today = (await ctx.run('ospeli_clinics_day_summary', { format: 'short', limit: 1 })).date;
     data = await ctx.run('ospeli_clinics_day_summary', { date: addDays(ui.today, ui.offset), days: 28, limit: 200 });
@@ -337,22 +427,24 @@ function summaryScreen(ctx) {
   function cancelFlow(c) {
     const open = c.open || [];
     const here = open.filter((a) => a.state !== 'booked');
-    const booked = open.filter((a) => a.state === 'booked');
+    const moves = c.moves || [];
     const reason = ui.cancelReason.get(c.sessionId) || null;
     return detailsBox('Cancel this clinic', 'cancel-clinic', `cancel:${c.sessionId}`,
       open.length ? [
         h('p', {}, h('b', {}, `${open.length} still booked. Move or cancel each one first, so nobody vanishes from a list.`)),
+        h('p', { class: 'cl-hint', 'data-test': 'tell-patient' }, 'Tell each patient by your usual means: Ospeli sends no messages.'),
+        h('p', { class: 'cl-hint' }, `Each booking is offered its own free slot in this clinic's service, at least ${data.picks.moveNoticeHours} hours from now (an example setting, not a standard) and not before its own date.`),
         here.length ? h('p', { class: 'cl-hint' }, `${here.length} already here (${here.map((a) => a.label).join(', ')}): finish their visit, or record that they left, on the queue.`) : null,
-        h('ul', { class: 'cl-moves', 'data-test': 'move-list' }, booked.map((a, i) => {
-          const to = c.moveTo[i] || c.moveTo[0] || null;
-          return h('li', { 'data-appointment': a.appointmentId },
+        h('ul', { class: 'cl-moves', 'data-test': 'move-list' }, moves.map((a) => {
+          const to = a.moveTo;
+          return h('li', { 'data-appointment': a.appointmentId, 'data-move': to ? `${to.sessionId} ${to.slotTime}` : 'none' },
             h('p', {}, h('b', {}, `${a.slotTime} ${a.label}`)),
             h('div', { class: 'cl-reasons' },
               to ? h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_slots_move', 'data-test': 'move',
-                onclick: () => act('ospeli_slots_move', { appointmentId: a.appointmentId, sessionId: to.sessionId, slotTime: to.slotTime, expectedState: 'booked' }, `${a.label} moved to ${slotWords(to.date, to.slotTime)}`) },
-              `Move to ${slotWords(to.date, to.slotTime)}`) : h('span', { class: 'cl-hint' }, 'No free slot in this clinic to move to.'),
+                onclick: (e) => { e.currentTarget.disabled = true; act('ospeli_slots_move', { appointmentId: a.appointmentId, sessionId: to.sessionId, slotTime: to.slotTime, expectedState: 'booked' }, `${a.label} moved to ${slotWords(to.date, to.slotTime)}`); } },
+              `Move to ${slotWords(to.date, to.slotTime)}`) : h('span', { class: 'cl-hint', 'data-test': 'no-move' }, 'No free slot in this clinic to move to: cancel only.'),
               h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_slots_cancel', 'data-test': 'cancel-booking',
-                onclick: () => act('ospeli_slots_cancel', { appointmentId: a.appointmentId, by: 'site', reason: data.picks.cancelForSession, expectedState: 'booked' }, `${a.label}: booking cancelled`) }, 'Cancel booking')));
+                onclick: (e) => { e.currentTarget.disabled = true; act('ospeli_slots_cancel', { appointmentId: a.appointmentId, by: 'site', reason: data.picks.cancelForSession, expectedState: 'booked' }, `${a.label}: booking cancelled`); } }, 'Cancel booking')));
         })),
       ] : [
         h('p', { class: 'cl-hint' }, 'Nobody is booked. Why is it cancelled?'),
@@ -363,22 +455,45 @@ function summaryScreen(ctx) {
         reason ? 'Cancel the clinic' : 'Pick a reason first'),
       ]);
   }
+  // After the clinic's end: each appointment still booked, waiting or in is closed with the shared
+  // commands before the clinic is marked held, so nobody is left open on a list.
+  function closeOut(c) {
+    if (!c.ended || !c.open?.length || !(c.state === 'planned' || c.state === 'reduced')) return null;
+    const step = (a, s, label, extra = {}) => h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_slots_step', 'data-step': s, ...extra.attrs,
+      onclick: (e) => { e.currentTarget.disabled = true; act('ospeli_slots_step', { appointmentId: a.appointmentId, step: s, expectedState: a.state, ...(extra.reason ? { reason: extra.reason } : {}) }, `${a.label}: ${label.toLowerCase()}`); } }, label);
+    return h('section', { class: 'cl-close', 'data-test': 'close-out' },
+      h('p', {}, h('b', {}, `Still open (${c.open.length}): close each one, then mark the clinic held.`)),
+      h('ul', { class: 'cl-moves' }, c.open.map((a) => h('li', { 'data-appointment': a.appointmentId, 'data-state': a.state },
+        h('p', {}, h('b', {}, `${a.slotTime} ${a.label}`), ` · ${a.stateName}`),
+        mayStep ? h('div', { class: 'cl-reasons' },
+          a.state === 'called' ? step(a, 'finished', 'Finished') : null,
+          a.state === 'arrived' ? h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_slots_cancel',
+            onclick: (e) => { e.currentTarget.disabled = true; act('ospeli_slots_cancel', { appointmentId: a.appointmentId, by: 'patient', reason: data.picks.leftReason, expectedState: 'arrived' }, `${a.label}: left before being seen`); } }, 'Left before being seen') : null,
+          a.state === 'booked' && a.mayMarkMissed ? data.picks.missedReasons.map((r) => step(a, 'no-show', `Missed appointment: ${r.toLowerCase()}`, { reason: r, attrs: { 'data-reason': r } })) : null)
+          : h('p', { class: 'cl-hint' }, `Closed by ${roleNames('ospeli_slots_step')}.`)))));
+  }
   function clinicCard(c) {
     const startWords = c.firstCalledMinutes == null ? 'Nobody called yet.' : c.firstCalledMinutes <= 0 ? 'First patient called on time.' : `First patient called ${fmtWait(c.firstCalledMinutes)} after the start.`;
     const endWords = c.overrunMinutes == null ? null : c.overrunMinutes > 0 ? `Last patient finished ${fmtWait(c.overrunMinutes)} after the planned end.` : 'Finished by the planned end.';
+    const open = c.state === 'planned' || c.state === 'reduced';
+    const usedOf = [c.missed ? `missed ${c.missed}` : null, c.leftBeforeSeen ? `left before being seen ${c.leftBeforeSeen}` : null].filter(Boolean);
     return h('li', { class: `card cl-day st-${c.state}`, 'data-session': c.sessionId, 'data-service': c.service, 'data-state': c.state },
       h('div', { class: 'cl-day-head' }, h('h3', {}, c.name), h('span', { class: `chip cl-sst st-${c.state}` }, c.stateName)),
       h('p', { class: 'cl-hint' }, `${c.start} to ${c.end}${c.reason ? ` · ${c.state === 'cancelled' ? 'Cancelled' : 'Reduced'}: ${c.reason}` : ''}`),
       c.state === 'cancelled' ? null : [
+        // The figures add up: used + empty = offered.
         h('dl', { class: 'cl-figs', 'data-test': 'day-figures' },
-          [['In template', c.templateSlots], ['Used', c.used], ['Empty', c.empty], ['Cancelled', c.cancelled], ['Missed', c.missed]].map(([k, v]) => h('div', { 'data-fig': k.toLowerCase().replace(' ', '-') }, h('dt', {}, k), h('dd', {}, String(v ?? 0))))),
+          [['Used', c.used], ['Empty', c.empty], ['Offered', c.capacity]].map(([k, v]) => h('div', { 'data-fig': k.toLowerCase() }, h('dt', {}, k), h('dd', {}, String(v ?? 0))))),
+        h('p', { class: 'cl-sum', 'data-test': 'day-sum' }, `Used ${c.used}${usedOf.length ? ` (of which ${usedOf.join(', ')})` : ''} + empty ${c.empty} = ${c.capacity} offered${c.templateSlots !== c.capacity ? ` (${c.templateSlots} in the template, reduced)` : ' (as in the template)'}.`),
+        c.cancelled ? h('p', { class: 'cl-hint', 'data-test': 'day-cancelled' }, `Bookings cancelled: ${c.cancelled}. A cancelled booking's slot is either empty again or refilled by another booking, so it is counted there.`) : null,
         h('p', { 'data-test': 'waiting-now' }, c.counts.waiting ? h('b', {}, `Waiting now: ${c.counts.waiting}, longest ${fmtWait(c.counts.longestWaitMinutes)}.`) : 'Nobody waiting now.', ` ${c.counts.toCome} still to come.`),
         h('p', { class: 'cl-hint' }, startWords, endWords ? ` ${endWords}` : ''),
+        closeOut(c),
         h('div', { class: 'cl-reasons' },
-          c.empty && mayBook && c.state !== 'held' ? h('a', { class: 'btn btn-small', href: `#/clinics/referrals/${c.service}`, 'data-test': 'fill-empty' }, `Fill ${c.empty} empty from the waiting list`) : null,
+          c.empty && mayBook && open && !c.ended ? h('a', { class: 'btn btn-small', href: `#/clinics/referrals/${c.service}`, 'data-test': 'fill-empty' }, `Fill ${c.empty} empty from the waiting list`) : null,
           mayPlan && c.mayMarkHeld ? h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_slots_session_change', 'data-test': 'mark-held',
             onclick: () => act('ospeli_slots_session_change', { sessionId: c.sessionId, change: 'held', expectedState: c.state }, `${c.name}: held`) }, 'Mark the clinic as held') : null),
-        mayPlan && (c.state === 'planned' || c.state === 'reduced') ? cancelFlow(c) : null,
+        mayPlan && open && !c.ended ? cancelFlow(c) : null,
       ]);
   }
   function draw() {

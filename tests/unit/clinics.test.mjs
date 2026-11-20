@@ -219,7 +219,7 @@ test('roles: the desk and the nurse mark steps, the booking clerk books, the man
   const q = await run('ospeli_clinics_queue', {}, 'coo');
   const booked = q.patients.find((p) => p.state === 'booked');
   const n = await core.eventCount();
-  for (const role of ['booking-clerk', 'outpatient-manager', 'receptionist', 'ward-nurse', 'coo']) {
+  for (const role of ['booking-clerk', 'receptionist', 'ward-nurse', 'coo']) {
     await assert.rejects(run('ospeli_slots_step', { appointmentId: booked.appointmentId, step: 'arrived' }, role), code('forbidden'), `${role} cannot mark arrived`);
   }
   for (const role of ['clinic-receptionist', 'clinic-nurse', 'booking-clerk', 'ops-manager']) {
@@ -306,12 +306,15 @@ test('rule 2 offers empty slots within two days to the longest-waiting referrals
   E.push(ev('code.opened', 'pc-00011', '2026-11-02T12:00:00.000Z', { kind: 'outpatient-referral', service: 'diabetes', source: 'referral' }), ev('code.stage', 'pc-00011', '2026-11-02T12:00:00.000Z', { stage: 'referral.accepted' }));
   const sorted = E.sort((x, y) => Date.parse(x.at) - Date.parse(y.at));
   const d = derive(sorted); const cd = codesOf(sorted); const index = appointmentsByCode(d);
-  assert.deepEqual(waitingReferrals(cd, index, { service: 'diabetes', now: NOW }).map((r) => [r.code, r.waitingDays]), [['pc-00010', 17], ['pc-00005', 9], ['pc-00006', 9], ['pc-00011', 4]], 'oldest first, by wait only (a missed or cancelled one waits too)');
+  assert.deepEqual(waitingReferrals(cd, index, { service: 'diabetes', now: NOW }).map((r) => [r.code, r.waitingDays, r.rebookOf]),
+    [['pc-00010', 17, null], ['pc-00005', 9, 'apt-00005'], ['pc-00006', 9, 'apt-00006'], ['pc-00011', 4, null]], 'oldest first, by wait only; a cancelled or missed one waits too, as a rebook');
   const s = ruleEmptySoon(d, cd, index, { now: NOW, serviceWords: pack.SERVICES, offsetMinutes: OFFSET });
   assert.deepEqual(s.map((x) => x.sessionId), ['ses-00006'], 'only the clinic within two days; the eye clinic on Monday is not yet');
-  assert.deepEqual(s[0].actions.map((a) => [a.input.code, a.input.slotTime, a.input.sessionId]), [['pc-00010', '09:00', 'ses-00006'], ['pc-00011', '09:20', 'ses-00006']]);
+  assert.deepEqual(s[0].actions.map((a) => [a.input.code, a.input.slotTime, a.input.bookedFrom, a.input.rebookOf ?? null]),
+    [['pc-00010', '09:00', 'referral', null], ['pc-00005', '09:20', 'rebook', 'apt-00005'], ['pc-00006', '09:40', 'rebook', 'apt-00006']], 'the waiting list\'s own order');
   assert.match(s[0].text, /3 empty slots in the Diabetes clinic on Sat 7 Nov/);
-  assert.match(s[0].why, /2 referrals are waiting.*17 days/);
+  assert.match(s[0].why, /4 referrals are waiting.*waiting 17 days/);
+  assert.match(s[0].actions[0].label, /\(waiting 17 days\)/);
   // The guide never acts: tapping is a person's call, through the shared booking command.
   const { core, run } = await site(sorted);
   const n = await core.eventCount();
@@ -321,7 +324,7 @@ test('rule 2 offers empty slots within two days to the longest-waiting referrals
   const done = await run(offer.command, offer.input, 'booking-clerk');
   assert.equal(done.status, 'done');
   const after = await run('ospeli_clinics_day_summary', {}, 'booking-clerk');
-  assert.deepEqual(after.guide.suggestions.find((x) => x.rule === 'empty-soon').actions.map((a) => a.input.code), ['pc-00011'], 'the booked referral is no longer offered');
+  assert.deepEqual(after.guide.suggestions.find((x) => x.rule === 'empty-soon').actions.map((a) => a.input.code), ['pc-00005', 'pc-00006'], 'the booked referral is no longer offered');
 });
 
 test('the guide switch: one switch for all three rules, people only; with it off everything else works the same', async () => {
@@ -373,9 +376,9 @@ test('agents: an agent\'s write through the shared commands is a proposal that c
 });
 
 test('a clinic with bookings is cancelled only after each booking is moved or cancelled; the day summary shows it with the reason', async () => {
-  const { run } = await site([], { modules: true });
-  // A clinic next week with bookings in it.
-  const ses = (await run('ospeli_slots_sessions', { sessionType: 'clinic', service: 'general-medicine', from: '2026-11-11', to: '2026-11-13', limit: 5 }, 'outpatient-manager')).sessions.find((x) => x.booked > 0);
+  const { run } = await site([], { modules: true, end: TUE });
+  // A clinic later this week with bookings in it.
+  const ses = (await run('ospeli_slots_sessions', { sessionType: 'clinic', service: 'general-medicine', from: '2026-11-12', to: '2026-11-13', limit: 5 }, 'outpatient-manager')).sessions.find((x) => x.booked > 0);
   assert.ok(ses, 'a booked clinic next week');
   const sum = async () => (await run('ospeli_clinics_day_summary', { date: ses.date }, 'outpatient-manager')).clinics.find((c) => c.sessionId === ses.id);
   let c = await sum();
@@ -384,7 +387,7 @@ test('a clinic with bookings is cancelled only after each booking is moved or ca
   let moved = 0;
   while ((c = await sum()).open.length) {
     const a = c.open[0];
-    const to = c.moveTo[0];
+    const to = c.moves[0].moveTo;
     assert.ok(to, 'a free slot of the same service to move to');
     if (moved < 2) { await run('ospeli_slots_move', { appointmentId: a.appointmentId, sessionId: to.sessionId, slotTime: to.slotTime, expectedState: 'booked' }, 'outpatient-manager'); moved++; }
     else await run('ospeli_slots_cancel', { appointmentId: a.appointmentId, by: 'site', reason: 'Session cancelled or reduced', expectedState: 'booked' }, 'outpatient-manager');
@@ -463,4 +466,126 @@ test('every example in the pack runs as written on a fresh example hospital', as
     const res = await run(c.name, structuredClone(c.example.input), role);
     out(c.name, res);
   }
+});
+
+// ---- the reviewers' points (Domain lead D1 to D4, Adoption lead A2) ----
+import { moveTargets, firstAppointmentList, rowsFromList, daysWords, waitedWords, MOVE_NOTICE_HOURS } from '../../web/app/modules/clinics/logic.js';
+
+test('D1: Move-or-Cancel gives each booking its own free slot of the same service, at least the notice ahead and on or after its own date, in booked-time order', () => {
+  const H = 3600e3; const now = Date.parse(NOW);
+  const ses = (id, service, date, startMs, slots) => ({ id, service, state: 'planned', released: true, start: '09:00', date, startMs, slots: slots.map(([time, taken]) => ({ time, taken })) });
+  const sessions = [
+    ses('ses-00010', 'eye', '2026-11-06', now + 2 * H, [['09:00', false], ['09:20', false]]),          // today: inside the notice
+    ses('ses-00011', 'eye', '2026-11-09', now + 70 * H, [['09:00', false], ['09:20', true], ['09:40', false]]),
+    ses('ses-00012', 'diabetes', '2026-11-09', now + 70 * H, [['09:00', false]]),                      // another service
+    ses('ses-00013', 'eye', '2026-11-10', now + 94 * H, [['09:00', false]]),
+  ];
+  const bookings = [{ appointmentId: 'apt-00003', slotTime: '10:00' }, { appointmentId: 'apt-00001', slotTime: '09:00' }, { appointmentId: 'apt-00002', slotTime: '09:30' }, { appointmentId: 'apt-00004', slotTime: '11:00' }];
+  const m = moveTargets(sessions, { service: 'eye', exceptSessionId: 'ses-00099', bookings, nowMs: now, fromDate: '2026-11-06' });
+  assert.deepEqual(m.map((x) => [x.appointmentId, x.moveTo && `${x.moveTo.sessionId} ${x.moveTo.slotTime}`]),
+    [['apt-00001', 'ses-00011 09:00'], ['apt-00002', 'ses-00011 09:40'], ['apt-00003', 'ses-00013 09:00'], ['apt-00004', null]], 'distinct, in order; none left: cancel only');
+  assert.ok(m.filter((x) => x.moveTo).every((x) => x.moveTo.atMs >= now + MOVE_NOTICE_HOURS * H), 'never sooner than the notice');
+  // On or after the booking's own date: a clinic on the 10th never offers the 9th.
+  assert.deepEqual(moveTargets(sessions, { service: 'eye', bookings: [{ appointmentId: 'apt-00001', slotTime: '09:00' }], nowMs: now, fromDate: '2026-11-10' })[0].moveTo.sessionId, 'ses-00013');
+  assert.equal(MOVE_NOTICE_HOURS, 24);
+});
+
+test('D1 on the example hospital: every Move target is distinct, of the same service, at least 24 hours ahead and not before the clinic\'s date', async () => {
+  const { run } = await site([], { modules: true, end: TUE });
+  const sessions = (await run('ospeli_slots_sessions', { sessionType: 'clinic', to: '2026-12-15', limit: 500 }, 'outpatient-manager')).sessions;
+  const byId = new Map(sessions.map((s) => [s.id, s]));
+  let checked = 0;
+  for (const date of ['2026-11-10', '2026-11-11', '2026-11-12']) {
+    for (const c of (await run('ospeli_clinics_day_summary', { date }, 'outpatient-manager')).clinics) {
+      const seen = new Set();
+      assert.deepEqual(c.moves.map((x) => x.slotTime), [...c.moves.map((x) => x.slotTime)].sort(), 'booked-time order');
+      for (const x of c.moves.filter((y) => y.moveTo)) {
+        const to = byId.get(x.moveTo.sessionId);
+        const key = `${x.moveTo.sessionId} ${x.moveTo.slotTime}`;
+        assert.ok(!seen.has(key), `${key} offered twice`); seen.add(key);
+        assert.equal(to.service, c.service);
+        assert.ok(x.moveTo.date >= c.date);
+        const atMs = Date.parse(to.startsAt) + ((+x.moveTo.slotTime.slice(0, 2) * 60 + +x.moveTo.slotTime.slice(3)) - (+to.start.slice(0, 2) * 60 + +to.start.slice(3))) * MIN;
+        assert.ok(atMs >= Date.parse(TUE) + 24 * 3600e3, `${key} is at least 24 hours ahead`);
+        checked++;
+      }
+    }
+  }
+  assert.ok(checked > 10, `${checked} move targets checked`);
+});
+
+test('D2: every clinic day of the example history adds up: used + empty = offered; missed and left-before-seen are inside used', async () => {
+  const { run } = await site([], { modules: true });
+  let days = 0;
+  for (let i = -30; i <= 7; i++) {
+    const date = new Date(Date.parse('2026-11-06T12:00:00.000Z') + i * DAY).toISOString().slice(0, 10);
+    for (const c of (await run('ospeli_clinics_day_summary', { date }, 'outpatient-manager')).clinics) {
+      assert.equal(c.used + c.empty, c.capacity, `${c.sessionId} ${date}: ${c.used} + ${c.empty} = ${c.capacity}`);
+      assert.ok(c.missed + c.leftBeforeSeen <= c.used, `${c.sessionId}: missed and left are part of used`);
+      if (c.state === 'cancelled') assert.deepEqual([c.used, c.empty, c.capacity], [0, 0, 0]);
+      else assert.ok(c.capacity <= c.templateSlots);
+      days++;
+    }
+  }
+  assert.ok(days > 50, `${days} clinic days checked`);
+});
+
+test('D3: the guide offers empty slots in the waiting list\'s own order (one function feeds both), never one patient twice; day words', async () => {
+  const { run } = await site([], { modules: true, end: TUE });
+  const s = await run('ospeli_clinics_day_summary', {}, 'booking-clerk');
+  const offers = s.guide.suggestions.filter((x) => x.rule === 'empty-soon');
+  assert.ok(offers.length >= 2);
+  const list = (await run('ospeli_codes_list', { kind: 'outpatient-referral', state: 'open', booked: false, limit: 500 }, 'booking-clerk')).codes;
+  const rows = rowsFromList(list);
+  const firstFor = new Map();
+  for (const o of offers) {
+    const screen = firstAppointmentList(rows, { service: o.service }).map((r) => r.code).filter((c) => !firstFor.has(c) && ![...firstFor.values()].flat().includes(c));
+    const offered = o.actions.map((a) => a.input.code);
+    assert.deepEqual(offered, screen.slice(0, offered.length), `${o.id}: the waiting list's first rows for ${o.service}, in order`);
+    firstFor.set(o.id, offered);
+  }
+  const all = offers.flatMap((o) => o.actions.map((a) => a.input.code));
+  assert.equal(new Set(all).size, all.length, 'never one patient in two suggestions');
+  assert.deepEqual([daysWords(0), daysWords(1), daysWords(12)], ['today', '1 day', '12 days']);
+  assert.deepEqual([waitedWords(0), waitedWords(1), waitedWords(3)], ['added today', 'waiting 1 day', 'waiting 3 days']);
+  for (const o of offers) assert.ok(!/\b[01] days\b/.test(o.why + o.actions.map((a) => a.label).join()), 'no "1 days" or "0 days"');
+});
+
+test('D4: a clinic is marked held only once nobody is still booked, waiting or in; the manager closes each with the shared commands', async () => {
+  const { run, advance } = await site([], { modules: true, end: TUE });
+  advance(5 * 60); // 15:00 at the site: the general medicine clinic ended at 12:30
+  const gm = async () => (await run('ospeli_clinics_day_summary', {}, 'outpatient-manager')).clinics.find((c) => c.service === 'general-medicine');
+  let c = await gm();
+  assert.ok(c.ended && c.open.length > 0, 'patients still open after the end');
+  assert.equal(c.mayMarkHeld, false, 'not offered while anyone is open');
+  for (const a of c.open) {
+    if (a.state === 'called') await run('ospeli_slots_step', { appointmentId: a.appointmentId, step: 'finished', expectedState: 'called' }, 'outpatient-manager');
+    else if (a.state === 'arrived') await run('ospeli_slots_cancel', { appointmentId: a.appointmentId, by: 'patient', reason: 'Left before being seen', expectedState: 'arrived' }, 'outpatient-manager');
+    else { assert.ok(a.mayMarkMissed); await run('ospeli_slots_step', { appointmentId: a.appointmentId, step: 'no-show', reason: 'Did not arrive', expectedState: 'booked' }, 'outpatient-manager'); }
+    const now = await gm();
+    if (now.open.length) assert.equal(now.mayMarkHeld, false);
+  }
+  c = await gm();
+  assert.deepEqual([c.open.length, c.mayMarkHeld], [0, true]);
+  assert.equal(c.used + c.empty, c.capacity);
+  await run('ospeli_slots_session_change', { sessionId: c.sessionId, change: 'held', expectedState: c.state }, 'outpatient-manager');
+  assert.equal((await gm()).state, 'held');
+});
+
+test('A2: a booking made by mistake is cancelled by the site as "Booked in error", and a referral added by mistake is closed as "Opened in error"; both go back the way they were', async () => {
+  const { run, core } = await site([], { modules: true, end: TUE });
+  const list = async () => (await run('ospeli_codes_list', { kind: 'outpatient-referral', state: 'open', booked: false, limit: 500 }, 'booking-clerk')).codes;
+  const r = (await list()).find((x) => x.service === 'eye' && !x.appointments);
+  const sessions = (await run('ospeli_slots_sessions', { sessionType: 'clinic', service: 'eye', to: '2026-12-15', limit: 100 }, 'booking-clerk')).sessions;
+  const free = nextFreeSlots((await import('../../web/app/modules/clinics/logic.js')).sessionsFromRead(sessions), { service: 'eye', nowMs: Date.parse(TUE), limit: 1 })[0];
+  const b = await run('ospeli_slots_book', { sessionId: free.sessionId, slotTime: free.slotTime, code: r.code, slotType: 'new', bookedFrom: 'referral' }, 'booking-clerk');
+  assert.ok(!(await list()).some((x) => x.code === r.code));
+  await run('ospeli_slots_cancel', { appointmentId: b.appointmentId, by: 'site', reason: 'Booked in error', expectedState: 'booked' }, 'booking-clerk');
+  const back = (await list()).find((x) => x.code === r.code);
+  assert.ok(back, 'back on the waiting list');
+  assert.equal((await core.events({ subject: b.appointmentId })).at(-1).data.reason, 'Booked in error');
+  const opened = await run('ospeli_codes_open', { kind: 'outpatient-referral', service: 'eye', source: 'referral' }, 'booking-clerk');
+  await run('ospeli_codes_close', { code: opened.code, reason: 'Opened in error' }, 'booking-clerk');
+  assert.ok(!(await list()).some((x) => x.code === opened.code), 'off the list');
+  assert.equal((await core.events({ subject: opened.code })).at(-1).data.reason, 'Opened in error');
 });

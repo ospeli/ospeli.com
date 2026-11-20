@@ -84,7 +84,15 @@
 .mod-clinics .chip.cl-sst.st-held { background: #DDF1EA; color: #0B4A3A; }
 .mod-clinics .chip.cl-sst.st-cancelled { background: #FBE3DE; color: #8A2412; }
 .mod-clinics .chip.cl-sst.st-reduced { background: var(--mango-tint); color: #5C3B00; }
-.mod-clinics .cl-figs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin: 0; }
+.mod-clinics .cl-figs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin: 0; }
+.mod-clinics .cl-sum { font-weight: 700; }
+.mod-clinics .cl-close { border: 1.5px solid var(--line-strong); border-left: 5px solid var(--mango); border-radius: 10px; padding: 8px 10px; }
+.mod-clinics .cl-close p { margin: 0 0 6px; }
+.mod-clinics .cl-sec { margin: 14px 0 6px; font-size: 1.0625rem; }
+.mod-clinics .cl-booked { font-weight: 800; color: var(--sea-ink); margin: 0; }
+.mod-clinics .cl-ref.is-booked { border-left-color: var(--sea); background: #E6F4F3; }
+.mod-clinics .cl-ref.is-done { background: #F7F7F5; }
+.mod-clinics .cl-past { font-weight: 800; }
 .mod-clinics .cl-figs div { background: var(--sand); border-radius: 8px; padding: 6px; text-align: center; min-width: 0; }
 .mod-clinics .cl-figs dt { font-size: .9375rem; color: var(--ink-soft); overflow-wrap: anywhere; }
 .mod-clinics .cl-figs dd { margin: 0; font-size: 1.3rem; font-weight: 800; }
@@ -112,5 +120,4 @@
 
 @media (max-width: 420px) {
   .mod-clinics .cl-row-act { max-width: none; }
-  .mod-clinics .cl-figs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }

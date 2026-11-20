@@ -110,7 +110,15 @@ test('the clinic receptionist\'s first five minutes on a 390 px touch screen: op
   assert.equal(after.clinic.counts.waiting, before.clinic.counts.waiting + 1, 'the waiting count changes');
   const moved = await page.locator(`[data-appointment="${id}"]`).boundingBox();
   assert.ok(Math.abs(moved.y - rowBox.y) < 2, 'the row did not move under the finger');
-  assert.match(await page.locator(`[data-appointment="${id}"] [data-test="wait"]`).textContent(), /^Waiting 0 min \(arrived \d\d:\d\d\)$/);
+  assert.match(await page.locator(`[data-appointment="${id}"] [data-test="wait"]`).textContent(), /^Waiting 0 min · booked \d\d:\d\d, arrived \d\d:\d\d/);
+  // Patients already here are not folded away: "Left, or marked by mistake?" is one tap from their row.
+  assert.match(await page.locator('.cl-sec').first().textContent(), /^Still to come \(\d+\)$/);
+  const here = page.locator('[data-test="here-now"] > li[data-state="arrived"]').first();
+  await here.locator('[data-test="left"] > summary').tap();
+  assert.match(await here.locator('[data-test="wrong-arrived"]').textContent(), /tell the clinic nurse\. A correction step is planned/);
+  // An early arrival's long wait is shown with the booked time; the colour follows the time past it.
+  const early = await page.evaluate(() => [...document.querySelectorAll('[data-test="here-now"] [data-test="wait"]')].map((x) => [x.textContent, x.className]));
+  assert.ok(early.every(([t, cls]) => /booked \d\d:\d\d, arrived \d\d:\d\d/.test(t) && (/past booked time/.test(t) ? true : !/st-late/.test(cls))), JSON.stringify(early));
   assert.equal(await page.locator('[data-kpi], [data-test="guide"]').count(), 0, 'no measures or guide on the desk\'s queue');
   assert.deepEqual(errors, []);
   await context.close();
@@ -124,6 +132,9 @@ test('the clinic nurse calls in and finishes; Finished waits three seconds after
   assert.equal(await page.locator('[data-step="arrived"]').count(), 0, 'the nurse is not asked to mark arrivals');
   const m0 = (await run(page, 'ospeli_clinics_day_summary', { format: 'short' }, 'clinic-nurse')).kpis.find((k) => k.id === 'clinic-wait').n;
   const call = page.locator('[data-step="called"]').first();
+  const cb = await call.boundingBox();
+  assert.ok(cb.y >= 0 && cb.y + cb.height <= 844, `the first Call in is fully on the first screen (bottom at ${Math.round(cb.y + cb.height)} px)`);
+  assert.equal(await page.locator('[data-test="find"]').count(), 0, 'the nurse is not asked to search');
   const id = await call.locator('xpath=ancestor::li[1]').getAttribute('data-appointment');
   await call.tap();
   const fin = page.locator(`[data-appointment="${id}"] [data-step="finished"]`);
@@ -152,7 +163,7 @@ test('the outpatient manager\'s first five minutes on a 390 px phone: today\'s c
   assert.match(counts, /Empty slots\s*\d+/);
   const first = await page.locator('[data-test="clinics"] > li').first().boundingBox();
   assert.ok(first.y < 844, 'the first clinic starts on the first screen');
-  assert.match(await page.locator('[data-test="clinics"] > li').first().textContent(), /General medicine clinic.*In template.*Used.*Empty.*Waiting now: \d+, longest/s);
+  assert.match(await page.locator('[data-test="clinics"] > li').first().textContent(), /General medicine clinic.*Used.*Empty.*Offered.*Used \d+.*\+ empty \d+ = \d+ offered.*Waiting now: \d+, longest/s);
   assert.deepEqual(await phoneProblems(page), [], 'clinic day: phone rules');
   // Book an empty slot from the waiting list: Waiting list, Book, the slot.
   await page.locator('.cl-tabs [data-screen="referrals"]').tap();
@@ -166,7 +177,7 @@ test('the outpatient manager\'s first five minutes on a 390 px phone: today\'s c
   await slot.waitFor();
   const sessionId = await slot.getAttribute('data-session');
   await slot.tap();
-  await page.waitForFunction((c) => !document.querySelector(`[data-test="waiting"] [data-code="${c}"]`), code);
+  await page.waitForSelector(`[data-test="waiting"] [data-code="${code}"][data-state="booked"]`);
   const booked = await page.evaluate(async (c) => (await window.ospeli.core.events({ type: 'appointment.booked' })).filter((e) => e.data.code === c).at(-1), code);
   assert.deepEqual([booked.actorRole, booked.data.sessionId], ['outpatient-manager', sessionId]);
   const ses = (await run(page, 'ospeli_slots_sessions', { sessionType: 'clinic', to: '2026-12-15', limit: 500 }, 'outpatient-manager')).sessions.find((s) => s.id === sessionId);
@@ -203,10 +214,10 @@ test('the booking clerk adds a referral (a double tap asks "Is this another pati
   // The new referral opens with its booking choices: two taps from the list.
   const row = page.locator(`[data-code="${second.subject}"]`);
   await row.waitFor();
-  assert.match(await row.textContent(), /Patient P\d+.*Eye clinic.*Waiting 0 days/s);
+  assert.match(await row.textContent(), /Patient P\d+.*Eye clinic.*Added today/s);
   const slot = row.locator('[data-cmd="ospeli_slots_book"]').first();
   await slot.tap();
-  await page.waitForFunction((c) => !document.querySelector(`[data-test="waiting"] [data-code="${c}"]`), second.subject);
+  await page.waitForSelector(`[data-test="waiting"] [data-code="${second.subject}"][data-state="booked"]`);
   const b = await page.evaluate(async (c) => (await window.ospeli.core.events({ type: 'appointment.booked' })).find((e) => e.data.code === c), second.subject);
   assert.deepEqual([b.actorRole, b.data.bookedFrom, b.data.slotType], ['booking-clerk', 'referral', 'new']);
   assert.deepEqual(errors, []);
@@ -223,6 +234,12 @@ test('a clinic with bookings is cancelled through Move or Cancel, then shows in 
   await card.locator('[data-test="cancel-clinic"] > summary').click();
   await card.locator('[data-test="move-list"]').waitFor();
   assert.equal(await card.locator('[data-test="cancel-session"]').count(), 0, 'no cancel while a booking is open');
+  assert.match(await card.locator('[data-test="tell-patient"]').textContent(), /Ospeli sends no messages/);
+  const targets = await card.locator('[data-test="move-list"] > li').evaluateAll((xs) => xs.map((x) => x.dataset.move));
+  const real = targets.filter((x) => x !== 'none');
+  assert.equal(new Set(real).size, real.length, `each booking has its own slot: ${targets.join(', ')}`);
+  const times = await card.locator('[data-test="move-list"] > li').evaluateAll((xs) => xs.map((x) => x.querySelector('b').textContent.slice(0, 5)));
+  assert.deepEqual(times, [...times].sort(), 'booked-time order');
   let n = 0;
   while (await page.locator(`li[data-session="${sessionId}"] [data-test="move-list"] li`).count()) {
     const li = page.locator(`li[data-session="${sessionId}"] [data-test="move-list"] li`).first();
@@ -351,5 +368,84 @@ test('the queue opens offline; on a device with no connection to its site server
   assert.ok(await page.locator('[data-step="arrived"]').first().isDisabled(), 'taps wait for a connection');
   await context.setOffline(false);
   assert.deepEqual(errors.filter((e) => !/net::|Failed to fetch|ERR_INTERNET_DISCONNECTED/.test(e)), []);
+  await context.close();
+});
+
+test('the booking clerk\'s mistakes can be put right, and a booked row stays in place: Booked by mistake, Added by mistake, one Book panel, the new referral in view', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
+  await openAs(page, 'booking-clerk');
+  await page.waitForSelector('[data-test="waiting"]');
+  const rows = page.locator('[data-test="waiting"] > li');
+  const first = rows.nth(0); const second = rows.nth(1);
+  const [c1, c2] = [await first.getAttribute('data-code'), await second.getAttribute('data-code')];
+  // One Book panel at a time.
+  await first.locator('[data-test="book-open"]').tap();
+  await first.locator('[data-test="book-options"]').waitFor();
+  await second.locator('[data-test="book-open"]').tap();
+  await second.locator('[data-test="book-options"]').waitFor();
+  assert.equal(await page.locator('[data-test="book-options"]').count(), 1, 'opening one closes the other');
+  await page.locator(`[data-code="${c1}"] [data-test="book-open"]`).tap();
+  const slot = page.locator(`[data-code="${c1}"] [data-cmd="ospeli_slots_book"]`).first();
+  await slot.waitFor();
+  const pageY = (c) => page.evaluate((x) => document.querySelector(`[data-test="waiting"] [data-code="${x}"]`).getBoundingClientRect().y + window.scrollY, c);
+  const before2 = { y: await pageY(c2) };
+  await slot.tap();
+  // The row stays where it was, now saying when it is booked; the next row does not slide up.
+  await page.waitForSelector(`[data-test="waiting"] [data-code="${c1}"][data-state="booked"]`);
+  assert.match(await page.locator(`[data-code="${c1}"] [data-test="booked-now"]`).textContent(), /^Booked: \w{3} \d+ \w{3}, \d\d:\d\d$/);
+  const after2 = { y: await pageY(c2) };
+  assert.ok(after2.y >= before2.y - 2, `the next row did not move up under the finger (${Math.round(before2.y)} -> ${Math.round(after2.y)})`);
+  // Booked by mistake: one confirm, then it is back on the list.
+  await page.locator(`[data-code="${c1}"] [data-test="booked-mistake"] > summary`).tap();
+  await page.locator(`[data-code="${c1}"] [data-test="confirm-unbook"]`).tap();
+  await page.waitForSelector(`[data-test="waiting"] [data-code="${c1}"][data-state="waiting"]`);
+  const undo = await page.evaluate(async () => (await window.ospeli.core.events({ type: 'appointment.cancelled' })).at(-1));
+  assert.deepEqual([undo.actorRole, undo.data.by, undo.data.reason], ['booking-clerk', 'site', 'Booked in error']);
+  // Added by mistake: add one, it comes into view, then remove it with one confirm.
+  await page.locator('[data-test="open-referral-box"] > summary').tap();
+  await page.locator('[data-test="open-referral"] [data-service="antenatal"]').tap();
+  await page.locator('[data-test="open-referral"] [data-source="walk-in"]').tap();
+  await page.locator('[data-test="add-referral"]').tap();
+  await until(async () => page.evaluate(async () => (await window.ospeli.core.events({ type: 'code.opened' })).at(-1).data.service === 'antenatal'), 'the new code');
+  const code = await page.evaluate(async () => (await window.ospeli.core.events({ type: 'code.opened' })).at(-1).subject);
+  const row = page.locator(`[data-test="waiting"] [data-code="${code}"]`);
+  await row.waitFor();
+  await until(async () => { const b = await row.boundingBox(); return b && b.y >= 0 && b.y < 844; }, 'the new referral scrolled into view');
+  assert.match(await row.textContent(), /Added today/);
+  await row.locator('[data-test="added-mistake"] > summary').tap();
+  await row.locator('[data-test="confirm-remove"]').tap();
+  await page.waitForSelector(`[data-test="waiting"] [data-code="${code}"][data-state="removed"]`);
+  const closed = await lastEvent(page, code);
+  assert.deepEqual([closed.type, closed.actorRole, closed.data.reason], ['code.closed', 'booking-clerk', 'Opened in error']);
+  assert.deepEqual(await phoneProblems(page), [], 'waiting list: phone rules');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('after a clinic\'s end the manager closes each open appointment with the shared commands, and only then is "Mark the clinic as held" offered', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
+  await openAs(page, 'outpatient-manager');
+  await page.waitForSelector('[data-test="clinics"]');
+  const gm = () => page.locator('[data-test="clinics"] > li[data-service="general-medicine"]');
+  assert.equal(await gm().locator('[data-test="mark-held"]').count(), 0, 'not while patients are booked, waiting or in');
+  assert.match(await gm().locator('[data-test="day-sum"]').textContent(), /^Used \d+.* \+ empty \d+ = \d+ offered/);
+  await page.clock.fastForward('05:00:00'); // 15:00 at the site: the clinic ended at 12:30
+  await page.reload();
+  await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForSelector('[data-test="close-out"]');
+  assert.equal(await gm().locator('[data-test="fill-empty"], [data-test="cancel-clinic"]').count(), 0, 'no Fill or Cancel after the end');
+  assert.equal(await gm().locator('[data-test="mark-held"]').count(), 0);
+  for (let i = 0; i < 20 && await gm().locator('[data-test="close-out"] li').count(); i++) {
+    const li = gm().locator('[data-test="close-out"] li').first();
+    const id = await li.getAttribute('data-appointment');
+    await li.locator('button').first().tap();
+    await page.waitForFunction((a) => !document.querySelector(`[data-test="close-out"] [data-appointment="${a}"]`), id);
+  }
+  await gm().locator('[data-test="mark-held"]').tap();
+  await page.waitForSelector('[data-test="clinics"] > li[data-service="general-medicine"][data-state="held"]');
+  assert.match(await gm().locator('[data-test="day-sum"]').textContent(), /^Used (\d+).*\+ empty (\d+) = (\d+) offered/);
+  const [, u, e, o] = (await gm().locator('[data-test="day-sum"]').textContent()).match(/^Used (\d+).*\+ empty (\d+) = (\d+) offered/);
+  assert.equal(+u + +e, +o, 'the figures add up');
+  assert.deepEqual(errors, []);
   await context.close();
 });

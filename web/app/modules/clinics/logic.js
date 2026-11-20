@@ -28,6 +28,8 @@ export const MISSED_ABOVE = 0.12;        // guide rule 1: the usual level the si
 export const MISSED_MIN_DUE = 20;        // guide rule 1: at least this many appointments due over the weeks
 export const EMPTY_WITHIN_HOURS = 48;    // guide rule 2: empty slots within two days of the clinic
 export const OFFER_AT_MOST = 3;          // guide rule 2: at most this many prefilled bookings per clinic
+export const MOVE_NOTICE_HOURS = 24;       // a booking moved off a cancelled clinic goes no sooner than this (example setting, not a standard)
+export const LATE_MINUTES = 15;           // queue: a patient waiting this long past the booked time is shown as late
 export const EARLY_MINUTES = 30;         // guide rule 3: arrived this long or more before the booked slot
 export const BUNCHED_SHARE = 0.5;        // guide rule 3: share of arrivals that early
 export const BUNCHED_MIN_ARRIVED = 20;   // guide rule 3: at least this many arrivals over the weeks
@@ -115,7 +117,9 @@ export function dayOf(d, s, now) {
   const waiting = appts.filter((a) => a.state === 'arrived').map((a) => minutesBetween(a.arrivedAt, now));
   const open = appts.filter((a) => ['booked', 'arrived', 'called'].includes(a.state));
   return {
-    templateSlots: s.timed ? s.plannedCapacity : null, capacity: fill.capacity, used: fill.booked,
+    // Used + empty = offered, always: a missed appointment and a patient who left before being seen
+    // used their slot; a cancelled booking's slot is empty again, or refilled by another booking.
+    templateSlots: s.timed ? s.plannedCapacity : null, capacity: s.state === 'cancelled' ? 0 : fill.capacity, used: s.state === 'cancelled' ? 0 : fill.booked,
     empty: s.state === 'cancelled' ? 0 : Math.max(0, fill.capacity - fill.booked),
     cancelled: count((a) => a.state === 'cancelled' && !a.arrivedAt), missed: count((a) => a.state === 'no-show'),
     attended: count((a) => a.arrivedAt), finished: count((a) => a.state === 'finished'),
@@ -146,6 +150,20 @@ export function nextFreeSlots(sessions, { service, nowMs, exceptSessionId = null
   }
   return out;
 }
+// Move-or-Cancel: one distinct free slot for each open booking of a clinic being cancelled, in
+// booked-time order: same service, never sooner than now plus the notice, and on or after the
+// booking's own date. null when none is free: then only Cancel is offered.
+export function moveTargets(sessions, { service, exceptSessionId, bookings, nowMs, fromDate, noticeHours = MOVE_NOTICE_HOURS }) {
+  const all = nextFreeSlots(sessions, { service, nowMs: nowMs + noticeHours * 60 * MIN, exceptSessionId, limit: 500 })
+    .filter((x) => !fromDate || (x.date ?? '') >= fromDate);
+  const used = new Set();
+  return [...bookings].sort((a, b) => (a.slotTime < b.slotTime ? -1 : a.slotTime > b.slotTime ? 1 : a.appointmentId < b.appointmentId ? -1 : 1))
+    .map((b) => {
+      const to = all.find((x) => !used.has(`${x.sessionId} ${x.slotTime}`)) || null;
+      if (to) used.add(`${to.sessionId} ${to.slotTime}`);
+      return { ...b, moveTo: to };
+    });
+}
 // The neutral list from the derived record (pack) …
 export const sessionsFromDerived = (d) => [...clinicView(d).sessions.values()].map((s) => ({
   id: s.id, service: s.service, state: s.state, released: s.released, startMs: s.startMs, start: s.start, date: s.date,
@@ -155,15 +173,28 @@ export const sessionsFromRead = (list) => (list || []).filter((s) => s.sessionTy
   id: s.id, service: s.service, state: s.state, released: s.released, startMs: Date.parse(s.startsAt), start: s.start, date: s.date,
   slots: (s.slots || []).map((x) => ({ time: x.time, taken: Boolean(x.appointmentId) })) }));
 
-// The referrals waiting for a first appointment, longest wait first (wait only: no urgency).
-export function waitingReferrals(codesD, index, { service = null, now }) {
-  return [...codesD.codes.values()]
-    .filter((c) => c.kind === CODE_KIND && c.state === 'open' && (!service || c.service === service))
-    .map((c) => ({ c, att: attendanceOf(index, c.code) }))
-    .filter(({ att }) => !att.open.length && !att.everAttended)
-    .sort((x, y) => Date.parse(x.c.openedAt) - Date.parse(y.c.openedAt) || (x.c.code < y.c.code ? -1 : 1))
-    .map(({ c, att }) => ({ code: c.code, label: codeLabel(c.code), service: c.service, waitingDays: waitingDays(c, now), appointments: att.count }));
+// The waiting list for a first appointment, longest wait first (wait only: no urgency). ONE order
+// for the screen (rows from ospeli_codes_list) and the guide (rows from the derived record):
+// rows are { code, service, state, openedAt, booked, attended }.
+export function firstAppointmentList(rows, { service = null } = {}) {
+  return rows.filter((r) => r.state === 'open' && !r.booked && !r.attended && (!service || r.service === service))
+    .sort((x, y) => Date.parse(x.openedAt) - Date.parse(y.openedAt) || (x.code < y.code ? -1 : 1));
 }
+// The rows from what ospeli_codes_list answers (screens) …
+export const rowsFromList = (codes) => (codes || []).map((c) => ({ ...c, booked: Boolean(c.booked), attended: c.lastAttendedAt != null }));
+// … and from the derived record (pack). rebookOf: the last missed or cancelled appointment not yet rebooked.
+export function waitingReferrals(codesD, index, { service = null, now }) {
+  const rows = [...codesD.codes.values()].filter((c) => c.kind === CODE_KIND).map((c) => {
+    const att = attendanceOf(index, c.code);
+    const last = (index?.get(c.code) || []).filter((a) => (a.state === 'no-show' || a.state === 'cancelled') && !a.rebookedBy).at(-1) || null;
+    return { code: c.code, service: c.service, state: c.state, openedAt: c.openedAt, booked: att.open.length > 0, attended: att.everAttended,
+      label: codeLabel(c.code), waitingDays: waitingDays(c, now), appointments: att.count, rebookOf: last?.id ?? null };
+  });
+  return firstAppointmentList(rows, { service });
+}
+// "today", "1 day", "12 days".
+export const daysWords = (n) => (n <= 0 ? 'today' : n === 1 ? '1 day' : `${n} days`);
+export const waitedWords = (n) => (n <= 0 ? 'added today' : `waiting ${daysWords(n)}`);
 
 // ---- guide rules: fixed, checkable rules. A rule suggests; a person decides. ----
 const pct = (x) => `${Math.round(x * 100)}%`;
@@ -196,25 +227,29 @@ export function ruleMissedHigh(d, { now, serviceWords = {} }) {
 // Rule 2. Prefilled bookings for a person to tap; the guide never books.
 export function ruleEmptySoon(d, codesD, index, { now, serviceWords = {}, offsetMinutes = 0 }) {
   const out = [];
+  const offered = new Set();
   const nowMs = Date.parse(now);
   const all = sessionsFromDerived(d);
   for (const s of all.filter((x) => (x.state === 'planned' || x.state === 'reduced') && x.released !== false && x.startMs > nowMs - 12 * 60 * MIN && x.startMs <= nowMs + EMPTY_WITHIN_HOURS * 60 * MIN)
     .sort((a, b) => a.startMs - b.startMs)) {
     const free = nextFreeSlots([s], { service: s.service, nowMs, limit: 50 });
     if (!free.length) continue;
-    const waiting = waitingReferrals(codesD, index, { service: s.service, now }).filter((r) => r.appointments === 0);
+    const list = waitingReferrals(codesD, index, { service: s.service, now });
+    const waiting = list.filter((r) => !offered.has(r.code)); // the same order as the waiting list; never one patient in two suggestions
     if (!waiting.length) continue;
     const n = Math.min(free.length, waiting.length, OFFER_AT_MOST);
     const word = sameService(serviceWords[s.service]);
     const date = localDate(new Date(s.startMs).toISOString(), offsetMinutes);
     const actions = [];
     for (let i = 0; i < n; i++) {
-      actions.push({ command: 'ospeli_slots_book', label: `Book ${waiting[i].label} (waiting ${waiting[i].waitingDays} days) at ${free[i].slotTime}`,
-        input: { sessionId: s.id, slotTime: free[i].slotTime, code: waiting[i].code, slotType: 'new', bookedFrom: 'referral' } });
+      const w = waiting[i];
+      offered.add(w.code);
+      actions.push({ command: 'ospeli_slots_book', label: `Book ${w.label} (${waitedWords(w.waitingDays)}) at ${free[i].slotTime}`,
+        input: { sessionId: s.id, slotTime: free[i].slotTime, code: w.code, slotType: 'new', bookedFrom: w.rebookOf ? 'rebook' : 'referral', ...(w.rebookOf ? { rebookOf: w.rebookOf } : {}) } });
     }
     out.push({ rule: 'empty-soon', id: `empty-soon:${s.id}`, service: s.service, sessionId: s.id,
       text: `${free.length} empty slot${free.length === 1 ? '' : 's'} in the ${word} on ${shortDate(date)}: offer ${n === 1 ? 'it' : 'them'} to the longest-waiting referrals.`,
-      why: `${waiting.length} referral${waiting.length === 1 ? ' is' : 's are'} waiting for a first ${word} appointment; the longest has waited ${waiting[0].waitingDays} days. Offered by wait only, in sessions of the same service.`,
+      why: `${list.length} referral${list.length === 1 ? ' is' : 's are'} waiting for a first ${word} appointment (the longest: ${waitedWords(list[0].waitingDays)}). Offered in the waiting list's own order, by wait only, in sessions of the same service.`,
       basis: GUIDE_RULES[1].basis, action: actions[0], actions });
   }
   return out;

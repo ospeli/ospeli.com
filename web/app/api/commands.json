@@ -13475,7 +13475,8 @@
       "kind": "write",
       "roles": [
         "clinic-receptionist",
-        "clinic-nurse"
+        "clinic-nurse",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -13601,7 +13602,8 @@
       "kind": "write",
       "roles": [
         "clinic-receptionist",
-        "clinic-nurse"
+        "clinic-nurse",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -20631,6 +20633,17 @@
                     "null"
                   ],
                   "description": "Minutes from arrived to called, or to now while still waiting."
+                },
+                "pastBookedMinutes": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Booked or arrived: minutes past the booked slot time now (0 before it)."
+                },
+                "late": {
+                  "type": "boolean",
+                  "description": "Still waiting or not arrived 15 minutes or more past the booked time (an example setting, not a standard)."
                 },
                 "mayMarkMissed": {
                   "type": "boolean",
