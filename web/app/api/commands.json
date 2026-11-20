@@ -43,7 +43,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -281,7 +285,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -409,7 +417,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1615,7 +1627,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1697,7 +1713,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1846,7 +1866,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1996,7 +2020,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -2108,7 +2136,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": false,
@@ -2353,7 +2385,11 @@
               "facilities-manager",
               "driver",
               "transport-coordinator",
-              "fleet-supervisor"
+              "fleet-supervisor",
+              "clinic-receptionist",
+              "clinic-nurse",
+              "booking-clerk",
+              "outpatient-manager"
             ],
             "description": "The one role this agent works for. It is refused if it claims another."
           },
@@ -2527,7 +2563,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -2590,7 +2630,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -2766,7 +2810,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -2937,7 +2985,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -3113,7 +3165,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -3254,7 +3310,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -3826,7 +3886,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4309,7 +4373,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4447,7 +4515,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4878,7 +4950,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -5311,7 +5387,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -5442,7 +5522,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5541,7 +5625,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5688,7 +5776,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5837,7 +5929,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5955,7 +6051,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6063,7 +6163,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6162,7 +6266,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6261,7 +6369,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6352,7 +6464,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6419,7 +6535,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -6506,7 +6626,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6759,7 +6883,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7003,7 +7131,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7247,7 +7379,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7491,7 +7627,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7741,7 +7881,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -8012,7 +8156,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -8256,7 +8404,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -8500,7 +8652,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -8743,7 +8899,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -8897,7 +9057,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -9807,7 +9971,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -9921,7 +10089,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -10061,7 +10233,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -10174,7 +10350,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -11749,6 +11929,3228 @@
       }
     },
     {
+      "name": "ospeli_slots_types",
+      "summary": "The types of session this site can plan (a clinic, a round), with the roles that plan, book and mark steps for each, the slot types, and the reasons to pick from for a change, a cancel and a no-show. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "sessionTypes",
+          "slotTypes",
+          "reasons"
+        ],
+        "properties": {
+          "sessionTypes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "word",
+                "timed"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "word": {
+                  "type": "string"
+                },
+                "timed": {
+                  "type": "boolean",
+                  "description": "true: timed slots from a template. false: a capacity and a visit order."
+                },
+                "placeTypes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "areas": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Zone codes to pick from for a visit. Never an address."
+                },
+                "services": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "word"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "word": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "description": "The services a session of this type is held for. null: the type has none, and a session names no service."
+                },
+                "runByRoles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "planRoles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "bookRoles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "stepRoles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "graceMinutes": {
+                  "type": "integer",
+                  "description": "Minutes after the booked time before no-show may be recorded. Example setting, not a standard."
+                }
+              }
+            }
+          },
+          "slotTypes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "word"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "word": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "reasons": {
+            "type": "object",
+            "required": [
+              "sessionChange",
+              "appointmentCancel",
+              "noShow"
+            ],
+            "properties": {
+              "sessionChange": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "appointmentCancel": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "noShow": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "leftReason": {
+            "type": "string",
+            "description": "The one cancel reason for a patient who arrived and then left."
+          },
+          "bookedFrom": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reminderReplies": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
+      "name": "ospeli_slots_sessions",
+      "summary": "The sessions between two dates (today and the next seven days if left out): where, when, state, how many places are offered, booked and free, and for a timed session each slot. It shows capacity only: no patient code. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "from": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "maxLength": 10,
+            "description": "The first date to list. Default: today. As YYYY-MM-DD on the site's own calendar, for example \"2026-11-09\"."
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "maxLength": 10,
+            "description": "The last date to list. Default: seven days after \"from\". At most 92 days. As YYYY-MM-DD on the site's own calendar, for example \"2026-11-09\"."
+          },
+          "sessionType": {
+            "type": "string",
+            "enum": [
+              "clinic"
+            ],
+            "description": "Only this type of session: clinic. Leave out for every type."
+          },
+          "placeId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "Only sessions held at this place (or on this asset), for example dept-outpatients."
+          },
+          "service": {
+            "type": "string",
+            "enum": [
+              "general-medicine",
+              "diabetes",
+              "eye",
+              "antenatal"
+            ],
+            "description": "Only sessions held for this service: general-medicine, diabetes, eye, antenatal."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "reduced",
+              "held",
+              "cancelled"
+            ],
+            "description": "Only sessions in this state: planned, reduced, held or cancelled. Leave out for all."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: where, when, state and the counts. detailed (default): each slot, the slot types, who runs it (role only) and the reason for a change too."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
+            "description": "At most this many sessions. Default 50, 500 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "from",
+          "to",
+          "sessions",
+          "total",
+          "truncated"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "sessionType",
+                "date",
+                "start",
+                "minutes",
+                "state",
+                "capacity",
+                "booked",
+                "free"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^ses-[0-9]{5,}$",
+                  "maxLength": 20,
+                  "description": "A session id from ospeli_slots_sessions, for example ses-00001."
+                },
+                "sessionType": {
+                  "type": "string"
+                },
+                "typeWord": {
+                  "type": "string"
+                },
+                "service": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The service the session is held for, when its type lists services."
+                },
+                "serviceWord": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "timed": {
+                  "type": "boolean",
+                  "description": "true: timed slots. false: a capacity and a visit order."
+                },
+                "placeId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "placeName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "assetId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "date": {
+                  "type": "string",
+                  "description": "The site's own date, YYYY-MM-DD."
+                },
+                "start": {
+                  "type": "string",
+                  "description": "The site's own clock, HH:MM."
+                },
+                "minutes": {
+                  "type": "integer"
+                },
+                "startsAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "maxLength": 40
+                },
+                "endsAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "maxLength": 40
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "planned",
+                    "reduced",
+                    "held",
+                    "cancelled"
+                  ]
+                },
+                "stateName": {
+                  "type": "string"
+                },
+                "released": {
+                  "type": "boolean",
+                  "description": "false: planned but not yet open for booking."
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "runByRole": {
+                  "type": "string",
+                  "description": "The role that runs the session. No person is recorded."
+                },
+                "templateId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "capacity": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Places offered now, after any reduction."
+                },
+                "booked": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Places taken. A no-show still used its place."
+                },
+                "free": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "slotTypes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The slot types a booking here may pick."
+                },
+                "slots": {
+                  "type": "array",
+                  "description": "Timed sessions, detailed format: each slot with the appointment in it, if any. No patient code is shown here.",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "time"
+                    ],
+                    "properties": {
+                      "time": {
+                        "type": "string"
+                      },
+                      "appointmentId": {
+                        "type": "string",
+                        "pattern": "^apt-[0-9]{5,}$",
+                        "maxLength": 20,
+                        "description": "An appointment id from ospeli_slots_appointments, for example apt-00001."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
+      "name": "ospeli_slots_appointments",
+      "summary": "The appointments of one session, in slot or visit order, or every appointment of one patient code: state, the times of each step, minutes waited since arriving and whether it is overdue. Codes and picks only: no name or other personal detail is held. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "pattern": "^ses-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "The session whose appointments to list. Send this or code."
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^pc-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A patient code, for example pc-00001: every appointment made for it. Send this or sessionId."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "booked",
+              "arrived",
+              "called",
+              "finished",
+              "no-show",
+              "cancelled",
+              "all"
+            ],
+            "description": "open means booked, arrived or called. Default: all."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
+            "description": "At most this many appointments. Default 100, 500 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "appointments",
+          "counts",
+          "total",
+          "truncated"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          },
+          "appointments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "sessionId",
+                "sessionType",
+                "code",
+                "state"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^apt-[0-9]{5,}$",
+                  "maxLength": 20,
+                  "description": "An appointment id from ospeli_slots_appointments, for example apt-00001."
+                },
+                "sessionId": {
+                  "type": "string",
+                  "pattern": "^ses-[0-9]{5,}$",
+                  "maxLength": 20,
+                  "description": "A session id from ospeli_slots_sessions, for example ses-00001."
+                },
+                "sessionType": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string"
+                },
+                "slotTime": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "visitOrder": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "area": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The zone picked for a visit. Shown only to the roles that book or mark steps for this type of session."
+                },
+                "code": {
+                  "type": "string",
+                  "pattern": "^pc-[0-9]{5,}$",
+                  "maxLength": 20,
+                  "description": "The patient code Ospeli made for this visit, for example pc-00001. Never a name, a record number or a date of birth."
+                },
+                "slotType": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "booked",
+                    "arrived",
+                    "called",
+                    "finished",
+                    "no-show",
+                    "cancelled"
+                  ]
+                },
+                "stateName": {
+                  "type": "string"
+                },
+                "bookedFrom": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "dueAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "When the appointment is due: its slot time, or the session's start for a visit order."
+                },
+                "bookedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "maxLength": 40
+                },
+                "arrivedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "calledAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "finishedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "closedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "waitMinutes": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Minutes from arrived to called, or to now while still waiting. null before arriving, and null for a patient seen with no call time recorded: no wait is made up."
+                },
+                "noTimes": {
+                  "type": "boolean",
+                  "description": "true: closed as \"Seen, no times\". The patient was seen but the call and the finish were not tapped, so there is no finish time and the appointment is left out of the waiting, start and overrun figures."
+                },
+                "noShowFrom": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "While booked: the earliest moment a missed appointment may be recorded. The grace after the booked time, or after the booking or move if that came later. null in any other state."
+                },
+                "corrections": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "How many steps of this appointment a person has undone (marked by mistake). The wrong step and the undo stay in the log."
+                },
+                "overdue": {
+                  "type": "boolean",
+                  "description": "true: still booked after the booked time plus the grace, so no-show may be recorded. Worked out from now; never a stored state."
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The reason picked for a cancel or a no-show."
+                },
+                "cancelBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "rebookOf": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "rebookedBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "moves": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "reminderReply": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The last reminder reply recorded: confirmed, cancelled or no-reply. A reply never changes the state."
+                }
+              }
+            }
+          },
+          "counts": {
+            "type": "object",
+            "description": "How many appointments are in each state, for the same session or code, before the state filter and the limit."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "sessionId": "ses-00001"
+        },
+        "needs": "A session. ses-00001 is an example id: ospeli_slots_sessions lists the sessions with their ids, and ospeli_slots_session_plan plans one."
+      }
+    },
+    {
+      "name": "ospeli_slots_session_plan",
+      "summary": "Plan one session: a type, a place, a date and who runs it (a role, never a person). From a template (send templateId) it takes the template's start, length and slots as they stand on that date; a later change to the template never rewrites it. Without a template, send start and minutes, and slotMinutes for timed slots or capacity for a visit order. The same session planned twice answers with the first.",
+      "kind": "write",
+      "roles": [
+        "outpatient-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sessionType",
+          "date",
+          "runByRole"
+        ],
+        "properties": {
+          "sessionType": {
+            "type": "string",
+            "enum": [
+              "clinic"
+            ],
+            "description": "The type of session: clinic (Clinic). ospeli_slots_types lists each with who may plan, book and mark steps."
+          },
+          "service": {
+            "type": "string",
+            "enum": [
+              "general-medicine",
+              "diabetes",
+              "eye",
+              "antenatal"
+            ],
+            "description": "The service the session is held for, picked from the list: general-medicine (General medicine clinic), diabetes (Diabetes clinic), eye (Eye clinic), antenatal (Antenatal clinic). Needed for a type of session that lists services (ospeli_slots_types), and only for those. With a templateId, leave it out: the template gives it."
+          },
+          "placeId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "Where the session is held: a site, building, department or ward id, for example dept-outpatients."
+          },
+          "assetId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "Only for a type of session held on a piece of equipment (its placeTypes include \"asset\"): the asset id. Send this or placeId, never both."
+          },
+          "date": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "maxLength": 10,
+            "description": "The day of the session. As YYYY-MM-DD on the site's own calendar, for example \"2026-11-09\"."
+          },
+          "start": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "maxLength": 5,
+            "description": "When it starts. Leave out with a templateId. As HH:MM on the site's own clock, 24-hour, for example \"09:00\"."
+          },
+          "minutes": {
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 1440,
+            "description": "How long the session runs, in minutes, for example 180. Leave out with a templateId."
+          },
+          "slotMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 480,
+            "description": "The length of one slot in minutes, for example 20. 09:00 for 80 minutes in 20-minute slots gives 09:00, 09:20, 09:40 and 10:00. Only for a one-off session with timed slots and no template."
+          },
+          "slotTypes": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "enum": [
+                "new",
+                "follow-up"
+              ]
+            },
+            "description": "Only without a template: the slot types this session offers. Leave out to offer every type."
+          },
+          "capacity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "description": "How many patients the session can take (a session with a visit order, not timed slots). From 1 to 200."
+          },
+          "runByRole": {
+            "type": "string",
+            "enum": [
+              "clinic-nurse"
+            ],
+            "description": "The role that runs the session, one of the type's runByRoles (ospeli_slots_types). A role, never a person."
+          },
+          "templateId": {
+            "type": "string",
+            "pattern": "^tpl-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "The template to plan from. The date must fall on the template's weekday."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "templateId": {
+            "type": "string",
+            "pattern": "^tpl-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A template id, for example tpl-00001. ospeli_slots_template_set answers with it."
+          },
+          "sessionId": {
+            "type": "string",
+            "pattern": "^ses-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A session id from ospeli_slots_sessions, for example ses-00001."
+          },
+          "appointmentId": {
+            "type": "string",
+            "pattern": "^apt-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An appointment id from ospeli_slots_appointments, for example apt-00001."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "reduced",
+              "held",
+              "cancelled",
+              "booked",
+              "arrived",
+              "called",
+              "finished",
+              "no-show"
+            ],
+            "description": "The state the session or appointment is left in."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written. Empty when the same thing was already done: nothing was written twice."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "sessionType": "clinic",
+          "service": "general-medicine",
+          "placeId": "dept-outpatients",
+          "date": "2026-11-09",
+          "start": "09:00",
+          "minutes": 80,
+          "slotMinutes": 20,
+          "runByRole": "clinic-nurse"
+        }
+      }
+    },
+    {
+      "name": "ospeli_slots_session_change",
+      "summary": "Change a planned session: \"held\" records that it ran (on or after its day; refused while any patient has no final status, and the answer lists each one with what can be done), \"reduced\" makes it smaller with a reason (a smaller capacity, or free slots taken out; never below what is booked), \"cancelled\" ends it with a reason, \"released\" opens a session planned from a not-released template for booking. Cancel is refused while any booking is still open, and the answer lists them, so nobody vanishes from a list. Held and cancelled are final.",
+      "kind": "write",
+      "roles": [
+        "outpatient-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sessionId",
+          "change"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "pattern": "^ses-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A session id from ospeli_slots_sessions, for example ses-00001."
+          },
+          "change": {
+            "type": "string",
+            "enum": [
+              "held",
+              "reduced",
+              "cancelled",
+              "released"
+            ],
+            "description": "held: it ran. reduced: fewer places. cancelled: it will not run. released: open it for booking."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "Staff short",
+              "Room or vehicle not available",
+              "Weather or access",
+              "Other"
+            ],
+            "description": "Needed for reduced and cancelled: Staff short, Room or vehicle not available, Weather or access, Other."
+          },
+          "capacity": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "description": "For reduced, a session with a visit order: the new, smaller capacity. Never below the number booked."
+          },
+          "removeSlotTimes": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 100,
+            "items": {
+              "type": "string",
+              "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+              "maxLength": 5
+            },
+            "description": "For reduced, a session with timed slots: the free slots to take out, for example [\"10:00\", \"10:20\"]. A booked slot cannot be taken out."
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "reduced",
+              "held",
+              "cancelled"
+            ],
+            "description": "The state the caller last saw. If the session has changed since, the command is refused (conflict). The same step sent twice still answers done."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "templateId": {
+            "type": "string",
+            "pattern": "^tpl-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A template id, for example tpl-00001. ospeli_slots_template_set answers with it."
+          },
+          "sessionId": {
+            "type": "string",
+            "pattern": "^ses-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A session id from ospeli_slots_sessions, for example ses-00001."
+          },
+          "appointmentId": {
+            "type": "string",
+            "pattern": "^apt-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An appointment id from ospeli_slots_appointments, for example apt-00001."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "reduced",
+              "held",
+              "cancelled",
+              "booked",
+              "arrived",
+              "called",
+              "finished",
+              "no-show"
+            ],
+            "description": "The state the session or appointment is left in."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written. Empty when the same thing was already done: nothing was written twice."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "sessionId": "ses-00001",
+          "change": "reduced",
+          "reason": "Staff short",
+          "removeSlotTimes": [
+            "10:00"
+          ]
+        },
+        "needs": "A session that is planned and released, with a free place. ses-00001 is an example id: ospeli_slots_sessions lists the sessions with their free slots, and ospeli_slots_session_plan plans one. For this example it must have a free slot at 10:00 (or, for a visit order, a capacity above 4 with no more than 4 booked)."
+      }
+    },
+    {
+      "name": "ospeli_slots_book",
+      "summary": "Book a patient code into a free place in a session: a slot time for timed slots, or a place in the visit order (with an area from the list) for a round. Refused if the place is taken, the session is full, not released, held or cancelled, or the code was never opened. The same booking sent twice answers with the first and writes nothing. It holds a code, a time and picks: no name, no reason for the visit, no urgency.",
+      "kind": "write",
+      "roles": [
+        "booking-clerk",
+        "outpatient-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sessionId",
+          "code",
+          "slotType",
+          "bookedFrom"
+        ],
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "pattern": "^ses-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A session id from ospeli_slots_sessions, for example ses-00001."
+          },
+          "slotTime": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "maxLength": 5,
+            "description": "The slot to take, one of the session's free slots (ospeli_slots_sessions lists them). Only for a session with timed slots. As HH:MM on the site's own clock, 24-hour, for example \"09:00\"."
+          },
+          "visitOrder": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "description": "The place in the visit order: a place from 1 to the capacity the session was planned with, 1 first. Only for a session with a capacity and a visit order (a round), which has no slot times."
+          },
+          "area": {
+            "type": "string",
+            "pattern": "^[A-Za-z][A-Za-z ]{0,17}[A-Za-z0-9]$",
+            "maxLength": 20,
+            "description": "Only for a type of session with areas (ospeli_slots_types): pick one zone code from its list, for example \"North 2\". Never an address."
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^pc-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "The patient code Ospeli made for this visit, for example pc-00001. Never a name, a record number or a date of birth."
+          },
+          "slotType": {
+            "type": "string",
+            "enum": [
+              "new",
+              "follow-up"
+            ],
+            "description": "The type of slot: new (New), follow-up (Follow-up). A session may offer only some of them (its slotTypes in ospeli_slots_sessions)."
+          },
+          "bookedFrom": {
+            "type": "string",
+            "enum": [
+              "referral",
+              "recall",
+              "rebook",
+              "walk-in"
+            ],
+            "description": "How the booking came about: referral, recall, rebook, walk-in."
+          },
+          "rebookOf": {
+            "type": "string",
+            "pattern": "^apt-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "Only when this booking replaces a cancelled or missed appointment of the same code: that appointment's id. One rebook per appointment."
+          },
+          "requestRef": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "module",
+              "id"
+            ],
+            "description": "Optional: the record in another module this booking came from, as { module, id } (ids only, no text).",
+            "properties": {
+              "module": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]{1,30}$",
+                "maxLength": 31,
+                "description": "The module the record belongs to, in lower case, for example \"diagnostics\"."
+              },
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9][a-z0-9-]*$",
+                "maxLength": 64,
+                "description": "The record's id in that module. An id only, never a name or free text."
+              }
+            }
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "templateId": {
+            "type": "string",
+            "pattern": "^tpl-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A template id, for example tpl-00001. ospeli_slots_template_set answers with it."
+          },
+          "sessionId": {
+            "type": "string",
+            "pattern": "^ses-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A session id from ospeli_slots_sessions, for example ses-00001."
+          },
+          "appointmentId": {
+            "type": "string",
+            "pattern": "^apt-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An appointment id from ospeli_slots_appointments, for example apt-00001."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "reduced",
+              "held",
+              "cancelled",
+              "booked",
+              "arrived",
+              "called",
+              "finished",
+              "no-show"
+            ],
+            "description": "The state the session or appointment is left in."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written. Empty when the same thing was already done: nothing was written twice."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "sessionId": "ses-00001",
+          "slotTime": "09:00",
+          "code": "pc-00001",
+          "slotType": "new",
+          "bookedFrom": "referral"
+        },
+        "needs": "A session that is planned and released, with a free place. ses-00001 is an example id: ospeli_slots_sessions lists the sessions with their free slots, and ospeli_slots_session_plan plans one. And an open patient code: pc-00001 is an example."
+      }
+    },
+    {
+      "name": "ospeli_slots_move",
+      "summary": "Move a booked appointment to a free place in the same session or another session of the same type. It keeps its id and stays booked. Refused once the patient has arrived, or if the place is taken.",
+      "kind": "write",
+      "roles": [
+        "booking-clerk",
+        "outpatient-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "appointmentId",
+          "sessionId"
+        ],
+        "properties": {
+          "appointmentId": {
+            "type": "string",
+            "pattern": "^apt-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An appointment id from ospeli_slots_appointments, for example apt-00001."
+          },
+          "sessionId": {
+            "type": "string",
+            "pattern": "^ses-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "The session to move it into (it may be the one it is in). ospeli_slots_sessions lists the sessions with their free slots."
+          },
+          "slotTime": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "maxLength": 5,
+            "description": "The slot to take, one of the session's free slots (ospeli_slots_sessions lists them). Only for a session with timed slots. As HH:MM on the site's own clock, 24-hour, for example \"09:00\"."
+          },
+          "visitOrder": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "description": "The place in the visit order: a place from 1 to the capacity the session was planned with, 1 first. Only for a session with a capacity and a visit order (a round), which has no slot times."
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "booked",
+              "arrived",
+              "called",
+              "finished",
+              "no-show",
+              "cancelled"
+            ],
+            "description": "The state the caller last saw. If the appointment has changed since, the command is refused (conflict). The same step sent twice still answers done."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "templateId": {
+            "type": "string",
+            "pattern": "^tpl-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A template id, for example tpl-00001. ospeli_slots_template_set answers with it."
+          },
+          "sessionId": {
+            "type": "string",
+            "pattern": "^ses-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A session id from ospeli_slots_sessions, for example ses-00001."
+          },
+          "appointmentId": {
+            "type": "string",
+            "pattern": "^apt-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An appointment id from ospeli_slots_appointments, for example apt-00001."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "reduced",
+              "held",
+              "cancelled",
+              "booked",
+              "arrived",
+              "called",
+              "finished",
+              "no-show"
+            ],
+            "description": "The state the session or appointment is left in."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written. Empty when the same thing was already done: nothing was written twice."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "appointmentId": "apt-00001",
+          "sessionId": "ses-00001",
+          "slotTime": "09:20"
+        },
+        "needs": "A booked appointment. apt-00001 is an example id: ospeli_slots_appointments with a sessionId lists a session's appointments, and ospeli_slots_book makes one. And a free place to move it to: ospeli_slots_sessions shows the free slots."
+      }
+    },
+    {
+      "name": "ospeli_slots_cancel",
+      "summary": "Cancel a booked appointment, by the site or by the patient, with a reason from the list; its place becomes free. Once the patient has arrived the only cancel is by the patient with the reason \"Left before being seen\", so the list never holds someone who has gone. A finished or missed appointment cannot be cancelled. The same cancel sent twice answers done.",
+      "kind": "write",
+      "roles": [
+        "booking-clerk",
+        "outpatient-manager",
+        "clinic-receptionist",
+        "clinic-nurse"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "appointmentId",
+          "by",
+          "reason"
+        ],
+        "properties": {
+          "appointmentId": {
+            "type": "string",
+            "pattern": "^apt-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An appointment id from ospeli_slots_appointments, for example apt-00001."
+          },
+          "by": {
+            "type": "string",
+            "enum": [
+              "site",
+              "patient"
+            ],
+            "description": "Who cancelled: site or patient."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "Patient asked to cancel",
+              "Session cancelled or reduced",
+              "Not reached: round ran out of time",
+              "Booked in error",
+              "Left before being seen",
+              "Other"
+            ],
+            "description": "Pick one: Patient asked to cancel, Session cancelled or reduced, Not reached: round ran out of time, Booked in error, Left before being seen, Other."
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "booked",
+              "arrived",
+              "called",
+              "finished",
+              "no-show",
+              "cancelled"
+            ],
+            "description": "The state the caller last saw. If the appointment has changed since, the command is refused (conflict). The same step sent twice still answers done."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "templateId": {
+            "type": "string",
+            "pattern": "^tpl-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A template id, for example tpl-00001. ospeli_slots_template_set answers with it."
+          },
+          "sessionId": {
+            "type": "string",
+            "pattern": "^ses-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A session id from ospeli_slots_sessions, for example ses-00001."
+          },
+          "appointmentId": {
+            "type": "string",
+            "pattern": "^apt-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An appointment id from ospeli_slots_appointments, for example apt-00001."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "reduced",
+              "held",
+              "cancelled",
+              "booked",
+              "arrived",
+              "called",
+              "finished",
+              "no-show"
+            ],
+            "description": "The state the session or appointment is left in."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written. Empty when the same thing was already done: nothing was written twice."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "appointmentId": "apt-00001",
+          "by": "patient",
+          "reason": "Patient asked to cancel"
+        },
+        "needs": "A booked appointment. apt-00001 is an example id: ospeli_slots_appointments with a sessionId lists a session's appointments, and ospeli_slots_book makes one."
+      }
+    },
+    {
+      "name": "ospeli_slots_step",
+      "summary": "Mark one step of an appointment: arrived, then called, then finished, in that order; or no-show, with a reason, only for a patient who never arrived and only after the booked time plus the grace (an example setting, not a standard; for a booking made or moved into a time already past, the grace counts from that booking or move). \"seen-no-times\" closes a patient who arrived and was seen but was not tapped through, from their booked time on: attended and finished with no call or finish time, left out of the waiting, start and overrun figures, which say how many. Each step is written once with its time; the same step sent twice answers done and writes nothing. No clinical step and no outcome is recorded.",
+      "kind": "write",
+      "roles": [
+        "clinic-receptionist",
+        "clinic-nurse"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "appointmentId",
+          "step"
+        ],
+        "properties": {
+          "appointmentId": {
+            "type": "string",
+            "pattern": "^apt-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An appointment id from ospeli_slots_appointments, for example apt-00001."
+          },
+          "step": {
+            "type": "string",
+            "enum": [
+              "arrived",
+              "called",
+              "finished",
+              "no-show",
+              "seen-no-times"
+            ],
+            "description": "arrived: the patient is here. called: called in from the wait. finished: the visit is over, tapped at the time it ended. no-show: never arrived. seen-no-times: \"Seen, no times\", for a patient who was seen but not tapped through."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "Did not arrive",
+              "No answer at the door",
+              "Other"
+            ],
+            "description": "Only for no-show, and needed then: Did not arrive, No answer at the door, Other."
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "booked",
+              "arrived",
+              "called",
+              "finished",
+              "no-show",
+              "cancelled"
+            ],
+            "description": "The state the caller last saw. If the appointment has changed since, the command is refused (conflict). The same step sent twice still answers done."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "templateId": {
+            "type": "string",
+            "pattern": "^tpl-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A template id, for example tpl-00001. ospeli_slots_template_set answers with it."
+          },
+          "sessionId": {
+            "type": "string",
+            "pattern": "^ses-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A session id from ospeli_slots_sessions, for example ses-00001."
+          },
+          "appointmentId": {
+            "type": "string",
+            "pattern": "^apt-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An appointment id from ospeli_slots_appointments, for example apt-00001."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "reduced",
+              "held",
+              "cancelled",
+              "booked",
+              "arrived",
+              "called",
+              "finished",
+              "no-show"
+            ],
+            "description": "The state the session or appointment is left in."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written. Empty when the same thing was already done: nothing was written twice."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "appointmentId": "apt-00001",
+          "step": "arrived"
+        },
+        "needs": "A booked appointment. apt-00001 is an example id: ospeli_slots_appointments with a sessionId lists a session's appointments, and ospeli_slots_book makes one."
+      }
+    },
+    {
+      "name": "ospeli_slots_step_correct",
+      "summary": "Undo a step marked by mistake. Undo \"arrived\": back to booked, only before the patient is called in. Undo \"called\": back to arrived, keeping the arrival time, only before finished. Undo \"no-show\" (a missed appointment): back to booked, only on the same day and before the session is marked held. Nothing is erased: the wrong step and the undo both stay in the log with the time and the role, and every figure is worked out again. Once the session is held, steps can no longer be corrected. People only.",
+      "kind": "write",
+      "roles": [
+        "clinic-receptionist",
+        "clinic-nurse"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "appointmentId",
+          "undo"
+        ],
+        "properties": {
+          "appointmentId": {
+            "type": "string",
+            "pattern": "^apt-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An appointment id from ospeli_slots_appointments, for example apt-00001."
+          },
+          "undo": {
+            "type": "string",
+            "enum": [
+              "arrived",
+              "called",
+              "no-show"
+            ],
+            "description": "The step to undo, which must be the state the appointment is in now: arrived, called or no-show."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "Marked by mistake",
+              "Patient arrived late"
+            ],
+            "description": "Optional pick. Default: \"Marked by mistake\". \"Patient arrived late\" is for undoing a missed appointment only."
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "booked",
+              "arrived",
+              "called",
+              "finished",
+              "no-show",
+              "cancelled"
+            ],
+            "description": "The state the caller last saw. If the appointment has changed since, the command is refused (conflict). The same step sent twice still answers done."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "templateId": {
+            "type": "string",
+            "pattern": "^tpl-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A template id, for example tpl-00001. ospeli_slots_template_set answers with it."
+          },
+          "sessionId": {
+            "type": "string",
+            "pattern": "^ses-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A session id from ospeli_slots_sessions, for example ses-00001."
+          },
+          "appointmentId": {
+            "type": "string",
+            "pattern": "^apt-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An appointment id from ospeli_slots_appointments, for example apt-00001."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "reduced",
+              "held",
+              "cancelled",
+              "booked",
+              "arrived",
+              "called",
+              "finished",
+              "no-show"
+            ],
+            "description": "The state the session or appointment is left in."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written. Empty when the same thing was already done: nothing was written twice."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "appointmentId": "apt-00001",
+          "undo": "arrived"
+        },
+        "needs": "An appointment marked arrived by mistake and not yet called in. apt-00001 is an example id: ospeli_slots_appointments with a sessionId lists a session's appointments."
+      }
+    },
+    {
+      "name": "ospeli_slots_reminder_record",
+      "summary": "Record the answer to a reminder a person gave by their own means: confirmed, cancelled or no reply. Ospeli sends no messages and holds no phone number. A reply never changes the appointment: if the patient cancelled, cancel it with ospeli_slots_cancel.",
+      "kind": "write",
+      "roles": [
+        "booking-clerk",
+        "outpatient-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "appointmentId",
+          "reply"
+        ],
+        "properties": {
+          "appointmentId": {
+            "type": "string",
+            "pattern": "^apt-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An appointment id from ospeli_slots_appointments, for example apt-00001."
+          },
+          "reply": {
+            "type": "string",
+            "enum": [
+              "confirmed",
+              "cancelled",
+              "no-reply"
+            ],
+            "description": "What came back: confirmed, cancelled or no-reply."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "templateId": {
+            "type": "string",
+            "pattern": "^tpl-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A template id, for example tpl-00001. ospeli_slots_template_set answers with it."
+          },
+          "sessionId": {
+            "type": "string",
+            "pattern": "^ses-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A session id from ospeli_slots_sessions, for example ses-00001."
+          },
+          "appointmentId": {
+            "type": "string",
+            "pattern": "^apt-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An appointment id from ospeli_slots_appointments, for example apt-00001."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "reduced",
+              "held",
+              "cancelled",
+              "booked",
+              "arrived",
+              "called",
+              "finished",
+              "no-show"
+            ],
+            "description": "The state the session or appointment is left in."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written. Empty when the same thing was already done: nothing was written twice."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "appointmentId": "apt-00001",
+          "reply": "confirmed"
+        },
+        "needs": "A booked appointment. apt-00001 is an example id: ospeli_slots_appointments with a sessionId lists a session's appointments, and ospeli_slots_book makes one."
+      }
+    },
+    {
+      "name": "ospeli_slots_template_set",
+      "summary": "Set the weekly pattern for a session with timed slots: the weekday, start, length, slot length, slot types and whether its sessions open for booking at once (\"released\"). Leave templateId out for a new template; send it to change one from a date (\"from\") onwards. Sessions already planned keep the slots they were planned with. People only.",
+      "kind": "write",
+      "roles": [
+        "outpatient-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sessionType",
+          "placeId",
+          "weekday",
+          "start",
+          "minutes",
+          "slotMinutes",
+          "slotTypes",
+          "released",
+          "from"
+        ],
+        "properties": {
+          "templateId": {
+            "type": "string",
+            "pattern": "^tpl-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "Only to change a template: its id. Leave out to make a new one."
+          },
+          "sessionType": {
+            "type": "string",
+            "enum": [
+              "clinic"
+            ],
+            "description": "The type of session, one with timed slots."
+          },
+          "service": {
+            "type": "string",
+            "enum": [
+              "general-medicine",
+              "diabetes",
+              "eye",
+              "antenatal"
+            ],
+            "description": "The service the session is held for, picked from the list: general-medicine (General medicine clinic), diabetes (Diabetes clinic), eye (Eye clinic), antenatal (Antenatal clinic). Needed for a type of session that lists services (ospeli_slots_types), and only for those. With a templateId, leave it out: the template gives it."
+          },
+          "placeId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "Where the session is held: a site, building, department or ward id, for example dept-outpatients."
+          },
+          "weekday": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 7,
+            "description": "The day of the week: 1 is Monday, 7 is Sunday."
+          },
+          "start": {
+            "type": "string",
+            "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$",
+            "maxLength": 5,
+            "description": "When the session starts. As HH:MM on the site's own clock, 24-hour, for example \"09:00\"."
+          },
+          "minutes": {
+            "type": "integer",
+            "minimum": 5,
+            "maximum": 1440,
+            "description": "How long the session runs, in minutes, for example 180."
+          },
+          "slotMinutes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 480,
+            "description": "The length of one slot in minutes, for example 20. 09:00 for 80 minutes in 20-minute slots gives 09:00, 09:20, 09:40 and 10:00."
+          },
+          "slotTypes": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 20,
+            "items": {
+              "type": "string",
+              "enum": [
+                "new",
+                "follow-up"
+              ]
+            },
+            "description": "The slot types this session offers. A booking must pick one of them."
+          },
+          "released": {
+            "type": "boolean",
+            "description": "true: sessions planned from this template are open for booking at once. false: each is planned \"not released\" until a planner releases it."
+          },
+          "from": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "maxLength": 10,
+            "description": "The first date this version applies to. As YYYY-MM-DD on the site's own calendar, for example \"2026-11-09\"."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "templateId": {
+            "type": "string",
+            "pattern": "^tpl-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A template id, for example tpl-00001. ospeli_slots_template_set answers with it."
+          },
+          "sessionId": {
+            "type": "string",
+            "pattern": "^ses-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A session id from ospeli_slots_sessions, for example ses-00001."
+          },
+          "appointmentId": {
+            "type": "string",
+            "pattern": "^apt-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "An appointment id from ospeli_slots_appointments, for example apt-00001."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "planned",
+              "reduced",
+              "held",
+              "cancelled",
+              "booked",
+              "arrived",
+              "called",
+              "finished",
+              "no-show"
+            ],
+            "description": "The state the session or appointment is left in."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written. Empty when the same thing was already done: nothing was written twice."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "sessionType": "clinic",
+          "service": "general-medicine",
+          "placeId": "dept-outpatients",
+          "weekday": 1,
+          "start": "09:00",
+          "minutes": 80,
+          "slotMinutes": 20,
+          "slotTypes": [
+            "new"
+          ],
+          "released": true,
+          "from": "2026-11-09"
+        }
+      }
+    },
+    {
+      "name": "ospeli_codes_kinds",
+      "summary": "The kinds of episode this site follows by a patient code (a referral, a programme), each with its services, the stages in order, how it may begin, and the roles that open, mark stages and close; and the reasons to pick from when closing. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "kinds",
+          "closeReasons"
+        ],
+        "properties": {
+          "kinds": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "word",
+                "services",
+                "stages"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "word": {
+                  "type": "string"
+                },
+                "services": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "word"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "word": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                },
+                "sources": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "placeTypes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "stages": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": [
+                      "id",
+                      "word",
+                      "after"
+                    ],
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "word": {
+                        "type": "string"
+                      },
+                      "after": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "The stages this one may follow. Empty: it can only be the first stage."
+                      },
+                      "roles": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                },
+                "openStage": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "The stage written when a code of this kind is opened."
+                },
+                "dueBy": {
+                  "type": "boolean",
+                  "description": "true: a person may set a due-by date."
+                },
+                "links": {
+                  "type": "boolean",
+                  "description": "true: two codes of this kind may be linked to move together."
+                },
+                "openRoles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "stageRoles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "closeRoles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "dueRoles": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "closeReasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sources": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
+      "name": "ospeli_codes_list",
+      "summary": "Patient codes, longest waiting first: the kind of episode, service, stage, whole days waited, whether an appointment is booked, when the patient last attended, and any due-by date a person set. Filter by kind, service, state, not booked or overdue. Codes and picks only: no name or other personal detail is held. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "outpatient-referral"
+            ],
+            "description": "Only this kind of episode: outpatient-referral."
+          },
+          "service": {
+            "type": "string",
+            "enum": [
+              "general-medicine",
+              "diabetes",
+              "eye",
+              "antenatal"
+            ],
+            "description": "Only this service: general-medicine, diabetes, eye, antenatal."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed",
+              "all"
+            ],
+            "description": "Which codes to list: open (still being followed), closed, or all. Default: open."
+          },
+          "booked": {
+            "type": "boolean",
+            "description": "false: only codes with no appointment open now (the list to book from). true: only codes with one."
+          },
+          "overdue": {
+            "type": "boolean",
+            "description": "true: only open codes whose due-by date has passed."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
+            "description": "At most this many codes. Default 100, 500 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "codes",
+          "counts",
+          "total",
+          "truncated"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          },
+          "codes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "code",
+                "label",
+                "kind",
+                "service",
+                "state"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "pattern": "^(pc-[0-9]{5,}|enc-[0-9]{6,})$",
+                  "maxLength": 20
+                },
+                "label": {
+                  "type": "string",
+                  "description": "What to call the code on screen, for example \"Patient P12\". Never a name."
+                },
+                "kind": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "kindWord": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "service": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "serviceWord": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "placeId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "placeName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "source": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "open",
+                    "closed"
+                  ]
+                },
+                "stateName": {
+                  "type": "string"
+                },
+                "stage": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "stageWord": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "stageAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "openedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "maxLength": 40
+                },
+                "closedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "closeReason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "waitingDays": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Whole days since the code was opened (to its closing, once closed)."
+                },
+                "dueBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "A date a person set, YYYY-MM-DD. Never set by a rule."
+                },
+                "overdue": {
+                  "type": "boolean",
+                  "description": "true: open, with a due-by date before today on the site's own calendar. Worked out from now; never a stored state."
+                },
+                "appointments": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "How many appointments were ever booked for this code."
+                },
+                "openAppointments": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The ids of its appointments that are booked, arrived or called."
+                },
+                "booked": {
+                  "type": "boolean",
+                  "description": "true: it has an appointment open now."
+                },
+                "lastAttendedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "When the patient last arrived for an appointment. null: never yet."
+                },
+                "linkedCodes": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Codes that move with this one."
+                },
+                "nextStages": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The stages that may be marked next."
+                }
+              }
+            }
+          },
+          "counts": {
+            "type": "object",
+            "description": "For the same kind and service, before the other filters and the limit: open, closed, notBooked (open with no appointment open) and overdue."
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
+      "name": "ospeli_codes_get",
+      "summary": "One patient code with its timeline, oldest first: when it was opened, each stage, each appointment step (booked, arrived, called, finished, missed, cancelled) and, for a stay on the bed board (an enc- id), the bed board's own steps. Each step is written once, in one record, and read here together. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^(pc-[0-9]{5,}|enc-[0-9]{6,})$",
+            "maxLength": 20,
+            "description": "A patient code (pc-00001) from ospeli_codes_list, or a stay's id from the bed board (enc-000123)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "code",
+          "timeline"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "code": {
+            "type": "object",
+            "required": [
+              "code",
+              "label",
+              "kind",
+              "service",
+              "state"
+            ],
+            "properties": {
+              "code": {
+                "type": "string",
+                "pattern": "^(pc-[0-9]{5,}|enc-[0-9]{6,})$",
+                "maxLength": 20
+              },
+              "label": {
+                "type": "string",
+                "description": "What to call the code on screen, for example \"Patient P12\". Never a name."
+              },
+              "kind": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "kindWord": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "service": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "serviceWord": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "placeId": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "placeName": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "source": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "closed"
+                ]
+              },
+              "stateName": {
+                "type": "string"
+              },
+              "stage": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "stageWord": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "stageAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "openedAt": {
+                "type": "string",
+                "format": "date-time",
+                "maxLength": 40
+              },
+              "closedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "closeReason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "waitingDays": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Whole days since the code was opened (to its closing, once closed)."
+              },
+              "dueBy": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "A date a person set, YYYY-MM-DD. Never set by a rule."
+              },
+              "overdue": {
+                "type": "boolean",
+                "description": "true: open, with a due-by date before today on the site's own calendar. Worked out from now; never a stored state."
+              },
+              "appointments": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "How many appointments were ever booked for this code."
+              },
+              "openAppointments": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "The ids of its appointments that are booked, arrived or called."
+              },
+              "booked": {
+                "type": "boolean",
+                "description": "true: it has an appointment open now."
+              },
+              "lastAttendedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "When the patient last arrived for an appointment. null: never yet."
+              },
+              "linkedCodes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Codes that move with this one."
+              },
+              "nextStages": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "The stages that may be marked next."
+              }
+            }
+          },
+          "timeline": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "at",
+                "source",
+                "what",
+                "word"
+              ],
+              "properties": {
+                "at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "maxLength": 40
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "code",
+                    "appointment",
+                    "bed"
+                  ],
+                  "description": "Which record the entry was read from. Each step is written once, in one of them."
+                },
+                "what": {
+                  "type": "string"
+                },
+                "word": {
+                  "type": "string",
+                  "description": "The entry in plain words, for example \"Referral accepted\" or \"Arrived\"."
+                },
+                "stage": {
+                  "type": "string"
+                },
+                "placeId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "placeName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "appointmentId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "byRole": {
+                  "type": "string",
+                  "description": "The role that acted. No person is recorded."
+                },
+                "dueBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "otherCode": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "code": "pc-00001"
+        },
+        "needs": "An open patient code. pc-00001 is an example id: ospeli_codes_list lists the open codes, and ospeli_codes_open makes one."
+      }
+    },
+    {
+      "name": "ospeli_codes_open",
+      "summary": "Open a patient code for a new episode: a kind, a service from the list and how it began. Ospeli makes the code (pc-00001, shown as \"Patient P1\"); none can be typed in. A new referral is always a new code: two codes are never matched as one person. It holds no name, no date of birth, no contact and no reason for the visit. The same opening within two minutes asks before making a second code.",
+      "kind": "write",
+      "roles": [
+        "booking-clerk",
+        "outpatient-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "kind",
+          "service",
+          "source"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "outpatient-referral"
+            ],
+            "description": "The kind of episode: outpatient-referral (Outpatient referral). ospeli_codes_kinds lists each with its services, stages and roles."
+          },
+          "service": {
+            "type": "string",
+            "enum": [
+              "general-medicine",
+              "diabetes",
+              "eye",
+              "antenatal"
+            ],
+            "description": "The service, picked from the site's list: general-medicine (General medicine clinic), diabetes (Diabetes clinic), eye (Eye clinic), antenatal (Antenatal clinic). Each kind of episode has its own list (ospeli_codes_kinds)."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "referral",
+              "walk-in",
+              "transfer-in"
+            ],
+            "description": "How the episode began: referral, walk-in, transfer-in."
+          },
+          "placeId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "Optional: where the episode sits, a site, building, department, ward or bed id, for example dept-outpatients."
+          },
+          "again": {
+            "type": "boolean",
+            "description": "Send true only after the command asked whether this is really another patient (the same kind, service and source was opened a moment ago), and it is."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^pc-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A patient code Ospeli made, for example pc-00001: from ospeli_codes_list, or the answer of ospeli_codes_open. Never a name, a record number or a date of birth."
+          },
+          "label": {
+            "type": "string",
+            "description": "What to call the code on screen, for example \"Patient P12\"."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ]
+          },
+          "stage": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The stage the code is left at."
+          },
+          "dueBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "otherCode": {
+            "type": "string",
+            "pattern": "^pc-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A patient code Ospeli made, for example pc-00001: from ospeli_codes_list, or the answer of ospeli_codes_open. Never a name, a record number or a date of birth."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written. Empty when the same thing was already done: nothing was written twice."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "kind": "outpatient-referral",
+          "service": "general-medicine",
+          "source": "referral"
+        }
+      }
+    },
+    {
+      "name": "ospeli_codes_stage",
+      "summary": "Mark the stage a patient code has reached. Each kind of episode has its own stages and order; a stage that does not follow the current one is refused, and the answer lists what may come next. Arrived, called and finished are not stages: they are written once, on the appointment (ospeli_slots_step). The same stage sent twice answers done and writes nothing. No clinical step and no outcome is recorded.",
+      "kind": "write",
+      "roles": [
+        "booking-clerk",
+        "outpatient-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "stage"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^pc-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A patient code Ospeli made, for example pc-00001: from ospeli_codes_list, or the answer of ospeli_codes_open. Never a name, a record number or a date of birth."
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "referral.accepted"
+            ],
+            "description": "The stage reached: referral.accepted. Each kind has its own stages and order (ospeli_codes_kinds); ospeli_codes_get lists the stages that may come next for one code."
+          },
+          "placeId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "Optional: where the code is now, if the stage is a move."
+          },
+          "appointmentId": {
+            "type": "string",
+            "pattern": "^apt-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "Optional: the appointment of this code the stage belongs to."
+          },
+          "expectedStage": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-z][a-z0-9.-]{1,40}$",
+            "maxLength": 42,
+            "description": "The stage the caller last saw on this code (null: none yet). If the code has moved on since, the command is refused (conflict). The same step sent twice still answers done."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^pc-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A patient code Ospeli made, for example pc-00001: from ospeli_codes_list, or the answer of ospeli_codes_open. Never a name, a record number or a date of birth."
+          },
+          "label": {
+            "type": "string",
+            "description": "What to call the code on screen, for example \"Patient P12\"."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ]
+          },
+          "stage": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The stage the code is left at."
+          },
+          "dueBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "otherCode": {
+            "type": "string",
+            "pattern": "^pc-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A patient code Ospeli made, for example pc-00001: from ospeli_codes_list, or the answer of ospeli_codes_open. Never a name, a record number or a date of birth."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written. Empty when the same thing was already done: nothing was written twice."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "code": "pc-00001",
+          "stage": "referral.accepted"
+        },
+        "needs": "An open patient code. pc-00001 is an example id: ospeli_codes_list lists the open codes, and ospeli_codes_open makes one. For this example it must be at a stage that \"referral.accepted\" may follow."
+      }
+    },
+    {
+      "name": "ospeli_codes_close",
+      "summary": "Close a patient code when the episode ends, with a reason from the list (\"Opened in error\" for a code made by mistake). Refused while the code still has an appointment open, and the answer lists them, so nobody vanishes from a list. Closed is final: a new referral is a new code. The same close sent twice answers done.",
+      "kind": "write",
+      "roles": [
+        "booking-clerk",
+        "outpatient-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "code",
+          "reason"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "pattern": "^pc-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A patient code Ospeli made, for example pc-00001: from ospeli_codes_list, or the answer of ospeli_codes_open. Never a name, a record number or a date of birth."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "Episode finished",
+              "Moved to other care",
+              "Left the area",
+              "Opened in error",
+              "Other"
+            ],
+            "description": "Pick one: Episode finished, Moved to other care, Left the area, Opened in error, Other."
+          },
+          "expectedStage": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "pattern": "^[a-z][a-z0-9.-]{1,40}$",
+            "maxLength": 42,
+            "description": "The stage the caller last saw on this code (null: none yet). If the code has moved on since, the command is refused (conflict). The same step sent twice still answers done."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "code": {
+            "type": "string",
+            "pattern": "^pc-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A patient code Ospeli made, for example pc-00001: from ospeli_codes_list, or the answer of ospeli_codes_open. Never a name, a record number or a date of birth."
+          },
+          "label": {
+            "type": "string",
+            "description": "What to call the code on screen, for example \"Patient P12\"."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ]
+          },
+          "stage": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The stage the code is left at."
+          },
+          "dueBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "otherCode": {
+            "type": "string",
+            "pattern": "^pc-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A patient code Ospeli made, for example pc-00001: from ospeli_codes_list, or the answer of ospeli_codes_open. Never a name, a record number or a date of birth."
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written. Empty when the same thing was already done: nothing was written twice."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "code": "pc-00001",
+          "reason": "Episode finished"
+        },
+        "needs": "An open patient code. pc-00001 is an example id: ospeli_codes_list lists the open codes, and ospeli_codes_open makes one. With no appointment still open."
+      }
+    },
+    {
       "name": "ospeli_experience_complaint_log",
       "summary": "Log one piece of feedback in under a minute: a complaint, a concern, a compliment, or a feedback card a patient or visitor left on the hand-over screen. Picks only (type, channel, service, theme), plus an optional short note that is checked for personal details. A complaint or concern starts its due dates (example settings, set locally). Tick clinical for anything about clinical care: it is then marked as passed to clinical review and nothing about the care is recorded. Ospeli keeps no names or contact details and sends nothing.",
       "kind": "write",
@@ -13185,7 +16587,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -13293,7 +16699,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -13544,7 +16954,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -13827,7 +17241,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -14142,7 +17560,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -14404,7 +17826,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -14810,7 +18236,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -15102,7 +18532,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -15710,7 +19144,11 @@
         "facilities-manager",
         "driver",
         "transport-coordinator",
-        "fleet-supervisor"
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -16923,6 +20361,647 @@
       "roles": [
         "transport-coordinator",
         "fleet-supervisor"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "on"
+        ],
+        "properties": {
+          "on": {
+            "type": "boolean",
+            "description": "true: show the guide's suggestions. false: none."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "on"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "on": {
+            "type": "boolean"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "on": false
+        }
+      }
+    },
+    {
+      "name": "ospeli_clinics_queue",
+      "summary": "Today's queue for one clinic, in booked-time order: each patient by code (\"Patient P12\", never a name), booked time, new or follow-up, state (booked, arrived, called, finished, missed) and minutes waited since arriving; whether a missed appointment may be recorded yet. Also today's clinics with their counts. Leave sessionId out for the clinic running now. Steps are marked with ospeli_slots_step. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "pattern": "^ses-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "The clinic session to show. Leave out for the one running now (or the next today)."
+          },
+          "date": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "maxLength": 10,
+            "description": "The day to list clinics for. Default: today. As YYYY-MM-DD on the site's own calendar."
+          },
+          "find": {
+            "type": "string",
+            "pattern": "^[0-9]{1,6}$",
+            "maxLength": 6,
+            "description": "Only the patient with this number: \"12\" finds Patient P12. Digits only; a filter on what is shown, never a way to open a code."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 300,
+            "description": "At most this many patients. Default 100, 300 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "date",
+          "clinics",
+          "sessionId",
+          "patients",
+          "total",
+          "truncated"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "date": {
+            "type": "string"
+          },
+          "clinics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "sessionId",
+                "service",
+                "name",
+                "start",
+                "state"
+              ],
+              "properties": {
+                "sessionId": {
+                  "type": "string"
+                },
+                "service": {
+                  "type": "string"
+                },
+                "serviceWord": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The clinic: a service at a place, never a person."
+                },
+                "placeId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "date": {
+                  "type": "string"
+                },
+                "start": {
+                  "type": "string"
+                },
+                "end": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "stateName": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "runningNow": {
+                  "type": "boolean"
+                },
+                "counts": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "sessionId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "clinic": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "patients": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "appointmentId",
+                "code",
+                "label",
+                "slotTime",
+                "state"
+              ],
+              "properties": {
+                "appointmentId": {
+                  "type": "string"
+                },
+                "code": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string",
+                  "description": "What to call the patient on screen, for example \"Patient P12\". Never a name."
+                },
+                "slotTime": {
+                  "type": "string"
+                },
+                "slotType": {
+                  "type": "string"
+                },
+                "slotTypeWord": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "stateName": {
+                  "type": "string"
+                },
+                "arrivedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "calledAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "finishedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "waitMinutes": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Minutes from arrived to called, or to now while still waiting."
+                },
+                "mayMarkMissed": {
+                  "type": "boolean",
+                  "description": "true: still booked after the booked time plus the grace, so \"Missed appointment\" may be recorded."
+                },
+                "missedFrom": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "rebook": {
+                  "type": "boolean",
+                  "description": "This booking replaces a cancelled or missed one."
+                }
+              }
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          },
+          "graceMinutes": {
+            "type": "integer",
+            "description": "Example setting, not a standard."
+          },
+          "picks": {
+            "type": "object"
+          },
+          "offlineNote": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
+      "name": "ospeli_clinics_day_summary",
+      "summary": "Each clinic's day in numbers: slots in the template, used, empty, cancelled and missed; patients waiting now; first patient called against the planned start; overrun past the planned end; sessions cancelled or reduced with the reason; and for a session that still has bookings, each one with the next free slots of the same service (Move or Cancel). Also the five measures with definitions and sources, the guide's suggestions with their basis (empty while the guide is off), and the templates (read-only). Clinics and waits, never a clinician. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "maxLength": 10,
+            "description": "The day to summarise. Default: today. As YYYY-MM-DD on the site's own calendar."
+          },
+          "days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 30,
+            "description": "The period for the measures: the last this many days. Default 28."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: counts and measure values only. detailed (default): with each booking still open, move options, measure definitions by clinic, templates and pick lists."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 200,
+            "description": "At most this many clinics. Default 50, 200 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "date",
+          "clinics",
+          "counts",
+          "kpis",
+          "guide",
+          "total",
+          "truncated"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "date": {
+            "type": "string"
+          },
+          "period": {
+            "type": "object"
+          },
+          "clinics": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "sessionId",
+                "service",
+                "name",
+                "start",
+                "state"
+              ],
+              "properties": {
+                "sessionId": {
+                  "type": "string"
+                },
+                "service": {
+                  "type": "string"
+                },
+                "serviceWord": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "The clinic: a service at a place, never a person."
+                },
+                "placeId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "date": {
+                  "type": "string"
+                },
+                "start": {
+                  "type": "string"
+                },
+                "end": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "stateName": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "runningNow": {
+                  "type": "boolean"
+                },
+                "counts": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "counts": {
+            "type": "object"
+          },
+          "kpis": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "unit",
+                "value"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "null when nothing was counted in the period, or the group is too small to show."
+                },
+                "numerator": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "denominator": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "n": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "waiting": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Referral to first appointment only: open referrals with no finished visit yet, shown beside the median."
+                },
+                "byService": {
+                  "type": "array",
+                  "description": "The same figure for each clinic (service at a place). A clinic with too few cases shows null (small-number rule)."
+                },
+                "definition": {
+                  "type": "string"
+                },
+                "counts": {
+                  "type": "string"
+                },
+                "outOf": {
+                  "type": "string"
+                },
+                "leavesOut": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                },
+                "targetText": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "guide": {
+            "type": "object",
+            "required": [
+              "on",
+              "rules",
+              "suggestions"
+            ],
+            "properties": {
+              "on": {
+                "type": "boolean"
+              },
+              "rules": {
+                "type": "array"
+              },
+              "suggestions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "rule",
+                    "id",
+                    "text",
+                    "why",
+                    "basis"
+                  ],
+                  "properties": {
+                    "rule": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "why": {
+                      "type": "string"
+                    },
+                    "basis": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "The first command a person may tap to follow it (a prefilled booking); null: advice only. The guide never runs it."
+                    },
+                    "actions": {
+                      "type": "array"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "templates": {
+            "type": "array"
+          },
+          "planned": {
+            "type": "array"
+          },
+          "picks": {
+            "type": "object"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "format": "short"
+        }
+      }
+    },
+    {
+      "name": "ospeli_clinics_guide_set",
+      "summary": "Switch the clinics guide on or off for this site. The guide is three fixed rules (missed appointments above the usual level, empty slots within two days, patients arriving at the start instead of their slot) that suggest; a person decides, and a suggested booking is a button a person taps. With it off everything else works the same. People only.",
+      "kind": "write",
+      "roles": [
+        "outpatient-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
