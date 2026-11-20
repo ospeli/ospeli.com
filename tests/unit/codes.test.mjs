@@ -59,7 +59,8 @@ async function run(core, name, input, role) {
 async function site() {
   const time = { now: END };
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(time.now) });
-  await loadSyntheticHospital(core, { end: END });
+  // The object on its own: no module's history, so the first code, session and appointment are 00001.
+  await loadSyntheticHospital(core, { end: END, modules: false });
   return { core, time };
 }
 const later = (time, minutes) => { time.now = new Date(Date.parse(time.now) + minutes * 60e3).toISOString(); };

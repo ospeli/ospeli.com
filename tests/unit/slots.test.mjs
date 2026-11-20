@@ -59,7 +59,8 @@ async function run(core, name, input, role) {
 async function site(adapter = new MemoryAdapter(), clock = null) {
   const time = { now: END };
   const core = await Core.open({ adapter, clock: clock || (() => new Date(time.now)) });
-  await loadSyntheticHospital(core, { end: END });
+  // The object on its own: no module's history, so the first code, session and appointment are 00001.
+  await loadSyntheticHospital(core, { end: END, modules: false });
   const codes = ['pc-00001', 'pc-00002', 'pc-00003', 'pc-00004', 'pc-00005', 'pc-00006'];
   await core.appendEvents(codes.map((c) => ({ type: 'code.opened', subject: c, actorRole: 'ops-manager', at: END, data: { service: 'test-service', placeId: 'dept-outpatients', source: 'referral' } })), 'system', 'synthetic test codes');
   return { core, time };

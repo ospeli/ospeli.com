@@ -627,7 +627,7 @@ export function slotCommands(packs = []) {
   if (firstTimed) {
     list.push(write({
       verb: 'template_set', roles: ALL_ROLES.filter((r) => types.some((t) => t.timed && t.planRoles.includes(r))), people: true, target: null,
-      summary: 'Set the weekly pattern for a session with timed slots: the weekday, start, length, slot length, slot types and whether its sessions open for booking at once ("released"). Leave templateId out for a new template; send it to change one from a date ("from") onwards. Sessions already planned keep the slots they were planned with. People only: an agent cannot set a template.',
+      summary: 'Set the weekly pattern for a session with timed slots: the weekday, start, length, slot length, slot types and whether its sessions open for booking at once ("released"). Leave templateId out for a new template; send it to change one from a date ("from") onwards. Sessions already planned keep the slots they were planned with. People only.',
       required: ['sessionType', 'placeId', 'weekday', 'start', 'minutes', 'slotMinutes', 'slotTypes', 'released', 'from'],
       properties: { templateId: { ...TEMPLATE_ID, description: 'Only to change a template: its id. Leave out to make a new one.' },
         sessionType: { type: 'string', enum: types.filter((t) => t.timed).map((t) => t.id), description: 'The type of session, one with timed slots.' }, ...SERVICE, placeId: PLACE,

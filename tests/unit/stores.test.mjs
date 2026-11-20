@@ -12,6 +12,7 @@ import { validate } from '../../web/app/core/schema.js';
 import { ROLES } from '../../web/app/core/model.js';
 import { deriveStock, stockCatalogue, balance } from '../../web/app/core/stock.js';
 import * as pack from '../../web/app/modules/stores/commands.js';
+import { MODULE_PACKS } from '../../web/app/core/modules.js';
 import {
   CATALOGUE, deriveSupplies, deriveOrders, orderSteps, overUsual, tracerStockOutRate, requestWaitHours, orderCycleTime, fillRatePercent,
   ruleLevelCheck, ruleOrderWaiting, ruleTransfer, guideOn, GUIDE_RULES, shortNow, SHORT_SHARE, REQUEST_USUAL_HOURS,
@@ -64,8 +65,11 @@ test('the synthetic history replays through the shared stock item with no proble
     assert.deepEqual(generateHospital({ end }).events.length, events.length, 'the same seed gives the same history');
     assert.equal(generateHospital({ end, modules: false }).events.filter((e) => e.type.startsWith('stock.')).length, 0, 'modules: false leaves it out');
     assert.ok(evs.every((e) => (e.type.startsWith('stock.') || e.type.startsWith('stores.')) && ROLE_IDS.includes(e.actorRole) && e.at <= end));
+    // Every module's stock shares one log (linen is the support module's), so "every movement fits"
+    // is checked with every module's catalogue; what Stores itself ends with is read with its own.
+    const everyone = stockCatalogue(MODULE_PACKS, ROLE_IDS);
+    assert.equal(deriveStock(evs, { items: everyone.items, categories: everyone.categories }).problems, 0, `${end}: every movement fits and no balance goes below zero`);
     const stock = deriveStock(evs, { items: CATALOGUE.items, categories: CATALOGUE.categories });
-    assert.equal(stock.problems, 0, `${end}: every movement fits and no balance goes below zero`);
     const { orders, problems } = deriveOrders(evs);
     assert.equal(problems, 0);
     const open = [...stock.requests.values()].filter((q) => q.state === 'open' || q.state === 'part');
