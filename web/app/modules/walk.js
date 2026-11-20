@@ -187,7 +187,7 @@ export async function renderWalk(box, ctx) {
         h('span', { class: 'walk-state', 'data-test': 'walk-state' }, step ? 'Hands-on' : 'Waiting'),
         h('span', { class: 'walk-timer', role: 'timer', 'data-test': 'walk-timer' }, fmtClock(shown(w))),
         h('span', { class: 'walk-meta' }, h('span', { 'data-test': 'walk-total' }, `Whole walk ${fmtClock(secsSince(w.startedAt))}`), ` · ${w.steps.length} ${w.steps.length === 1 ? 'step' : 'steps'} saved`)),
-      w.clockMoved ? h('p', { class: 'walk-clock', role: 'alert', 'data-test': 'walk-clock' }, h('b', {}, 'The phone\'s clock changed during this walk.'), ' Its times cannot be relied on. You can finish it, but walk it again.') : null,
+      w.clockMoved ? h('p', { class: 'walk-clock', role: 'alert', 'data-test': 'walk-clock' }, h('b', {}, 'The phone\'s clock changed during this walk.'), ' Its times may be wrong. You can finish it, but walk it again to get times you can use.') : null,
       main,
       h('p', { class: 'walk-def', 'data-test': 'walk-def' }, step
         ? 'Hands-on: someone is working on this patient or item.'

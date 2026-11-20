@@ -178,7 +178,8 @@ export function analyse(list) {
     t = Math.max(t, end);
     return { id: s.id, start, end };
   });
-  const byWait = [...list].sort((a, b) => (b.wait || 0) - (a.wait || 0));
+  // A wait a person marked planned or required still counts as waiting, and is never named the longest (#141).
+  const byWait = list.filter((x) => !x.plannedWait).sort((a, b) => (b.wait || 0) - (a.wait || 0));
   const worst = byWait[0] && byWait[0].wait > 0 ? byWait[0].id : null;
   const roles = [];
   for (const s of list) if (!roles.includes(s.role)) roles.push(s.role);

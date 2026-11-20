@@ -178,7 +178,7 @@ export async function render(el, ctx) {
     const extra = walked ? extrasOf(steps) : { planned: 0, notSeen: 0 };
     // A walked map opens with the answer: how long, how much of it was waiting, and the longest wait.
     const answer = measuredView ? h('section', { class: `card walk-answer${moved ? ' is-warn' : ''}`, 'data-test': 'walk-answer', 'aria-label': 'What this walk showed' },
-      moved ? h('p', { class: 'walk-clock', role: 'alert', 'data-test': 'walk-clock' }, h('b', {}, 'The phone\'s clock changed during this walk.'), ' These times cannot be relied on. Walk it again.') : null,
+      moved ? h('p', { class: 'walk-clock', role: 'alert', 'data-test': 'walk-clock' }, h('b', {}, 'The phone\'s clock changed during this walk.'), ' The times on this map may be wrong. Walk it again to get times you can use.') : null,
       h('p', { class: 'wa-big' }, h('b', {}, T(a.elapsed + extra.notSeen)), ' start to finish on this walk'),
       h('p', { class: 'wa-line' }, h('b', {}, `${T(a.wait)} waiting`), waitShare(a) == null ? '' : ` (${waitShare(a)}% of ${extra.notSeen ? 'the time seen on this walk' : 'this walk'})`, ` · ${T(a.work)} hands-on`),
       extra.planned ? h('p', { class: 'wa-line', 'data-test': 'walk-planned' }, `Of the waiting, ${T(extra.planned)} was marked planned or required.`) : null,

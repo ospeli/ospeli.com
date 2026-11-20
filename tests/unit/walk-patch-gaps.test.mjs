@@ -87,7 +87,7 @@ test('a walk whose clock moved back names no longest wait; the guide says the ti
   const sugg = (await tap('ospeli_maps_suggest', { mapId: out.mapId })).suggestions;
   assert.equal(sugg.some((s) => /Longest wait/.test(s.title)), false);
   assert.match(sugg[0].title, /clock changed during this walk/);
-  assert.match(sugg[0].text, /cannot be relied on/);
+  assert.match(sugg[0].text, /may be wrong\. Your steps are kept\. Walk it again/); // wording only (marketer, 20 Nov): says what happened, and why to walk again
 });
 
 test('every guide rule says what it rests on: walked maps and drawn maps (definition of done, item 5)', async () => {

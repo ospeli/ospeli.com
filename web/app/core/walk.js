@@ -26,7 +26,19 @@ export const MIN_STEP_MS = 1000;
 // Waits shorter than this are not named as the longest wait (a stated local definition, not a standard).
 export const MIN_LONGEST_WAIT_SEC = 30;
 
-const secs = (a, b) => Math.max(0, Math.round((Date.parse(b) - Date.parse(a)) / 1000));
+// Whole seconds from the start of the walk to a tap. Every time on a walk is a difference of two
+// of these, so waiting, hands-on and not seen always add up to start to finish. (Rounding each
+// part alone drifted a second or two on a long walk with taps between whole seconds; #141.)
+const offSec = (walk, t) => Math.round((Date.parse(t) - Date.parse(walk.startedAt)) / 1000);
+const secs = (walk, a, b) => Math.max(0, offSec(walk, b) - offSec(walk, a));
+// The latest moment any tap on the walk was stamped with.
+function latestTap(walk) {
+  const all = [walk.startedAt];
+  for (const s of walk.steps) all.push(s.startAt, s.endAt);
+  if (walk.current) all.push(walk.current.startAt);
+  for (const p of walk.pauses || []) { all.push(p.startAt); if (p.endAt) all.push(p.endAt); }
+  return Math.max(...all.map((t) => Date.parse(t)));
+}
 
 // What the person walking confirms before the first tap (issue #124; decision record 18 Nov 2026).
 // The stop rule comes first. Nothing about anyone is stored: only the time the points were confirmed.
@@ -54,26 +66,31 @@ export const walkUnder = (walk) => (walk.current ? 'step' : 'waiting');
 
 // Seconds between two moments that fell inside a pause (an open pause runs to `now`).
 export function pausedSec(walk, a, b, now = null) {
-  const A = Date.parse(a); const B = Date.parse(b);
-  let ms = 0;
+  const A = offSec(walk, a); const B = offSec(walk, b);
+  let sec = 0;
   for (const p of walk.pauses || []) {
     const end = p.endAt || now;
-    if (!end) continue;
-    ms += Math.max(0, Math.min(B, Date.parse(end)) - Math.max(A, Date.parse(p.startAt)));
+    // A pause stamped by a clock that had been set back cannot be placed: it takes nothing out of any step.
+    if (!end || p.clockBack) continue;
+    sec += Math.max(0, Math.min(B, offSec(walk, end)) - Math.max(A, offSec(walk, p.startAt)));
   }
-  return Math.max(0, Math.round(ms / 1000));
+  return Math.max(0, sec);
 }
 
 // The person walking steps out: nothing is counted until they are back.
 export function pauseWalk(walk, at) {
   if (openPause(walk)) throw new Error('The walk is already paused.');
-  (walk.pauses ||= []).push({ startAt: at });
+  // A Pause stamped earlier than the tap before it: the device clock was set back (#141).
+  const back = Date.parse(at) < latestTap(walk);
+  if (back) walk.clockBack = true;
+  (walk.pauses ||= []).push({ startAt: at, ...(back ? { clockBack: true } : {}) });
   walk.last = 'pause';
   return walk;
 }
 export function resumeWalk(walk, at) {
   const p = openPause(walk);
   if (!p) throw new Error('The walk is not paused.');
+  if (Date.parse(at) < latestTap(walk)) { walk.clockBack = true; p.clockBack = true; }
   p.endAt = at;
   walk.last = 'resume';
   return walk;
@@ -130,6 +147,7 @@ export function isDoubleStart(walk, at) {
 // True when any tap is earlier than the tap before it (the device clock moved back mid-walk),
 // so the walk's times cannot be trusted and the totals may not add up.
 export function clockMoved(walk) {
+  if (walk.clockBack) return true;
   const taps = [walk.startedAt];
   for (const s of walk.steps) taps.push(s.startAt, s.endAt);
   if (walk.current) taps.push(walk.current.startAt);
@@ -176,11 +194,11 @@ export function undoLast(walk) {
 export function walkSteps(walk) {
   return walk.steps.map((s, i) => {
     const from = i === 0 ? walk.startedAt : walk.steps[i - 1].endAt;
-    const waitNotSeenSec = Math.min(secs(from, s.startAt), pausedSec(walk, from, s.startAt));
-    const workNotSeenSec = Math.min(secs(s.startAt, s.endAt), pausedSec(walk, s.startAt, s.endAt));
+    const waitNotSeenSec = Math.min(secs(walk, from, s.startAt), pausedSec(walk, from, s.startAt));
+    const workNotSeenSec = Math.min(secs(walk, s.startAt, s.endAt), pausedSec(walk, s.startAt, s.endAt));
     return {
       name: s.name || `Step ${i + 1}`, role: s.role || ROLE_NOT_SET, msg: !!s.msg, interrupted: !!s.interrupted,
-      waitSec: secs(from, s.startAt) - waitNotSeenSec, workSec: secs(s.startAt, s.endAt) - workNotSeenSec,
+      waitSec: secs(walk, from, s.startAt) - waitNotSeenSec, workSec: secs(walk, s.startAt, s.endAt) - workNotSeenSec,
       ...(waitNotSeenSec ? { waitNotSeenSec } : {}), ...(workNotSeenSec ? { workNotSeenSec } : {}),
     };
   });
@@ -193,7 +211,7 @@ export function walkTotals(walk, now = null) {
   const workSec = steps.reduce((n, s) => n + s.workSec, 0); const waitSec = steps.reduce((n, s) => n + s.waitSec, 0);
   const notSeenSec = steps.reduce((n, s) => n + (s.waitNotSeenSec || 0) + (s.workNotSeenSec || 0), 0);
   const end = walk.finishedAt || now || (walk.steps.length ? walk.steps[walk.steps.length - 1].endAt : walk.startedAt);
-  return { steps: steps.length, workSec, waitSec, notSeenSec, elapsedSec: secs(walk.startedAt, end) };
+  return { steps: steps.length, workSec, waitSec, notSeenSec, elapsedSec: secs(walk, walk.startedAt, end) };
 }
 
 // Share of the observed time that was waiting, as a whole percentage: waiting / (waiting + hands-on).
@@ -262,7 +280,7 @@ export const WALK_BASIS = {
   longestWait: `Example setting, not a standard: waits under ${MIN_LONGEST_WAIT_SEC} seconds are not named, so the gap between two taps is not read as a wait.`,
   unnamed: 'Local definition: a step needs a name and a role to be read on a map.',
   limits: 'Method: a process walk in the manner of lean value stream mapping (Rother and Shook, Learning to See). One walk is one observation.',
-  clock: 'Local definition: a tap stamped earlier than the tap before it means the device clock was set back.',
+  clock: 'Local definition: a tap stamped earlier than the tap before it (a step tap, Pause or I am back) means the device clock was set back.',
   planned: 'Local definition: a planned or required wait is one a person marked as needed by the process itself. It counts as waiting and is left out of the longest wait. Ospeli keeps no list of such waits.',
   notSeen: 'Local definition: time between Pause and I am back is not seen. It is neither waiting nor hands-on. A wait that was partly not seen is compared by the part that was seen and named as "at least" that long.',
 };
@@ -274,7 +292,7 @@ export function suggestWalk(list, { clockMoved: moved = false } = {}) {
   if (moved) {
     // Times from a clock that was set back cannot be ranked: name no longest wait.
     out.push({ id: 'walk-clock', kind: 'ask', title: 'The phone\'s clock changed during this walk',
-      text: 'These times cannot be relied on. Walk it again. A clock that jumps forward cannot be detected, so check the phone\'s time before a walk.',
+      text: 'The times on this map may be wrong. Your steps are kept. Walk it again to get times you can use. A clock that jumps forward cannot be detected, so check the phone\'s time before a walk.',
       why: 'One tap was stamped earlier than the tap before it.', basis: WALK_BASIS.clock });
   } else if (top.length) {
     const t = fmtSeconds(top[0].wait);

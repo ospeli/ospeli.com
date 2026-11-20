@@ -8235,7 +8235,7 @@
     },
     {
       "name": "ospeli_walks_discard",
-      "summary": "Delete the walk in progress without making a map. Its taps are not kept. People only: a walk is a person's own observation on site, so this command is for people, not for agents.",
+      "summary": "Delete the walk in progress without making a map. Its taps are not kept. If a finish that failed part-way left a map of this walk behind, that map is deleted with it. People only: a walk is a person's own observation on site, so this command is for people, not for agents.",
       "kind": "write",
       "roles": [
         "ward-nurse",

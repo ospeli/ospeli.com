@@ -1102,7 +1102,11 @@ COMMAND_LIST.push(
       const part = (list) => {
         const { timed, ...stats } = analyse(list);
         const inSec = stepsInSeconds(list);
-        const sec = map.walk ? (({ timed: t2, ...x }) => ({ statsSec: { ...x, waitShare: waitShareOf(x.wait, x.work),
+        // The longest wait is named by one rule everywhere (the guide's and ospeli_maps_summary's): a planned
+        // wait is left out, a wait under the floor is not named, and a walk whose clock moved back names none (#141).
+        const top = map.walk ? (map.walk.clockMoved ? null : longestWaits(inSec)[0]?.id || null) : stats.biggestWaitStepId;
+        stats.biggestWaitStepId = top;
+        const sec = map.walk ? (({ timed: t2, ...x }) => ({ statsSec: { ...x, biggestWaitStepId: top, waitShare: waitShareOf(x.wait, x.work),
           plannedWaitSec: inSec.reduce((n, y) => n + (y.plannedWait ? y.wait || 0 : 0), 0),
           notSeenSec: inSec.reduce((n, y) => n + (y.waitNotSeenSec || 0) + (y.workNotSeenSec || 0), 0) } }))(analyse(inSec)) : {};
         return input.format === 'short' ? { stats, ...sec } : { stats, ...sec, steps: list };
@@ -1379,18 +1383,26 @@ function walkWrite({ name, summary, props = {}, required = [], audit, mutate, ex
       if (check) check(input);
       let view = null; let extra = {};
       const now = core.now();
-      await core.updateMeta(WALKS_KEY, (raw) => {
+      await core.updateMeta(WALKS_KEY, async (raw) => {
         const store = walkStore(raw);
         const i = store.walks.findIndex((w) => w.status === 'walking' && (!input.walkId || w.id === input.walkId));
         if (i < 0) throw new CommandError('not-found', input.walkId ? `No walk ${input.walkId} is in progress on this device.` : 'No walk is in progress on this device. Start one first.', { fix: 'ospeli_walks_start starts a walk; ospeli_walks_get shows the one in progress.' });
         const w = JSON.parse(JSON.stringify(store.walks[i]));
         try { extra = mutate(w, input, now) || {}; } catch (err) { if (err instanceof CommandError) throw err; throw new CommandError('conflict', err.message, { state: walkState(w) }); }
+        // A finish whose second write failed left a map of this walk behind (#129). Deleting the walk
+        // takes that map with it, so "its taps are not kept" is true (#141). Read and written with
+        // getMeta and setMeta: a nested updateMeta would wait for this turn for ever.
+        if (extra.dropMapsOfWalk) {
+          const maps = mapStore(await core.getMeta(MAPS_KEY, null));
+          const kept = maps.maps.filter((m) => m.walk?.id !== extra.dropMapsOfWalk);
+          if (kept.length !== maps.maps.length) { extra.audit = { ...(extra.audit || {}), mapsRemoved: maps.maps.length - kept.length }; maps.maps = kept; await core.setMeta(MAPS_KEY, maps); }
+        }
         store.walks[i] = w;
         view = walkView(w, now);
         return store;
       });
       await core.recordAs(actor, audit, view.id, { steps: view.steps.length, ...(extra.audit || {}) });
-      const { audit: _a, ...out } = extra;
+      const { audit: _a, dropMapsOfWalk: _d, ...out } = extra;
       return { status: 'done', walk: view, ...out };
     },
     example: { input: example },
@@ -1519,8 +1531,8 @@ COMMAND_LIST.push(
   }),
   walkWrite({
     name: 'ospeli_walks_discard', audit: 'walk.discarded',
-    summary: 'Delete the walk in progress without making a map. Its taps are not kept.',
-    mutate: (w, input, now) => { w.status = 'discarded'; w.finishedAt = now; w.steps = []; w.current = null; w.pauses = []; w.last = null; },
+    summary: 'Delete the walk in progress without making a map. Its taps are not kept. If a finish that failed part-way left a map of this walk behind, that map is deleted with it.',
+    mutate: (w, input, now) => { w.status = 'discarded'; w.finishedAt = now; w.steps = []; w.current = null; w.pauses = []; w.last = null; return { dropMapsOfWalk: w.id }; },
   }),
   {
     name: 'ospeli_walks_finish',
@@ -1557,8 +1569,13 @@ COMMAND_LIST.push(
         const tot = walkTotals({ ...w, finishedAt });
         m.walk = { id: w.id, startedAt: w.startedAt, finishedAt, ...(clockMoved(w) ? { clockMoved: true } : {}),
           ...(tot.notSeenSec ? { notSeenSec: tot.notSeenSec } : {}), guidanceSeen: !!w.guidanceSeenAt };
-        if (left >= 0) maps.maps[left] = m; else maps.maps.push(m);
-        await core.setMeta(MAPS_KEY, maps);
+        // A person may have opened the left-behind map and named a step or marked a wait. What a
+        // person changed is kept: the map is made again in place only while nobody has touched it (#141).
+        const touched = left >= 0 && maps.maps[left].revision > 1;
+        if (!touched) {
+          if (left >= 0) maps.maps[left] = m; else maps.maps.push(m);
+          await core.setMeta(MAPS_KEY, maps);
+        }
         w.status = 'finished'; w.finishedAt = finishedAt; w.mapId = mapId;
         view = walkView(w, now);
         return store;
