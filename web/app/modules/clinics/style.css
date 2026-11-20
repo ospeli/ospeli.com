@@ -1,1 +1,116 @@
-/* Outpatient clinics. Skeleton; the builder fills it. */
+/* Outpatient clinics. Every rule starts with .mod-clinics. Shell colours only (brand kit v3.1).
+   Phone first for the clinic desk and the clinic nurse: text 15 px or more, every control at least
+   44 px tall, the row's one button 56 px tall. Rows stay in booked-time order and never move under a
+   finger; after "Call in" the same place says "Finished" in another colour and waits three seconds. */
+.mod-clinics.cl { font-size: 1rem; }
+.mod-clinics .meta, .mod-clinics .chip, .mod-clinics .chip-btn, .mod-clinics .stat span, .mod-clinics .btn-small, .mod-clinics .cl-hint { font-size: .9375rem; }
+.mod-clinics .card .meta.notice { font-size: 1rem; }
+.mod-clinics .page-head { margin-bottom: 8px; }
+.mod-clinics .cl-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; }
+.mod-clinics .cl-tabs a { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 14px; border-radius: 999px; border: 1.5px solid var(--line-strong);
+  background: var(--surface); color: var(--navy); text-decoration: none; font-weight: 800; font-size: .9375rem; }
+.mod-clinics .cl-tabs a[aria-current="page"] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.mod-clinics .cl-hint { color: var(--ink-soft); margin: 0 0 6px; overflow-wrap: anywhere; }
+.mod-clinics .cl-label { font-weight: 800; margin: 6px 0 4px; }
+.mod-clinics .cl-empty { font-size: 1.0625rem; font-weight: 700; }
+.mod-clinics .chip { white-space: normal; }
+.mod-clinics .chip-btn { min-height: 44px; }
+.mod-clinics .chips, .mod-clinics .cl-pick, .mod-clinics .cl-choices { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.mod-clinics .notice { margin: 10px 0; }
+.mod-clinics .cl-offline { border-left-color: var(--coral); font-weight: 800; }
+
+/* counts */
+.mod-clinics .cl-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 8px 0; max-width: 760px; }
+.mod-clinics .cl-counts .stat { padding: 8px 10px; min-width: 0; overflow-wrap: anywhere; }
+.mod-clinics .cl-counts .stat span { display: block; }
+.mod-clinics .cl-counts .stat b { font-size: 1.45rem; }
+.mod-clinics .cl-counts .stat.is-alert { border-color: var(--coral); background: #FDF0EC; }
+
+/* the queue */
+.mod-clinics .cl-clinic h2 { margin: 0 0 2px; font-size: 1.25rem; }
+.mod-clinics .cl-find { margin: 10px 0; max-width: 640px; }
+.mod-clinics .cl-find label { display: block; font-weight: 800; margin-bottom: 4px; }
+.mod-clinics .cl-find-row { display: flex; gap: 8px; align-items: center; }
+.mod-clinics .cl-find input { font: inherit; font-size: 1.125rem; min-height: 48px; width: 9em; max-width: 100%; padding: 6px 12px; border: 1.5px solid var(--line-strong); border-radius: 10px; background: var(--surface); color: var(--ink); }
+.mod-clinics .cl-rows, .mod-clinics .cl-refs, .mod-clinics .cl-days, .mod-clinics .cl-tpls, .mod-clinics .cl-moves { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mod-clinics .cl-row, .mod-clinics .cl-ref { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; background: var(--surface);
+  border: 1px solid var(--line); border-left: 6px solid var(--line-strong); border-radius: 10px; padding: 10px 12px; min-width: 0; max-width: 760px; }
+.mod-clinics .cl-row.st-arrived { border-left-color: var(--mango); }
+.mod-clinics .cl-row.st-called { border-left-color: var(--sea); background: #E6F4F3; }
+.mod-clinics .cl-row.is-done { background: #F7F7F5; }
+.mod-clinics .cl-row.st-no-show, .mod-clinics .cl-row.st-cancelled { border-left-color: var(--coral); }
+.mod-clinics .cl-row-text { display: grid; gap: 2px; flex: 1 1 200px; min-width: 0; }
+.mod-clinics .cl-row-text p { margin: 0; overflow-wrap: anywhere; }
+.mod-clinics .cl-row-act { display: grid; gap: 4px; flex: 1 1 160px; min-width: 0; max-width: 320px; }
+.mod-clinics .cl-who { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; font-size: 1.0625rem; }
+.mod-clinics .cl-time { font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.mod-clinics .cl-st { font-weight: 700; color: var(--ink-soft); }
+.mod-clinics .cl-st.st-wait { color: #5C3B00; }
+.mod-clinics .cl-st.st-in { color: var(--sea-ink); }
+.mod-clinics .cl-st.st-done { color: #0B4A3A; }
+.mod-clinics .cl-st.st-late, .mod-clinics .cl-st.st-missed { color: #8A2412; }
+.mod-clinics .btn.cl-main { min-height: 56px; width: 100%; font-size: 1.15rem; }
+.mod-clinics .btn.cl-main.cl-arrive { background: var(--navy); border-color: var(--navy); color: #fff; }
+.mod-clinics .btn.cl-main.cl-call { background: var(--sea-ink); border-color: var(--sea-ink); color: #fff; border-radius: 999px; }
+.mod-clinics .btn.cl-main.cl-finish { background: var(--mango); border-color: var(--mango); color: var(--navy); border-radius: 999px; }
+.mod-clinics .btn.cl-main:disabled { background: #E4E4E4; border-color: #B8B8B8; color: #4A5968; border-style: dashed; cursor: default; }
+.mod-clinics .cl-more > summary, .mod-clinics .cl-def > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 800; color: var(--sea-ink); }
+.mod-clinics .cl-more p, .mod-clinics .cl-def p { margin: 0 0 6px; }
+.mod-clinics .cl-def p { font-size: .9375rem; color: var(--ink-soft); }
+.mod-clinics .cl-reasons { display: flex; flex-wrap: wrap; gap: 6px; }
+
+/* the waiting list */
+.mod-clinics .cl-ref.is-long { border-left-color: var(--coral); }
+.mod-clinics .chip.cl-long { background: #FBE3DE; color: #8A2412; }
+.mod-clinics .cl-book { display: grid; gap: 6px; }
+.mod-clinics .cl-book p { margin: 0; }
+.mod-clinics .btn.cl-slot { justify-content: flex-start; }
+.mod-clinics .cl-form { display: grid; gap: 4px; max-width: 640px; margin: 0 0 12px; }
+.mod-clinics .cl-note { border-left: 4px solid var(--seafoam); padding-left: 10px; max-width: 760px; }
+.mod-clinics .cl-more > .cl-form { margin-top: 4px; }
+.mod-clinics .btn.cl-add { min-height: 52px; margin-top: 6px; }
+.mod-clinics .btn.cl-add:disabled { background: #E4E4E4; border-color: #B8B8B8; color: #4A5968; border-style: dashed; cursor: default; }
+.mod-clinics .cl-ask { border: 1.5px solid var(--line-strong); border-left: 5px solid var(--mango); border-radius: 10px; padding: 8px 10px; background: var(--surface); margin-top: 6px; }
+.mod-clinics .cl-ask p { margin: 0 0 6px; }
+
+/* the clinic day */
+.mod-clinics .cl-days { grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); }
+.mod-clinics .cl-day { display: grid; gap: 6px; border-left: 6px solid var(--sea); align-content: start; }
+.mod-clinics .cl-day.st-cancelled { border-left-color: var(--coral); }
+.mod-clinics .cl-day.st-reduced { border-left-color: var(--mango); }
+.mod-clinics .cl-day p { margin: 0; }
+.mod-clinics .cl-day-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 4px 8px; }
+.mod-clinics .cl-day-head h3 { margin: 0; font-size: 1.125rem; }
+.mod-clinics .chip.cl-sst.st-held { background: #DDF1EA; color: #0B4A3A; }
+.mod-clinics .chip.cl-sst.st-cancelled { background: #FBE3DE; color: #8A2412; }
+.mod-clinics .chip.cl-sst.st-reduced { background: var(--mango-tint); color: #5C3B00; }
+.mod-clinics .cl-figs { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; margin: 0; }
+.mod-clinics .cl-figs div { background: var(--sand); border-radius: 8px; padding: 6px; text-align: center; min-width: 0; }
+.mod-clinics .cl-figs dt { font-size: .9375rem; color: var(--ink-soft); overflow-wrap: anywhere; }
+.mod-clinics .cl-figs dd { margin: 0; font-size: 1.3rem; font-weight: 800; }
+.mod-clinics .cl-moves li { border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; }
+.mod-clinics .cl-moves p { margin: 0 0 6px; }
+
+/* guide and measures */
+.mod-clinics .cl-guide { border-left: 5px solid var(--seafoam); margin: 12px 0 8px; }
+.mod-clinics .cl-guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mod-clinics .cl-guide-head h2 { margin: 0; }
+.mod-clinics .cl-switch[aria-pressed="false"] { border-style: dashed; color: var(--ink-soft); }
+.mod-clinics .cl-sugg { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.mod-clinics .cl-sugg li { border: 1px solid var(--line); border-left: 4px solid var(--mango); border-radius: 10px; padding: 10px 12px; overflow-wrap: anywhere; }
+.mod-clinics .cl-sugg p { margin: 0 0 4px; }
+.mod-clinics .cl-kpis { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+.mod-clinics .cl-kpi p { margin: 0 0 4px; }
+.mod-clinics .cl-kpi-name { font-weight: 800; }
+.mod-clinics .cl-kpi-value { font-size: 1.7rem; font-weight: 800; line-height: 1.1; }
+.mod-clinics .cl-kpi-waiting { font-weight: 800; color: #5C3B00; }
+.mod-clinics .cl-breakdown { margin: 4px 0; padding-left: 18px; font-size: .9375rem; }
+
+/* templates */
+.mod-clinics .cl-tpl { background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 10px; padding: 8px 12px; max-width: 760px; }
+.mod-clinics .cl-tpl p { margin: 0; }
+
+@media (max-width: 420px) {
+  .mod-clinics .cl-row-act { max-width: none; }
+  .mod-clinics .cl-figs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

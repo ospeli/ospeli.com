@@ -110,6 +110,7 @@ async function state(core) {
 const placeName = (s, id_) => { const p = id_ ? s.places.get(id_) : null; return p ? currentWords(p.name) : null; };
 const clinicName = (st, s) => `${SERVICES[s.service] || 'Clinic'}${placeName(st, s.placeId) ? `, ${placeName(st, s.placeId)}` : ''}`;
 const hhmmAt = (ms, offsetMinutes) => new Date(ms + offsetMinutes * MIN).toISOString().slice(11, 16);
+const siteClock = (st, iso) => (iso ? hhmmAt(Date.parse(iso), st.offsetMinutes) : null);
 const clinicsOn = (st, date) => [...clinicView(st.d).sessions.values()].filter((s) => s.date === date).sort((a, b) => a.startMs - b.startMs || (a.id < b.id ? -1 : 1));
 const noShowPicks = () => catalogue().reasons.noShow.filter((r) => r !== 'No answer at the door'); // a round's reason, never a clinic's
 
@@ -131,6 +132,7 @@ const PATIENT_OUT = { type: 'object', required: ['appointmentId', 'code', 'label
   arrivedAt: NULLABLE('string'), calledAt: NULLABLE('string'), finishedAt: NULLABLE('string'),
   waitMinutes: { type: ['integer', 'null'], description: 'Minutes from arrived to called, or to now while still waiting.' },
   mayMarkMissed: { type: 'boolean', description: 'true: still booked after the booked time plus the grace, so "Missed appointment" may be recorded.' },
+  clocks: { type: 'object', description: 'The site\'s own clock (HH:MM) for arrived, called and finished; null until then.' },
   missedFrom: NULLABLE('string'), rebook: { type: 'boolean', description: 'This booking replaces a cancelled or missed one.' } } };
 const CLINIC_OUT = { type: 'object', required: ['sessionId', 'service', 'name', 'start', 'state'], properties: {
   sessionId: { type: 'string' }, service: { type: 'string' }, serviceWord: { type: 'string' }, name: { type: 'string', description: 'The clinic: a service at a place, never a person.' },
@@ -149,6 +151,7 @@ function patientOut(st, { a }) {
   const from = noShowFromMs(st.d, a);
   return { appointmentId: a.id, code: a.code, label: codeLabel(a.code), slotTime: a.slotTime, slotType: a.slotType, slotTypeWord: SLOT_TYPES[a.slotType] || a.slotType,
     state: a.state, stateName: a.state === 'cancelled' ? LEFT_REASON : APPOINTMENT_STATES[a.state].name, arrivedAt: a.arrivedAt, calledAt: a.calledAt, finishedAt: a.finishedAt,
+    clocks: { arrived: siteClock(st, a.arrivedAt), called: siteClock(st, a.calledAt), finished: siteClock(st, a.finishedAt) },
     waitMinutes: waitMinutes(a, st.now), mayMarkMissed: a.state === 'booked' && from != null && Date.parse(st.now) >= from, missedFrom: from == null ? null : new Date(from).toISOString(), rebook: Boolean(a.rebookOf) };
 }
 
@@ -195,7 +198,7 @@ function kpisOut(st, { since, until }, short) {
     'slot-utilisation': ratio((o) => slotUtilisation(st.d, o)),
     'referral-to-first-appointment': { value: ref.medianDays, n: ref.n, waiting: ref.waiting, numerator: null, denominator: null,
       byService: services.map((s) => ({ service: s, name: SERVICES[s], value: ref.byService[s]?.medianDays ?? null, n: ref.byService[s]?.n ?? 0,
-        waiting: waitingReferrals(st.codesD, st.index, { service: s, now: st.now }).length })) },
+        waiting: referralToFirst({ ...st.codesD, codes: new Map([...st.codesD.codes].filter(([, c]) => c.service === s)) }, st.index, { since, until }).waiting })) },
     'clinic-wait': { value: wait.medianMinutes, n: wait.n, numerator: null, denominator: null,
       byService: services.map((s) => { const w = clinicWait(st.d, { since, until, service: s }); return { service: s, name: SERVICES[s], value: w.n >= MIN_GROUP ? w.medianMinutes : null, n: w.n, tooFew: w.n < MIN_GROUP }; }) },
     'clinic-start-punctuality': (() => { const r = ratio((o) => startPunctuality(st.d, o)); return { ...r, nobodyCalled: startPunctuality(st.d, { since, until }).nobodyCalled }; })(),
@@ -230,7 +233,7 @@ async function daySummary(core, input) {
     const day = dayOf(st.d, s, st.now);
     const base = { ...clinicOut(st, s), templateSlots: day.templateSlots, capacity: day.capacity, used: day.used, empty: day.empty, cancelled: day.cancelled, missed: day.missed,
       attended: day.attended, leftBeforeSeen: day.leftBeforeSeen, firstCalledMinutes: day.firstCalledMinutes, overrunMinutes: day.overrunMinutes,
-      mayMarkHeld: (s.state === 'planned' || s.state === 'reduced') && st.today >= s.date && nowMs >= s.startMs };
+      mayMarkHeld: (s.state === 'planned' || s.state === 'reduced') && st.today >= s.date && nowMs >= s.startMs && (nowMs >= s.endMs || !day.open.length) };
     if (short) return base;
     // The Move-or-Cancel list: every open booking, with the next free slots of the same service.
     const moveTo = nextFreeSlots(all, { service: s.service, nowMs, exceptSessionId: s.id, limit: 3 })

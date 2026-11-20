@@ -20636,6 +20636,10 @@
                   "type": "boolean",
                   "description": "true: still booked after the booked time plus the grace, so \"Missed appointment\" may be recorded."
                 },
+                "clocks": {
+                  "type": "object",
+                  "description": "The site's own clock (HH:MM) for arrived, called and finished; null until then."
+                },
                 "missedFrom": {
                   "type": [
                     "string",
