@@ -11,7 +11,7 @@ import { h, setKids, fmtWait, moduleStyle } from '../ui.js';
 import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
-import { SCREENS, screensFor as screensOf } from '../screens.js';
+import { TITLES, screensFor } from './screens.js';
 import { STEP_ROLES, STEP_NAMES, UNITS } from './logic.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
@@ -21,8 +21,6 @@ const roleNames = (ids) => ids.map(roleName).join(' or ');
 // A request or an order named in plain words; the id itself stays in data attributes.
 const reqName = (id) => `Request ${Number(String(id).replace(/^req-/, '')) || id}`;
 const ordName = (id) => `Order ${Number(String(id).replace(/^ord-/, '')) || id}`;
-const TITLES = SCREENS.stores.titles;
-const screensFor = (role) => screensOf('stores', role);
 const MAX = 100000;
 const hoursText = (hrs) => (hrs == null ? '' : fmtWait(hrs * 60));
 const daysText = (d) => (d == null ? '' : d < 1 ? `${Math.max(1, Math.round(d * 24))} h` : `${Math.round(d * 10) / 10} days`);

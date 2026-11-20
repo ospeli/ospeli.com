@@ -12,13 +12,11 @@ import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
 import { TASK_RULES } from './logic.js';
-import { SCREENS, screensFor as screensOf, shownOn } from '../screens.js';
+import { TITLES, screensFor, shownOn } from './screens.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
 const roleNames = (ids) => ids.map((r) => roleById(r)?.name || r).join(', ');
 const TEAM_OF_ROLE = { porter: 'transport', cleaner: 'cleaning' };
-const TITLES = SCREENS.support.titles;
-const screensFor = (role) => screensOf('support', role);
 const ORDINAL = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'];
 const ordinal = (n) => ORDINAL[n - 1] || `Number ${n}`;
 const minsSince = (iso, now) => Math.max(0, Math.round((Date.parse(now) - Date.parse(iso)) / 60000));
@@ -244,7 +242,7 @@ function boardScreen(ctx, { names }) {
   const box = h('div', { class: 'sup-board' });
   const ui = { team: 'all' };
   let data = null;
-  const props = proposalsCard(ctx, { match: (p) => shownOn('support', p).includes('board'), describe: (p) => describeProposal(p, data, names) });
+  const props = proposalsCard(ctx, { match: (p) => shownOn(p).includes('board'), describe: (p) => describeProposal(p, data, names) });
   const load = async () => {
     const [list, kinds, ov] = await Promise.all([ctx.run('ospeli_tasks_list', { limit: 500 }), ctx.run('ospeli_tasks_kinds', {}), ctx.run('ospeli_support_overview', { days: 7 })]);
     data = { list, kinds, kindById: new Map(kinds.kinds.map((k) => [k.id, k])), ov, tasks: new Map(list.tasks.map((t) => [t.id, t])) };
@@ -540,7 +538,7 @@ function auditScreen(ctx, { places, names }) {
   const mayRecord = can(ctx.role, 'ospeli_support_audit_record');
   const marks = new Map(); // item id -> 'pass' | 'fail'; left out = not checked
   const pick = { risk: null, askRest: false };
-  const props = proposalsCard(ctx, { match: (p) => shownOn('support', p).includes('audit'), describe: (p) => describeProposal(p, null, names) });
+  const props = proposalsCard(ctx, { match: (p) => shownOn(p).includes('audit'), describe: (p) => describeProposal(p, null, names) });
   const where = placeSelect('aud-where', places, { blank: 'Choose the area' });
   const status = h('div', { role: 'status', 'data-test': 'aud-result' });
   let data = null;
@@ -700,7 +698,7 @@ function linenScreen(ctx, { places, names }) {
   const linenLines = (q) => q.lines.filter((l) => linenIds().has(l.itemId));
   // The shared rule Today uses to send a person here (screens.js, #148), plus a top-up waiting for linen.
   function linenProposal(p) {
-    if (shownOn('support', p, { linenIds: linenIds() }).includes('linen')) return true;
+    if (shownOn(p, { linenIds: linenIds() }).includes('linen')) return true;
     if (p.input.requestId) return data.waiting.some((q) => q.id === p.input.requestId);
     return false;
   }

@@ -107,7 +107,7 @@ export async function waitingDecisions(ctx) {
     const at = decideAt(p, ctx.role, moduleOf, { linenIds });
     if (!at) continue;
     const href = at.screen ? `#/${at.moduleId}/${at.screen}` : `#/${at.moduleId}`;
-    const page = byHref.get(href) || { id: at.moduleId, screen: at.screen, screenName: at.screen ? SCREENS[at.moduleId].titles[at.screen] : null, href, count: 0 };
+    const page = byHref.get(href) || { id: at.moduleId, screen: at.screen, screenName: at.screen ? SCREENS[at.moduleId].TITLES[at.screen] : null, href, count: 0 };
     page.count += 1;
     byHref.set(href, page);
   }
