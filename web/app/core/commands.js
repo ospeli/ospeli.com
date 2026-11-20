@@ -1052,10 +1052,14 @@ function stepIndex(map, version, stepId) {
   return i;
 }
 
+// Seconds of a walked map that were not seen (paused): inside start to finish, neither waiting nor hands-on.
+const notSeenOf = (inSec) => inSec.reduce((n, y) => n + (y.waitNotSeenSec || 0) + (y.workNotSeenSec || 0), 0);
+// Start to finish of a walked map in seconds, with the time not seen inside it: the map's headline (#149).
+const startToFinishSec = (list) => { const inSec = stepsInSeconds(list); return analyse(inSec).elapsed + notSeenOf(inSec); };
 const mapSummary = (m) => {
   const t = analyse(m.today); const p = analyse(m.proposed);
   return { id: m.id, title: m.title, from: m.from, steps: m.today.length, elapsedToday: t.elapsed, elapsedProposed: p.elapsed, revision: m.revision, updatedAt: m.updatedAt,
-    ...(m.walk ? { walk: true, elapsedSecToday: analyse(stepsInSeconds(m.today)).elapsed } : {}) };
+    ...(m.walk ? { walk: true, elapsedSecToday: startToFinishSec(m.today) } : {}) };
 };
 // A map made from one walk gets the walk's own guide: it asks, and offers no change to try.
 const visibleSuggestions = (map, list) => (map.walk ? suggestWalk(list, { clockMoved: !!map.walk.clockMoved }) : suggest(list))
@@ -1073,7 +1077,7 @@ COMMAND_LIST.push(
       maps: { type: 'array', items: { type: 'object', required: ['id', 'title', 'steps'], properties: {
         id: MAP_ID, title: { type: 'string' }, from: { type: 'string' }, steps: { type: 'integer' },
         elapsedToday: { type: 'integer' }, elapsedProposed: { type: 'integer' }, revision: { type: 'integer' }, updatedAt: TIME,
-        walk: { type: 'boolean', description: 'The map was made from one walk; its times were measured once.' }, elapsedSecToday: { type: 'integer', description: 'Start to finish in seconds, for a map made from a walk.' } } } },
+        walk: { type: 'boolean', description: 'The map was made from one walk; its times were measured once.' }, elapsedSecToday: { type: 'integer', description: 'Start to finish in seconds, for a map made from a walk, with any time not seen (paused) inside it: the same figure as the map\'s headline and ospeli_maps_summary\'s elapsedSec.' } } } },
       examples: { type: 'array', items: { type: 'object', required: ['from', 'title'], properties: { from: { type: 'string' }, title: { type: 'string' } } } } } },
     async run(core, input) {
       const store = mapStore(await core.getMeta(MAPS_KEY, null));
@@ -1095,7 +1099,7 @@ COMMAND_LIST.push(
         properties: { id: { type: 'string' }, startedAt: TIME, finishedAt: TIME, clockMoved: { type: 'boolean', description: 'Present and true when a tap was stamped earlier than the tap before it: the device clock was set back during the walk, so its times cannot be relied on.' },
           notSeenSec: { type: 'integer', minimum: 1, description: 'Seconds of the walk that were not seen (the person walking paused and stepped out). Inside start to finish; neither waiting nor hands-on.' },
           guidanceSeen: { type: 'boolean', description: 'The person confirmed the before-you-walk points before the first tap. Absent on walks made before this was recorded.' } } },
-      today: { type: 'object', required: ['stats'], properties: { stats: MAP_STATS, statsSec: { type: 'object', description: 'For a map made from a walk: the same numbers in seconds, from the measured times. elapsed is the observed time (waiting plus hands-on); notSeenSec is the paused time beside it, so start to finish is elapsed + notSeenSec. waitShare is waiting as a % of the observed time. plannedWaitSec is the part of wait a person marked planned or required (still inside wait).' }, steps: { type: 'array', items: MAP_STEP } } },
+      today: { type: 'object', required: ['stats'], properties: { stats: MAP_STATS, statsSec: { type: 'object', description: 'For a map made from a walk: the same numbers in seconds, from the measured times. elapsed is the observed time (waiting plus hands-on); notSeenSec is the paused time beside it, and startToFinish (elapsed + notSeenSec) is the headline on the map, the same figure as ospeli_maps_list and ospeli_maps_summary give. waitShare is waiting as a % of the observed time. plannedWaitSec is the part of wait a person marked planned or required (still inside wait).' }, steps: { type: 'array', items: MAP_STEP } } },
       proposed: { type: 'object', required: ['stats'], properties: { stats: MAP_STATS, statsSec: { type: 'object' }, steps: { type: 'array', items: MAP_STEP } } } } },
     async run(core, input) {
       const { map } = await loadMap(core, input.mapId);
@@ -1108,7 +1112,9 @@ COMMAND_LIST.push(
         stats.biggestWaitStepId = top;
         const sec = map.walk ? (({ timed: t2, ...x }) => ({ statsSec: { ...x, biggestWaitStepId: top, waitShare: waitShareOf(x.wait, x.work),
           plannedWaitSec: inSec.reduce((n, y) => n + (y.plannedWait ? y.wait || 0 : 0), 0),
-          notSeenSec: inSec.reduce((n, y) => n + (y.waitNotSeenSec || 0) + (y.workNotSeenSec || 0), 0) } }))(analyse(inSec)) : {};
+          notSeenSec: notSeenOf(inSec), startToFinish: x.elapsed + notSeenOf(inSec) } }))(analyse(inSec)) : {};
+        // On a walked map the minute-rounded share could read 0% beside the measured one (#149): give the measured one.
+        if (sec.statsSec) stats.workShare = sec.statsSec.workShare;
         return input.format === 'short' ? { stats, ...sec } : { stats, ...sec, steps: list };
       };
       return { id: map.id, title: map.title, start: map.start, revision: map.revision, ...(map.walk ? { walk: map.walk } : {}),

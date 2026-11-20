@@ -4395,7 +4395,7 @@
                 },
                 "elapsedSecToday": {
                   "type": "integer",
-                  "description": "Start to finish in seconds, for a map made from a walk."
+                  "description": "Start to finish in seconds, for a map made from a walk, with any time not seen (paused) inside it: the same figure as the map's headline and ospeli_maps_summary's elapsedSec."
                 }
               }
             }
@@ -4611,7 +4611,7 @@
               },
               "statsSec": {
                 "type": "object",
-                "description": "For a map made from a walk: the same numbers in seconds, from the measured times. elapsed is the observed time (waiting plus hands-on); notSeenSec is the paused time beside it, so start to finish is elapsed + notSeenSec. waitShare is waiting as a % of the observed time. plannedWaitSec is the part of wait a person marked planned or required (still inside wait)."
+                "description": "For a map made from a walk: the same numbers in seconds, from the measured times. elapsed is the observed time (waiting plus hands-on); notSeenSec is the paused time beside it, and startToFinish (elapsed + notSeenSec) is the headline on the map, the same figure as ospeli_maps_list and ospeli_maps_summary give. waitShare is waiting as a % of the observed time. plannedWaitSec is the part of wait a person marked planned or required (still inside wait)."
               },
               "steps": {
                 "type": "array",
