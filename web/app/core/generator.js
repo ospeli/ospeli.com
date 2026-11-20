@@ -6,6 +6,8 @@
 
 import { ROLES } from './model.js';
 import { MODULE_PACKS } from './modules.js';
+import { SLOT_EVENT_TYPES } from './slots.js';
+import { CODE_EVENT_TYPES } from './codes.js';
 
 export const HOSPITAL_NAME = 'Example General Hospital';
 export const DEFAULT_SEED = 20261106;
@@ -298,15 +300,19 @@ export function generateHospital({ seed = DEFAULT_SEED, end, days = 30, modules 
 
   // Each module adds its own synthetic history (core/modules.js). A module gets its own random
   // stream, so adding one never changes the events above or another module's. It may only write
-  // its own kinds of event, task.* for the shared task object and, when it lists stock items,
-  // stock.* for the shared stock item.
+  // its own kinds of event, task.* for the shared task object, stock.* when it lists stock
+  // items, slot.*, session.* and appointment.* when it declares a type of session, and code.*
+  // when it declares a kind of episode.
   for (const p of modules ? MODULE_PACKS : []) {
     if (typeof p.seed !== 'function') continue;
     const mine = p.seed({ r: rng((seed ^ hashOf(p.id)) >>> 0), startMs, endMs, days, entities, events: raw.map((e) => ({ ...e })) }) || [];
     for (const e of mine) {
       const stock = Array.isArray(p.STOCK_ITEMS) && p.STOCK_ITEMS.length > 0;
-      const ok = typeof e?.type === 'string' && (e.type.startsWith(p.EVENT_PREFIX) || (e.type.startsWith('task.') && Array.isArray(p.TASK_KINDS) && p.TASK_KINDS.length) || (e.type.startsWith('stock.') && stock));
-      if (!ok) throw new Error(`module ${p.id}: a seed may only write ${p.EVENT_PREFIX}* events${p.TASK_KINDS?.length ? ' and task.* events' : ''}${stock ? ' and stock.* events' : ''}, not ${e?.type}`);
+      const sessions = Array.isArray(p.SESSION_TYPES) && p.SESSION_TYPES.length > 0;
+      const codes = Array.isArray(p.CODE_KINDS) && p.CODE_KINDS.length > 0;
+      const ok = typeof e?.type === 'string' && (e.type.startsWith(p.EVENT_PREFIX) || (e.type.startsWith('task.') && Array.isArray(p.TASK_KINDS) && p.TASK_KINDS.length) || (e.type.startsWith('stock.') && stock)
+        || (sessions && SLOT_EVENT_TYPES.includes(e.type) && !e.type.startsWith('code.')) || (codes && CODE_EVENT_TYPES.includes(e.type)));
+      if (!ok) throw new Error(`module ${p.id}: a seed may only write ${p.EVENT_PREFIX}* events${p.TASK_KINDS?.length ? ' and task.* events' : ''}${stock ? ' and stock.* events' : ''}${sessions ? ' and slot.*, session.* and appointment.* events' : ''}${codes ? ' and code.* events' : ''}, not ${e?.type}`);
       push(e.t, e.type, e.subject, e.actorRole, e.data ?? null);
     }
   }

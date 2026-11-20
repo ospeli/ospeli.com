@@ -16,6 +16,10 @@
 //                visit order; the roles that run, plan, book and mark steps) and of slot, for the
 //                shared appointment or slot object (core/slots.js); also NO_SHOW_GRACE_MINUTES and
 //                SLOT_REASONS (extra reasons to pick from). The module writes no booking command.
+//   CODE_KINDS   optional: its kinds of episode followed by a patient code (services to pick from,
+//                stages in order, the roles that open, mark stages and close), for the shared
+//                patient code with a stage timeline (core/codes.js); also CODE_CLOSE_REASONS
+//                (extra reasons to pick from). The module writes no code command of its own.
 //   KPIS         optional: [{ id, name, unit, definition, source, ... }] with a calculation each
 //   seed         optional: (ctx) => [{ t, type, subject, actorRole, data }] synthetic events for
 //                the example hospital; ctx = { r, startMs, endMs, days, entities, events }

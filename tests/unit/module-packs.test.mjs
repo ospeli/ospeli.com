@@ -13,6 +13,8 @@ import { validateEvent } from '../../web/app/core/model.js';
 import { MODULES } from '../../web/app/modules/registry.js';
 import { slotCatalogue } from '../../web/app/core/slots.js';
 import { slotCommands } from '../../web/app/core/slot-commands.js';
+import { codeCatalogue } from '../../web/app/core/codes.js';
+import { codeCommands } from '../../web/app/core/code-commands.js';
 
 const APP = fileURLToPath(new URL('../../web/app/', import.meta.url));
 const ROLE_IDS = ROLES.map((r) => r.id);
@@ -138,4 +140,17 @@ test('session and slot types the modules declare pass the shared slot object\'s 
   assert.deepEqual(offered, slotCommands(MODULE_PACKS).map((c) => c.name));
   assert.equal(offered.length > 0, declared.length > 0);
   for (const p of MODULE_PACKS) for (const c of p.COMMANDS || []) assert.ok(!c.name.startsWith('ospeli_slots_'), `${p.id} writes no slot command of its own`);
+});
+
+test('kinds of episode the modules declare pass the shared patient code object\'s checks, and its commands are offered only then', () => {
+  const { kinds } = codeCatalogue(MODULE_PACKS, ROLE_IDS); // throws on a malformed kind, a reused id or a made-up role
+  const declared = MODULE_PACKS.flatMap((p) => p.CODE_KINDS || []);
+  assert.equal(kinds.size, declared.length);
+  const offered = listCommands().filter((c) => c.name.startsWith('ospeli_codes_')).map((c) => c.name);
+  assert.deepEqual(offered, codeCommands(MODULE_PACKS).map((c) => c.name));
+  assert.equal(offered.length > 0, declared.length > 0);
+  for (const p of MODULE_PACKS) {
+    for (const c of p.COMMANDS || []) assert.ok(!c.name.startsWith('ospeli_codes_'), `${p.id} writes no code command of its own`);
+    assert.ok(!String(p.EVENT_PREFIX || '').startsWith('code.'), `${p.id} writes code.* events only through the shared commands`);
+  }
 });

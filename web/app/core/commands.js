@@ -16,6 +16,7 @@ import { MODULE_PACKS, MODULE_COMMANDS } from './modules.js';
 import { taskCommands } from './task-commands.js';
 import { stockCommands } from './stock-commands.js';
 import { slotCommands } from './slot-commands.js';
+import { codeCommands } from './code-commands.js';
 import { ROLES, roleById, currentWords } from './model.js';
 import { BED_STATES, OUT_OF_SERVICE_REASONS, deriveBoard, bedActions, actionEvents, countStates } from './beds.js';
 import { KPIS, kpiById, computeKpi, formatKpi, meetsTarget } from './kpi.js';
@@ -1572,7 +1573,7 @@ COMMAND_LIST.push(
 // The shared task object (core/tasks.js), with the kinds of task the modules add, the shared stock
 // item and the shared appointment or slot object (no category or session type in any module: no
 // commands), and then each module's own commands (core/modules.js). A name may be used once.
-COMMAND_LIST.push(...taskCommands(MODULE_PACKS), ...stockCommands(MODULE_PACKS), ...slotCommands(MODULE_PACKS), ...MODULE_COMMANDS);
+COMMAND_LIST.push(...taskCommands(MODULE_PACKS), ...stockCommands(MODULE_PACKS), ...slotCommands(MODULE_PACKS), ...codeCommands(MODULE_PACKS), ...MODULE_COMMANDS);
 {
   const seen = new Set();
   for (const c of COMMAND_LIST) {
