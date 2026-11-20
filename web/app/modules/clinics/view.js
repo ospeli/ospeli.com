@@ -109,7 +109,7 @@ function queueScreen(ctx) {
   let findTimer = null;
   function findBox() {
     if (!findInput) {
-      findInput = h('input', { id: 'cl-find', type: 'text', inputmode: 'numeric', autocomplete: 'off', maxlength: '6', 'data-test': 'find', 'aria-describedby': 'cl-find-hint' });
+      findInput = h('input', { id: 'cl-find', type: 'text', inputmode: 'numeric', autocomplete: 'off', maxlength: '6', placeholder: 'e.g. 12', 'data-test': 'find', 'aria-describedby': 'cl-find-hint' });
       findInput.addEventListener('input', () => {
         const digits = findInput.value.replace(/\D/g, '').slice(0, 6); // a number only: nothing typed reaches a command or the screen as text
         if (digits !== findInput.value) findInput.value = digits;
@@ -117,10 +117,10 @@ function queueScreen(ctx) {
         findTimer = setTimeout(() => { ui.find = digits; load(); }, 250);
       });
     }
-    return h('div', { class: 'cl-find' }, h('label', { for: 'cl-find' }, 'Find patient number'),
-      h('div', { class: 'cl-find-row' }, findInput,
+    return h('div', { class: 'cl-find' },
+      h('div', { class: 'cl-find-row' }, h('label', { for: 'cl-find' }, 'Find patient P'), findInput,
         ui.find ? h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-test': 'find-clear', onclick: () => { findInput.value = ''; ui.find = ''; load(); } }, 'Show all') : null),
-      h('p', { class: 'cl-hint', id: 'cl-find-hint' }, 'The number after P: for Patient P12, type 12.'));
+      h('span', { class: 'sr-only', id: 'cl-find-hint' }, 'Type the number after P: for Patient P12, type 12.'));
   }
 
   function mainButton(p) {
@@ -187,7 +187,9 @@ function queueScreen(ctx) {
       onclick: () => { ui.sessionId = x.sessionId; ui.active.clear(); load(); } }, `${x.serviceWord.replace(/ clinic$/, '')} ${x.start}`))) : null;
     // A row done before this visit folds away; a row this person saw open keeps its place, so a
     // second tap never lands on the row that moved up under it.
-    for (const p of data.patients) if (!['finished', 'no-show', 'cancelled'].includes(p.state)) ui.active.add(p.appointmentId);
+    // The desk works the patients still to arrive; the nurse works everyone here or to come.
+    const mine = desk ? ['booked'] : ['booked', 'arrived', 'called'];
+    for (const p of data.patients) if (mine.includes(p.state)) ui.active.add(p.appointmentId);
     const folded = ui.find ? [] : data.patients.filter((p) => !ui.active.has(p.appointmentId));
     const list = data.patients.filter((p) => !folded.includes(p));
     setKids(box,
@@ -203,7 +205,7 @@ function queueScreen(ctx) {
             h('span', {}, n.longestWaitMinutes != null ? `longest ${fmtWait(n.longestWaitMinutes)}` : 'nobody yet')),
           h('div', { class: 'stat', 'data-count': 'done' }, h('span', {}, 'Finished'), h('b', {}, String(n.finished)), h('span', {}, `${n.withClinician} in now, ${n.missed} missed`)))),
       findBox(),
-      folded.length ? detailsBox(`Seen or missed already (${folded.length})`, 'done-rows', `done:${c.sessionId}`, h('ol', { class: 'cl-rows' }, folded.map(row))) : null,
+      folded.length ? detailsBox(desk ? `Here already, seen or missed (${folded.length})` : `Seen or missed already (${folded.length})`, 'done-rows', `done:${c.sessionId}`, h('ol', { class: 'cl-rows' }, folded.map(row))) : null,
       list.length ? h('ol', { class: 'cl-rows', 'data-test': 'queue' }, list.map(row))
         : h('p', { class: 'cl-empty', 'data-test': 'queue-empty' }, ui.find ? `No Patient P${ui.find} in this clinic today.` : folded.length ? 'Everyone booked has been seen or marked.' : 'Nobody is booked into this clinic.'),
       mayStep ? null : h('p', { class: 'cl-hint', 'data-test': 'read-only' }, `${roleById(ctx.role)?.name || 'This role'} can see the queue. Arrivals and calls are marked by ${roleNames('ospeli_slots_step')}.`),

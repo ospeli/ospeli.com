@@ -29,9 +29,9 @@
 /* the queue */
 .mod-clinics .cl-clinic h2 { margin: 0 0 2px; font-size: 1.25rem; }
 .mod-clinics .cl-find { margin: 10px 0; max-width: 640px; }
-.mod-clinics .cl-find label { display: block; font-weight: 800; margin-bottom: 4px; }
-.mod-clinics .cl-find-row { display: flex; gap: 8px; align-items: center; }
-.mod-clinics .cl-find input { font: inherit; font-size: 1.125rem; min-height: 48px; width: 9em; max-width: 100%; padding: 6px 12px; border: 1.5px solid var(--line-strong); border-radius: 10px; background: var(--surface); color: var(--ink); }
+.mod-clinics .cl-find label { font-weight: 800; }
+.mod-clinics .cl-find-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.mod-clinics .cl-find input { font: inherit; font-size: 1.125rem; min-height: 48px; width: 7em; max-width: 100%; padding: 6px 12px; border: 1.5px solid var(--line-strong); border-radius: 10px; background: var(--surface); color: var(--ink); }
 .mod-clinics .cl-rows, .mod-clinics .cl-refs, .mod-clinics .cl-days, .mod-clinics .cl-tpls, .mod-clinics .cl-moves { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
 .mod-clinics .cl-row, .mod-clinics .cl-ref { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; background: var(--surface);
   border: 1px solid var(--line); border-left: 6px solid var(--line-strong); border-radius: 10px; padding: 10px 12px; min-width: 0; max-width: 760px; }
