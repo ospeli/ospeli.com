@@ -123,6 +123,8 @@ test('the clinic receptionist\'s first five minutes on a 390 px touch screen: op
   const undone = await page.evaluate(async (s) => (await window.ospeli.core.events({ subject: s })).map((e) => [e.type, e.actorRole, e.data?.undo ?? null]), hereId);
   assert.deepEqual(undone.slice(-2), [['appointment.arrived', 'clinic-receptionist', null], ['appointment.step-undone', 'clinic-receptionist', 'arrived']]);
   assert.equal(await page.locator(`[data-appointment="${hereId}"] [data-step="arrived"]`).count(), 1, 'Arrived can be marked again');
+  assert.ok(await page.locator(`[data-appointment="${hereId}"] [data-step="arrived"]`).isDisabled(), 'but not in the first moments after the undo, so a second tap cannot redo it');
+  assert.match(await page.locator(`[data-appointment="${hereId}"] [data-step="arrived"]`).textContent(), /^Arrived \(wait \d s\)$/);
   // An early arrival's long wait is shown with the booked time; the colour follows the time past it.
   const early = await page.evaluate(() => [...document.querySelectorAll('[data-test="here-now"] [data-test="wait"]')].map((x) => [x.textContent, x.className]));
   assert.ok(early.every(([t, cls]) => /booked \d\d:\d\d, arrived \d\d:\d\d/.test(t) && (/past booked time/.test(t) ? true : !/st-late/.test(cls))), JSON.stringify(early));

@@ -121,6 +121,9 @@ function queueScreen(ctx) {
       // After an undo the row's panels start closed, so nothing that writes opens under the finger.
       for (const k of ['missed', 'unmiss', 'left', 'uncall']) openPanels.delete(`${k}:${p.appointmentId}`);
       ui.undone.add(p.appointmentId);
+      // The button the row gets back (Arrived, Call in) waits a moment, as Finished does after Call in,
+      // so a second tap on the redrawn row cannot record the step just undone.
+      ui.lockUntil.set(p.appointmentId, Date.now() + LOCK_MS);
       act('ospeli_slots_step_correct', { appointmentId: p.appointmentId, undo, expectedState: p.state, ...(reason ? { reason } : {}) }, UNDO_WORDS[undo](p.label), {
         onError: (err) => { if (err.code === 'conflict') { ctx.toast(`Not undone: ${err.message}`); return true; } return false; } });
     } }, label);
@@ -154,8 +157,13 @@ function queueScreen(ctx) {
           onDone: () => { if (step === 'called') ui.lockUntil.set(p.appointmentId, Date.now() + LOCK_MS); },
           onError: (err) => { if (err.code === 'conflict') { ctx.toast(`Already changed: ${err.message}`); return true; } return false; } });
       } }, extra.text || label);
-    if (desk && p.state === 'booked') return stepBtn('arrived', 'Arrived', 'cl-arrive');
-    if (nurse && p.state === 'arrived') return stepBtn('called', 'Call in', 'cl-call');
+    const wait = (label) => {
+      const left = (ui.lockUntil.get(p.appointmentId) || 0) - Date.now();
+      if (left > 0) { clearTimeout(timer); timer = setTimeout(draw, 500); }
+      return left > 0 ? { locked: true, text: `${label} (wait ${Math.ceil(left / 1000)} s)` } : {};
+    };
+    if (desk && p.state === 'booked') return stepBtn('arrived', 'Arrived', 'cl-arrive', wait('Arrived'));
+    if (nurse && p.state === 'arrived') return stepBtn('called', 'Call in', 'cl-call', wait('Call in'));
     if (nurse && p.state === 'called') {
       const left = (ui.lockUntil.get(p.appointmentId) || 0) - Date.now();
       if (left > 0) { clearTimeout(timer); timer = setTimeout(draw, 500); }
@@ -508,7 +516,8 @@ function summaryScreen(ctx) {
     // The hints read every row shown, closed here or not, so none vanishes and moves the list up.
     return h('section', { class: 'cl-close', 'data-test': 'close-out' },
       h('p', {}, h('b', {}, c.open.length ? `Still open (${c.open.length}): close each one, then mark the clinic held.` : 'All closed: the clinic can be marked held.')),
-      rows.some((a) => a.state === 'booked') ? h('p', { class: 'cl-hint', 'data-test': 'seen-not-arrived' }, 'Seen but never marked Arrived? Do not record a missed appointment: mark Arrived on the ', h('a', { href: '#/clinics/queue' }, 'clinic queue'), ', then come back here for "Seen, no times".') : null,
+      rows.some((a) => a.state === 'booked') ? h('p', { class: 'cl-hint', 'data-test': 'seen-not-arrived' }, 'Seen but never marked Arrived? Do not record a missed appointment: mark Arrived on the clinic queue, then come back here for "Seen, no times".') : null,
+      rows.some((a) => a.state === 'booked') ? h('p', {}, h('a', { class: 'btn btn-ghost btn-small', href: '#/clinics/queue', 'data-test': 'to-queue' }, 'Open the clinic queue')) : null,
       rows.some((a) => a.state === 'called') ? h('p', { class: 'cl-hint', 'data-test': 'late-finish' }, 'A Finished tapped now is recorded at this time, after the clinic\'s end, so the overrun figure will include it.') : null,
       rows.some((a) => a.state === 'arrived' || a.state === 'called') ? h('p', { class: 'cl-hint', 'data-test': 'not-tapped' }, `Seen but not tapped through? "${data.picks.noTimesName}" closes the visit as attended with no call or finish time. The start, wait and overrun figures leave it out and say how many.`) : null,
       h('ul', { class: 'cl-moves' }, rows.map((a) => (!openIds.has(a.appointmentId) ? keepPx(h('li', { class: 'is-done', 'data-appointment': a.appointmentId, 'data-state': 'closed', 'data-test': 'closed-here' },
