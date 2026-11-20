@@ -38,7 +38,7 @@ export const KPIS = [
     definition: `Booked journeys whose vehicle arrived at pickup no later than ${ON_TIME_WINDOW} minutes after the booked time, divided by booked journeys due in the period. Arrival at pickup is measured, not departure: departure also waits on the patient and the ward.`,
     counts: `Booked journeys whose vehicle arrived at pickup within ${ON_TIME_WINDOW} minutes of the booked time, or before it (the window is an example setting, not a standard).`,
     outOf: 'Booked journeys whose booked time is in the period. A journey delayed or cancelled for a transport reason (no vehicle, no escort, no crew, vehicle fault, other) counts as not on time; so does one whose vehicle had not arrived when its window closed.',
-    leavesOut: 'Journeys delayed or cancelled for the requester\'s reason (patient, paperwork or destination not ready, no longer needed), and journeys whose window has not closed yet.',
+    leavesOut: 'Journeys delayed or cancelled for the requester\'s reason (patient, paperwork or destination not ready, no longer needed), and journeys whose window has not closed yet. Only a delay or cancellation recorded before the vehicle arrived at pickup (or, with no arrival, before the window closed) is read: one recorded later is about the rest of the journey.',
     source: 'local definition', target: null, targetText: 'No target set: track the trend.' },
   { id: 'handover-time', name: 'Handover time at destination', unit: 'minutes',
     definition: 'Minutes from the vehicle arriving at the destination to the handover being done: the median and the 90th percentile (nearest rank).',
@@ -249,6 +249,14 @@ async function checkStep(core, input, events) {
   const next = nextStep(t);
   if (!next) throw new CommandError('conflict', `${t.id} has no vehicle yet. The transport coordinator gives it one first.`);
   if (next.id !== input.step) throw new CommandError('conflict', `Steps go in order. The next step for ${t.id} is "${next.label}" (${next.id}).`, { nextStep: next.id });
+  // A journey is not started in a vehicle that is out of service (ospeli/ospeli#139): the command
+  // refuses it, not only the screen. A journey already on the road may still be finished.
+  if (['arrived-pickup', 'departed'].includes(input.step) && t.vehicleId) {
+    const w = await world(core);
+    const v = w.vehicles.find((x) => x.id === t.vehicleId);
+    const f = v && deriveFleet(events ?? await core.events(), w.vehicles, { now: core.now(), shift: null }).get(v.id);
+    if (f?.offRoad) throw new CommandError('conflict', `${currentWords(v.name)} is out of service, so ${t.id} cannot start in it. The transport coordinator gives the journey to a vehicle that is in service.`, { vehicleOffRoad: true });
+  }
 }
 async function checkDelay(core, input, events) {
   const t = await transferFor(core, input, events);

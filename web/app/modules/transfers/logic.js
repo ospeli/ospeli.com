@@ -299,11 +299,16 @@ export function onTimePickup(transfers, { since, until, windowMinutes = ON_TIME_
   let on = 0; let due = 0; let leftOut = 0; let pending = 0; let transportSide = 0;
   for (const t of transfers.values()) {
     if (t.needed !== 'booked' || !inPeriod(t.bookedFor, since, until)) continue;
-    const reasons = [...t.delays.map((d) => d.reason), ...(t.state === 'cancelled' ? [t.cancelReason] : [])];
-    if (reasons.some((r) => REASON[r]?.side === 'requester')) { leftOut += 1; continue; }
     const closes = Date.parse(t.bookedFor) + windowMinutes * MIN;
-    if (reasons.some((r) => REASON[r]?.side === 'transport')) { due += 1; transportSide += 1; continue; }
     const arrived = t.steps['arrived-pickup'];
+    // Only what happened before the vehicle arrived at pickup (or, with no arrival, before the window
+    // closed) can explain the pickup time: a delay or cancellation recorded later is about the rest of
+    // the journey and changes nothing here (ospeli/ospeli#139).
+    const cutoff = arrived ? Date.parse(arrived) : closes;
+    const before = (at) => at != null && Date.parse(at) <= cutoff;
+    const reasons = [...t.delays.filter((d) => before(d.at)).map((d) => d.reason), ...(t.state === 'cancelled' && before(t.cancelledAt) ? [t.cancelReason] : [])];
+    if (reasons.some((r) => REASON[r]?.side === 'requester')) { leftOut += 1; continue; }
+    if (reasons.some((r) => REASON[r]?.side === 'transport')) { due += 1; transportSide += 1; continue; }
     if (arrived && Date.parse(arrived) <= closes) { due += 1; on += 1; continue; }
     if (arrived || Date.parse(until) >= closes) { due += 1; continue; }
     pending += 1;
