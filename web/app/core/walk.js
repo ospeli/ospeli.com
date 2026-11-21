@@ -341,7 +341,7 @@ export function longestWaits(stepsSec) {
 // What the guide says about a walked map. One walk is one observation, so nothing here offers
 // to change a time: it asks what the longest wait was waiting for, and to walk again.
 export const WALK_BASIS = {
-  longestWait: `Waits under ${MIN_LONGEST_WAIT_SEC} seconds are not counted as a longest wait, so the short gap between two taps is not a wait. ${MIN_LONGEST_WAIT_SEC} seconds is an example setting, not a standard.`,
+  longestWait: `Example setting, not a standard: waits under ${MIN_LONGEST_WAIT_SEC} seconds are not named, so the gap between two taps is not read as a wait.`,
   unnamed: 'Local definition: a step needs a name and a role to be read on a map.',
   limits: 'Method: a process walk in the manner of lean value stream mapping (Rother and Shook, Learning to See). One walk is one observation.',
   clock: 'Local definition: a tap stamped earlier than the tap before it (a step tap, Pause or I am back) means the device clock was set back.',
