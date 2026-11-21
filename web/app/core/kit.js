@@ -21,6 +21,10 @@ export class CommandError extends Error {
 
 export const ALL_ROLES = ROLES.map((r) => r.id);
 export const ID = { type: 'string', pattern: '^[a-z0-9][a-z0-9-]*$', maxLength: 64 };
+// True when x has an id's shape (the ID schema above). Readers of module events use it so a
+// sentence in an id field (an edited import, #138) is never kept as a place, asset or vehicle.
+const ID_RE = new RegExp(ID.pattern);
+export const isId = (x) => typeof x === 'string' && x.length <= ID.maxLength && ID_RE.test(x);
 export const TIME = { type: 'string', format: 'date-time', maxLength: 40 };
 export const SYNTHETIC = { type: 'boolean', description: 'True while the data on this device is synthetic.' };
 

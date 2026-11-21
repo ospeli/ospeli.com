@@ -62,7 +62,8 @@ async function world(core) {
   const shifts = all.filter((e) => e.type === 'shift' && /^\d\d:\d\d$/.test(e.start || '')).map((s) => ({ id: s.id, name: s.name, start: s.start, end: s.end }));
   const vehicles = all.filter((e) => e.type === 'asset' && e.kind === 'vehicle').sort((a, b) => (a.id < b.id ? -1 : 1));
   const siteOf = (id) => { let p = map.get(id); for (let i = 0; p && p.type !== 'site' && i < 8; i++) p = map.get(p.parentId); return p?.type === 'site' ? p : null; };
-  const name = (id) => (map.has(id) ? currentWords(map.get(id).name) : id);
+  // An id that is not on this site is never answered as its own name (#138).
+  const name = (id, gone = 'a place no longer on this site') => (map.has(id) ? currentWords(map.get(id).name) : gone);
   return { all, map, offsetMinutes, shifts: shifts.length ? shifts : SHIFTS, vehicles, siteOf, name,
     sites: all.filter((e) => e.type === 'site'), wards: all.filter((e) => e.type === 'ward'), departments: all.filter((e) => e.type === 'department'), beds: all.filter((e) => e.type === 'bed') };
 }
@@ -86,7 +87,7 @@ function transferOut(t, w, now, fleetMap) {
     minutesToBooked: t.needed === 'booked' ? minsBetween(now, t.bookedFor) : null, late,
     mobility: t.mobility, mobilityName: MOBILITY_NAME[t.mobility], escort: t.escort, escortName: ESCORT_NAME[t.escort],
     equipment: t.equipment.map((x) => ({ id: x, name: EQUIPMENT_NAME[x] })), bayMove: t.bayMove,
-    vehicleId: t.vehicleId, vehicleName: t.vehicleId ? w.name(t.vehicleId) : null, vehicleOffRoad: !!v?.offRoad,
+    vehicleId: t.vehicleId, vehicleName: t.vehicleId ? w.name(t.vehicleId, 'a vehicle no longer on this site') : null, vehicleOffRoad: !!v?.offRoad,
     nextStep: step ? { id: step.id, label: step.label } : null,
     steps: STEPS.map((s) => ({ id: s.id, label: s.label, at: t.steps[s.id] || null, clock: t.steps[s.id] ? whenText(t.steps[s.id], now, w.offsetMinutes) : null })),
     delays: t.delays.map((d) => ({ at: d.at, reason: d.reason, reasonName: REASON[d.reason].name, byRole: d.byRole })),

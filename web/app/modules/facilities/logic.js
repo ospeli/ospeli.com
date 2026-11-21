@@ -8,6 +8,7 @@
 // Measure flows, never people: no number here counts or ranks a member of staff.
 
 import { deriveWorkOrders, REPEAT_WINDOW_DAYS } from '../../core/workorders.js';
+import { isId } from '../../core/kit.js';
 
 const MIN = 60e3;
 const HOUR = 3600e3;
@@ -107,7 +108,7 @@ export function deriveChecks(events) {
     const kind = CHECK_KINDS[d.checkKind];
     if (!kind) continue;
     const targetId = kind.target === 'asset' ? d.assetId : d.placeId;
-    if (typeof targetId !== 'string' || !targetId) continue;
+    if (!isId(targetId)) continue; // an id's shape, never a sentence (#138)
     const c = { id: e.subject, checkKind: d.checkKind, targetId, at: e.at, byRole: e.actorRole };
     if (kind.needs.includes('result')) { if (!RESULTS[d.result]) continue; c.result = d.result; }
     if (kind.needs.includes('runMinutes')) { if (!RUN_MINUTES.includes(d.runMinutes)) continue; c.runMinutes = d.runMinutes; }
@@ -154,7 +155,7 @@ export function deriveOutages(events) {
   for (const e of events) {
     if (e.type === 'facilities.outage-started' && OUTAGE_ID.test(e.subject) && !map.has(e.subject)) {
       const d = e.data || {};
-      if (!UTILITIES[d.utility] || typeof d.placeId !== 'string' || !CAUSES[d.cause]) continue;
+      if (!UTILITIES[d.utility] || !isId(d.placeId) || !CAUSES[d.cause]) continue;
       map.set(e.subject, { id: e.subject, utility: d.utility, placeId: d.placeId, cause: d.cause, startedAt: e.at, startedByRole: e.actorRole, endedAt: null, endedByRole: null,
         startBackdatedMinutes: AGO_MINUTES.includes(d.backdatedMinutes) ? d.backdatedMinutes : 0, endBackdatedMinutes: 0 });
     } else if (e.type === 'facilities.outage-ended') {
@@ -432,7 +433,7 @@ export function deriveWaste(events) {
   for (const e of events) {
     if (e.type !== 'facilities.waste-recorded' || !WASTE_ID.test(e.subject) || seen.has(e.subject)) continue;
     const d = e.data || {};
-    if (typeof d.placeId !== 'string' || !d.placeId || !WASTE_STREAMS[d.stream] || !WASTE_OUTCOMES[d.outcome]) continue;
+    if (!isId(d.placeId) || !WASTE_STREAMS[d.stream] || !WASTE_OUTCOMES[d.outcome]) continue;
     const w = { id: e.subject, placeId: d.placeId, stream: d.stream, outcome: d.outcome, at: e.at, byRole: e.actorRole,
       backdatedMinutes: AGO_MINUTES.includes(d.backdatedMinutes) ? d.backdatedMinutes : 0 };
     if (d.outcome === 'collected') { if (!WASTE_CONTAINERS.includes(d.containers) || d.reason != null) continue; w.containers = d.containers; }

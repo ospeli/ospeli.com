@@ -77,6 +77,7 @@ export const LOAD_NOT_FOR = 'The load pick records what you saw. It does not say
 export const WASTE_NOT_FOR = 'Not a waste consignment, tracking or billing record, and nothing is reported outside the site. It does not check what is inside a container or how waste was sorted, and names no contractor. The streams are an example list, not a standard: your site\'s waste policy names its own.';
 
 // ---- places and assets ----
+const GONE_PLACE = 'a place no longer on this site';
 async function siteInfo(core) {
   const all = await core.listEntities();
   const places = new Map(all.filter((e) => PLACE_TYPES.includes(e.type)).map((e) => [e.id, e]));
@@ -84,7 +85,8 @@ async function siteInfo(core) {
   const offsetMinutes = all.find((e) => e.type === 'site' && e.utcOffsetMinutes != null)?.utcOffsetMinutes ?? 0;
   const assetById = new Map(assets.map((a) => [a.id, a]));
   const anyPlace = new Map(all.filter((e) => ['site', 'building', 'department', 'ward'].includes(e.type)).map((e) => [e.id, e]));
-  const nameOf = (x) => { const e = assetById.get(x) || anyPlace.get(x); return e ? currentWords(e.name) : x; };
+  // An id that is not on this site is never answered as its own name (#138).
+  const nameOf = (x) => { const e = assetById.get(x) || anyPlace.get(x); return e ? currentWords(e.name) : GONE_PLACE; };
   const isWard = (x) => anyPlace.get(x)?.type === 'ward'; // by type, never by how the id is spelt
   return { places, assets, assetById, offsetMinutes, nameOf, isWard, targets: scheduleTargets(SCHEDULE, { assets, places }) };
 }

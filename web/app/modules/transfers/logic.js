@@ -8,7 +8,7 @@
 // Measure flows, never people: every number is about journeys and vehicles. An event records the
 // role that did it, never a person, and nothing here counts, times or ranks a driver or a crew.
 
-import { median, MIN, HOUR, DAY } from '../../core/kit.js';
+import { median, MIN, HOUR, DAY, isId } from '../../core/kit.js';
 
 // ---- pick lists (nothing is typed, so no clinical note or personal detail can go in) ----
 export const TYPES = [
@@ -194,7 +194,7 @@ export function deriveTransfers(events) {
     const d = e.data || {};
     if (e.type === 'transfers.requested') {
       if (!TRF_ID.test(e.subject) || all.has(e.subject) || !TYPE_NAME[d.type] || !MOBILITY_NAME[d.mobility] || !ESCORT_NAME[d.escort]) continue;
-      if (!d.fromPlace || (!d.toSite && !OUTSIDE_NAME[d.toOutside])) continue;
+      if (!isId(d.fromPlace) || (d.toSite ? !isId(d.toSite) : !OUTSIDE_NAME[d.toOutside])) continue; // ids, never a sentence (#138)
       if (!['asap', 'booked'].includes(d.needed) || (d.needed === 'booked' && Number.isNaN(Date.parse(d.bookedFor)))) continue;
       // bookedFor is kept in one spelling of the moment: times here are compared as text (19 Nov).
       all.set(e.subject, {
@@ -208,7 +208,7 @@ export function deriveTransfers(events) {
     const t = all.get(e.subject);
     if (!t || t.state === 'cancelled' || t.state === 'handed-over') continue;
     if (e.type === 'transfers.assigned') {
-      if ((t.state === 'waiting' || t.state === 'assigned') && typeof d.vehicle === 'string') { t.vehicleId = d.vehicle; t.assignedAt = e.at; t.state = 'assigned'; }
+      if ((t.state === 'waiting' || t.state === 'assigned') && isId(d.vehicle)) { t.vehicleId = d.vehicle; t.assignedAt = e.at; t.state = 'assigned'; }
     } else if (e.type === 'transfers.delayed') {
       if (REASON[d.reason] && d.reason !== 'not-needed') t.delays.push({ at: e.at, reason: d.reason, byRole: e.actorRole });
     } else if (e.type === 'transfers.cancelled') {
