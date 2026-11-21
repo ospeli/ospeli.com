@@ -577,7 +577,7 @@ html[data-site="connect"] .layout { display: block; }
   /* Issue #145: the top bar keeps the phone rules too. The "Synthetic data" label is 15 px in
      sentence case with no letter spacing (in capitals it pushed the bar onto a third row), the role
      picker is 15 px, and the logo link is a 44 px target. */
-  .topbar .badge { font-size: .9375rem; text-transform: none; letter-spacing: 0; padding: 2px 8px; gap: 5px; }
+  .topbar .badge { font-size: .9375rem; line-height: 1.4; text-transform: none; letter-spacing: 0; padding: 2px 8px; gap: 5px; }
   .role select { font-size: .9375rem; }
   .brand { min-height: 44px; min-width: 44px; }
 }
