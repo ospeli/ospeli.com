@@ -589,9 +589,9 @@ async function renderWaste(el, ctx) {
     } catch (err) {
       ui.saved = { text: err.code === 'conflict' ? 'Already saved: the same record was saved a few minutes ago. Nothing new was saved.' : `Not saved. ${err.message}`, failed: true };
     } finally {
+      // Read again, then draw once: "Saved" and the lists it changed appear together.
       ui.busy = false;
       ui.justSaved = true;
-      draw();
       await load();
     }
   }
