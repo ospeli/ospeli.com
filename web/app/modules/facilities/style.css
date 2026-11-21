@@ -88,7 +88,7 @@
 @media (min-width: 1100px) {
   .mod-facilities[data-view="manager"] .fac-checks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-@media (min-width: 700px) { .mod-facilities .fac-outage .btn.fac-main, .mod-facilities .fac-end .actions { max-width: 420px; } }
+@media (min-width: 700px) { .mod-facilities .fac-outage .btn.fac-main, .mod-facilities .fac-waste-missed .btn.fac-main, .mod-facilities .fac-end .actions { max-width: 420px; } }
 
 /* slice 2: the load pick, the waste log */
 .mod-facilities .fac-loaddue { background: var(--mango-tint); border-radius: 10px; padding: 8px 12px; margin: 0; font-weight: 700; }

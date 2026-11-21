@@ -418,6 +418,8 @@ export const WASTE_STREAMS = {
 };
 export const WASTE_CONTAINERS = [1, 2, 3, 4, 5, 6, 8, 10, 15, 20]; // 20 means "20 or more"
 export const containersText = (n) => (n >= 20 ? '20 or more containers' : n === 1 ? '1 container' : `${n} containers`);
+// A total over several collections: the plain number (a "20 or more" pick counts as 20).
+export const totalContainersText = (n) => (n === 1 ? '1 container' : `${n} containers`);
 export const containersPick = (n) => (n >= 20 ? '20 or more' : String(n));
 export const WASTE_OUTCOMES = { collected: 'Collected', missed: 'Collection missed' };
 export const WASTE_REASONS = { 'did-not-come': 'Collection did not come', 'could-not-take': 'Came but could not take it', 'not-known': 'Not known' };

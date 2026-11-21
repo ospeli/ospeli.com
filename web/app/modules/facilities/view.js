@@ -12,7 +12,7 @@ import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
 import { CHECK_KINDS, RESULTS, RUN_MINUTES, LEVELS, GAS_BANDS, UTILITIES, CAUSES, AGO_MINUTES, LEVEL_PICKS, runText, agoText,
-  LOADS, LOAD_WORDS, WASTE_STREAMS, WASTE_CONTAINERS, WASTE_OUTCOMES, WASTE_REASONS, containersText, containersPick } from './logic.js';
+  LOADS, LOAD_WORDS, WASTE_STREAMS, WASTE_CONTAINERS, WASTE_OUTCOMES, WASTE_REASONS, containersText, containersPick, totalContainersText } from './logic.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
 const roleNames = (ids) => ids.map((r) => roleById(r)?.name || r).join(', ');
@@ -360,7 +360,7 @@ export async function render(el, ctx) {
       rows.length ? [
         h('p', { 'data-test': 'waste-summary' }, h('b', {}, `${w.containers} containers collected; ${w.missed} of ${w.recorded} collections recorded were missed.`)),
         h('ul', { class: 'fac-hours', 'data-test': 'waste-streams' }, rows.map((x) => h('li', { 'data-stream': x.id },
-          `${x.name}: ${containersText(x.containers)}${x.missed ? `; ${x.missed} of ${x.recorded} missed` : ''}`))),
+          `${x.name}: ${totalContainersText(x.containers)}${x.missed ? `; ${x.missed} of ${x.recorded} missed` : ''}`))),
       ] : h('p', { class: 'fac-empty', 'data-test': 'waste-empty' }, 'No waste collection recorded this month.'),
       h('a', { class: 'btn btn-ghost fac-link', href: '#/facilities/waste', 'data-test': 'open-waste' }, 'Open the waste log'),
       h('p', { class: 'meta' }, 'Containers are counted, not weighed: sizes differ, so do not compare one stream with another.'));
@@ -555,9 +555,9 @@ function missedWasteRow(w, { root, ui, mayWaste, draw, save, asOf }) {
         agoOk.length > 1 ? h('details', { class: 'fac-ago' }, h('summary', {}, p.ago ? `Collected ${agoText(p.ago).toLowerCase()}` : 'Collected earlier?'),
           pickRow(root, 'late-ago', agoOk.map((m) => [String(m), agoText(m)]), String(p.ago || 0), (v) => { p.ago = Number(v); draw(); })) : null,
         h('div', { class: 'actions' },
-          h('button', { class: 'btn btn-big fac-save', type: 'button', 'data-cmd': 'ospeli_facilities_waste_record', 'data-test': 'late-save', disabled: p.containers == null, 'aria-disabled': String(p.containers == null),
+          h('button', { class: 'btn btn-big fac-save', type: 'button', 'data-cmd': 'ospeli_facilities_waste_record', 'data-test': 'late-save', disabled: p.containers == null || ui.busy, 'aria-disabled': String(p.containers == null || !!ui.busy),
             onclick: () => { if (p.containers == null) return; save({ placeId: w.placeId, stream: w.stream, outcome: 'collected', containers: p.containers, ...(p.ago ? { minutesAgo: p.ago } : {}) }, `${w.streamName}, ${w.placeName}: ${containersText(p.containers)} collected`); } },
-          p.containers == null ? 'Pick how many containers first' : 'Save: collected'),
+          p.containers == null ? 'Pick how many containers first' : ui.busy ? 'Saving' : 'Save: collected'),
           h('button', { class: 'btn btn-ghost', type: 'button', 'data-test': 'late-cancel', onclick: () => { ui.late = null; draw(); } }, 'Not yet'))));
 }
 
@@ -582,6 +582,7 @@ async function renderWaste(el, ctx) {
   async function act(input, words, after) {
     if (ui.busy) return;
     ui.busy = true;
+    draw(); // the button says "Saving" at once
     try {
       const out = await ctx.run('ospeli_facilities_waste_record', input);
       ctx.toast(words);
@@ -646,7 +647,7 @@ async function renderWaste(el, ctx) {
           : field('What happened?', 'wq-reason', pickRow(root, 'reason', Object.entries(WASTE_REASONS), p.reason, set('reason'), 'wq-reason')),
         h('details', { class: 'fac-ago' }, h('summary', {}, p.ago ? `${ui.form === 'collected' ? 'Collected' : 'Missed'} ${agoText(p.ago).toLowerCase()}` : 'Earlier?'),
           pickRow(root, 'waste-ago', AGO_MINUTES.map((m) => [String(m), agoText(m)]), String(p.ago || 0), (v) => { p.ago = Number(v); draw(); })),
-        h('button', { class: 'btn btn-big fac-save', type: 'submit', 'data-test': 'waste-save', 'data-cmd': 'ospeli_facilities_waste_record', disabled: !!need, 'aria-disabled': String(!!need) }, need ? `Pick ${need} first` : 'Save'),
+        h('button', { class: 'btn btn-big fac-save', type: 'submit', 'data-test': 'waste-save', 'data-cmd': 'ospeli_facilities_waste_record', disabled: !!need || ui.busy, 'aria-disabled': String(!!need || ui.busy) }, need ? `Pick ${need} first` : ui.busy ? 'Saving' : 'Save'),
         h('p', { class: 'meta' }, 'Pick from the lists; nothing is typed. The log keeps your role, never your name.'),
       ] : h('p', { 'data-test': 'no-target' }, h('b', {}, 'There is no building or department on this site yet.')));
     f.addEventListener('submit', (e) => { e.preventDefault(); save(); });
@@ -677,7 +678,7 @@ async function renderWaste(el, ctx) {
     return h('section', { class: 'section fac-sec', 'aria-labelledby': 'wst-month-h', 'data-test': 'waste-month' },
       h('h2', { id: 'wst-month-h' }, `This month's collections by stream (${w.month})`),
       rows.length ? h('ul', { class: 'fac-list' }, rows.map((x) => h('li', { 'data-stream': x.id },
-        h('p', { class: 'fac-what' }, h('b', {}, x.name), h('span', { class: 'chip' }, containersText(x.containers))),
+        h('p', { class: 'fac-what' }, h('b', {}, x.name), h('span', { class: 'chip' }, totalContainersText(x.containers))),
         h('p', { class: 'meta' }, `${x.collections} ${x.collections === 1 ? 'collection' : 'collections'}${x.missed ? `; ${x.missed} missed` : '; none missed'}.`))))
         : h('p', { class: 'fac-empty', 'data-test': 'waste-empty' }, 'No waste collection recorded yet this month.'),
       h('p', { class: 'meta' }, 'Containers are counted, not weighed: sizes differ, so do not compare one stream with another.'));
