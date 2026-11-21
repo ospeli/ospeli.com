@@ -28,6 +28,12 @@ for (const width of [360, 390]) {
       assert.equal(m.badge.top - m.name.top < 12, true, `${route}: the label sits beside the site's name (name at ${m.name.top}, label at ${m.badge.top})`);
       assert.ok(m.bar.h <= 110, `${route}: the bar is two rows (${m.bar.h}px tall)`);
       assert.equal(m.scroll, width, `${route}: no sideways scroll`);
+      // The bar is sticky: whatever the app scrolls to stops below it, not underneath it.
+      const under = await page.evaluate(() => { const max = document.documentElement.scrollHeight - innerHeight;
+        const t = [...document.querySelectorAll('main h2, main h3')].find((x) => { const y = x.getBoundingClientRect().top + scrollY; return y > innerHeight && y < max; }); if (!t) return null;
+        window.scrollTo(0, max); t.scrollIntoView({ block: 'start' });
+        return { top: t.getBoundingClientRect().top, bar: document.querySelector('.topbar').getBoundingClientRect().bottom, max: document.documentElement.scrollHeight - innerHeight, y: scrollY }; });
+      if (under && under.y < under.max) assert.ok(under.top >= under.bar, `${route}: a heading scrolled to sits under the bar (top ${under.top}, bar ends ${under.bar})`);
       assert.deepEqual(errors, []);
       await context.close();
     }
