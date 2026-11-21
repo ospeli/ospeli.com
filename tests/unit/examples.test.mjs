@@ -181,6 +181,7 @@ async function prepare(core, c) {
     const code = await openCode();
     if (name === 'ospeli_slots_book') return { sessionId, code };
     const appointmentId = (await as(book.name, { ...structuredClone(book.example.input), sessionId, code })).appointmentId;
+    if (name === 'ospeli_slots_step_correct') await as('ospeli_slots_step', { appointmentId, step: c.example.input.undo });
     return name === 'ospeli_slots_move' ? { appointmentId, sessionId } : { appointmentId };
   }
   // A module's own commands: the module says how to put in place what its example needs.
