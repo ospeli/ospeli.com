@@ -164,7 +164,8 @@ test('a ward count under level raises the request with no extra step, and the wa
   assert.match(await mine.locator('[data-test="state"]').textContent(), /^Issued from the store$/, 'issued, never "arrived"');
   // Issued is not arrived: the count says the gloves are on their way, and to count them once on the shelf.
   await page.waitForSelector('[data-test="count-list"] > li[data-item="gloves-m"] [data-test="on-its-way"]');
-  assert.match(await gloves.locator('[data-test="on-its-way"]').textContent(), /^Issued from the store \d+ h ago: on its way\. Count it once it is on the shelf\.$/);
+  // Issued seconds ago reads "just now", never "1 h ago" (#145; the same words as the linen screen).
+  assert.match(await gloves.locator('[data-test="on-its-way"]').textContent(), /^Issued from the store just now: on its way\. Count it once it is on the shelf\.$/);
   assert.match(await page.locator('[data-test="count-list"] > li').first().locator('[data-test="at-level"]').textContent(), /^At level: \d+$/);
   assert.deepEqual(errors, []);
   await context.close();

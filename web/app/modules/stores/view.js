@@ -23,6 +23,8 @@ const reqName = (id) => `Request ${Number(String(id).replace(/^req-/, '')) || id
 const ordName = (id) => `Order ${Number(String(id).replace(/^ord-/, '')) || id}`;
 const MAX = 100000;
 const hoursText = (hrs) => (hrs == null ? '' : fmtWait(hrs * 60));
+// Hours since, in the linen screen's words: "just now", "25 min ago", "1 h 20 min ago" (#145; was "1 h" under 90 minutes).
+const agoWords = (hrs) => { const m = Math.floor(hrs * 60); return m < 1 ? 'just now' : `${fmtWait(m)} ago`; };
 const daysText = (d) => (d == null ? '' : d < 1 ? `${Math.max(1, Math.round(d * 24))} h` : `${Math.round(d * 10) / 10} days`);
 // Dates as day and month, times on the 24-hour clock, in the device's own time: "8 Nov, 19:19".
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -263,7 +265,7 @@ function countScreen(ctx, shared) {
       };
       li.append(...[
         h('div', { class: 'sto-line-head' }, h('b', {}, r.itemName), h('span', { class: 'meta' }, `${r.unit} · top-up level ${r.level}`)),
-        onWay.has(r.itemId) ? h('p', { class: 'sto-fact', 'data-test': 'on-its-way' }, `Issued from the store ${Math.max(1, Math.round(onWay.get(r.itemId)))} h ago: on its way. Count it once it is on the shelf.`) : null,
+        onWay.has(r.itemId) ? h('p', { class: 'sto-fact', 'data-test': 'on-its-way' }, `Issued from the store ${agoWords(onWay.get(r.itemId))}: on its way. Count it once it is on the shelf.`) : null,
         mayCount ? h('div', { class: 'sto-line-acts' },
           stepper({ get: () => ui.values.get(r.itemId) ?? null, set: (v) => { if (v == null) ui.values.delete(r.itemId); else ui.values.set(r.itemId, v); mark(); }, label: `${r.itemName}, how many are there`, test: 'count-input' }),
           h('button', { type: 'button', class: 'btn btn-ghost btn-small sto-full', 'data-test': 'at-level', onclick: () => { ui.values.set(r.itemId, r.level); const n = li.querySelector('.sto-num'); n.value = String(r.level); n.dispatchEvent(new Event('input')); mark(); } }, `At level: ${r.level}`)) : null,
