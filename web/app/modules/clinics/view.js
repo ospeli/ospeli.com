@@ -10,18 +10,12 @@ import { h, setKids, fmtWait, moduleStyle } from '../ui.js';
 import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
+import { TITLES, screensFor, shownOn } from './screens.js';
 import { SERVICES } from './commands.js';
 import { CODE_KIND, nextFreeSlots, sessionsFromRead, slotWords, shortDate, addDays, firstAppointmentList, rowsFromList, waitedWords, LATE_MINUTES } from './logic.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
 const roleNames = (cmd) => (commandByName(cmd)?.roles || []).map((r) => roleById(r)?.name || r).join(', ');
-const TITLES = { queue: 'Clinic queue', referrals: 'Waiting list', summary: 'Clinic day', templates: 'Templates' };
-function screensFor(role) {
-  if (role === 'clinic-receptionist' || role === 'clinic-nurse') return ['queue', 'summary'];
-  if (role === 'booking-clerk') return ['referrals', 'queue', 'summary', 'templates'];
-  if (role === 'outpatient-manager') return ['summary', 'referrals', 'queue', 'templates'];
-  return ['summary', 'queue', 'referrals', 'templates'];
-}
 const UNDO_WORDS = { arrived: (l) => `${l} back to not arrived yet`, called: (l) => `${l} back to waiting`, 'no-show': (l) => `${l} back to not arrived yet: tap Arrived when they are here` };
 const keepPx = (el, px) => { if (px) el.style.minHeight = `${px}px`; return el; };
 const LOCK_MS = 3e3; // after "Call in", the same place's "Finished" cannot be tapped this long
@@ -83,7 +77,7 @@ function runner(ctx, reload) {
   };
 }
 const offlineNote = (text) => (offline() ? h('p', { class: 'card notice cl-offline', role: 'status', 'data-test': 'offline' }, text) : null);
-const proposals = (ctx) => proposalsCard(ctx, { match: (p) => /^ospeli_(clinics|slots|codes)_/.test(p.command), describe: describeProposal });
+const proposals = (ctx, screen) => proposalsCard(ctx, { match: (p) => shownOn(p).includes(screen), describe: describeProposal });
 
 // ---------------------------------------------------------------- Clinic queue (phone)
 function queueScreen(ctx) {
@@ -94,7 +88,7 @@ function queueScreen(ctx) {
   const hold = (e, p) => { ui.stay.add(p.appointmentId); ui.keepHeight.set(p.appointmentId, Math.round(e.currentTarget.closest('li')?.getBoundingClientRect().height || 0)); };
   let data = null;
   let timer = null;
-  const props = proposals(ctx);
+  const props = proposals(ctx, 'queue');
   const load = async () => {
     try {
       data = await ctx.run('ospeli_clinics_queue', { ...(ui.sessionId ? { sessionId: ui.sessionId } : {}), ...(ui.find ? { find: ui.find } : {}), limit: 300 });
@@ -280,7 +274,7 @@ function referralsScreen(ctx) {
   const ui = { service: SERVICES[ctx.rest[1]] ? ctx.rest[1] : 'all', picked: { service: null, source: null }, ask: null, rebook: new Map(), today: null,
     order: [], rows: new Map(), bookedNow: new Map(), removedNow: new Set(), scrollTo: null, keepHeight: new Map() };
   let data = null;
-  const props = proposals(ctx);
+  const props = proposals(ctx, 'referrals');
   const mayOpen = can(ctx.role, 'ospeli_codes_open');
   const mayBook = can(ctx.role, 'ospeli_slots_book');
   const mayCancel = can(ctx.role, 'ospeli_slots_cancel');
@@ -454,7 +448,7 @@ function summaryScreen(ctx) {
   const box = h('div', { class: 'cl-summary' });
   const ui = { offset: 0, today: null, cancelReason: new Map(), closed: new Map() }; // closed: sessionId -> rows closed during this visit
   let data = null;
-  const props = proposals(ctx);
+  const props = proposals(ctx, 'summary');
   const mayPlan = can(ctx.role, 'ospeli_slots_session_change');
   const mayBook = can(ctx.role, 'ospeli_slots_book');
   const mayStep = can(ctx.role, 'ospeli_slots_step');
