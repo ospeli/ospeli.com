@@ -25,6 +25,14 @@
 .mod-clinics .cl-counts .stat span { display: block; }
 .mod-clinics .cl-counts .stat b { font-size: 1.45rem; }
 .mod-clinics .cl-counts .stat.is-alert { border-color: var(--coral); background: #FDF0EC; }
+/* On a phone the label and its number share one line, so the first patient's button stays on the first screen. */
+@media (max-width: 480px) {
+  .mod-clinics .cl-counts .stat { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; }
+  .mod-clinics .cl-counts .stat b ~ span { flex-basis: 100%; }
+  .mod-clinics .cl-counts .stat { padding: 6px 10px; }
+  .mod-clinics .cl-tabs { margin-bottom: 8px; }
+  .mod-clinics .cl-pick { margin-bottom: 6px; }
+}
 
 /* the queue */
 .mod-clinics .cl-clinic h2 { margin: 0 0 2px; font-size: 1.25rem; }
