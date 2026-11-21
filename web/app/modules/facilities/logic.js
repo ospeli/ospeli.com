@@ -37,6 +37,12 @@ export const CHECK_KINDS = {
   'gas-check': { name: 'Medical gas check', target: 'place', needs: ['result', 'levelBand'], roles: TECH },
 };
 export const CHECK_FIELDS = ['result', 'runMinutes', 'levelPct', 'levelBand'];
+// Slice 2 (20 Nov): the load a generator test ran on, as the technician saw it. It records what was
+// seen; it does not say the load was enough or that a generator is fit. Optional in the command (records
+// from before 20 Nov have none: "load not recorded"), required on the screen.
+export const LOADS = { 'on-load': 'On load (building or load bank)', 'off-load': 'Off load (no load)' };
+export const LOAD_WORDS = { 'on-load': 'on load', 'off-load': 'off load' };
+export const LOAD_NOT_RECORDED = 'load not recorded';
 export const PLACE_TYPES = ['site', 'building', 'department'];
 
 // ---- the check schedule: plain data, shaped { checkKind, assetKind or placeId, everyDays } ----
@@ -48,19 +54,36 @@ export const SCHEDULE = [
   { checkKind: 'fuel-level', assetKind: 'generator', everyDays: 7 },
   { checkKind: 'water-level', placeId: 'bld-main-plant', everyDays: 7 },
   { checkKind: 'gas-check', placeId: 'bld-main-plant', everyDays: 1 },
+  { checkKind: 'generator-load-test', assetKind: 'generator', everyDays: 28 },
 ];
+// A schedule kind that is not a kind of check of its own: it is filled only by a generator test
+// recorded on load. Not a tile and not accepted by the check command. Example setting, not a standard.
+export const SCHEDULE_ONLY = {
+  'generator-load-test': { name: 'Generator test on load', target: 'asset', assetKind: 'generator', filledBy: 'generator-test', load: 'on-load' },
+};
+export const scheduleKindName = (k) => CHECK_KINDS[k]?.name || SCHEDULE_ONLY[k]?.name || k;
+// The checks the schedule reads: every check as it is, plus each generator test recorded on load once
+// more as a 'generator-load-test'. A test with no load recorded, or off load, never fills an on-load
+// period. (The weekly generator test row is filled by every test, whatever its load.)
+export function scheduleChecks(checks) {
+  const out = [...checks];
+  for (const c of checks) {
+    for (const [kind, k] of Object.entries(SCHEDULE_ONLY)) if (c.checkKind === k.filledBy && c.load === k.load) out.push({ ...c, checkKind: kind });
+  }
+  return out.sort((a, b) => ms(a.at) - ms(b.at));
+}
 export const SCHEDULE_NOTE = 'The check schedule is an example setting, not a standard: each site sets its own. A site that follows a national or insurer\'s standard for standby power sets its generator tests from that standard. In this example a week starts on Monday.';
 // Due periods are counted from a fixed Monday at midnight, site time: a weekly check is due once
 // each Monday-to-Sunday week, a daily check once each day.
 export const SLOT_ANCHOR = Date.UTC(2026, 0, 5); // Monday 5 Jan 2026, 00:00 local
-export const everyText = (n) => (n === 1 ? 'Every day' : n === 7 ? 'Every week' : `Every ${n} days`);
+export const everyText = (n) => (n === 1 ? 'Every day' : n === 7 ? 'Every week' : n % 7 === 0 ? `Every ${n / 7} weeks` : `Every ${n} days`);
 
 // The things the schedule covers on this site: one row per check kind and asset or place.
 // assets: [{ id, kind, name }], places: Map(id -> { id, name }).
 export function scheduleTargets(schedule, { assets, places }) {
   const out = [];
   for (const s of schedule) {
-    const kind = CHECK_KINDS[s.checkKind];
+    const kind = CHECK_KINDS[s.checkKind] || SCHEDULE_ONLY[s.checkKind];
     if (!kind) continue;
     if (s.assetKind) {
       for (const a of assets.filter((x) => x.kind === s.assetKind)) out.push({ checkKind: s.checkKind, targetId: a.id, everyDays: s.everyDays });
@@ -72,6 +95,7 @@ export function scheduleTargets(schedule, { assets, places }) {
 // ---- records, derived from the event log ----
 const CHECK_ID = /^chk-(\d{5,})$/;
 const OUTAGE_ID = /^out-(\d{5,})$/;
+const WASTE_ID = /^wst-(\d{5,})$/;
 // facilities.check-recorded, subject = check id: { checkKind, assetId or placeId, result, runMinutes, levelPct, levelBand }.
 // Anything that does not fit the fixed lists (an edited import) is left out.
 export function deriveChecks(events) {
@@ -89,6 +113,7 @@ export function deriveChecks(events) {
     if (kind.needs.includes('runMinutes')) { if (!RUN_MINUTES.includes(d.runMinutes)) continue; c.runMinutes = d.runMinutes; }
     if (kind.needs.includes('levelPct')) { if (!LEVELS.includes(d.levelPct)) continue; c.levelPct = d.levelPct; }
     if (kind.needs.includes('levelBand')) { if (!GAS_BANDS[d.levelBand]) continue; c.levelBand = d.levelBand; }
+    if (d.load != null) { if (d.checkKind !== 'generator-test' || !LOADS[d.load]) continue; c.load = d.load; }
     seen.add(e.subject);
     out.push(c);
   }
@@ -96,13 +121,14 @@ export function deriveChecks(events) {
 }
 
 export const nextId = (prefix, events, type) => {
-  const re = prefix === 'chk' ? CHECK_ID : OUTAGE_ID;
+  const re = prefix === 'chk' ? CHECK_ID : prefix === 'wst' ? WASTE_ID : OUTAGE_ID;
   let max = 0;
   for (const e of events) { const m = e.type === type ? re.exec(e.subject) : null; if (m) max = Math.max(max, Number(m[1])); }
   return `${prefix}-${String(max + 1).padStart(5, '0')}`;
 };
 export const nextCheckId = (events) => nextId('chk', events, 'facilities.check-recorded');
 export const nextOutageId = (events) => nextId('out', events, 'facilities.outage-started');
+export const nextWasteId = (events) => nextId('wst', events, 'facilities.waste-recorded');
 
 // ---- outages ----
 export const UTILITIES = {
@@ -308,7 +334,7 @@ export const GUIDE_RULES = [
   { id: 'repeat-faults', name: 'Repeat building faults in one place',
     basis: `Example setting, not a standard: ${REPEAT_MIN} or more work orders for leak faults (${REPEAT_FAULTS.water.faults.join(', ')}), or for power faults (${REPEAT_FAULTS.power.faults.join(', ')}), on assets in the same ward, department or building, reported within ${REPEAT_WINDOW_DAYS} days (the same window as Engineering's repeat faults). Advice only.` },
   { id: 'repeat-failed-tests', name: 'Repeat failed tests on one generator',
-    basis: `Example setting, not a standard: ${REPEAT_MIN} or more failed generator tests on the same generator within ${REPEAT_WINDOW_DAYS} days. Advice only: a person decides whether its maintenance needs a review.` },
+    basis: `Example setting, not a standard: ${REPEAT_MIN} or more failed generator tests on the same generator within ${REPEAT_WINDOW_DAYS} days. A failed test counts whatever its load: on load, off load or load not recorded. Advice only: a person decides whether its maintenance needs a review.` },
   { id: 'severe-weather', name: 'Before severe weather', planned: true,
     basis: 'Planned, not built yet: it needs a warning period to be recorded and the compliance calendar.' },
 ];
@@ -372,4 +398,80 @@ export function ruleRepeatFailedTests(checks, { now, nameOf, offsetMinutes = 0 }
     why: `${list.length} failed tests in ${REPEAT_WINDOW_DAYS} days: ${list.map((c) => dayText(ms(c.at), offsetMinutes)).join('; ')}.`,
     basis: BASIS['repeat-failed-tests'], action: null,
   }));
+}
+
+
+// ---- KPI: generator on-load tests done by due date (slice 2) ----
+// The same shared measure as generator test compliance ("planned checks done by due date", D-13),
+// for the schedule row generator-load-test: an on-load period is done when a generator test recorded
+// on load falls inside it. Off-load runs and tests with no load recorded never fill one. A failed
+// on-load test counts as done, with the failures counted beside it.
+export const LOAD_TEST_DAYS = 84; // three periods of four weeks
+export function loadTestsDone(checks, { since, until, targets, offsetMinutes = 0 }) {
+  return plannedChecksDone(scheduleChecks(checks), { since, until, targets, offsetMinutes, checkKind: 'generator-load-test' });
+}
+
+// ---- the waste log (slice 2): collections and missed collections, picks only ----
+// Example lists, not a standard: a site's own waste policy names its streams.
+export const WASTE_STREAMS = {
+  general: 'General', infectious: 'Infectious', sharps: 'Sharps', pharmaceutical: 'Pharmaceutical', chemical: 'Chemical', recycling: 'Recycling',
+};
+export const WASTE_CONTAINERS = [1, 2, 3, 4, 5, 6, 8, 10, 15, 20]; // 20 means "20 or more"
+export const containersText = (n) => (n >= 20 ? '20 or more containers' : n === 1 ? '1 container' : `${n} containers`);
+export const containersPick = (n) => (n >= 20 ? '20 or more' : String(n));
+export const WASTE_OUTCOMES = { collected: 'Collected', missed: 'Collection missed' };
+export const WASTE_REASONS = { 'did-not-come': 'Collection did not come', 'could-not-take': 'Came but could not take it', 'not-known': 'Not known' };
+// facilities.waste-recorded, subject = waste record id wst-00001:
+// { placeId, stream, outcome, containers (collected only), reason (missed only), backdatedMinutes }.
+// Anything that does not fit the fixed lists (an edited import) is left out.
+export function deriveWaste(events) {
+  const out = [];
+  const seen = new Set();
+  for (const e of events) {
+    if (e.type !== 'facilities.waste-recorded' || !WASTE_ID.test(e.subject) || seen.has(e.subject)) continue;
+    const d = e.data || {};
+    if (typeof d.placeId !== 'string' || !d.placeId || !WASTE_STREAMS[d.stream] || !WASTE_OUTCOMES[d.outcome]) continue;
+    const w = { id: e.subject, placeId: d.placeId, stream: d.stream, outcome: d.outcome, at: e.at, byRole: e.actorRole,
+      backdatedMinutes: AGO_MINUTES.includes(d.backdatedMinutes) ? d.backdatedMinutes : 0 };
+    if (d.outcome === 'collected') { if (!WASTE_CONTAINERS.includes(d.containers) || d.reason != null) continue; w.containers = d.containers; }
+    else { if (!WASTE_REASONS[d.reason] || d.containers != null) continue; w.reason = d.reason; }
+    seen.add(e.subject);
+    out.push(w);
+  }
+  return out.sort((a, b) => ms(a.at) - ms(b.at) || (a.id < b.id ? -1 : 1));
+}
+export function wasteWords(w) {
+  return w.outcome === 'collected' ? `${WASTE_STREAMS[w.stream]}: ${containersText(w.containers)} collected` : `${WASTE_STREAMS[w.stream]}: collection missed (${WASTE_REASONS[w.reason]})`;
+}
+// Missed collections still waiting at `now`: a miss stays until a later collection of the same stream
+// at the same place is recorded. Oldest first.
+export function wasteMissedWaiting(waste, { now }) {
+  const t = ms(now);
+  return waste.filter((w) => w.outcome === 'missed' && ms(w.at) <= t
+    && !waste.some((x) => x.outcome === 'collected' && x.stream === w.stream && x.placeId === w.placeId && ms(x.at) > ms(w.at) && ms(x.at) <= t));
+}
+const inPeriod = (w, s, u) => ms(w.at) >= s && ms(w.at) < u;
+// KPI: missed waste collections. collections recorded as missed / collections recorded (collected or
+// missed) in the period, in all and per stream. A later collection does not cancel the miss.
+export function wasteMissedShare(waste, { since, until }) {
+  const s = ms(since); const u = ms(until);
+  const mine = waste.filter((w) => inPeriod(w, s, u));
+  const byStream = Object.entries(WASTE_STREAMS).map(([id, name]) => {
+    const list = mine.filter((w) => w.stream === id);
+    const missed = list.filter((w) => w.outcome === 'missed').length;
+    return { id, name, missed, recorded: list.length, value: list.length ? (100 * missed) / list.length : null };
+  });
+  const missed = mine.filter((w) => w.outcome === 'missed').length;
+  return { value: mine.length ? (100 * missed) / mine.length : null, numerator: missed, denominator: mine.length, n: mine.length, byStream };
+}
+// KPI: waste containers collected, per stream, in the period. A total, not a share; no weight (container
+// sizes differ, so streams are not compared).
+export function wasteContainers(waste, { since, until }) {
+  const s = ms(since); const u = ms(until);
+  const mine = waste.filter((w) => w.outcome === 'collected' && inPeriod(w, s, u));
+  const byStream = Object.entries(WASTE_STREAMS).map(([id, name]) => {
+    const list = mine.filter((w) => w.stream === id);
+    return { id, name, containers: list.reduce((n, w) => n + w.containers, 0), collections: list.length };
+  });
+  return { value: mine.reduce((n, w) => n + w.containers, 0), numerator: null, denominator: null, n: mine.length, byStream };
 }

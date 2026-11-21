@@ -89,3 +89,12 @@
   .mod-facilities[data-view="manager"] .fac-checks { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (min-width: 700px) { .mod-facilities .fac-outage .btn.fac-main, .mod-facilities .fac-end .actions { max-width: 420px; } }
+
+/* slice 2: the load pick, the waste log */
+.mod-facilities .fac-loaddue { background: var(--mango-tint); border-radius: 10px; padding: 8px 12px; margin: 0; font-weight: 700; }
+.mod-facilities .fac-choices[data-test="containers"], .mod-facilities .fac-choices[data-test="late-containers"] { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
+.mod-facilities .btn.fac-to-waste { margin-top: 12px; max-width: 720px; display: flex; align-items: center; justify-content: center; text-decoration: none; }
+.mod-facilities .fac-wtile.is-collected { border-left: 8px solid var(--sea); }
+.mod-facilities .fac-wtile.is-missed { border-left: 8px solid var(--coral); }
+.mod-facilities .fac-waste-card { margin: 14px 0; max-width: 720px; display: grid; gap: 6px; }
+.mod-facilities .fac-waste-card p { margin: 0; }

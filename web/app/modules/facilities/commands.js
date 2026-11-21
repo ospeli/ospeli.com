@@ -19,7 +19,9 @@ import {
   CHECK_KINDS, RESULTS, RUN_MINUTES, LEVELS, GAS_BANDS, UTILITIES, CAUSES, AGO_MINUTES, LEVEL_PICKS, PLACE_TYPES, SCHEDULE, SCHEDULE_NOTE,
   GUIDE_RULES, DEFAULT_LEVELS, deriveChecks, deriveOutages, openOutage, nextCheckId, nextOutageId, levelsNow, guideOn, scheduleTargets,
   plannedChecksDone, outageHours, checkStatus, latestReadings, ruleLowLevel, ruleRepeatFaults, ruleRepeatFailedTests, problemChecks, checkProblem, runText, agoText, everyText,
-  whenText, dueDayText, dayText, monthBounds,
+  whenText, dueDayText, dayText, monthBounds, slotIndex,
+  LOADS, LOAD_WORDS, LOAD_NOT_RECORDED, scheduleChecks, scheduleKindName, loadTestsDone, LOAD_TEST_DAYS,
+  WASTE_STREAMS, WASTE_CONTAINERS, WASTE_OUTCOMES, WASTE_REASONS, deriveWaste, nextWasteId, wasteWords, wasteMissedWaiting, wasteMissedShare, wasteContainers, containersText,
 } from './logic.js';
 
 export const id = 'facilities';
@@ -44,6 +46,21 @@ export const KPIS = [
     definition: 'For each utility, the hours from outage started to outage ended that fall in the month, summed. An outage still open counts up to now and is marked still open. Planned shutdowns are summed apart and are not in the total.',
     counts: 'Unplanned outage hours in the month.', outOf: 'None (a total, not a share).',
     leavesOut: 'Planned shutdowns (shown apart).', source: 'local definition', target: null, targetText: 'No target set: track the trend.' },
+  // Slice 2 (20 Nov): appended after the first two, which keep their places.
+  { id: 'generator-load-test-compliance', name: 'Generator on-load tests done by due date', unit: '%',
+    definition: `The same shared measure as generator test compliance ("planned checks done by due date", KPI dictionary D-13), for the on-load row of the schedule: on-load periods (every 4 weeks for each generator) with a generator test recorded on load inside them, divided by on-load periods settled in the last ${LOAD_TEST_DAYS} days (three periods). A failed on-load test counts as done; failures are counted beside it. The period starts no earlier than the first check in this device's log, so weeks from before the log began are not counted as missed.`,
+    counts: 'On-load periods with a generator test recorded on load inside them.', outOf: 'On-load periods settled in the period: done, or ended with no on-load test.',
+    leavesOut: 'The current period while it is still open; off-load runs; tests with the load not recorded (all tests recorded before the load was asked).',
+    source: 'local definition (KPI dictionary D-13). The 4-week interval is an example setting, not a standard: each site sets its own.',
+    target: null, targetText: 'No target set here. Your site sets its own (example setting, not a standard).' },
+  { id: 'waste-missed-share', name: 'Missed waste collections', unit: '%',
+    definition: 'Waste collections recorded as missed, divided by waste collections recorded (collected or missed), this month, in all and for each stream. A later collection does not cancel the miss.',
+    counts: 'Collections recorded as missed this month.', outOf: 'Collections recorded this month, collected or missed.',
+    leavesOut: 'Collections nobody recorded.', source: 'local definition', target: null, targetText: 'No target set: track the trend.' },
+  { id: 'waste-containers', name: 'Waste containers collected by stream', unit: 'containers',
+    definition: 'Containers recorded as collected this month, for each stream. A total, not a share. "20 or more" counts as 20.',
+    counts: 'Containers recorded as collected this month.', outOf: 'None (a total, not a share).',
+    leavesOut: 'Weight: container sizes differ, so do not compare one stream with another.', source: 'local definition', target: null, targetText: 'No target set: track the trend.' },
 ];
 // Shown read-only or planned, with no value of this module's own.
 const READ_ONLY = [
@@ -56,6 +73,8 @@ const PLANNED = [
 ];
 export const NOT_FOR = 'Not a building management or control system: Ospeli never switches plant, reads no sensor and raises no alarm. A check records what a person saw; it does not say a room or a supply is safe for patients. It does not score staff.';
 export const GAS_FIRST = 'Follow your site\'s medical gas procedure first. This records the check; it does not say a supply is safe for patients.';
+export const LOAD_NOT_FOR = 'The load pick records what you saw. It does not say the load was enough or that the generator is fit for use.';
+export const WASTE_NOT_FOR = 'Not a waste consignment, tracking or billing record, and nothing is reported outside the site. It does not check what is inside a container or how waste was sorted, and names no contractor. The streams are an example list, not a standard: your site\'s waste policy names its own.';
 
 // ---- places and assets ----
 async function siteInfo(core) {
@@ -71,19 +90,27 @@ async function siteInfo(core) {
 }
 const synth = (core) => isSynthetic(core);
 
-// What a check record says, in plain words.
-function checkWords(c) {
+// What a check record says, in plain words. showNoLoad: a generator test with no load says
+// "load not recorded" (in the reads; a new save says only what was picked).
+function checkWords(c, showNoLoad = true) {
   const parts = [];
   if (c.result) parts.push(RESULTS[c.result]);
   if (c.runMinutes) parts.push(runText(c.runMinutes));
   if (c.levelPct != null) parts.push(`${c.levelPct} %`);
   if (c.levelBand) parts.push(GAS_BANDS[c.levelBand]);
+  if (c.load) parts.push(LOAD_WORDS[c.load]);
+  else if (showNoLoad && c.checkKind === 'generator-test') parts.push(LOAD_NOT_RECORDED);
   return parts.join(', ');
 }
 const checkOut = (c, info) => ({
   id: c.id, kind: 'check', checkKind: c.checkKind, checkName: CHECK_KINDS[c.checkKind].name, targetId: c.targetId, targetName: info.nameOf(c.targetId),
   at: c.at, byRole: c.byRole, ...(c.result ? { result: c.result } : {}), ...(c.runMinutes ? { runMinutes: c.runMinutes } : {}),
-  ...(c.levelPct != null ? { levelPct: c.levelPct } : {}), ...(c.levelBand ? { levelBand: c.levelBand } : {}), words: checkWords(c),
+  ...(c.levelPct != null ? { levelPct: c.levelPct } : {}), ...(c.levelBand ? { levelBand: c.levelBand } : {}), ...(c.load ? { load: c.load } : {}), words: checkWords(c),
+});
+const wasteOut = (w, info) => ({
+  id: w.id, kind: 'waste', stream: w.stream, streamName: WASTE_STREAMS[w.stream], placeId: w.placeId, placeName: info.nameOf(w.placeId), outcome: w.outcome,
+  ...(w.outcome === 'collected' ? { containers: w.containers } : { reason: w.reason, reasonName: WASTE_REASONS[w.reason] }),
+  at: w.at, byRole: w.byRole, backdatedMinutes: w.backdatedMinutes, words: wasteWords(w),
 });
 const outageOut = (o, info, now) => ({
   id: o.id, kind: 'outage', utility: o.utility, utilityName: UTILITIES[o.utility], placeId: o.placeId, placeName: info.nameOf(o.placeId),
@@ -95,7 +122,8 @@ const outageOut = (o, info, now) => ({
 // ---- checks ----
 const CHECK_ID = { type: 'string', pattern: '^chk-[0-9]{5,}$', maxLength: 20 };
 const OUTAGE_ID = { type: 'string', pattern: '^out-[0-9]{5,}$', maxLength: 20, description: 'An outage id, for example out-00004. ospeli_facilities_overview lists the open ones.' };
-const KIND_IN = { type: 'string', enum: Object.keys(CHECK_KINDS), description: 'generator-test (needs assetId, result, runMinutes), fuel-level (assetId, levelPct), water-level (placeId, levelPct), gas-check (placeId, result, levelBand).' };
+const KIND_IN = { type: 'string', enum: Object.keys(CHECK_KINDS), description: 'generator-test (needs assetId, result, runMinutes; load is optional), fuel-level (assetId, levelPct), water-level (placeId, levelPct), gas-check (placeId, result, levelBand).' };
+const WASTE_ID = { type: 'string', pattern: '^wst-[0-9]{5,}$', maxLength: 20 };
 
 async function checkCheck(core, input, actor, events, info) {
   const kind = CHECK_KINDS[input.checkKind];
@@ -117,10 +145,11 @@ async function checkCheck(core, input, actor, events, info) {
     if (need && input[f] == null) throw new CommandError('invalid-input', `A ${kind.name.toLowerCase()} needs ${kind.needs.join(', ')}. Missing: ${f}.`, { needs: kind.needs });
     if (!need && input[f] != null) throw new CommandError('invalid-input', `A ${kind.name.toLowerCase()} takes ${kind.needs.join(', ')} only, not ${f}.`, { needs: kind.needs });
   }
+  if (input.load != null && input.checkKind !== 'generator-test') throw new CommandError('invalid-input', `load is for a generator test only (${Object.keys(LOADS).join(' or ')}); a ${kind.name.toLowerCase()} takes ${kind.needs.join(', ')} only.`, { needs: kind.needs });
   const evs = events ?? await core.events({ type: 'facilities.check-recorded' });
   const target = input.assetId || input.placeId;
   const recent = deriveChecks(evs).filter((c) => c.checkKind === input.checkKind && c.targetId === target && Math.abs(Date.parse(core.now()) - Date.parse(c.at)) < DOUBLE_TAP).at(-1); // either side of now: a clock put back must not make every later check a repeat
-  if (recent && ['result', 'runMinutes', 'levelPct', 'levelBand'].every((f) => (recent[f] ?? null) === (input[f] ?? null))) {
+  if (recent && ['result', 'runMinutes', 'levelPct', 'levelBand', 'load'].every((f) => (recent[f] ?? null) === (input[f] ?? null))) {
     throw new CommandError('conflict', `${recent.id} with the same picks was saved a few minutes ago. No second check was saved.`, { existing: recent.id });
   }
 }
@@ -147,11 +176,29 @@ async function findOutage(core, outageId, events) {
   return o;
 }
 
+// ---- the waste log ----
+async function checkWaste(core, input, events, info) {
+  const i = info ?? await siteInfo(core);
+  if (!i.places.has(input.placeId)) throw new CommandError('not-found', 'placeId must be a site, building or department of this site, for example bld-main-a. ospeli_facilities_overview lists them under choices.wastePlaces.');
+  if (input.outcome === 'collected') {
+    if (input.reason != null) throw new CommandError('invalid-input', 'A collection takes containers, not reason. reason is for a missed collection only.');
+    if (input.containers == null) throw new CommandError('invalid-input', `A collection needs containers: ${WASTE_CONTAINERS.join(', ')} (20 means 20 or more).`);
+  } else {
+    if (input.containers != null) throw new CommandError('invalid-input', 'A missed collection takes reason, not containers: nothing was collected.');
+    if (input.reason == null) throw new CommandError('invalid-input', `A missed collection needs reason: ${Object.entries(WASTE_REASONS).map(([k, v]) => `${k} (${v})`).join(', ')}.`);
+  }
+  const at = Date.parse(core.now()) - (input.minutesAgo || 0) * MIN;
+  const recent = deriveWaste(events ?? await core.events({ type: 'facilities.waste-recorded' })).filter((w) => w.placeId === input.placeId && w.stream === input.stream && w.outcome === input.outcome
+    && (w.containers ?? null) === (input.containers ?? null) && (w.reason ?? null) === (input.reason ?? null) && Math.abs(at - Date.parse(w.at)) < DOUBLE_TAP).at(-1);
+  if (recent) throw new CommandError('conflict', `Already saved: ${recent.id} with the same picks was saved a few minutes ago. No second record was saved.`, { existing: recent.id });
+}
+
 // The pick lists a screen needs: the plant assets of each kind, the places of each place check
 // (the scheduled ones, or every building when none is scheduled), and the places an outage can be at.
 function choices(info) {
   const byType = (t) => [...info.places.values()].filter((p) => p.type === t).map((p) => ({ id: p.id, name: currentWords(p.name), type: p.type }));
   const out = { assets: {}, places: {}, outagePlaces: [...byType('site'), ...byType('building'), ...byType('department')] };
+  out.wastePlaces = out.outagePlaces;
   for (const [k, v] of Object.entries(CHECK_KINDS)) {
     if (v.target === 'asset') out.assets[k] = info.assets.filter((a) => a.kind === v.assetKind).map((a) => ({ id: a.id, name: currentWords(a.name) }));
     else {
@@ -172,10 +219,12 @@ async function overview(core, input, wards = null) {
   const off = info.offsetMinutes;
   const checks = deriveChecks(events);
   const outages = deriveOutages(events);
-  const status = checkStatus(checks, info.targets, { now, offsetMinutes: off });
-  const lastOut = (c) => (c ? { id: c.id, at: c.at, words: checkWords(c), atText: whenText(Date.parse(c.at), off) } : null);
+  // The schedule also reads each on-load generator test as the on-load row's check (scheduleChecks).
+  const status = checkStatus(scheduleChecks(checks), info.targets, { now, offsetMinutes: off });
+  const lastOut = (c) => (c ? { id: c.id, at: c.at, words: checkWords(c), atText: whenText(Date.parse(c.at), off), ...(c.checkKind.startsWith('generator') ? { load: c.load || null } : {}) } : null);
   const rows = status.map((s) => ({
-    checkKind: s.checkKind, checkName: CHECK_KINDS[s.checkKind].name, targetId: s.targetId, targetName: info.nameOf(s.targetId), everyDays: s.everyDays, everyText: everyText(s.everyDays),
+    checkKind: s.checkKind, checkName: scheduleKindName(s.checkKind), targetId: s.targetId, targetName: info.nameOf(s.targetId), everyDays: s.everyDays,
+    everyText: s.checkKind === 'generator-test' ? `${everyText(s.everyDays)}, on or off load` : everyText(s.everyDays),
     status: s.status, dueBy: s.dueBy, dueText: `Due by the end of ${dueDayText(Date.parse(s.dueBy), off)}`,
     overdueSince: s.overdueSince, overdueText: s.overdueSince ? `Missed: no check since ${s.last ? dayText(Date.parse(s.last.at), off) : 'the start'}; due by the end of ${dueDayText(Date.parse(s.overdueSince), off)}` : null,
     missedPeriods: s.missedPeriods, last: lastOut(s.last), lastFailed: s.last?.result === 'fail', problem: checkProblem(s.last),
@@ -192,6 +241,21 @@ async function overview(core, input, wards = null) {
   const hours = outageHours(outages, { since: new Date(month.start).toISOString(), until: now });
   const byMin = hours.byUtility.map((r) => ({ ...r, minutes: Math.round(r.hours * 60), plannedMinutes: Math.round(r.plannedHours * 60) }));
   const gen = plannedChecksDone(checks, { since, until: now, targets: info.targets, offsetMinutes: off, checkKind: 'generator-test' });
+  // On-load tests: the last 84 days, but never before the first check in this device's log (weeks
+  // from before the log began are not counted as missed).
+  const firstCheck = checks.length ? Date.parse(checks[0].at) : t;
+  const loadSince = new Date(Math.max(t - LOAD_TEST_DAYS * DAY, firstCheck)).toISOString();
+  const loadKpi = loadTestsDone(checks, { since: loadSince, until: now, targets: info.targets, offsetMinutes: off });
+  const waste = deriveWaste(events);
+  const monthSince = new Date(month.start).toISOString();
+  const share = wasteMissedShare(waste, { since: monthSince, until: now });
+  const cont = wasteContainers(waste, { since: monthSince, until: now });
+  const waiting = wasteMissedWaiting(waste, { now }).map((w) => ({ ...wasteOut(w, info), atText: whenText(Date.parse(w.at), off),
+    text: `Recorded missed ${whenText(Date.parse(w.at), off)} (${WASTE_REASONS[w.reason]}). In this list until a collection of ${WASTE_STREAMS[w.stream].toLowerCase()} waste there is recorded.` }));
+  const streamRows = Object.entries(WASTE_STREAMS).map(([id, name]) => {
+    const a = share.byStream.find((x) => x.id === id); const b = cont.byStream.find((x) => x.id === id);
+    return { id, name, containers: b.containers, collections: b.collections, missed: a.missed, recorded: a.recorded };
+  });
   const kpiValues = {
     'generator-test-compliance': { value: gen.value, numerator: gen.numerator, denominator: gen.denominator, n: gen.n, failed: gen.failed,
       missed: gen.missed.map((m) => ({ ...m, targetName: info.nameOf(m.targetId), dueText: dueDayText(Date.parse(m.due), off) })), period: { since, until: now, days } },
@@ -201,11 +265,19 @@ async function overview(core, input, wards = null) {
       plannedHours: Math.round(byMin.reduce((n, r) => n + r.plannedMinutes, 0) / 6) / 10, plannedMinutes: byMin.reduce((n, r) => n + r.plannedMinutes, 0),
       breakdown: byMin.map((r) => ({ id: r.id, name: r.name, hours: r.minutes / 60, minutes: r.minutes, plannedHours: r.plannedMinutes / 60, plannedMinutes: r.plannedMinutes, outages: r.outages, open: r.open })),
       period: { since: new Date(month.start).toISOString(), until: now, month: month.name } },
+    'generator-load-test-compliance': { value: loadKpi.value, numerator: loadKpi.numerator, denominator: loadKpi.denominator, n: loadKpi.n, failed: loadKpi.failed,
+      missed: loadKpi.missed.map((m) => ({ ...m, targetName: info.nameOf(m.targetId), dueText: dueDayText(Date.parse(m.due), off) })),
+      period: { since: loadSince, until: now, days: Math.round((t - Date.parse(loadSince)) / DAY), startsText: dayText(Date.parse(loadSince), off) } },
+    'waste-missed-share': { value: share.value, numerator: share.numerator, denominator: share.denominator, n: share.n,
+      byStream: share.byStream.filter((x) => x.recorded), period: { since: monthSince, until: now, month: month.name } },
+    'waste-containers': { value: cont.value, numerator: null, denominator: null, n: cont.n,
+      byStream: cont.byStream.filter((x) => x.collections), period: { since: monthSince, until: now, month: month.name } },
   };
   const kpis = KPIS.map((k) => {
     const v = kpiValues[k.id];
     const base = { id: k.id, name: k.name, unit: k.unit, value: v.value, numerator: v.numerator, denominator: v.denominator, n: v.n, period: v.period, targetText: k.targetText };
     return input.format === 'short' ? base : { ...base, ...(v.failed != null ? { failed: v.failed, missed: v.missed } : {}), ...(v.breakdown ? { breakdown: v.breakdown, minutes: v.minutes, plannedHours: v.plannedHours, plannedMinutes: v.plannedMinutes } : {}),
+      ...(v.byStream ? { byStream: v.byStream } : {}),
       definition: k.definition, counts: k.counts, outOf: k.outOf, leavesOut: k.leavesOut, source: k.source };
   });
   const levels = levelsNow(events);
@@ -221,11 +293,15 @@ async function overview(core, input, wards = null) {
   ] : [];
   return {
     asOf: now, synthetic: await synth(core), offsetMinutes: off,
-    attention: { overdue: rows.filter((r) => r.status === 'overdue'), problems, openOutages: open },
+    // Missed waste collections come after the existing items (slice 2).
+    attention: { overdue: rows.filter((r) => r.status === 'overdue'), problems, openOutages: open, wasteMissed: waiting },
     checks: rows, readings, kpis, readOnly: READ_ONLY.map((x) => ({ ...x })), planned: PLANNED.map((x) => ({ ...x })),
     levels: { fuelPct: levels.fuelPct, waterPct: levels.waterPct, setAt: levels.setAt, text: `Fuel ${levels.fuelPct} %, stored water ${levels.waterPct} % (example setting, not a standard; set by this site)` },
     schedule: { note: SCHEDULE_NOTE, items: SCHEDULE.map((s) => ({ ...s })) },
     choices: choices(info),
+    waste: { month: month.name, recorded: share.denominator, missed: share.numerator, containers: cont.value, byStream: streamRows, missedWaiting: waiting,
+      streams: { ...WASTE_STREAMS }, containerPicks: [...WASTE_CONTAINERS], reasons: { ...WASTE_REASONS }, note: WASTE_NOT_FOR },
+    loadNote: LOAD_NOT_FOR,
     guide: { on, rules: GUIDE_RULES.map((r) => ({ ...r })), suggestions },
     note: NOT_FOR,
   };
@@ -237,6 +313,7 @@ const KPI_OUT = { type: 'object', required: ['id', 'name', 'unit', 'value'], pro
   failed: { type: 'integer', description: 'Generator test periods done with a failed test (counted as done).' }, missed: { type: 'array', description: 'Periods that ended with no test.' },
   breakdown: { type: 'array', description: 'Outage time by utility, with planned shutdowns apart: minutes (whole) and hours (those minutes over 60). The lines add up to the total minutes.' }, plannedHours: { type: 'number' },
   minutes: { type: 'integer', description: 'Outage hours only: the total in whole minutes, the sum of the breakdown lines.' }, plannedMinutes: { type: 'integer' },
+  byStream: { type: 'array', description: 'Waste measures only: the figure for each stream that has a record this month.' },
   definition: { type: 'string' }, counts: { type: 'string' }, outOf: { type: 'string' }, leavesOut: { type: 'string' }, source: { type: 'string' } } };
 const SUGGESTION = { type: 'object', required: ['rule', 'id', 'text', 'why', 'basis'], properties: {
   rule: { type: 'string' }, id: { type: 'string' }, text: { type: 'string' }, why: { type: 'string' }, basis: { type: 'string' },
@@ -246,19 +323,22 @@ const AGO = (what) => ({ type: 'integer', enum: AGO_MINUTES, description: `How m
 export const COMMANDS = [
   {
     name: 'ospeli_facilities_overview',
-    summary: 'Utilities at a glance, in one call: what needs attention first (scheduled checks missed with no check since; the newest check failed, or a medical gas supply level picked as low or on reserve, until a later check is normal; open outages with how long), every scheduled check with its status (done, due, overdue) and due day, the newest fuel and water readings against the site\'s levels, outage hours this month by utility, the measures with their definitions and sources, and the guide\'s suggestions with their reasons (empty while the guide is off). Building and plant faults are Engineering\'s work orders: use ospeli_workorders_next with team estates. Read-only.',
+    summary: 'Utilities at a glance, in one call: what needs attention first (scheduled checks missed with no check since; the newest check failed, or a medical gas supply level picked as low or on reserve, until a later check is normal; open outages with how long), every scheduled check with its status (done, due, overdue) and due day, the newest fuel and water readings against the site\'s levels, outage hours this month by utility, the waste log this month (containers by stream, missed collections still waiting), the measures with their definitions and sources, and the guide\'s suggestions with their reasons (empty while the guide is off). Building and plant faults are Engineering\'s work orders: use ospeli_workorders_next with team estates. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, properties: {
       days: { type: 'integer', minimum: 7, maximum: 90, description: 'The period for generator test compliance: the last this many days. Default 30. Outage hours are always for the current month.' },
       format: FORMAT('the values without their definitions', 'each value with its definition, source and breakdown') } },
     output: { type: 'object', required: ['asOf', 'synthetic', 'attention', 'checks', 'readings', 'kpis', 'readOnly', 'planned', 'levels', 'guide', 'note'], properties: {
       asOf: TIME, synthetic: SYNTHETIC, offsetMinutes: { type: 'integer', description: 'The site\'s offset from UTC, used for due days and months.' },
-      attention: { type: 'object', required: ['overdue', 'problems', 'openOutages'], properties: { overdue: { type: 'array' }, problems: { type: 'array', description: 'Each asset or place whose newest check failed, or whose medical gas supply level was picked as low or on reserve, until a later check is normal. It records what was seen; it never says whether a supply is safe.' }, openOutages: { type: 'array' } } },
+      attention: { type: 'object', required: ['overdue', 'problems', 'openOutages'], properties: { overdue: { type: 'array' }, problems: { type: 'array', description: 'Each asset or place whose newest check failed, or whose medical gas supply level was picked as low or on reserve, until a later check is normal. It records what was seen; it never says whether a supply is safe.' }, openOutages: { type: 'array' },
+        wasteMissed: { type: 'array', description: 'Waste collections recorded as missed, each until a later collection of the same stream at the same place is recorded. Oldest first.' } } },
       checks: { type: 'array', items: { type: 'object', required: ['checkKind', 'targetId', 'targetName', 'status', 'dueBy'] } },
       readings: { type: 'array', description: 'The newest fuel and water reading of each tank, with the site\'s level and whether it is below.' },
       kpis: { type: 'array', items: KPI_OUT }, readOnly: { type: 'array' }, planned: { type: 'array' },
       levels: { type: 'object', required: ['fuelPct', 'waterPct'] }, schedule: { type: 'object' },
-      choices: { type: 'object', description: 'Pick lists: the generators for each asset check, the places for each place check, and the places an outage can be at (sites, buildings, departments).' },
+      choices: { type: 'object', description: 'Pick lists: the generators for each asset check, the places for each place check, and the places an outage or a waste collection can be at (sites, buildings, departments).' },
+      waste: { type: 'object', description: 'The waste log this month: containers collected and collections missed of recorded, by stream; the missed collections still waiting; the pick lists. Not a consignment or tracking record.' },
+      loadNote: { type: 'string' },
       guide: { type: 'object', required: ['on', 'rules', 'suggestions'], properties: { on: { type: 'boolean' }, rules: { type: 'array' }, suggestions: { type: 'array', items: SUGGESTION } } },
       note: { type: 'string' } } },
     async run(core, input, { wards }) { return overview(core, input, wards); },
@@ -266,10 +346,10 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_facilities_log_list',
-    summary: 'The utilities log, newest first: checks (generator tests, fuel and water readings, medical gas checks) with what was picked, and outages with their utility, place, cause and length. Filter by kind (checks, outages) and checkKind. Each entry records the role, never a person. Read-only.',
+    summary: 'The utilities log, newest first: checks (generator tests with their load, fuel and water readings, medical gas checks) with what was picked, outages with their utility, place, cause and length, and waste collections (collected with containers, or missed with a reason). Filter by kind (checks, outages, waste) and checkKind. Each entry records the role, never a person. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, properties: {
-      kind: { type: 'string', enum: ['all', 'checks', 'outages'], description: 'all (default), checks or outages.' },
+      kind: { type: 'string', enum: ['all', 'checks', 'outages', 'waste'], description: 'all (default), checks, outages or waste.' },
       checkKind: { ...KIND_IN, description: 'Only checks of this kind.' },
       since: { ...TIME, description: 'Only entries at or after this time.' },
       format: FORMAT('id, what, where and when only', 'every field'), limit: LIMIT(20, 500, 'entries') } },
@@ -281,19 +361,20 @@ export const COMMANDS = [
       const kind = input.kind || 'all';
       const since = sameMoment(input.since);
       let list = [];
-      if (kind !== 'outages') list.push(...deriveChecks(events).filter((c) => !input.checkKind || c.checkKind === input.checkKind).map((c) => checkOut(c, info)));
-      if (kind !== 'checks' && !input.checkKind) list.push(...[...deriveOutages(events).values()].map((o) => outageOut(o, info, now)));
+      if (kind === 'all' || kind === 'checks') list.push(...deriveChecks(events).filter((c) => !input.checkKind || c.checkKind === input.checkKind).map((c) => checkOut(c, info)));
+      if ((kind === 'all' || kind === 'outages') && !input.checkKind) list.push(...[...deriveOutages(events).values()].map((o) => outageOut(o, info, now)));
+      if ((kind === 'all' || kind === 'waste') && !input.checkKind) list.push(...deriveWaste(events).map((w) => wasteOut(w, info)));
       list = list.filter((x) => !since || x.at >= since).sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : (a.id < b.id ? 1 : -1)));
       const cut = page(list, input.limit, 20);
       for (const x of cut.items) x.atText = whenText(Date.parse(x.at), info.offsetMinutes);
-      const short = (x) => ({ id: x.id, kind: x.kind, at: x.at, atText: x.atText, what: x.kind === 'check' ? `${x.checkName}: ${x.words}` : `${x.utilityName} outage, ${x.causeName}${x.open ? ', still open' : ''}`, where: x.targetName || x.placeName });
+      const short = (x) => ({ id: x.id, kind: x.kind, at: x.at, atText: x.atText, what: x.kind === 'check' ? `${x.checkName}: ${x.words}` : x.kind === 'waste' ? `Waste, ${x.words}` : `${x.utilityName} outage, ${x.causeName}${x.open ? ', still open' : ''}`, where: x.targetName || x.placeName });
       return { asOf: now, synthetic: await synth(core), total: cut.total, truncated: cut.truncated, entries: cut.items.map((x) => (input.format === 'short' ? short(x) : x)) };
     },
     example: { input: { kind: 'checks', checkKind: 'generator-test', limit: 5 } },
   },
   {
     name: 'ospeli_facilities_check_record',
-    summary: 'Record a utility check, by picks only (nothing typed): a generator test (generator, pass or fail, run time), a fuel level (generator, per cent to the nearest 10), a stored water level (place, per cent) or a medical gas check (place, pass or fail, supply level band). A generator test or a medical gas check is recorded by the facilities technician or manager; a reading may also be taken by the facilities assistant. A failed generator test does not open a work order: report it with ospeli_workorders_report_fault (fault "Generator test fault"). A gas check records what was seen after the site\'s own procedure; it never says a supply is safe. An agent\'s call becomes a proposal for a person.',
+    summary: 'Record a utility check, by picks only (nothing typed): a generator test (generator, pass or fail, run time, and the load it ran on: on-load or off-load; only an on-load test fills the every-4-weeks on-load row of the schedule), a fuel level (generator, per cent to the nearest 10), a stored water level (place, per cent) or a medical gas check (place, pass or fail, supply level band). A generator test or a medical gas check is recorded by the facilities technician or manager; a reading may also be taken by the facilities assistant. A failed generator test does not open a work order: report it with ospeli_workorders_report_fault (fault "Generator test fault"). A gas check records what was seen after the site\'s own procedure; it never says a supply is safe. An agent\'s call becomes a proposal for a person.',
     kind: 'write', roles: LOGGERS, approval: true,
     input: { type: 'object', additionalProperties: false, required: ['checkKind'], properties: {
       checkKind: KIND_IN,
@@ -302,7 +383,8 @@ export const COMMANDS = [
       result: { type: 'string', enum: Object.keys(RESULTS), description: 'For generator-test and gas-check: pass or fail.' },
       runMinutes: { type: 'integer', enum: RUN_MINUTES, description: 'For generator-test: how long it ran, 15, 30 or 60 (60 means 60 minutes or more).' },
       levelPct: { type: 'integer', enum: LEVELS, description: 'For fuel-level and water-level: the gauge reading to the nearest 10 per cent, 0 to 100.' },
-      levelBand: { type: 'string', enum: Object.keys(GAS_BANDS), description: `For gas-check: the main supply's level band: ${Object.entries(GAS_BANDS).map(([k, v]) => `${k} (${v})`).join(', ')}.` } } },
+      levelBand: { type: 'string', enum: Object.keys(GAS_BANDS), description: `For gas-check: the main supply's level band: ${Object.entries(GAS_BANDS).map(([k, v]) => `${k} (${v})`).join(', ')}.` },
+      load: { type: 'string', enum: Object.keys(LOADS), description: `For generator-test only: ${Object.entries(LOADS).map(([k, v]) => `${k} (${v})`).join(', ')}. What the technician saw; it does not say the load was enough. Left out: load not recorded, which never counts as on load.` } } },
     output: { type: 'object', required: ['status'], properties: {
       status: WRITE_STATUS, checkId: CHECK_ID, checkName: { type: 'string' }, words: { type: 'string' },
       reportFault: { type: ['object', 'null'], description: 'After a failed generator test: the fault report a person may send with ospeli_workorders_report_fault (pick a priority first).' },
@@ -316,18 +398,18 @@ export const COMMANDS = [
         await checkCheck(core, input, actor, events, info);
         checkId = nextCheckId(events);
         const data = { checkKind: input.checkKind, ...(input.assetId ? { assetId: input.assetId } : { placeId: input.placeId }) };
-        for (const f of ['result', 'runMinutes', 'levelPct', 'levelBand']) if (input[f] != null) data[f] = input[f];
+        for (const f of ['result', 'runMinutes', 'levelPct', 'levelBand', 'load']) if (input[f] != null) data[f] = input[f];
         return [{ type: 'facilities.check-recorded', subject: checkId, actorRole: actor.role, at: core.now(), data }];
       });
       const c = deriveChecks(recs).find((x) => x.id === checkId) || { ...input };
-      await core.recordAs(actor, 'facilities.check-recorded', checkId, { checkKind: input.checkKind, targetId: input.assetId || input.placeId, ...(input.result ? { result: input.result } : {}) });
+      await core.recordAs(actor, 'facilities.check-recorded', checkId, { checkKind: input.checkKind, targetId: input.assetId || input.placeId, ...(input.result ? { result: input.result } : {}), ...(input.load ? { load: input.load } : {}) });
       const fault = 'Generator test fault';
       const a = info.assetById.get(input.assetId);
       const reportFault = input.checkKind === 'generator-test' && input.result === 'fail' && a && faultsFor(a.kind).includes(fault)
         ? { command: 'ospeli_workorders_report_fault', input: { assetId: a.id, fault }, needs: 'priority (urgent, high or routine), picked by a person' } : null;
-      return { status: 'done', checkId, checkName: CHECK_KINDS[input.checkKind].name, words: checkWords(c), reportFault, events: recs.map((r) => r.seq) };
+      return { status: 'done', checkId, checkName: CHECK_KINDS[input.checkKind].name, words: checkWords(c, false), reportFault, events: recs.map((r) => r.seq) };
     },
-    example: { input: { checkKind: 'generator-test', assetId: 'asset-generator-1', result: 'pass', runMinutes: 30 } },
+    example: { input: { checkKind: 'generator-test', assetId: 'asset-generator-1', result: 'pass', runMinutes: 30, load: 'on-load' } },
   },
   {
     name: 'ospeli_facilities_outage_start',
@@ -378,6 +460,37 @@ export const COMMANDS = [
       return { status: 'done', outageId: input.outageId, minutes, events: recs.map((r) => r.seq) };
     },
     example: { input: { outageId: 'out-00001', cause: 'outside-supply' }, needs: 'An open outage: ospeli_facilities_outage_start opens one, and ospeli_facilities_overview (attention.openOutages) lists the open ones with their ids.' },
+  },
+  {
+    name: 'ospeli_facilities_waste_record',
+    summary: `Record a waste collection, by picks only (nothing typed): the site, building or department, the stream (${Object.keys(WASTE_STREAMS).join(', ')}; an example list, not a standard), and either collected with how many containers, or missed with a reason. minutesAgo records a collection noticed a little later. A missed collection stays in the overview's Needs attention until a later collection of the same stream at the same place is recorded; the missed share keeps it. The same picks again within 10 minutes are refused as already saved. Not a waste consignment or tracking record: no weight, no contents, no contractor. An agent's call becomes a proposal for a person.`,
+    kind: 'write', roles: LOGGERS, approval: true,
+    input: { type: 'object', additionalProperties: false, required: ['placeId', 'stream', 'outcome'], properties: {
+      placeId: { ...ID, description: 'The site, building or department the waste was collected from, for example bld-main-a. ospeli_facilities_overview lists them under choices.wastePlaces.' },
+      stream: { type: 'string', enum: Object.keys(WASTE_STREAMS), description: `${Object.entries(WASTE_STREAMS).map(([k, v]) => `${k} (${v})`).join(', ')}.` },
+      outcome: { type: 'string', enum: Object.keys(WASTE_OUTCOMES), description: 'collected (send containers) or missed (send reason).' },
+      containers: { type: 'integer', enum: WASTE_CONTAINERS, description: `collected only: how many containers, ${WASTE_CONTAINERS.join(', ')} (20 means 20 or more).` },
+      reason: { type: 'string', enum: Object.keys(WASTE_REASONS), description: `missed only: ${Object.entries(WASTE_REASONS).map(([k, v]) => `${k} (${v})`).join(', ')}.` },
+      minutesAgo: AGO('collection happened or was missed') } },
+    output: { type: 'object', required: ['status'], properties: { status: WRITE_STATUS, wasteId: WASTE_ID, at: TIME, words: { type: 'string' }, events: EVENT_SEQS, proposal: PROPOSAL_OUT } },
+    target: (input) => ({ id: `${input.stream}:${input.placeId}`, word: 'waste collection' }),
+    async precheck(core, input) { await checkWaste(core, input); },
+    async run(core, input, { actor }) {
+      let wasteId = null; let at = null;
+      const info = await siteInfo(core);
+      const recs = await core.appendChecked(async (events) => {
+        await checkWaste(core, input, events, info);
+        wasteId = nextWasteId(events);
+        at = new Date(Date.parse(core.now()) - (input.minutesAgo || 0) * MIN).toISOString();
+        const data = { placeId: input.placeId, stream: input.stream, outcome: input.outcome,
+          ...(input.outcome === 'collected' ? { containers: input.containers } : { reason: input.reason }), ...(input.minutesAgo ? { backdatedMinutes: input.minutesAgo } : {}) };
+        return [{ type: 'facilities.waste-recorded', subject: wasteId, actorRole: actor.role, at, data }];
+      });
+      await core.recordAs(actor, 'facilities.waste-recorded', wasteId, { placeId: input.placeId, stream: input.stream, outcome: input.outcome });
+      const w = deriveWaste(recs).find((x) => x.id === wasteId);
+      return { status: 'done', wasteId, at, words: w ? wasteWords(w) : '', events: recs.map((r) => r.seq) };
+    },
+    example: { input: { placeId: 'bld-main-a', stream: 'infectious', outcome: 'collected', containers: 3 } },
   },
   {
     name: 'ospeli_facilities_levels_set',
@@ -493,6 +606,15 @@ export function seed({ r, startMs, endMs, entities }) {
   ].filter((o) => has(o.placeId));
   const out = [];
   raw.sort((a, b) => a.t - b.t);
+  // Slice 2: each generator test gets a load, with no new random draw: the first test of each 4-week
+  // on-load period (the schedule's own periods) on load, the others off load.
+  const onLoadSlots = new Set();
+  for (const c of raw) {
+    if (c.data.checkKind !== 'generator-test') continue;
+    const key = `${c.data.assetId}|${slotIndex(c.t, 28, off)}`;
+    c.data.load = onLoadSlots.has(key) ? 'off-load' : 'on-load';
+    onLoadSlots.add(key);
+  }
   raw.forEach((c, i) => out.push({ t: c.t, type: 'facilities.check-recorded', subject: `chk-${String(i + 1).padStart(5, '0')}`, actorRole: c.role, data: c.data }));
   let n = 0;
   const outId = () => `out-${String(++n).padStart(5, '0')}`;
@@ -503,5 +625,45 @@ export function seed({ r, startMs, endMs, entities }) {
     out.push({ t: s + o.minutes * MIN, type: 'facilities.outage-ended', subject: idOut, actorRole: 'estates-tech', data: { cause: o.cause } });
   }
   if (has('bld-main-b')) out.push({ t: endMs - 50 * MIN, type: 'facilities.outage-started', subject: outId(), actorRole: 'estates-tech', data: { utility: 'water', placeId: 'bld-main-b', cause: 'not-known' } });
+  out.push(...seedWaste({ r, startMs, endMs, has, localDayStart, off }));
   return out.filter((e) => e.t < endMs && e.t >= startMs).sort((a, b) => a.t - b.t);
+}
+
+// Slice 2: thirty days of waste collections, after everything above (so no earlier random draw moves).
+// Each stream is collected two or three times a week from Building A, Building B or the Clinic building;
+// one missed infectious collection at Building A is collected the next day, and one missed general
+// collection at the Clinic building is still waiting at the end. Generic patterns only.
+const SEED_CONTAINERS = { general: [3, 4, 5, 6, 8], infectious: [1, 2, 3, 4], sharps: [1, 2], pharmaceutical: [1], chemical: [1], recycling: [2, 3, 4, 5] };
+function seedWaste({ r, startMs, endMs, has, localDayStart, off }) {
+  const places = ['bld-main-a', 'bld-main-b', 'bld-north-1'].filter(has);
+  if (!places.length) return [];
+  const HOUR = 60 * MIN;
+  const raw = [];
+  const weekOf = (t) => { const d = new Date(t + off * MIN).getUTCDay(); return localDayStart(t) - ((d + 6) % 7) * DAY; };
+  const lastFull = localDayStart(endMs); // collections in the history end before today
+  for (const stream of Object.keys(WASTE_STREAMS)) {
+    for (let w = weekOf(startMs); w < endMs; w += 7 * DAY) {
+      const n = r.int(2, 3); // two or three a week
+      for (let i = 0; i < n; i++) {
+        const day = Math.floor((i * 5) / n); // spread over Monday to Friday
+        const t = w + day * DAY + (7 + r.int(0, 7)) * HOUR + r.int(0, 59) * MIN;
+        const placeId = r.pick(places);
+        const containers = r.pick(SEED_CONTAINERS[stream]);
+        if (t >= startMs && t < lastFull) raw.push({ t, placeId, stream, outcome: 'collected', containers });
+      }
+    }
+  }
+  const out = [];
+  const missedInfectious = localDayStart(endMs - 12 * DAY) + 10 * HOUR;
+  if (has('bld-main-a') && missedInfectious >= startMs) {
+    raw.push({ t: missedInfectious, placeId: 'bld-main-a', stream: 'infectious', outcome: 'missed', reason: 'did-not-come' });
+    raw.push({ t: missedInfectious + DAY - HOUR, placeId: 'bld-main-a', stream: 'infectious', outcome: 'collected', containers: 4 });
+  }
+  const general = has('bld-north-1') ? 'bld-north-1' : places[0];
+  const missedGeneral = localDayStart(endMs - DAY) + 9 * HOUR;
+  const kept = raw.filter((x) => !(x.stream === 'general' && x.placeId === general && x.t > missedGeneral));
+  if (missedGeneral >= startMs && missedGeneral < endMs) kept.push({ t: missedGeneral, placeId: general, stream: 'general', outcome: 'missed', reason: 'did-not-come' });
+  kept.sort((a, b) => a.t - b.t).forEach((x, i) => out.push({ t: x.t, type: 'facilities.waste-recorded', subject: `wst-${String(i + 1).padStart(5, '0')}`, actorRole: i % 3 === 0 ? 'estates-tech' : 'facilities-assistant',
+    data: { placeId: x.placeId, stream: x.stream, outcome: x.outcome, ...(x.outcome === 'collected' ? { containers: x.containers } : { reason: x.reason }) } }));
+  return out;
 }

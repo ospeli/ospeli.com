@@ -99,6 +99,7 @@ test('a form cannot be saved until every pick is made; a failed generator test o
   assert.equal(await save.textContent(), 'Pick how long it ran first');
   assert.equal(await save.isDisabled(), true);
   await tap(page, '[data-test="run"] [data-value="15"]');
+  await tap(page, '[data-test="load"] [data-value="off-load"]');
   assert.equal(await save.isDisabled(), false);
   const wos = (await cmd(page, 'ospeli_workorders_list', { state: 'all', limit: 500 }, 'coo')).total;
   await save.tap();
@@ -250,6 +251,7 @@ test('front line: the facilities technician on a 390 px touch phone, with no hel
   await tap(page, '[data-test="target"] [data-value="asset-generator-1"]');
   await tap(page, '[data-test="result"] [data-value="pass"]');
   await tap(page, '[data-test="run"] [data-value="30"]');
+  await tap(page, '[data-test="load"] [data-value="on-load"]');
   await tap(page, '[data-test="save"]');
   await waitSaved(page, /Saved: Generator test, Standby generator 1: Pass, 30 min/);
   assert.equal(await page.locator('[data-test="fault"]').count(), 0, 'a pass offers no fault report');

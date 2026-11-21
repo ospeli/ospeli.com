@@ -18217,7 +18217,7 @@
     },
     {
       "name": "ospeli_facilities_overview",
-      "summary": "Utilities at a glance, in one call: what needs attention first (scheduled checks missed with no check since; the newest check failed, or a medical gas supply level picked as low or on reserve, until a later check is normal; open outages with how long), every scheduled check with its status (done, due, overdue) and due day, the newest fuel and water readings against the site's levels, outage hours this month by utility, the measures with their definitions and sources, and the guide's suggestions with their reasons (empty while the guide is off). Building and plant faults are Engineering's work orders: use ospeli_workorders_next with team estates. Read-only.",
+      "summary": "Utilities at a glance, in one call: what needs attention first (scheduled checks missed with no check since; the newest check failed, or a medical gas supply level picked as low or on reserve, until a later check is normal; open outages with how long), every scheduled check with its status (done, due, overdue) and due day, the newest fuel and water readings against the site's levels, outage hours this month by utility, the waste log this month (containers by stream, missed collections still waiting), the measures with their definitions and sources, and the guide's suggestions with their reasons (empty while the guide is off). Building and plant faults are Engineering's work orders: use ospeli_workorders_next with team estates. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -18313,6 +18313,10 @@
               },
               "openOutages": {
                 "type": "array"
+              },
+              "wasteMissed": {
+                "type": "array",
+                "description": "Waste collections recorded as missed, each until a later collection of the same stream at the same place is recorded. Oldest first."
               }
             }
           },
@@ -18403,6 +18407,10 @@
                 "plannedMinutes": {
                   "type": "integer"
                 },
+                "byStream": {
+                  "type": "array",
+                  "description": "Waste measures only: the figure for each stream that has a record this month."
+                },
                 "definition": {
                   "type": "string"
                 },
@@ -18439,7 +18447,14 @@
           },
           "choices": {
             "type": "object",
-            "description": "Pick lists: the generators for each asset check, the places for each place check, and the places an outage can be at (sites, buildings, departments)."
+            "description": "Pick lists: the generators for each asset check, the places for each place check, and the places an outage or a waste collection can be at (sites, buildings, departments)."
+          },
+          "waste": {
+            "type": "object",
+            "description": "The waste log this month: containers collected and collections missed of recorded, by stream; the missed collections still waiting; the pick lists. Not a consignment or tracking record."
+          },
+          "loadNote": {
+            "type": "string"
           },
           "guide": {
             "type": "object",
@@ -18513,7 +18528,7 @@
     },
     {
       "name": "ospeli_facilities_log_list",
-      "summary": "The utilities log, newest first: checks (generator tests, fuel and water readings, medical gas checks) with what was picked, and outages with their utility, place, cause and length. Filter by kind (checks, outages) and checkKind. Each entry records the role, never a person. Read-only.",
+      "summary": "The utilities log, newest first: checks (generator tests with their load, fuel and water readings, medical gas checks) with what was picked, outages with their utility, place, cause and length, and waste collections (collected with containers, or missed with a reason). Filter by kind (checks, outages, waste) and checkKind. Each entry records the role, never a person. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -18552,9 +18567,10 @@
             "enum": [
               "all",
               "checks",
-              "outages"
+              "outages",
+              "waste"
             ],
-            "description": "all (default), checks or outages."
+            "description": "all (default), checks, outages or waste."
           },
           "checkKind": {
             "type": "string",
@@ -18639,7 +18655,7 @@
     },
     {
       "name": "ospeli_facilities_check_record",
-      "summary": "Record a utility check, by picks only (nothing typed): a generator test (generator, pass or fail, run time), a fuel level (generator, per cent to the nearest 10), a stored water level (place, per cent) or a medical gas check (place, pass or fail, supply level band). A generator test or a medical gas check is recorded by the facilities technician or manager; a reading may also be taken by the facilities assistant. A failed generator test does not open a work order: report it with ospeli_workorders_report_fault (fault \"Generator test fault\"). A gas check records what was seen after the site's own procedure; it never says a supply is safe. An agent's call becomes a proposal for a person.",
+      "summary": "Record a utility check, by picks only (nothing typed): a generator test (generator, pass or fail, run time, and the load it ran on: on-load or off-load; only an on-load test fills the every-4-weeks on-load row of the schedule), a fuel level (generator, per cent to the nearest 10), a stored water level (place, per cent) or a medical gas check (place, pass or fail, supply level band). A generator test or a medical gas check is recorded by the facilities technician or manager; a reading may also be taken by the facilities assistant. A failed generator test does not open a work order: report it with ospeli_workorders_report_fault (fault \"Generator test fault\"). A gas check records what was seen after the site's own procedure; it never says a supply is safe. An agent's call becomes a proposal for a person.",
       "kind": "write",
       "roles": [
         "estates-tech",
@@ -18664,7 +18680,7 @@
               "water-level",
               "gas-check"
             ],
-            "description": "generator-test (needs assetId, result, runMinutes), fuel-level (assetId, levelPct), water-level (placeId, levelPct), gas-check (placeId, result, levelBand)."
+            "description": "generator-test (needs assetId, result, runMinutes; load is optional), fuel-level (assetId, levelPct), water-level (placeId, levelPct), gas-check (placeId, result, levelBand)."
           },
           "assetId": {
             "type": "string",
@@ -18721,6 +18737,14 @@
               "reserve"
             ],
             "description": "For gas-check: the main supply's level band: high (More than half), half (About half), low (Low: at the reorder mark), reserve (Running on the reserve supply)."
+          },
+          "load": {
+            "type": "string",
+            "enum": [
+              "on-load",
+              "off-load"
+            ],
+            "description": "For generator-test only: on-load (On load (building or load bank)), off-load (Off load (no load)). What the technician saw; it does not say the load was enough. Left out: load not recorded, which never counts as on load."
           }
         }
       },
@@ -18773,7 +18797,8 @@
           "checkKind": "generator-test",
           "assetId": "asset-generator-1",
           "result": "pass",
-          "runMinutes": 30
+          "runMinutes": 30,
+          "load": "on-load"
         }
       }
     },
@@ -18984,6 +19009,142 @@
           "cause": "outside-supply"
         },
         "needs": "An open outage: ospeli_facilities_outage_start opens one, and ospeli_facilities_overview (attention.openOutages) lists the open ones with their ids."
+      }
+    },
+    {
+      "name": "ospeli_facilities_waste_record",
+      "summary": "Record a waste collection, by picks only (nothing typed): the site, building or department, the stream (general, infectious, sharps, pharmaceutical, chemical, recycling; an example list, not a standard), and either collected with how many containers, or missed with a reason. minutesAgo records a collection noticed a little later. A missed collection stays in the overview's Needs attention until a later collection of the same stream at the same place is recorded; the missed share keeps it. The same picks again within 10 minutes are refused as already saved. Not a waste consignment or tracking record: no weight, no contents, no contractor. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "estates-tech",
+        "facilities-assistant",
+        "facilities-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "placeId",
+          "stream",
+          "outcome"
+        ],
+        "properties": {
+          "placeId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "The site, building or department the waste was collected from, for example bld-main-a. ospeli_facilities_overview lists them under choices.wastePlaces."
+          },
+          "stream": {
+            "type": "string",
+            "enum": [
+              "general",
+              "infectious",
+              "sharps",
+              "pharmaceutical",
+              "chemical",
+              "recycling"
+            ],
+            "description": "general (General), infectious (Infectious), sharps (Sharps), pharmaceutical (Pharmaceutical), chemical (Chemical), recycling (Recycling)."
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "collected",
+              "missed"
+            ],
+            "description": "collected (send containers) or missed (send reason)."
+          },
+          "containers": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              3,
+              4,
+              5,
+              6,
+              8,
+              10,
+              15,
+              20
+            ],
+            "description": "collected only: how many containers, 1, 2, 3, 4, 5, 6, 8, 10, 15, 20 (20 means 20 or more)."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "did-not-come",
+              "could-not-take",
+              "not-known"
+            ],
+            "description": "missed only: did-not-come (Collection did not come), could-not-take (Came but could not take it), not-known (Not known)."
+          },
+          "minutesAgo": {
+            "type": "integer",
+            "enum": [
+              0,
+              15,
+              30,
+              60,
+              120,
+              240,
+              480,
+              720
+            ],
+            "description": "How many minutes ago the collection happened or was missed: 0, 15, 30, 60, 120, 240, 480, 720. Leave out for now."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "wasteId": {
+            "type": "string",
+            "pattern": "^wst-[0-9]{5,}$",
+            "maxLength": 20
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40
+          },
+          "words": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "placeId": "bld-main-a",
+          "stream": "infectious",
+          "outcome": "collected",
+          "containers": 3
+        }
       }
     },
     {
