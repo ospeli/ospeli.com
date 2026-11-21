@@ -225,7 +225,7 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
 <main class="wrap">
   <span class="badge">Preview · fictional example data</span>
   <h1>Facilities and utilities: faults, planned work and plant checks</h1>
-  <p class="lead">Anyone can report a leak, power cut, broken light, air conditioning, lift or door fault from the room in three taps. Technicians work the queue on a phone. The facilities manager sees open work orders, planned maintenance, utility checks and which plant is up or down. The guide points out patterns; a person decides.</p>
+  <p class="lead">Anyone can report a leak, power cut, broken light, ventilation or cooling, lift or door fault from the room in three taps. Technicians work the queue on a phone. The facilities manager sees open work orders, planned maintenance, utility checks and which plant is up or down. The guide points out patterns; a person decides.</p>
 
   <div class="roles" role="group" aria-label="Whose view">
     <button type="button" id="r-anyone" data-role="anyone" aria-pressed="false">Anyone</button>
@@ -295,11 +295,11 @@ var FAULTS = {
   leak:   { label: 'Leak',             ic: '\u{1F4A7}', hint: 'water, drip, flooding',  trade: 'plumb', pri: 'high' },
   power:  { label: 'No power',         ic: '⚡',    hint: 'sockets or supply off',  trade: 'elec',  pri: 'urgent' },
   lights: { label: 'Lights',           ic: '\u{1F4A1}', hint: 'out or flickering',      trade: 'elec',  pri: 'routine' },
-  ac:     { label: 'Air conditioning', ic: '❄️', hint: 'too hot, cold, noisy', trade: 'hvac',  pri: 'high' },
+  ac:     { label: 'Ventilation or cooling', ic: '❄️', hint: 'too hot, cold, noisy', trade: 'hvac',  pri: 'high' },
   lift:   { label: 'Lift',             ic: '↕️', hint: 'stuck or not coming', trade: 'lift',  pri: 'urgent' },
   door:   { label: 'Door or lock',     ic: '\u{1F6AA}', hint: 'will not close or lock', trade: 'lift',  pri: 'routine' }
 };
-var TRADES = { plumb: 'Plumbing', elec: 'Electrical', hvac: 'Air conditioning', lift: 'Lifts and doors' };
+var TRADES = { plumb: 'Plumbing', elec: 'Electrical', hvac: 'Heating, ventilation and cooling', lift: 'Lifts and doors' };
 var PRI = { urgent: 'Urgent', high: 'High', routine: 'Routine' };
 var PRI_ORDER = { urgent: 0, high: 1, routine: 2 };
 // Example settings for this demo only, not a standard: each organisation sets its own.

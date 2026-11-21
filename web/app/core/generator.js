@@ -87,7 +87,7 @@ const BEDS_PER_WARD = 20;
 
 const WARD_ASSETS = [
   ['infusion-pump', 'Infusion pump', 4], ['suction', 'Suction unit', 2], ['o2-flowmeter', 'Oxygen flowmeter', 4],
-  ['call-bell', 'Nurse call panel', 1], ['ac', 'Air-conditioning unit', 2], ['sink', 'Clinical hand-wash sink', 2],
+  ['call-bell', 'Nurse call panel', 1], ['ac', 'Ventilation or cooling unit', 2], ['sink', 'Clinical hand-wash sink', 2],
   ['door-closer', 'Fire door closer', 2], ['light', 'Light fitting bank', 2],
 ];
 const PLANT_ASSETS = [

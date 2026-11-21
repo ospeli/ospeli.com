@@ -331,6 +331,8 @@ OLD_WORDS = [(re.compile(r"\bbed managers?\b", re.I), "Bed manager", "Patient fl
              (re.compile(r"\bboard-round\b", re.I), "board-round", "patient-flow"),
              (re.compile(r"\brotas?\b", re.I), "rota", "roster"),
              (re.compile(r"\btrolleys?\b", re.I), "trolley", "cart (or stretcher for a patient)"),
+             # Issue #68 (last part): a climate cue. The asset kind id 'ac' stays so stored assets load.
+             (re.compile(r"\bair[- ]?condition(?:ing|ed|ers?)?\b", re.I), "air conditioning", "ventilation or cooling"),
              # Issue #67: framing that assumes a paper-run site on a tight budget.
              (re.compile(r"\bwalking, phoning and paper\b", re.I), "walking, phoning and paper", "walking, phoning, paper and spreadsheets"),
              (re.compile(r"\btight budgets?\b", re.I), "tight budgets", "hardware you already have"),
