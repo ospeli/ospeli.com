@@ -43,6 +43,16 @@ const auditLine = (check) => {
   return `Audit trail: ${check.entries} ${check.entries === 1 ? 'entry' : 'entries'}. Self-check passed (this does not show whether the newest entries were removed).${replaced}`;
 };
 
+// A trail mark (issue #73): the number of the newest audit entry and the first 80 bits of its
+// check code (SHA-256, the one the chain already uses), written so a person can copy it onto
+// paper or send it somewhere off this computer. Ospeli keeps no copy: a mark kept here could be
+// rewritten with the trail. Checked later, it shows whether the entries up to that number are
+// still the ones that were there, which the self-check alone cannot show.
+const MARK_HEX = 20;
+const markOf = (entry) => `${entry.seq} ${entry.hash.slice(0, MARK_HEX).match(/.{4}/g).join('-')}`;
+const MARK_SHAPE = /^audit check (\d{1,9})[ ,:]+([0-9a-f]{4}(?:[ -]?[0-9a-f]{4}){4})$/i;
+const brokenLine = (check) => `Audit trail: BROKEN at entry ${check.at} (${check.reason}). Tell the person who looks after this server.`;
+
 export const SERVER_VERSION = '0.1.0';
 export const DEFAULT_PORT = 8787;
 const MAX_BODY = 64 * 1024;
@@ -679,13 +689,33 @@ export async function startServer({
     '  add device           connect a phone or laptop (2 questions, then a code to type on it)',
     '  devices              the phones and laptops connected to this site',
     '  remove device 2      disconnect device 2 on that list',
-    '  audit                check the audit trail and show the last entries',
+    '  audit                check the audit trail, show the last entries and a mark to write down',
+    '  audit check MARK     see whether the trail still holds the entries a mark was taken from',
     '  backup FILE          save a copy of all data to FILE',
     '  locked backup FILE   save a copy that cannot be read without a passphrase you choose',
     '  open backup FILE NEW open a locked copy into a new data file NEW (asks for the passphrase)',
     '  status               the address and whether bots are on',
     'To turn Ospeli off: press Ctrl and C together.',
   ].join('\n');
+
+  // The trail is checked once when the server starts, not only when someone asks (issue #73).
+  const startCheck = await core.auditCheck();
+  if (!startCheck.ok) notify(`${brokenLine(startCheck)} Found when Ospeli started.`);
+
+  // Does the trail still hold the entry a mark was taken from? The whole chain is checked first:
+  // a mark that matches on a chain that does not hold together proves nothing.
+  async function checkMark(seq, hex) {
+    const log = await core.auditLog();
+    const chain = await core.auditCheck();
+    if (!chain.ok) return brokenLine(chain);
+    if (seq < 1) return 'A mark starts with an entry number, 1 or more. Type audit to see the mark for now.';
+    if (log.length < seq) return `NOT THE SAME. The mark was taken at entry ${seq}, and the trail now has ${log.length === 1 ? '1 entry' : `${log.length} entries`}: entries were removed. Tell the person who looks after this server.`;
+    const entry = log[seq - 1];
+    const a = Buffer.from(entry.hash.slice(0, MARK_HEX)); const b = Buffer.from(hex);
+    if (entry.seq !== seq || a.length !== b.length || !timingSafeEqual(a, b)) return `NOT THE SAME. Entry ${seq} is not the entry this mark was taken from: the trail was changed at or before entry ${seq}, or the mark was copied wrongly (check each character). Tell the person who looks after this server.`;
+    const since = log.length - seq;
+    return `The same. Entries 1 to ${seq} are the ones that were there when this mark was taken. ${since ? `${since} ${since === 1 ? 'entry has' : 'entries have'} been added since.` : 'Nothing has been added since.'} (This says nothing about the event log, and nothing about entries after ${seq}.)`;
+  }
 
   async function banner() {
     const access = await agentAccess(core);
@@ -696,6 +726,7 @@ export async function startServer({
       `Data: DEMO (${HOSPITAL_NAME}, made up; no real patients). Do not load real records.`,
       shareUrl ? `Address for other computers here: ${shareUrl}` : `Address: ${url} (this computer only)`,
       ...(shareUrl ? [secure ? 'The link uses https with the certificate you gave. Each phone or computer must already trust that certificate.' : 'Warning: keys and device links travel unencrypted on your network. Use this only on a network you trust.'] : []),
+      ...(startCheck.ok ? [] : [`Warning: the audit trail did not pass its self-check when Ospeli started (entry ${startCheck.at}). Type: audit`]),
       ...(openToOthers(file) ? ['Warning: other accounts on this computer can read the data file. Keep this computer for the people who look after Ospeli.'] : []),
       access.allowed ? `Bots and scripts: ON for ${live} bot${live === 1 ? '' : 's'}. They read and suggest; a person here says yes or no.` : 'Bots and scripts: OFF. No bot or script can read or suggest yet.',
       `Data file: ${resolve(file)}`,
@@ -908,9 +939,13 @@ export async function startServer({
         const log = await core.auditLog();
         const check = await core.auditCheck();
         const who = (e) => (e.actorType === 'agent' ? `agent ${e.agent}${e.via === 'api' ? ' (over the API)' : ''}` : e.actorType === 'system' ? 'system' : `person, ${roleById(e.actorRole)?.name || e.actorRole}${e.via === 'console' ? ' (at this console)' : e.via === 'app' ? ` (on ${e.device})` : ''}`);
-        return [check.ok ? auditLine(check) : `Audit trail: BROKEN at entry ${check.at} (${check.reason}). Tell the person who looks after this server.`,
-          ...log.slice(-8).map((e) => `  ${e.seq}  ${e.at.slice(0, 16).replace('T', ' ')}  ${who(e)}  ${e.action}${e.detail?.command ? ` ${e.detail.command}` : ''}`)].join('\n');
+        return [check.ok ? auditLine(check) : brokenLine(check),
+          ...log.slice(-8).map((e) => `  ${e.seq}  ${e.at.slice(0, 16).replace('T', ' ')}  ${who(e)}  ${e.action}${e.detail?.command ? ` ${e.detail.command}` : ''}`),
+          ...(check.ok && log.length ? [`Mark for the trail as it is now: ${markOf(log[log.length - 1])}`,
+            'Write the mark down or send it somewhere off this computer; Ospeli keeps no copy. To see later whether those entries are still the same, type: audit check and the mark'] : [])].join('\n');
       }
+      if ((m = MARK_SHAPE.exec(text))) return checkMark(Number(m[1]), m[2].replace(/[ -]/g, '').toLowerCase());
+      if (/^audit\b/i.test(text)) return 'Type audit to check the trail and see its mark. To check a mark you wrote down, type audit check and the mark, for example: audit check 412 3fa9-c01d-77be-0a1b-22cd';
       if ((m = /^locked backup (.+)$/i.exec(text))) {
         const to = resolve(m[1]);
         if (existsSync(to)) return `A file called ${to} is already there. Nothing was saved. Give a new name.`;

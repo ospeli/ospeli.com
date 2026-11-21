@@ -84,7 +84,7 @@ Press Ctrl and C together. Your data is saved in one file (`tools/ospeli-server/
 - One server per data file. Other options: `--port 8787`, `--data FILE`, `--tls-cert FILE --tls-key FILE`.
 
 ### What the audit self-check proves
-The `audit` word at the console runs a self-check on the audit trail. Each entry carries a check code worked out from the entry before it. There is no secret key, no signature and no copy kept off this computer yet, so the check catches accidental damage and nothing more. It does not cover the event log. It runs when someone types `audit`, not at start-up.
+The `audit` word at the console runs a self-check on the audit trail. Each entry carries a check code worked out from the entry before it. There is no secret key, no signature and no copy kept off this computer yet, so the check catches accidental damage and nothing more. It does not cover the event log. It runs when the server starts (a trail that fails is named in a warning on the start screen) and when someone types `audit`.
 
 | Change to the trail | Self-check |
 |---|---|
@@ -94,4 +94,9 @@ The `audit` word at the console runs a self-check on the audit trail. Each entry
 | A middle entry removed, the rest renumbered and re-coded | Not caught |
 | Trail emptied | Not caught |
 
-A checkpoint kept off the computer, so that a rewritten or shortened history shows up, is in development. A test runs these five cases on every build.
+A test runs these five cases on every build.
+
+### The trail mark: a check a person keeps
+`audit` also prints a mark: the number of the newest entry and the first 20 characters of its check code, for example `412 3fa9-c01d-77be-0a1b-22cd`. Write it down or send it somewhere off this computer; Ospeli keeps no copy of it. Later, `audit check 412 3fa9-c01d-77be-0a1b-22cd` answers "The same" if entries 1 to 412 are the ones that were there when the mark was taken, and "NOT THE SAME" if any of them was removed or rewritten, including the four cases the self-check misses. Tests remove and rewrite entries in a data file and check both answers.
+
+What the mark does not do: nothing is noticed until a person checks a mark, and only as far back as the oldest mark they kept; it says nothing about entries added after the mark, or about the event log; a mark stored on the same computer can be replaced along with the trail. A checkpoint that Ospeli itself sends off the computer on a schedule is in development.
