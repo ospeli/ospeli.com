@@ -206,9 +206,11 @@ async function checkMeal(core, input, events) {
   const t = Date.parse(core.now());
   for (let i = evs.length - 1; i >= 0; i--) {
     const e = evs[i];
+    // Only meal records are read: a back-dated record of another kind must not end the look back.
+    if (e.type !== 'support.meals-recorded') continue;
     if (t - Date.parse(e.at) >= MEAL_REPEAT) break;
     const d = e.data || {};
-    if (e.type === 'support.meals-recorded' && e.subject === input.wardId && d.date === date && d.meal === input.meal && d.ordered === input.ordered && d.delivered === input.delivered && d.returned === input.returned) {
+    if (e.subject === input.wardId && d.date === date && d.meal === input.meal && d.ordered === input.ordered && d.delivered === input.delivered && d.returned === input.returned) {
       throw new CommandError('conflict', 'These numbers for this ward, day and meal were saved a moment ago. Nothing new was saved.', { already: true });
     }
   }

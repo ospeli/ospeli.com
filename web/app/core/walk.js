@@ -99,6 +99,8 @@ export function assignLast(walk, { listIndex = null, offList = false }) {
   const p = walk.plan[listIndex];
   if (!p) throw new Error(`The list has ${walk.plan.length} steps.`);
   last.planIndex = listIndex; last.name = p.name; last.role = p.role; last.msg = !!p.msg;
+  // A list step that was timed after all is no longer "did not happen": the record says one or the other.
+  walk.skipped = (walk.skipped || []).filter((i) => i !== listIndex);
   return walk;
 }
 // The list steps not timed and not marked "did not happen", in list order.

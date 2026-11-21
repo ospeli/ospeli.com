@@ -668,7 +668,10 @@ export function slotCommands(packs = []) {
       example: { input: { appointmentId: 'apt-00001', sessionId: 'ses-00001', ...(first.timed ? { slotTime: '09:20' } : { visitOrder: 2 }) }, needs: `${NEED_APPOINTMENT} And a free place to move it to: ospeli_slots_sessions shows the free slots.` },
     }),
     write({
-      verb: 'cancel', roles: [...union('bookRoles'), ...union('stepRoles').filter((r) => !union('bookRoles').includes(r))], // the roles that may cancel for any reason first target: (input) => ({ id: input.appointmentId, word: 'appointment' }),
+      // The roles that may cancel for any reason come first. (This note sat at the end of the next line
+      // for a day and swallowed `target`, so the one-open-proposal check did not see a cancel.)
+      verb: 'cancel', roles: [...union('bookRoles'), ...union('stepRoles').filter((r) => !union('bookRoles').includes(r))],
+      target: (input) => ({ id: input.appointmentId, word: 'appointment' }),
       summary: `Cancel a booked appointment, by the site or by the patient, with a reason from the list; its place becomes free. Once the patient has arrived the only cancel is by the patient with the reason "${LEFT_REASON}", so the list never holds someone who has gone. A finished or missed appointment cannot be cancelled. The same cancel sent twice answers done.`,
       required: ['appointmentId', 'by', 'reason'],
       properties: { appointmentId: APPOINTMENT_ID, by: { type: 'string', enum: CANCEL_BY, description: 'Who cancelled: site or patient.' },

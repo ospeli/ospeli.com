@@ -59,6 +59,9 @@ const STAGE_ID = new RegExp(STAGE_ID_PATTERN);
 const DATE = new RegExp(DATE_PATTERN);
 const ROLE_LISTS = ['openRoles', 'stageRoles', 'closeRoles'];
 const shortWord = (w) => typeof w === 'string' && w.trim() && w.length <= 40;
+// What a place or appointment id looks like. A sentence does not fit it.
+const PLAIN_ID = /^[a-z0-9][a-z0-9-]{0,63}$/;
+const plainId = (v) => (typeof v === 'string' && PLAIN_ID.test(v) ? v : null);
 
 // Put the modules' kinds of episode together. A kind is refused (throws at load, so a test
 // catches it) when it is malformed, reuses an id, or names a role or a kind of place that does
@@ -163,29 +166,34 @@ export const nextStages = (kind, code) => (kind ? [...kind.stages.values()].filt
 //          stages: [{ stage, at, placeId, appointmentId, byRole }], dueBy, dueSetAt,
 //          links: [{ otherCode, relation, at }], closedAt, closeReason }
 export function deriveCodes(events, { packs = [], catalogue = null } = {}) {
-  const { kinds } = catalogue || codeCatalogue(packs, null);
+  const { kinds, closeReasons } = catalogue || codeCatalogue(packs, null);
   const codes = new Map();
+  // Every value kept from an event is a pick or an id, as the commands write them. An imported
+  // file can carry anything in these fields (words, an urgency), so what is not a pick is dropped
+  // here and no list, measure or agent is handed it back.
+  const serviceOf = (kind, v) => (typeof v === 'string' && (kind ? !!kind.services[v] : KIND_ID.test(v)) ? v : null);
   const open = (id) => { const c = codes.get(id); return c && c.state === 'open' ? c : null; };
   for (const e of events) {
     const d = e.data || {};
     switch (e.type) {
       case 'code.opened': {
         if (codes.has(e.subject) || !new RegExp(CODE_ID_PATTERN).test(e.subject || '')) break;
+        if (typeof d.kind !== 'string' || !KIND_ID.test(d.kind)) break;
         codes.set(e.subject, {
-          code: e.subject, kind: d.kind ?? null, service: d.service ?? null, placeId: d.placeId ?? null, source: d.source ?? null, state: 'open',
+          code: e.subject, kind: d.kind, service: serviceOf(kinds.get(d.kind), d.service), placeId: plainId(d.placeId), source: CODE_SOURCES[d.source] ? d.source : null, state: 'open',
           openedAt: e.at, openedByRole: e.actorRole, stage: null, stageAt: null, stages: [], dueBy: null, dueSetAt: null, links: [], closedAt: null, closeReason: null,
         });
         break;
       }
       case 'code.stage': {
         const c = open(e.subject);
-        if (!c || typeof d.stage !== 'string') break;
+        if (!c || typeof d.stage !== 'string' || !STAGE_ID.test(d.stage)) break;
         const kind = kinds.get(c.kind);
         // A kind this build does not know (its module is not loaded) is replayed as written.
         if (kind && !stageAllowed(kind, c, d.stage).ok) break;
-        c.stages.push({ stage: d.stage, at: e.at, placeId: d.placeId ?? null, appointmentId: d.appointmentId ?? null, byRole: e.actorRole });
+        c.stages.push({ stage: d.stage, at: e.at, placeId: plainId(d.placeId), appointmentId: plainId(d.appointmentId), byRole: e.actorRole });
         Object.assign(c, { stage: d.stage, stageAt: e.at });
-        if (d.placeId) c.placeId = d.placeId;
+        if (plainId(d.placeId)) c.placeId = d.placeId;
         break;
       }
       case 'code.due-set': { const c = open(e.subject); if (c && (d.dueBy === null || validDate(d.dueBy))) Object.assign(c, { dueBy: d.dueBy, dueSetAt: e.at }); break; }
@@ -196,7 +204,7 @@ export function deriveCodes(events, { packs = [], catalogue = null } = {}) {
         b.links.push({ otherCode: a.code, relation: d.relation, at: e.at });
         break;
       }
-      case 'code.closed': { const c = open(e.subject); if (c) Object.assign(c, { state: 'closed', closedAt: e.at, closeReason: d.reason ?? null }); break; }
+      case 'code.closed': { const c = open(e.subject); if (c) Object.assign(c, { state: 'closed', closedAt: e.at, closeReason: closeReasons.includes(d.reason) ? d.reason : null }); break; }
       default: break;
     }
   }

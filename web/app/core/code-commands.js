@@ -67,7 +67,9 @@ export function codeCommands(packs = []) {
     const slots = deriveSlots(evs, { packs: [], offsetMinutes });
     return { core, events: evs, now, offsetMinutes, today: localDate(now, offsetMinutes), entities: new Map(ents.map((e) => [e.id, e])), d: deriveCodes(evs, { catalogue }), slots, index: appointmentsByCode(slots) };
   }
-  const placeName = (c, id) => { const p = id ? c.entities.get(id) : null; return p ? currentWords(p.name) : id ?? null; };
+  // A place this site does not have has no name: the id is never handed back as one (an imported
+  // file could put words there).
+  const placeName = (c, id) => { const p = id ? c.entities.get(id) : null; return p ? currentWords(p.name) : null; };
   const ev = (type, subject, role, at, data = null) => ({ type, subject, actorRole: role, at, data });
   const invalid = (why, detail = null) => new CommandError('invalid-input', why, detail);
   const conflict = (why, detail = null) => new CommandError('conflict', why, detail);
@@ -135,7 +137,8 @@ export function codeCommands(packs = []) {
       may(stageRolesOf(kind, s), role, `mark "${s.word}" on`, a(kind.word));
       const placeId = placeFor(c, kind, input.placeId);
       // Already there (same stage and, when a place was sent, the same place): done, nothing written.
-      if (peek.stage === s.id && (placeId == null || peek.placeId === placeId)) return { out: { code: peek.code, state: peek.state, stage: peek.stage }, events: [] };
+      // Only on an open code: a closed one goes on to openCode and is refused as closed.
+      if (peek.state === 'open' && peek.stage === s.id && (placeId == null || peek.placeId === placeId)) return { out: { code: peek.code, state: peek.state, stage: peek.stage }, events: [] };
       const code = openCode(c, input.code, input.expectedStage);
       const ok = stageAllowed(kind, code, s.id);
       if (!ok.ok) {
