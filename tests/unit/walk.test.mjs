@@ -171,7 +171,7 @@ test('a walk is for people only: an agent may read it, never start, tap, finish 
   await runCommand(core, 'ospeli_agents_set_access', { allowed: true }, human('coo'));
   await runCommand(core, 'ospeli_agents_add', { name: 'flow-bot', role: 'ops-manager', days: 30 }, human('coo'));
   const bot = { type: 'agent', role: 'ops-manager', agent: 'flow-bot' };
-  for (const name of ['ospeli_walks_start', 'ospeli_walks_step_start', 'ospeli_walks_step_done', 'ospeli_walks_step_name', 'ospeli_walks_undo', 'ospeli_walks_finish', 'ospeli_walks_discard', 'ospeli_walks_pause', 'ospeli_walks_resume']) {
+  for (const name of ['ospeli_walks_start', 'ospeli_walks_step_start', 'ospeli_walks_step_done', 'ospeli_walks_step_name', 'ospeli_walks_undo', 'ospeli_walks_finish', 'ospeli_walks_discard', 'ospeli_walks_pause', 'ospeli_walks_resume', 'ospeli_walks_step_skip']) {
     const cmd = commandByName(name);
     assert.equal(cmd.agents, false, `${name} is people only`);
     assert.equal(cmd.input.additionalProperties, false);
@@ -186,7 +186,7 @@ test('a walk is for people only: an agent may read it, never start, tap, finish 
   assert.equal(audit.filter((a) => a.action === 'agent.refused').length >= 1, true);
   // Every walk command is listed for agents and people with an example.
   const listed = listCommands().filter((c) => c.name.startsWith('ospeli_walks_'));
-  assert.equal(listed.length, 10); // pause and resume added with issue #124
+  assert.equal(listed.length, 11); // pause and resume added with issue #124; step_skip with repeat walks (#124 item 1)
   assert.ok(listed.every((c) => c.example && c.summary.length > 40));
 });
 

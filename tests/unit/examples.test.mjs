@@ -200,6 +200,15 @@ async function prepare(core, c) {
     // The taps a person makes before this one.
     const before = { ospeli_walks_step_start: [], ospeli_walks_discard: [], ospeli_walks_step_done: ['step_start'], ospeli_walks_undo: ['step_start'], ospeli_walks_pause: [], ospeli_walks_resume: ['pause'],
       ospeli_walks_step_name: ['step_start', 'step_done'], ospeli_walks_finish: ['step_start', 'step_done'] }[name];
+    // A list step can only be marked "did not happen" on a repeat walk: walk one step, finish, walk that map again.
+    if (name === 'ospeli_walks_step_skip') {
+      const me = human(c.roles[0]);
+      await runCommand(core, 'ospeli_walks_start', {}, me);
+      for (const tap of ['step_start', 'step_done']) await runCommand(core, `ospeli_walks_${tap}`, {}, me);
+      const { mapId } = await runCommand(core, 'ospeli_walks_finish', {}, me);
+      await runCommand(core, 'ospeli_walks_start', { mapId }, me);
+      return {};
+    }
     assert.ok(before, `${name}: add the taps this example needs to the test`);
     await runCommand(core, 'ospeli_walks_start', {}, human(c.roles[0]));
     for (const tap of before) await runCommand(core, `ospeli_walks_${tap}`, {}, human(c.roles[0]));

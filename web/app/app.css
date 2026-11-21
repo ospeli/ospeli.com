@@ -628,3 +628,30 @@ html[data-site="connect"] .layout { display: block; }
 .walk-end .walk-finish:disabled { opacity: 1; color: #5B6B7A; border-color: var(--line); background: transparent; cursor: default; }
 .walk-error { margin: 0; padding: 8px 10px; border-left: 5px solid #EE9B00; background: #FFF6E5; border-radius: 8px; color: var(--ink); }
 .walk-when { margin: 4px 0; color: var(--ink); }
+
+/* Repeat walks (issue #124 item 1): the list step on the walk screen, and the range on the map. */
+.walk-next { margin: 0; display: grid; gap: 0; justify-items: center; text-align: center; padding: 6px 8px; border-radius: 12px; background: var(--surface); border: 1.5px solid var(--line-strong); }
+.walk-next-n { font-size: .9375rem; color: var(--ink); }
+.walk-next-name { font-size: 1.25rem; line-height: 1.2; color: var(--navy); overflow-wrap: anywhere; }
+.walk-next-role { font-size: 1rem; color: var(--ink); overflow-wrap: anywhere; }
+.walk-saved { margin: 0; display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap; padding: 6px 10px; border-radius: 12px; background: var(--surface); border: 1.5px solid var(--line); font-size: 1rem; color: var(--ink); }
+.walk-saved span { min-width: 0; overflow-wrap: anywhere; flex: 1 1 160px; }
+.walk-saved .walk-change { min-height: 44px; }
+.walk-again-box { display: grid; gap: 4px; margin-top: 8px; }
+.walk-again-box .meta { font-size: .9375rem; color: var(--ink); }
+.btn.walk-again { min-height: 52px; font-size: 1.05rem; justify-content: center; }
+.walk-answer .wa-count { font-weight: 800; }
+.walk-answer .wa-walks { margin: 4px 0 0; padding-left: 18px; font-size: 1rem; color: var(--ink); display: grid; gap: 2px; }
+@media (min-width: 641px) { .btn.walk-again { justify-self: start; padding-inline: 22px; } }
+/* A repeat walk shows the list step as well, so on a phone the frame is tighter: the main button, "Did not happen" and Undo stay on a 360 by 640 screen. */
+@media (max-width: 640px) {
+  .walk.is-repeat { gap: 6px; padding: 10px 12px; }
+  .walk.is-repeat .walk-top h1 { font-size: 1.05rem; display: inline; }
+  .walk.is-repeat .walk-top { display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+  .walk.is-repeat .walk-sub { font-size: .9375rem; }
+  .walk.is-repeat .walk-timer { font-size: 3.5rem; line-height: 1; }
+  .walk.is-repeat .walk-state { font-size: 1.25rem; line-height: 1.2; }
+  .walk.is-repeat .btn.walk-main { min-height: 72px; }
+  .walk.is-repeat .walk-side { gap: 6px; }
+  .walk.is-repeat .walk-side .btn { min-height: 44px; padding-inline: 12px; }
+}
