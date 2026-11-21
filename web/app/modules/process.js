@@ -150,7 +150,6 @@ export async function render(el, ctx) {
     const measuredView = walked && ui.version === 'today';
     // The device's own date and time format (issue #41), like the rest of the app.
     const day = (iso) => new Date(iso).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' });
-    const shortDay = (iso) => new Date(iso).toLocaleDateString(undefined, { weekday: 'short' });
     const clock = (iso) => new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
     const statsOf = (part) => (walked ? part.statsSec : part.stats);
     const inView = (list) => (walked ? stepsInSeconds(list) : list);
@@ -173,7 +172,7 @@ export async function render(el, ctx) {
     const nextNo = walked ? rg.count + 1 : 0;
     const againBtn = walked && !walkNow && m.today.steps.length ? h('div', { class: 'walk-again-box' },
       h('a', { class: 'btn walk-again', href: `#/process/walk/${m.id}`, 'data-test': 'walk-again' }, `Walk it again (walk ${nextNo}${nextNo <= rg.aim ? ` of ${rg.aim}` : ''})`),
-      h('p', { class: 'meta' }, 'Same step list. Tap when each step starts and when it is done. Walks are added on this phone.')) : null;
+      h('p', { class: 'meta' }, 'Same steps. Saved on this phone only.')) : null;
 
     const seg = (id, label, on, onclick, extra = {}) => h('button', { type: 'button', class: 'chip-btn', 'aria-pressed': String(on), 'data-test': id, onclick, ...extra }, label);
     const head = h('div', { class: 'map-head' },
@@ -210,12 +209,13 @@ export async function render(el, ctx) {
         : h('p', { class: 'wa-line', 'data-test': 'walk-range' }, 'No walk has been walked to the end of the list yet, so there is no start-to-finish time.'),
       rg.totals.elapsed.n ? h('p', { class: 'wa-line', 'data-test': 'walk-range-parts' }, h('b', {}, `Waiting ${fmtRange(rg.totals.wait, { count: false })}`), ` · hands-on ${fmtRange(rg.totals.work, { count: false })}`) : null,
       h('p', { class: 'wa-line wa-wait', 'data-test': 'walk-longest' }, lo.length ? h('b', {}, 'Longest wait: ') : null, longestLine),
-      rg.totals.elapsed.n > 1 ? h('p', { class: 'meta wa-note', 'data-test': 'walk-range-how' }, 'Shortest to longest. No average: these walks are examples.') : null,
+      rg.totals.notSeen.n ? h('p', { class: 'wa-line', 'data-test': 'walk-not-seen' }, `Not seen (walk paused) on ${rg.totals.notSeen.n} ${rg.totals.notSeen.n === 1 ? 'walk' : 'walks'}: ${fmtRange(rg.totals.notSeen, { count: false })}. It is inside start to finish, and in neither waiting nor hands-on.`) : null,
       h('p', { class: 'wa-line wa-count', 'data-test': 'walk-count' }, rg.count < rg.aim
-        ? `${rg.count} of ${rg.aim} walks. Walk the ${rg.count === 2 ? 'third' : 'next'} on another day or at another hour.`
-        : `${rg.count} walks. A range from ${rg.count === 3 ? 'three' : rg.count} walks, not a fixed number. Ask why it changes.`),
+        ? `${rg.count} of ${rg.aim} walks: shortest to longest. These are examples, not an average. Walk the ${rg.count === 2 ? 'third' : 'next'} on another day or at another hour.`
+        : `Shortest to longest from ${rg.count} walks. These are examples, not an average or a fixed number. Ask why the time changes from walk to walk.`),
       h('p', { class: 'wa-line wa-waste', 'data-test': 'walk-waste' }, NOT_ALWAYS_WASTE),
-      h('ul', { class: 'wa-walks', 'data-test': 'walk-list' }, rg.walks.map((w) => h('li', {}, walkWord(w)))),
+      // Each walk's day and hour is on its bar below; a walk that is left out is also said here.
+      rg.walks.some((w) => !w.complete) ? h('ul', { class: 'wa-walks', 'data-test': 'walk-list' }, rg.walks.filter((w) => !w.complete).map((w) => h('li', {}, walkWord(w)))) : null,
       againBtn) : null;
     const answer = rangeView ? rangeAnswer : measuredView ? h('section', { class: `card walk-answer${moved ? ' is-warn' : ''}`, 'data-test': 'walk-answer', 'aria-label': 'What this walk showed' },
       moved ? h('p', { class: 'walk-clock', role: 'alert', 'data-test': 'walk-clock' }, h('b', {}, 'The phone\'s clock changed during this walk.'), ' The times on this map may be wrong. Walk it again to get times you can use.') : null,
@@ -263,7 +263,7 @@ export async function render(el, ctx) {
       if (w.plannedWaitSec) b.append(h('i', { class: 'p', style: `width:${(100 * w.plannedWaitSec) / total}%` }));
       if (w.workSec) b.append(h('i', { class: 'k', style: `width:${(100 * w.workSec) / total}%` }));
       if (w.notSeenSec) b.append(h('i', { class: 'n', style: `width:${(100 * w.notSeenSec) / total}%` }));
-      return h('div', { class: 'bar-row' }, h('span', { class: 'bar-label' }, `Walk ${w.n} · ${shortDay(w.startedAt)} ${clock(w.startedAt)} · ${T(w.elapsedSec)}${w.clockMoved ? ' (may be wrong)' : w.stoppedEarly ? ' (stopped early)' : ''}`), b);
+      return h('div', { class: 'bar-row' }, h('span', { class: 'bar-label' }, `Walk ${w.n} · ${day(w.startedAt)}, ${clock(w.startedAt)} · ${T(w.elapsedSec)}${w.clockMoved ? ' (may be wrong)' : w.stoppedEarly ? ' (stopped early)' : ''}`), b);
     };
     const walkBars = rangeView ? h('section', { class: 'card bars', 'aria-labelledby': 'bars-h', 'data-test': 'walk-bars' },
       h('h3', { id: 'bars-h' }, 'Where the time went'),
@@ -366,7 +366,7 @@ export async function render(el, ctx) {
     const seen = s.waitNotSeenSec ? ` or more · ${T(s.waitNotSeenSec)} more not seen` : '';
     const r = stepRange(s);
     if (!r && !(s.wait || s.par || s.waitNotSeenSec || s.plannedWait)) return null;
-    const text = r ? `Waits ${waitOf(s)}${s.plannedWait ? ' · planned or required' : ''}${hot ? ' · a longest wait' : ''}` : s.par ? `Starts alongside the step before${s.wait ? `, after ${T(s.wait)}` : ''}`
+    const text = r ? `Waits ${waitOf(s)}${s.plannedWait ? ' · planned or required' : ''}${hot ? ' · longest wait' : ''}` : s.par ? `Starts alongside the step before${s.wait ? `, after ${T(s.wait)}` : ''}`
       : `Waits ${T(s.wait)}${seen}${s.plannedWait ? ' · planned or required' : ''}${hot ? (T === fmtSeconds ? ' · the longest wait on this walk' : ' · the biggest wait') : ''}`;
     const cls = `wait${hot ? ' hot' : ''}${s.plannedWait ? ' planned' : ''}`;
     if (!walkedNow || s.par) return h('div', { class: cls }, text);

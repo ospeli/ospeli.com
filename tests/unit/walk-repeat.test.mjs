@@ -57,10 +57,10 @@ test('a second walk follows the saved step list: nothing is named, no new map is
   const m = await x.tap('ospeli_maps_get', { mapId });
   const r = m.range;
   assert.equal(r.count, 2); assert.equal(r.complete, 2); assert.equal(r.aim, 3); assert.equal(r.sameHour, false);
-  assert.deepEqual(r.totals, { elapsed: { min: 3660, max: 4020, n: 2 }, wait: { min: 2520, max: 2880, n: 2 }, work: { min: 1140, max: 1140, n: 2 } });
+  assert.deepEqual(r.totals, { elapsed: { min: 3660, max: 4020, n: 2 }, wait: { min: 2520, max: 2880, n: 2 }, work: { min: 1140, max: 1140, n: 2 }, notSeen: { n: 0 } });
   assert.equal(fmtRange(r.totals.elapsed), '1 h 01 to 1 h 07');
   assert.equal(fmtRange(r.totals.wait), '42 to 48 min');
-  assert.equal(fmtRange(r.totals.work), '19 min on both walks');
+  assert.equal(fmtRange(r.totals.work), '19 min (the same on both walks)');
   // Per step: lowest to highest, with the number of walks it rests on.
   assert.deepEqual(r.steps.map((s) => [s.wait.min, s.wait.max, s.wait.n]), [[60, 120, 2], [600, 900, 2], [1200, 1500, 2], [300, 720, 2]]);
   assert.deepEqual(r.steps.map((s) => [s.work.min, s.work.max]), [[180, 240], [240, 300], [480, 540], [120, 180]]);
@@ -110,7 +110,7 @@ test('a visit that differs from the list: a step that did not happen, a step don
 
   const r = (await x.tap('ospeli_maps_get', { mapId })).range;
   assert.equal(r.count, 3);
-  assert.deepEqual(r.totals, { elapsed: { min: 3500, max: 4020, n: 3 }, wait: { min: 2520, max: 2880, n: 3 }, work: { min: 910, max: 1140, n: 3 } });
+  assert.deepEqual(r.totals, { elapsed: { min: 3500, max: 4020, n: 3 }, wait: { min: 2520, max: 2880, n: 3 }, work: { min: 910, max: 1140, n: 3 }, notSeen: { n: 0 } });
   const [a, b, c, d] = r.steps;
   // Reception: done twice on walk 3, so its hands-on time there is 200 + 60 = 260 s.
   assert.deepEqual([a.happened, a.again, a.work, a.wait], [3, 1, { min: 180, max: 260, n: 3 }, { min: 60, max: 120, n: 3 }]);
@@ -219,15 +219,45 @@ test('a walk whose clock moved back is listed and left out of every range', asyn
   assert.match(suggestWalks([], r).at(-1).text, /Walk 2 is listed and left out of the totals/);
 });
 
+test('a walk that was paused: waiting and hands-on are floors and read "at least" on the right end; start to finish stays exact', async () => {
+  const x = await setup();
+  const mapId = await firstWalk(x);
+  // Walk 2: the person stepped out for 300 s of the wait before the doctor (1200 s gap, 900 s seen)
+  // and for 120 s inside the nurse step (300 s, 180 s seen). Other times as walk 2 above.
+  x.at('2026-11-18T14:00:00.000Z');
+  await x.tap('ospeli_walks_start', { mapId });
+  await x.step(60, 240);
+  x.tick(900); await x.tap('ospeli_walks_step_start'); x.tick(100); await x.tap('ospeli_walks_pause'); x.tick(120); await x.tap('ospeli_walks_resume'); x.tick(80); await x.tap('ospeli_walks_step_done');
+  x.tick(500); await x.tap('ospeli_walks_pause'); x.tick(300); await x.tap('ospeli_walks_resume'); x.tick(400); await x.tap('ospeli_walks_step_start'); x.tick(480); await x.tap('ospeli_walks_step_done');
+  await x.step(720, 120);
+  await x.tap('ospeli_walks_finish');
+  const r = (await x.tap('ospeli_maps_get', { mapId })).range;
+  // Seen on walk 2: waiting 60 + 900 + 900 + 720 = 2580 s; hands-on 240 + 180 + 480 + 120 = 1020 s; not seen 420 s; 4020 s in all.
+  assert.deepEqual(r.totals.elapsed, { min: 3660, max: 4020, n: 2 });
+  assert.deepEqual(r.totals.wait, { min: 2520, max: 2580, n: 2, maxAtLeast: true }, 'walk 1 gave the lowest and was seen in full; the highest is a floor');
+  assert.deepEqual(r.totals.work, { min: 1020, max: 1140, n: 2, maxAtLeast: true, minAtLeast: true }, 'the paused walk gave the lowest: both ends are floors');
+  assert.deepEqual(r.totals.notSeen, { min: 420, max: 420, n: 1 });
+  assert.equal(fmtRange(r.totals.wait), '42 to at least 43 min');
+  assert.equal(fmtRange(r.totals.work), 'at least 17 to at least 19 min');
+  // Per step: the doctor's wait (900 s seen against 1500 s) and the nurse's hands-on (180 s seen against 240 s).
+  assert.deepEqual(r.steps[2].wait, { min: 900, max: 1500, n: 2, maxAtLeast: true, minAtLeast: true });
+  assert.deepEqual(r.steps[1].work, { min: 180, max: 240, n: 2, maxAtLeast: true, minAtLeast: true });
+  assert.deepEqual(r.steps[0].work, { min: 180, max: 240, n: 2 }, 'a step seen in full on every walk is exact');
+});
+
 test('how a range reads: whole minutes, lowest to highest, never a middle value', () => {
   assert.equal(fmtWholeMin(59), 'under 1 min');
   assert.equal(fmtWholeMin(89), '1 min');
   assert.equal(fmtWholeMin(3720), '1 h 02');
   assert.equal(fmtRange({ min: 2460, max: 3480, n: 3 }), '41 to 58 min');
   assert.equal(fmtRange({ min: 3240, max: 4080, n: 2 }), '54 min to 1 h 08');
-  assert.equal(fmtRange({ min: 20, max: 50, n: 2 }), 'under 1 min on both walks');
-  assert.equal(fmtRange({ min: 1620, max: 1630, n: 3 }), '27 min on all 3 walks');
-  assert.equal(fmtRange({ min: 1620, max: 1900, n: 2, atLeast: true }), '27 to 32 min or more');
+  assert.equal(fmtRange({ min: 20, max: 50, n: 2 }), 'under 1 min (the same on both walks)');
+  assert.equal(fmtRange({ min: 1620, max: 1630, n: 3 }), '27 min (the same on all 3 walks)');
+  // A floor reads "at least" on the end it belongs to.
+  assert.equal(fmtRange({ min: 1620, max: 1900, n: 2, maxAtLeast: true }), '27 to at least 32 min');
+  assert.equal(fmtRange({ min: 1620, max: 1900, n: 2, minAtLeast: true, maxAtLeast: true }), 'at least 27 to at least 32 min');
+  assert.equal(fmtRange({ min: 1620, max: 1620, n: 2, minAtLeast: true, maxAtLeast: true }), 'at least 27 min (the same on both walks)');
+  assert.equal(fmtRange({ min: 1620, max: 1620, n: 1, minAtLeast: true, maxAtLeast: true }), 'at least 27 min (1 walk)');
   assert.equal(fmtRange({ n: 0 }), 'not timed');
   // A map with no walks gives empty ranges, not an error.
   assert.equal(walkRanges([], []).count, 0);

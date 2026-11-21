@@ -237,7 +237,7 @@ export async function renderWalk(box, ctx, againOf = null) {
         step ? h('button', { type: 'button', class: 'btn btn-ghost walk-stop', 'data-test': 'walk-stopped', 'data-cmd': 'ospeli_walks_step_done',
           onclick: async () => { const out = await tap('ospeli_walks_step_done', { interrupted: true }); if (out) { resetSheet(); ui.sheet = true; say('Step marked as interrupted. Waiting.'); showUndo(); draw(); } } }, 'Step interrupted') : null,
         rp && !step && rp.next ? h('button', { type: 'button', class: 'btn btn-ghost walk-skip', 'data-test': 'walk-skip', 'data-cmd': 'ospeli_walks_step_skip', 'aria-label': `Did not happen: ${rp.next.name}`,
-          onclick: async () => { const out = await tap('ospeli_walks_step_skip'); if (out) { if (ui.sheet !== true) ui.sheet = false; say(`Marked as did not happen: ${rp.next.name}.`); showUndo(); draw(); } } }, 'Did not happen') : null,
+          onclick: async () => { const out = await tap('ospeli_walks_step_skip'); if (out) { if (ui.sheet !== true) ui.sheet = false; say(`Marked as did not happen: ${rp.next.name}.`); showUndo(); draw(); } } }, `Step ${rp.next.n} did not happen`) : null,
         h('button', { type: 'button', class: 'btn btn-ghost walk-pause', 'data-test': 'walk-pause', 'data-cmd': 'ospeli_walks_pause', 'aria-label': 'Pause: I have stepped out',
           onclick: async () => { const out = await tap('ospeli_walks_pause'); if (out) { say('Paused. Nothing is counted until you are back.'); showUndo(); draw(); box.querySelector('[data-test="walk-main"]')?.focus({ preventScroll: true }); } } }, 'Pause'),
         canUndo ? h('button', { type: 'button', class: 'btn btn-ghost walk-undo', 'data-test': 'walk-undo', 'data-cmd': 'ospeli_walks_undo',

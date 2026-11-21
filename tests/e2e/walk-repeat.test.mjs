@@ -102,12 +102,11 @@ test('first-time user at 360 px: walk the same three steps again in 10 taps, not
   // walk's day and hour, and no percentage anywhere in the answer.
   const answer = (await page.locator('[data-test="walk-answer"]').innerText()).replace(/\s+/g, ' ');
   assert.equal((await text(page, '[data-test="walk-badge"]')).trim().toLowerCase(), '2 walks');
-  assert.match(answer, /^53 min on both walks start to finish/, 'the range comes first');
-  assert.match(answer, /2 of 3 walks\. Walk the third on another day or at another hour\./);
+  assert.match(answer, /^53 min \(the same on both walks\) start to finish/, 'the range comes first');
+  assert.match(answer, /2 of 3 walks: shortest to longest\. These are examples, not an average\. Walk the third on another day or at another hour\./);
   assert.match(answer, /Waiting 36 to 37 min · hands-on 16 to 17 min/);
-  assert.match(answer, /Shortest to longest\. No average: these walks are examples\./);
   assert.match(answer, /Longest wait: before “Seen by a doctor” on both walks/);
-  assert.match(answer, /Walk 1: Tue,? 17 Nov, 09:00.*Walk 2: Thu,? 19 Nov, 14:30/);
+  assert.equal(await page.locator('[data-test="walk-list"]').count(), 0, 'no walk is left out, so none is listed in the answer: each walk\'s day and hour is on its bar');
   assert.doesNotMatch(answer, /%/, 'no percentage on a map with more than one walk');
   assert.equal((await text(page, '[data-test="walk-again"]')).trim(), 'Walk it again (walk 3 of 3)');
   // The answer starts on the first screen of a 360 by 640 phone, range and longest wait included.
@@ -118,9 +117,9 @@ test('first-time user at 360 px: walk the same three steps again in 10 taps, not
   await page.setViewportSize({ width: 360, height: 780 });
   // One bar per walk, and each step with its own range.
   assert.equal(await page.locator('[data-test="bar-walk"]').count(), 2);
-  assert.match(await text(page, '[data-test="walk-bars"]'), /Where the time went.*Walk 1 · Tue 09:00 · 53 min.*Walk 2 · Thu 14:30 · 53 min.*Same step list, one bar per walk/s);
+  assert.match(await text(page, '[data-test="walk-bars"]'), /Where the time went.*Walk 1 · Tue,? 17 Nov, 09:00 · 53 min.*Walk 2 · Thu,? 19 Nov, 14:30 · 53 min.*Same step list, one bar per walk/s);
   const steps = (await page.locator('[data-test="step-list"]').innerText()).replace(/\s+/g, ' ');
-  assert.match(steps, /Waits 1 to 2 min.*Reception · hands-on 3 to 4 min.*Waits 10 to 15 min.*Nurse · hands-on 4 to 5 min.*Waits 20 to 25 min · a longest wait.*Doctor · hands-on 8 to 9 min/);
+  assert.match(steps, /Waits 1 to 2 min.*Reception · hands-on 3 to 4 min.*Waits 10 to 15 min.*Nurse · hands-on 4 to 5 min.*Waits 20 to 25 min · longest wait.*Doctor · hands-on 8 to 9 min/);
   // The guide says how the walks are compared and what that rests on; people decide.
   const guide = await page.evaluate(() => [...document.querySelectorAll('[data-test="guide"] [data-suggestion]')].map((li) => [li.dataset.suggestion, !!li.querySelector('[data-test="sg-basis"]')]));
   assert.deepEqual(guide, [['walks-longest', true], ['walks-more', true], ['walks-compare', true]]);
@@ -183,7 +182,7 @@ test('a visit that differs from the list: "Did not happen" with Undo, "Change" t
   assert.match(answer, /Walk 2: Wed,? 18 Nov, 11:00 · stopped early, left out of the totals/);
   const steps = (await page.locator('[data-test="step-list"]').innerText()).replace(/\s+/g, ' ');
   // Reception was done twice on walk 2 (120 + 60 s): 3 min on both walks, and "done again" is said.
-  assert.match(steps, /Reception · hands-on 3 min on both walks · done again on 1 walk/);
+  assert.match(steps, /Reception · hands-on 3 min \(the same on both walks\) · done again on 1 walk/);
   assert.match(steps, /Nurse · hands-on 4 min · on 1 of 2 walks/);
   // The saved list is unchanged: the off-list step is on its walk alone.
   assert.equal(await page.locator('[data-test="step-list"] > li').count(), 3);

@@ -341,7 +341,7 @@ export function longestWaits(stepsSec) {
 // What the guide says about a walked map. One walk is one observation, so nothing here offers
 // to change a time: it asks what the longest wait was waiting for, and to walk again.
 export const WALK_BASIS = {
-  longestWait: `Example setting, not a standard: waits under ${MIN_LONGEST_WAIT_SEC} seconds are not named, so the gap between two taps is not read as a wait.`,
+  longestWait: `Waits under ${MIN_LONGEST_WAIT_SEC} seconds are not counted as a longest wait, so the short gap between two taps is not a wait. ${MIN_LONGEST_WAIT_SEC} seconds is an example setting, not a standard.`,
   unnamed: 'Local definition: a step needs a name and a role to be read on a map.',
   limits: 'Method: a process walk in the manner of lean value stream mapping (Rother and Shook, Learning to See). One walk is one observation.',
   clock: 'Local definition: a tap stamped earlier than the tap before it (a step tap, Pause or I am back) means the device clock was set back.',
@@ -436,18 +436,27 @@ export const walkRecords = (map) => (map.walk ? (map.walks?.length ? map.walks :
 
 // Whole minutes for a time across walks: seconds read as more exact than a tap is.
 export const fmtWholeMin = (sec) => (sec < 60 ? 'under 1 min' : fmtSeconds(Math.round(sec / 60) * 60));
-// "41 to 58 min", lowest to highest. Equal values: "27 min on both walks". One walk: "27 min (1 walk)".
+// "41 to 58 min", lowest to highest. Equal values: "27 min (the same on both walks)". One walk: "27 min (1 walk)".
+// A value that rests on a walk part of which was not seen (paused) is a floor and reads "at least":
+// the highest value whenever any walk was partly not seen (its true time may be higher than every
+// other), the lowest value only when the walk that gave it was.
 export function fmtRange(r, { count = true } = {}) {
   if (!r || !r.n) return 'not timed';
   const a = fmtWholeMin(r.min); const b = fmtWholeMin(r.max);
-  const least = r.atLeast ? ' or more' : '';
-  if (r.n === 1) return `${a}${least}${count ? ' (1 walk)' : ''}`;
-  if (a === b) return `${a}${least} on ${r.n === 2 ? 'both' : `all ${r.n}`} walks`;
+  const lo = r.minAtLeast ? 'at least ' : ''; const hi = r.maxAtLeast ? 'at least ' : '';
+  if (r.n === 1) return `${hi}${a}${count ? ' (1 walk)' : ''}`;
+  if (a === b) return `${hi}${a} (the same on ${r.n === 2 ? 'both' : `all ${r.n}`} walks)`;
   // "54 min to 1 h 08" keeps both units; "41 to 58 min" says the unit once.
   const short = /^\d+ min$/.test(a) && /^\d+ min$/.test(b);
-  return `${short ? a.replace(' min', '') : a} to ${b}${least}`;
+  return `${lo}${short ? a.replace(' min', '') : a} to ${hi}${b}`;
 }
-const span = (vals, atLeast = false) => (vals.length ? { min: Math.min(...vals), max: Math.max(...vals), n: vals.length, ...(atLeast ? { atLeast: true } : {}) } : { n: 0 });
+// vals: [seconds, partlyNotSeen] for each walk.
+function span(vals) {
+  if (!vals.length) return { n: 0 };
+  const v = vals.map((x) => x[0]); const min = Math.min(...v); const max = Math.max(...v);
+  const any = vals.some((x) => x[1]);
+  return { min, max, n: vals.length, ...(any ? { maxAtLeast: true } : {}), ...(any && vals.filter((x) => x[0] === min).every((x) => x[1]) ? { minAtLeast: true } : {}) };
+}
 
 // The ranges of a map's walks. list: the map's saved step list (its first version's steps).
 export function walkRanges(list, records) {
@@ -463,23 +472,23 @@ export function walkRanges(list, records) {
     const max = Math.max(0, ...open.map((s) => s.waitSec));
     const longest = usable && max >= MIN_LONGEST_WAIT_SEC ? open.filter((s) => s.waitSec === max).map((s) => ({ key: s.stepId || `off:${s.name}`, name: s.stepId ? nameOf(s.stepId) : s.name, waitSec: s.waitSec, ...(s.waitNotSeenSec ? { atLeast: true } : {}) })) : [];
     return { n: i + 1, id: r.id, startedAt: r.startedAt, finishedAt: r.finishedAt, usable, complete, ...(r.clockMoved ? { clockMoved: true } : {}), ...(r.stoppedEarly ? { stoppedEarly: true } : {}),
-      guidanceSeen: r.guidanceSeen, elapsedSec: waitSec + workSec + notSeenSec, waitSec, workSec, notSeenSec,
+      guidanceSeen: r.guidanceSeen, elapsedSec: waitSec + workSec + notSeenSec, waitSec, workSec, notSeenSec, waitNotSeenSec: sum('waitNotSeenSec'), workNotSeenSec: sum('workNotSeenSec'),
       plannedWaitSec: r.steps.reduce((n, s) => n + (s.stepId && planned.has(s.stepId) ? s.waitSec : 0), 0),
       steps: r.steps.length, offList: r.steps.filter((s) => !s.stepId).length, longest };
   });
   const used = records.filter((r) => !r.clockMoved);
   const full = walks.filter((w) => w.complete);
   const steps = list.map((st, li) => {
-    const work = []; const wait = []; let happened = 0; let again = 0; let didNot = 0; let waitLeast = false;
+    const work = []; const wait = []; let happened = 0; let again = 0; let didNot = 0;
     for (const r of used) {
       const at = r.steps.map((s, p) => ({ ...s, p })).filter((s) => s.stepId === st.id);
       if (!at.length) { if ((r.didNotHappen || []).includes(st.id)) didNot += 1; continue; }
       happened += 1; if (at.length > 1) again += 1;
-      work.push(at.reduce((n, s) => n + s.workSec, 0));
+      work.push([at.reduce((n, s) => n + s.workSec, 0), at.some((s) => s.workNotSeenSec)]);
       const first = at[0]; const before = first.p > 0 ? r.steps[first.p - 1].stepId : null;
-      if (li === 0 ? first.p === 0 : before === order[li - 1]) { wait.push(first.waitSec); if (first.waitNotSeenSec) waitLeast = true; }
+      if (li === 0 ? first.p === 0 : before === order[li - 1]) wait.push([first.waitSec, !!first.waitNotSeenSec]);
     }
-    return { stepId: st.id, happened, of: used.length, didNotHappen: didNot, again, work: span(work), wait: span(wait, waitLeast) };
+    return { stepId: st.id, happened, of: used.length, didNotHappen: didNot, again, work: span(work), wait: span(wait) };
   });
   // Where the longest wait fell, walk by walk: the test of whether it stays in one place.
   const tally = new Map();
@@ -487,7 +496,9 @@ export function walkRanges(list, records) {
   const usable = walks.filter((w) => w.usable);
   return {
     count: records.length, usable: usable.length, complete: full.length, aim: WALKS_AIM, walks, steps,
-    totals: { elapsed: span(full.map((w) => w.elapsedSec)), wait: span(full.map((w) => w.waitSec)), work: span(full.map((w) => w.workSec)) },
+    // Start to finish holds the time not seen, so it is exact; waiting and hands-on are floors on a walk that was paused.
+    totals: { elapsed: span(full.map((w) => [w.elapsedSec, false])), wait: span(full.map((w) => [w.waitSec, w.waitNotSeenSec > 0])), work: span(full.map((w) => [w.workSec, w.workNotSeenSec > 0])),
+      notSeen: span(full.filter((w) => w.notSeenSec).map((w) => [w.notSeenSec, false])) },
     longest: [...tally.values()].sort((a, b) => b.walks.length - a.walks.length), longestOf: usable.filter((w) => w.longest.length).length,
   };
 }
