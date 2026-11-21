@@ -1,5 +1,5 @@
-// Issue #13: on a phone, every piece of text on the main pages is at least 15 px. The one exception
-// is the top bar's "Synthetic data" label, kept small on purpose so the bar stays two rows.
+// Issue #13: on a phone, every piece of text on the main pages is at least 15 px. Since #145 that
+// includes the top bar's "Synthetic data" label (no exception left).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startApp, openPage } from './helpers.mjs';
@@ -10,7 +10,6 @@ before(async () => { env = await startApp(); });
 after(async () => { await env.close(); });
 
 const small = (page) => page.evaluate(() => [...document.querySelectorAll('body *')].filter((n) => {
-  if (n.closest('.topbar .badge')) return false;
   const r = n.getBoundingClientRect(); const s = getComputedStyle(n);
   if (r.width <= 1 || r.height <= 1 || s.visibility === 'hidden' || s.display === 'none') return false;
   return [...n.childNodes].some((c) => c.nodeType === 3 && c.textContent.trim()) && parseFloat(s.fontSize) < 14.95;

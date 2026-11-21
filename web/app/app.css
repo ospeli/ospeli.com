@@ -98,7 +98,8 @@ main:focus { outline: none; }
   .hospital { order: 3; flex-basis: 100%; }
   .role { margin-left: auto; }
   .role-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  .role select { max-width: 44vw; }
+  /* Issue #145: leave room for the logo and Menu on one row at 360 px (16 + 92 + 10 + 10 + 72 + 16). */
+  .role select { max-width: min(44vw, calc(100vw - 216px)); }
 }
 
 /* content */
@@ -573,8 +574,12 @@ html[data-site="connect"] .layout { display: block; }
   .eyebrow { letter-spacing: .12em; }
   /* At 15 px the six bed filters took three rows at 360 px and pushed Find a bed's first match below the fold. */
   .chips .chip-btn { padding: 6px 9px; }
-  /* The top bar's "Synthetic data" label is not something a person acts on; at 15 px it pushed the bar onto a third row at 390 px. */
-  .topbar .badge { font-size: .74rem; }
+  /* Issue #145: the top bar keeps the phone rules too. The "Synthetic data" label is 15 px in
+     sentence case with no letter spacing (in capitals it pushed the bar onto a third row), the role
+     picker is 15 px, and the logo link is a 44 px target. */
+  .topbar .badge { font-size: .9375rem; text-transform: none; letter-spacing: 0; padding: 2px 8px; gap: 5px; }
+  .role select { font-size: .9375rem; }
+  .brand { min-height: 44px; min-width: 44px; }
 }
 
 /* Walk mode (backlog PM2). One screen, one big button; the state reads at arm's length:
