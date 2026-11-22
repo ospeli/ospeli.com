@@ -85,7 +85,10 @@ export function newMap({ id, from = 'blank', title, at, role }) {
 // more digits: many small sites use four- or five-digit numbers (#150). "Room 12", "Bed 14B" and
 // "No 12 bus" still pass.
 const RECORD_NUMBER = { test: (t) => /\b(?:MRN|NHS|ID|IDs|No|Nr|Num|Number|Ref|Reference|Record|Chart|Case|Account|Policy|Insurance)\b[\s.:#-]*(?:(?:no|nr|num|number)\b[\s.:#-]*)?\d{6,}\b/i.test(t)
-  || /\b(?:MRN|NHS|ID|IDs|Record|Chart|Case)\b[\s.:#-]*(?:(?:no|nr|num|number)\b[\s.:#-]*)?\d{3,}\b/i.test(t) };
+  || /\b(?:MRN|NHS|ID|IDs|Record|Chart|Case)\b[\s.:#-]*(?:(?:no|nr|num|number)\b[\s.:#-]*)?\d{3,}\b/i.test(t)
+  // "Hosp no 44871", "Hospital number 4487", "Patient # 512" (#150, critic 22 Nov): a hospital or patient
+  // number needs the number word or # after it, so "Hospital 2" and "Patient 3 of 12" still pass.
+  || /\b(?:Hosp|Hospital|Patient|Pt)\b\.?[\s:-]*(?:(?:no|nr|num|number)\b\.?|#)[\s.:#-]*\d{3,}\b/i.test(t) };
 const CALL_NUMBER = /\b(?:phone|call|ring|tel|telephone|text|page|fax|ext|extension|mobile|cell|whatsapp)\b\D{0,12}(\d[\d\s().-]{4,}\d)/gi;
 const PERSONAL = [
   [/[\w.+-]+@[\w-]+\.[\w.]+/, 'an email address'],
@@ -107,10 +110,13 @@ const JOB_WORDS = new Set(`admin administrator admissions anaesthetist assistant
   radiology reception receptionist records registrar relative review round safety security senior service services shift site social
   specialist staff stores supervisor support surgeon surgical team technician theatre therapist therapy transport triage unit visitor
   volunteer ward worker and for in of on the at`.split(/\s+/));
+// A personal title and an initial ("Mr J. Smith", "Dr K Patel", "Ms A") is a person (#150, critic 22 Nov).
+const TITLE_INITIAL = /\b(?:Dr|Mr|Mrs|Ms|Miss|Mx|Prof)\.?\s+[A-Z](?:\.|\b)/;
 const isJobWord = (w) => JOB_WORDS.has(w.toLowerCase().replace(/[^a-z-]/g, ''));
 export function personNameIn(text, { roleField = false } = {}) {
   const s = String(text);
   for (const m of s.matchAll(TITLE_NAME)) if (!isJobWord(m[1])) return true;
+  if (TITLE_INITIAL.test(s)) return true;
   if (roleField) {
     // In the role field, two or three capitalised words with no job word among them read as a name.
     const words = s.trim().split(/\s+/);
@@ -136,6 +142,9 @@ export function possibleNameIn(text) {
   const words = String(text).trim().split(/\s+/).map(plainWord).filter(Boolean);
   for (let i = 0; i < words.length - 1; i++) if (nameLike(words[i]) && nameLike(words[i + 1])) return `${words[i]} ${words[i + 1]}`;
   for (let i = 0; i < words.length - 1; i++) if (BEFORE_A_PERSON.has(words[i].toLowerCase()) && nameLike(words[i + 1])) return words[i + 1];
+  // An initial and a capitalised word ("S. Jones to sign"), asked once like the rest (#150, critic 22 Nov).
+  const m = String(text).match(/(?:^|\s)([A-Z])\.\s?([A-Z][a-z'’-]+)\b/);
+  if (m && nameLike(m[2])) return `${m[1]}. ${m[2]}`;
   return null;
 }
 // Place, asset and device names (issue #94): "Day Surgery", "Water Cooler" and "Night Tablet" are
