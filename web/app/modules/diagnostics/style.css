@@ -1,1 +1,113 @@
-/* Diagnostics. Skeleton; the builder fills it. */
+/* Diagnostics. Every rule starts with .mod-diagnostics. Shell colours only (brand kit v3.1).
+   Phone first for the laboratory reception officer at the hatch, gloves on: text 15 px or more,
+   every control at least 44 px tall, the Received button 56 px and wide, Reject on the other side. */
+.mod-diagnostics.dx { font-size: 1rem; }
+.mod-diagnostics .meta, .mod-diagnostics .chip, .mod-diagnostics .chip-btn, .mod-diagnostics .card .meta, .mod-diagnostics .pill { font-size: .9375rem; }
+.mod-diagnostics .page-head { margin-bottom: 10px; }
+.mod-diagnostics p, .mod-diagnostics li, .mod-diagnostics h3 { overflow-wrap: anywhere; }
+.mod-diagnostics .dx-sec { margin: 16px 0; }
+.mod-diagnostics .dx-sec > h2, .mod-diagnostics .card > h2 { margin: 0 0 10px; font-size: 1.15rem; }
+.mod-diagnostics .dx-empty { font-weight: 800; margin: 6px 0; }
+.mod-diagnostics .dx-q { font-weight: 800; margin: 4px 0 0; display: block; }
+.mod-diagnostics .dx-sub { font-weight: 800; margin: 8px 0 2px; }
+
+/* the hatch and the tracker: one row per specimen or request */
+.mod-diagnostics .dx-block { margin: 0 0 14px; }
+.mod-diagnostics .dx-block > h3 { margin: 0 0 6px; font-size: 1.05rem; }
+.mod-diagnostics .dx-block.is-late > h3 { color: #8A2412; }
+.mod-diagnostics .dx-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mod-diagnostics .dx-row { background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; min-width: 0; }
+.mod-diagnostics .dx-row.is-urgent { border-left-color: var(--mango); }
+.mod-diagnostics .dx-row.is-late, .mod-diagnostics .dx-row.is-rejected { border-left-color: var(--coral); }
+.mod-diagnostics .dx-row.is-done { background: var(--wash); }
+.mod-diagnostics .dx-row.is-done.is-rejected { background: #FBE3DE; }
+.mod-diagnostics .dx-row p { margin: 0; }
+.mod-diagnostics .dx-row-main { display: grid; gap: 2px; min-width: 0; }
+.mod-diagnostics .dx-code { font-size: 1.35rem; line-height: 1.2; }
+.mod-diagnostics .dx-code b { font-weight: 900; font-size: 1.55rem; }
+.mod-diagnostics .dx-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.mod-diagnostics .chip.dx-urg.is-urgent { background: var(--mango-tint); color: var(--ink); box-shadow: inset 0 0 0 1px var(--mango); }
+.mod-diagnostics .chip.dx-hot, .mod-diagnostics .chip.dx-stage.is-rejected { background: #FBE3DE; color: #8A2412; }
+.mod-diagnostics .chip.dx-late { background: var(--mango-tint); color: var(--ink); }
+.mod-diagnostics .chip.dx-stage.is-received, .mod-diagnostics .chip.dx-stage.is-released { background: var(--wash); color: #0B4A3A; }
+.mod-diagnostics .chip.dx-stage.is-cancelled { background: var(--sand); color: var(--ink-soft); }
+.mod-diagnostics .dx-done-what { font-size: 1.05rem; }
+
+/* Received (big, left) and Reject (on the other side, never in the same place) */
+.mod-diagnostics .dx-row-actions { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 12px; align-items: stretch; }
+.mod-diagnostics .btn.dx-main, .mod-diagnostics .btn.dx-save { min-height: 56px; font-size: 1.15rem; width: 100%; justify-content: center; }
+.mod-diagnostics .btn.dx-reject, .mod-diagnostics .btn.dx-undo { min-height: 56px; width: 100%; justify-content: center; font-weight: 800; }
+.mod-diagnostics .btn.dx-reject { color: #8A2412; border-color: var(--coral); }
+.mod-diagnostics .btn.dx-wide { min-height: 48px; width: 100%; justify-content: center; }
+.mod-diagnostics .btn.dx-save[disabled] { opacity: .7; }
+.mod-diagnostics .btn.dx-save.is-coral:not([disabled]) { background: #B23A22; border-color: #B23A22; color: #fff; }
+.mod-diagnostics .btn.dx-link { min-height: 48px; margin-top: 6px; width: 100%; justify-content: center; text-align: center; white-space: normal; }
+.mod-diagnostics .btn.dx-new { margin: 10px 0 12px; }
+.mod-diagnostics .dx-count { margin: 12px 0; padding: 10px 12px; border-radius: 10px; background: var(--mango-tint); }
+
+/* panels and forms: picks only */
+.mod-diagnostics .dx-panel { display: grid; gap: 8px; border-top: 1px solid var(--line); padding-top: 8px; }
+.mod-diagnostics .dx-panel-actions { display: grid; gap: 8px; }
+.mod-diagnostics .dx-panel-actions .btn-ghost, .mod-diagnostics .dx-form-head .btn-ghost { min-height: 44px; }
+.mod-diagnostics .dx-choices { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 8px; }
+.mod-diagnostics .dx-choices[data-test="collect-ago"], .mod-diagnostics .dx-choices[data-test="urgency"], .mod-diagnostics .dx-choices[data-test="eq-state"] { grid-template-columns: repeat(auto-fill, minmax(min(100%, 100px), 1fr)); }
+.mod-diagnostics .dx-choice { min-height: 48px; border-radius: 10px; text-align: left; line-height: 1.25; padding: 8px 12px; font-weight: 800; display: block; width: 100%; white-space: normal; }
+.mod-diagnostics .dx-choice small { display: block; font-weight: 600; font-size: .9375rem; color: var(--ink-soft); }
+.mod-diagnostics .dx-choice[aria-pressed="true"] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.mod-diagnostics .dx-choice[aria-pressed="true"] small { color: #fff; }
+.mod-diagnostics .dx-choice:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.mod-diagnostics .dx-form { display: grid; gap: 10px; max-width: 720px; margin: 10px 0; }
+.mod-diagnostics .dx-form-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.mod-diagnostics .dx-form-head h2 { margin: 0; font-size: 1.25rem; }
+.mod-diagnostics select { font: inherit; min-height: 48px; padding: 6px 10px; border: 1.5px solid var(--line-strong); border-radius: 10px; background: var(--surface); color: var(--ink); width: 100%; max-width: 100%; min-width: 0; }
+.mod-diagnostics .dx-filter { display: grid; gap: 6px; max-width: 720px; margin-bottom: 10px; }
+.mod-diagnostics .dx-filter p { margin: 0; }
+.mod-diagnostics .dx-more > summary, .mod-diagnostics .dx-def > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 800; color: var(--sea-ink); }
+.mod-diagnostics .dx-def p { margin: 0 0 6px; color: var(--ink-soft); font-size: .9375rem; }
+.mod-diagnostics .dx-saved { border-left: 6px solid var(--sea); margin: 0 0 12px; max-width: 720px; }
+.mod-diagnostics .dx-saved p { margin: 0; }
+.mod-diagnostics .dx-saved.is-msg { border-left-color: var(--coral); }
+.mod-diagnostics .dx-notices { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; max-width: 720px; }
+.mod-diagnostics .dx-notices li { background: #FBE3DE; border-left: 6px solid var(--coral); border-radius: 10px; padding: 10px 12px; }
+.mod-diagnostics .dx-notices p { margin: 0; }
+
+/* equipment status */
+.mod-diagnostics .dx-eq { background: var(--surface); border: 1px solid var(--line); border-left: 6px solid var(--sea); border-radius: 10px; padding: 10px 12px; display: grid; gap: 4px; min-width: 0; }
+.mod-diagnostics .dx-eq.is-down { border-left-color: var(--coral); }
+.mod-diagnostics .dx-eq.is-partly-down { border-left-color: var(--mango); }
+.mod-diagnostics .dx-eq p { margin: 0; }
+.mod-diagnostics .dx-what { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.mod-diagnostics .chip.dx-eqst.is-up { background: var(--wash); color: #0B4A3A; }
+.mod-diagnostics .chip.dx-eqst.is-down { background: #FBE3DE; color: #8A2412; }
+.mod-diagnostics .chip.dx-eqst.is-partly-down { background: var(--mango-tint); color: var(--ink); }
+.mod-diagnostics .dx-backup { font-weight: 800; }
+
+/* manager */
+.mod-diagnostics .dx-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+.mod-diagnostics .dx-stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; display: grid; }
+.mod-diagnostics .dx-stat b { font-size: 1.4rem; }
+.mod-diagnostics .dx-stat span { font-size: .9375rem; color: var(--ink-soft); }
+.mod-diagnostics .dx-stat.is-hot { border-left: 6px solid var(--coral); }
+.mod-diagnostics .dx-guide { border-left: 5px solid var(--seafoam); margin-bottom: 14px; }
+.mod-diagnostics .dx-guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mod-diagnostics .dx-guide-head h2 { margin: 0; }
+.mod-diagnostics .dx-guide .btn-small { min-height: 44px; }
+.mod-diagnostics .dx-sugg { list-style: none; margin: 8px 0; padding: 0; display: grid; gap: 10px; }
+.mod-diagnostics .dx-sugg li { border-top: 1px solid var(--line); padding-top: 8px; }
+.mod-diagnostics .dx-sugg p { margin: 0 0 4px; }
+.mod-diagnostics .dx-kpis { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 10px; }
+.mod-diagnostics .dx-kpi p { margin: 0 0 4px; }
+.mod-diagnostics .dx-kpi-name { font-weight: 800; }
+.mod-diagnostics .dx-kpi-value { font-size: 1.8rem; font-weight: 800; line-height: 1.15; }
+.mod-diagnostics .dx-kpi-value small { font-size: 1rem; font-weight: 700; color: var(--ink-soft); }
+.mod-diagnostics .dx-rows, .mod-diagnostics .dx-hours, .mod-diagnostics .dx-planned { margin: 4px 0; padding-left: 18px; }
+.mod-diagnostics .dx-rows li, .mod-diagnostics .dx-hours li { margin: 2px 0; }
+.mod-diagnostics .dx-note { margin-top: 10px; }
+@media (min-width: 700px) {
+  .mod-diagnostics .dx-row-actions, .mod-diagnostics .dx-panel-actions { max-width: 560px; }
+  .mod-diagnostics .dx-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 1100px) {
+  .mod-diagnostics[data-view="manager"] .dx-sec[data-test="equipment-status"] .dx-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mod-diagnostics[data-view="hatch"] .dx-block .dx-list, .mod-diagnostics[data-view="tracker"] .dx-list[data-test="requests"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

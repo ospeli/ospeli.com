@@ -22852,6 +22852,1840 @@
           "on": false
         }
       }
+    },
+    {
+      "name": "ospeli_diagnostics_requests_list",
+      "summary": "The request tracker: laboratory requests by patient code (\"Patient 123\", or \"Request 12\" with no encounter; never a name) and stage (not collected, collected and on the way, received at lab, result released, rejected with its reason, cancelled), for one ward or area or all, with the time in the current step and a recollection linked to the request it replaces. Default: open requests, and those finished in the last 24 hours. Also the pick lists for recording a request (sources, test groups, urgency as set by the requester) and, with sourceId set to a ward, the patients in its beds. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "Only requests from this ward or area, for example ward-a2 or dept-emergency."
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "current",
+              "all",
+              "requested",
+              "collected",
+              "received",
+              "released",
+              "rejected",
+              "cancelled"
+            ],
+            "description": "current (default): open requests and those finished in the last hours. all: every request. Or one stage: requested (not collected), collected, received, released, rejected, cancelled."
+          },
+          "find": {
+            "type": "string",
+            "pattern": "^[0-9]{1,9}$",
+            "maxLength": 9,
+            "description": "Only the request whose code ends in this number: \"123\" finds Patient 123 or Request 123. A filter on what is shown, never a way to identify a patient."
+          },
+          "hours": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 168,
+            "description": "Finished requests are kept in the list this many hours. Default 24."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: id, code, place, test group, urgency, stage and minutes only. detailed (default): with every step's time and role, the pick lists and the patients on the ward."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
+            "description": "At most this many requests. Default 50, 500 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "requests",
+          "total",
+          "truncated",
+          "counts",
+          "note"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "sourceId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sourceName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hours": {
+            "type": "integer"
+          },
+          "requests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "code",
+                "sourceId",
+                "testGroup",
+                "urgency",
+                "state",
+                "stage"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "code": {
+                  "type": "string",
+                  "description": "What to call it on screen: \"Patient 123\" when the request carries an encounter, else \"Request 12\". Never a name, and not patient identification."
+                },
+                "codeLead": {
+                  "type": "string"
+                },
+                "codeDigits": {
+                  "type": "string"
+                },
+                "encounter": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "sourceId": {
+                  "type": "string"
+                },
+                "sourceName": {
+                  "type": "string"
+                },
+                "testGroup": {
+                  "type": "string"
+                },
+                "testGroupName": {
+                  "type": "string"
+                },
+                "urgency": {
+                  "type": "string",
+                  "description": "As set by the requester; recorded, never decided by Ospeli."
+                },
+                "urgencyName": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "requested",
+                    "collected",
+                    "received",
+                    "released",
+                    "rejected",
+                    "cancelled"
+                  ]
+                },
+                "stage": {
+                  "type": "string"
+                },
+                "minutesInStep": {
+                  "type": "integer",
+                  "description": "Minutes in the current step (to now while open)."
+                },
+                "minutesSinceCollection": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Collected, not received: minutes since the specimen was taken."
+                },
+                "notArrived": {
+                  "type": "boolean",
+                  "description": "Guide rule 1 (only while the guide is on): collected and not received within the example time for its urgency."
+                },
+                "enteredLate": {
+                  "type": "boolean",
+                  "description": "The collection was recorded more than 15 minutes after it was taken (an example setting)."
+                },
+                "noCollectionTime": {
+                  "type": "boolean",
+                  "description": "Reached the lab with no collection recorded."
+                },
+                "mayUndo": {
+                  "type": "boolean",
+                  "description": "A receipt or rejection in the last 5 minutes that may still be undone with ospeli_diagnostics_specimen_undo."
+                },
+                "recollectionOf": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "recollectedBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "clocks": {
+                  "type": "object",
+                  "description": "Site clock (HH:MM) of each step, null until then."
+                },
+                "roles": {
+                  "type": "object",
+                  "description": "The role that recorded each step, never a person."
+                }
+              }
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          },
+          "counts": {
+            "type": "object",
+            "description": "Requests in the list by state, before the limit."
+          },
+          "picks": {
+            "type": "object"
+          },
+          "releasedDefinition": {
+            "type": "string"
+          },
+          "filterNote": {
+            "type": "string"
+          },
+          "offlineNote": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "sourceId": "ward-a2",
+          "format": "short",
+          "limit": 10
+        }
+      }
+    },
+    {
+      "name": "ospeli_diagnostics_specimen_log",
+      "summary": "The lab reception's hatch list: specimens collected and on their way, in blocks by source area (one bag goes with one block), urgent first then oldest first inside each block (urgency as set by the requester; never re-ranked by test); those not arrived within the example time at the top (while the guide is on); the count of specimens received today with no collection time, so a gap in ward recording is seen where it happens; requests not marked collected; receipts and rejections that may still be undone; specimens received and waiting for a released result; received and rejected today by hour and by source. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: the counts, not arrived and on the way only. detailed (default): also not collected, recent, waiting for a result, by hour and by source, and the pick lists."
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 500,
+            "description": "At most this many specimens in each block. Default 100, 500 at most. \"total\" and \"truncated\" in the answer say if there are more."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "counts",
+          "notArrived",
+          "onTheWay",
+          "total",
+          "truncated",
+          "note"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "today": {
+            "type": "object",
+            "description": "Since 00:00 on the site's own clock: a night shift crosses it."
+          },
+          "counts": {
+            "type": "object",
+            "required": [
+              "onTheWay",
+              "noCollectionToday"
+            ],
+            "properties": {
+              "noCollectionToday": {
+                "type": "integer",
+                "description": "Specimens that reached the lab today with no collection time recorded."
+              }
+            }
+          },
+          "notArrived": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "code",
+                "sourceId",
+                "testGroup",
+                "urgency",
+                "state",
+                "stage"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "code": {
+                  "type": "string",
+                  "description": "What to call it on screen: \"Patient 123\" when the request carries an encounter, else \"Request 12\". Never a name, and not patient identification."
+                },
+                "codeLead": {
+                  "type": "string"
+                },
+                "codeDigits": {
+                  "type": "string"
+                },
+                "encounter": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "sourceId": {
+                  "type": "string"
+                },
+                "sourceName": {
+                  "type": "string"
+                },
+                "testGroup": {
+                  "type": "string"
+                },
+                "testGroupName": {
+                  "type": "string"
+                },
+                "urgency": {
+                  "type": "string",
+                  "description": "As set by the requester; recorded, never decided by Ospeli."
+                },
+                "urgencyName": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "requested",
+                    "collected",
+                    "received",
+                    "released",
+                    "rejected",
+                    "cancelled"
+                  ]
+                },
+                "stage": {
+                  "type": "string"
+                },
+                "minutesInStep": {
+                  "type": "integer",
+                  "description": "Minutes in the current step (to now while open)."
+                },
+                "minutesSinceCollection": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Collected, not received: minutes since the specimen was taken."
+                },
+                "notArrived": {
+                  "type": "boolean",
+                  "description": "Guide rule 1 (only while the guide is on): collected and not received within the example time for its urgency."
+                },
+                "enteredLate": {
+                  "type": "boolean",
+                  "description": "The collection was recorded more than 15 minutes after it was taken (an example setting)."
+                },
+                "noCollectionTime": {
+                  "type": "boolean",
+                  "description": "Reached the lab with no collection recorded."
+                },
+                "mayUndo": {
+                  "type": "boolean",
+                  "description": "A receipt or rejection in the last 5 minutes that may still be undone with ospeli_diagnostics_specimen_undo."
+                },
+                "recollectionOf": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "recollectedBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "clocks": {
+                  "type": "object",
+                  "description": "Site clock (HH:MM) of each step, null until then."
+                },
+                "roles": {
+                  "type": "object",
+                  "description": "The role that recorded each step, never a person."
+                }
+              }
+            }
+          },
+          "onTheWay": {
+            "type": "array",
+            "description": "Blocks by source area: { sourceId, sourceName, count, items }."
+          },
+          "notCollected": {
+            "type": "array"
+          },
+          "recent": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "code",
+                "sourceId",
+                "testGroup",
+                "urgency",
+                "state",
+                "stage"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "code": {
+                  "type": "string",
+                  "description": "What to call it on screen: \"Patient 123\" when the request carries an encounter, else \"Request 12\". Never a name, and not patient identification."
+                },
+                "codeLead": {
+                  "type": "string"
+                },
+                "codeDigits": {
+                  "type": "string"
+                },
+                "encounter": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "sourceId": {
+                  "type": "string"
+                },
+                "sourceName": {
+                  "type": "string"
+                },
+                "testGroup": {
+                  "type": "string"
+                },
+                "testGroupName": {
+                  "type": "string"
+                },
+                "urgency": {
+                  "type": "string",
+                  "description": "As set by the requester; recorded, never decided by Ospeli."
+                },
+                "urgencyName": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "requested",
+                    "collected",
+                    "received",
+                    "released",
+                    "rejected",
+                    "cancelled"
+                  ]
+                },
+                "stage": {
+                  "type": "string"
+                },
+                "minutesInStep": {
+                  "type": "integer",
+                  "description": "Minutes in the current step (to now while open)."
+                },
+                "minutesSinceCollection": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Collected, not received: minutes since the specimen was taken."
+                },
+                "notArrived": {
+                  "type": "boolean",
+                  "description": "Guide rule 1 (only while the guide is on): collected and not received within the example time for its urgency."
+                },
+                "enteredLate": {
+                  "type": "boolean",
+                  "description": "The collection was recorded more than 15 minutes after it was taken (an example setting)."
+                },
+                "noCollectionTime": {
+                  "type": "boolean",
+                  "description": "Reached the lab with no collection recorded."
+                },
+                "mayUndo": {
+                  "type": "boolean",
+                  "description": "A receipt or rejection in the last 5 minutes that may still be undone with ospeli_diagnostics_specimen_undo."
+                },
+                "recollectionOf": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "recollectedBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "clocks": {
+                  "type": "object",
+                  "description": "Site clock (HH:MM) of each step, null until then."
+                },
+                "roles": {
+                  "type": "object",
+                  "description": "The role that recorded each step, never a person."
+                }
+              }
+            }
+          },
+          "waitingResult": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "code",
+                "sourceId",
+                "testGroup",
+                "urgency",
+                "state",
+                "stage"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "code": {
+                  "type": "string",
+                  "description": "What to call it on screen: \"Patient 123\" when the request carries an encounter, else \"Request 12\". Never a name, and not patient identification."
+                },
+                "codeLead": {
+                  "type": "string"
+                },
+                "codeDigits": {
+                  "type": "string"
+                },
+                "encounter": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "sourceId": {
+                  "type": "string"
+                },
+                "sourceName": {
+                  "type": "string"
+                },
+                "testGroup": {
+                  "type": "string"
+                },
+                "testGroupName": {
+                  "type": "string"
+                },
+                "urgency": {
+                  "type": "string",
+                  "description": "As set by the requester; recorded, never decided by Ospeli."
+                },
+                "urgencyName": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "requested",
+                    "collected",
+                    "received",
+                    "released",
+                    "rejected",
+                    "cancelled"
+                  ]
+                },
+                "stage": {
+                  "type": "string"
+                },
+                "minutesInStep": {
+                  "type": "integer",
+                  "description": "Minutes in the current step (to now while open)."
+                },
+                "minutesSinceCollection": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Collected, not received: minutes since the specimen was taken."
+                },
+                "notArrived": {
+                  "type": "boolean",
+                  "description": "Guide rule 1 (only while the guide is on): collected and not received within the example time for its urgency."
+                },
+                "enteredLate": {
+                  "type": "boolean",
+                  "description": "The collection was recorded more than 15 minutes after it was taken (an example setting)."
+                },
+                "noCollectionTime": {
+                  "type": "boolean",
+                  "description": "Reached the lab with no collection recorded."
+                },
+                "mayUndo": {
+                  "type": "boolean",
+                  "description": "A receipt or rejection in the last 5 minutes that may still be undone with ospeli_diagnostics_specimen_undo."
+                },
+                "recollectionOf": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "recollectedBy": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "clocks": {
+                  "type": "object",
+                  "description": "Site clock (HH:MM) of each step, null until then."
+                },
+                "roles": {
+                  "type": "object",
+                  "description": "The role that recorded each step, never a person."
+                }
+              }
+            }
+          },
+          "waitingTotal": {
+            "type": "integer"
+          },
+          "byHour": {
+            "type": "array"
+          },
+          "bySource": {
+            "type": "array"
+          },
+          "picks": {
+            "type": "object"
+          },
+          "releasedDefinition": {
+            "type": "string"
+          },
+          "guideOn": {
+            "type": "boolean"
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "format": "short"
+        }
+      }
+    },
+    {
+      "name": "ospeli_diagnostics_request_record",
+      "summary": "Record a laboratory request, by picks only (nothing typed): the ward or area it comes from, the test group, the urgency as set by the requester (recorded, never decided by Ospeli) and, optionally, the patient's encounter id from the bed board (shown as \"Patient 123\"). A recollection of a rejected specimen is a new request with recollectionOf. The same picks again within two minutes are refused as already saved unless sent with again: true. It does not choose a test or hold any result. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "unit-clerk",
+        "ward-nurse",
+        "ae-nic",
+        "lab-reception"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sourceId",
+          "testGroup",
+          "urgency"
+        ],
+        "properties": {
+          "sourceId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "The ward or area the request comes from, for example ward-a2 or dept-emergency."
+          },
+          "testGroup": {
+            "type": "string",
+            "enum": [
+              "blood-count",
+              "chemistry",
+              "coagulation",
+              "urine",
+              "culture"
+            ],
+            "description": "blood-count (Blood count), chemistry (Blood chemistry), coagulation (Clotting tests), urine (Urine tests), culture (Blood culture). An example list: a site sets its own."
+          },
+          "urgency": {
+            "type": "string",
+            "enum": [
+              "urgent",
+              "routine"
+            ],
+            "description": "urgent or routine, as set by the requester."
+          },
+          "encounter": {
+            "type": "string",
+            "pattern": "^enc-[0-9]{1,9}$",
+            "maxLength": 13,
+            "description": "Optional: the encounter id from the bed board, for example enc-000123 (shown as Patient 123). Leave out when there is none."
+          },
+          "recollectionOf": {
+            "type": "string",
+            "pattern": "^dx-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "Optional: the rejected request this one replaces, for example dx-00031. Same test group."
+          },
+          "again": {
+            "type": "boolean",
+            "description": "true: a second request with the same picks within two minutes is meant."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "sourceId": "ward-a2",
+          "testGroup": "blood-count",
+          "urgency": "routine"
+        }
+      }
+    },
+    {
+      "name": "ospeli_diagnostics_specimen_collect",
+      "summary": "Mark a request's specimen collected: the time it was taken, now or a few minutes back (minutesAgo: 0, 5, 10, 15, 30, 60; never in the future). Recorded more than 15 minutes after it was taken, it shows \"entered late\". The \"not arrived\" timer starts here, never at the request. One collection per request (slice 1 has one specimen per request). An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "unit-clerk",
+        "ward-nurse",
+        "ae-nic"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "pattern": "^dx-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A request id, for example dx-00012. ospeli_diagnostics_requests_list lists them."
+          },
+          "minutesAgo": {
+            "type": "integer",
+            "enum": [
+              0,
+              5,
+              10,
+              15,
+              30,
+              60
+            ],
+            "description": "How many minutes ago it was taken. Leave out for now."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "collectedAt": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "requestId": "dx-99999"
+        },
+        "needs": "A request not collected yet: ospeli_diagnostics_request_record makes one, and ospeli_diagnostics_requests_list with stage \"requested\" lists them with their ids."
+      }
+    },
+    {
+      "name": "ospeli_diagnostics_specimen_receive",
+      "summary": "At the lab hatch: mark a specimen received at the lab (outcome \"received\", the time of the call), or rejected with a reason picked by the lab's own acceptance criteria (outcome \"rejected\"). A specimen may be received with no collection recorded; it is counted as \"received with no collection time\". A rejected request is final: a recollection is a new request. A specimen already received may still be rejected by a laboratory scientist (for example clotted or haemolysed, found later). Receiving twice is refused as already saved. Ospeli records the reason a person picked; it never decides whether a sample is acceptable, and \"received\" is not an identity check. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "lab-reception",
+        "lab-scientist"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId",
+          "outcome"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "pattern": "^dx-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A request id, for example dx-00012. ospeli_diagnostics_requests_list lists them."
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "received",
+              "rejected"
+            ],
+            "description": "received or rejected."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "unlabelled",
+              "label-mismatch",
+              "wrong-container",
+              "too-little",
+              "clotted",
+              "haemolysed",
+              "leaked",
+              "too-old",
+              "not-sent-as-required",
+              "no-request",
+              "duplicate",
+              "other"
+            ],
+            "description": "rejected only: unlabelled (Unlabelled), label-mismatch (Label does not match request), wrong-container (Wrong container or tube), too-little (Too little), clotted (Clotted), haemolysed (Haemolysed), leaked (Leaked or broken), too-old (Too old on arrival), not-sent-as-required (Not sent as required (for example temperature or protection from light)), no-request (No request with it), duplicate (Duplicate), other (Other)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "outcome": {
+            "type": "string"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40
+          },
+          "clock": {
+            "type": "string",
+            "description": "The time on the site clock, HH:MM."
+          },
+          "noCollectionTime": {
+            "type": "boolean"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "requestId": "dx-99999",
+          "outcome": "received"
+        },
+        "needs": "A request collected and not yet received: ospeli_diagnostics_request_record then ospeli_diagnostics_specimen_collect make one, and ospeli_diagnostics_specimen_log lists those on the way."
+      }
+    },
+    {
+      "name": "ospeli_diagnostics_specimen_undo",
+      "summary": "Undo a receipt or a rejection tapped by mistake, within 5 minutes (an example setting; the screen offers it for about 10 seconds after the tap). The wrong step and the undo both stay in the log; no time is edited in place. Not for a rejection that already has a recollection, nor after the result was released. People only.",
+      "kind": "write",
+      "roles": [
+        "lab-reception",
+        "lab-scientist"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId",
+          "reason"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "pattern": "^dx-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A request id, for example dx-00012. ospeli_diagnostics_requests_list lists them."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "tapped-by-mistake",
+              "wrong-request"
+            ],
+            "description": "tapped-by-mistake (Tapped by mistake), wrong-request (Tapped the wrong request)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "requestId": "dx-99999",
+          "reason": "tapped-by-mistake"
+        },
+        "needs": "A specimen received or rejected in the last few minutes: ospeli_diagnostics_request_record then ospeli_diagnostics_specimen_receive make one; ospeli_diagnostics_specimen_log lists them under recent."
+      }
+    },
+    {
+      "name": "ospeli_diagnostics_result_record",
+      "summary": "Record that the lab released the result of a specimen received at the lab: the time only, never a value, a range or a flag. This ends the laboratory turnaround time. Whether a site calls this step validated or authorised, it is the time the lab released the result. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "lab-scientist"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "pattern": "^dx-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A request id, for example dx-00012. ospeli_diagnostics_requests_list lists them."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "releasedAt": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40
+          },
+          "clock": {
+            "type": "string"
+          },
+          "turnaroundMinutes": {
+            "type": "integer"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "requestId": "dx-99999"
+        },
+        "needs": "A specimen received at the lab with no result yet: ospeli_diagnostics_request_record then ospeli_diagnostics_specimen_receive make one; ospeli_diagnostics_specimen_log lists them under waitingResult."
+      }
+    },
+    {
+      "name": "ospeli_diagnostics_request_cancel",
+      "summary": "Cancel a request that is not yet at the lab (not collected, or collected and on the way), with a picked reason: not-needed (No longer needed), duplicate (Asked for twice), patient-moved (Patient left or moved), entered-in-error (Entered in error). A cancelled request is left out of every measure. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "unit-clerk",
+        "ward-nurse",
+        "ae-nic",
+        "lab-reception",
+        "diagnostics-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId",
+          "reason"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "pattern": "^dx-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A request id, for example dx-00012. ospeli_diagnostics_requests_list lists them."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "not-needed",
+              "duplicate",
+              "patient-moved",
+              "entered-in-error"
+            ]
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "requestId": "dx-99999",
+          "reason": "not-needed"
+        },
+        "needs": "A request not yet at the lab: ospeli_diagnostics_request_record makes one, and ospeli_diagnostics_requests_list with stage \"requested\" lists them."
+      }
+    },
+    {
+      "name": "ospeli_diagnostics_equipment_list",
+      "summary": "Equipment status: each analyser and scanner on this site, working, down or partly down (some test groups off), since when, the reason, the test groups it cannot run now, the linked work order and every open work order for it (read-only: faults are reported by a facilities technician or the operations manager, on the Engineering page), the estimate of when it is back with the time the estimate was set, and the backup route in plain words. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "equipment",
+          "total",
+          "truncated",
+          "note"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "equipment": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "assetId",
+                "name",
+                "state",
+                "stateName"
+              ]
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many there are in all, before the limit."
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "True when the limit cut the list short. Narrow the filters or raise the limit."
+          },
+          "picks": {
+            "type": "object"
+          },
+          "expectedBackHours": {
+            "type": "array"
+          },
+          "states": {
+            "type": "object"
+          },
+          "faultNote": {
+            "type": "string"
+          },
+          "imaging": {
+            "type": "string"
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {}
+      }
+    },
+    {
+      "name": "ospeli_diagnostics_equipment_set",
+      "summary": "Mark an analyser or scanner down, partly down (some test groups off; send testGroups) or back working (\"up\"). Down needs a reason and a backup route, both picked; it may link the open work order for it (workOrderId) and an estimate of when it is back (expectedBackHours: 1, 2, 4, 8, 24). Analysers are marked by the laboratory scientist or the diagnostics manager; scanners by the radiographer or the diagnostics manager. It writes no work order: a fault is reported by a facilities technician or the operations manager. Nothing is sent outside Ospeli. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "assetId",
+          "state"
+        ],
+        "properties": {
+          "assetId": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "maxLength": 64,
+            "description": "The analyser or scanner, for example asset-analyser-1 or asset-xray-1."
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "up",
+              "down",
+              "partly-down"
+            ],
+            "description": "down, partly-down or up (back working)."
+          },
+          "reason": {
+            "type": "string",
+            "pattern": "^[a-z-]{2,30}$",
+            "maxLength": 30,
+            "description": "down and partly-down: an analyser: breakdown, planned-maintenance, qc-failed, no-reagent, no-power-it; a scanner: the same without no-reagent."
+          },
+          "testGroups": {
+            "type": "array",
+            "maxItems": 5,
+            "items": {
+              "type": "string",
+              "enum": [
+                "blood-count",
+                "chemistry",
+                "coagulation",
+                "urine",
+                "culture"
+              ]
+            },
+            "description": "partly-down only: the test groups it cannot run now."
+          },
+          "workOrderId": {
+            "type": "string",
+            "pattern": "^wo-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "Optional: the open work order for this analyser or scanner, for example wo-00012."
+          },
+          "expectedBackHours": {
+            "type": "integer",
+            "enum": [
+              1,
+              2,
+              4,
+              8,
+              24
+            ],
+            "description": "Optional: about how many hours until it is back. Shown as an estimate with the time it was set."
+          },
+          "backup": {
+            "type": "string",
+            "pattern": "^[a-z-]{2,30}$",
+            "maxLength": 30,
+            "description": "down and partly-down: an analyser: other-analyser, partner-lab, hold, none; a scanner: other-room, other-site, mobile-unit, none."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "assetId": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "assetId": "asset-analyser-1",
+          "state": "down",
+          "reason": "qc-failed",
+          "backup": "partner-lab",
+          "expectedBackHours": 2
+        }
+      }
+    },
+    {
+      "name": "ospeli_diagnostics_overview",
+      "summary": "The diagnostics manager's summary for the last days (default 7): laboratory turnaround time (received to result released, median and 90th percentile with n, by test group, urgent and routine apart), specimen rejection rate (rejected out of received plus rejected) by reason and by source area, equipment availability per analyser and scanner (downtime as its inverse), data completeness and the count of requests with a missing step beside them, each with its definition and source; equipment status; and the guide's suggestions with their basis (empty while the guide is off). Request to report and reporting backlog are planned (imaging, slice 2). Requests and steps, never a person. Read-only.",
+      "kind": "read",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
+      ],
+      "humanApproval": false,
+      "agentsMayCall": true,
+      "agentBehaviour": "runs and is audited as an agent read",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "days": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 30,
+            "description": "The period: the last this many days. Default 7."
+          },
+          "format": {
+            "type": "string",
+            "enum": [
+              "short",
+              "detailed"
+            ],
+            "description": "short: the values without definitions, breakdowns or equipment. detailed (default): each value with its definition, source and breakdown, completeness and equipment."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "asOf",
+          "synthetic",
+          "period",
+          "counts",
+          "kpis",
+          "planned",
+          "guide",
+          "note"
+        ],
+        "properties": {
+          "asOf": {
+            "type": "string",
+            "format": "date-time",
+            "maxLength": 40
+          },
+          "synthetic": {
+            "type": "boolean",
+            "description": "True while the data on this device is synthetic."
+          },
+          "period": {
+            "type": "object"
+          },
+          "counts": {
+            "type": "object"
+          },
+          "kpis": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "name",
+                "unit",
+                "value"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "unit": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "null when nothing was counted in the period."
+                },
+                "numerator": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "denominator": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "n": {
+                  "type": "integer"
+                },
+                "median": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "p90": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "period": {
+                  "type": "object"
+                },
+                "targetText": {
+                  "type": "string"
+                },
+                "byGroup": {
+                  "type": "array",
+                  "description": "Turnaround by test group, urgent and routine apart, each with median, p90 and n."
+                },
+                "byReason": {
+                  "type": "array"
+                },
+                "byArea": {
+                  "type": "array",
+                  "description": "Rejections by source area; value is null where fewer than 10 specimens reached the lab (counts only)."
+                },
+                "other": {
+                  "type": "integer",
+                  "description": "Rejections with the reason \"Other\": if it grows, the reason list needs changing."
+                },
+                "byAsset": {
+                  "type": "array",
+                  "description": "Availability per analyser and scanner: hours in service, scheduled hours, hours down and hours partly down."
+                },
+                "completeness": {
+                  "type": "object",
+                  "description": "Data completeness (D-21) for the same period."
+                },
+                "missing": {
+                  "type": "object",
+                  "description": "Requests that reached the lab with no collection time, and collections entered late."
+                },
+                "definition": {
+                  "type": "string"
+                },
+                "counts": {
+                  "type": "string"
+                },
+                "outOf": {
+                  "type": "string"
+                },
+                "leavesOut": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "planned": {
+            "type": "array"
+          },
+          "completeness": {
+            "type": "object"
+          },
+          "equipment": {
+            "type": "array"
+          },
+          "imaging": {
+            "type": "string"
+          },
+          "faultNote": {
+            "type": "string"
+          },
+          "guide": {
+            "type": "object",
+            "required": [
+              "on",
+              "rules",
+              "suggestions"
+            ],
+            "properties": {
+              "on": {
+                "type": "boolean"
+              },
+              "rules": {
+                "type": "array"
+              },
+              "suggestions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "rule",
+                    "id",
+                    "text",
+                    "why",
+                    "basis"
+                  ],
+                  "properties": {
+                    "rule": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "text": {
+                      "type": "string"
+                    },
+                    "why": {
+                      "type": "string"
+                    },
+                    "basis": {
+                      "type": "string"
+                    },
+                    "sourceId": {
+                      "type": "string"
+                    },
+                    "action": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "Always null: advice only. A person decides."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "note": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "format": "short"
+        }
+      }
+    },
+    {
+      "name": "ospeli_diagnostics_guide_set",
+      "summary": "Switch the diagnostics guide on or off for this site. The guide is three fixed rules (a specimen collected and not received within an example time; an analyser down shown on the wards with open requests for what it runs, with the backup route; rejections for one reason from one area reaching an example count in seven days) that suggest; a person decides. With it off everything else works the same. People only.",
+      "kind": "write",
+      "roles": [
+        "diagnostics-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "on"
+        ],
+        "properties": {
+          "on": {
+            "type": "boolean",
+            "description": "true: show the guide's suggestions. false: none."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "on"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "on": {
+            "type": "boolean"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "on": false
+        }
+      }
     }
   ]
 }
