@@ -358,9 +358,9 @@ export function ruleEquipmentDown(reqs, equipment, { nameOf = (x) => x, backupTe
       by.set(r.sourceId, [...(by.get(r.sourceId) || []), r]);
     }
     for (const [sourceId, list] of [...by].sort((a, b) => b[1].length - a[1].length || (a[0] < b[0] ? -1 : 1))) {
-      const groups = [...new Set(list.map((r) => TEST_GROUPS[r.testGroup].toLowerCase()))].join(' and ');
+      const groups = [...new Set(list.map((r) => TEST_GROUPS[r.testGroup].toLowerCase()))].join(', ');
       out.push({ rule: 'equipment-down', id: `equipment-down:${assetId}:${sourceId}`, assetId, sourceId, requestIds: list.map((r) => r.id),
-        text: `${name} is ${x.state === 'down' ? 'down' : 'partly down'}: ${list.length} open ${groups} ${list.length === 1 ? 'request' : 'requests'} from ${nameOf(sourceId)}. ${backupText(kind, x.backup)}.`,
+        text: `${name} is ${x.state === 'down' ? 'down' : 'partly down'}: ${list.length} open ${list.length === 1 ? 'request' : 'requests'} from ${nameOf(sourceId)} (${groups}). ${backupText(kind, x.backup)}.`,
         why: `Marked ${EQUIPMENT_STATES[x.state].toLowerCase()} at ${clockText(x.since, offsetMinutes)}${x.state === 'partly-down' ? ` (off: ${off.map((g) => TEST_GROUPS[g].toLowerCase()).join(', ')})` : ''}; the backup route was picked when it was marked.`,
         basis: BASIS['equipment-down'], action: null });
     }
@@ -392,3 +392,13 @@ export const localStartOfDay = (now, offsetMinutes = 0) => {
 };
 export const clockText = (iso, offsetMinutes = 0) => (iso ? new Date(ms(iso) + offsetMinutes * MIN).toISOString().slice(11, 16) : null);
 export const localHour = (iso, offsetMinutes = 0) => new Date(ms(iso) + offsetMinutes * MIN).getUTCHours();
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// "14:05" today on the site clock; "Tue 10 Nov, 14:05" on another day.
+export function whenText(iso, offsetMinutes = 0, now = null) {
+  if (!iso) return null;
+  const d = new Date(ms(iso) + offsetMinutes * MIN);
+  const hhmm = d.toISOString().slice(11, 16);
+  if (now && localStartOfDay(iso, offsetMinutes) === localStartOfDay(now, offsetMinutes)) return hhmm;
+  return `${DAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}, ${hhmm}`;
+}

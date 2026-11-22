@@ -50,14 +50,15 @@ export async function render(el, ctx) {
   const props = proposalsCard(ctx, { match: (p) => p.command.startsWith('ospeli_diagnostics_'), describe: (p) => describeProposal(p) });
 
   async function load() {
+    // One read of the log per command; a screen asks only for what it shows.
     const ward = wardRole ? ui.ward : null;
-    const [log, eq, ov, reqs] = await Promise.all([
-      ctx.run('ospeli_diagnostics_specimen_log', {}),
-      ctx.run('ospeli_diagnostics_equipment_list', {}),
+    const needReqs = wardRole || (mayRequest && ui.form === 'request');
+    const [log, ov, reqs] = await Promise.all([
+      wardRole ? null : ctx.run('ospeli_diagnostics_specimen_log', {}),
       ctx.run('ospeli_diagnostics_overview', {}),
-      ctx.run('ospeli_diagnostics_requests_list', ward ? { sourceId: ward } : { limit: 1 }),
+      needReqs ? ctx.run('ospeli_diagnostics_requests_list', ward ? { sourceId: ward } : { limit: 1 }) : null,
     ]);
-    data = { log, eq, ov, reqs };
+    data = { log, ov, reqs, eq: { equipment: ov.equipment, picks: ov.equipmentPicks, faultNote: ov.faultNote, imaging: ov.imaging } };
     if (wardRole && ward && !reqs.picks.sources.some((s) => s.id === ward)) { ui.ward = null; remembered.set(null); }
     draw();
     await props.load();
@@ -239,9 +240,9 @@ export async function render(el, ctx) {
   }
   function labRequest() {
     if (ui.form !== 'request') {
-      return h('button', { class: 'btn btn-ghost dx-link', type: 'button', 'data-test': 'not-on-list', onclick: () => { ui.form = 'request'; ui.picks = {}; draw(); } }, 'A specimen not on the list? Record its request');
+      return h('button', { class: 'btn btn-ghost dx-link', type: 'button', 'data-test': 'not-on-list', onclick: () => { ui.form = 'request'; ui.picks = {}; load(); } }, 'A specimen not on the list? Record its request');
     }
-    return requestForm();
+    return data.reqs ? requestForm() : null;
   }
   function waitingResult() {
     const list = data.log.waitingResult || [];
@@ -267,7 +268,7 @@ export async function render(el, ctx) {
     const patients = wardRole ? pk.patients || [] : [];
     const need = !src ? 'the ward or area' : !p.testGroup ? 'the test group' : !p.urgency ? 'the urgency' : (patients.length && p.encounter === undefined) ? 'the patient (or No patient code)' : null;
     const sel = !wardRole ? h('select', { 'data-test': 'request-source', 'aria-labelledby': 'rq-src', onchange: (e) => { p.sourceId = e.target.value || null; draw(); } },
-      h('option', { value: '' }, 'Pick the ward or area'), (data.log.sources || pk.sources || []).map((s) => new Option(s.name, s.id, false, s.id === p.sourceId))) : null;
+      h('option', { value: '' }, 'Pick the ward or area'), (pk.sources || []).map((s) => new Option(s.name, s.id, false, s.id === p.sourceId))) : null;
     const f = h('form', { class: 'card dx-form', 'data-test': 'request-form' },
       h('div', { class: 'dx-form-head' }, h('h2', {}, p.recollectionOf ? 'Recollection request' : 'New request'),
         h('button', { class: 'btn btn-ghost', type: 'button', 'data-test': 'form-back', onclick: () => { ui.form = null; ui.picks = {}; draw(); } }, 'Back')),

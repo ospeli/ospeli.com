@@ -25,7 +25,7 @@ import {
   REVIEW_COUNT, REVIEW_DAYS, MIN_AREA, UNDO_MINUTES, AGAIN_MINUTES, SCHEDULED_HOURS_PER_DAY, EXPECTED_HOURS, STAGES, RELEASED_DEFINITION, EQUIPMENT_KINDS, EQUIPMENT_STATES,
   REQUEST_ID, REQUIRED_STEPS, GUIDE_RULES, isEquipment, nextRequestId, codeParts, codeLabel, deriveRequests, isOpen, noCollection, enteredLate, minutesInStep,
   minutesSinceCollection, deriveEquipment, groupsOff, guideOn, labTurnaround, rejectionRate, equipmentAvailability, completeness, missingSteps,
-  ruleNotArrived, ruleEquipmentDown, ruleRejectionReview, localStartOfDay, clockText, localHour,
+  ruleNotArrived, ruleEquipmentDown, ruleRejectionReview, localStartOfDay, clockText, localHour, whenText,
 } from './logic.js';
 
 export const id = 'diagnostics';
@@ -246,7 +246,9 @@ function patientsOn(info, events, wardId) {
 const STAGE_RANK = { requested: 0, collected: 1, received: 2, rejected: 3, released: 4, cancelled: 5 };
 async function requestsList(core, input, wards) {
   const now = core.now();
-  const [events, info] = await Promise.all([own(core), siteInfo(core)]);
+  const BED_TYPES = ['bed.allocated', 'bed.allocation-cancelled', 'patient.admitted', 'patient.discharged', 'patient.expected-discharge', 'patient.expected-discharge-cancelled', 'bed.vacated', 'bed.clean-started', 'bed.clean-stopped', 'bed.cleaned', 'bed.out-of-service', 'bed.back-in-service', 'bed.requested', 'ae.decision-to-admit'];
+  const withBeds = !!(input.sourceId && input.format !== 'short' && (!wards || wards.has(input.sourceId)));
+  const [events, info] = await Promise.all([core.events({ type: withBeds ? [...OWN, ...BED_TYPES] : OWN }), siteInfo(core)]);
   const reqs = deriveRequests(events);
   const hours = input.hours ?? 24;
   const since = new Date(Date.parse(now) - hours * HOUR).toISOString();
@@ -263,11 +265,7 @@ async function requestsList(core, input, wards) {
   const short = input.format === 'short';
   const counts = {};
   for (const r of list) counts[r.state] = (counts[r.state] || 0) + 1;
-  let patients = [];
-  if (input.sourceId && !short && (!wards || wards.has(input.sourceId))) {
-    const bedEvents = await core.events({ type: ['bed.allocated', 'bed.vacated', 'bed.clean-started', 'bed.cleaned', 'bed.out-of-service', 'bed.back-in-service', 'patient.admitted', 'patient.discharged', 'patient.transferred', 'patient.expected-discharge', 'bed.requested', 'ae.decision-to-admit'] });
-    patients = patientsOn(info, bedEvents, input.sourceId);
-  }
+  const patients = withBeds ? patientsOn(info, events, input.sourceId) : [];
   return {
     asOf: now, synthetic: await isSynthetic(core), sourceId: input.sourceId ?? null, sourceName: input.sourceId ? info.nameOf(input.sourceId) : null, hours,
     requests: cut.items.map((r) => requestOut(r, info, now, { notArrived, short })), total: cut.total, truncated: cut.truncated, counts,
@@ -345,23 +343,24 @@ function equipmentRows(info, events, woEvents, now) {
     const x = eq.get(a.id) || { state: 'up', since: null, episodes: [] };
     const k = EQUIPMENT_KINDS[a.kind];
     const open = wos.filter((w) => w.assetId === a.id && w.state !== 'completed').sort((p, q) => (p.reportedAt < q.reportedAt ? -1 : 1))
-      .map((w) => ({ id: w.id, title: w.title, state: w.state, stateName: WO_STATES[w.state], priority: w.priority, reportedAt: w.reportedAt, reportedText: clockText(w.reportedAt, off) }));
+      .map((w) => ({ id: w.id, title: w.title, state: w.state, stateName: WO_STATES[w.state], priority: w.priority, reportedAt: w.reportedAt, reportedText: whenText(w.reportedAt, off, now) }));
     const linked = x.workOrder ? wos.find((w) => w.id === x.workOrder) : null;
     const offGroups = groupsOff(x, a.kind);
     return { assetId: a.id, name: a.name, kind: a.kind, kindWord: k.word, placeId: a.parentId, placeName: info.nameOf(a.parentId), state: x.state, stateName: EQUIPMENT_STATES[x.state],
-      since: x.since, sinceText: x.since ? clockText(x.since, off) : null, reason: x.reason || null, reasonName: x.reason ? k.reasons[x.reason] || null : null,
+      since: x.since, sinceText: x.since ? whenText(x.since, off, now) : null, reason: x.reason || null, reasonName: x.reason ? k.reasons[x.reason] || null : null,
       runs: k.runs.map((g) => ({ id: g, name: TEST_GROUPS[g] })), testGroupsOff: offGroups.map((g) => ({ id: g, name: TEST_GROUPS[g] })),
       workOrder: linked ? { id: linked.id, title: linked.title, state: linked.state, stateName: WO_STATES[linked.state] } : null, openWorkOrders: open,
-      expectedBack: x.expectedBack || null, expectedBackText: x.expectedBack ? `Estimate: back by ${clockText(x.expectedBack, off)} (set at ${clockText(x.expectedSetAt, off)})` : null,
+      expectedBack: x.expectedBack || null, expectedBackText: x.expectedBack ? `Estimate: back by ${whenText(x.expectedBack, off, now)} (set at ${whenText(x.expectedSetAt, off, now)})` : null,
       backup: x.backup || null, backupText: x.state === 'up' ? null : backupText(a.kind, x.backup), markedByRole: x.byRole || null, roles: [...k.roles] };
   });
 }
+const equipmentPicks = () => Object.fromEntries(Object.entries(EQUIPMENT_KINDS).map(([k, v]) => [k, { word: v.word, reasons: { ...v.reasons }, backups: { ...v.backups }, runs: [...v.runs], roles: [...v.roles] }]));
 async function equipmentList(core) {
   const now = core.now();
-  const [events, woEvents, info] = await Promise.all([own(core), core.events({ type: WO_TYPES }), siteInfo(core)]);
-  const rows = equipmentRows(info, events, woEvents, now);
+  const [events, info] = await Promise.all([core.events({ type: [...OWN, ...WO_TYPES] }), siteInfo(core)]);
+  const rows = equipmentRows(info, events, events, now);
   return { asOf: now, synthetic: await isSynthetic(core), equipment: rows, total: rows.length, truncated: false,
-    picks: Object.fromEntries(Object.entries(EQUIPMENT_KINDS).map(([k, v]) => [k, { word: v.word, reasons: { ...v.reasons }, backups: { ...v.backups }, runs: [...v.runs], roles: [...v.roles] }])),
+    picks: equipmentPicks(),
     expectedBackHours: [...EXPECTED_HOURS], states: { ...EQUIPMENT_STATES }, faultNote: FAULT_NOTE, imaging: IMAGING_PLANNED, note: NOT_FOR };
 }
 
@@ -369,7 +368,8 @@ async function overview(core, input, wards) {
   const now = core.now();
   const days = input.days ?? 7;
   const since = new Date(Date.parse(now) - days * DAY).toISOString();
-  const [events, woEvents, info] = await Promise.all([own(core), core.events({ type: WO_TYPES }), siteInfo(core)]);
+  const [events, info] = await Promise.all([core.events({ type: [...OWN, ...WO_TYPES] }), siteInfo(core)]);
+  const woEvents = events;
   const reqs = deriveRequests(events);
   const seen = new Map([...reqs].filter(([, r]) => !wards || wards.has(r.sourceId)));
   const period = { since, until: now, days };
@@ -421,7 +421,7 @@ async function overview(core, input, wards) {
     kpis, planned: PLANNED.map((x) => ({ ...x })),
     ...(short ? {} : { completeness: { ...ar(comp), missing: miss, byArea: compByArea, requiredSteps: [...REQUIRED_STEPS],
       definition: 'Data completeness (KPI dictionary D-21): requests finished in the period (result released, or rejected) with every required step timed, divided by requests finished in the period, per source area.' },
-    equipment: eqRows, imaging: IMAGING_PLANNED, faultNote: FAULT_NOTE }),
+    equipment: eqRows, equipmentPicks: equipmentPicks(), expectedBackHours: [...EXPECTED_HOURS], imaging: IMAGING_PLANNED, faultNote: FAULT_NOTE }),
     guide: { on, rules: GUIDE_RULES.map((r) => ({ ...r })), suggestions },
     note: NOT_FOR,
   };
