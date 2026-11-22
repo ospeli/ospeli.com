@@ -47,6 +47,9 @@ export const ROLES = [
   { id: 'lab-scientist', name: 'Laboratory scientist', home: 'diagnostics', startsOnHome: true },
   { id: 'radiographer', name: 'Radiographer', home: 'diagnostics', startsOnHome: true },
   { id: 'diagnostics-manager', name: 'Diagnostics manager', home: 'diagnostics', startsOnHome: true },
+  { id: 'pharmacy-technician', name: 'Pharmacy technician', home: 'pharmacy', startsOnHome: true },
+  { id: 'pharmacist', name: 'Pharmacist', home: 'pharmacy', startsOnHome: true },
+  { id: 'pharmacy-manager', name: 'Pharmacy manager', home: 'pharmacy', startsOnHome: true },
 ];
 
 export const roleById = (id) => ROLES.find((r) => r.id === id) || null;

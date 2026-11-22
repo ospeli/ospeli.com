@@ -33,8 +33,9 @@ import * as facilities from '../modules/facilities/commands.js';
 import * as transfers from '../modules/transfers/commands.js';
 import * as clinics from '../modules/clinics/commands.js';
 import * as diagnostics from '../modules/diagnostics/commands.js';
+import * as pharmacy from '../modules/pharmacy/commands.js';
 
-export const MODULE_PACKS = [feedback, support, stores, facilities, transfers, clinics, diagnostics];
+export const MODULE_PACKS = [feedback, support, stores, facilities, transfers, clinics, diagnostics, pharmacy];
 
 export const MODULE_COMMANDS = MODULE_PACKS.flatMap((p) => p.COMMANDS || []);
 export const packById = (id) => MODULE_PACKS.find((p) => p.id === id) || null;

@@ -52,7 +52,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -299,7 +302,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -436,7 +442,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1651,7 +1660,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1742,7 +1754,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1900,7 +1915,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -2059,7 +2077,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -2180,7 +2201,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": false,
@@ -2434,7 +2458,10 @@
               "unit-clerk",
               "lab-scientist",
               "radiographer",
-              "diagnostics-manager"
+              "diagnostics-manager",
+              "pharmacy-technician",
+              "pharmacist",
+              "pharmacy-manager"
             ],
             "description": "The one role this agent works for. It is refused if it claims another."
           },
@@ -2617,7 +2644,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -2689,7 +2719,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -2874,7 +2907,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -3054,7 +3090,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -3239,7 +3278,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -3389,7 +3431,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -3970,7 +4015,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4462,7 +4510,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4614,7 +4665,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -5260,7 +5314,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -5702,7 +5759,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -5842,7 +5902,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5950,7 +6013,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6106,7 +6172,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6264,7 +6333,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6391,7 +6463,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6508,7 +6583,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6616,7 +6694,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6724,7 +6805,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6824,7 +6908,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6900,7 +6987,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -6996,7 +7086,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7341,7 +7434,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7671,7 +7767,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -8001,7 +8100,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -8331,7 +8433,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -8661,7 +8766,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -8997,7 +9105,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -9364,7 +9475,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -9694,7 +9808,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -10024,7 +10141,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -10361,7 +10481,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -10524,7 +10647,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -11443,7 +11569,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -11566,7 +11695,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -11715,7 +11847,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -11837,7 +11972,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -13443,7 +13581,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -13650,7 +13791,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -13955,7 +14099,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -15532,7 +15679,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -15723,7 +15873,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -16009,7 +16162,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -18111,7 +18267,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -18228,7 +18387,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -18488,7 +18650,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -18780,7 +18945,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -19104,7 +19272,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -19375,7 +19546,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -19790,7 +19964,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -20106,7 +20283,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -20869,7 +21049,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -22163,7 +22346,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -22474,7 +22660,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -22885,7 +23074,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -23175,7 +23367,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -24283,7 +24478,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -24520,7 +24718,10 @@
         "unit-clerk",
         "lab-scientist",
         "radiographer",
-        "diagnostics-manager"
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
