@@ -11,6 +11,28 @@ import { SCREENS, decideAt } from './screens.js';
 
 const SHOW_FIRST = 3;
 
+// Issue #162: every page made a card, and each card's own watcher on <html> was disconnected only
+// when the connection changed, which on most devices never happens; so every page ever visited
+// (its whole grid and its copy of the event log) stayed in memory. Now one watcher serves all
+// cards and holds each card only weakly: a page that has been left is freed like any other.
+const cards = new Set(); // WeakRef to each card's box
+const redraws = new WeakMap(); // box -> its render
+let watcher = null;
+function liveCard(box, render) {
+  redraws.set(box, render);
+  for (const ref of cards) if (!ref.deref()) cards.delete(ref);
+  cards.add(new WeakRef(box));
+  if (watcher) return;
+  watcher = new MutationObserver(() => {
+    for (const ref of cards) {
+      const b = ref.deref();
+      if (!b) cards.delete(ref);
+      else if (b.isConnected) redraws.get(b)?.();
+    }
+  });
+  watcher.observe(document.documentElement, { attributes: true, attributeFilter: ['data-site'] });
+}
+
 // describe(p) -> one line in plain words; match(p) -> whether this page shows it.
 export function proposalsCard(ctx, { describe: describeOwn, match = () => true }) {
   // A card never shows a raw command name (#148): a page with no words of its own for a command
@@ -27,9 +49,8 @@ export function proposalsCard(ctx, { describe: describeOwn, match = () => true }
   let showAll = false; // issue #72: the newest three first; the rest one tap away
   let msg = ''; // issue #86: why the last answer was not saved, shown in the card
   const offline = () => document.documentElement.dataset.site === 'offline';
-  // Redraw when the device loses or gets back its connection; stop watching once the card is gone.
-  const watch = new MutationObserver(() => { if (!box.isConnected) { watch.disconnect(); return; } render(); });
-  watch.observe(document.documentElement, { attributes: true, attributeFilter: ['data-site'] });
+  // Redraw when the device loses or gets back its connection (one shared watcher, below).
+  liveCard(box, render);
 
   async function load() {
     try { list = (await ctx.run('ospeli_proposals_list', { status: 'pending', limit: 200 })).proposals.filter(match).sort((a, b) => Date.parse(b.at) - Date.parse(a.at) || (a.id < b.id ? 1 : -1)); } catch { list = []; }
