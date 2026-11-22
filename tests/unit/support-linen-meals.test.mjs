@@ -22,9 +22,14 @@ const MIN = 60e3;
 const human = (role) => ({ type: 'human', role });
 const code = (c) => (err) => err instanceof CommandError && err.code === c;
 async function site() {
+  // The clock stands still while the example hospital loads and ticks a second a call after that.
+  // It used to tick during the load too, so every module's seed pushed "now" later (23:22 site time
+  // with 33,740 events); one more module's seed carried it past midnight and "today" became the 7th.
   let t = Date.parse(END);
-  const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
+  let ticking = false;
+  const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(ticking ? (t += 1000) : t) });
   await loadSyntheticHospital(core, { end: END });
+  ticking = true;
   const run = (name, input, who) => runCommand(core, name, input, typeof who === 'string' ? human(who) : who);
   return { core, run, advance: (m) => { t += m * MIN; } };
 }
