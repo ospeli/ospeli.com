@@ -7,7 +7,7 @@
 //     open outages), the guide, this week's checks, outage hours, measures, the faults card, levels
 // Building and plant faults are Engineering's work orders: this page shows the next one only and
 // links there. Not a building management or control system: it switches nothing.
-import { h, setKids, fmtWait, moduleStyle } from '../ui.js';
+import { h, setKids, fmtWait, moduleStyle, redrawOnChange } from '../ui.js';
 import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
@@ -68,8 +68,10 @@ export async function render(el, ctx) {
       const out = await ctx.run(cmd, input);
       if (words) ctx.toast(words);
       if (after) after(out);
+      // Read again, then draw once (in `finally`): "Saved" and the lists it changed appear together.
+      // The read is quick now that the log is kept in memory (ospeli/ospeli#153); two draws a moment
+      // apart moved the page under a quick second tap.
       ui.justSaved = true;
-      draw(); // show "Saved" where the person tapped at once, then read again
       return out;
     } catch (err) {
       if (after?.onError) after.onError(err); else { ui.msg = `Not saved. ${err.message}`; ctx.toast(ui.msg); }
@@ -498,14 +500,9 @@ export async function render(el, ctx) {
   }
 
   await load();
-  let t = null;
-  const off = ctx.core.onChange(({ kind }) => {
-    if (!['event', 'events', 'reset', 'proposals'].includes(kind)) return;
-    clearTimeout(t);
-    t = setTimeout(() => load(), 100);
-  });
+  const off = redrawOnChange(ctx, () => load());
   const tick = setInterval(() => load(), 60e3); // keep the outage lengths fresh
-  return () => { off(); clearInterval(tick); clearTimeout(t); };
+  return () => { off(); clearInterval(tick); };
 }
 
 function nameMap(ov) {
@@ -706,11 +703,6 @@ async function renderWaste(el, ctx) {
   }
 
   await load();
-  let t = null;
-  const off = ctx.core.onChange(({ kind }) => {
-    if (!['event', 'events', 'reset', 'proposals'].includes(kind)) return;
-    clearTimeout(t);
-    t = setTimeout(() => load(), 100);
-  });
-  return () => { off(); clearTimeout(t); };
+  const off = redrawOnChange(ctx, () => load());
+  return () => { off(); };
 }

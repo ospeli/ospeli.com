@@ -272,8 +272,12 @@ test('a second tap on the same spot 1.6 s after Collected records nothing more: 
     await cmd(page, 'ospeli_pharmacy_request_step', { requestId, step: 'ready' }, 'pharmacy-technician');
   }
   await asRole(page, 'ward-nurse', 'discharge');
+  // Wait for the list as drawn for "all wards", not the one on screen when the ward was picked: the rows
+  // there are marked first, and the check waits until none of them is left (the list is read again faster
+  // since ospeli/ospeli#153, and the next step used to start on the list that was about to be replaced).
+  await page.evaluate(() => { for (const el of document.querySelectorAll('[data-test="ward-requests"] li')) el.dataset.stale = 'true'; });
   await page.locator('[data-test="wards"]').selectOption('');
-  await page.waitForFunction(() => document.querySelectorAll('[data-test="ward-requests"] [data-test="collect"]').length >= 2);
+  await page.waitForFunction(() => !document.querySelector('[data-test="ward-requests"] li[data-stale]') && document.querySelectorAll('[data-test="ward-requests"] [data-test="collect"]').length >= 2);
   const id1 = await collectTwice(page, '[data-test="ward-requests"]', 'Discharge medicines');
   // The collected row can be taken back within 10 minutes.
   await tap(page, `[data-request="${id1}"] [data-test="undo-closed"] summary`);

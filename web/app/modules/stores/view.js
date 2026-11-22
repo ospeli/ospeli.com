@@ -7,7 +7,7 @@
 //   #/stores/outs      Stock-out log: start and end, cause, and whether care was affected (yes or no)
 //   #/stores/manage    Supplies overview (supply chain manager): what is short, what is stuck, measures, guide, levels, items, transfers
 // The role decides which screens it has and which opens first. Counts items, requests and orders, never people.
-import { h, setKids, fmtWait, moduleStyle } from '../ui.js';
+import { h, setKids, fmtWait, moduleStyle, redrawOnChange } from '../ui.js';
 import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
@@ -64,15 +64,10 @@ export async function render(el, ctx) {
   const view = { count: countScreen, requests: requestsScreen, receive: receiveScreen, orders: ordersScreen, outs: outsScreen, manage: manageScreen }[screen](ctx, shared);
   wrap.append(...[tabs, view.el].filter(Boolean));
   await view.load();
-  let t = null;
-  const off = ctx.core.onChange(({ kind }) => {
-    if (!['event', 'events', 'reset', 'proposals'].includes(kind)) return;
-    clearTimeout(t);
-    t = setTimeout(() => view.load(), 120);
-  });
+  const off = redrawOnChange(ctx, () => view.load(), { wait: 120 });
   // Keep the waits fresh, but never redraw under a person who is typing or picking.
   const tick = setInterval(() => { const a = document.activeElement; if (a && wrap.contains(a) && ['INPUT', 'SELECT', 'TEXTAREA'].includes(a.tagName)) return; view.load(); }, 60e3);
-  return () => { off(); clearInterval(tick); clearTimeout(t); };
+  return () => { off(); clearInterval(tick); };
 }
 
 // ---------------------------------------------------------------- shared pieces

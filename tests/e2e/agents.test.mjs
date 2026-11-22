@@ -78,7 +78,12 @@ test('issue #17: an agent proposes, the patient flow coordinator accepts on the 
   assert.equal(prop.status, 'pending');
 
   // The ward nurse role is the default; switch to patient flow coordinator and see the proposal at the top.
+  // The proposal now shows on the charge nurse's board within a few milliseconds (ospeli/ospeli#153), so the
+  // test marks that page and waits for the coordinator's own page before it looks: every check below is
+  // made on the coordinator's board, as it was meant to be.
+  await page.evaluate(() => { for (const el of document.querySelector('main').children) el.dataset.stale = 'true'; });
   await page.selectOption('#role-select', 'bed-manager');
+  await page.waitForFunction(() => !document.querySelector('main > [data-stale]') && document.querySelector('main .bed'));
   const item = page.locator(`[data-proposal="${prop.id}"]`);
   await item.waitFor();
   assert.match(await page.locator('#prop-h').textContent(), /Suggested changes \(1\)/);

@@ -11,7 +11,7 @@
 //   radiographer: equipment status first (imaging lists are slice 2)
 //   diagnostics manager and others: the measures, the guide, equipment status, the day at the hatch
 // Operations only: no result value, no choice of test, no clinical priority.
-import { h, setKids, fmtWait, moduleStyle } from '../ui.js';
+import { h, setKids, fmtWait, moduleStyle, redrawOnChange } from '../ui.js';
 import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
@@ -76,8 +76,8 @@ export async function render(el, ctx) {
       const out = await ctx.run(cmd, input);
       if (words) ctx.toast(words);
       if (after) after(out);
+      // Read again, then draw once (in `finally`): what was saved and the lists it changed appear together (ospeli/ospeli#153).
       ui.justSaved = true;
-      draw();
       return out;
     } catch (err) {
       if (after?.onError) after.onError(err);
@@ -549,12 +549,7 @@ export async function render(el, ctx) {
   }
 
   await load();
-  let t = null;
-  const off = ctx.core.onChange(({ kind }) => {
-    if (!['event', 'events', 'reset', 'proposals'].includes(kind)) return;
-    clearTimeout(t);
-    t = setTimeout(() => load(), 100);
-  });
+  const off = redrawOnChange(ctx, () => load());
   const tick = setInterval(() => load(), 60e3); // keep the minutes fresh
-  return () => { off(); clearInterval(tick); clearTimeout(t); };
+  return () => { off(); clearInterval(tick); };
 }

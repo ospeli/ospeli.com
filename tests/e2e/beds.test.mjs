@@ -399,8 +399,12 @@ test('issue #90: bed and work-order buttons are announced with the words on them
 for (const width of [390, 1280]) {
   test(`issue #90: in Find a bed, beds that are not a match stay readable at 4.5:1 and are not faded (${width}px)`, async () => {
     const { context, page, errors } = await openPage(env, { width, height: 844, path: '#/beds', clock: CLOCK });
+    // The charge nurse's board has "Find a bed" too. Wait for the coordinator's own board before tapping,
+    // so the tap and every check below are on the page the role change opens (the page is swapped
+    // sooner since ospeli/ospeli#153, and a tap on the page being replaced did nothing).
+    await page.evaluate(() => { for (const el of document.querySelector('main').children) el.dataset.stale = 'true'; });
     await page.selectOption('#role-select', 'bed-manager');
-    await page.waitForSelector('[data-find]');
+    await page.waitForFunction(() => !document.querySelector('main > [data-stale]') && document.querySelector('main [data-find]'));
     await page.locator('[data-find]').first().evaluate((b) => b.click());
     await page.waitForSelector('.bed.dim');
     const worst = await page.evaluate(() => {

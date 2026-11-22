@@ -6,7 +6,7 @@
 //   #/clinics/templates   Templates, read-only (changing them is planned, not built yet)
 // Booking, moving, cancelling, steps, sessions and codes are the shared ospeli_slots_* and
 // ospeli_codes_* commands. Measures clinics and waits, never a clinician. A patient is a code.
-import { h, setKids, fmtWait, moduleStyle } from '../ui.js';
+import { h, setKids, fmtWait, moduleStyle, redrawOnChange } from '../ui.js';
 import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
@@ -42,17 +42,12 @@ export async function render(el, ctx) {
   const root = h('div', { class: 'mod-clinics cl', 'data-screen': screen, 'data-role': ctx.role }, head, tabs, view.el);
   el.append(root);
   await view.load();
-  let t = null;
-  const off = ctx.core.onChange(({ kind }) => {
-    if (!['event', 'events', 'reset', 'proposals'].includes(kind)) return;
-    clearTimeout(t);
-    t = setTimeout(() => view.load(), 100);
-  });
+  const off = redrawOnChange(ctx, () => view.load());
   // A device that loses or gets back its connection redraws (the queue's taps need one).
   const watch = new MutationObserver(() => view.draw?.());
   watch.observe(document.documentElement, { attributes: true, attributeFilter: ['data-site'] });
   const tick = setInterval(() => view.load(), 60e3); // keep the waits fresh
-  return () => { off(); clearInterval(tick); clearTimeout(t); watch.disconnect(); view.stop?.(); };
+  return () => { off(); clearInterval(tick); watch.disconnect(); view.stop?.(); };
 }
 
 // One command for a person, safely: a second tap while the first runs does nothing.

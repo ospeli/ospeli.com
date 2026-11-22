@@ -195,8 +195,14 @@ test('the supply chain manager\'s first five minutes on a 390 px phone: sees wha
   const order = await btn.locator('xpath=ancestor::li[@data-order]').getAttribute('data-order');
   await btn.scrollIntoViewIfNeeded();
   await btn.tap();
-  await page.waitForFunction(async (o) => (await window.ospeli.core.events({ subject: o })).at(-1)?.data?.step === 'ordered', order);
-  const last = await page.evaluate(async (o) => (await window.ospeli.core.events({ subject: o })).at(-1), order);
+  // A real wait: waitForFunction does not wait for a function that returns a promise (it takes the promise
+  // itself as "true"), so the line that stood here read the log before the tap was saved (ospeli/ospeli#133).
+  let last = null;
+  for (let i = 0; i < 100 && last?.data?.step !== 'ordered'; i++) {
+    last = await page.evaluate(async (o) => (await window.ospeli.core.events({ subject: o })).at(-1), order);
+    if (last?.data?.step !== 'ordered') await page.waitForTimeout(50);
+  }
+  assert.equal(last?.data?.step, 'ordered', 'the order step was saved');
   assert.deepEqual([last.type, last.actorRole], ['stores.order-step', 'supply-manager']);
   // The approval is not this role's: no approve button anywhere on the page.
   assert.equal(await page.locator('[data-step="approved"]').count(), 0);

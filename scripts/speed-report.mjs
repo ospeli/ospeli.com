@@ -40,7 +40,7 @@ export async function measure({ runs = 2, gzip = false, pages = true } = {}) {
   if (gzip) await new Promise((r) => server.listen(0, '127.0.0.1', r));
   const appUrl = `http://127.0.0.1:${server.address().port}/app/`;
   const browser = await chromium.launch();
-  const out = { profile: PROFILE, budget: BUDGET, firstLoadMs: [], firstPaintMs: [], repeatLoadMs: [], transferKb: [], requests: [], setupMs: [], pages: {} };
+  const out = { profile: PROFILE, budget: BUDGET, firstLoadMs: [], firstPaintMs: [], repeatLoadMs: [], transferKb: [], requests: [], setupMs: [], phases: [], pages: {} };
   try {
     for (let i = 0; i < runs; i++) {
       const context = await browser.newContext({ viewport: { width: PROFILE.width, height: PROFILE.height }, hasTouch: true, isMobile: true });
@@ -59,6 +59,12 @@ export async function measure({ runs = 2, gzip = false, pages = true } = {}) {
       out.firstPaintMs.push(Math.round(await page.evaluate(() => performance.getEntriesByName('first-contentful-paint')[0]?.startTime || 0)));
       // The part of the first load spent after the files arrived (making and storing the example site).
       out.setupMs.push(Math.round(await page.evaluate(() => { const nav = performance.getEntriesByType('navigation')[0]; const last = Math.max(...performance.getEntriesByType('resource').filter((r) => /\.(js|css)$/.test(r.name)).map((r) => r.responseEnd)); return performance.now() - Math.max(last, nav.domContentLoadedEventEnd); })));
+      // Where the first load's time went, from the marks the app sets as it starts (app.js, core/generator.js).
+      out.phases.push(await page.evaluate(() => {
+        const at = Object.fromEntries(performance.getEntriesByType('mark').filter((m) => m.name.startsWith('ospeli:')).map((m) => [m.name.slice(7), Math.round(m.startTime)]));
+        const step = (from, to) => (at[from] != null && at[to] != null ? at[to] - at[from] : null);
+        return { filesMs: at['files-read'] ?? null, makeMs: step('storage-open', 'site-made'), storeMs: step('site-made', 'site-stored'), firstPageMs: step('shell-drawn', 'ready'), readyMs: at.ready ?? null };
+      }));
       // Let the offline cache finish filling before the repeat load.
       await page.waitForFunction(() => navigator.serviceWorker?.controller || navigator.serviceWorker?.ready.then(() => true), null, { timeout: 120000 }).catch(() => {});
       await page.waitForTimeout(3000);
@@ -98,6 +104,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   console.log(`Phone profile: ${PROFILE.width} px, processor ${PROFILE.cpu}x slower, ${PROFILE.downKbps / 1000} Mbit/s, ${PROFILE.latencyMs} ms. Worst of ${out.firstLoadMs.length} runs.`);
   console.log(`First load to ready   ${s(worst(out.firstLoadMs))}   budget ${s(BUDGET.firstLoadMs)}   ${mark(worst(out.firstLoadMs), BUDGET.firstLoadMs)}   (first paint ${s(worst(out.firstPaintMs))}; ${worst(out.transferKb)} kB in ${worst(out.requests)} requests, uncompressed; ${s(worst(out.setupMs))} after the files arrived)`);
   console.log(`  with files compressed, as a static host sends them: ${s(worst(zipped.firstLoadMs))}   ${mark(worst(zipped.firstLoadMs), BUDGET.firstLoadMs)}   (${worst(zipped.transferKb)} kB in ${worst(zipped.requests)} requests; ${s(worst(zipped.setupMs))} after the files arrived)`);
+  const ph = zipped.phases[zipped.phases.length - 1];
+  if (ph?.readyMs != null) console.log(`  where it went (compressed, last run): files fetched and read ${s(ph.filesMs)}; example site made ${s(ph.makeMs)}; stored ${s(ph.storeMs)}; first page drawn ${s(ph.firstPageMs)}; ready at ${s(ph.readyMs)}`);
   console.log(`Repeat load           ${s(worst(out.repeatLoadMs))}`);
   console.log('Tap a menu link to the page\'s heading drawn (first time / again), budget 300 ms. A page whose heading is drawn before its data reads low:');
   for (const [id, p] of Object.entries(out.pages)) console.log(`  ${id.padEnd(12)} ${String(worst(p.first)).padStart(5)} ms / ${String(worst(p.again)).padStart(5)} ms   ${mark(worst(p.again), BUDGET.pageChangeMs)}`);

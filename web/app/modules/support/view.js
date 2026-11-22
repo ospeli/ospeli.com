@@ -7,7 +7,7 @@
 //   #/support/linen  Linen and meals (cleaner, ward: count linen, ask for a top-up, record meals;
 //                    supervisor: what is under level, at zero, waiting, and meal waste by ward)
 // The role decides which screens it has and which opens first. Measures jobs and waits, never people.
-import { h, setKids, fmtWait, moduleStyle } from '../ui.js';
+import { h, setKids, fmtWait, moduleStyle, redrawOnChange } from '../ui.js';
 import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
@@ -54,14 +54,9 @@ export async function render(el, ctx) {
   el.append(h('div', { class: 'mod-support sup', 'data-screen': screen, 'data-role': ctx.role }, head, tabs, view.el));
   await view.load();
 
-  let t = null;
-  const off = ctx.core.onChange(({ kind }) => {
-    if (!['event', 'events', 'reset', 'proposals'].includes(kind)) return;
-    clearTimeout(t);
-    t = setTimeout(() => view.load(), 100);
-  });
+  const off = redrawOnChange(ctx, () => view.load());
   const tick = setInterval(() => view.load(), 60e3); // keep the waits fresh
-  return () => { off(); clearInterval(tick); clearTimeout(t); view.stop?.(); };
+  return () => { off(); clearInterval(tick); view.stop?.(); };
 }
 
 // id -> plain name, for wards, beds ("Ward A1 (acute medicine), Bed 04") and departments.

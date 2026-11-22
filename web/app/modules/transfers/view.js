@@ -5,7 +5,7 @@
 //   #/transfers/request  Book a transfer (ward nurse, ED nurse in charge): picks only, nothing typed
 //   #/transfers/fleet    Fleet status (fleet supervisor): daily checks, out of service and back, availability
 // The role decides which screens it has and which opens first. Measures journeys and vehicles, never people.
-import { h, setKids, fmtWait, moduleStyle } from '../ui.js';
+import { h, setKids, fmtWait, moduleStyle, redrawOnChange } from '../ui.js';
 import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
@@ -36,14 +36,9 @@ export async function render(el, ctx) {
   // The shell moves the page's children into <main>, so the module's class goes on its own wrapper.
   el.append(h('div', { class: 'mod-transfers trf', 'data-screen': screen, 'data-role': ctx.role }, head, tabs, view.el));
   await view.load();
-  let t = null;
-  const off = ctx.core.onChange(({ kind }) => {
-    if (!['event', 'events', 'reset', 'proposals'].includes(kind)) return;
-    clearTimeout(t);
-    t = setTimeout(() => view.load(), 100);
-  });
+  const off = redrawOnChange(ctx, () => view.load());
   const tick = setInterval(() => view.load(), 60e3); // keep the waits fresh
-  return () => { off(); clearInterval(tick); clearTimeout(t); view.stop?.(); };
+  return () => { off(); clearInterval(tick); view.stop?.(); };
 }
 
 // One command for a person, safely: a second tap while the first runs does nothing.

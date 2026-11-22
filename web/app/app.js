@@ -5,7 +5,7 @@ import { ROLES, roleById } from './core/model.js';
 import { MODULES, moduleById, parseRoute } from './modules/registry.js';
 import { renderSoon } from './modules/soon.js';
 import { loadSyntheticHospital, currentHour, setupUnfinished } from './core/generator.js';
-import { runCommand, listCommands, describeCommand, CommandError } from './core/commands.js';
+import { runCommand, listCommands, describeCommand, commandByName, CommandError } from './core/commands.js';
 import { waitingDecisions, proposalWords } from './modules/proposals.js';
 import { installDialogTapGuard } from './modules/ui.js';
 
@@ -132,7 +132,7 @@ async function route(ctx) {
   try {
     if (mod.load) {
       const view = await mod.load();
-      pageCleanup = await view.render(page, { ...ctx, rest, toast });
+      pageCleanup = await view.render(page, { ...ctx, ...trackRuns(ctx.run), rest, toast });
     } else {
       renderSoon(page, mod);
     }
@@ -153,6 +153,28 @@ async function route(ctx) {
   if (ctx.routed) main.focus({ preventScroll: true });
   ctx.routed = true;
   window.scrollTo(0, 0);
+}
+
+// What the person's own commands are doing, for pages that redraw when the data changes
+// (modules/ui.js redrawOnChange): how many changes are being saved now, and two counters that say
+// whether a read started after the last change was saved. Counters, not clock times: two things
+// in the same millisecond still have an order. Each page gets its own (route() below), so a change
+// still being saved by the page a person has just left is never taken for the new page's own.
+function trackRuns(run) {
+  const flow = { writing: 0, writeDoneAt: 0, readStartedAt: 0, n: 0 };
+  const tracked = (name, input) => {
+    // The card of agents' suggestions sits on many pages and reads and saves by itself; the page
+    // around it does not redraw itself after it. So its commands are not counted, and the page
+    // redraws when one of them changes the data.
+    if (String(name).startsWith('ospeli_proposals_')) return run(name, input);
+    if (commandByName(name)?.kind === 'read') { flow.readStartedAt = ++flow.n; return run(name, input); }
+    flow.writing += 1;
+    const done = () => { flow.writing -= 1; flow.writeDoneAt = ++flow.n; };
+    let p;
+    try { p = Promise.resolve(run(name, input)); } catch (err) { p = Promise.reject(err); }
+    return p.then((out) => { done(); return out; }, (err) => { done(); throw err; });
+  };
+  return { run: tracked, flow };
 }
 
 // The badge says only what the stored data shows, never more (issue #5).
@@ -313,10 +335,19 @@ async function showDataLost(core) {
   top();
 }
 
+// Marks for the speed report (ospeli/ospeli#153): where a load's time goes. Only names and times;
+// read with performance.getEntriesByType('mark'). Nothing is sent anywhere.
+const mark = (name) => { try { performance.mark(`ospeli:${name}`); } catch { /* no marks here */ } };
+
 async function boot() {
+  mark('files-read');
   if (ON_SITE_SERVER) return bootOnSite();
+  // The first page's own file is asked for now, while storage opens and the example site is made,
+  // not after (ospeli/ospeli#153). route() below gets the same file from the browser's module map.
+  moduleById(parseRoute(location.hash).id)?.load?.().catch(() => { /* route() reports it */ });
   const adapter = await openStorage('ospeli');
   const core = await Core.open({ adapter });
+  mark('storage-open');
   // First run on this device: load the synthetic Example General Hospital.
   // If an earlier setup was interrupted, start it again so the hospital is never half loaded.
   const unfinished = await setupUnfinished(core);
@@ -335,6 +366,7 @@ async function boot() {
       await core.setMeta('data-lost', { at: core.now(), lastSeen: marker.lastSeen });
     }
   }
+  mark('site-stored');
   await core.setMeta('firstRunDone', true);
   if (adapter.kind === 'indexeddb') await writeMarker(core.now());
   const saved = await core.getMeta('role');
@@ -387,8 +419,10 @@ async function boot() {
   $('#menu-btn').addEventListener('click', () => setMenu(!$('#nav').classList.contains('open')));
   window.addEventListener('hashchange', () => route(ctx));
   if ((!location.hash || location.hash === '#/') && homePage(ctx.role)) history.replaceState(null, '', homePage(ctx.role));
+  mark('shell-drawn');
   await route(ctx);
   document.documentElement.dataset.ready = 'true';
+  mark('ready');
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(() => { /* the app still works online */ });

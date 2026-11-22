@@ -325,10 +325,12 @@ export function generateHospital({ seed = DEFAULT_SEED, end, days = 30, modules 
 // Load the synthetic hospital into a (normally empty) core.
 export async function loadSyntheticHospital(core, { seed = DEFAULT_SEED, end, days = 30, modules = true } = {}) {
   const { entities, events, meta } = generateHospital({ seed, end, days, modules });
+  try { performance.mark('ospeli:site-made'); } catch { /* no marks here */ }
   // Mark setup as unfinished until every event is stored, so a reload mid-way is detected
   // and setup starts again on the next boot (issue #1).
   await core.setMeta('setup', 'started');
   await core.putEntities(entities, 'system', `${HOSPITAL_NAME}, seed ${seed}`);
+  try { performance.mark('ospeli:entities-stored'); } catch { /* no marks here */ }
   await core.appendEvents(events, 'system', `${days} days of synthetic events, seed ${seed}`);
   await core.setMeta('synthetic', true);
   await core.setMeta('generator', meta);

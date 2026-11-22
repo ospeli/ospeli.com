@@ -98,6 +98,7 @@ export class Core {
     if (this.db.kind !== 'indexeddb' || typeof BroadcastChannel !== 'function') return;
     this.channel = new BroadcastChannel('ospeli');
     this.channel.onmessage = async () => {
+      this.db.dropKept?.(); // another tab wrote: read from storage again (the read check would see it too)
       await this._serial(() => this._loadTails());
       this._emitLocal('events', { from: 'another tab' });
     };

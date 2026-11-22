@@ -21,6 +21,38 @@ export function setKids(el, ...kids) {
   return el;
 }
 
+// Redraw a page when the stored data changes: another tab or device, an agent's proposal, a reset,
+// or this page's own action. `reload` is called a short moment after the last change.
+// One case is left out. When the only changes were made by this page's own action, and the page
+// has already started reading again since that action was saved, the page is redrawing itself and
+// a second redraw a tenth of a second later would only close what the person has just opened
+// (ospeli/ospeli#153; the same kind of fault as #95). `ctx.flow` is kept by the shell (app.js):
+// how many of the person's own changes are being saved, and counters for "last change saved" and
+// "last read started". With no `ctx.flow` every change redraws, as before.
+// The rule a page must keep to use this: after every change it saves with ctx.run it calls its own
+// full reload (the one passed in here), never only a part of it.
+export function redrawOnChange(ctx, reload, { kinds = ['event', 'events', 'reset', 'proposals'], wait = 100 } = {}) {
+  const { flow } = ctx;
+  let t = null;
+  let own = true; // every change since the last redraw came while this page's own action was being saved
+  const fire = () => {
+    t = null;
+    if (flow && own) {
+      if (flow.writing > 0) { t = setTimeout(fire, wait); return; } // still being saved: look again
+      if (flow.readStartedAt > flow.writeDoneAt) return; // the page is already drawing what was saved
+    }
+    own = true;
+    reload();
+  };
+  const off = ctx.core.onChange(({ kind, detail }) => {
+    if (!kinds.includes(kind)) return;
+    if (!flow || flow.writing === 0 || detail?.from === 'another tab') own = false;
+    clearTimeout(t);
+    t = setTimeout(fire, wait);
+  });
+  return () => { off(); clearTimeout(t); };
+}
+
 export const fmtTime = (iso) => new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
 
 // A module's own stylesheet (modules/<id>/style.css), added to the page once, the first time the
