@@ -6,8 +6,9 @@ import * as support from './support/screens.js';
 import * as stores from './stores/screens.js';
 import * as transfers from './transfers/screens.js';
 import * as clinics from './clinics/screens.js';
+import * as pharmacy from './pharmacy/logic.js';
 
-export const SCREENS = { support, stores, transfers, clinics };
+export const SCREENS = { support, stores, transfers, clinics, pharmacy };
 
 // { moduleId, screen } (screen null for a one-page module), or null when no screen this role has
 // shows it. A linen proposal goes to Linen and meals when the role has it, else to the stores screens.

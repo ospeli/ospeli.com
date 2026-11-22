@@ -343,6 +343,7 @@ export function ruleWaitingTooLong(all, { nowMs, offsetMinutes = 0, label = (r) 
 // stay the four the offline list already holds; the shell's "Waiting for your decision" list
 // (modules/screens.js) can import screensFor and shownOn from this file.
 export const SCREEN_TITLES = { queue: 'Dispensing queue', discharge: 'Discharge medicines', summary: 'Turnaround' };
+export const TITLES = SCREEN_TITLES; // the name the shell's "Waiting for your decision" reads (modules/proposals.js)
 export function screensFor(role) {
   if (role === 'pharmacy-technician' || role === 'pharmacist') return ['queue', 'discharge', 'summary'];
   if (role === 'pharmacy-manager') return ['summary', 'queue', 'discharge'];

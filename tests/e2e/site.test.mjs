@@ -289,10 +289,10 @@ for (const width of [360, 390]) {
     assert.doesNotMatch(before.text, /swipe/i);
     // Six Built (three newer ones since 17 and 18 Nov, issue #118), six Preview. On a phone the first
     // three are rows; the newer three open from the one closed list, tagged Built, to keep the page short.
-    assert.equal(before.labels.filter((l) => l === 'Built').length, 10);
+    assert.equal(before.labels.filter((l) => l === 'Built').length, 11);
     assert.equal(before.labels.filter((l) => l === 'Preview').length, 4);
     assert.deepEqual(before.built.map((b) => b.name), ['Bed board', 'Medical equipment and maintenance', 'Process mapping']);
-    assert.deepEqual(before.builtInList, ['app/#/support', 'app/#/stores', 'app/#/transfers', 'app/#/clinics', 'app/#/diagnostics', 'app/#/feedback', 'app/#/facilities']);
+    assert.deepEqual(before.builtInList, ['app/#/support', 'app/#/stores', 'app/#/transfers', 'app/#/clinics', 'app/#/diagnostics', 'app/#/pharmacy', 'app/#/feedback', 'app/#/facilities']);
     for (const b of before.built) {
       assert.ok(b.width >= width - 48 && b.left >= 0 && b.right <= width, `${b.name}: a full-width row on screen (${Math.round(b.width)}px)`);
       assert.ok(b.linkShown && b.linkH >= 44, `${b.name}: link is ${Math.round(b.linkH)}px tall`);
@@ -331,7 +331,7 @@ for (const width of [360, 390]) {
   });
 }
 
-test('desktop front page: the modules grid still shows all 14 cards, with no phone list (issue #54)', async () => {
+test('desktop front page: the modules grid still shows all 15 cards, with no phone list (issue #54)', async () => {
   const { context, page, errors } = await open(1280);
   const m = await page.evaluate(() => {
     const shown = (el) => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; };
@@ -345,7 +345,7 @@ test('desktop front page: the modules grid still shows all 14 cards, with no pho
       display: getComputedStyle(document.querySelector('#modules .modules')).display,
     };
   });
-  assert.deepEqual(m, { cards: 14, columns: 3, full: true, shortLines: 0, phoneList: false, display: 'grid' });
+  assert.deepEqual(m, { cards: 15, columns: 3, full: true, shortLines: 0, phoneList: false, display: 'grid' });
   assert.deepEqual(errors, []);
   await context.close();
 });
@@ -475,6 +475,7 @@ for (const width of [360, 1280]) {
       ['Transfers and vehicles', 'app/#/transfers', 'Open the app'],
       ['Outpatient clinics', 'app/#/clinics', 'Open the app'],
       ['Diagnostics', 'app/#/diagnostics', 'Open the app'],
+      ['Pharmacy operations', 'app/#/pharmacy', 'Open the app'],
       ['Patient feedback', 'app/#/feedback', 'Open the app'],
       ['Facilities and utilities', 'app/#/facilities', 'Open the app'],
     ]);
