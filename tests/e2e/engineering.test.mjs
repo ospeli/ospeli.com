@@ -57,6 +57,10 @@ test('facilities technician sees the queue first, assigns and closes a work orde
   await page.selectOption('#wo-team', 'contractor');
   await page.click('dialog[open] [data-cmd="ospeli_workorders_assign"]');
   await page.waitForFunction((wo) => document.querySelector(`[data-wo="${wo}"]`)?.textContent.includes('External contractor'), id);
+  // The list is redrawn within a few milliseconds now (ospeli/ospeli#153). A tap on the same spot as the
+  // dialog's button, straight after it closes, is held back on purpose (issue #147), so the test taps
+  // again as a person would: after a pause.
+  await page.waitForTimeout(700);
   await page.click(`[data-wo="${id}"]`);
   await page.waitForSelector('dialog[open]');
   await page.selectOption('#wo-outcome', 'fixed');
