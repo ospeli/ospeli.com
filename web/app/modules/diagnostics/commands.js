@@ -355,11 +355,12 @@ function equipmentRows(info, events, woEvents, now) {
   });
 }
 const equipmentPicks = () => Object.fromEntries(Object.entries(EQUIPMENT_KINDS).map(([k, v]) => [k, { word: v.word, reasons: { ...v.reasons }, backups: { ...v.backups }, runs: [...v.runs], roles: [...v.roles] }]));
-async function equipmentList(core) {
+async function equipmentList(core, input = {}) {
   const now = core.now();
   const [events, info] = await Promise.all([core.events({ type: [...OWN, ...WO_TYPES] }), siteInfo(core)]);
   const rows = equipmentRows(info, events, events, now);
-  return { asOf: now, synthetic: await isSynthetic(core), equipment: rows, total: rows.length, truncated: false,
+  const cut = page(rows, input.limit, 50);
+  return { asOf: now, synthetic: await isSynthetic(core), equipment: cut.items, total: cut.total, truncated: cut.truncated,
     picks: equipmentPicks(),
     expectedBackHours: [...EXPECTED_HOURS], states: { ...EQUIPMENT_STATES }, faultNote: FAULT_NOTE, imaging: IMAGING_PLANNED, note: NOT_FOR };
 }
@@ -618,7 +619,7 @@ export const COMMANDS = [
     summary: `Cancel a request that is not yet at the lab (not collected, or collected and on the way), with a picked reason: ${Object.entries(CANCEL_REASONS).map(([k, v]) => `${k} (${v})`).join(', ')}. A cancelled request is left out of every measure. An agent's call becomes a proposal for a person.`,
     kind: 'write', roles: [...REQUESTERS, 'diagnostics-manager'], approval: true,
     input: { type: 'object', additionalProperties: false, required: ['requestId', 'reason'], properties: {
-      requestId: REQ, reason: { type: 'string', enum: Object.keys(CANCEL_REASONS) } } },
+      requestId: REQ, reason: { type: 'string', enum: Object.keys(CANCEL_REASONS), description: `Why it is cancelled: ${Object.entries(CANCEL_REASONS).map(([k, v]) => `${k} (${v})`).join(', ')}.` } } },
     output: { type: 'object', required: ['status'], properties: { status: WRITE_STATUS, requestId: { type: 'string' }, events: EVENT_SEQS, proposal: PROPOSAL_OUT } },
     target: (input) => ({ id: input.requestId, word: 'request' }),
     wardOf: reqWard,
@@ -638,11 +639,11 @@ export const COMMANDS = [
     name: 'ospeli_diagnostics_equipment_list',
     summary: 'Equipment status: each analyser and scanner on this site, working, down or partly down (some test groups off), since when, the reason, the test groups it cannot run now, the linked work order and every open work order for it (read-only: faults are reported by a facilities technician or the operations manager, on the Engineering page), the estimate of when it is back with the time the estimate was set, and the backup route in plain words. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
-    input: { type: 'object', additionalProperties: false, properties: {} },
+    input: { type: 'object', additionalProperties: false, properties: { limit: LIMIT(50, 200, 'analysers and scanners') } },
     output: { type: 'object', required: ['asOf', 'synthetic', 'equipment', 'total', 'truncated', 'note'], properties: {
       asOf: TIME, synthetic: SYNTHETIC, equipment: { type: 'array', items: { type: 'object', required: ['assetId', 'name', 'state', 'stateName'] } }, total: TOTAL, truncated: TRUNCATED,
       picks: { type: 'object' }, expectedBackHours: { type: 'array' }, states: { type: 'object' }, faultNote: { type: 'string' }, imaging: { type: 'string' }, note: { type: 'string' } } },
-    async run(core) { return equipmentList(core); },
+    async run(core, input) { return equipmentList(core, input); },
     example: { input: {} },
   },
   {
