@@ -1,1 +1,114 @@
-/* Pharmacy operations. Skeleton; the builder fills it. */
+/* Pharmacy operations. Every rule starts with .mod-pharmacy. Shell colours only (brand kit v3.1).
+   Phone first for the pharmacy technician and the ward: text 15 px or more, every control at least
+   44 px tall, the row's one button 56 px tall. The next step's button changes place and look after
+   each tap (Start full width in navy; Checked on the right in mango; Ready on the left in sea;
+   Collected on the right, outlined), and waits three seconds after a tap. */
+.mod-pharmacy.ph { font-size: 1rem; }
+.mod-pharmacy .meta, .mod-pharmacy .chip, .mod-pharmacy .chip-btn, .mod-pharmacy .stat span, .mod-pharmacy .btn-small, .mod-pharmacy .ph-hint { font-size: .9375rem; }
+.mod-pharmacy .card .meta.notice { font-size: 1rem; }
+.mod-pharmacy .page-head { margin-bottom: 8px; }
+.mod-pharmacy .ph-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 12px; }
+.mod-pharmacy .ph-tabs a { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 14px; border-radius: 999px; border: 1.5px solid var(--line-strong);
+  background: var(--surface); color: var(--navy); text-decoration: none; font-weight: 800; font-size: .9375rem; }
+.mod-pharmacy .ph-tabs a[aria-current="page"] { background: var(--navy); border-color: var(--navy); color: #fff; }
+.mod-pharmacy .ph-hint { color: var(--ink-soft); margin: 0 0 6px; overflow-wrap: anywhere; }
+.mod-pharmacy .ph-note { border-left: 4px solid var(--seafoam); padding-left: 10px; max-width: 760px; margin-top: 10px; }
+.mod-pharmacy .ph-label { font-weight: 800; margin: 8px 0 4px; display: block; }
+.mod-pharmacy .ph-empty { font-size: 1.0625rem; font-weight: 700; }
+.mod-pharmacy .chip { white-space: normal; }
+.mod-pharmacy .chip-btn { min-height: 44px; }
+.mod-pharmacy .chip-btn:disabled { opacity: 1; color: var(--ink-soft); border-style: dashed; cursor: default; }
+.mod-pharmacy .ph-choices { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.mod-pharmacy .notice { margin: 10px 0; }
+.mod-pharmacy .ph-offline { border-left-color: var(--coral); font-weight: 800; }
+.mod-pharmacy .ph-planned { border-left-color: var(--seafoam); font-weight: 700; }
+.mod-pharmacy .section h2, .mod-pharmacy .card h2 { font-size: 1.2rem; margin: 0 0 6px; }
+
+/* counts */
+.mod-pharmacy .ph-counts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0 0 10px; max-width: 760px; }
+.mod-pharmacy .ph-counts-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); max-width: 960px; }
+.mod-pharmacy .ph-counts .stat { padding: 8px 10px; min-width: 0; overflow-wrap: anywhere; }
+.mod-pharmacy .ph-counts .stat span { display: block; }
+.mod-pharmacy .ph-counts .stat b { font-size: 1.45rem; }
+@media (max-width: 480px) {
+  .mod-pharmacy .ph-counts .stat { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; padding: 6px 10px; }
+  .mod-pharmacy .ph-counts-5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .mod-pharmacy .ph-tabs { margin-bottom: 8px; }
+}
+
+/* rows */
+.mod-pharmacy .ph-rows, .mod-pharmacy .ph-going, .mod-pharmacy .ph-ward-list, .mod-pharmacy .ph-sugg, .mod-pharmacy .ph-bars, .mod-pharmacy .ph-breakdown { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mod-pharmacy .ph-row { display: flex; justify-content: space-between; align-items: center; gap: 8px 12px; flex-wrap: wrap; background: var(--surface);
+  border: 1px solid var(--line); border-left: 6px solid var(--line-strong); border-radius: 10px; padding: 10px 12px; min-width: 0; max-width: 760px; }
+.mod-pharmacy .ph-row.st-started, .mod-pharmacy .ph-row.st-checked { border-left-color: var(--mango); }
+.mod-pharmacy .ph-row.st-ready { border-left-color: var(--sea); background: var(--wash); }
+.mod-pharmacy .ph-row.st-on-hold { border-left-color: var(--coral); }
+.mod-pharmacy .ph-row.st-collected, .mod-pharmacy .ph-row.st-cancelled, .mod-pharmacy .ph-row.is-moved { background: var(--sand); }
+.mod-pharmacy .ph-row-text { display: grid; gap: 2px; flex: 1 1 220px; min-width: 0; }
+.mod-pharmacy .ph-row-text p { margin: 0; overflow-wrap: anywhere; }
+.mod-pharmacy .ph-row-act { display: grid; gap: 4px; flex: 1 1 200px; min-width: 0; max-width: 340px; }
+.mod-pharmacy .ph-who { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 1.0625rem; }
+.mod-pharmacy .ph-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.mod-pharmacy .ph-chips:empty { display: none; }
+.mod-pharmacy .chip.ph-urgent { background: var(--mango-tint); color: var(--navy); font-weight: 800; }
+.mod-pharmacy .chip.ph-front { background: var(--navy); color: #fff; }
+.mod-pharmacy .ph-line { color: var(--ink-soft); }
+.mod-pharmacy .ph-st { font-weight: 800; }
+.mod-pharmacy .ph-st.st-ready { color: var(--sea-ink); }
+.mod-pharmacy .ph-st.st-on-hold { color: var(--danger); }
+.mod-pharmacy .ph-flag { font-weight: 800; color: var(--danger); }
+.mod-pharmacy .ph-wait-for { font-weight: 700; color: var(--ink-soft); border: 1.5px dashed var(--line-strong); border-radius: 10px; padding: 10px 12px; text-align: center; margin: 0; }
+
+/* the one big button: a different place and look for each step */
+.mod-pharmacy .ph-act { display: grid; gap: 4px; }
+.mod-pharmacy .btn.ph-main { min-height: 56px; font-size: 1.15rem; width: 100%; }
+.mod-pharmacy .ph-start-at .btn { background: var(--navy); border-color: var(--navy); color: #fff; }
+.mod-pharmacy .ph-check-at { justify-items: end; }
+.mod-pharmacy .ph-check-at .btn { width: 70%; background: var(--mango); border-color: var(--mango); color: var(--navy); border-radius: 999px; }
+.mod-pharmacy .ph-ready-at { justify-items: start; }
+.mod-pharmacy .ph-ready-at .btn { width: 70%; background: var(--sea-ink); border-color: var(--sea-ink); color: #fff; border-radius: 999px; }
+.mod-pharmacy .ph-collect-at { justify-items: end; }
+.mod-pharmacy .ph-collect-at .btn, .mod-pharmacy .btn.ph-collect { width: 70%; background: var(--surface); border: 2px solid var(--sea-ink); color: var(--sea-ink); }
+.mod-pharmacy .ph-resume-at .btn { background: var(--surface); border: 2px solid var(--navy); color: var(--navy); }
+.mod-pharmacy .ph-check-at .ph-hint { text-align: right; }
+.mod-pharmacy .btn.ph-main:disabled { background: #E4E4E4; border-color: #B8B8B8; color: #4A5968; border-style: dashed; cursor: default; }
+.mod-pharmacy .ph-more > summary, .mod-pharmacy .ph-def > summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; font-weight: 800; color: var(--sea-ink); }
+.mod-pharmacy .ph-more p, .mod-pharmacy .ph-def p { margin: 0 0 6px; }
+.mod-pharmacy .ph-def p { font-size: .9375rem; color: var(--ink-soft); }
+.mod-pharmacy .ph-reasons { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+
+/* the ward's form */
+.mod-pharmacy .ph-form { display: grid; gap: 2px; max-width: 640px; margin: 4px 0 10px; }
+.mod-pharmacy .ph-select { font: inherit; font-size: 1rem; min-height: 48px; margin-top: 4px; padding: 6px 12px; border: 1.5px solid var(--line-strong); border-radius: 10px; background: var(--surface); color: var(--ink); width: 12em; max-width: 100%; display: block; }
+.mod-pharmacy .ph-items { font-weight: 800; }
+.mod-pharmacy .ph-select.ph-ward-select { width: 100%; max-width: 420px; margin: 0 0 4px; }
+.mod-pharmacy .ph-urgent-toggle { justify-self: start; margin: 4px 0; }
+.mod-pharmacy .ph-urgent-toggle[aria-pressed="true"] { background: var(--mango); border-color: var(--mango); color: var(--navy); }
+.mod-pharmacy .btn.ph-send { min-height: 52px; margin-top: 6px; width: 100%; max-width: 420px; }
+.mod-pharmacy .btn.ph-send:disabled { background: #E4E4E4; border-color: #B8B8B8; color: #4A5968; border-style: dashed; cursor: default; }
+.mod-pharmacy .ph-more > .ph-choices { margin-top: 4px; }
+.mod-pharmacy .ph-ready-now { font-weight: 800; color: var(--sea-ink); font-size: 1.0625rem; }
+.mod-pharmacy .ph-estimate { font-weight: 700; }
+.mod-pharmacy .ph-going li { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; overflow-wrap: anywhere; max-width: 760px; }
+
+/* the manager's view */
+.mod-pharmacy .ph-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 12px; margin: 0 0 12px; }
+.mod-pharmacy .ph-grid > .card { margin: 0; min-width: 0; }
+.mod-pharmacy .ph-big { font-size: 1.15rem; font-weight: 800; margin: 0 0 8px; }
+.mod-pharmacy .ph-bars li { display: grid; gap: 2px; }
+.mod-pharmacy .ph-bar { display: block; height: 12px; background: var(--sand); border-radius: 6px; overflow: hidden; }
+.mod-pharmacy .ph-bar > span { display: block; height: 100%; background: var(--seafoam); }
+.mod-pharmacy .ph-bars li.is-longest .ph-bar > span { background: var(--mango); }
+.mod-pharmacy .ph-bars li.is-longest .ph-bar-label { font-weight: 800; }
+.mod-pharmacy .ph-guide-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mod-pharmacy .ph-sugg li { border-left: 4px solid var(--mango); padding-left: 10px; }
+.mod-pharmacy .ph-sugg p { margin: 0 0 4px; overflow-wrap: anywhere; }
+.mod-pharmacy .ph-ward-list { grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); }
+.mod-pharmacy .ph-ward-list .card { margin: 0; padding: 10px 12px; }
+.mod-pharmacy .ph-ward-list p { margin: 0 0 2px; overflow-wrap: anywhere; }
+.mod-pharmacy .ph-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr)); gap: 12px; }
+.mod-pharmacy .ph-kpi { margin: 0; min-width: 0; }
+.mod-pharmacy .ph-kpi-name { font-weight: 800; margin: 0; }
+.mod-pharmacy .ph-kpi-value { font-size: 1.6rem; font-weight: 800; margin: 2px 0 6px; }
+.mod-pharmacy .ph-breakdown li { color: var(--ink-soft); font-size: .9375rem; }
+.mod-pharmacy .btn.ph-front-btn { min-width: 0; }
