@@ -112,3 +112,11 @@
 .mod-pharmacy .ph-kpi-value { font-size: 1.6rem; font-weight: 800; margin: 2px 0 6px; }
 .mod-pharmacy .ph-breakdown li { color: var(--ink-soft); font-size: .9375rem; }
 .mod-pharmacy .btn.ph-front-btn { min-width: 0; }
+
+/* review round 1: cancel looks unlike hold; kept rows; the pharmacist's own list */
+.mod-pharmacy .ph-cancel-box { border-top: 2px dashed var(--line-strong); margin-top: 8px; padding-top: 4px; }
+.mod-pharmacy .btn.ph-cancel-reason { border: 2px solid var(--coral); color: var(--danger); background: var(--surface); }
+.mod-pharmacy .ph-row.is-done { background: var(--sand); border-left-color: var(--line-strong); }
+.mod-pharmacy .ph-row.is-done .ph-who, .mod-pharmacy .ph-row.is-done .ph-st { color: var(--ink-soft); }
+.mod-pharmacy .ph-sec h2, .mod-pharmacy .ph-sec-h { font-size: 1.1rem; margin: 4px 0 6px; }
+.mod-pharmacy .ph-sec { margin-bottom: 10px; }

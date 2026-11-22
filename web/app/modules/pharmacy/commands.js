@@ -18,7 +18,7 @@ import { currentWords } from '../../core/model.js';
 import { deriveBoard } from '../../core/beds.js';
 import {
   KINDS, PRIORITIES, PLANNED, HOLD_REASONS, CANCEL_REASONS, STATE_WORDS, MAX_ITEMS, UNDO_MINUTES, DOUBLE_TAP_MINUTES, WORK_DAY, ESTIMATE_LAST, ESTIMATE_MIN,
-  STALL_MINUTES, LATE_HOUR, REQUEST_ID_PATTERN, GUIDE_RULES, PLANNED_BY,
+  STALL_MINUTES, LATE_HOUR, REQUEST_ID_PATTERN, GUIDE_RULES, PLANNED_BY, RECHECK_REASONS, WARD_CANCEL_REASONS,
   deriveRequests, stateOf, isOpen, nextRequestId, sortQueue, orderReason, nextStep, undoable, estimateFor, plannedByMs, dischargeToday, heldMinutes,
   dischargeTurnaround, stageTimes, collectionWait, guideOn, ruleLateRequests, ruleWaitingTooLong, whenText, clockText, localDayStart,
 } from './logic.js';
@@ -31,6 +31,7 @@ const RAISERS = ['ward-nurse', 'bed-manager', 'pharmacy-technician'];
 const PHARMACY = ['pharmacy-technician', 'pharmacist', 'pharmacy-manager'];
 const CHECKERS = ['pharmacist'];
 const COLLECTORS = ['pharmacy-technician', 'pharmacist', 'pharmacy-manager', 'ward-nurse'];
+const CANCELLERS = [...PHARMACY, 'ward-nurse'];
 const MANAGER = ['pharmacy-manager'];
 
 const fmtHM = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
@@ -44,7 +45,7 @@ export const KPIS = [
     counts: 'Discharge requests raised in the working day that reached Ready in the period.', outOf: 'None (a median, not a share).',
     leavesOut: 'Cancelled requests; requests not ready yet; ward and other requests.', source: 'local definition', target: null, targetText: NO_TARGET },
   { id: 'stage-times', name: 'Time by stage', unit: 'min',
-    definition: 'For every kind of request: Raised to Started, Started to Checked and Checked to Ready, median minutes each with time on hold taken out, for steps recorded in the period. The figure shown is the stage with the longest median, so the main delay shows. Method: the time of each stage of a dispensing service, as in a process map (method only, no result is quoted: JMIR Human Factors 2022, PMID 36222805, doi:10.2196/37905).',
+    definition: 'For every kind of request: Raised to Started, Started to Checked and Checked to Ready, median minutes each with time on hold taken out, for steps recorded in the period. The figure shown is the stage with the longest median, so the main delay shows. Started to checked includes dispensing and the wait for the check, so it does not measure the check alone. Method: the time of each stage of a dispensing service, as in a process map (method only, no result is quoted: JMIR Human Factors 2022, PMID 36222805, doi:10.2196/37905).',
     counts: 'Each stage recorded in the period.', outOf: 'None (medians).', leavesOut: 'Cancelled requests; a step undone as tapped by mistake.',
     source: 'local definition (method as in PMID 36222805)', target: null, targetText: NO_TARGET },
   { id: 'collection-wait', name: 'Collection wait', unit: 'min',
@@ -90,7 +91,7 @@ function requestOut(r, info, nowMs, all = null, format = 'detailed') {
     items: r.items, state: st, stateName: STATE_WORDS[st], stage: r.stage, held: r.held, front: r.front,
     raisedAt: r.raisedAt, waitMinutes: Math.max(0, Math.floor(((r.collectedAt || r.cancelledAt ? Date.parse(r.collectedAt || r.cancelledAt) : nowMs) - Date.parse(r.raisedAt)) / MIN)),
     sinceStepMinutes: Math.max(0, Math.floor((nowMs - Date.parse(r.held ? r.holdSince : r.lastMoveAt)) / MIN)),
-    nextStep: nextStep(r), clocks,
+    nextStep: nextStep(r), clocks, recheck: r.recheck === true,
   };
   if (format === 'short') return base;
   const est = all ? estimateFor(all, r, nowMs) : null;
@@ -135,8 +136,8 @@ function planStep(r, input, actor, now) {
   const ev = (type, data = {}) => [{ type, subject: r.id, actorRole: actor.role, at: now, data }];
   const nowMs = Date.parse(now);
   const s = input.step;
-  if ((s === 'hold' || s === 'cancel') !== (input.reason != null)) {
-    throw new CommandError('invalid-input', s === 'hold' ? `A hold needs reason: ${pickList(HOLD_REASONS)}.` : s === 'cancel' ? `A cancel needs reason: ${pickList(CANCEL_REASONS)}.` : `reason is for hold and cancel only, not ${s}.`);
+  if ((s === 'hold') !== (input.reason != null)) {
+    throw new CommandError('invalid-input', s === 'hold' ? `A hold needs reason: ${pickList(HOLD_REASONS)}.` : `reason is for hold only, not ${s}. A cancel is ospeli_pharmacy_request_cancel.`);
   }
   switch (s) {
     case 'start':
@@ -145,6 +146,7 @@ function planStep(r, input, actor, now) {
       return ev('pharmacy.request-started');
     case 'ready':
       if (st === 'on-hold') throw new CommandError('conflict', `${r.id} is on hold. Resume it first.`, { state: st });
+      if (st === 'started' && r.recheck) throw new CommandError('conflict', `${r.id} needs the pharmacist's check again: it was held for stock or supply after Checked. Ready follows a new Checked (ospeli_pharmacy_request_check).`, { state: st, recheck: true });
       if (st === 'raised' || st === 'started') throw new CommandError('conflict', `Ready needs Checked first: a pharmacist records the check (ospeli_pharmacy_request_check). ${r.id} is ${STATE_WORDS[st].toLowerCase()}.`, { state: st });
       if (st !== 'checked') throw new CommandError('conflict', `${r.id} is already ${STATE_WORDS[st].toLowerCase()}. Nothing was saved.`, { state: st });
       return ev('pharmacy.request-ready');
@@ -155,10 +157,12 @@ function planStep(r, input, actor, now) {
       return ev('pharmacy.request-on-hold', { reason: input.reason });
     case 'resume':
       if (st !== 'on-hold') throw new CommandError('conflict', `${r.id} is not on hold.`, { state: st });
+      // Held after Checked for stock or supply: what goes out may change, so back to Started with a
+      // correcting event, and Ready waits for Checked again. "Waiting for the ward" keeps Checked.
+      if (r.stage === 'checked' && RECHECK_REASONS.includes(r.holdReason)) {
+        return [...ev('pharmacy.request-resumed'), { type: 'pharmacy.step-undone', subject: r.id, actorRole: actor.role, at: now, data: { step: 'checked', reason: 'recheck' } }];
+      }
       return ev('pharmacy.request-resumed');
-    case 'cancel':
-      if (!CANCEL_REASONS[input.reason]) throw new CommandError('invalid-input', `A cancel reason is one of: ${pickList(CANCEL_REASONS)}.`);
-      return ev('pharmacy.request-cancelled', { reason: input.reason });
     case 'front':
     case 'back':
       if (!MANAGER.includes(actor.role)) throw new CommandError('forbidden', 'Moving a request to the front, or back to the usual order, is for the pharmacy manager.', { roles: MANAGER });
@@ -167,10 +171,10 @@ function planStep(r, input, actor, now) {
     case 'undo': {
       const u = undoable(r, nowMs);
       if (u === 'checked') throw new CommandError('conflict', `The last step on ${r.id} is Checked: a pharmacist undoes it with ospeli_pharmacy_request_check and undo: true.`);
-      if (!u) throw new CommandError('conflict', `Nothing to undo on ${r.id}: only the last step (Started or Ready), within ${UNDO_MINUTES} minutes, and not while on hold.`);
+      if (u !== 'started' && u !== 'ready') throw new CommandError('conflict', `Nothing to undo on ${r.id}: only the last step (Started or Ready), within ${UNDO_MINUTES} minutes, and not while on hold.`);
       return ev('pharmacy.step-undone', { step: u });
     }
-    default: throw new CommandError('invalid-input', 'step is one of start, ready, hold, resume, cancel, front, back, undo.');
+    default: throw new CommandError('invalid-input', 'step is one of start, ready, hold, resume, front, back, undo. A cancel is ospeli_pharmacy_request_cancel.');
   }
 }
 function planCheck(r, input, actor, now) {
@@ -186,12 +190,35 @@ function planCheck(r, input, actor, now) {
   return [{ type: 'pharmacy.request-checked', subject: r.id, actorRole: actor.role, at: now, data: {} }];
 }
 function planCollect(r, input, actor, now) {
+  if (input.undo === true) {
+    if (undoable(r, Date.parse(now)) !== 'collected') throw new CommandError('conflict', `Nothing to undo: Collected is undone only while it is the last step on ${r.id}, within ${UNDO_MINUTES} minutes.`, { state: stateOf(r) });
+    return [{ type: 'pharmacy.step-undone', subject: r.id, actorRole: actor.role, at: now, data: { step: 'collected' } }];
+  }
   const st = expect(r, input);
   if (st === 'collected') throw new CommandError('conflict', `${r.id} is already collected. Nothing was saved.`, { state: st });
   if (!isOpen(r)) throw new CommandError('conflict', closedMsg(r), { state: st });
   if (st !== 'ready') throw new CommandError('conflict', `${r.id} is not ready yet (${STATE_WORDS[st].toLowerCase()}). It can be collected once it is Ready.`, { state: st });
   return [{ type: 'pharmacy.request-collected', subject: r.id, actorRole: actor.role, at: now, data: {} }];
 }
+
+function planCancel(r, input, actor, now) {
+  if (input.undo === true) {
+    if (input.reason != null) throw new CommandError('invalid-input', 'An undo takes no reason.');
+    if (undoable(r, Date.parse(now)) !== 'cancelled') throw new CommandError('conflict', `Nothing to undo: Cancel is undone only while it is the last step on ${r.id}, within ${UNDO_MINUTES} minutes.`, { state: stateOf(r) });
+    return [{ type: 'pharmacy.step-undone', subject: r.id, actorRole: actor.role, at: now, data: { step: 'cancelled' } }];
+  }
+  const st = expect(r, input);
+  if (!isOpen(r)) throw new CommandError('conflict', closedMsg(r), { state: st });
+  if (!CANCEL_REASONS[input.reason]) throw new CommandError('invalid-input', `A cancel needs reason: ${pickList(CANCEL_REASONS)}.`);
+  if (actor.role === 'ward-nurse' && !WARD_CANCEL_REASONS.includes(input.reason)) {
+    throw new CommandError('forbidden', `The ward cancels with: ${WARD_CANCEL_REASONS.map((k) => `${k} (${CANCEL_REASONS[k]})`).join(', ')}. A duplicate is cancelled by the pharmacy.`);
+  }
+  return [{ type: 'pharmacy.request-cancelled', subject: r.id, actorRole: actor.role, at: now, data: { reason: input.reason } }];
+}
+// An undo is for people only: an agent never proposes taking a step back.
+const peopleOnlyUndo = (input, actor) => {
+  if ((input.undo === true || input.step === 'undo') && actor?.type === 'agent') throw new CommandError('forbidden', 'Undo is for people only: a person takes back their own mistaken tap on screen.');
+};
 
 // A new request: the ward exists, the bed is on that ward, the picks fit the kind, one open
 // discharge request per bed, and the same picks again within two minutes is "already saved".
@@ -368,7 +395,7 @@ export const COMMANDS = [
         plannedDischarges: withPatient.filter((b) => board.beds.get(b.id).state === 'expected-discharge' && (!wards || wards.has(b.parentId)) && (!input.wardId || b.parentId === input.wardId)).map(bedRow),
         requests: cut.items.map((r) => requestOut(r, info, nowMs, all, input.format)), total: cut.total, truncated: cut.truncated,
         estimateNote: ESTIMATE_NOTE,
-        picks: { kinds: { ...KINDS }, priorities: { ...PRIORITIES }, planned: { ...PLANNED }, maxItems: MAX_ITEMS, maxItemsNote: `1 to ${MAX_ITEMS} items: a cap for the form, not a clinical limit (example setting, not a standard).` },
+        picks: { kinds: { ...KINDS }, priorities: { ...PRIORITIES }, planned: { ...PLANNED }, cancelReasons: { ...CANCEL_REASONS }, wardCancelReasons: [...WARD_CANCEL_REASONS], maxItems: MAX_ITEMS, maxItemsNote: `1 to ${MAX_ITEMS} items: a cap for the form, not a clinical limit (example setting, not a standard).` },
         note: NOT_FOR,
       };
     },
@@ -422,18 +449,18 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_pharmacy_request_step',
-    summary: `Move a request on, by the pharmacy: start (Raised to Started), ready (Checked to Ready; refused until a pharmacist has recorded Checked, so no order of taps records Ready without a check), hold with a reason (${pickList(HOLD_REASONS)}; not once ready), resume, cancel with a reason (${pickList(CANCEL_REASONS)}), undo (the last step, Started or Ready, within ${UNDO_MINUTES} minutes: a correction event, history is kept), and front or back (pharmacy manager only: move to the front of the queue, shown as moved by the manager). Send expectedState so a double tap saves nothing. The check itself is ospeli_pharmacy_request_check; collection is ospeli_pharmacy_request_collect. An agent's call becomes a proposal for a person.`,
+    summary: `Move a request on, by the pharmacy: start (Raised to Started), ready (Checked to Ready; refused until a pharmacist has recorded Checked, so no order of taps records Ready without a check), hold with a reason (${pickList(HOLD_REASONS)}; not once ready), resume (a request held after Checked for stock or supply goes back to Started and needs Checked again), undo (the last step, Started or Ready, within ${UNDO_MINUTES} minutes: a correction event, history is kept; people only), and front or back (pharmacy manager only: move to the front of the queue, shown as moved by the manager). Send expectedState so a double tap saves nothing. The check is ospeli_pharmacy_request_check, collection ospeli_pharmacy_request_collect, a cancel ospeli_pharmacy_request_cancel. An agent's call becomes a proposal for a person.`,
     kind: 'write', roles: PHARMACY, approval: true,
     input: { type: 'object', additionalProperties: false, required: ['requestId', 'step'], properties: {
       requestId: REQUEST_ID,
-      step: { type: 'string', enum: ['start', 'ready', 'hold', 'resume', 'cancel', 'front', 'back', 'undo'], description: 'start, ready, hold (send reason), resume, cancel (send reason), front or back (pharmacy manager), undo.' },
-      reason: { type: 'string', enum: [...Object.keys(HOLD_REASONS), ...Object.keys(CANCEL_REASONS)], description: `hold: ${pickList(HOLD_REASONS)}. cancel: ${pickList(CANCEL_REASONS)}.` },
+      step: { type: 'string', enum: ['start', 'ready', 'hold', 'resume', 'front', 'back', 'undo'], description: 'start, ready, hold (send reason), resume, front or back (pharmacy manager), undo (people only).' },
+      reason: { type: 'string', enum: Object.keys(HOLD_REASONS), description: `hold only: ${pickList(HOLD_REASONS)}.` },
       expectedState: STATE_IN } },
     output: WRITE_OUT,
     target: (input) => ({ id: input.requestId, word: 'request' }),
     wardOf: wardOfRequest,
     async snapshot(core, input) { const r = deriveRequests(await core.events()).get(input.requestId); return r ? { seenState: stateOf(r) } : {}; },
-    async precheck(core, input, { actor }) { planStep(await findRequest(core, input.requestId), input, actor, core.now()); },
+    async precheck(core, input, { actor }) { peopleOnlyUndo(input, actor); planStep(await findRequest(core, input.requestId), input, actor, core.now()); },
     async run(core, input, { actor }) {
       let r = null;
       const recs = await core.appendChecked(async (events) => { r = await findRequest(core, input.requestId, events); return planStep(r, input, actor, core.now()); });
@@ -454,7 +481,7 @@ export const COMMANDS = [
     target: (input) => ({ id: input.requestId, word: 'request' }),
     wardOf: wardOfRequest,
     async snapshot(core, input) { const r = deriveRequests(await core.events()).get(input.requestId); return r ? { seenState: stateOf(r) } : {}; },
-    async precheck(core, input, { actor }) { planCheck(await findRequest(core, input.requestId), input, actor, core.now()); },
+    async precheck(core, input, { actor }) { peopleOnlyUndo(input, actor); planCheck(await findRequest(core, input.requestId), input, actor, core.now()); },
     async run(core, input, { actor }) {
       const recs = await core.appendChecked(async (events) => planCheck(await findRequest(core, input.requestId, events), input, actor, core.now()));
       await core.recordAs(actor, recs[0].type, input.requestId, input.undo ? { step: 'checked', undo: true } : {});
@@ -465,20 +492,43 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_pharmacy_request_collect',
-    summary: 'Record that a ready request was collected (Ready to Collected): by the pharmacy, or by the ward when its staff collect. Refused before Ready. Send expectedState so a double tap saves nothing. An agent\'s call becomes a proposal for a person.',
+    summary: `Record that a ready request was collected (Ready to Collected): by the pharmacy, or by the ward when its staff collect. Refused before Ready. Send expectedState so a double tap saves nothing. undo: true takes back a Collected tapped by mistake (within ${UNDO_MINUTES} minutes, while it is the last step; people only). An agent's call becomes a proposal for a person.`,
     kind: 'write', roles: COLLECTORS, approval: true,
-    input: { type: 'object', additionalProperties: false, required: ['requestId'], properties: { requestId: REQUEST_ID, expectedState: STATE_IN } },
+    input: { type: 'object', additionalProperties: false, required: ['requestId'], properties: { requestId: REQUEST_ID, expectedState: STATE_IN,
+      undo: { type: 'boolean', description: 'true: take back Collected tapped by mistake. Leave out to record the collection.' } } },
     output: WRITE_OUT,
     target: (input) => ({ id: input.requestId, word: 'request' }),
     wardOf: wardOfRequest,
     async snapshot(core, input) { const r = deriveRequests(await core.events()).get(input.requestId); return r ? { seenState: stateOf(r) } : {}; },
-    async precheck(core, input, { actor }) { planCollect(await findRequest(core, input.requestId), input, actor, core.now()); },
+    async precheck(core, input, { actor }) { peopleOnlyUndo(input, actor); planCollect(await findRequest(core, input.requestId), input, actor, core.now()); },
     async run(core, input, { actor }) {
       const recs = await core.appendChecked(async (events) => planCollect(await findRequest(core, input.requestId, events), input, actor, core.now()));
-      await core.recordAs(actor, 'pharmacy.request-collected', input.requestId, {});
-      return { status: 'done', requestId: input.requestId, state: 'collected', stateName: STATE_WORDS.collected, events: recs.map((x) => x.seq) };
+      await core.recordAs(actor, recs[0].type, input.requestId, input.undo ? { step: 'collected', undo: true } : {});
+      const after = deriveRequests(await core.events()).get(input.requestId);
+      return { status: 'done', requestId: input.requestId, state: stateOf(after), stateName: STATE_WORDS[stateOf(after)], events: recs.map((x) => x.seq) };
     },
     example: { input: { requestId: 'rx-00001', expectedState: 'ready' }, needs: 'A request that is Ready: raised, started, checked by a pharmacist and made ready (ospeli_pharmacy_request_raise, ospeli_pharmacy_request_step, ospeli_pharmacy_request_check); ospeli_pharmacy_queue_list lists the ready ones.' },
+  },
+  {
+    name: 'ospeli_pharmacy_request_cancel',
+    summary: `Cancel a request that is not collected, with a reason: ${pickList(CANCEL_REASONS)}. The ward may cancel its own request (${WARD_CANCEL_REASONS.map((k) => CANCEL_REASONS[k].toLowerCase()).join(', ')}) without phoning; the pharmacy may use any reason. undo: true takes back a cancel tapped by mistake (within ${UNDO_MINUTES} minutes, while it is the last step; people only): the request returns to the stage it was at. Send expectedState so a double tap saves nothing. An agent's call becomes a proposal for a person.`,
+    kind: 'write', roles: CANCELLERS, approval: true,
+    input: { type: 'object', additionalProperties: false, required: ['requestId'], properties: {
+      requestId: REQUEST_ID, expectedState: STATE_IN,
+      reason: { type: 'string', enum: Object.keys(CANCEL_REASONS), description: `Needed to cancel: ${pickList(CANCEL_REASONS)}.` },
+      undo: { type: 'boolean', description: 'true: take back a cancel tapped by mistake. Send no reason with it.' } } },
+    output: WRITE_OUT,
+    target: (input) => ({ id: input.requestId, word: 'request' }),
+    wardOf: wardOfRequest,
+    async snapshot(core, input) { const r = deriveRequests(await core.events()).get(input.requestId); return r ? { seenState: stateOf(r) } : {}; },
+    async precheck(core, input, { actor }) { peopleOnlyUndo(input, actor); planCancel(await findRequest(core, input.requestId), input, actor, core.now()); },
+    async run(core, input, { actor }) {
+      const recs = await core.appendChecked(async (events) => planCancel(await findRequest(core, input.requestId, events), input, actor, core.now()));
+      await core.recordAs(actor, recs[0].type, input.requestId, input.undo ? { step: 'cancelled', undo: true } : { reason: input.reason });
+      const after = deriveRequests(await core.events()).get(input.requestId);
+      return { status: 'done', requestId: input.requestId, state: stateOf(after), stateName: STATE_WORDS[stateOf(after)], events: recs.map((x) => x.seq) };
+    },
+    example: { input: { requestId: 'rx-00001', reason: 'no-longer-needed' }, needs: 'A request that is open (not collected or cancelled): ospeli_pharmacy_request_raise makes one, and ospeli_pharmacy_queue_list lists the open ones with their ids.' },
   },
   {
     name: 'ospeli_pharmacy_guide_set',
@@ -503,7 +553,7 @@ export const COMMANDS = [
 
 // Examples that need a request in a given state: made the way people make it on screen.
 export async function prepareExample(core, command, { run }) {
-  const steps = { ospeli_pharmacy_request_step: 0, ospeli_pharmacy_request_check: 1, ospeli_pharmacy_request_collect: 3 }[command.name];
+  const steps = { ospeli_pharmacy_request_step: 0, ospeli_pharmacy_request_cancel: 0, ospeli_pharmacy_request_check: 1, ospeli_pharmacy_request_collect: 3 }[command.name];
   if (steps == null) return {};
   const made = await run('ospeli_pharmacy_request_raise', { wardId: 'ward-b2', kind: 'other', priority: 'routine', items: 2 }, 'ward-nurse');
   const requestId = made.requestId;
@@ -578,7 +628,8 @@ export function seed({ r, startMs, endMs, entities }) {
     }
     const cancel = q.kind === 'discharge' && r.chance(0.07) ? 'discharge-postponed' : r.chance(0.02) ? r.pick(['no-longer-needed', 'duplicate', 'raised-in-error']) : null;
     if (cancel) {
-      plan.push(['pharmacy.request-cancelled', t + r.int(5, 60) * MIN, r.chance(0.5) ? 'ward-nurse' : 'pharmacy-technician', { reason: cancel }]);
+      const wardCancels = r.chance(0.5) && WARD_CANCEL_REASONS.includes(cancel); // the ward cancels its own; a duplicate is the pharmacy's
+      plan.push(['pharmacy.request-cancelled', t + r.int(5, 60) * MIN, wardCancels ? 'ward-nurse' : 'pharmacy-technician', { reason: cancel }]);
     } else {
       t += r.lognormal(18 * slow, 0.5) * MIN;
       plan.push(['pharmacy.request-checked', t, 'pharmacist', {}]);
@@ -604,7 +655,7 @@ export function seed({ r, startMs, endMs, entities }) {
   for (const x of tail) {
     const beds = bedsOf(x.wardId).filter((b) => (openBeds.get(b) ?? 0) <= endMs - x.ago * MIN && !usedTail.has(b));
     if (x.kind === 'discharge' && !beds.length) continue;
-    const bedId = x.kind === 'discharge' ? beds[beds.length - 1] : null;
+    const bedId = x.kind === 'discharge' ? beds[(x.ago * 7) % beds.length] : null; // spread over the ward's beds
     if (bedId) usedTail.add(bedId);
     const subject = `rx-${String(++n).padStart(5, '0')}`;
     const q = { ...x, t: endMs - x.ago * MIN, bedId, raisedBy: 'ward-nurse' };

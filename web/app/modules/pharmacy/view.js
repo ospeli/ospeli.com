@@ -92,14 +92,16 @@ const stageClock = (r) => {
 // ---------------------------------------------------------------- Dispensing queue (phone first)
 function queueScreen(ctx) {
   const box = h('div', { class: 'ph-queue' });
-  // lockUntil: the next button waits after a tap. stay: rows this person tapped keep their place for
-  // this visit, so a row never slides up under a finger. lastIndex: where each row was drawn last.
-  const ui = { lockUntil: new Map(), stay: new Set(), lastIndex: new Map() };
+  // lockUntil: the next button waits after a tap. Rows this person tapped keep their place for this
+  // visit in the section they were tapped in (home), greyed once they are collected or cancelled, so
+  // a row never slides up under a finger and a second tap never lands on another request.
+  const ui = { lockUntil: new Map(), home: new Map(), lastIndex: new Map(), snap: new Map(), closedNow: new Map(), px: new Map() };
   let data = null; let flags = []; let timer = null;
   const props = proposals(ctx, 'queue');
   const mayStep = can(ctx.role, 'ospeli_pharmacy_request_step');
   const mayCheck = can(ctx.role, 'ospeli_pharmacy_request_check');
   const mayCollect = can(ctx.role, 'ospeli_pharmacy_request_collect');
+  const mayCancel = mayStep && can(ctx.role, 'ospeli_pharmacy_request_cancel'); // the ward cancels on its own screen
   const manager = ctx.role === 'pharmacy-manager';
   const seesFlags = mayCheck || manager; // guide rule 2 goes to the pharmacist and the manager
   const load = async () => {
@@ -112,87 +114,120 @@ function queueScreen(ctx) {
     await props.load();
   };
   const act = runner(ctx, load);
-  const hold = (e, r) => { ui.stay.add(r.id); const li = e.currentTarget.closest('li'); if (li) li.style.minHeight = `${Math.round(li.getBoundingClientRect().height)}px`; };
+  const siteClock = (ms) => { const m = Math.floor((((ms + (data?.offsetMinutes || 0) * 60e3) % 864e5) + 864e5) % 864e5 / 60e3); return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`; };
+  const hold = (e, r, section) => {
+    if (!ui.home.has(r.id)) ui.home.set(r.id, section);
+    ui.snap.set(r.id, r);
+    const li = e.currentTarget.closest('li'); if (li && !ui.px.has(r.id)) ui.px.set(r.id, Math.round(li.getBoundingClientRect().height));
+  };
+  const keepPx = (li, id) => { if (ui.px.has(id)) li.style.minHeight = `${ui.px.get(id)}px`; return li; };
+  const closed = (r) => (out) => { if (out && ['collected', 'cancelled'].includes(out.state)) ui.closedNow.set(r.id, { state: out.state, atMs: Date.now() }); };
   const lockLeft = (r) => (ui.lockUntil.get(r.id) || 0) - Date.now();
+  // The pharmacist sees the requests waiting for their check first.
+  const sectionOf = (r) => (mayCheck && r.section === 'working' && r.state === 'started' ? 'check' : r.section);
 
-  function stepButton(r, { cmd, input, label, cls, done, hint = null }) {
+  function stepButton(r, section, { cmd, input, label, cls, done, hint = null }) {
     const left = lockLeft(r);
     if (left > 0) { clearTimeout(timer); timer = setTimeout(draw, 500); }
     const b = h('button', { class: `btn ph-main ${cls}`, type: 'button', 'data-cmd': cmd, 'data-step': input.step || (cmd.endsWith('check') ? 'check' : 'collect'), 'data-test': 'main-action',
       disabled: offline() || left > 0, 'aria-label': `${label}: ${r.label}, ${r.kindName.toLowerCase()}`,
       onclick: (e) => {
-        hold(e, r);
+        hold(e, r, section);
         e.currentTarget.disabled = true;
         ui.lockUntil.set(r.id, Date.now() + LOCK_MS);
-        act(cmd, { requestId: r.id, expectedState: r.state, ...input }, done);
-      } }, left > 0 ? `${label} (wait ${Math.ceil(left / 1000)} s)` : label);
+        act(cmd, { requestId: r.id, expectedState: r.state, ...input }, done, { onDone: closed(r) });
+      } }, label); // the label never counts down: a countdown invites a tap
     return h('div', { class: `ph-act ${cls}-at` }, b, hint ? h('p', { class: 'ph-hint', 'data-test': 'check-note' }, hint) : null);
   }
-  function mainAction(r) {
+  function mainAction(r, section) {
     if (r.held) {
-      return mayStep ? stepButton(r, { cmd: 'ospeli_pharmacy_request_step', input: { step: 'resume' }, label: 'Resume', cls: 'ph-resume', done: `${r.label}: resumed` })
+      return mayStep ? stepButton(r, section, { cmd: 'ospeli_pharmacy_request_step', input: { step: 'resume' }, label: 'Resume', cls: 'ph-resume', done: `${r.label}: resumed` })
         : h('p', { class: 'ph-wait-for' }, 'On hold');
     }
+    // Made Ready here on this visit: no Collected button where Ready just was.
+    if (r.state === 'ready' && ui.home.has(r.id) && ui.home.get(r.id) !== 'ready') return h('p', { class: 'ph-wait-for', 'data-test': 'ready-here' }, 'Ready: waiting for collection');
     switch (r.nextStep) {
-      case 'start': return mayStep ? stepButton(r, { cmd: 'ospeli_pharmacy_request_step', input: { step: 'start' }, label: 'Start', cls: 'ph-start', done: `${r.label}: started` }) : null;
-      case 'check': return mayCheck ? stepButton(r, { cmd: 'ospeli_pharmacy_request_check', input: {}, label: 'Checked', cls: 'ph-check', done: `${r.label}: checked`, hint: data.checkNote })
-        : h('p', { class: 'ph-wait-for', 'data-test': 'waits-check' }, 'Waiting for the pharmacist\'s check');
-      case 'ready': return mayStep ? stepButton(r, { cmd: 'ospeli_pharmacy_request_step', input: { step: 'ready' }, label: 'Ready', cls: 'ph-ready', done: `${r.label}: ready for collection` }) : null;
-      case 'collect': return mayCollect ? stepButton(r, { cmd: 'ospeli_pharmacy_request_collect', input: {}, label: 'Collected', cls: 'ph-collect', done: `${r.label}: collected` }) : null;
+      case 'start': return mayStep ? stepButton(r, section, { cmd: 'ospeli_pharmacy_request_step', input: { step: 'start' }, label: 'Start', cls: 'ph-start', done: `${r.label}: started` }) : null;
+      case 'check': return mayCheck ? stepButton(r, section, { cmd: 'ospeli_pharmacy_request_check', input: {}, label: 'Checked', cls: 'ph-check', done: `${r.label}: checked`, hint: data.checkNote })
+        : h('p', { class: 'ph-wait-for', 'data-test': 'waits-check' }, r.recheck ? 'Needs the pharmacist\'s check again' : 'Waiting for the pharmacist\'s check');
+      case 'ready': return mayStep ? stepButton(r, section, { cmd: 'ospeli_pharmacy_request_step', input: { step: 'ready' }, label: 'Ready', cls: 'ph-ready', done: `${r.label}: ready for collection` }) : null;
+      case 'collect': return mayCollect ? stepButton(r, section, { cmd: 'ospeli_pharmacy_request_collect', input: {}, label: 'Collected', cls: 'ph-collect', done: `${r.label}: collected` }) : null;
       default: return null;
     }
   }
-  function more(r) {
+  const undoText = (what) => `${what} tapped by mistake? Undo it within ${UNDO_MINUTES} minutes. The step and the undo both stay in the record.`;
+  function more(r, section) {
     if (!mayStep && !(mayCheck && r.undo === 'checked')) return null;
-    if (r.state === 'collected' || r.state === 'cancelled') return null;
     const off = offline();
-    const stepBtn = (step, label, extra = {}) => h('button', { class: `btn ${extra.cls || 'btn-ghost'} btn-small`, type: 'button', 'data-cmd': extra.cmd || 'ospeli_pharmacy_request_step', 'data-step': step,
-      ...(extra.reason ? { 'data-reason': extra.reason } : {}), 'data-test': extra.test || null, disabled: off,
-      onclick: (e) => { hold(e, r); e.currentTarget.disabled = true; openPanels.delete(`more:${r.id}`);
-        act(extra.cmd || 'ospeli_pharmacy_request_step', { requestId: r.id, expectedState: r.state, ...(extra.cmd ? { undo: true } : { step }), ...(extra.reason ? { reason: extra.reason } : {}) }, extra.done); } }, label);
+    const btn = (cmd, input, label, { cls = 'btn-ghost', test = null, reason = null, done }) => h('button', { class: `btn ${cls} btn-small`, type: 'button', 'data-cmd': cmd, 'data-step': input.step || null,
+      ...(reason ? { 'data-reason': reason } : {}), 'data-test': test, disabled: off,
+      onclick: (e) => { hold(e, r, section); e.currentTarget.disabled = true; openPanels.delete(`more:${r.id}`);
+        act(cmd, { requestId: r.id, ...(input.undo ? {} : { expectedState: r.state }), ...input }, done, { onDone: closed(r) }); } }, label);
     const kids = [];
-    if (r.undo === 'checked' && mayCheck) kids.push(h('p', { class: 'ph-hint' }, `Checked tapped by mistake? Undo it within ${UNDO_MINUTES} minutes. The step and the undo both stay in the record.`), stepBtn('undo', 'Undo Checked', { cmd: 'ospeli_pharmacy_request_check', test: 'undo', done: `${r.label}: Checked undone` }));
-    if (mayStep && (r.undo === 'started' || r.undo === 'ready')) kids.push(h('p', { class: 'ph-hint' }, `${r.undo === 'started' ? 'Started' : 'Ready'} tapped by mistake? Undo it within ${UNDO_MINUTES} minutes. The step and the undo both stay in the record.`), stepBtn('undo', `Undo ${r.undo === 'started' ? 'Start' : 'Ready'}`, { test: 'undo', done: `${r.label}: step undone` }));
+    if (r.undo === 'checked' && mayCheck) kids.push(h('p', { class: 'ph-hint' }, undoText('Checked')), btn('ospeli_pharmacy_request_check', { undo: true }, 'Undo Checked', { test: 'undo', done: `${r.label}: Checked undone` }));
+    if (mayStep && (r.undo === 'started' || r.undo === 'ready')) kids.push(h('p', { class: 'ph-hint' }, undoText(r.undo === 'started' ? 'Started' : 'Ready')), btn('ospeli_pharmacy_request_step', { step: 'undo' }, `Undo ${r.undo === 'started' ? 'Start' : 'Ready'}`, { test: 'undo', done: `${r.label}: step undone` }));
     if (mayStep && ['raised', 'started', 'checked'].includes(r.state)) {
       kids.push(h('p', { class: 'ph-label' }, 'Put on hold, because:'), h('div', { class: 'ph-reasons', 'data-test': 'hold-reasons' },
-        Object.entries(data.picks.holdReasons).map(([k, v]) => stepBtn('hold', v, { reason: k, done: `${r.label}: on hold (${v.toLowerCase()})` }))));
+        Object.entries(data.picks.holdReasons).map(([k, v]) => btn('ospeli_pharmacy_request_step', { step: 'hold', reason: k }, v, { reason: k, done: `${r.label}: on hold (${v.toLowerCase()})` }))));
+      if (r.state === 'checked') kids.push(h('p', { class: 'ph-hint' }, 'Held for stock or supply after Checked: on resume it goes back to Started and needs the pharmacist\'s check again.'));
     }
-    if (mayStep) {
-      kids.push(h('p', { class: 'ph-label' }, 'Cancel, because:'), h('div', { class: 'ph-reasons', 'data-test': 'cancel-reasons' },
-        Object.entries(data.picks.cancelReasons).map(([k, v]) => stepBtn('cancel', v, { reason: k, done: `${r.label}: cancelled (${v.toLowerCase()})` }))));
+    if (mayCancel) {
+      kids.push(h('div', { class: 'ph-cancel-box' }, h('p', { class: 'ph-label' }, 'Cancel the request, because:'), h('div', { class: 'ph-reasons', 'data-test': 'cancel-reasons' },
+        Object.entries(data.picks.cancelReasons).map(([k, v]) => btn('ospeli_pharmacy_request_cancel', { reason: k }, v, { cls: 'btn-ghost ph-cancel-reason', reason: k, done: `${r.label}: cancelled (${v.toLowerCase()})` })))));
     }
-    if (manager && r.state !== 'ready') kids.push(r.front ? stepBtn('back', 'Back to the usual order', { test: 'back', done: `${r.label}: back in the usual order` }) : stepBtn('front', 'Move to the front', { test: 'front', done: `${r.label}: moved to the front` }));
+    if (manager && r.state !== 'ready') kids.push(r.front ? btn('ospeli_pharmacy_request_step', { step: 'back' }, 'Back to the usual order', { test: 'back', done: `${r.label}: back in the usual order` }) : btn('ospeli_pharmacy_request_step', { step: 'front' }, 'Move to the front', { test: 'front', done: `${r.label}: moved to the front` }));
     return kids.length ? detailsBox('More', 'more', `more:${r.id}`, kids) : null;
+  }
+  function stageWords(r) {
+    if (r.held) return `On hold: ${r.holdReasonName}, since ${r.clocks.held || `${fmtWait(r.sinceStepMinutes)} ago`}`;
+    if (r.recheck && r.state === 'started') return `${stageClock(r)} · needs the pharmacist's check again`;
+    return stageClock(r);
   }
   function row(r, section) {
     const flag = flags.find((f) => f.requestId === r.id);
-    const shownState = section !== r.section ? r.section : null; // a row kept in place after it moved on
-    return h('li', { class: `ph-row st-${r.state}${shownState ? ' is-moved' : ''}`, 'data-request': r.id, 'data-state': r.state, 'data-kind': r.kind },
+    return keepPx(h('li', { class: `ph-row st-${r.state}${sectionOf(r) !== section ? ' is-moved' : ''}`, 'data-request': r.id, 'data-state': r.state, 'data-kind': r.kind, 'data-section': section },
       h('div', { class: 'ph-row-text' },
         h('p', { class: 'ph-who' }, h('b', {}, r.label)),
         h('p', { class: 'ph-chips' }, chipsFor(r)),
         h('p', { class: 'ph-line' }, `${items(r.items)} · waiting ${fmtWait(r.waitMinutes)}`),
-        h('p', { class: `ph-st st-${r.state}`, 'data-test': 'stage' }, r.held ? `On hold: ${r.holdReasonName}, since ${r.clocks.held || fmtWait(r.sinceStepMinutes) + ' ago'}` : stageClock(r)),
+        h('p', { class: `ph-st st-${r.state}`, 'data-test': 'stage' }, stageWords(r)),
         flag ? h('p', { class: 'ph-flag', 'data-test': 'flag' }, `No step for ${fmtWait(flag.minutes)} (guide: example limit, not a standard)`) : null),
-      h('div', { class: 'ph-row-act' }, mainAction(r), more(r)));
+      h('div', { class: 'ph-row-act' }, mainAction(r, section), more(r, section))), r.id);
+  }
+  // A request collected or cancelled here on this visit: it keeps its place, greyed, with its undo.
+  function closedRow(r, section) {
+    const c = ui.closedNow.get(r.id) || { state: 'collected', atMs: Date.now() };
+    const fresh = Date.now() - c.atMs <= UNDO_MINUTES * 60e3;
+    const cmd = c.state === 'collected' ? 'ospeli_pharmacy_request_collect' : 'ospeli_pharmacy_request_cancel';
+    const what = c.state === 'collected' ? 'Collected' : 'Cancel';
+    const li = h('li', { class: `ph-row is-done st-${c.state}`, 'data-request': r.id, 'data-state': c.state, 'data-kind': r.kind, 'data-section': section },
+      h('div', { class: 'ph-row-text' }, h('p', { class: 'ph-who' }, h('b', {}, r.label)),
+        h('p', { class: 'ph-st', 'data-test': 'stage' }, `${c.state === 'collected' ? 'Collected' : 'Cancelled'} ${siteClock(c.atMs)}. Kept here for this visit.`)),
+      fresh && can(ctx.role, cmd) ? h('div', { class: 'ph-row-act' }, detailsBox(`${what} by mistake?`, 'undo-closed', `undo:${r.id}`,
+        h('p', { class: 'ph-hint' }, undoText(what)),
+        h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': cmd, 'data-test': 'undo', disabled: offline(),
+          onclick: (e) => { e.currentTarget.disabled = true; openPanels.delete(`undo:${r.id}`); ui.closedNow.delete(r.id);
+            act(cmd, { requestId: r.id, undo: true }, `${r.label}: ${what.toLowerCase()} undone`); } }, `Undo ${what}`))) : null);
+    return keepPx(li, r.id);
   }
   function draw() {
     if (!data) return;
     clearTimeout(timer);
-    const by = (s) => data.requests.filter((r) => r.section === s);
-    // The working order, with rows this person tapped kept where they were for this visit.
-    const working = by('working');
-    const ids = new Set(working.map((r) => r.id));
     const all = new Map(data.requests.map((r) => [r.id, r]));
-    for (const id of [...ui.stay].sort((a, b) => (ui.lastIndex.get(a) ?? 0) - (ui.lastIndex.get(b) ?? 0))) {
-      const r = all.get(id);
-      if (!r || ids.has(id) || !ui.lastIndex.has(id) || ui.lastIndex.get(id) == null) continue;
-      working.splice(Math.min(ui.lastIndex.get(id), working.length), 0, r);
-      ids.add(id);
+    const order = mayCheck ? ['check', 'working', 'on-hold', 'ready'] : ['working', 'on-hold', 'ready'];
+    const lists = {};
+    for (const sec of order) {
+      const list = data.requests.filter((r) => sectionOf(r) === sec && !(ui.home.has(r.id) && ui.home.get(r.id) !== sec));
+      const kept = [...ui.home].filter(([id, home]) => home === sec && !list.some((r) => r.id === id)).map(([id]) => id)
+        .sort((a, b) => (ui.lastIndex.get(a) ?? 0) - (ui.lastIndex.get(b) ?? 0));
+      for (const id of kept) {
+        const r = all.get(id) || (ui.closedNow.has(id) ? { ...ui.snap.get(id), closedHere: true } : null);
+        if (r) list.splice(Math.min(ui.lastIndex.get(id) ?? list.length, list.length), 0, r);
+      }
+      list.forEach((r, i) => ui.lastIndex.set(r.id, i));
+      lists[sec] = list;
     }
-    ui.lastIndex = new Map(working.map((r, i) => [r.id, i]));
-    const held = by('on-hold').filter((r) => !ids.has(r.id));
-    const ready = by('ready').filter((r) => !ids.has(r.id));
+    const draw1 = (r, sec) => (r.closedHere ? closedRow(r, sec) : row(r, sec));
     const c = data.counts;
     setKids(box,
       props.el,
@@ -201,11 +236,14 @@ function queueScreen(ctx) {
         h('div', { class: 'stat', 'data-count': 'to-start' }, h('span', {}, 'To start'), h('b', {}, String(c.raised))),
         h('div', { class: 'stat', 'data-count': 'in-progress' }, h('span', {}, 'In progress'), h('b', {}, String(c.started + c.checked))),
         h('div', { class: 'stat', 'data-count': 'ready' }, h('span', {}, 'Ready'), h('b', {}, String(c.ready)))),
-      working.length ? h('ol', { class: 'ph-rows', 'data-test': 'queue', 'aria-label': 'Working order' }, working.map((r) => row(r, 'working')))
-        : h('p', { class: 'ph-empty', 'data-test': 'queue-empty' }, 'Nothing waiting to be dispensed.'),
+      mayCheck && lists.check.length ? h('section', { class: 'section ph-sec', 'aria-labelledby': 'ph-check-h' }, h('h2', { id: 'ph-check-h' }, `Waiting for your check (${lists.check.length})`),
+        h('ol', { class: 'ph-rows', 'data-test': 'check-list' }, lists.check.map((r) => draw1(r, 'check')))) : null,
+      mayCheck && lists.check.length ? h('h2', { class: 'ph-sec-h' }, 'Working order') : null,
+      lists.working.length ? h('ol', { class: 'ph-rows', 'data-test': 'queue', 'aria-label': 'Working order' }, lists.working.map((r) => draw1(r, 'working')))
+        : h('p', { class: 'ph-empty', 'data-test': 'queue-empty' }, 'Nothing else waiting to be dispensed.'),
       h('p', { class: 'ph-hint ph-note', 'data-test': 'order-note' }, data.orderNote),
-      held.length ? h('section', { class: 'section', 'aria-labelledby': 'ph-held-h' }, h('h2', { id: 'ph-held-h' }, `On hold (${held.length})`), h('ol', { class: 'ph-rows', 'data-test': 'held' }, held.map((r) => row(r, 'on-hold')))) : null,
-      ready.length ? h('section', { class: 'section', 'aria-labelledby': 'ph-ready-h' }, h('h2', { id: 'ph-ready-h' }, `Ready for collection (${ready.length})`), h('ol', { class: 'ph-rows', 'data-test': 'ready' }, ready.map((r) => row(r, 'ready')))) : null,
+      lists['on-hold'].length ? h('section', { class: 'section', 'aria-labelledby': 'ph-held-h' }, h('h2', { id: 'ph-held-h' }, `On hold (${lists['on-hold'].length})`), h('ol', { class: 'ph-rows', 'data-test': 'held' }, lists['on-hold'].map((r) => draw1(r, 'on-hold')))) : null,
+      lists.ready.length ? h('section', { class: 'section', 'aria-labelledby': 'ph-ready-h' }, h('h2', { id: 'ph-ready-h' }, `Ready for collection (${lists.ready.length})`), h('ol', { class: 'ph-rows', 'data-test': 'ready' }, lists.ready.map((r) => draw1(r, 'ready')))) : null,
       mayStep || mayCheck || mayCollect ? null : h('p', { class: 'ph-hint', 'data-test': 'read-only' }, `${roleById(ctx.role)?.name || 'This role'} can see the queue. Steps are recorded by ${roleNames('ospeli_pharmacy_request_step')}; Checked by ${roleNames('ospeli_pharmacy_request_check')}.`),
       mayStep && !mayCheck ? h('p', { class: 'ph-hint' }, `Checked is recorded by ${roleNames('ospeli_pharmacy_request_check')}. Ready can only follow Checked.`) : null,
       plannedLine(),
@@ -219,11 +257,14 @@ function dischargeScreen(ctx) {
   const box = h('div', { class: 'ph-discharge' });
   let remembered = null;
   try { remembered = localStorage.getItem(WARD_KEY); } catch { remembered = null; }
-  const ui = { ward: remembered, form: { bedId: null, planned: null, items: null, urgent: false }, other: { kind: null, items: null, urgent: false } };
+  // stay: requests this person tapped keep their place in the list for this visit, greyed once closed.
+  const ui = { ward: remembered, form: { bedId: null, planned: null, items: null, urgent: false }, other: { kind: null, items: null, urgent: false }, stay: new Set(), px: new Map() };
   let wards = null; let data = null;
   const props = proposals(ctx, 'discharge');
   const mayRaise = can(ctx.role, 'ospeli_pharmacy_request_raise');
   const mayCollect = can(ctx.role, 'ospeli_pharmacy_request_collect');
+  const mayCancel = can(ctx.role, 'ospeli_pharmacy_request_cancel');
+  const wardOnly = ctx.role === 'ward-nurse'; // the ward picks from its own cancel reasons
   const load = async () => {
     wards = await ctx.run('ospeli_pharmacy_ward_requests', { limit: 1 });
     if (ui.ward && !wards.wards.some((w) => w.id === ui.ward)) ui.ward = null;
@@ -280,31 +321,62 @@ function dischargeScreen(ctx) {
       missing || 'Ask the pharmacy'));
   }
   function estimateLine(r) {
-    if (r.state === 'ready') return h('p', { class: 'ph-ready-now', 'data-test': 'ready-now' }, `Ready for collection since ${r.clocks.ready}`);
+    if (r.state === 'ready') return h('p', { class: 'ph-ready-now', 'data-test': 'ready-now' }, 'Ready for collection');
     if (r.state === 'collected' || r.state === 'cancelled') return null;
     const e = r.estimate;
     if (!e || e.minutes == null) return h('p', { class: 'ph-hint', 'data-test': 'estimate' }, 'No estimate yet: too few recent requests of this kind on this ward.');
     if (e.late) return h('p', { class: 'ph-hint', 'data-test': 'estimate' }, 'Taking longer than most recent requests. Estimate from recent requests, not a promise.');
     return h('p', { class: 'ph-estimate', 'data-test': 'estimate' }, `May be ready about ${e.readyByText}. Estimate from recent requests, not a promise.`);
   }
+  const hold = (e, r) => { ui.stay.add(r.id); const li = e.currentTarget.closest('li'); if (li && !ui.px.has(r.id)) ui.px.set(r.id, Math.round(li.getBoundingClientRect().height)); };
+  const name = (r) => r.bedName || r.kindName;
+  function rowActions(r) {
+    const off = offline();
+    const kids = [];
+    if (r.state === 'ready' && mayCollect) {
+      kids.push(h('button', { class: 'btn ph-main ph-collect', type: 'button', 'data-cmd': 'ospeli_pharmacy_request_collect', 'data-test': 'collect', disabled: off,
+        onclick: (e) => { hold(e, r); e.currentTarget.disabled = true; act('ospeli_pharmacy_request_collect', { requestId: r.id, expectedState: 'ready' }, `${name(r)}: collected`); } }, 'Collected'));
+    }
+    // Undo a Collected or a Cancel tapped by mistake, within the window, by a role that may.
+    const undoCmd = r.undo === 'collected' ? 'ospeli_pharmacy_request_collect' : r.undo === 'cancelled' ? 'ospeli_pharmacy_request_cancel' : null;
+    if (undoCmd && can(ctx.role, undoCmd)) {
+      const what = r.undo === 'collected' ? 'Collected' : 'Cancel';
+      kids.push(detailsBox(`${what} by mistake?`, 'undo-closed', `undo:${r.id}`,
+        h('p', { class: 'ph-hint' }, `Undo it within ${UNDO_MINUTES} minutes. The step and the undo both stay in the record.`),
+        h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': undoCmd, 'data-test': 'undo', disabled: off,
+          onclick: (e) => { hold(e, r); e.currentTarget.disabled = true; openPanels.delete(`undo:${r.id}`); act(undoCmd, { requestId: r.id, undo: true }, `${name(r)}: ${what.toLowerCase()} undone`); } }, `Undo ${what}`)));
+    }
+    if (mayCancel && !['collected', 'cancelled'].includes(r.state)) {
+      const reasons = Object.entries(data.picks.cancelReasons || {}).filter(([k]) => !wardOnly || data.picks.wardCancelReasons.includes(k));
+      kids.push(detailsBox('Cancel this request', 'cancel', `cancel:${r.id}`,
+        h('p', { class: 'ph-hint' }, 'Cancel only if the medicines are no longer needed now. Because:'),
+        h('div', { class: 'ph-reasons', 'data-test': 'cancel-reasons' }, reasons.map(([k, v]) => h('button', { class: 'btn btn-ghost btn-small ph-cancel-reason', type: 'button', 'data-cmd': 'ospeli_pharmacy_request_cancel', 'data-reason': k, disabled: off,
+          onclick: (e) => { hold(e, r); e.currentTarget.disabled = true; openPanels.delete(`cancel:${r.id}`); act('ospeli_pharmacy_request_cancel', { requestId: r.id, reason: k, expectedState: r.state }, `${name(r)}: cancelled (${v.toLowerCase()})`); } }, v)))));
+    }
+    return kids.length ? h('div', { class: 'ph-row-act' }, kids) : null;
+  }
   function requestRow(r) {
-    return h('li', { class: `ph-row st-${r.state}`, 'data-request': r.id, 'data-state': r.state },
+    const done = ['collected', 'cancelled'].includes(r.state);
+    const li = h('li', { class: `ph-row st-${r.state}${done ? ' is-done' : ''}`, 'data-request': r.id, 'data-state': r.state },
       h('div', { class: 'ph-row-text' },
-        h('p', { class: 'ph-who' }, h('b', {}, r.bedName || r.kindName), r.bedName ? h('span', {}, r.kindName) : null),
+        h('p', { class: 'ph-who' }, h('b', {}, name(r)), r.bedName ? h('span', {}, r.kindName) : null),
         h('p', { class: 'ph-chips' }, chipsFor({ ...r, kindName: null }).filter((x) => x && x.textContent)),
-        h('p', { class: `ph-st st-${r.state}`, 'data-test': 'stage' }, r.held ? `On hold: ${r.holdReasonName}` : stageClock(r)),
-        h('p', { class: 'ph-line' }, `${items(r.items)} · raised ${r.clocks.raised}`),
+        h('p', { class: `ph-st st-${r.state}`, 'data-test': 'stage' }, r.held ? `On hold: ${r.holdReasonName}` : r.state === 'cancelled' && r.cancelReasonName ? `${stageClock(r)}: ${r.cancelReasonName.toLowerCase()}` : stageClock(r)),
+        h('p', { class: 'ph-line' }, r.state === 'raised' ? items(r.items) : `${items(r.items)} · raised ${r.clocks.raised}`),
         estimateLine(r)),
-      r.state === 'ready' && mayCollect ? h('div', { class: 'ph-row-act' }, h('button', { class: 'btn ph-main ph-collect', type: 'button', 'data-cmd': 'ospeli_pharmacy_request_collect', 'data-test': 'collect', disabled: offline(),
-        onclick: (e) => { e.currentTarget.disabled = true; act('ospeli_pharmacy_request_collect', { requestId: r.id, expectedState: 'ready' }, `${r.bedName || r.kindName}: collected`); } }, 'Collected')) : null);
+      rowActions(r));
+    if (ui.px.has(r.id)) li.style.minHeight = `${ui.px.get(r.id)}px`;
+    return li;
   }
   function draw() {
     if (!data) return;
     const wardPick = h('select', { class: 'ph-select ph-ward-select', id: 'ph-ward', 'data-test': 'wards' },
       [{ id: '', name: 'All wards' }, ...wards.wards].map((w) => h('option', { value: w.id, selected: (ui.ward || '') === w.id }, w.name)));
     wardPick.addEventListener('change', () => pickWard(wardPick.value || null));
-    const open = data.requests.filter((r) => !['collected', 'cancelled'].includes(r.state));
-    const closed = data.requests.filter((r) => ['collected', 'cancelled'].includes(r.state));
+    // A request tapped here stays in the open list for this visit, so the next one never slides under the finger.
+    const isClosed = (r) => ['collected', 'cancelled'].includes(r.state);
+    const open = data.requests.filter((r) => !isClosed(r) || ui.stay.has(r.id));
+    const closed = data.requests.filter((r) => isClosed(r) && !ui.stay.has(r.id));
     const waiting = data.plannedDischarges;
     setKids(box,
       props.el,
@@ -315,7 +387,7 @@ function dischargeScreen(ctx) {
       mayRaise && ui.ward ? [dischargeForm(), otherForm()] : null,
       mayRaise && !ui.ward ? h('p', { class: 'card notice', 'data-test': 'pick-ward' }, 'Pick your ward to ask for medicines.') : null,
       h('section', { class: 'section', 'aria-labelledby': 'ph-mine-h' },
-        h('h2', { id: 'ph-mine-h' }, ui.ward ? `${data.wardName}: requests (${open.length} open)` : `All wards: requests (${open.length} open)`),
+        h('h2', { id: 'ph-mine-h' }, `${ui.ward ? data.wardName : 'All wards'}: requests (${open.filter((r) => !isClosed(r)).length} open)`),
         open.length ? h('ol', { class: 'ph-rows', 'data-test': 'ward-requests' }, open.map(requestRow)) : h('p', { class: 'ph-empty' }, 'No open request.'),
         closed.length ? detailsBox(`Collected or cancelled in the last 24 hours (${closed.length})`, 'closed', `closed:${ui.ward || 'all'}`, h('ol', { class: 'ph-rows' }, closed.map(requestRow))) : null,
         h('p', { class: 'ph-hint', 'data-test': 'estimate-note' }, data.estimateNote)),
@@ -350,6 +422,7 @@ function summaryScreen(ctx) {
       h('ul', { class: 'ph-bars' }, k.stages.map((s) => h('li', { 'data-stage': s.id, class: s.id === k.longest ? 'is-longest' : null },
         h('span', { class: 'ph-bar-label' }, `${s.name}: ${minText(s.value)} (median of ${s.n})`),
         h('span', { class: 'ph-bar', 'aria-hidden': 'true' }, h('span', { style: `width:${Math.round(((s.value || 0) / top) * 100)}%` }))))),
+      h('p', { class: 'ph-hint', 'data-test': 'stage-hint' }, 'Started to checked includes dispensing and the wait for the check, not the check alone.'),
       h('p', { class: 'ph-hint' }, `Last ${k.period.days} days, every kind of request, time on hold taken out.`));
   }
   function guideCard() {

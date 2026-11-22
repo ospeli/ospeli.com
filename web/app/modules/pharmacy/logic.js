@@ -34,6 +34,11 @@ export const CANCEL_REASONS = {
   duplicate: 'Duplicate',
   'raised-in-error': 'Raised in error',
 };
+// A hold placed after Checked for one of these reasons means what goes out may change after the
+// pharmacist saw it: on resume the request goes back to Started and waits for Checked again.
+export const RECHECK_REASONS = ['not-in-stock', 'waiting-for-supply'];
+// The cancel reasons the ward itself may pick (it can cancel its own request without phoning).
+export const WARD_CANCEL_REASONS = ['discharge-postponed', 'no-longer-needed', 'raised-in-error'];
 export const STAGES = ['raised', 'started', 'checked', 'ready', 'collected'];
 export const STATE_WORDS = { raised: 'Raised', started: 'Started', checked: 'Checked', ready: 'Ready', collected: 'Collected', cancelled: 'Cancelled', 'on-hold': 'On hold' };
 export const OPEN_STATES = ['raised', 'started', 'checked', 'ready', 'on-hold'];
@@ -94,22 +99,25 @@ export function deriveRequests(events) {
         id: e.subject, wardId: d.wardId, bedId: isId(d.bedId) ? d.bedId : null, encounter: ENC.test(String(d.encounter || '')) ? d.encounter : null,
         kind: d.kind, priority: d.priority, planned: d.kind === 'discharge' && PLANNED[d.planned] ? d.planned : null, items: d.items,
         raisedAt: e.at, raisedByRole: e.actorRole, stage: 'raised', startedAt: null, checkedAt: null, readyAt: null, collectedAt: null,
-        cancelledAt: null, cancelReason: null, held: false, holdReason: null, holdSince: null, holds: [], front: false, frontAt: null,
+        cancelledAt: null, cancelReason: null, cancelledFrom: null, recheck: false, held: false, holdReason: null, holdSince: null, holds: [], front: false, frontAt: null,
         lastStep: { step: 'raised', at: e.at, role: e.actorRole }, lastMoveAt: e.at, undone: 0,
       });
       continue;
     }
     const r = out.get(e.subject);
-    if (!r || r.stage === 'collected' || r.stage === 'cancelled') continue;
+    if (!r) continue;
+    // A closed request takes only an undo of the step that closed it.
+    if ((r.stage === 'collected' || r.stage === 'cancelled') && e.type !== 'pharmacy.step-undone') continue;
     const move = (stage, field) => { r.stage = stage; r[field] = e.at; r.lastStep = { step: stage, at: e.at, role: e.actorRole }; r.lastMoveAt = e.at; };
     switch (e.type) {
       case 'pharmacy.request-started': if (r.stage === 'raised' && !r.held) move('started', 'startedAt'); break;
-      case 'pharmacy.request-checked': if (r.stage === 'started' && !r.held) move('checked', 'checkedAt'); break;
+      case 'pharmacy.request-checked': if (r.stage === 'started' && !r.held) { move('checked', 'checkedAt'); r.recheck = false; } break;
       case 'pharmacy.request-ready': if (r.stage === 'checked' && !r.held) move('ready', 'readyAt'); break;
       case 'pharmacy.request-collected': if (r.stage === 'ready') move('collected', 'collectedAt'); break;
       case 'pharmacy.request-cancelled':
         if (r.held) { r.holds.push({ from: r.holdSince, to: e.at, reason: r.holdReason }); r.held = false; }
         r.cancelReason = CANCEL_REASONS[d.reason] ? d.reason : null;
+        r.cancelledFrom = r.stage;
         move('cancelled', 'cancelledAt');
         break;
       case 'pharmacy.request-on-hold':
@@ -120,6 +128,9 @@ export function deriveRequests(events) {
       case 'pharmacy.request-resumed':
         if (r.held) {
           r.holds.push({ from: r.holdSince, to: e.at, reason: r.holdReason });
+          // Held after Checked for stock or supply: back to Started, Checked again before Ready. The
+          // command writes a correcting event for it; the replay does it too, so no log can skip it.
+          if (r.stage === 'checked' && RECHECK_REASONS.includes(r.holdReason)) { r.stage = 'started'; r.checkedAt = null; r.recheck = true; }
           r.held = false; r.holdReason = null; r.holdSince = null; r.lastStep = { step: 'resumed', at: e.at, role: e.actorRole }; r.lastMoveAt = e.at;
         }
         break;
@@ -127,9 +138,13 @@ export function deriveRequests(events) {
       case 'pharmacy.step-undone': {
         // A mistaken tap is corrected by a new event, never by changing history: the step's time is
         // cleared and the request goes back one stage. Both events stay in the log.
-        const back = { started: ['raised', 'startedAt'], checked: ['started', 'checkedAt'], ready: ['checked', 'readyAt'] }[d.step];
+        // A recheck after a stock or supply hold is written as this event too (reason "recheck"): the
+        // replay has already moved the request back, so it changes nothing more.
+        const back = { started: ['raised', 'startedAt'], checked: ['started', 'checkedAt'], ready: ['checked', 'readyAt'], collected: ['ready', 'collectedAt'],
+          cancelled: [r.cancelledFrom || 'raised', 'cancelledAt'] }[d.step];
         if (!back || r.stage !== d.step || r.held) break;
         r.stage = back[0]; r[back[1]] = null; r.undone += 1;
+        if (d.step === 'cancelled') { r.cancelReason = null; r.cancelledFrom = null; }
         r.lastStep = { step: 'undone', at: e.at, role: e.actorRole };
         r.lastMoveAt = e.at;
         break;
@@ -194,7 +209,7 @@ export function nextStep(r) {
 }
 // The last step, if it can still be undone (within UNDO_MINUTES; not while on hold).
 export function undoable(r, nowMs) {
-  if (r.held || !['started', 'checked', 'ready'].includes(r.stage) || r.lastStep.step !== r.stage) return null;
+  if (r.held || !['started', 'checked', 'ready', 'collected', 'cancelled'].includes(r.stage) || r.lastStep.step !== r.stage) return null;
   return nowMs - Date.parse(r.lastStep.at) <= UNDO_MINUTES * MIN ? r.stage : null;
 }
 

@@ -144,8 +144,9 @@ test('steps: hold and resume with reasons, cancel, undo within the window, move 
   const st = (step, extra = {}, role = 'pharmacy-technician') => run('ospeli_pharmacy_request_step', { requestId: id, step, ...extra }, role);
   for (const role of ['ward-nurse', 'bed-manager', 'coo']) await assert.rejects(st('start', {}, role), code('forbidden'), role);
   await assert.rejects(st('hold'), code('invalid-input'), 'a hold needs a reason');
-  await assert.rejects(st('start', { reason: 'duplicate' }), code('invalid-input'), 'reason is for hold and cancel');
+  await assert.rejects(st('start', { reason: 'waiting-for-ward' }), code('invalid-input'), 'reason is for hold only');
   await assert.rejects(st('hold', { reason: 'duplicate' }), code('invalid-input'), 'a cancel reason is not a hold reason');
+  await assert.rejects(st('cancel', { reason: 'duplicate' }), code('invalid-input'), 'a cancel is its own command');
   await assert.rejects(st('hold', { reason: 'waiting-for-collection' }), code('invalid-input'), 'waiting for collection is not a hold reason');
   await assert.rejects(st('resume'), code('conflict'), 'not on hold');
   await assert.rejects(st('undo'), code('conflict'), 'nothing to undo');
@@ -179,7 +180,7 @@ test('steps: hold and resume with reasons, cancel, undo within the window, move 
   await run('ospeli_pharmacy_request_step', { requestId: other, step: 'back' }, 'pharmacy-manager');
   assert.notEqual((await run('ospeli_pharmacy_queue_list', {}, 'pharmacy-technician')).requests[0].id, other);
   // Cancel with a reason; nothing more after that.
-  await run('ospeli_pharmacy_request_step', { requestId: other, step: 'cancel', reason: 'raised-in-error' }, 'pharmacist');
+  await run('ospeli_pharmacy_request_cancel', { requestId: other, reason: 'raised-in-error' }, 'pharmacist');
   await assert.rejects(run('ospeli_pharmacy_request_step', { requestId: other, step: 'start' }, 'pharmacy-technician'), (e) => code('conflict')(e) && /cancelled/.test(e.message));
   // Made-up and malformed ids.
   await assert.rejects(run('ospeli_pharmacy_request_step', { requestId: 'rx-99999', step: 'start' }, 'pharmacy-technician'), (e) => code('not-found')(e) && !e.message.includes('rx-99999'));
@@ -263,4 +264,105 @@ test('a device with an older example hospital and no pharmacy history: every rea
   assert.deepEqual(ov.guide.suggestions, []);
   const w = await run('ospeli_pharmacy_ward_requests', { wardId: 'ward-a1' }, 'ward-nurse');
   assert.deepEqual(w.requests, []);
+});
+
+test('a hold after Checked for stock or supply sends the request back to Started on resume: Ready waits for a new Checked (person and agent); "waiting for the ward" keeps Checked', async () => {
+  const { core, run } = await site();
+  let n = 0;
+  const make = async () => {
+    const { requestId } = await run('ospeli_pharmacy_request_raise', { wardId: 'ward-a1', kind: 'other', priority: 'routine', items: 10 + (n += 1) }, 'ward-nurse');
+    await run('ospeli_pharmacy_request_step', { requestId, step: 'start' }, 'pharmacy-technician');
+    await run('ospeli_pharmacy_request_check', { requestId }, 'pharmacist');
+    return requestId;
+  };
+  for (const reason of ['not-in-stock', 'waiting-for-supply']) {
+    const id = await make();
+    await run('ospeli_pharmacy_request_step', { requestId: id, step: 'hold', reason }, 'pharmacy-technician');
+    const back = await run('ospeli_pharmacy_request_step', { requestId: id, step: 'resume', expectedState: 'on-hold' }, 'pharmacy-technician');
+    assert.equal(back.state, 'started', `${reason}: back to Started`);
+    const evs = (await pharmacyEvents(core)).filter((e) => e.subject === id).slice(-2);
+    assert.deepEqual(evs.map((e) => [e.type, e.data]), [['pharmacy.request-resumed', {}], ['pharmacy.step-undone', { step: 'checked', reason: 'recheck' }]], 'a correcting event, history kept');
+    await assert.rejects(run('ospeli_pharmacy_request_step', { requestId: id, step: 'ready' }, 'pharmacy-technician'), (e) => code('conflict')(e) && /needs the pharmacist's check again/.test(e.message));
+    const q = (await run('ospeli_pharmacy_queue_list', {}, 'pharmacist')).requests.find((r) => r.id === id);
+    assert.deepEqual([q.state, q.recheck, q.nextStep], ['started', true, 'check']);
+    await run('ospeli_pharmacy_request_check', { requestId: id }, 'pharmacist');
+    assert.equal((await run('ospeli_pharmacy_request_step', { requestId: id, step: 'ready' }, 'pharmacy-technician')).state, 'ready');
+  }
+  const ward = await make();
+  await run('ospeli_pharmacy_request_step', { requestId: ward, step: 'hold', reason: 'waiting-for-ward' }, 'pharmacy-technician');
+  assert.equal((await run('ospeli_pharmacy_request_step', { requestId: ward, step: 'resume' }, 'pharmacy-technician')).state, 'checked', 'waiting for the ward keeps Checked');
+  // An agent's resume: the proposal changes nothing; accepted, it sends the request back too, and Ready is refused before it queues.
+  await run('ospeli_agents_set_access', { allowed: true, wards: { 'ward-a1': true } }, 'coo');
+  await run('ospeli_agents_add', { name: 'rx-bench-bot', role: 'pharmacy-technician', wards: ['ward-a1'], days: 30 }, 'coo');
+  const bot = agent('pharmacy-technician', 'rx-bench-bot');
+  const id = await make();
+  await run('ospeli_pharmacy_request_step', { requestId: id, step: 'hold', reason: 'not-in-stock' }, 'pharmacy-technician');
+  const p = await run('ospeli_pharmacy_request_step', { requestId: id, step: 'resume' }, bot);
+  assert.equal(p.status, 'proposed');
+  assert.equal(deriveRequests(await core.events()).get(id).held, true, 'nothing changed');
+  assert.equal((await run('ospeli_proposals_accept', { id: p.proposal.id }, 'pharmacy-technician')).status, 'accepted');
+  assert.equal(deriveRequests(await core.events()).get(id).stage, 'started');
+  await assert.rejects(run('ospeli_pharmacy_request_step', { requestId: id, step: 'ready' }, bot), (e) => code('conflict')(e) && /check again/.test(e.message), 'no Ready proposal queues');
+});
+
+test('the replay sends a stock hold at Checked back to Started even with no correcting event (an edited import cannot skip the check)', () => {
+  const at = (m) => new Date(Date.parse(END) - (60 - m) * MIN).toISOString();
+  const ev = [
+    { type: 'pharmacy.request-raised', subject: 'rx-00700', at: at(0), actorRole: 'ward-nurse', data: { wardId: 'ward-a1', kind: 'other', priority: 'routine', items: 1 } },
+    { type: 'pharmacy.request-started', subject: 'rx-00700', at: at(1), actorRole: 'pharmacy-technician', data: {} },
+    { type: 'pharmacy.request-checked', subject: 'rx-00700', at: at(2), actorRole: 'pharmacist', data: {} },
+    { type: 'pharmacy.request-on-hold', subject: 'rx-00700', at: at(3), actorRole: 'pharmacy-technician', data: { reason: 'waiting-for-supply' } },
+    { type: 'pharmacy.request-resumed', subject: 'rx-00700', at: at(4), actorRole: 'pharmacy-technician', data: {} },
+    { type: 'pharmacy.request-ready', subject: 'rx-00700', at: at(5), actorRole: 'pharmacy-technician', data: {} },
+  ];
+  const r = deriveRequests(ev).get('rx-00700');
+  assert.deepEqual([r.stage, r.readyAt, r.checkedAt, r.recheck], ['started', null, null, true]);
+});
+
+test('undo Collected and undo Cancel: within 10 minutes, people only, by a role that may, and every refusal', async () => {
+  const { core, run, advance } = await site();
+  await run('ospeli_agents_set_access', { allowed: true, wards: { 'ward-a1': true } }, 'coo');
+  await run('ospeli_agents_add', { name: 'rx-ward-bot', role: 'ward-nurse', wards: ['ward-a1'], days: 30 }, 'coo');
+  const bot = agent('ward-nurse', 'rx-ward-bot');
+  const ready = async () => {
+    const { requestId } = await run('ospeli_pharmacy_request_raise', { wardId: 'ward-a1', kind: 'other', priority: 'routine', items: 3 }, 'ward-nurse');
+    await run('ospeli_pharmacy_request_step', { requestId, step: 'start' }, 'pharmacy-technician');
+    await run('ospeli_pharmacy_request_check', { requestId }, 'pharmacist');
+    await run('ospeli_pharmacy_request_step', { requestId, step: 'ready' }, 'pharmacy-technician');
+    return requestId;
+  };
+  // Collected.
+  const a = await ready();
+  await assert.rejects(run('ospeli_pharmacy_request_collect', { requestId: a, undo: true }, 'ward-nurse'), code('conflict'), 'nothing collected yet');
+  await run('ospeli_pharmacy_request_collect', { requestId: a }, 'ward-nurse');
+  await assert.rejects(run('ospeli_pharmacy_request_collect', { requestId: a, undo: true }, bot), code('forbidden'), 'people only');
+  await assert.rejects(run('ospeli_pharmacy_request_collect', { requestId: a, undo: true }, 'bed-manager'), code('forbidden'), 'a role that cannot collect');
+  const u = await run('ospeli_pharmacy_request_collect', { requestId: a, undo: true }, 'ward-nurse');
+  assert.equal(u.state, 'ready');
+  let r = deriveRequests(await core.events()).get(a);
+  assert.deepEqual([r.stage, r.collectedAt, r.undone], ['ready', null, 1]);
+  await assert.rejects(run('ospeli_pharmacy_request_collect', { requestId: a, undo: true }, 'ward-nurse'), code('conflict'), 'undone once');
+  await run('ospeli_pharmacy_request_collect', { requestId: a }, 'pharmacy-technician');
+  advance(11);
+  await assert.rejects(run('ospeli_pharmacy_request_collect', { requestId: a, undo: true }, 'pharmacy-technician'), code('conflict'), 'past 10 minutes');
+  // Cancel: back to the stage it was at.
+  const { requestId: b } = await run('ospeli_pharmacy_request_raise', { wardId: 'ward-a1', kind: 'other', priority: 'routine', items: 4 }, 'ward-nurse');
+  await run('ospeli_pharmacy_request_step', { requestId: b, step: 'start' }, 'pharmacy-technician');
+  await run('ospeli_pharmacy_request_check', { requestId: b }, 'pharmacist');
+  await assert.rejects(run('ospeli_pharmacy_request_cancel', { requestId: b }, 'pharmacy-technician'), code('invalid-input'), 'a cancel needs a reason');
+  await assert.rejects(run('ospeli_pharmacy_request_cancel', { requestId: b, reason: 'duplicate' }, 'ward-nurse'), code('forbidden'), 'the ward has its own reasons');
+  for (const role of ['bed-manager', 'coo']) await assert.rejects(run('ospeli_pharmacy_request_cancel', { requestId: b, reason: 'no-longer-needed' }, role), code('forbidden'), role);
+  await run('ospeli_pharmacy_request_cancel', { requestId: b, reason: 'discharge-postponed', expectedState: 'checked' }, 'ward-nurse');
+  await assert.rejects(run('ospeli_pharmacy_request_cancel', { requestId: b, reason: 'discharge-postponed' }, 'ward-nurse'), code('conflict'), 'cancelled twice');
+  await assert.rejects(run('ospeli_pharmacy_request_cancel', { requestId: b, undo: true }, bot), code('forbidden'), 'people only');
+  await assert.rejects(run('ospeli_pharmacy_request_cancel', { requestId: b, undo: true, reason: 'duplicate' }, 'ward-nurse'), code('invalid-input'));
+  const back = await run('ospeli_pharmacy_request_cancel', { requestId: b, undo: true }, 'ward-nurse');
+  assert.equal(back.state, 'checked', 'back where it was');
+  r = deriveRequests(await core.events()).get(b);
+  assert.deepEqual([r.cancelReason, r.cancelledAt, r.undone], [null, null, 1]);
+  // An agent may propose a cancel (a person decides), never an undo.
+  const p = await run('ospeli_pharmacy_request_cancel', { requestId: b, reason: 'no-longer-needed' }, bot);
+  assert.equal(p.status, 'proposed');
+  assert.equal(deriveRequests(await core.events()).get(b).stage, 'checked');
+  await assert.rejects(run('ospeli_pharmacy_request_step', { requestId: b, step: 'undo' }, agent('ward-nurse', 'rx-ward-bot')), code('forbidden'));
 });

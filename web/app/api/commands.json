@@ -25856,7 +25856,7 @@
     },
     {
       "name": "ospeli_pharmacy_request_step",
-      "summary": "Move a request on, by the pharmacy: start (Raised to Started), ready (Checked to Ready; refused until a pharmacist has recorded Checked, so no order of taps records Ready without a check), hold with a reason (waiting-for-ward (Waiting for the ward), not-in-stock (Item not in stock), waiting-for-supply (Waiting for supply from another store); not once ready), resume, cancel with a reason (discharge-postponed (Discharge postponed), no-longer-needed (No longer needed), duplicate (Duplicate), raised-in-error (Raised in error)), undo (the last step, Started or Ready, within 10 minutes: a correction event, history is kept), and front or back (pharmacy manager only: move to the front of the queue, shown as moved by the manager). Send expectedState so a double tap saves nothing. The check itself is ospeli_pharmacy_request_check; collection is ospeli_pharmacy_request_collect. An agent's call becomes a proposal for a person.",
+      "summary": "Move a request on, by the pharmacy: start (Raised to Started), ready (Checked to Ready; refused until a pharmacist has recorded Checked, so no order of taps records Ready without a check), hold with a reason (waiting-for-ward (Waiting for the ward), not-in-stock (Item not in stock), waiting-for-supply (Waiting for supply from another store); not once ready), resume (a request held after Checked for stock or supply goes back to Started and needs Checked again), undo (the last step, Started or Ready, within 10 minutes: a correction event, history is kept; people only), and front or back (pharmacy manager only: move to the front of the queue, shown as moved by the manager). Send expectedState so a double tap saves nothing. The check is ospeli_pharmacy_request_check, collection ospeli_pharmacy_request_collect, a cancel ospeli_pharmacy_request_cancel. An agent's call becomes a proposal for a person.",
       "kind": "write",
       "roles": [
         "pharmacy-technician",
@@ -25887,25 +25887,20 @@
               "ready",
               "hold",
               "resume",
-              "cancel",
               "front",
               "back",
               "undo"
             ],
-            "description": "start, ready, hold (send reason), resume, cancel (send reason), front or back (pharmacy manager), undo."
+            "description": "start, ready, hold (send reason), resume, front or back (pharmacy manager), undo (people only)."
           },
           "reason": {
             "type": "string",
             "enum": [
               "waiting-for-ward",
               "not-in-stock",
-              "waiting-for-supply",
-              "discharge-postponed",
-              "no-longer-needed",
-              "duplicate",
-              "raised-in-error"
+              "waiting-for-supply"
             ],
-            "description": "hold: waiting-for-ward (Waiting for the ward), not-in-stock (Item not in stock), waiting-for-supply (Waiting for supply from another store). cancel: discharge-postponed (Discharge postponed), no-longer-needed (No longer needed), duplicate (Duplicate), raised-in-error (Raised in error)."
+            "description": "hold only: waiting-for-ward (Waiting for the ward), not-in-stock (Item not in stock), waiting-for-supply (Waiting for supply from another store)."
           },
           "expectedState": {
             "type": "string",
@@ -26055,7 +26050,7 @@
     },
     {
       "name": "ospeli_pharmacy_request_collect",
-      "summary": "Record that a ready request was collected (Ready to Collected): by the pharmacy, or by the ward when its staff collect. Refused before Ready. Send expectedState so a double tap saves nothing. An agent's call becomes a proposal for a person.",
+      "summary": "Record that a ready request was collected (Ready to Collected): by the pharmacy, or by the ward when its staff collect. Refused before Ready. Send expectedState so a double tap saves nothing. undo: true takes back a Collected tapped by mistake (within 10 minutes, while it is the last step; people only). An agent's call becomes a proposal for a person.",
       "kind": "write",
       "roles": [
         "pharmacy-technician",
@@ -26089,6 +26084,10 @@
               "on-hold"
             ],
             "description": "The state you saw the request in (from ospeli_pharmacy_queue_list). If it has moved on since, nothing is saved and the answer says what it is now, so a double tap never skips a stage. Recommended."
+          },
+          "undo": {
+            "type": "boolean",
+            "description": "true: take back Collected tapped by mistake. Leave out to record the collection."
           }
         }
       },
@@ -26136,6 +26135,105 @@
           "expectedState": "ready"
         },
         "needs": "A request that is Ready: raised, started, checked by a pharmacist and made ready (ospeli_pharmacy_request_raise, ospeli_pharmacy_request_step, ospeli_pharmacy_request_check); ospeli_pharmacy_queue_list lists the ready ones."
+      }
+    },
+    {
+      "name": "ospeli_pharmacy_request_cancel",
+      "summary": "Cancel a request that is not collected, with a reason: discharge-postponed (Discharge postponed), no-longer-needed (No longer needed), duplicate (Duplicate), raised-in-error (Raised in error). The ward may cancel its own request (discharge postponed, no longer needed, raised in error) without phoning; the pharmacy may use any reason. undo: true takes back a cancel tapped by mistake (within 10 minutes, while it is the last step; people only): the request returns to the stage it was at. Send expectedState so a double tap saves nothing. An agent's call becomes a proposal for a person.",
+      "kind": "write",
+      "roles": [
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager",
+        "ward-nurse"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": true,
+      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "pattern": "^rx-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A request id, rx- and five digits, for example rx-00012. ospeli_pharmacy_queue_list lists the open ones."
+          },
+          "expectedState": {
+            "type": "string",
+            "enum": [
+              "raised",
+              "started",
+              "checked",
+              "ready",
+              "on-hold"
+            ],
+            "description": "The state you saw the request in (from ospeli_pharmacy_queue_list). If it has moved on since, nothing is saved and the answer says what it is now, so a double tap never skips a stage. Recommended."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "discharge-postponed",
+              "no-longer-needed",
+              "duplicate",
+              "raised-in-error"
+            ],
+            "description": "Needed to cancel: discharge-postponed (Discharge postponed), no-longer-needed (No longer needed), duplicate (Duplicate), raised-in-error (Raised in error)."
+          },
+          "undo": {
+            "type": "boolean",
+            "description": "true: take back a cancel tapped by mistake. Send no reason with it."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "requestId": {
+            "type": "string",
+            "pattern": "^rx-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A request id, rx- and five digits, for example rx-00012. ospeli_pharmacy_queue_list lists the open ones."
+          },
+          "state": {
+            "type": "string"
+          },
+          "stateName": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          },
+          "proposal": {
+            "type": "object",
+            "description": "When an agent asked: the proposal waiting for a person."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "requestId": "rx-00001",
+          "reason": "no-longer-needed"
+        },
+        "needs": "A request that is open (not collected or cancelled): ospeli_pharmacy_request_raise makes one, and ospeli_pharmacy_queue_list lists the open ones with their ids."
       }
     },
     {

@@ -220,7 +220,9 @@ test('the ward nurse asks for discharge medicines in a few taps, nothing is chos
   const ready = page.locator(`[data-test="ward-requests"] [data-request="${mine.id}"]`);
   await ready.locator('[data-test="ready-now"]').waitFor();
   await ready.locator('[data-test="collect"]').tap();
-  await page.waitForFunction((x) => !document.querySelector(`[data-test="ward-requests"] [data-request="${x}"]`), mine.id);
+  // The row stays where it was, greyed, with its undo, for this visit.
+  await page.waitForFunction((x) => document.querySelector(`[data-test="ward-requests"] [data-request="${x}"]`)?.dataset.state === 'collected', mine.id);
+  assert.equal(await ready.locator('[data-test="undo-closed"]').count(), 1);
   assert.equal((await cmd(page, 'ospeli_pharmacy_ward_requests', { wardId: 'ward-b2' }, 'ward-nurse')).requests.find((r) => r.id === mine.id).state, 'collected');
   assert.deepEqual(errors, []);
   await context.close();
@@ -240,6 +242,76 @@ test('the guide switch: the manager turns it off and on; the measures stay the s
   await page.waitForSelector('[data-test="suggestion"]');
   await asRole(page, 'pharmacist', 'summary');
   assert.equal(await page.locator('[data-test="guide-switch"]').count(), 0, 'the pharmacist cannot switch it');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+// ospeli/ospeli#112 review round 1 (adoption lead): a slow second tap on the same spot must not collect another request.
+async function collectTwice(page, listSel, label) {
+  const first = page.locator(`${listSel} [data-cmd="ospeli_pharmacy_request_collect"]:not([disabled])`).first();
+  await first.scrollIntoViewIfNeeded();
+  const id = await first.evaluate((b) => b.closest('li').dataset.request);
+  const box = await first.boundingBox();
+  const before = (await cmd(page, 'ospeli_pharmacy_queue_list', { limit: 300 }, 'coo')).counts.ready;
+  await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForFunction((x) => document.querySelector(`[data-request="${x}"]`)?.dataset.state === 'collected', id);
+  await page.waitForTimeout(1600);
+  await page.touchscreen.tap(box.x + box.width / 2, box.y + box.height / 2);
+  await page.waitForTimeout(1500);
+  const after = (await cmd(page, 'ospeli_pharmacy_queue_list', { limit: 300 }, 'coo')).counts.ready;
+  assert.equal(after, before - 1, `${label}: only one request collected`);
+  return id;
+}
+test('a second tap on the same spot 1.6 s after Collected records nothing more: on Discharge medicines and in the queue\'s Ready list', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/pharmacy' });
+  // Make sure at least three requests are ready.
+  for (const [w, n] of [['ward-a1', 3], ['ward-a2', 4], ['ward-b1', 5]]) {
+    const { requestId } = await cmd(page, 'ospeli_pharmacy_request_raise', { wardId: w, kind: 'other', priority: 'routine', items: n }, 'ward-nurse');
+    await cmd(page, 'ospeli_pharmacy_request_step', { requestId, step: 'start' }, 'pharmacy-technician');
+    await cmd(page, 'ospeli_pharmacy_request_check', { requestId }, 'pharmacist');
+    await cmd(page, 'ospeli_pharmacy_request_step', { requestId, step: 'ready' }, 'pharmacy-technician');
+  }
+  await asRole(page, 'ward-nurse', 'discharge');
+  await page.locator('[data-test="wards"]').selectOption('');
+  await page.waitForFunction(() => document.querySelectorAll('[data-test="ward-requests"] [data-test="collect"]').length >= 2);
+  const id1 = await collectTwice(page, '[data-test="ward-requests"]', 'Discharge medicines');
+  // The collected row can be taken back within 10 minutes.
+  await tap(page, `[data-request="${id1}"] [data-test="undo-closed"] summary`);
+  await tap(page, `[data-request="${id1}"] [data-test="undo"]`);
+  await page.waitForFunction((x) => document.querySelector(`[data-request="${x}"]`)?.dataset.state === 'ready', id1);
+  await asRole(page, 'pharmacy-technician', 'queue');
+  await collectTwice(page, '[data-test="ready"]', 'Dispensing queue');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('the pharmacist sees the requests waiting for their check first, with Checked on the first screen at 390 px', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/pharmacy' });
+  await asRole(page, 'pharmacist', 'queue');
+  const b = await page.locator('[data-test="check-list"] [data-step="check"]').first().boundingBox();
+  assert.ok(b.y + b.height <= 844, `Checked is on the first screen (bottom at ${Math.round(b.y + b.height)} px)`);
+  assert.deepEqual(await phoneProblems(page), []);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('cancel reasons look unlike hold reasons, and a technician\'s Ready never leaves a Collected button where Ready was', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/pharmacy' });
+  await asRole(page, 'pharmacy-technician', 'queue');
+  const row = page.locator('[data-test="queue"] li[data-state="raised"]').first();
+  await row.locator('[data-test="more"] summary').tap();
+  const holdCls = await row.locator('[data-test="hold-reasons"] button').first().getAttribute('class');
+  const cancelCls = await row.locator('[data-test="cancel-reasons"] button').first().getAttribute('class');
+  assert.ok(!/ph-cancel-reason/.test(holdCls) && /ph-cancel-reason/.test(cancelCls));
+  const checked = page.locator('[data-test="queue"] li[data-state="checked"]').first();
+  const id = await checked.getAttribute('data-request');
+  await checked.locator('[data-step="ready"]').scrollIntoViewIfNeeded();
+  await checked.locator('[data-step="ready"]').tap();
+  await page.waitForFunction((x) => document.querySelector(`[data-test="queue"] [data-request="${x}"]`)?.dataset.state === 'ready', id);
+  await page.waitForTimeout(3500);
+  const kept = page.locator(`[data-test="queue"] [data-request="${id}"]`);
+  assert.equal(await kept.locator('[data-cmd="ospeli_pharmacy_request_collect"]').count(), 0, 'no Collected in the place Ready was');
+  assert.match(await kept.locator('[data-test="ready-here"]').textContent(), /Ready: waiting for collection/);
   assert.deepEqual(errors, []);
   await context.close();
 });
