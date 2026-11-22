@@ -45,11 +45,14 @@ export async function render(el, ctx) {
   el.append(root);
 
   // What this person opened or picked survives a redraw (after a save, or another tab's change).
-  const ui = { ward: remembered.get(), form: null, picks: {}, open: null, openPicks: {}, eq: null, eqPicks: {}, ghosts: new Map(), saved: null, msg: null, busy: false, justSaved: false };
+  const ui = { ward: remembered.get(), form: null, picks: {}, open: null, openPicks: {}, eq: null, eqPicks: {}, ghosts: new Map(), done: new Map(), saved: null, msg: null, busy: false, justSaved: false };
   let data = null;
   const props = proposalsCard(ctx, { match: (p) => p.command.startsWith('ospeli_diagnostics_'), describe: (p) => describeProposal(p) });
 
+  // A read that finishes after a newer one was shown is dropped, so stale lists never replace fresh ones.
+  let ticket = 0; let shown = 0;
   async function load() {
+    const mine = ++ticket;
     // One read of the log per command; a screen asks only for what it shows.
     const ward = wardRole ? ui.ward : null;
     const needReqs = wardRole || (mayRequest && ui.form === 'request');
@@ -58,6 +61,8 @@ export async function render(el, ctx) {
       ctx.run('ospeli_diagnostics_overview', {}),
       needReqs ? ctx.run('ospeli_diagnostics_requests_list', ward ? { sourceId: ward } : { limit: 1 }) : null,
     ]);
+    if (mine < shown) return;
+    shown = mine;
     data = { log, ov, reqs, eq: { equipment: ov.equipment, picks: ov.equipmentPicks, faultNote: ov.faultNote, imaging: ov.imaging } };
     if (wardRole && ward && !reqs.picks.sources.some((s) => s.id === ward)) { ui.ward = null; remembered.set(null); }
     draw();
@@ -127,7 +132,7 @@ export async function render(el, ctx) {
       h('div', { class: 'dx-row-main' }, code(g.r), h('p', { class: 'dx-done-what' }, h('b', {}, g.outcome === 'rejected' ? `Rejected: ${REJECT_REASONS[g.reason]}` : g.outcome === 'released' ? 'Result released' : 'Received at lab'), ` ${g.clock}`)),
       mayUndo && g.outcome !== 'released' ? h('div', { class: 'dx-row-actions' }, h('span', { class: 'dx-spacer' }),
         h('button', { class: 'btn btn-ghost dx-undo', type: 'button', 'data-cmd': 'ospeli_diagnostics_specimen_undo', 'data-test': 'undo', 'aria-label': `Undo, ${left} seconds left`,
-          onclick: () => act('ospeli_diagnostics_specimen_undo', { requestId: g.r.id, reason: 'tapped-by-mistake' }, 'Undone', () => { ui.ghosts.delete(g.r.id); ui.saved = `Undone: ${g.r.code} is back in the list.`; }) }, 'Undo')) : null);
+          onclick: () => act('ospeli_diagnostics_specimen_undo', { requestId: g.r.id, reason: 'tapped-by-mistake' }, 'Undone', () => { ui.ghosts.delete(g.r.id); ui.done.delete(g.r.id); ui.saved = `Undone: ${g.r.code} is back in the list.`; }) }, 'Undo')) : null);
   }
   function hatchRow(r, { afterReceipt = false } = {}) {
     const opened = ui.open === `reject:${r.id}`;
@@ -164,6 +169,7 @@ export async function render(el, ctx) {
         h('button', { class: 'btn btn-ghost', type: 'button', 'data-test': 'reject-back', onclick: () => { ui.open = null; draw(); } }, 'Back')));
   }
   function ghost(r, outcome, reason, at) {
+    ui.done.set(r.id, Date.now() + 30e3);
     ui.ghosts.set(r.id, { r, outcome, reason, clock: at || '', until: Date.now() + UNDO_SECONDS * 1000, sourceId: r.sourceId, after: r.state === 'received' });
     setTimeout(() => { const g = ui.ghosts.get(r.id); if (g && Date.now() >= g.until) { ui.ghosts.delete(r.id); draw(); } }, UNDO_SECONDS * 1000 + 50);
   }
@@ -182,7 +188,10 @@ export async function render(el, ctx) {
   }
   // Rows for one list (key: its data-block), with the ghosts of rows just saved kept at their place.
   function withGhosts(items, key, after = false) {
-    const rows = items.map((r) => hatchRow(r, { afterReceipt: after }));
+    // A row saved here a moment ago stays out of the list even if a read started before the save
+    // answers late (for half a minute; an undo puts it back at once).
+    const now = Date.now();
+    const rows = items.filter((r) => !(ui.done.get(r.id) > now)).map((r) => hatchRow(r, { afterReceipt: after }));
     const mine = [...ui.ghosts.values()].filter((g) => g.placed === key).sort((a, b) => a.index - b.index);
     for (const g of mine) rows.splice(Math.min(g.index, rows.length), 0, ghostRow(g));
     return rows;
