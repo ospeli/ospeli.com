@@ -315,3 +315,36 @@ test('cancel reasons look unlike hold reasons, and a technician\'s Ready never l
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Review round 2 (adoption lead): Start, then a hold or a cancel from More; a second tap on the same
+// spot 1.6 s later must record nothing on any request (the row keeps its tallest height).
+const pharmacyEvents = (page) => page.evaluate(async () => (await window.ospeli.core.events()).filter((e) => e.type.startsWith('pharmacy.')).map((e) => `${e.subject} ${e.type}`));
+for (const [what, list, reason] of [['hold', 'hold-reasons', 'waiting-for-supply'], ['cancel', 'cancel-reasons', 'raised-in-error']]) {
+  test(`Start, then ${what} from More, then a second tap on the same spot 1.6 s later records nothing more`, async () => {
+    const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/pharmacy' });
+    await asRole(page, 'pharmacy-technician', 'queue');
+    const row = page.locator('[data-test="queue"] li[data-state="raised"]').first();
+    const id = await row.getAttribute('data-request');
+    const mine = page.locator(`[data-test="queue"] [data-request="${id}"]`);
+    await mine.locator('[data-step="start"]').tap();
+    await page.waitForFunction((x) => document.querySelector(`[data-test="queue"] [data-request="${x}"]`)?.dataset.state === 'started', id);
+    await page.waitForTimeout(3200); // past the button's wait
+    await mine.locator('[data-test="more"] summary').tap();
+    const btn = mine.locator(`[data-test="${list}"] [data-reason="${reason}"]`);
+    await btn.scrollIntoViewIfNeeded();
+    const b = await btn.boundingBox();
+    const before = await pharmacyEvents(page);
+    await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+    await page.waitForFunction(([x, s]) => document.querySelector(`[data-test="queue"] [data-request="${x}"]`)?.dataset.state === s, [id, what === 'hold' ? 'on-hold' : 'cancelled']);
+    await page.waitForTimeout(1600);
+    // Whatever is under the finger now still belongs to this request's row: nothing slid up into its place.
+    const under = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('li')?.dataset.request || null, [b.x + b.width / 2, b.y + b.height / 2]);
+    assert.equal(under, id, 'the same row is still under the finger');
+    await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+    await page.waitForTimeout(1500);
+    const added = (await pharmacyEvents(page)).slice(before.length);
+    assert.deepEqual(added, [`${id} pharmacy.request-${what === 'hold' ? 'on-hold' : 'cancelled'}`], 'one event, on this request only');
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}

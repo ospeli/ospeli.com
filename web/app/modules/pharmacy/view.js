@@ -74,6 +74,9 @@ function runner(ctx, reload) {
 const proposals = (ctx, screen) => proposalsCard(ctx, { match: (p) => shownOn(p).includes(screen), describe: describeProposal });
 const offlineNote = () => (offline() ? h('p', { class: 'card notice ph-offline', role: 'status', 'data-test': 'offline' }, 'Not connected: the list is as last seen, and steps cannot be saved until the connection is back.') : null);
 const plannedLine = (list) => h('p', { class: 'card notice ph-planned', 'data-test': 'planned' }, (list || []).map((x) => x.text).join(' · ') || 'Stock levels and expiry: planned');
+// A row tapped on this visit keeps the tallest height it has had (an open More panel included) on
+// every tap, so nothing below it slides up under the finger when a panel closes (review round 2).
+const keepTallest = (px, id, li) => { if (li) px.set(id, Math.max(px.get(id) || 0, Math.round(li.getBoundingClientRect().height))); };
 const notFor = (text) => h('p', { class: 'card meta notice', 'data-test': 'not-for' }, text);
 
 function chipsFor(r) {
@@ -118,7 +121,7 @@ function queueScreen(ctx) {
   const hold = (e, r, section) => {
     if (!ui.home.has(r.id)) ui.home.set(r.id, section);
     ui.snap.set(r.id, r);
-    const li = e.currentTarget.closest('li'); if (li && !ui.px.has(r.id)) ui.px.set(r.id, Math.round(li.getBoundingClientRect().height));
+    keepTallest(ui.px, r.id, e.currentTarget.closest('li'));
   };
   const keepPx = (li, id) => { if (ui.px.has(id)) li.style.minHeight = `${ui.px.get(id)}px`; return li; };
   const closed = (r) => (out) => { if (out && ['collected', 'cancelled'].includes(out.state)) ui.closedNow.set(r.id, { state: out.state, atMs: Date.now() }); };
@@ -328,7 +331,7 @@ function dischargeScreen(ctx) {
     if (e.late) return h('p', { class: 'ph-hint', 'data-test': 'estimate' }, 'Taking longer than most recent requests. Estimate from recent requests, not a promise.');
     return h('p', { class: 'ph-estimate', 'data-test': 'estimate' }, `May be ready about ${e.readyByText}. Estimate from recent requests, not a promise.`);
   }
-  const hold = (e, r) => { ui.stay.add(r.id); const li = e.currentTarget.closest('li'); if (li && !ui.px.has(r.id)) ui.px.set(r.id, Math.round(li.getBoundingClientRect().height)); };
+  const hold = (e, r) => { ui.stay.add(r.id); keepTallest(ui.px, r.id, e.currentTarget.closest('li')); };
   const name = (r) => r.bedName || r.kindName;
   function rowActions(r) {
     const off = offline();

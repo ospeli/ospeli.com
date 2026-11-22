@@ -112,10 +112,13 @@ export function deriveRequests(events) {
     switch (e.type) {
       case 'pharmacy.request-started': if (r.stage === 'raised' && !r.held) move('started', 'startedAt'); break;
       case 'pharmacy.request-checked': if (r.stage === 'started' && !r.held) { move('checked', 'checkedAt'); r.recheck = false; } break;
-      case 'pharmacy.request-ready': if (r.stage === 'checked' && !r.held) move('ready', 'readyAt'); break;
+      case 'pharmacy.request-ready': if (r.stage === 'checked' && !r.held && !r.recheck) move('ready', 'readyAt'); break;
       case 'pharmacy.request-collected': if (r.stage === 'ready') move('collected', 'collectedAt'); break;
       case 'pharmacy.request-cancelled':
-        if (r.held) { r.holds.push({ from: r.holdSince, to: e.at, reason: r.holdReason }); r.held = false; }
+        // What was there before the cancel, exactly (the stage, the hold and its reason), so an undo
+        // puts it all back and a hold at Checked for stock or supply still needs a new check.
+        r.beforeCancel = { stage: r.stage, held: r.held, holdReason: r.holdReason, holdSince: r.holdSince, holds: r.holds.length, recheck: r.recheck, lastMoveAt: r.lastMoveAt };
+        if (r.held) { r.holds.push({ from: r.holdSince, to: e.at, reason: r.holdReason }); r.held = false; r.holdReason = null; r.holdSince = null; }
         r.cancelReason = CANCEL_REASONS[d.reason] ? d.reason : null;
         r.cancelledFrom = r.stage;
         move('cancelled', 'cancelledAt');
@@ -144,7 +147,14 @@ export function deriveRequests(events) {
           cancelled: [r.cancelledFrom || 'raised', 'cancelledAt'] }[d.step];
         if (!back || r.stage !== d.step || r.held) break;
         r.stage = back[0]; r[back[1]] = null; r.undone += 1;
-        if (d.step === 'cancelled') { r.cancelReason = null; r.cancelledFrom = null; }
+        if (d.step === 'cancelled') {
+          const b = r.beforeCancel;
+          if (b) {
+            r.holds.length = b.holds; // the hold never ended: it runs on from when it began
+            Object.assign(r, { held: b.held, holdReason: b.holdReason, holdSince: b.holdSince, recheck: b.recheck });
+          }
+          r.cancelReason = null; r.cancelledFrom = null; r.beforeCancel = null;
+        }
         r.lastStep = { step: 'undone', at: e.at, role: e.actorRole };
         r.lastMoveAt = e.at;
         break;

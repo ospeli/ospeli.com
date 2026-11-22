@@ -366,3 +366,81 @@ test('undo Collected and undo Cancel: within 10 minutes, people only, by a role 
   assert.equal(deriveRequests(await core.events()).get(b).stage, 'checked');
   await assert.rejects(run('ospeli_pharmacy_request_step', { requestId: b, step: 'undo' }, agent('ward-nurse', 'rx-ward-bot')), code('forbidden'));
 });
+
+// Review round 2 (domain lead): no command path from "held at Checked for a stock or supply reason"
+// reaches Ready without a new Checked. Each path starts from a fresh request held at Checked.
+test('invariant: from a hold at Checked for stock or supply, every command path refuses Ready until a new Checked (incl. cancel then undo, by the pharmacy and by the ward)', async () => {
+  const { core, run } = await site();
+  let n = 0;
+  const heldAtChecked = async (reason) => {
+    const { requestId } = await run('ospeli_pharmacy_request_raise', { wardId: 'ward-b2', kind: 'other', priority: 'routine', items: 10 + (n += 1) }, 'ward-nurse');
+    await run('ospeli_pharmacy_request_step', { requestId, step: 'start' }, 'pharmacy-technician');
+    await run('ospeli_pharmacy_request_check', { requestId }, 'pharmacist');
+    await run('ospeli_pharmacy_request_step', { requestId, step: 'hold', reason }, 'pharmacy-technician');
+    return requestId;
+  };
+  const tryAll = async (id, label) => { // every way to Ready or past it, by every role that may: all refused
+    await assert.rejects(run('ospeli_pharmacy_request_step', { requestId: id, step: 'ready' }, 'pharmacy-technician'), code('conflict'), `${label}: Ready`);
+    await assert.rejects(run('ospeli_pharmacy_request_step', { requestId: id, step: 'ready' }, 'pharmacy-manager'), code('conflict'), `${label}: Ready by the manager`);
+    await assert.rejects(run('ospeli_pharmacy_request_collect', { requestId: id }, 'ward-nurse'), code('conflict'), `${label}: Collected`);
+    const r = deriveRequests(await core.events()).get(id);
+    assert.ok(r.stage !== 'checked' || r.held, `${label}: never at Checked and free to go Ready (${r.stage}, held ${r.held})`);
+    assert.equal(r.readyAt, null, label);
+  };
+  const S = (id, step, extra = {}, role = 'pharmacy-technician') => run('ospeli_pharmacy_request_step', { requestId: id, step, ...extra }, role);
+  const cancel = (id, reason, role) => run('ospeli_pharmacy_request_cancel', { requestId: id, reason }, role);
+  const undoCancel = (id, role) => run('ospeli_pharmacy_request_cancel', { requestId: id, undo: true }, role);
+  const paths = {
+    'resume': async (id) => { await S(id, 'resume'); },
+    'pharmacy cancel, undo': async (id) => { await cancel(id, 'no-longer-needed', 'pharmacy-technician'); await undoCancel(id, 'pharmacy-technician'); },
+    'ward cancel (raised in error), undo': async (id) => { await cancel(id, 'raised-in-error', 'ward-nurse'); await undoCancel(id, 'ward-nurse'); },
+    'pharmacy cancel, undo, resume': async (id) => { await cancel(id, 'duplicate', 'pharmacist'); await undoCancel(id, 'pharmacist'); await S(id, 'resume'); },
+    'ward cancel, undo, resume': async (id) => { await cancel(id, 'discharge-postponed', 'ward-nurse'); await undoCancel(id, 'ward-nurse'); await S(id, 'resume'); },
+    'front, back, resume': async (id) => { await S(id, 'front', {}, 'pharmacy-manager'); await S(id, 'back', {}, 'pharmacy-manager'); await S(id, 'resume'); },
+    'undo while held (refused), resume': async (id) => { await assert.rejects(S(id, 'undo'), code('conflict')); await assert.rejects(run('ospeli_pharmacy_request_check', { requestId: id, undo: true }, 'pharmacist'), code('conflict')); await S(id, 'resume'); },
+    'check while held (refused), resume, undo (refused)': async (id) => { await assert.rejects(run('ospeli_pharmacy_request_check', { requestId: id }, 'pharmacist'), code('conflict')); await S(id, 'resume'); await assert.rejects(S(id, 'undo'), code('conflict')); },
+    'resume, hold again for the ward, resume': async (id) => { await S(id, 'resume'); await S(id, 'hold', { reason: 'waiting-for-ward' }); await S(id, 'resume'); },
+  };
+  for (const reason of ['not-in-stock', 'waiting-for-supply']) {
+    for (const [label, walk] of Object.entries(paths)) {
+      const id = await heldAtChecked(reason);
+      await walk(id);
+      await tryAll(id, `${reason}: ${label}`);
+      // A new Checked, and only then Ready.
+      let r = deriveRequests(await core.events()).get(id);
+      if (r.held) await S(id, 'resume');
+      r = deriveRequests(await core.events()).get(id);
+      assert.equal(r.stage, 'started', `${reason}: ${label}: back to Started for a new check`);
+      await run('ospeli_pharmacy_request_check', { requestId: id }, 'pharmacist');
+      assert.equal((await S(id, 'ready')).state, 'ready', `${reason}: ${label}: Ready after a new Checked`);
+    }
+  }
+});
+
+test('the two named cases, as the reviewer probed them: Checked, hold for stock, cancel (pharmacy, or the ward\'s "raised in error"), undo: back on hold with its reason', async () => {
+  const { core, run } = await site();
+  const cases = [['not-in-stock', 'no-longer-needed', 'pharmacy-technician'], ['waiting-for-supply', 'raised-in-error', 'ward-nurse']];
+  for (const [i, [hold, why, who]] of cases.entries()) {
+    const { requestId: id } = await run('ospeli_pharmacy_request_raise', { wardId: 'ward-c1', kind: 'other', priority: 'routine', items: 20 + i }, 'ward-nurse');
+    await run('ospeli_pharmacy_request_step', { requestId: id, step: 'start' }, 'pharmacy-technician');
+    await run('ospeli_pharmacy_request_check', { requestId: id }, 'pharmacist');
+    await run('ospeli_pharmacy_request_step', { requestId: id, step: 'hold', reason: hold }, 'pharmacy-technician');
+    await run('ospeli_pharmacy_request_cancel', { requestId: id, reason: why }, who);
+    const back = await run('ospeli_pharmacy_request_cancel', { requestId: id, undo: true }, who);
+    assert.equal(back.state, 'on-hold', 'the undo puts back exactly what was there');
+    const r = deriveRequests(await core.events()).get(id);
+    assert.deepEqual([r.held, r.holdReason, r.holds.length], [true, hold, 0], 'the same hold, still running');
+    await assert.rejects(run('ospeli_pharmacy_request_step', { requestId: id, step: 'ready' }, 'pharmacy-technician'), code('conflict'));
+    assert.equal((await run('ospeli_pharmacy_request_step', { requestId: id, step: 'resume' }, 'pharmacy-technician')).state, 'started');
+    await assert.rejects(run('ospeli_pharmacy_request_step', { requestId: id, step: 'ready' }, 'pharmacy-technician'), (e) => code('conflict')(e) && /check again/.test(e.message));
+  }
+  // The replay alone, with no command: a ready step written straight after the undo is ignored.
+  const at = (m) => new Date(Date.parse(END) - (60 - m) * MIN).toISOString();
+  const e = (m, type, data = {}) => ({ type: `pharmacy.${type}`, subject: 'rx-00800', at: at(m), actorRole: 'pharmacy-technician', data });
+  const r = deriveRequests([
+    { type: 'pharmacy.request-raised', subject: 'rx-00800', at: at(0), actorRole: 'ward-nurse', data: { wardId: 'ward-a1', kind: 'other', priority: 'routine', items: 1 } },
+    e(1, 'request-started'), e(2, 'request-checked'), e(3, 'request-on-hold', { reason: 'not-in-stock' }), e(4, 'request-cancelled', { reason: 'no-longer-needed' }),
+    e(5, 'step-undone', { step: 'cancelled' }), e(6, 'request-ready'),
+  ]).get('rx-00800');
+  assert.deepEqual([r.stage, r.held, r.holdReason, r.readyAt], ['checked', true, 'not-in-stock', null]);
+});
