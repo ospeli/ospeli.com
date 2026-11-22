@@ -7,7 +7,8 @@
 @font-face { font-family: 'Nunito'; font-weight: 800; font-style: normal; font-display: swap; src: url('fonts/nunito-latin-800-normal.woff2') format('woff2'); }
 
 :root {
-  color-scheme: light;
+  /* Issue #159: "only light" stops a phone browser repainting the app dark by itself. A designed dark theme comes with the settings menu (#160). */
+  color-scheme: only light;
   --navy: #0B2F4E;
   --sea: #0A9396;
   --sea-ink: #076467;   /* sea darkened for text and links on light backgrounds (6.6:1 on white) */
