@@ -15,7 +15,7 @@
     "does": "Checks patients in by code on a tablet, marks arrived, seen or no-show."
    },
    {
-    "role": "Booking clerk",
+    "role": "Appointments scheduler",
     "does": "Works the referral list, books slots from templates, sends reminders, rebooks cancellations."
    },
    {
@@ -322,7 +322,7 @@
     "does": "Matches bed requests to ready beds and proposes moves for the ward to accept."
    },
    {
-    "role": "Unit clerk",
+    "role": "Ward or unit clerk",
     "does": "Records admissions, transfers and discharges with event times."
    },
    {
@@ -620,15 +620,15 @@
   "withOspeli": "Requests, specimens and scans carry timestamps at each handoff. Wards see status without phoning, downtime is posted on the board, and turnaround is measured per test and step.",
   "people": [
    {
-    "role": "Unit clerk",
+    "role": "Ward or unit clerk",
     "does": "Sees request status by patient code: collected, received, done, reported."
    },
    {
-    "role": "Laboratory scientist",
+    "role": "Laboratory bench staff",
     "does": "Scans specimens in, records rejections and reasons, sees the analyser queue."
    },
    {
-    "role": "Radiographer",
+    "role": "Imaging staff",
     "does": "Sees the scan list, marks scanned and sent for report on a phone."
    },
    {
@@ -756,7 +756,7 @@
    "B4",
    "B5"
   ],
-  "notFor": "Does not interpret results, decide tests or prioritise patients clinically. Never times individual scientists or radiographers."
+  "notFor": "Does not interpret results, decide tests or prioritise patients clinically. Never times individual laboratory or imaging staff."
  },
  {
   "id": "A6",
@@ -1477,7 +1477,7 @@
   "withOspeli": "Any room or plant item has a QR label for fault reports. One work-order queue covers building and plant jobs. Utility checks and outages are logged, so trends and gaps show early.",
   "people": [
    {
-    "role": "Unit clerk",
+    "role": "Ward or unit clerk",
     "does": "Scans a room QR label to report a leak, light or door fault."
    },
    {
@@ -2489,7 +2489,7 @@
   "withOspeli": "Each policy has an owner, version and review date; staff acknowledge changes by phone. Audits run on a schedule. Standards link to evidence, so readiness is visible all year.",
   "people": [
    {
-    "role": "Unit clerk",
+    "role": "Ward or unit clerk",
     "does": "Finds the current version of any policy from a phone in seconds."
    },
    {

@@ -94,11 +94,11 @@ test('what each role may do: a role with no rights sees no action button and one
     await asRole(page, role);
     assert.equal(await page.locator('.dx [data-cmd]').count(), 0, `${role} sees no action button`);
     assert.equal(await page.locator('.dx [data-test="mark-down"], .dx [data-test="receive"], .dx [data-test="guide-switch"]').count(), 0);
-    assert.match(await page.locator('[data-test="read-only"]').textContent(), /Requests are recorded by Unit clerk/);
+    assert.match(await page.locator('[data-test="read-only"]').textContent(), /Requests are recorded by Ward or unit clerk/);
   }
   await asRole(page, 'ward-nurse');
   assert.equal(await page.locator('[data-test="receive"]').count(), 0);
-  assert.match(await page.locator('[data-test="eq-read-only"]').textContent(), /Analysers are marked down and back by Laboratory scientist/);
+  assert.match(await page.locator('[data-test="eq-read-only"]').textContent(), /Analysers are marked down and back by Laboratory bench staff/);
   await asRole(page, 'radiographer');
   assert.equal(await page.locator('[data-test="equipment"][data-asset="asset-analyser-1"] [data-test="mark-down"]').count(), 0, 'a radiographer marks scanners only');
   assert.equal(await page.locator('[data-test="equipment"][data-asset="asset-xray-1"] [data-test="mark-down"]').count(), 1);

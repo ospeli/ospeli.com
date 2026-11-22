@@ -239,7 +239,7 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
       <div id="decide"></div>
     </aside>
   </div>
-  <p class="foot">Everything here is invented: Example General Hospital, its wards, patient codes, samples, scans and times. Patients appear only as anonymous codes. Ospeli tracks requests, samples and turnaround; it does not show or interpret results, choose tests or put patients in clinical order, and it never times individual scientists or radiographers. Turnaround times and other limits are example settings, not a standard. CT is computed tomography; MRI is magnetic resonance imaging. This page is a design sketch. A first version of this area now runs in the app with synthetic example data: <a href="../../app/#/diagnostics">open Diagnostics in the app</a> (each laboratory request followed from asked to collected, received and result released, rejections with a picked reason, and equipment up or down). Planned, not built yet: imaging lists and slots. <a href="../../areas/diagnostics-imaging-lab/">About this area</a> · <a href="../">All demos</a></p>
+  <p class="foot">Everything here is invented: Example General Hospital, its wards, patient codes, samples, scans and times. Patients appear only as anonymous codes. Ospeli tracks requests, samples and turnaround; it does not show or interpret results, choose tests or put patients in clinical order, and it never times individual laboratory or imaging staff. Turnaround times and other limits are example settings, not a standard. CT is computed tomography; MRI is magnetic resonance imaging. This page is a design sketch. A first version of this area now runs in the app with synthetic example data: <a href="../../app/#/diagnostics">open Diagnostics in the app</a> (each laboratory request followed from asked to collected, received and result released, rejections with a picked reason, and equipment up or down). Planned, not built yet: imaging lists and slots. <a href="../../areas/diagnostics-imaging-lab/">About this area</a> · <a href="../">All demos</a></p>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -257,7 +257,7 @@ function src(k) { return k === OP ? 'Outpatient clinic' : WARDS[k]; }
 var GROUPS = { FBC: 'Blood count', CHEM: 'Chemistry', CLOT: 'Clotting', URINE: 'Urine' };
 var GROUP_KEYS = Object.keys(GROUPS);
 // The fixed list of rejection reasons (an organisation would set its own).
-var REASONS = [['label', 'Unlabelled or label does not match the form'], ['haem', 'Haemolysed (sample damaged)'], ['clot', 'Clotted'], ['vol', 'Not enough sample'], ['tube', 'Wrong tube or container'], ['leak', 'Leaking or broken container'], ['old', 'Too old when it arrived']];
+var REASONS = [['label', 'Unlabelled or label does not match the form'], ['haem', 'Haemolysed or hemolyzed (sample damaged)'], ['clot', 'Clotted'], ['vol', 'Not enough sample'], ['tube', 'Wrong tube or container'], ['leak', 'Leaking or broken container'], ['old', 'Too old when it arrived']];
 var REASON = {}; REASONS.forEach(function (r) { REASON[r[0]] = r[1]; });
 var MODS = { XR: { label: 'X-ray', every: 15 }, CT: { label: 'CT', every: 20 }, MR: { label: 'MRI', every: 30 }, US: { label: 'Ultrasound', every: 20 } };
 var MOD_KEYS = Object.keys(MODS);
@@ -575,7 +575,7 @@ function toggleEquip(id) {
 
 // ---------- Render ----------
 var HINTS = {
-  ward: 'A unit clerk\'s or nurse\'s phone. Today\'s samples and scans for your ward, what stage each is at and where it is stuck. No phoning round.',
+  ward: 'A ward or unit clerk\'s or nurse\'s phone. Today\'s samples and scans for your ward, what stage each is at and where it is stuck. No phoning round.',
   lab: 'Lab reception. Receive samples as they arrive, or reject one with a reason from a fixed list. See what is still on the way and which analysers are up.',
   imaging: 'Imaging booking. The waiting list by type of scan and days waiting, today\'s slots, scans waiting for a report, and which scanners are up.',
   manager: 'The diagnostics manager. Turnaround by test and by step, rejections by reason and ward, equipment downtime and the backlog by type of scan.'

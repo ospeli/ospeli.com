@@ -14401,7 +14401,7 @@
               "eye",
               "antenatal"
             ],
-            "description": "The service the session is held for, picked from the list: general-medicine (General medicine clinic), diabetes (Diabetes clinic), eye (Eye clinic), antenatal (Antenatal clinic). Needed for a type of session that lists services (ospeli_slots_types), and only for those. With a templateId, leave it out: the template gives it."
+            "description": "The service the session is held for, picked from the list: general-medicine (General medicine clinic), diabetes (Diabetes clinic), eye (Eye clinic), antenatal (Pregnancy care clinic). Needed for a type of session that lists services (ospeli_slots_types), and only for those. With a templateId, leave it out: the template gives it."
           },
           "placeId": {
             "type": "string",
@@ -15514,7 +15514,7 @@
               "eye",
               "antenatal"
             ],
-            "description": "The service the session is held for, picked from the list: general-medicine (General medicine clinic), diabetes (Diabetes clinic), eye (Eye clinic), antenatal (Antenatal clinic). Needed for a type of session that lists services (ospeli_slots_types), and only for those. With a templateId, leave it out: the template gives it."
+            "description": "The service the session is held for, picked from the list: general-medicine (General medicine clinic), diabetes (Diabetes clinic), eye (Eye clinic), antenatal (Pregnancy care clinic). Needed for a type of session that lists services (ospeli_slots_types), and only for those. With a templateId, leave it out: the template gives it."
           },
           "placeId": {
             "type": "string",
@@ -16486,7 +16486,7 @@
               "eye",
               "antenatal"
             ],
-            "description": "The service, picked from the site's list: general-medicine (General medicine clinic), diabetes (Diabetes clinic), eye (Eye clinic), antenatal (Antenatal clinic). Each kind of episode has its own list (ospeli_codes_kinds)."
+            "description": "The service, picked from the site's list: general-medicine (General medicine clinic), diabetes (Diabetes clinic), eye (Eye clinic), antenatal (Pregnancy care clinic). Each kind of episode has its own list (ospeli_codes_kinds)."
           },
           "source": {
             "type": "string",
@@ -24141,7 +24141,7 @@
     },
     {
       "name": "ospeli_diagnostics_specimen_receive",
-      "summary": "At the lab hatch: mark a specimen received at the lab (outcome \"received\", the time of the call), or rejected with a reason picked by the lab's own acceptance criteria (outcome \"rejected\"). A specimen may be received with no collection recorded; it is counted as \"received with no collection time\". A rejected request is final: a recollection is a new request. A specimen already received may still be rejected by a laboratory scientist (for example clotted or haemolysed, found later). Receiving twice is refused as already saved. Ospeli records the reason a person picked; it never decides whether a sample is acceptable, and \"received\" is not an identity check. An agent's call becomes a proposal for a person.",
+      "summary": "At the lab hatch: mark a specimen received at the lab (outcome \"received\", the time of the call), or rejected with a reason picked by the lab's own acceptance criteria (outcome \"rejected\"). A specimen may be received with no collection recorded; it is counted as \"received with no collection time\". A rejected request is final: a recollection is a new request. A specimen already received may still be rejected by laboratory bench staff (for example clotted or haemolysed (hemolyzed), found later). Receiving twice is refused as already saved. Ospeli records the reason a person picked; it never decides whether a sample is acceptable, and \"received\" is not an identity check. An agent's call becomes a proposal for a person.",
       "kind": "write",
       "roles": [
         "lab-reception",
@@ -24188,7 +24188,7 @@
               "duplicate",
               "other"
             ],
-            "description": "rejected only: unlabelled (Unlabelled), label-mismatch (Label does not match request), wrong-container (Wrong container or tube), too-little (Too little), clotted (Clotted), haemolysed (Haemolysed), leaked (Leaked or broken), too-old (Too old on arrival), not-sent-as-required (Not sent as required (for example temperature or protection from light)), no-request (No request with it), duplicate (Duplicate), other (Other)."
+            "description": "rejected only: unlabelled (Unlabelled), label-mismatch (Label does not match request), wrong-container (Wrong container or tube), too-little (Too little), clotted (Clotted), haemolysed (Haemolysed (hemolyzed)), leaked (Leaked or broken), too-old (Too old on arrival), not-sent-as-required (Not sent as required (for example temperature or protection from light)), no-request (No request with it), duplicate (Duplicate), other (Other)."
           }
         }
       },
@@ -24246,7 +24246,7 @@
     },
     {
       "name": "ospeli_diagnostics_specimen_undo",
-      "summary": "Undo a receipt, a rejection or a result release tapped by mistake, within 5 minutes (an example setting; the screen offers it for about 10 seconds after the tap). An undone receipt goes back on the way, an undone release back to waiting for its result (and out of the turnaround). Only a laboratory scientist undoes a release. The wrong step and the undo both stay in the log; no time is edited in place. Not for a rejection that already has a recollection. People only.",
+      "summary": "Undo a receipt, a rejection or a result release tapped by mistake, within 5 minutes (an example setting; the screen offers it for about 10 seconds after the tap). An undone receipt goes back on the way, an undone release back to waiting for its result (and out of the turnaround). Only laboratory bench staff undo a release. The wrong step and the undo both stay in the log; no time is edited in place. Not for a rejection that already has a recollection. People only.",
       "kind": "write",
       "roles": [
         "lab-reception",
@@ -24583,7 +24583,7 @@
     },
     {
       "name": "ospeli_diagnostics_equipment_set",
-      "summary": "Mark an analyser or scanner down, partly down (some test groups off; send testGroups) or back working (\"up\"). Down needs a reason and a backup route, both picked; it may link the open work order for it (workOrderId) and an estimate of when it is back (expectedBackHours: 1, 2, 4, 8, 24). Analysers are marked by the laboratory scientist or the diagnostics manager; scanners by the radiographer or the diagnostics manager. It writes no work order: a fault is reported by a facilities technician or the operations manager. Nothing is sent outside Ospeli. An agent's call becomes a proposal for a person.",
+      "summary": "Mark an analyser or scanner down, partly down (some test groups off; send testGroups) or back working (\"up\"). Down needs a reason and a backup route, both picked; it may link the open work order for it (workOrderId) and an estimate of when it is back (expectedBackHours: 1, 2, 4, 8, 24). Analysers are marked by laboratory bench staff or the diagnostics manager; scanners by imaging staff or the diagnostics manager. It writes no work order: a fault is reported by a facilities technician or the operations manager. Nothing is sent outside Ospeli. An agent's call becomes a proposal for a person.",
       "kind": "write",
       "roles": [
         "lab-scientist",

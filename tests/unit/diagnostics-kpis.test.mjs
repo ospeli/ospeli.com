@@ -163,7 +163,7 @@ test(`guide rule 3: ${REVIEW_COUNT} rejections for one reason from one area in s
   const more = [...evs, ...day('10', 'dx-00006', 'ward-a3', 'haemolysed')];
   const s = ruleRejectionReview(deriveRequests(more), { now, nameOf: () => 'Ward A3' });
   assert.deepEqual(s.map((x) => [x.sourceId, x.reason, x.count]), [['ward-a3', 'haemolysed', 3]]);
-  assert.match(s[0].text, /Suggest a short review with Ward A3: "Haemolysed" 3 times in 7 days\./);
+  assert.match(s[0].text, /Suggest a short review with Ward A3: "Haemolysed \(hemolyzed\)" 3 times in 7 days\./);
   assert.match(s[0].basis, /plain count/);
 });
 

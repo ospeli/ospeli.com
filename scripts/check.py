@@ -346,7 +346,17 @@ OLD_WORDS = [(re.compile(r"\bbed managers?\b", re.I), "Bed manager", "Patient fl
              (re.compile(r"\b[Cc]are homes?\b"), "care home", "residential or nursing care"),
              (re.compile(r"\b(?:off|on) the road\b", re.I), "off the road / on the road", "out of service / in service"),
              (re.compile(r"\bNFPA\b"), "NFPA (one country's standard as the only one named)", "a national or insurer's standard for standby power"),
-             (re.compile(r"\bMonday[- ]to[- ]Sunday\b", re.I), "Monday to Sunday", "Every week, with the week's first day said once")]
+             (re.compile(r"\bMonday[- ]to[- ]Sunday\b", re.I), "Monday to Sunday", "Every week, with the week's first day said once"),
+             # Issue #164: staff titles and two clinical words from the three newest modules. The role
+             # ids ('radiographer', 'lab-scientist', 'unit-clerk', 'booking-clerk') and the stored ids
+             # 'antenatal' and 'haemolysed' stay, so stored events still load; ids are never shown.
+             (re.compile(r"\b[Ll]aboratory reception officers?\b"), "Laboratory reception officer", "Laboratory reception"),
+             (re.compile(r"\b[Ll]aboratory scientists?\b"), "Laboratory scientist", "Laboratory bench staff"),
+             (re.compile(r"\bRadiographers?\b|\b(?:the|a|and|or|by|of) radiographers?\b"), "Radiographer", "Imaging staff"),
+             (re.compile(r"(?<![Ww]ard or )\b[Uu]nit clerks?\b"), "Unit clerk (alone)", "Ward or unit clerk"),
+             (re.compile(r"\b[Bb]ooking clerks?\b"), "Booking clerk", "Appointments scheduler"),
+             (re.compile(r"\bAntenatal\b|\b(?:the|an|from) antenatal\b"), "Antenatal (alone)", "Pregnancy care"),
+             (re.compile(r"(?:\bHaemolysed|\b(?:or|and|is|was|be|are) haemolysed)\b(?! \(hemolyzed\)| or hemolyzed)"), "Haemolysed (alone)", "Haemolysed (hemolyzed)")]
 
 def js_strings(src):
     """The string and template literals of a script, joined; comments and code are left out."""

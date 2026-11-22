@@ -35,7 +35,7 @@ export const SERVICES = {
   'general-medicine': 'General medicine clinic',
   diabetes: 'Diabetes clinic',
   eye: 'Eye clinic',
-  antenatal: 'Antenatal clinic',
+  antenatal: 'Pregnancy care clinic',
 };
 
 export const SESSION_TYPES = [

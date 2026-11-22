@@ -583,7 +583,7 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_diagnostics_specimen_receive',
-    summary: `At the lab hatch: mark a specimen received at the lab (outcome "received", the time of the call), or rejected with a reason picked by the lab's own acceptance criteria (outcome "rejected"). A specimen may be received with no collection recorded; it is counted as "received with no collection time". A rejected request is final: a recollection is a new request. A specimen already received may still be rejected by a laboratory scientist (for example clotted or haemolysed, found later). Receiving twice is refused as already saved. Ospeli records the reason a person picked; it never decides whether a sample is acceptable, and "received" is not an identity check. An agent's call becomes a proposal for a person.`,
+    summary: `At the lab hatch: mark a specimen received at the lab (outcome "received", the time of the call), or rejected with a reason picked by the lab's own acceptance criteria (outcome "rejected"). A specimen may be received with no collection recorded; it is counted as "received with no collection time". A rejected request is final: a recollection is a new request. A specimen already received may still be rejected by laboratory bench staff (for example clotted or haemolysed (hemolyzed), found later). Receiving twice is refused as already saved. Ospeli records the reason a person picked; it never decides whether a sample is acceptable, and "received" is not an identity check. An agent's call becomes a proposal for a person.`,
     kind: 'write', roles: LAB, approval: true,
     input: { type: 'object', additionalProperties: false, required: ['requestId', 'outcome'], properties: {
       requestId: REQ, outcome: { type: 'string', enum: ['received', 'rejected'], description: 'received or rejected.' },
@@ -608,7 +608,7 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_diagnostics_specimen_undo',
-    summary: `Undo a receipt, a rejection or a result release tapped by mistake, within ${UNDO_MINUTES} minutes (an example setting; the screen offers it for about 10 seconds after the tap). An undone receipt goes back on the way, an undone release back to waiting for its result (and out of the turnaround). Only a laboratory scientist undoes a release. The wrong step and the undo both stay in the log; no time is edited in place. Not for a rejection that already has a recollection. People only.`,
+    summary: `Undo a receipt, a rejection or a result release tapped by mistake, within ${UNDO_MINUTES} minutes (an example setting; the screen offers it for about 10 seconds after the tap). An undone receipt goes back on the way, an undone release back to waiting for its result (and out of the turnaround). Only laboratory bench staff undo a release. The wrong step and the undo both stay in the log; no time is edited in place. Not for a rejection that already has a recollection. People only.`,
     kind: 'write', roles: LAB, approval: true, agents: false,
     input: { type: 'object', additionalProperties: false, required: ['requestId', 'reason'], properties: {
       requestId: REQ, reason: { type: 'string', enum: Object.keys(UNDO_REASONS), description: `${Object.entries(UNDO_REASONS).map(([k, v]) => `${k} (${v})`).join(', ')}.` } } },
@@ -682,7 +682,7 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_diagnostics_equipment_set',
-    summary: `Mark an analyser or scanner down, partly down (some test groups off; send testGroups) or back working ("up"). Down needs a reason and a backup route, both picked; it may link the open work order for it (workOrderId) and an estimate of when it is back (expectedBackHours: ${EXPECTED_HOURS.join(', ')}). Analysers are marked by the laboratory scientist or the diagnostics manager; scanners by the radiographer or the diagnostics manager. It writes no work order: a fault is reported by a facilities technician or the operations manager. Nothing is sent outside Ospeli. An agent's call becomes a proposal for a person.`,
+    summary: `Mark an analyser or scanner down, partly down (some test groups off; send testGroups) or back working ("up"). Down needs a reason and a backup route, both picked; it may link the open work order for it (workOrderId) and an estimate of when it is back (expectedBackHours: ${EXPECTED_HOURS.join(', ')}). Analysers are marked by laboratory bench staff or the diagnostics manager; scanners by imaging staff or the diagnostics manager. It writes no work order: a fault is reported by a facilities technician or the operations manager. Nothing is sent outside Ospeli. An agent's call becomes a proposal for a person.`,
     kind: 'write', roles: EQUIPMENT_ROLES, approval: true,
     input: { type: 'object', additionalProperties: false, required: ['assetId', 'state'], properties: {
       assetId: { ...ID, description: 'The analyser or scanner, for example asset-analyser-1 or asset-xray-1.' },

@@ -28,7 +28,7 @@ export const REJECT_REASONS = {
   'wrong-container': 'Wrong container or tube',
   'too-little': 'Too little',
   clotted: 'Clotted',
-  haemolysed: 'Haemolysed',
+  haemolysed: 'Haemolysed (hemolyzed)',
   leaked: 'Leaked or broken',
   'too-old': 'Too old on arrival',
   'not-sent-as-required': 'Not sent as required (for example temperature or protection from light)',

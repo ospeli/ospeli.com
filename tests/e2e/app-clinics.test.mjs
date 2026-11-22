@@ -373,7 +373,7 @@ test('a role with no rights sees the queue and the day with no action buttons, a
   await asRole(page, 'coo', 'referrals');
   await page.waitForSelector('[data-test="waiting"]');
   assert.equal(await page.locator('.cl [data-cmd]').count(), 0, 'no booking buttons');
-  assert.match(await page.locator('[data-test="read-only"]').textContent(), /Booking clerk, Outpatient manager/);
+  assert.match(await page.locator('[data-test="read-only"]').textContent(), /Appointments scheduler, Outpatient manager/);
   await asRole(page, 'clinic-nurse', 'summary');
   assert.equal(await page.locator('.cl [data-cmd="ospeli_slots_session_change"], .cl [data-cmd="ospeli_clinics_guide_set"]').count(), 0);
   await asRole(page, 'booking-clerk', 'templates');

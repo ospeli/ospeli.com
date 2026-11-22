@@ -132,7 +132,7 @@ test('rejection: at the hatch with a picked reason; final; a recollection is a n
   await assert.rejects(run('ospeli_diagnostics_request_record', { sourceId: 'ward-a2', testGroup: 'chemistry', urgency: 'routine', recollectionOf: b, again: true }, 'unit-clerk'), code('conflict'), 'only a rejected request is recollected');
   const list = (await run('ospeli_diagnostics_requests_list', { sourceId: 'ward-a2' }, 'unit-clerk')).requests;
   assert.deepEqual([list.find((r) => r.id === a).recollectedBy, list.find((r) => r.id === b).recollectionOf], [b, a], 'the tracker shows the two linked');
-  assert.equal(list.find((r) => r.id === a).rejectReasonName, 'Haemolysed');
+  assert.equal(list.find((r) => r.id === a).rejectReasonName, 'Haemolysed (hemolyzed)');
   // After receipt: only a laboratory scientist rejects.
   advance(1);
   const c = await newRequest(run);
