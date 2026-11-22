@@ -23045,8 +23045,19 @@
                   "type": "string"
                 },
                 "minutesInStep": {
-                  "type": "integer",
-                  "description": "Minutes in the current step (to now while open)."
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Open requests: minutes in the current step, to now. null once finished (released, rejected or cancelled)."
+                },
+                "stepAt": {
+                  "type": "string",
+                  "description": "When the current step happened, on the site clock: \"08:35\" today, \"Wed 18 Nov, 23:10\" on another day."
+                },
+                "mayUndoCollect": {
+                  "type": "boolean",
+                  "description": "Collected, not yet at the lab, recorded in the last 5 minutes: may be undone with ospeli_diagnostics_collect_undo."
                 },
                 "minutesSinceCollection": {
                   "type": [
@@ -23085,7 +23096,7 @@
                 },
                 "clocks": {
                   "type": "object",
-                  "description": "Site clock (HH:MM) of each step, null until then."
+                  "description": "Site clock of each step (\"08:35\" today, \"Wed 18 Nov, 23:10\" on another day), null until then."
                 },
                 "roles": {
                   "type": "object",
@@ -23295,8 +23306,19 @@
                   "type": "string"
                 },
                 "minutesInStep": {
-                  "type": "integer",
-                  "description": "Minutes in the current step (to now while open)."
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Open requests: minutes in the current step, to now. null once finished (released, rejected or cancelled)."
+                },
+                "stepAt": {
+                  "type": "string",
+                  "description": "When the current step happened, on the site clock: \"08:35\" today, \"Wed 18 Nov, 23:10\" on another day."
+                },
+                "mayUndoCollect": {
+                  "type": "boolean",
+                  "description": "Collected, not yet at the lab, recorded in the last 5 minutes: may be undone with ospeli_diagnostics_collect_undo."
                 },
                 "minutesSinceCollection": {
                   "type": [
@@ -23335,7 +23357,7 @@
                 },
                 "clocks": {
                   "type": "object",
-                  "description": "Site clock (HH:MM) of each step, null until then."
+                  "description": "Site clock of each step (\"08:35\" today, \"Wed 18 Nov, 23:10\" on another day), null until then."
                 },
                 "roles": {
                   "type": "object",
@@ -23418,8 +23440,19 @@
                   "type": "string"
                 },
                 "minutesInStep": {
-                  "type": "integer",
-                  "description": "Minutes in the current step (to now while open)."
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Open requests: minutes in the current step, to now. null once finished (released, rejected or cancelled)."
+                },
+                "stepAt": {
+                  "type": "string",
+                  "description": "When the current step happened, on the site clock: \"08:35\" today, \"Wed 18 Nov, 23:10\" on another day."
+                },
+                "mayUndoCollect": {
+                  "type": "boolean",
+                  "description": "Collected, not yet at the lab, recorded in the last 5 minutes: may be undone with ospeli_diagnostics_collect_undo."
                 },
                 "minutesSinceCollection": {
                   "type": [
@@ -23458,7 +23491,7 @@
                 },
                 "clocks": {
                   "type": "object",
-                  "description": "Site clock (HH:MM) of each step, null until then."
+                  "description": "Site clock of each step (\"08:35\" today, \"Wed 18 Nov, 23:10\" on another day), null until then."
                 },
                 "roles": {
                   "type": "object",
@@ -23534,8 +23567,19 @@
                   "type": "string"
                 },
                 "minutesInStep": {
-                  "type": "integer",
-                  "description": "Minutes in the current step (to now while open)."
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Open requests: minutes in the current step, to now. null once finished (released, rejected or cancelled)."
+                },
+                "stepAt": {
+                  "type": "string",
+                  "description": "When the current step happened, on the site clock: \"08:35\" today, \"Wed 18 Nov, 23:10\" on another day."
+                },
+                "mayUndoCollect": {
+                  "type": "boolean",
+                  "description": "Collected, not yet at the lab, recorded in the last 5 minutes: may be undone with ospeli_diagnostics_collect_undo."
                 },
                 "minutesSinceCollection": {
                   "type": [
@@ -23574,7 +23618,7 @@
                 },
                 "clocks": {
                   "type": "object",
-                  "description": "Site clock (HH:MM) of each step, null until then."
+                  "description": "Site clock of each step (\"08:35\" today, \"Wed 18 Nov, 23:10\" on another day), null until then."
                 },
                 "roles": {
                   "type": "object",
@@ -23786,6 +23830,10 @@
             "format": "date-time",
             "maxLength": 40
           },
+          "clock": {
+            "type": "string",
+            "description": "The time it was taken, on the site clock, HH:MM."
+          },
           "events": {
             "type": "array",
             "items": {
@@ -23804,6 +23852,78 @@
           "requestId": "dx-99999"
         },
         "needs": "A request not collected yet: ospeli_diagnostics_request_record makes one, and ospeli_diagnostics_requests_list with stage \"requested\" lists them with their ids."
+      }
+    },
+    {
+      "name": "ospeli_diagnostics_collect_undo",
+      "summary": "Undo a \"Collected\" marked by mistake on the ward, within 5 minutes of recording it (an example setting) and before the lab received the specimen. The request goes back to \"Not collected\". Both events stay in the log; no time is edited in place. People only.",
+      "kind": "write",
+      "roles": [
+        "unit-clerk",
+        "ward-nurse",
+        "ae-nic"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "requestId",
+          "reason"
+        ],
+        "properties": {
+          "requestId": {
+            "type": "string",
+            "pattern": "^dx-[0-9]{5,}$",
+            "maxLength": 20,
+            "description": "A request id, for example dx-00012. ospeli_diagnostics_requests_list lists them."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "wrong-request",
+              "not-taken"
+            ],
+            "description": "Why: wrong-request (Marked on the wrong request), not-taken (Specimen not taken yet)."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "proposed"
+            ]
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            },
+            "description": "Sequence numbers of the events written."
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "requestId": "dx-99999",
+          "reason": "wrong-request"
+        },
+        "needs": "A request marked collected in the last few minutes and not yet received: ospeli_diagnostics_request_record then ospeli_diagnostics_specimen_collect make one."
       }
     },
     {
@@ -23913,7 +24033,7 @@
     },
     {
       "name": "ospeli_diagnostics_specimen_undo",
-      "summary": "Undo a receipt or a rejection tapped by mistake, within 5 minutes (an example setting; the screen offers it for about 10 seconds after the tap). The wrong step and the undo both stay in the log; no time is edited in place. Not for a rejection that already has a recollection, nor after the result was released. People only.",
+      "summary": "Undo a receipt, a rejection or a result release tapped by mistake, within 5 minutes (an example setting; the screen offers it for about 10 seconds after the tap). An undone receipt goes back on the way, an undone release back to waiting for its result (and out of the turnaround). Only a laboratory scientist undoes a release. The wrong step and the undo both stay in the log; no time is edited in place. Not for a rejection that already has a recollection. People only.",
       "kind": "write",
       "roles": [
         "lab-reception",
@@ -24515,7 +24635,11 @@
                 },
                 "byGroup": {
                   "type": "array",
-                  "description": "Turnaround by test group, urgent and routine apart, each with median, p90 and n."
+                  "description": "Turnaround by test group, urgent and routine apart, each with median, p90 and n: the figures to read. Blood culture is its own row only (first report, not final)."
+                },
+                "blended": {
+                  "type": "object",
+                  "description": "Turnaround only: one median over every test group except blood culture, urgent and routine together, with its label. Not comparable between weeks; never the headline."
                 },
                 "byReason": {
                   "type": "array"

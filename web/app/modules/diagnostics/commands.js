@@ -25,7 +25,7 @@ import {
   REVIEW_COUNT, REVIEW_DAYS, MIN_AREA, UNDO_MINUTES, AGAIN_MINUTES, SCHEDULED_HOURS_PER_DAY, EXPECTED_HOURS, STAGES, RELEASED_DEFINITION, EQUIPMENT_KINDS, EQUIPMENT_STATES,
   REQUEST_ID, REQUIRED_STEPS, GUIDE_RULES, isEquipment, nextRequestId, codeParts, codeLabel, deriveRequests, isOpen, noCollection, enteredLate, minutesInStep,
   minutesSinceCollection, deriveEquipment, groupsOff, guideOn, labTurnaround, rejectionRate, equipmentAvailability, completeness, missingSteps,
-  ruleNotArrived, ruleEquipmentDown, ruleRejectionReview, localStartOfDay, clockText, localHour, whenText,
+  ruleNotArrived, ruleEquipmentDown, ruleRejectionReview, localStartOfDay, clockText, localHour, whenText, OWN_ROW_GROUPS,
 } from './logic.js';
 
 export const id = 'diagnostics';
@@ -41,10 +41,10 @@ const MANAGER = ['diagnostics-manager'];
 const NO_TARGET = 'No target set: track the trend. A target, if a site sets one, is an example setting, not a standard.';
 export const KPIS = [
   { id: 'lab-turnaround', name: 'Laboratory turnaround time', unit: 'minutes',
-    definition: 'Minutes between "Received at lab" and "Result released", median and 90th percentile (nearest rank), for requests whose result was released in the period; by test group, with urgent and routine shown apart (urgency as set by the requester). Received is the tap at the lab hatch; released is the time the lab released the result. Recorded times are never used in place of these.',
+    definition: 'Minutes between "Received at lab" and "Result released", for requests whose result was released in the period, shown for each test group with urgent and routine apart (urgency as set by the requester): the median, and the time 9 in 10 were released within (90th percentile, nearest rank), each with how many results. Received is the tap at the lab hatch; released is the time the lab released the result. There is no headline figure: one figure over every test group and urgency moves when the mix of tests changes, not when the service does. Where one is shown, it is labelled as all test groups and urgencies together, leaves out blood culture, and is not comparable between weeks. Blood culture is reported over days (a first report, then a final one): its row is the time of the first release recorded, never part of a figure across test groups.',
     counts: 'Requests with a result released in the period that were received at the lab first.',
     outOf: 'None (a median and a percentile, each shown with n).',
-    leavesOut: 'Rejected and cancelled requests (they never reach "Result released"); requests not released yet. Data completeness and the count of requests received with no collection time are shown beside it.',
+    leavesOut: 'Rejected and cancelled requests (they never reach "Result released"); requests not released yet; releases undone. Blood culture from any figure across test groups. Data completeness and the count of requests received with no collection time are shown beside it.',
     source: 'local definition (start and end points as set out in Hawkins RC. Laboratory turnaround time. Clin Biochem Rev 2007;28(4):179-94, PMID 18392122; its suggested goal is not adopted)', target: null, targetText: NO_TARGET },
   { id: 'specimen-rejection-rate', name: 'Specimen rejection rate', unit: '%',
     definition: 'Specimens rejected, divided by specimens that reached the lab (received plus rejected) in the period, by reason and by source area. A specimen rejected after it was received (for example found by a scientist) counts as rejected, not received. A recollection is a new specimen and counts once on its own.',
@@ -89,7 +89,7 @@ async function siteInfo(core) {
   const isWard = (x) => byId.get(x)?.type === 'ward';
   return { byId, offsetMinutes, equipment, sources, sourceIds, nameOf, isWard, beds: all.filter((e) => e.type === 'bed') };
 }
-const OWN = ['diagnostics.request-made', 'diagnostics.specimen-collected', 'diagnostics.specimen-received', 'diagnostics.specimen-rejected', 'diagnostics.specimen-undone',
+const OWN = ['diagnostics.request-made', 'diagnostics.specimen-collected', 'diagnostics.collection-undone', 'diagnostics.specimen-received', 'diagnostics.specimen-rejected', 'diagnostics.specimen-undone',
   'diagnostics.result-validated', 'diagnostics.request-cancelled', 'diagnostics.equipment-down', 'diagnostics.equipment-up', 'diagnostics.guide-set'];
 const WO_TYPES = ['asset.fault-reported', 'workorder.assigned', 'workorder.started', 'workorder.completed'];
 const own = (core) => core.events({ type: OWN });
@@ -103,15 +103,16 @@ function requestOut(r, info, now, { notArrived = new Set(), short = false } = {}
   const off = info.offsetMinutes;
   const base = { id: r.id, code: codeLabel(r), codeLead: p.lead, codeDigits: p.digits, sourceId: r.sourceId, sourceName: info.nameOf(r.sourceId),
     testGroup: r.testGroup, testGroupName: TEST_GROUPS[r.testGroup], urgency: r.urgency, urgencyName: URGENCIES[r.urgency], state: r.state, stage: STAGES[r.state],
-    minutesInStep: minutesInStep(r, now), minutesSinceCollection: r.state === 'collected' ? minutesSinceCollection(r, now) : null, notArrived: notArrived.has(r.id) };
+    minutesInStep: isOpen(r) ? minutesInStep(r, now) : null, stepAt: whenText(r.lastStepAt, info.offsetMinutes, now), minutesSinceCollection: r.state === 'collected' ? minutesSinceCollection(r, now) : null, notArrived: notArrived.has(r.id) };
   if (short) return base;
   const since = Date.parse(r.lastStepAt);
   return { ...base, encounter: r.encounter, madeAt: r.madeAt, collectedAt: r.collectedAt, collectedRecordedAt: r.collectedRecordedAt, enteredLate: enteredLate(r),
     receivedAt: r.receivedAt, rejectedAt: r.rejectedAt, rejectReason: r.rejectReason, rejectReasonName: r.rejectReason ? REJECT_REASONS[r.rejectReason] : null, rejectedAfterReceipt: r.rejectedAfterReceipt,
     releasedAt: r.releasedAt, cancelledAt: r.cancelledAt, cancelReason: r.cancelReason, cancelReasonName: r.cancelReason ? CANCEL_REASONS[r.cancelReason] : null,
     noCollectionTime: noCollection(r), recollectionOf: r.recollectionOf, recollectedBy: r.recollectedBy, corrections: r.undone,
-    mayUndo: (r.state === 'received' || r.state === 'rejected') && !r.recollectedBy && Date.parse(now) - since < UNDO_MINUTES * MIN,
-    clocks: { made: clockText(r.madeAt, off), collected: clockText(r.collectedAt, off), received: clockText(r.receivedAt, off), rejected: clockText(r.rejectedAt, off), released: clockText(r.releasedAt, off), cancelled: clockText(r.cancelledAt, off) },
+    mayUndo: (r.state === 'received' || r.state === 'rejected' || r.state === 'released') && !r.recollectedBy && Date.parse(now) - since < UNDO_MINUTES * MIN,
+    clocks: { made: whenText(r.madeAt, off, now), collected: whenText(r.collectedAt, off, now), received: whenText(r.receivedAt, off, now), rejected: whenText(r.rejectedAt, off, now), released: whenText(r.releasedAt, off, now), cancelled: whenText(r.cancelledAt, off, now) },
+    mayUndoCollect: r.state === 'collected' && Date.parse(now) - Date.parse(r.collectedRecordedAt || r.collectedAt) < UNDO_MINUTES * MIN,
     roles: { made: r.madeByRole, collected: r.collectedByRole, received: r.receivedByRole, rejected: r.rejectedByRole, released: r.releasedByRole } };
 }
 
@@ -180,12 +181,21 @@ async function checkReceive(core, input, actor, events, info) {
   }
   return r;
 }
-async function checkUndo(core, input, events, info) {
+async function checkUndo(core, input, actor, events, info) {
   const i = info ?? await siteInfo(core);
   const r = findReq(deriveRequests(events ?? await own(core)), input.requestId);
-  if (r.state !== 'received' && r.state !== 'rejected') throw new CommandError('conflict', `There is no receipt or rejection to undo. ${stateWord(r, i.offsetMinutes)}`, { state: r.state });
+  if (r.state !== 'received' && r.state !== 'rejected' && r.state !== 'released') throw new CommandError('conflict', `There is no receipt, rejection or release to undo. ${stateWord(r, i.offsetMinutes)}`, { state: r.state });
+  if (r.state === 'released' && actor.role !== 'lab-scientist') throw new CommandError('forbidden', 'A result release is undone by: lab-scientist.', { roles: ['lab-scientist'] });
   if (r.recollectedBy) throw new CommandError('conflict', `${r.id} already has a recollection (${r.recollectedBy}), so its rejection stays.`, { existing: r.recollectedBy });
-  if (Date.parse(core.now()) - Date.parse(r.lastStepAt) >= UNDO_MINUTES * MIN) throw new CommandError('conflict', `A receipt or rejection can be undone for ${UNDO_MINUTES} minutes only (an example setting). Ask the diagnostics manager to look at it.`);
+  if (Date.parse(core.now()) - Date.parse(r.lastStepAt) >= UNDO_MINUTES * MIN) throw new CommandError('conflict', `A receipt, rejection or release can be undone for ${UNDO_MINUTES} minutes only (an example setting). Ask the diagnostics manager to look at it.`);
+  return r;
+}
+const COLLECT_UNDO_REASONS = { 'wrong-request': 'Marked on the wrong request', 'not-taken': 'Specimen not taken yet' };
+async function checkCollectUndo(core, input, events, info) {
+  const i = info ?? await siteInfo(core);
+  const r = findReq(deriveRequests(events ?? await own(core)), input.requestId);
+  if (r.state !== 'collected') throw new CommandError('conflict', `There is no collection to undo. ${stateWord(r, i.offsetMinutes)}`, { state: r.state });
+  if (Date.parse(core.now()) - Date.parse(r.collectedRecordedAt || r.collectedAt) >= UNDO_MINUTES * MIN) throw new CommandError('conflict', `A collection can be undone for ${UNDO_MINUTES} minutes after it was recorded (an example setting). Cancel the request instead if it is not needed.`);
   return r;
 }
 async function checkResult(core, input, actor, events, info) {
@@ -376,9 +386,9 @@ async function overview(core, input, wards) {
   const period = { since, until: now, days };
   const short = input.format === 'short';
   const ar = (o) => ({ ...o, value: o.value == null ? null : Math.round(o.value * 10) / 10 });
-  const tat = labTurnaround(seen, period);
+  const tat = labTurnaround(seen, { ...period, leaveOut: OWN_ROW_GROUPS });
   const groups = Object.keys(TEST_GROUPS);
-  const tatRows = groups.map((g) => ({ testGroup: g, name: TEST_GROUPS[g], urgent: labTurnaround(seen, { ...period, testGroup: g, urgency: 'urgent' }), routine: labTurnaround(seen, { ...period, testGroup: g, urgency: 'routine' }) }))
+  const tatRows = groups.map((g) => ({ testGroup: g, name: TEST_GROUPS[g], ownRow: OWN_ROW_GROUPS.includes(g), note: OWN_ROW_GROUPS.includes(g) ? 'first report, not final' : null, urgent: labTurnaround(seen, { ...period, testGroup: g, urgency: 'urgent' }), routine: labTurnaround(seen, { ...period, testGroup: g, urgency: 'routine' }) }))
     .filter((x) => x.urgent.n || x.routine.n);
   const rej = rejectionRate(seen, period);
   const byReason = Object.entries(REJECT_REASONS).map(([reason, name]) => ({ reason, name, count: rejectionRate(seen, { ...period, reason }).numerator })).filter((x) => x.count);
@@ -393,7 +403,9 @@ async function overview(core, input, wards) {
   const compByArea = sourcesSeen.map((s) => ({ sourceId: s, name: info.nameOf(s), ...ar(completeness(seen, { ...period, sourceId: s })), ...missingSteps(seen, { ...period, sourceId: s }) })).filter((x) => x.denominator)
     .sort((a, b) => (a.value ?? 101) - (b.value ?? 101) || (a.sourceId < b.sourceId ? -1 : 1));
   const values = {
-    'lab-turnaround': { value: tat.median, median: tat.median, p90: tat.p90, n: tat.n, numerator: null, denominator: null, byGroup: tatRows },
+    // No headline: urgent and routine by test group lead. The blend is returned apart, labelled.
+    'lab-turnaround': { value: null, median: null, p90: null, n: tat.n, numerator: null, denominator: null, byGroup: tatRows,
+      blended: { median: tat.median, p90: tat.p90, n: tat.n, label: 'All test groups except blood culture, urgent and routine together: not comparable between weeks (it moves when the mix of tests changes).' } },
     'specimen-rejection-rate': { ...ar(rej), byReason, byArea, other: byReason.find((x) => x.reason === 'other')?.count || 0 },
     'equipment-availability': { value: avail.length ? Math.round((avail.reduce((n, x) => n + x.numerator, 0) / Math.max(1, avail.reduce((n, x) => n + x.denominator, 0))) * 1000) / 10 : null, numerator: null, denominator: null, n: avail.length, byAsset: avail },
   };
@@ -402,7 +414,7 @@ async function overview(core, input, wards) {
     const base = { id: k.id, name: k.name, unit: k.unit, value: v.value, numerator: v.numerator, denominator: v.denominator, n: v.n, period, targetText: k.targetText,
       ...(k.id === 'lab-turnaround' ? { median: v.median, p90: v.p90 } : {}) };
     if (short) return base;
-    const extra = k.id === 'lab-turnaround' ? { byGroup: v.byGroup } : k.id === 'specimen-rejection-rate' ? { byReason: v.byReason, byArea: v.byArea, other: v.other } : { byAsset: v.byAsset };
+    const extra = k.id === 'lab-turnaround' ? { byGroup: v.byGroup, blended: v.blended } : k.id === 'specimen-rejection-rate' ? { byReason: v.byReason, byArea: v.byArea, other: v.other } : { byAsset: v.byAsset };
     return { ...base, ...extra, completeness: ar(comp), missing: miss, definition: k.definition, counts: k.counts, outOf: k.outOf, leavesOut: k.leavesOut, source: k.source };
   });
   const on = guideOn(events);
@@ -436,17 +448,20 @@ const REQUEST_OUT = { type: 'object', required: ['id', 'code', 'sourceId', 'test
   codeLead: { type: 'string' }, codeDigits: { type: 'string' }, encounter: NULLABLE('string'), sourceId: { type: 'string' }, sourceName: { type: 'string' },
   testGroup: { type: 'string' }, testGroupName: { type: 'string' }, urgency: { type: 'string', description: 'As set by the requester; recorded, never decided by Ospeli.' }, urgencyName: { type: 'string' },
   state: { type: 'string', enum: Object.keys(STAGES) }, stage: { type: 'string' },
-  minutesInStep: { type: 'integer', description: 'Minutes in the current step (to now while open).' },
+  minutesInStep: { type: ['integer', 'null'], description: 'Open requests: minutes in the current step, to now. null once finished (released, rejected or cancelled).' },
+  stepAt: { type: 'string', description: 'When the current step happened, on the site clock: "08:35" today, "Wed 18 Nov, 23:10" on another day.' },
+  mayUndoCollect: { type: 'boolean', description: `Collected, not yet at the lab, recorded in the last ${UNDO_MINUTES} minutes: may be undone with ospeli_diagnostics_collect_undo.` },
   minutesSinceCollection: { type: ['integer', 'null'], description: 'Collected, not received: minutes since the specimen was taken.' },
   notArrived: { type: 'boolean', description: 'Guide rule 1 (only while the guide is on): collected and not received within the example time for its urgency.' },
   enteredLate: { type: 'boolean', description: `The collection was recorded more than ${LATE_ENTRY_MINUTES} minutes after it was taken (an example setting).` },
   noCollectionTime: { type: 'boolean', description: 'Reached the lab with no collection recorded.' },
   mayUndo: { type: 'boolean', description: `A receipt or rejection in the last ${UNDO_MINUTES} minutes that may still be undone with ospeli_diagnostics_specimen_undo.` },
-  recollectionOf: NULLABLE('string'), recollectedBy: NULLABLE('string'), clocks: { type: 'object', description: 'Site clock (HH:MM) of each step, null until then.' }, roles: { type: 'object', description: 'The role that recorded each step, never a person.' } } };
+  recollectionOf: NULLABLE('string'), recollectedBy: NULLABLE('string'), clocks: { type: 'object', description: 'Site clock of each step ("08:35" today, "Wed 18 Nov, 23:10" on another day), null until then.' }, roles: { type: 'object', description: 'The role that recorded each step, never a person.' } } };
 const KPI_OUT = { type: 'object', required: ['id', 'name', 'unit', 'value'], properties: {
   id: { type: 'string' }, name: { type: 'string' }, unit: { type: 'string' }, value: { type: ['number', 'null'], description: 'null when nothing was counted in the period.' },
   numerator: NULLABLE('number'), denominator: NULLABLE('number'), n: { type: 'integer' }, median: NULLABLE('number'), p90: NULLABLE('number'), period: { type: 'object' }, targetText: { type: 'string' },
-  byGroup: { type: 'array', description: 'Turnaround by test group, urgent and routine apart, each with median, p90 and n.' },
+  byGroup: { type: 'array', description: 'Turnaround by test group, urgent and routine apart, each with median, p90 and n: the figures to read. Blood culture is its own row only (first report, not final).' },
+  blended: { type: 'object', description: 'Turnaround only: one median over every test group except blood culture, urgent and routine together, with its label. Not comparable between weeks; never the headline.' },
   byReason: { type: 'array' }, byArea: { type: 'array', description: `Rejections by source area; value is null where fewer than ${MIN_AREA} specimens reached the lab (counts only).` }, other: { type: 'integer', description: 'Rejections with the reason "Other": if it grows, the reason list needs changing.' },
   byAsset: { type: 'array', description: 'Availability per analyser and scanner: hours in service, scheduled hours, hours down and hours partly down.' },
   completeness: { type: 'object', description: 'Data completeness (D-21) for the same period.' }, missing: { type: 'object', description: 'Requests that reached the lab with no collection time, and collections entered late.' },
@@ -530,7 +545,7 @@ export const COMMANDS = [
     kind: 'write', roles: COLLECTORS, approval: true,
     input: { type: 'object', additionalProperties: false, required: ['requestId'], properties: {
       requestId: REQ, minutesAgo: { type: 'integer', enum: AGO_MINUTES, description: 'How many minutes ago it was taken. Leave out for now.' } } },
-    output: { type: 'object', required: ['status'], properties: { status: WRITE_STATUS, requestId: { type: 'string' }, collectedAt: TIME, events: EVENT_SEQS, proposal: PROPOSAL_OUT } },
+    output: { type: 'object', required: ['status'], properties: { status: WRITE_STATUS, requestId: { type: 'string' }, collectedAt: TIME, clock: { type: 'string', description: 'The time it was taken, on the site clock, HH:MM.' }, events: EVENT_SEQS, proposal: PROPOSAL_OUT } },
     target: (input) => ({ id: input.requestId, word: 'request' }),
     wardOf: reqWard,
     async precheck(core, input, { actor }) { await checkCollect(core, input, actor); },
@@ -543,9 +558,28 @@ export const COMMANDS = [
         return [ev('diagnostics.specimen-collected', input.requestId, actor, at, back ? { backdatedMinutes: back } : null)];
       });
       await core.recordAs(actor, 'diagnostics.specimen-collected', input.requestId, back ? { backdatedMinutes: back } : {});
-      return { status: 'done', requestId: input.requestId, collectedAt: at, events: recs.map((r) => r.seq) };
+      return { status: 'done', requestId: input.requestId, collectedAt: at, clock: clockText(at, info.offsetMinutes), events: recs.map((r) => r.seq) };
     },
     example: { input: { requestId: 'dx-99999' }, needs: 'A request not collected yet: ospeli_diagnostics_request_record makes one, and ospeli_diagnostics_requests_list with stage "requested" lists them with their ids.' },
+  },
+  {
+    name: 'ospeli_diagnostics_collect_undo',
+    summary: `Undo a "Collected" marked by mistake on the ward, within ${UNDO_MINUTES} minutes of recording it (an example setting) and before the lab received the specimen. The request goes back to "Not collected". Both events stay in the log; no time is edited in place. People only.`,
+    kind: 'write', roles: COLLECTORS, approval: true, agents: false,
+    input: { type: 'object', additionalProperties: false, required: ['requestId', 'reason'], properties: {
+      requestId: REQ, reason: { type: 'string', enum: Object.keys(COLLECT_UNDO_REASONS), description: `Why: ${Object.entries(COLLECT_UNDO_REASONS).map(([k, v]) => `${k} (${v})`).join(', ')}.` } } },
+    output: { type: 'object', required: ['status'], properties: { status: WRITE_STATUS, requestId: { type: 'string' }, state: { type: 'string' }, events: EVENT_SEQS } },
+    async precheck(core, input) { await checkCollectUndo(core, input); },
+    async run(core, input, { actor }) {
+      const info = await siteInfo(core);
+      const recs = await core.appendChecked(async (events) => {
+        await checkCollectUndo(core, input, events, info);
+        return [ev('diagnostics.collection-undone', input.requestId, actor, core.now(), { reason: input.reason })];
+      });
+      await core.recordAs(actor, 'diagnostics.collection-undone', input.requestId, { reason: input.reason });
+      return { status: 'done', requestId: input.requestId, state: 'requested', events: recs.map((x) => x.seq) };
+    },
+    example: { input: { requestId: 'dx-99999', reason: 'wrong-request' }, needs: 'A request marked collected in the last few minutes and not yet received: ospeli_diagnostics_request_record then ospeli_diagnostics_specimen_collect make one.' },
   },
   {
     name: 'ospeli_diagnostics_specimen_receive',
@@ -574,16 +608,16 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_diagnostics_specimen_undo',
-    summary: `Undo a receipt or a rejection tapped by mistake, within ${UNDO_MINUTES} minutes (an example setting; the screen offers it for about 10 seconds after the tap). The wrong step and the undo both stay in the log; no time is edited in place. Not for a rejection that already has a recollection, nor after the result was released. People only.`,
+    summary: `Undo a receipt, a rejection or a result release tapped by mistake, within ${UNDO_MINUTES} minutes (an example setting; the screen offers it for about 10 seconds after the tap). An undone receipt goes back on the way, an undone release back to waiting for its result (and out of the turnaround). Only a laboratory scientist undoes a release. The wrong step and the undo both stay in the log; no time is edited in place. Not for a rejection that already has a recollection. People only.`,
     kind: 'write', roles: LAB, approval: true, agents: false,
     input: { type: 'object', additionalProperties: false, required: ['requestId', 'reason'], properties: {
       requestId: REQ, reason: { type: 'string', enum: Object.keys(UNDO_REASONS), description: `${Object.entries(UNDO_REASONS).map(([k, v]) => `${k} (${v})`).join(', ')}.` } } },
     output: { type: 'object', required: ['status'], properties: { status: WRITE_STATUS, requestId: { type: 'string' }, state: { type: 'string' }, events: EVENT_SEQS } },
-    async precheck(core, input) { await checkUndo(core, input); },
+    async precheck(core, input, { actor }) { await checkUndo(core, input, actor); },
     async run(core, input, { actor }) {
       const info = await siteInfo(core);
       const recs = await core.appendChecked(async (events) => {
-        const r = await checkUndo(core, input, events, info);
+        const r = await checkUndo(core, input, actor, events, info);
         return [ev('diagnostics.specimen-undone', input.requestId, actor, core.now(), { reason: input.reason, undid: r.state })];
       });
       await core.recordAs(actor, 'diagnostics.specimen-undone', input.requestId, { reason: input.reason });
@@ -716,7 +750,7 @@ export async function prepareExample(core, command, { run }) {
   const make = async () => (await run('ospeli_diagnostics_request_record', { sourceId: 'ward-a2', testGroup: 'chemistry', urgency: 'routine', again: true }, 'unit-clerk')).requestId;
   const n = command.name;
   if (n === 'ospeli_diagnostics_specimen_collect' || n === 'ospeli_diagnostics_request_cancel') return { requestId: await make() };
-  if (n === 'ospeli_diagnostics_specimen_receive') {
+  if (n === 'ospeli_diagnostics_specimen_receive' || n === 'ospeli_diagnostics_collect_undo') {
     const requestId = await make();
     await run('ospeli_diagnostics_specimen_collect', { requestId }, 'unit-clerk');
     return { requestId };

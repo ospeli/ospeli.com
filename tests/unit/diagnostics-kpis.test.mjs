@@ -48,6 +48,20 @@ test('KPI laboratory turnaround time, by hand: received to released, median 50, 
   assert.deepEqual([labTurnaround(r, { ...DAYWIN, testGroup: 'chemistry', urgency: 'urgent' }).median, labTurnaround(r, { ...DAYWIN, testGroup: 'chemistry', urgency: 'routine' }).median], [30, 60], 'urgent and routine apart');
   // The window is by release time: until 10:00 only 1 and 2 are released.
   assert.equal(labTurnaround(r, { since: DAYWIN.since, until: '2026-11-03T10:00:00.000Z' }).n, 2);
+  // Blood culture is never part of a figure across test groups (reported over days): a culture
+  // released 2,880 minutes after receipt changes the median only when it is let in.
+  const culture = deriveRequests([...LOG, made('dx-00011', '08:00', 'ward-a1', 'culture'), recv('dx-00011', '08:30'), rel('dx-00011', '20:30')]); // 720 min
+  // In: 20 30 50 60 80 720, median (50 + 60) / 2 = 55, n 6. Left out: back to 50, n 5.
+  assert.deepEqual([labTurnaround(culture, DAYWIN).median, labTurnaround(culture, DAYWIN).n], [55, 6]);
+  assert.deepEqual([labTurnaround(culture, { ...DAYWIN, leaveOut: ['culture'] }).median, labTurnaround(culture, { ...DAYWIN, leaveOut: ['culture'] }).n], [50, 5]);
+  assert.deepEqual([labTurnaround(culture, { ...DAYWIN, testGroup: 'culture' }).median, labTurnaround(culture, { ...DAYWIN, testGroup: 'culture' }).n], [720, 1], 'its own row');
+  // A release undone leaves the turnaround: 80 (dx-00007) goes, median of 20 30 50 60 is 40, n 4.
+  const undone = deriveRequests([...LOG, ev('diagnostics.specimen-undone', 'dx-00007', '12:32', { reason: 'tapped-by-mistake' }, 'lab-scientist')]);
+  assert.deepEqual([undone.get('dx-00007').state, undone.get('dx-00007').releasedAt], ['received', null]);
+  assert.deepEqual([labTurnaround(undone, DAYWIN).median, labTurnaround(undone, DAYWIN).n], [40, 4]);
+  // A collection undone goes back to "not collected".
+  const cu = deriveRequests([...LOG, made('dx-00012', '12:00', 'ward-a1', 'urine'), coll('dx-00012', '12:05'), ev('diagnostics.collection-undone', 'dx-00012', '12:06', { reason: 'wrong-request' }, 'unit-clerk')]);
+  assert.deepEqual([cu.get('dx-00012').state, cu.get('dx-00012').collectedAt], ['requested', null]);
   assert.deepEqual([percentile([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], 0.9), percentile([7], 0.9), percentile([], 0.9)], [9, 7, null]);
 });
 
@@ -123,7 +137,8 @@ test('guide rule 2: an analyser down shows on each ward with open requests for w
   const eq = deriveEquipment(evs);
   const list = [{ assetId: 'asset-analyser-1', kind: 'lab', name: 'Chemistry analyser 1', x: eq.get('asset-analyser-1') }];
   const out = ruleEquipmentDown(deriveRequests(evs), list, { nameOf: (x) => x, backupText: () => 'Send to: the partner laboratory', offsetMinutes: -240 });
-  assert.deepEqual(out.map((s) => [s.sourceId, s.requestIds]), [['ward-a1', ['dx-00001', 'dx-00002']]], 'blood count is not run by it; a received specimen is not counted');
+  assert.deepEqual(out.map((s) => [s.sourceId, s.requestIds]), [['ward-a1', ['dx-00001', 'dx-00002']], ['ward-a2', ['dx-00004']]], 'blood count is not run by it; a specimen already received waits for it too');
+  assert.match(out[1].text, /1 already at the lab, waiting for it/);
   assert.match(out[0].text, /^Chemistry analyser 1 is down: 2 open requests from ward-a1 \(blood chemistry, urine tests\)\. Send to: the partner laboratory\.$/);
   assert.match(out[0].why, /at 05:00/, 'site clock four hours west of UTC');
   // Partly down, urine only.

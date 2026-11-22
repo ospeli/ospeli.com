@@ -132,8 +132,9 @@ test('the unit clerk on a 390 px phone picks the ward once, records a request fo
   assert.equal(await page.locator('[data-test="collect-save"]').isDisabled(), true, 'when it was taken is picked, not assumed');
   await tap(page, '[data-test="collect-ago"] [data-value="10"]');
   await tap(page, '[data-test="collect-save"]');
-  await waitSaved(page, new RegExp(`Saved: ${label} collected 10 min ago`));
-  await page.waitForSelector(`[data-test="request-row"][data-state="collected"]:has-text("${label}")`);
+  const pinned = page.locator('[data-test="pinned-row"][data-state="collected"]', { hasText: label });
+  await pinned.waitFor();
+  assert.match(await pinned.textContent(), /Collected 09:5\d/, 'taken 10 minutes before 10:00 on the site clock');
   // The ward stays picked on this device.
   await page.reload();
   await page.waitForSelector('[data-test="requests"]', { timeout: 20000 });
@@ -155,6 +156,8 @@ test('front line: the laboratory reception officer on a 390 px touch phone, with
   const rejectBox = await first.locator('[data-test="reject"]').boundingBox();
   assert.ok(rejectBox.x > btn.x + btn.width, 'Reject is on the other side, not in the same place');
   assert.match(await page.locator('[data-test="no-collection-count"]').textContent(), /Received with no collection time: \d+ today/);
+  const count = await page.locator('[data-test="no-collection-count"]').boundingBox();
+  assert.ok(count.y + count.height <= 844, `the no-collection count is on the first screen (bottom at ${Math.round(count.y + count.height)} px)`);
   assert.match(await page.locator('[data-test="not-arrived"]').textContent(), /Not arrived/);
   assert.deepEqual(await phoneProblems(page), []);
   const k0 = (await overview(page)).kpis[1];
@@ -220,7 +223,10 @@ test('manager: the diagnostics manager on a 390 px touch phone sees turnaround, 
   assert.equal(await page.evaluate(() => location.hash), '#/diagnostics', 'the manager opens on the module');
   const sum = await page.locator('[data-test="summary"]').boundingBox();
   assert.ok(sum.y + sum.height <= 844, 'turnaround and rejections on the first screen');
-  assert.match(await page.locator('[data-test="summary"] [data-kpi="lab-turnaround"]').textContent(), /Turnaround, median \(n \d+\)/);
+  assert.equal(await page.locator('[data-test="summary"] [data-kpi="lab-turnaround"]').count(), 0, 'no blended turnaround tile');
+  assert.match(await page.locator('[data-test="tat-by-group"] [data-group="blood-count"] [data-urgency="urgent"]').textContent(), /^Urgent: .+; 9 in 10 within .+ \(\d+ results?\)$/, 'turnaround by test group, urgent and routine apart');
+  assert.match(await page.locator('[data-test="tat-by-group"] [data-group="culture"]').textContent(), /first report, not final/);
+  assert.match(await page.locator('[data-test="tat-blended"]').textContent(), /except blood culture.*not comparable between weeks/);
   assert.ok(await page.locator('[data-test="rej-by-area"] li').count() >= 3, 'rejections by area');
   assert.match(await page.locator('[data-test="equipment"][data-asset="asset-analyser-1"]').textContent(), /Working/);
 
@@ -273,6 +279,63 @@ test('the guide switch: the manager switches it off; suggestions and the "Not ar
   await asRole(page, 'diagnostics-manager');
   await page.locator('[data-test="guide-switch"]').click();
   await page.waitForFunction(() => document.querySelector('[data-test="guide"]')?.dataset.on === 'true');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('the unit clerk taps "Save: collected" twice on the same spot: one collection is written, the row keeps its place, and Undo puts it back', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
+  await openHome(page, 'unit-clerk');
+  await page.selectOption('[data-test="ward"]', 'ward-a2');
+  await page.waitForSelector('[data-test="new-request"]');
+  // Two requests not collected yet, so another Collected button sits below the first.
+  for (let i = 0; i < 2; i++) await cmd(page, 'ospeli_diagnostics_request_record', { sourceId: 'ward-a2', testGroup: 'urine', urgency: 'routine', again: true }, 'unit-clerk');
+  await page.waitForFunction(() => document.querySelectorAll('[data-test="request-row"][data-state="requested"] [data-test="collect"]').length >= 2);
+  const collected = () => page.evaluate(async () => (await window.ospeli.core.events({ type: 'diagnostics.specimen-collected' })).length);
+  const n0 = await collected();
+  const row = page.locator('[data-test="request-row"][data-state="requested"]').first();
+  const id = await row.getAttribute('data-request');
+  await row.locator('[data-test="collect"]').tap();
+  await tap(page, '[data-test="collect-ago"] [data-value="0"]');
+  const save = page.locator('[data-test="collect-save"]');
+  await save.scrollIntoViewIfNeeded();
+  const b = await save.boundingBox();
+  const x = b.x + b.width / 2; const y = b.y + b.height / 2;
+  await page.touchscreen.tap(x, y);
+  await page.waitForTimeout(350);
+  await page.touchscreen.tap(x, y);
+  await page.waitForSelector(`[data-test="pinned-row"][data-request="${id}"]`);
+  await page.waitForTimeout(1500);
+  await page.touchscreen.tap(x, y); // and once more after the list has been read again
+  await page.waitForTimeout(800);
+  assert.equal(await collected(), n0 + 1, 'one collection written');
+  assert.equal(await page.locator('[data-test="collect-panel"]').count(), 0, 'no other patient\'s panel opened');
+  const pinned = page.locator(`[data-test="pinned-row"][data-request="${id}"]`);
+  assert.match(await pinned.textContent(), /Collected \d\d:\d\d/);
+  const pb = await pinned.boundingBox();
+  assert.ok(pb.y <= y && pb.y + pb.height >= y, 'the saved row still sits under the finger');
+  await pinned.locator('[data-test="collect-undo"]').tap();
+  await waitSaved(page, /Undone: .* is not collected/);
+  await page.waitForSelector(`[data-test="request-row"][data-request="${id}"][data-state="requested"]`);
+  assert.equal(await page.evaluate(async (rid) => (await window.ospeli.core.events({ subject: rid })).at(-1).type, id), 'diagnostics.collection-undone');
+  assert.deepEqual(await phoneProblems(page), []);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('the laboratory scientist undoes a "Result released" tapped by mistake', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/diagnostics' });
+  await asRole(page, 'lab-scientist');
+  const row = page.locator('[data-test="waiting-result"] [data-test="hatch-row"]').first();
+  const id = await row.getAttribute('data-request');
+  await row.locator('[data-test="release"]').tap();
+  const done = page.locator(`[data-test="done-row"][data-request="${id}"][data-outcome="released"]`);
+  await done.waitFor();
+  assert.equal(await done.locator('[data-test="release"]').count(), 0);
+  await done.locator('[data-test="undo"]').tap();
+  await waitSaved(page, /Undone: the result release/);
+  await page.waitForSelector(`[data-test="waiting-result"] [data-test="hatch-row"][data-request="${id}"]`);
+  assert.equal(await page.evaluate(async (rid) => (await window.ospeli.core.events({ subject: rid })).at(-1).type, id), 'diagnostics.specimen-undone');
   assert.deepEqual(errors, []);
   await context.close();
 });

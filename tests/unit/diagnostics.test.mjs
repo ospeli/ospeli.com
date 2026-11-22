@@ -31,7 +31,12 @@ test('the example hospital: thirty days of lab requests, one not arrived, a reco
   const ov = await run('ospeli_diagnostics_overview', {}, 'diagnostics-manager');
   out('ospeli_diagnostics_overview', ov);
   const [tat, rej, av] = ov.kpis;
-  assert.ok(tat.n > 50 && tat.median > 0 && tat.p90 >= tat.median, 'turnaround with n and p90');
+  assert.deepEqual([tat.value, tat.median], [null, null], 'no blended headline');
+  assert.ok(tat.byGroup.length >= 4 && tat.byGroup.every((g) => g.urgent.n + g.routine.n > 0), 'urgent and routine apart, by test group, each with n');
+  assert.ok(tat.byGroup.find((g) => g.testGroup === 'culture')?.note === 'first report, not final');
+  assert.ok(tat.blended.n > 50 && tat.blended.median > 0 && /not comparable between weeks/.test(tat.blended.label));
+  assert.equal(tat.blended.n, tat.byGroup.filter((g) => g.testGroup !== 'culture').reduce((n, g) => n + g.urgent.n + g.routine.n, 0), 'the labelled blend leaves out blood culture');
+  assert.match(tat.definition, /no headline figure/);
   assert.ok(rej.denominator > 50 && rej.numerator > 0 && rej.byReason.length && rej.byArea.length);
   assert.equal(rej.byArea[0].sourceId, 'ward-a3', 'haemolysed specimens concentrated from Ward A3');
   assert.equal(av.byAsset.length, 2);
@@ -333,4 +338,58 @@ test('an edited import: a sentence in an id or a pick that is not on the list is
   assert.deepEqual([...r.keys()], ['dx-00003']);
   assert.deepEqual([r.get('dx-00003').encounter, r.get('dx-00003').state], [null, 'requested']);
   assert.equal(deriveEquipment(evs).size, 0);
+});
+
+test('a result release tapped by mistake: undone by a laboratory scientist within five minutes with a picked reason; it leaves the turnaround', async () => {
+  const { run, advance, core } = await site();
+  const a = await newRequest(run);
+  await run('ospeli_diagnostics_specimen_receive', { requestId: a, outcome: 'received' }, 'lab-reception');
+  advance(30);
+  await run('ospeli_diagnostics_result_record', { requestId: a }, 'lab-scientist');
+  const win = { since: '2026-11-19T00:00:00.000Z', until: '2026-11-20T00:00:00.000Z' };
+  const n0 = labTurnaround(deriveRequests(await core.events()), win).n;
+  await assert.rejects(run('ospeli_diagnostics_specimen_undo', { requestId: a, reason: 'tapped-by-mistake' }, 'lab-reception'), code('forbidden'), 'only a scientist undoes a release');
+  await assert.rejects(run('ospeli_diagnostics_specimen_undo', { requestId: a }, 'lab-scientist'), code('invalid-input'), 'the reason is picked');
+  const u = await run('ospeli_diagnostics_specimen_undo', { requestId: a, reason: 'wrong-request' }, 'lab-scientist');
+  assert.equal(u.state, 'received', 'back to waiting for its result');
+  assert.equal(labTurnaround(deriveRequests(await core.events()), win).n, n0 - 1, 'the undone release leaves the turnaround');
+  assert.deepEqual((await core.events({ subject: a })).map((e) => e.type.slice(12)), ['request-made', 'specimen-received', 'result-validated', 'specimen-undone'], 'both events kept');
+  await run('ospeli_diagnostics_result_record', { requestId: a }, 'lab-scientist');
+  advance(6);
+  await assert.rejects(run('ospeli_diagnostics_specimen_undo', { requestId: a, reason: 'tapped-by-mistake' }, 'lab-scientist'), code('conflict'), 'five minutes only');
+});
+
+test('a "Collected" marked by mistake: the ward undoes it before the lab receives it, within five minutes, with a picked reason; people only', async () => {
+  const { run, advance } = await site();
+  const a = await newRequest(run);
+  await run('ospeli_diagnostics_specimen_collect', { requestId: a }, 'unit-clerk');
+  await assert.rejects(run('ospeli_diagnostics_collect_undo', { requestId: a, reason: 'wrong-request' }, 'lab-reception'), code('forbidden'));
+  await assert.rejects(run('ospeli_diagnostics_collect_undo', { requestId: a, reason: 'oops' }, 'unit-clerk'), code('invalid-input'));
+  await assert.rejects(run('ospeli_diagnostics_collect_undo', { requestId: a, reason: 'wrong-request' }, agent('unit-clerk')), (e) => ['agents-off', 'forbidden'].includes(e.code));
+  const u = await run('ospeli_diagnostics_collect_undo', { requestId: a, reason: 'wrong-request' }, 'ward-nurse');
+  out('ospeli_diagnostics_collect_undo', u);
+  const row = (await run('ospeli_diagnostics_requests_list', { sourceId: 'ward-a2' }, 'unit-clerk')).requests.find((r) => r.id === a);
+  assert.deepEqual([row.state, row.stage], ['requested', 'Not collected']);
+  await assert.rejects(run('ospeli_diagnostics_collect_undo', { requestId: a, reason: 'wrong-request' }, 'unit-clerk'), code('conflict'), 'nothing to undo');
+  await run('ospeli_diagnostics_specimen_collect', { requestId: a }, 'unit-clerk');
+  await run('ospeli_diagnostics_specimen_receive', { requestId: a, outcome: 'received' }, 'lab-reception');
+  await assert.rejects(run('ospeli_diagnostics_collect_undo', { requestId: a, reason: 'wrong-request' }, 'unit-clerk'), code('conflict'), 'already at the lab');
+  const b = await newRequest(run);
+  await run('ospeli_diagnostics_specimen_collect', { requestId: b }, 'unit-clerk');
+  advance(6);
+  await assert.rejects(run('ospeli_diagnostics_collect_undo', { requestId: b, reason: 'not-taken' }, 'unit-clerk'), code('conflict'), 'five minutes only');
+});
+
+test('the tracker: a finished request shows when its step happened, with the day when it is not today, and no minutes in the step', async () => {
+  const { run } = await site();
+  const list = (await run('ospeli_diagnostics_requests_list', { sourceId: 'ward-a2', stage: 'all', limit: 500 }, 'unit-clerk')).requests;
+  const done = list.filter((r) => ['released', 'rejected', 'cancelled'].includes(r.state));
+  assert.ok(done.length > 10);
+  for (const r of done) assert.equal(r.minutesInStep, null, `${r.id}: no minutes once finished`);
+  for (const r of list.filter((x) => ['requested', 'collected', 'received'].includes(x.state))) assert.ok(Number.isInteger(r.minutesInStep));
+  const old = done.find((r) => r.state === 'released' && r.releasedAt < '2026-11-19T04:00:00.000Z');
+  assert.match(old.stepAt, /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2} Nov, \d\d:\d\d$/, 'another day says the day');
+  assert.match(old.clocks.made, /Nov, /);
+  const today = list.find((r) => r.state === 'released' && r.releasedAt >= '2026-11-19T04:00:00.000Z');
+  if (today) assert.match(today.stepAt, /^\d\d:\d\d$/, 'today: the time only');
 });

@@ -45,7 +45,7 @@ export async function render(el, ctx) {
   el.append(root);
 
   // What this person opened or picked survives a redraw (after a save, or another tab's change).
-  const ui = { ward: remembered.get(), form: null, picks: {}, open: null, openPicks: {}, eq: null, eqPicks: {}, ghosts: new Map(), done: new Map(), saved: null, msg: null, busy: false, justSaved: false };
+  const ui = { ward: remembered.get(), form: null, picks: {}, open: null, openPicks: {}, eq: null, eqPicks: {}, ghosts: new Map(), done: new Map(), pinned: new Map(), saved: null, msg: null, busy: false, justSaved: false };
   let data = null;
   const props = proposalsCard(ctx, { match: (p) => p.command.startsWith('ospeli_diagnostics_'), describe: (p) => describeProposal(p) });
 
@@ -126,13 +126,22 @@ export async function render(el, ctx) {
   // ---------------------------------------------------------------- the hatch
   // A row keeps its place for a few seconds after Received or Reject, showing what was saved with
   // Undo on the right: the left side is then text, so a second tap there does nothing.
+  // The row keeps its height, and Undo sits at its top right: where the finger was (Received, Reject's
+  // Save, Result released) is now plain text, so a second tap there does nothing.
   function ghostRow(g) {
     const left = Math.max(0, Math.ceil((g.until - Date.now()) / 1000));
-    return h('li', { class: `dx-row is-done${g.outcome === 'rejected' ? ' is-rejected' : ''}`, 'data-request': g.r.id, 'data-test': 'done-row' },
-      h('div', { class: 'dx-row-main' }, code(g.r), h('p', { class: 'dx-done-what' }, h('b', {}, g.outcome === 'rejected' ? `Rejected: ${REJECT_REASONS[g.reason]}` : g.outcome === 'released' ? 'Result released' : 'Received at lab'), ` ${g.clock}`)),
-      mayUndo && g.outcome !== 'released' ? h('div', { class: 'dx-row-actions' }, h('span', { class: 'dx-spacer' }),
-        h('button', { class: 'btn btn-ghost dx-undo', type: 'button', 'data-cmd': 'ospeli_diagnostics_specimen_undo', 'data-test': 'undo', 'aria-label': `Undo, ${left} seconds left`,
-          onclick: () => act('ospeli_diagnostics_specimen_undo', { requestId: g.r.id, reason: 'tapped-by-mistake' }, 'Undone', () => { ui.ghosts.delete(g.r.id); ui.done.delete(g.r.id); ui.saved = `Undone: ${g.r.code} is back in the list.`; }) }, 'Undo')) : null);
+    const undoOk = g.outcome === 'released' ? mayResult : mayUndo;
+    const words = g.outcome === 'rejected' ? `Rejected: ${REJECT_REASONS[g.reason]}` : g.outcome === 'released' ? 'Result released' : 'Received at lab';
+    const li = h('li', { class: `dx-row is-done${g.outcome === 'rejected' ? ' is-rejected' : ''}`, 'data-request': g.r.id, 'data-test': 'done-row', 'data-outcome': g.outcome },
+      h('div', { class: 'dx-done-head' }, code(g.r),
+        undoOk ? h('button', { class: 'btn btn-ghost dx-undo', type: 'button', 'data-cmd': 'ospeli_diagnostics_specimen_undo', 'data-test': 'undo', 'aria-label': `Undo: ${words.toLowerCase()}, ${left} seconds left`,
+          onclick: () => act('ospeli_diagnostics_specimen_undo', { requestId: g.r.id, reason: 'tapped-by-mistake' }, 'Undone', () => {
+            ui.ghosts.delete(g.r.id); ui.done.delete(g.r.id);
+            ui.saved = g.outcome === 'released' ? `Undone: the result release for ${g.r.code}. It waits for its result again.` : `Undone: ${g.r.code} is back in the list.`;
+          }) }, 'Undo') : null),
+      h('p', { class: 'dx-done-what' }, h('b', {}, words), ` ${g.clock}`), g.note ? h('p', { class: 'meta' }, g.note) : null);
+    if (g.height) li.style.minHeight = `${g.height}px`;
+    return li;
   }
   function hatchRow(r, { afterReceipt = false } = {}) {
     const opened = ui.open === `reject:${r.id}`;
@@ -146,7 +155,7 @@ export async function render(el, ctx) {
     if (afterReceipt) {
       actions = mayResult ? h('div', { class: 'dx-row-actions' },
         h('button', { class: 'btn btn-big dx-main', type: 'button', 'data-cmd': 'ospeli_diagnostics_result_record', 'data-test': 'release',
-          onclick: () => act('ospeli_diagnostics_result_record', { requestId: r.id }, 'Saved: result released', (out) => { ghost(r, 'released', null, out.clock); ui.saved = `Saved: result released for ${r.code}, ${r.testGroupName} (${fmtWait(out.turnaroundMinutes)} after receipt).`; }) }, 'Result released'),
+          onclick: () => act('ospeli_diagnostics_result_record', { requestId: r.id }, `Saved: result released for ${r.code}`, (out) => { ghost(r, 'released', null, out.clock); ui.ghosts.get(r.id).note = `${fmtWait(out.turnaroundMinutes)} after receipt.`; }) }, 'Result released'),
         h('button', { class: 'btn btn-ghost dx-reject', type: 'button', 'data-test': 'reject', 'aria-expanded': String(opened), onclick: () => { ui.open = opened ? null : `reject:${r.id}`; ui.openPicks = {}; draw(); } }, 'Reject')) : null;
     } else if (mayReceive) {
       actions = h('div', { class: 'dx-row-actions' },
@@ -177,7 +186,7 @@ export async function render(el, ctx) {
     ui.saved = null; ui.msg = null;
     await act('ospeli_diagnostics_specimen_receive', { requestId: r.id, outcome: 'received' }, `Received: ${r.code}`, Object.assign((out) => {
       ghost(r, 'received', null, out.clock);
-      if (out.noCollectionTime) ui.saved = `Received at lab: ${r.code}. No collection time was recorded for it.`;
+      if (out.noCollectionTime) ui.ghosts.get(r.id).note = 'No collection time was recorded for it.';
     }, { onError: (err) => { ui.msg = err.detail?.already ? `Already saved: ${r.code} was received. Nothing new was saved.` : `Not saved. ${err.message}`; } }));
   }
   async function reject(r, reason) {
@@ -204,6 +213,7 @@ export async function render(el, ctx) {
       const list = li?.parentElement;
       g.index = list ? [...list.children].indexOf(li) : 0;
       g.placed = list?.dataset.block || 'none';
+      g.height = li ? Math.round(li.getBoundingClientRect().height) : 0;
     }
   }
   // Blocks by source, with a block kept while a ghost still sits in it.
@@ -223,6 +233,9 @@ export async function render(el, ctx) {
     const na = log.notArrived;
     return h('section', { class: 'section dx-sec', 'aria-labelledby': 'dx-hatch-h', 'data-test': 'hatch' },
       h('h2', { id: 'dx-hatch-h' }, `On the way (${log.counts.onTheWay})`),
+      // On the first screen, so a gap in ward recording is seen where it happens (brief A5, screen 2).
+      h('p', { class: 'dx-count', 'data-test': 'no-collection-count', 'data-n': String(log.counts.noCollectionToday) },
+        h('b', {}, `Received with no collection time: ${log.counts.noCollectionToday} today`), ' (since 00:00 site time)'),
       savedCard(),
       na.length || hasGhost('not-arrived') ? h('div', { class: 'dx-block is-late', 'data-test': 'not-arrived' },
         h('h3', {}, `Not arrived (${na.length}): check where it is`),
@@ -231,8 +244,6 @@ export async function render(el, ctx) {
         h('h3', {}, `${b.sourceName} (${b.count})`),
         h('ul', { class: 'dx-list', 'data-block': b.sourceId }, withGhosts(b.items, b.sourceId))))
         : na.length ? null : h('p', { class: 'dx-empty', 'data-test': 'nothing-on-the-way' }, 'Nothing on the way right now.'),
-      h('p', { class: 'dx-count', 'data-test': 'no-collection-count', 'data-n': String(log.counts.noCollectionToday) },
-        h('b', {}, `Received with no collection time: ${log.counts.noCollectionToday} today`), ' (since 00:00 site time)'),
       notCollectedList(),
       mayRequest ? labRequest() : null,
       mayReceive ? null : h('p', { class: 'meta notice', 'data-test': 'read-only' }, `Specimens are marked received or rejected by ${roleNames(commandByName('ospeli_diagnostics_specimen_receive').roles)}.`));
@@ -317,7 +328,7 @@ export async function render(el, ctx) {
         p.ago > LATE_ENTRY_MINUTES ? h('p', { class: 'meta' }, `More than ${LATE_ENTRY_MINUTES} minutes back: it will show "entered late".`) : null,
         h('div', { class: 'dx-panel-actions' },
           h('button', { class: 'btn btn-big dx-save', type: 'button', 'data-cmd': 'ospeli_diagnostics_specimen_collect', 'data-test': 'collect-save', disabled: p.ago == null, 'aria-disabled': String(p.ago == null),
-            onclick: () => act('ospeli_diagnostics_specimen_collect', { requestId: r.id, ...(p.ago ? { minutesAgo: p.ago } : {}) }, 'Saved: collected', () => { ui.open = null; ui.saved = `Saved: ${r.code} collected${p.ago ? ` ${p.ago} min ago` : ''}.`; }) },
+            onclick: () => act('ospeli_diagnostics_specimen_collect', { requestId: r.id, ...(p.ago ? { minutesAgo: p.ago } : {}) }, `Saved: ${r.code} collected`, (out) => { ui.open = null; ui.saved = null; ui.msg = null; pin(r.id, out.clock); }) },
           p.ago == null ? 'Pick when first' : 'Save: collected'),
           h('button', { class: 'btn btn-ghost', type: 'button', onclick: () => { ui.open = null; draw(); } }, 'Back')));
     } else if (opened === 'cancel') {
@@ -331,12 +342,39 @@ export async function render(el, ctx) {
     return h('li', { class: `dx-row is-${r.state}${r.notArrived ? ' is-late' : ''}`, 'data-request': r.id, 'data-state': r.state, 'data-test': 'request-row' },
       h('div', { class: 'dx-row-main' }, code(r),
         h('p', { class: 'dx-facts' }, h('b', {}, r.testGroupName), ' ', urgencyChip(r)),
-        h('p', { class: 'dx-facts' }, h('span', { class: `chip dx-stage is-${r.state}` }, r.stage), ` ${r.state === 'rejected' ? `${r.rejectReasonName}${r.rejectedAfterReceipt ? ' (after receipt)' : ''}` : r.state === 'cancelled' ? r.cancelReasonName : `${fmtWait(r.minutesInStep)} in this step`}`,
-          r.notArrived ? h('span', { class: 'chip dx-hot' }, 'Not arrived') : null, r.enteredLate ? h('span', { class: 'chip dx-late' }, 'Entered late') : null),
+        h('p', { class: 'dx-facts' }, h('span', { class: `chip dx-stage is-${r.state}` }, r.stage), ` ${r.state === 'rejected' ? `${r.stepAt}, ${r.rejectReasonName}${r.rejectedAfterReceipt ? ' (after receipt)' : ''}` : r.state === 'cancelled' ? `${r.stepAt}, ${r.cancelReasonName}` : r.state === 'released' ? r.stepAt : `${fmtWait(r.minutesInStep)} in this step`}`,
+          r.notArrived ? h('span', { class: 'chip dx-hot' }, 'Not arrived') : null, r.enteredLate ? h('span', { class: 'chip dx-late' }, 'Entered late') : null,
+          r.noCollectionTime ? h('span', { class: 'chip dx-late', 'data-test': 'no-collection' }, 'Collection not recorded') : null),
         r.recollectionOf ? h('p', { class: 'meta', 'data-test': 'recollection-of' }, `Recollection of ${r.recollectionOf.toUpperCase()}`) : null,
         r.recollectedBy ? h('p', { class: 'meta', 'data-test': 'recollected-by' }, `Recollected as ${r.recollectedBy.toUpperCase()}`) : null,
         times ? h('p', { class: 'meta' }, `${times}.`) : null),
       actions, panel);
+  }
+  // A row just marked collected keeps its place and its height for this visit, greyed, with Undo at
+  // its top right: the list does not re-sort under the finger, so a second tap lands on plain text.
+  function pin(id, clock) {
+    const li = root.querySelector(`[data-test="request-row"][data-request="${id}"]`);
+    const list = li?.parentElement;
+    ui.pinned.set(id, { clock, index: list ? [...list.children].indexOf(li) : 0, height: li ? Math.round(li.getBoundingClientRect().height) : 0 });
+  }
+  function withPinned(list) {
+    const rows = list.filter((r) => !ui.pinned.has(r.id)).map(trackerRow);
+    for (const [id, pn] of [...ui.pinned].sort((a, b) => a[1].index - b[1].index)) {
+      const r = list.find((x) => x.id === id);
+      if (r) rows.splice(Math.min(pn.index, rows.length), 0, pinnedRow(r, pn));
+    }
+    return rows;
+  }
+  function pinnedRow(r, pn) {
+    const undo = r.state === 'collected' && r.mayUndoCollect && can(role, 'ospeli_diagnostics_collect_undo');
+    const li = h('li', { class: 'dx-row is-done', 'data-request': r.id, 'data-state': r.state, 'data-test': 'pinned-row' },
+      h('div', { class: 'dx-done-head' }, code(r),
+        undo ? h('button', { class: 'btn btn-ghost dx-undo', type: 'button', 'data-cmd': 'ospeli_diagnostics_collect_undo', 'data-test': 'collect-undo',
+          onclick: () => act('ospeli_diagnostics_collect_undo', { requestId: r.id, reason: 'wrong-request' }, 'Undone', () => { ui.pinned.delete(r.id); ui.saved = `Undone: ${r.code} is not collected.`; }) }, 'Undo') : null),
+      // Until the list is read again the row still says "Not collected": show what was saved.
+      h('p', { class: 'dx-done-what' }, h('b', {}, r.state === 'collected' ? `Collected ${r.clocks.collected}` : r.state === 'requested' ? `Collected ${pn.clock || ''}` : r.stage), ` · ${r.testGroupName}`));
+    if (pn.height) li.style.minHeight = `${pn.height}px`;
+    return li;
   }
   function tracker() {
     const r = data.reqs;
@@ -350,7 +388,7 @@ export async function render(el, ctx) {
       !ward ? h('p', { class: 'dx-empty', 'data-test': 'pick-ward' }, 'Pick your ward or area to see its requests.') : [
         mayRequest ? (ui.form === 'request' ? requestForm() : h('button', { class: 'btn btn-big dx-main dx-new', type: 'button', 'data-test': 'new-request', onclick: () => { ui.form = 'request'; ui.picks = {}; ui.saved = null; ui.msg = null; draw(); root.querySelector('[data-test="request-form"] button')?.focus(); } }, 'New request')) : null,
         h('h3', {}, `${r.sourceName}: ${r.total} ${r.total === 1 ? 'request' : 'requests'} open or in the last ${r.hours} hours`),
-        r.requests.length ? h('ul', { class: 'dx-list', 'data-test': 'requests' }, r.requests.map(trackerRow)) : h('p', { class: 'dx-empty' }, 'No request open or in the last day.'),
+        r.requests.length ? h('ul', { class: 'dx-list', 'data-test': 'requests' }, withPinned(r.requests)) : h('p', { class: 'dx-empty' }, 'No request open or in the last day.'),
         h('p', { class: 'meta' }, r.releasedDefinition),
       ],
       mayRequest ? null : h('p', { class: 'meta notice', 'data-test': 'read-only' }, `Requests are recorded by ${roleNames(commandByName('ospeli_diagnostics_request_record').roles)}.`));
@@ -412,10 +450,11 @@ export async function render(el, ctx) {
   // ---------------------------------------------------------------- the manager's pieces
   function summary() {
     const c = data.ov.counts;
-    const [tat, rej, av] = data.ov.kpis;
+    const [, rej] = data.ov.kpis;
     return h('div', { class: 'dx-stats', 'data-test': 'summary' },
-      h('div', { class: 'dx-stat', 'data-kpi': tat.id }, h('b', {}, mins(tat.median)), h('span', {}, `Turnaround, median (n ${tat.n})`)),
-      h('div', { class: 'dx-stat', 'data-kpi': rej.id }, h('b', {}, pct(rej.value)), h('span', {}, `Rejected (${rej.numerator} of ${rej.denominator})`)),
+      // No turnaround tile: one figure over every test group misleads; the measures lead with each group.
+      h('div', { class: 'dx-stat', 'data-test': 'waiting-count' }, h('b', {}, String(c.waitingResult)), h('span', {}, 'Received, result not released yet')),
+      h('div', { class: 'dx-stat', 'data-kpi': rej.id }, h('b', {}, pct(rej.value)), h('span', {}, `Rejected, last ${data.ov.period.days} days (${rej.numerator} of ${rej.denominator} specimens)`)),
       h('div', { class: `dx-stat${c.equipmentDown ? ' is-hot' : ''}`, 'data-test': 'down-count' }, h('b', {}, String(c.equipmentDown)), h('span', {}, c.equipmentDown === 1 ? 'Analyser or scanner down' : 'Analysers or scanners down')),
       h('div', { class: 'dx-stat' }, h('b', {}, String(c.onTheWay)), h('span', {}, 'Specimens on the way')),
       null);
@@ -444,17 +483,19 @@ export async function render(el, ctx) {
       h('h2', { id: 'dx-kpi-h' }, `Measures, last ${days} days`),
       h('p', { class: 'meta' }, 'Calculated from the log on this device. They count requests and steps, never a person.'),
       h('div', { class: 'dx-kpis' },
-        h('div', { class: 'card dx-kpi', 'data-kpi': tat.id, 'data-value': tat.median == null ? '' : String(tat.median), 'data-n': String(tat.n) },
-          h('p', { class: 'dx-kpi-name' }, tat.name),
-          h('p', { class: 'dx-kpi-value' }, mins(tat.median), h('small', {}, ' median')),
-          h('p', { class: 'meta' }, `90th percentile ${mins(tat.p90)}; n ${tat.n} results released. From received at lab to result released.`),
-          tat.byGroup.length ? h('ul', { class: 'dx-rows', 'data-test': 'tat-by-group' }, tat.byGroup.map((g) => h('li', { 'data-group': g.testGroup },
-            h('b', {}, g.name), `: urgent ${g.urgent.n ? `${mins(g.urgent.median)} (90th ${mins(g.urgent.p90)}, n ${g.urgent.n})` : 'none'}; routine ${g.routine.n ? `${mins(g.routine.median)} (90th ${mins(g.routine.p90)}, n ${g.routine.n})` : 'none'}`))) : null,
+        h('div', { class: 'card dx-kpi', 'data-kpi': tat.id, 'data-n': String(tat.n) },
+          h('p', { class: 'dx-kpi-name' }, `${tat.name}, by test group`),
+          h('p', { class: 'meta' }, 'From received at lab to result released. Urgent and routine apart (urgency as set by the requester). Middle time (median); "9 in 10 within" is the 90th percentile.'),
+          tat.byGroup.length ? h('ul', { class: 'dx-tat', 'data-test': 'tat-by-group' }, tat.byGroup.map((g) => h('li', { 'data-group': g.testGroup },
+            h('p', { class: 'dx-tat-name' }, g.name, g.note ? h('span', { class: 'meta' }, ` (${g.note})`) : null),
+            ['urgent', 'routine'].map((u) => h('p', { 'data-urgency': u }, h('b', {}, `${u === 'urgent' ? 'Urgent' : 'Routine'}: `),
+              g[u].n ? `${mins(g[u].median)}; 9 in 10 within ${mins(g[u].p90)} (${g[u].n} ${g[u].n === 1 ? 'result' : 'results'})` : 'no results'))))) : h('p', { class: 'dx-empty' }, 'No result released in the period.'),
+          tat.blended?.n ? h('p', { class: 'meta', 'data-test': 'tat-blended' }, `${tat.blended.label} Middle time ${mins(tat.blended.median)} (${tat.blended.n} results).`) : null,
           def(tat)),
         h('div', { class: 'card dx-kpi', 'data-kpi': rej.id, 'data-value': rej.value == null ? '' : String(rej.value), 'data-n': `${rej.numerator}/${rej.denominator}` },
           h('p', { class: 'dx-kpi-name' }, rej.name),
           h('p', { class: 'dx-kpi-value' }, pct(rej.value)),
-          h('p', { class: 'meta' }, `${rej.numerator} rejected of ${rej.denominator} that reached the lab (received plus rejected).`),
+          h('p', { class: 'meta' }, `${rej.numerator} rejected of ${rej.denominator} specimens that reached the lab (received plus rejected).`),
           rej.byArea.length ? [h('p', { class: 'dx-sub' }, 'By area'), h('ul', { class: 'dx-rows', 'data-test': 'rej-by-area' }, rej.byArea.map((a) => h('li', { 'data-source': a.sourceId },
             h('b', {}, a.name), `: ${a.rejected} of ${a.reached}${a.value == null ? ' (too few for a percentage)' : `, ${pct(a.value)}`}`)))] : null,
           rej.byReason.length ? [h('p', { class: 'dx-sub' }, 'By reason'), h('ul', { class: 'dx-rows', 'data-test': 'rej-by-reason' }, rej.byReason.map((x) => h('li', { 'data-reason': x.reason }, `${x.name}: ${x.count}`)))] : null,

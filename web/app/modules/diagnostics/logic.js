@@ -158,9 +158,17 @@ export function deriveRequests(events) {
           Object.assign(r, { state: r.rejectedAfterReceipt ? 'received' : r.collectedAt ? 'collected' : 'requested', rejectedAt: null, rejectedByRole: null, rejectReason: null, rejectedAfterReceipt: false });
         } else if (r.state === 'received') {
           Object.assign(r, { state: r.collectedAt ? 'collected' : 'requested', receivedAt: null, receivedByRole: null });
+        } else if (r.state === 'released') {
+          Object.assign(r, { state: 'received', releasedAt: null, releasedByRole: null });
         } else break;
         r.undone += 1;
         r.lastStepAt = r.receivedAt || r.collectedAt || r.madeAt;
+        break;
+      // A collection marked on the wrong request, undone by the ward before the lab received it.
+      case 'diagnostics.collection-undone':
+        if (r.state !== 'collected') break;
+        Object.assign(r, { state: 'requested', collectedAt: null, collectedRecordedAt: null, collectedByRole: null, backdatedMinutes: 0, lastStepAt: r.madeAt });
+        r.undone += 1;
         break;
       case 'diagnostics.result-validated':
         if (r.state !== 'received') break;
@@ -247,11 +255,15 @@ const inPeriod = (at, since, until) => !!at && (!since || at >= since) && (!unti
 
 // KPI 1. Laboratory turnaround time: received at lab -> result released, minutes, for requests whose
 // result was released in the period. Rejected and cancelled requests never reach "released".
-export function labTurnaround(reqs, { since, until, testGroup = null, urgency = null } = {}) {
+// Blood culture is reported over days (a first report, then a final one): it is never part of a
+// figure across test groups, and shown in its own row only.
+export const OWN_ROW_GROUPS = ['culture'];
+export function labTurnaround(reqs, { since, until, testGroup = null, urgency = null, leaveOut = [] } = {}) {
   const mins = [];
   for (const r of reqs.values()) {
     if (r.state !== 'released' || !r.receivedAt || !inPeriod(r.releasedAt, since, until)) continue;
     if (testGroup && r.testGroup !== testGroup) continue;
+    if (leaveOut.includes(r.testGroup)) continue;
     if (urgency && r.urgency !== urgency) continue;
     mins.push((ms(r.releasedAt) - ms(r.receivedAt)) / MIN);
   }
@@ -354,13 +366,13 @@ export function ruleEquipmentDown(reqs, equipment, { nameOf = (x) => x, backupTe
     if (!off.length) continue;
     const by = new Map();
     for (const r of reqs.values()) {
-      if (!isOpen(r) || r.state === 'received' || !off.includes(r.testGroup)) continue;
+      if (!isOpen(r) || !off.includes(r.testGroup)) continue; // received ones wait in the lab for it too
       by.set(r.sourceId, [...(by.get(r.sourceId) || []), r]);
     }
     for (const [sourceId, list] of [...by].sort((a, b) => b[1].length - a[1].length || (a[0] < b[0] ? -1 : 1))) {
       const groups = [...new Set(list.map((r) => TEST_GROUPS[r.testGroup].toLowerCase()))].join(', ');
       out.push({ rule: 'equipment-down', id: `equipment-down:${assetId}:${sourceId}`, assetId, sourceId, requestIds: list.map((r) => r.id),
-        text: `${name} is ${x.state === 'down' ? 'down' : 'partly down'}: ${list.length} open ${list.length === 1 ? 'request' : 'requests'} from ${nameOf(sourceId)} (${groups}). ${backupText(kind, x.backup)}.`,
+        text: `${name} is ${x.state === 'down' ? 'down' : 'partly down'}: ${list.length} open ${list.length === 1 ? 'request' : 'requests'} from ${nameOf(sourceId)} (${groups}${list.some((r) => r.state === 'received') ? `; ${list.filter((r) => r.state === 'received').length} already at the lab, waiting for it` : ''}). ${backupText(kind, x.backup)}.`,
         why: `Marked ${EQUIPMENT_STATES[x.state].toLowerCase()} at ${clockText(x.since, offsetMinutes)}${x.state === 'partly-down' ? ` (off: ${off.map((g) => TEST_GROUPS[g].toLowerCase()).join(', ')})` : ''}; the backup route was picked when it was marked.`,
         basis: BASIS['equipment-down'], action: null });
     }
