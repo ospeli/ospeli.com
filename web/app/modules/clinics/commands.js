@@ -188,6 +188,16 @@ async function queue(core, input) {
     const live = clinics.filter((s) => s.state !== 'cancelled');
     chosen = live.find((s) => nowMs >= s.startMs - 30 * MIN && nowMs <= s.endMs + 60 * MIN) || live.find((s) => s.startMs > nowMs) || live[0] || clinics[0] || null;
   }
+  // Issue #163: a day with no clinic says when the last one ran and the next one runs, and whether
+  // this site has clinics at all (only then is an older example hospital the reason).
+  let around = {};
+  if (!chosen) {
+    const nowMs = Date.parse(st.now);
+    const all = [...clinicView(st.d).sessions.values()].filter((s) => s.state !== 'cancelled').sort((a, b) => a.startMs - b.startMs || (a.id < b.id ? -1 : 1));
+    const short = (s) => (s ? { sessionId: s.id, date: s.date, start: s.start, serviceWord: SERVICES[s.service] || s.service, name: clinicName(st, s) } : null);
+    around = { nextClinic: short(all.find((s) => s.date > date && s.startMs > nowMs)), lastClinic: short(all.filter((s) => s.date < date && s.startMs < nowMs).at(-1)),
+      hasClinics: all.length > 0 || [...st.d.templates.values()].some((t) => t.sessionType === SESSION_TYPE) };
+  }
   let patients = chosen ? queueOf(st.d, chosen.id, st.now) : [];
   if (input.find) patients = patients.filter(({ a }) => codeLabel(a.code) === `Patient P${Number(input.find)}`);
   const cut = page(patients, input.limit, 100);
@@ -196,7 +206,7 @@ async function queue(core, input) {
     sessionId: chosen?.id ?? null, clinic: chosen ? clinicOut(st, chosen) : null,
     patients: cut.items.map((p) => patientOut(st, p)), total: cut.total, truncated: cut.truncated,
     graceMinutes: NO_SHOW_GRACE_MINUTES, picks: { missedReasons: noShowPicks(), leftReason: LEFT_REASON, noTimesName: NO_TIMES_NAME, undoReasons: [...UNDO_REASONS] },
-    offlineNote: OFFLINE, note: NOT_FOR,
+    ...around, offlineNote: OFFLINE, note: NOT_FOR,
   };
 }
 
@@ -305,7 +315,10 @@ export const COMMANDS = [
     output: { type: 'object', required: ['asOf', 'synthetic', 'date', 'clinics', 'sessionId', 'patients', 'total', 'truncated'], properties: {
       asOf: TIME, synthetic: SYNTHETIC, date: { type: 'string' }, clinics: { type: 'array', items: CLINIC_OUT }, sessionId: NULLABLE('string'), clinic: { type: ['object', 'null'] },
       patients: { type: 'array', items: PATIENT_OUT }, total: TOTAL, truncated: TRUNCATED, graceMinutes: { type: 'integer', description: 'Example setting, not a standard.' },
-      picks: { type: 'object' }, offlineNote: { type: 'string' }, note: { type: 'string' } } },
+      picks: { type: 'object' }, offlineNote: { type: 'string' }, note: { type: 'string' },
+      nextClinic: { type: ['object', 'null'], description: 'Only when no clinic is chosen (none on this day): the next clinic after this day, with sessionId, date, start and name; null if none is planned.' },
+      lastClinic: { type: ['object', 'null'], description: 'Only when no clinic is chosen: the last clinic before this day that has started; null if none.' },
+      hasClinics: { type: 'boolean', description: 'Only when no clinic is chosen: false when this site has no clinic templates or sessions at all (an example hospital loaded before clinics were added).' } } },
     wardOf: everyWard,
     async run(core, input) { return queue(core, input); },
     example: { input: {} },

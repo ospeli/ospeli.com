@@ -216,8 +216,14 @@ function queueScreen(ctx) {
     clearTimeout(timer);
     const c = data.clinic;
     if (!c) {
-      setKids(box, props.el, h('div', { class: 'card notice', 'data-test': 'no-clinic' }, h('p', {}, 'No clinic is planned for today.'),
-        h('p', { class: 'cl-hint' }, 'A hospital loaded before clinics were added has none. Load Example General Hospital again on the ', h('a', { href: '#/data' }, 'Data and audit'), ' page.')));
+      // Issue #163: say what is true. Only a site with no clinics at all was loaded before clinics were added.
+      const when = (x) => `${x.serviceWord.replace(/ clinic$/, '')}, ${shortDate(x.date)}, ${x.start}`;
+      setKids(box, props.el, data.hasClinics === false
+        ? h('div', { class: 'card notice', 'data-test': 'no-clinic' }, h('p', {}, 'This hospital has no clinics.'),
+          h('p', { class: 'cl-hint' }, 'A hospital loaded before clinics were added has none. Load Example General Hospital again on the ', h('a', { href: '#/data' }, 'Data and audit'), ' page.'))
+        : h('div', { class: 'card notice', 'data-test': 'no-clinic' }, h('p', {}, `No clinic today (${shortDate(data.date)}).`),
+          h('p', { class: 'cl-hint', 'data-test': 'next-clinic' }, data.nextClinic ? `Next clinic: ${when(data.nextClinic)}.` : 'No clinic is planned in the coming weeks.'),
+          data.lastClinic ? h('p', { class: 'cl-hint', 'data-test': 'last-clinic' }, `Last clinic: ${when(data.lastClinic)}.`) : null));
       return;
     }
     const n = c.counts;

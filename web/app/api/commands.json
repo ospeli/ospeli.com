@@ -22621,6 +22621,24 @@
           },
           "note": {
             "type": "string"
+          },
+          "nextClinic": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Only when no clinic is chosen (none on this day): the next clinic after this day, with sessionId, date, start and name; null if none is planned."
+          },
+          "lastClinic": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Only when no clinic is chosen: the last clinic before this day that has started; null if none."
+          },
+          "hasClinics": {
+            "type": "boolean",
+            "description": "Only when no clinic is chosen: false when this site has no clinic templates or sessions at all (an example hospital loaded before clinics were added)."
           }
         }
       },
