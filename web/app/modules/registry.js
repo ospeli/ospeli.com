@@ -19,6 +19,7 @@ export const MODULES = [
   { id: 'facilities', name: 'Facilities and utilities', summary: 'Log utility checks, outages and waste collections from a phone, and see what is due.', commands: ['ospeli_facilities_'], load: () => import('./facilities/view.js') },
   { id: 'transfers', name: 'Transfers and vehicles', summary: 'Book a vehicle journey, see the queue, and time each step with one tap.', commands: ['ospeli_transfers_'], load: () => import('./transfers/view.js') },
   { id: 'clinics', name: 'Outpatient clinics', summary: 'Today\'s clinic queue with waits, the referral list, and each clinic\'s day in numbers.', commands: ['ospeli_clinics_', 'ospeli_slots_', 'ospeli_codes_'], load: () => import('./clinics/view.js') },
+  { id: 'diagnostics', name: 'Diagnostics', summary: 'Follow each laboratory request from asked to collected, received and done, and see which equipment is down.', commands: ['ospeli_diagnostics_'], load: () => import('./diagnostics/view.js') },
   { id: 'agents', name: 'Agents', summary: 'Choose whether AI helpers may read and suggest. Off until you turn it on.', load: () => import('./agents.js') },
   { id: 'data', name: 'Data and audit', summary: 'Export, import, reset and the audit trail.', load: () => import('./data.js') },
 ];
@@ -48,6 +49,11 @@ export const ROLE_MODULES = {
   'clinic-nurse': ['clinics'],
   'booking-clerk': ['clinics'],
   'outpatient-manager': ['clinics'],
+  'lab-reception': ['diagnostics'],
+  'unit-clerk': ['diagnostics'],
+  'lab-scientist': ['diagnostics'],
+  'radiographer': ['diagnostics'],
+  'diagnostics-manager': ['diagnostics'],
 };
 
 export const moduleById = (id) => MODULES.find((m) => m.id === id) || null;

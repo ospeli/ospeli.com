@@ -42,6 +42,11 @@ export const ROLES = [
   { id: 'clinic-nurse', name: 'Clinic nurse', home: 'clinics', startsOnHome: true },
   { id: 'booking-clerk', name: 'Booking clerk', home: 'clinics', startsOnHome: true },
   { id: 'outpatient-manager', name: 'Outpatient manager', home: 'clinics', startsOnHome: true },
+  { id: 'lab-reception', name: 'Laboratory reception officer', home: 'diagnostics', startsOnHome: true },
+  { id: 'unit-clerk', name: 'Unit clerk', home: 'diagnostics', startsOnHome: true },
+  { id: 'lab-scientist', name: 'Laboratory scientist', home: 'diagnostics', startsOnHome: true },
+  { id: 'radiographer', name: 'Radiographer', home: 'diagnostics', startsOnHome: true },
+  { id: 'diagnostics-manager', name: 'Diagnostics manager', home: 'diagnostics', startsOnHome: true },
 ];
 
 export const roleById = (id) => ROLES.find((r) => r.id === id) || null;

@@ -47,7 +47,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -289,7 +294,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -421,7 +431,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1631,7 +1646,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1717,7 +1737,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -1870,7 +1895,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -2024,7 +2054,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -2140,7 +2175,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": false,
@@ -2389,7 +2429,12 @@
               "clinic-receptionist",
               "clinic-nurse",
               "booking-clerk",
-              "outpatient-manager"
+              "outpatient-manager",
+              "lab-reception",
+              "unit-clerk",
+              "lab-scientist",
+              "radiographer",
+              "diagnostics-manager"
             ],
             "description": "The one role this agent works for. It is refused if it claims another."
           },
@@ -2567,7 +2612,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -2634,7 +2684,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -2814,7 +2869,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -2989,7 +3049,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -3169,7 +3234,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -3314,7 +3384,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -3890,7 +3965,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4377,7 +4457,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -4524,7 +4609,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -5165,7 +5255,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -5602,7 +5697,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -5737,7 +5837,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5840,7 +5945,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -5991,7 +6101,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6144,7 +6259,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6266,7 +6386,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6378,7 +6503,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6481,7 +6611,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6584,7 +6719,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": true,
@@ -6679,7 +6819,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -6750,7 +6895,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -6841,7 +6991,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7181,7 +7336,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7506,7 +7666,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -7831,7 +7996,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -8156,7 +8326,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -8481,7 +8656,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -8812,7 +8992,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -9174,7 +9359,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -9499,7 +9689,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -9824,7 +10019,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": true,
       "agentsMayCall": false,
@@ -10156,7 +10356,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -10314,7 +10519,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -11228,7 +11438,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -11346,7 +11561,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -11490,7 +11710,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -11607,7 +11832,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -13208,7 +13438,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -13410,7 +13645,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -13710,7 +13950,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -15282,7 +15527,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -15468,7 +15718,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -15749,7 +16004,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -17846,7 +18106,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -17958,7 +18223,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -18213,7 +18483,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -18500,7 +18775,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -18819,7 +19099,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -19085,7 +19370,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -19495,7 +19785,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -19806,7 +20101,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -20564,7 +20864,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -21853,7 +22158,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
@@ -22159,7 +22469,12 @@
         "clinic-receptionist",
         "clinic-nurse",
         "booking-clerk",
-        "outpatient-manager"
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager"
       ],
       "humanApproval": false,
       "agentsMayCall": true,
