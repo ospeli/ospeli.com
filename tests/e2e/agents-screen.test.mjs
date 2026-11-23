@@ -156,7 +156,7 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
 });
 
 test('remove an agent: it is refused at once, shows under "Refused", and the list survives a reload; works offline', async () => {
-  const { context, page, errors } = await openPage(env, { width: 1280, path: '#/agents', testHook: false });
+  const { context, page, errors } = await openPage(env, { width: 1280, path: '#/agents', testHook: false, clock: '2026-11-10T10:00:00Z' });
   page.on('dialog', (d) => d.accept());
   await setRole(page, 'coo');
   await page.waitForSelector('[data-dial="advise"]:not([disabled])');

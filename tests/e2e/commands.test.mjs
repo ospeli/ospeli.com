@@ -16,7 +16,7 @@ const bedState = (page, id) => page.evaluate(async (bedId) => {
 }, id);
 
 test('window.ospeli lists and describes commands; agents are off by default and audited', async () => {
-  const { context, page, errors } = await openPage(env, { width: 390, path: '#/beds/ward-a1' });
+  const { context, page, errors } = await openPage(env, { width: 390, path: '#/beds/ward-a1', clock: '2026-11-10T10:00:00Z' });
   await page.waitForSelector('.bed');
   const names = await page.evaluate(() => window.ospeli.commands().map((c) => c.name));
   assert.ok(names.includes('ospeli_beds_board') && names.includes('ospeli_beds_allocate'));
@@ -123,7 +123,7 @@ test('issue #9: a second tab refreshes, and a stale dialog cannot take an occupi
 });
 
 test('issue #5: import refuses non-synthetic files and personal-detail fields; the badge follows the data', async () => {
-  const { context, page, errors } = await openPage(env, { path: '#/data' });
+  const { context, page, errors } = await openPage(env, { path: '#/data', clock: '2026-11-10T10:00:00Z' });
   await page.waitForSelector('[data-test="audit-status"]');
   assert.equal(await page.textContent('[data-test="synthetic-badge"]'), 'Synthetic data');
   const dump = await page.evaluate(() => window.ospeli.core.exportData());

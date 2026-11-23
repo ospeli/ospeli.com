@@ -8,7 +8,7 @@ after(async () => { await env.close(); });
 
 test('first run loads Example General Hospital quickly, with a clean audit trail', async () => {
   const t0 = Date.now();
-  const { context, page, errors } = await openPage(env);
+  const { context, page, errors } = await openPage(env, { clock: '2026-11-10T10:00:00Z' });
   const ms = Date.now() - t0;
   assert.ok(ms < 8000, `first run took ${ms} ms`);
   const stats = await page.locator('.stat b').allTextContents();
@@ -22,7 +22,7 @@ test('first run loads Example General Hospital quickly, with a clean audit trail
 });
 
 test('reset leaves the device empty, and the hospital can be loaded again', async () => {
-  const { context, page, errors } = await openPage(env, { path: '#/data' });
+  const { context, page, errors } = await openPage(env, { path: '#/data', clock: '2026-11-10T10:00:00Z' });
   page.on('dialog', (d) => d.accept());
   await page.click('text=Reset device data');
   await page.waitForFunction(() => /^History replaced on /.test(document.querySelector('[data-test="audit-status"]').textContent) && /Self-check passed on the 1 entry here now/.test(document.querySelector('[data-test="audit-note"]').textContent));
@@ -38,7 +38,7 @@ test('reset leaves the device empty, and the hospital can be loaded again', asyn
 });
 
 test('"Load a fresh copy" replaces the data and is audited', async () => {
-  const { context, page, errors } = await openPage(env, { path: '#/data' });
+  const { context, page, errors } = await openPage(env, { path: '#/data', clock: '2026-11-10T10:00:00Z' });
   page.on('dialog', (d) => d.accept());
   await page.evaluate(() => window.ospeli.core.appendEvent({ type: 'bed.vacated', subject: 'bed-x', actorRole: 'ward-nurse' }));
   await Promise.all([page.waitForEvent('load'), page.click('text=Load a fresh copy')]);

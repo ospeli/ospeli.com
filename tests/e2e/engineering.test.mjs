@@ -13,7 +13,7 @@ const openCount = (page) => page.locator('[data-test="wo-open"] b').textContent(
 
 for (const width of [390, 1280]) {
   test(`ward nurse reports a fault from the asset's label link (${width}px)`, async () => {
-    const { context, page, errors } = await openPage(env, { width, path: '#/engineering/report/asset-a1-sink-1' });
+    const { context, page, errors } = await openPage(env, { width, path: '#/engineering/report/asset-a1-sink-1', clock: '2026-11-10T10:00:00Z' });
     await page.waitForSelector('[data-test="wo-open"] b');
     assert.equal(await page.inputValue('[data-test="f-loc"]'), 'ward-a1');
     assert.equal(await page.inputValue('[data-test="f-asset"]'), 'asset-a1-sink-1');
@@ -39,7 +39,7 @@ for (const width of [390, 1280]) {
 }
 
 test('facilities technician sees the queue first, assigns and closes a work order; the KPI tile follows', async () => {
-  const { context, page, errors } = await openPage(env, { width: 390, path: '#/engineering' });
+  const { context, page, errors } = await openPage(env, { width: 390, path: '#/engineering', clock: '2026-11-10T10:00:00Z' });
   await setRole(page, 'estates-tech');
   await page.waitForFunction(() => document.querySelector('main h2')?.textContent === 'Work-order queue');
   await page.waitForSelector('[data-test="wo-list"] [data-wo]');
@@ -77,7 +77,7 @@ test('facilities technician sees the queue first, assigns and closes a work orde
 });
 
 test('the COO can read the queue but has no report form or work-order actions', async () => {
-  const { context, page, errors } = await openPage(env, { path: '#/engineering' });
+  const { context, page, errors } = await openPage(env, { path: '#/engineering', clock: '2026-11-10T10:00:00Z' });
   await setRole(page, 'coo');
   await page.waitForSelector('[data-test="wo-list"] [data-wo]');
   await page.waitForFunction(() => !document.querySelector('[data-test="report-form"]'));
@@ -574,7 +574,7 @@ test('the do-next page has no sideways scroll at 360, 390 and 1280 px; other rol
 });
 
 test('a ward nurse starts the report on a ward: wards listed first, own ward when chosen, same-kind assets grouped with counts (issue #29)', async () => {
-  const { context, page, errors } = await openPage(env, { width: 390, path: '#/engineering', touch: true });
+  const { context, page, errors } = await openPage(env, { width: 390, path: '#/engineering', touch: true, clock: '2026-11-10T10:00:00Z' });
   await page.waitForSelector('[data-test="f-loc"]');
   const types = await page.evaluate(async () => {
     const ids = [...document.querySelectorAll('[data-test="f-loc"] option')].map((o) => o.value);
@@ -596,7 +596,7 @@ test('a ward nurse starts the report on a ward: wards listed first, own ward whe
 });
 
 test('a label link with an unknown asset says so and keeps the form; nothing is recorded (issue #29)', async () => {
-  const { context, page, errors } = await openPage(env, { width: 390, path: '#/engineering/report/asset-nope', touch: true });
+  const { context, page, errors } = await openPage(env, { width: 390, path: '#/engineering/report/asset-nope', touch: true, clock: '2026-11-10T10:00:00Z' });
   await page.waitForSelector('[data-test="report-form"]');
   const before = await page.evaluate(async () => (await window.ospeli.core.events()).length);
   assert.match(await page.locator('[data-test="label-unknown"]').textContent(), /This label isn't recognised; pick the asset below/);
@@ -611,7 +611,7 @@ test('a label link with an unknown asset says so and keeps the form; nothing is 
 // may assign. Opening the app on a touch phone, they reach the queue from Now (or Journey), see the open count
 // and the late ones on the first screen of the module, and send a waiting job to a team.
 test('the operations manager\'s first five minutes in Engineering on a 390 px phone: open count first, a job sent to a team in a few taps', async () => {
-  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true });
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: '2026-11-10T10:00:00Z' });
   await setRole(page, 'ops-manager');
   await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'ops-manager');
   await page.goto(env.appUrl);

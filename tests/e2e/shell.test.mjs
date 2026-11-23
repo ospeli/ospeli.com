@@ -11,7 +11,7 @@ after(async () => { await env.close(); });
 
 for (const width of [360, 390, 1024, 1280]) {
   test(`shell loads cleanly at ${width}px with no horizontal scroll`, async () => {
-    const { context, page, errors } = await openPage(env, { width });
+    const { context, page, errors } = await openPage(env, { width, clock: '2026-11-10T10:00:00Z' });
     assert.equal(await page.locator('.badge-synthetic').isVisible(), true);
     // Navigation v2: the top bar has no logo; the Ospeli symbol is on the dock's Walk button.
     assert.equal(await page.locator('#dock [data-dock="walk"] img').evaluate((img) => img.complete && img.naturalWidth > 0), true);
@@ -33,7 +33,7 @@ for (const width of [360, 390, 1024, 1280]) {
 }
 
 test('every role can be chosen; the choice persists and is audited', async () => {
-  const { context, page, errors } = await openPage(env);
+  const { context, page, errors } = await openPage(env, { clock: '2026-11-10T10:00:00Z' });
   // Navigation v2: the role list is under Me.
   await page.click('#dock [data-dock="me"]');
   await page.waitForSelector('#main #role-select');
@@ -67,7 +67,7 @@ test('every role can be chosen; the choice persists and is audited', async () =>
 });
 
 test('phone dock opens Journey with every page and marks the current page', async () => {
-  const { context, page } = await openPage(env, { width: 390 });
+  const { context, page } = await openPage(env, { width: 390, clock: '2026-11-10T10:00:00Z' });
   assert.equal(await page.locator('#main .journey').count(), 0);
   assert.equal(await page.getAttribute('#dock [data-dock="home"]', 'aria-current'), 'page');
   await page.click('#dock [data-dock="journey"]');
@@ -89,7 +89,7 @@ test('phone dock opens Journey with every page and marks the current page', asyn
 });
 
 test('keyboard: the first Tab reaches the skip link, and controls are labelled', async () => {
-  const { context, page } = await openPage(env);
+  const { context, page } = await openPage(env, { clock: '2026-11-10T10:00:00Z' });
   // The department is chosen (openPage); a fresh load of the page then has no sheet open.
   await page.reload();
   await page.waitForSelector('html[data-ready="true"]');
@@ -104,7 +104,7 @@ test('keyboard: the first Tab reaches the skip link, and controls are labelled',
 });
 
 test('data persists in IndexedDB across reloads', async () => {
-  const { context, page } = await openPage(env);
+  const { context, page } = await openPage(env, { clock: '2026-11-10T10:00:00Z' });
   assert.equal(await page.evaluate(() => window.ospeli.core.db.kind), 'indexeddb');
   const before = await page.evaluate(async () => (await window.ospeli.core.events()).length);
   await page.evaluate(() => window.ospeli.core.appendEvent({ type: 'bed.vacated', subject: 'bed-x', actorRole: 'ward-nurse' }));
@@ -117,7 +117,7 @@ test('data persists in IndexedDB across reloads', async () => {
 });
 
 test('works offline after the first load', async () => {
-  const { context, page, errors } = await openPage(env);
+  const { context, page, errors } = await openPage(env, { clock: '2026-11-10T10:00:00Z' });
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   // Wait until the service worker controls the page (first visit is uncontrolled).
   await page.reload();
@@ -133,7 +133,7 @@ test('works offline after the first load', async () => {
 });
 
 test('export, refuse a tampered file, then import a good one', async () => {
-  const { context, page, errors } = await openPage(env, { path: '#/data' });
+  const { context, page, errors } = await openPage(env, { path: '#/data', clock: '2026-11-10T10:00:00Z' });
   const count = await page.evaluate(async () => (await window.ospeli.core.events()).length);
   const [download] = await Promise.all([page.waitForEvent('download'), page.click('text=Export JSON')]);
   const file = path.join(os.tmpdir(), `ospeli-e2e-${Date.now()}.json`);
@@ -185,7 +185,7 @@ test('two tabs on one device keep one unbroken audit trail (issue #2)', async ()
 });
 
 test('Escape closes the phone department sheet and returns focus to the department chip (issue #8)', async () => {
-  const { context, page } = await openPage(env, { width: 390 });
+  const { context, page } = await openPage(env, { width: 390, clock: '2026-11-10T10:00:00Z' });
   await page.focus('#dept-btn');
   await page.keyboard.press('Enter');
   assert.equal(await page.locator('#dept-sheet').isVisible(), true);
@@ -203,7 +203,7 @@ test('Escape closes the phone department sheet and returns focus to the departme
 // Navigation v2: the shortcuts are "Your pages" on Now; planned pages are listed only on Journey,
 // under "Coming later", after every built page.
 test('Now at 390px: every role gets at least three pages and all of them are built; unbuilt pages sit under Coming later on Journey (issue #53)', async () => {
-  const { context, page, errors } = await openPage(env, { width: 390, height: 844 });
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, clock: '2026-11-10T10:00:00Z' });
   await page.evaluate(() => { location.hash = '#/me'; });
   await page.waitForSelector('#main #role-select');
   const roles = await page.evaluate(() => [...document.querySelector('#role-select').options].map((o) => o.value));
@@ -256,7 +256,7 @@ test('Now at 390px: every role gets at least three pages and all of them are bui
 // Issue #79: the words and the pill say what the check proves and no more.
 for (const width of [360, 390, 1280]) {
   test(`audit trail at ${width} px: the pill says "Self-check passed", the limits are one tap away, and a reset never shows a clean state`, async () => {
-    const { context, page, errors } = await openPage(env, { path: '#/data', width, height: 800, touch: width < 1000 });
+    const { context, page, errors } = await openPage(env, { path: '#/data', width, height: 800, touch: width < 1000, clock: '2026-11-10T10:00:00Z' });
     const act = (sel) => (width < 1000 ? page.tap(sel) : page.click(sel));
     await page.waitForFunction(() => /^Self-check passed: \d+ entries$/.test(document.querySelector('[data-test="audit-status"]').textContent));
     assert.equal(await page.locator('[data-test="audit-status"].pill-ok').count(), 1);
@@ -298,7 +298,7 @@ for (const width of [360, 390, 1280]) {
 // Issue #10: on a phone the role's shortcuts come before the key numbers; desktop keeps its order.
 test('Now: Your pages come before Key numbers on phones (360 and 390 px) and after them at 1280 px (issue #10)', async () => {
   for (const [width, height] of [[360, 780], [390, 844], [1280, 860]]) {
-    const { context, page, errors } = await openPage(env, { width, height, touch: width < 1000 });
+    const { context, page, errors } = await openPage(env, { width, height, touch: width < 1000, clock: '2026-11-10T10:00:00Z' });
     await setRole(page, 'ward-nurse');
     await page.waitForSelector('[data-test="role-shortcuts"] a');
     await page.waitForSelector('#kpi-h');

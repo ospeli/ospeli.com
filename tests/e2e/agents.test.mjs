@@ -34,7 +34,7 @@ async function waitForStatus(page, id, ok, ms = 5000) {
 }
 
 test('issue #16: without the test flag a page script gets no core and cannot change agent access or the log', async () => {
-  const { context, page, errors } = await openPage(env, { path: '#/beds', testHook: false });
+  const { context, page, errors } = await openPage(env, { path: '#/beds', testHook: false, clock: '2026-11-10T10:00:00Z' });
   await page.waitForSelector('.bed');
   const before = await stored(page);
   const probe = await page.evaluate(async () => {
@@ -59,7 +59,7 @@ test('issue #16: without the test flag a page script gets no core and cannot cha
 });
 
 test('issue #17: an agent proposes, the patient flow coordinator accepts on the board, and the audit shows who did what', async () => {
-  const { context, page, errors } = await openPage(env, { width: 390, path: '#/beds' });
+  const { context, page, errors } = await openPage(env, { width: 390, path: '#/beds', clock: '2026-11-10T10:00:00Z' });
   await page.waitForSelector('.bed');
   // COO switches agents on for a ward with a free bed; the agent proposes an allocation.
   const prop = await page.evaluate(async () => {
@@ -127,7 +127,7 @@ test('issue #17: an agent proposes, the patient flow coordinator accepts on the 
 });
 
 test('issue #17: declining needs a listed reason and changes nothing', async () => {
-  const { context, page, errors } = await openPage(env, { path: '#/beds' });
+  const { context, page, errors } = await openPage(env, { path: '#/beds', clock: '2026-11-10T10:00:00Z' });
   await page.waitForSelector('.bed');
   const prop = await page.evaluate(async () => {
     const { runCommand } = await import('./core/commands.js');
@@ -245,7 +245,7 @@ test('issue #65: the audit table names what an agent read, proposed and was refu
 // Issue #72: a queue worth reading. The card says how many are waiting, shows the newest three,
 // and the rest are one tap away. An impossible proposal never reaches the card.
 test('issue #72: five proposals show a count, the newest three and "See all"; an impossible one is refused (390px)', async () => {
-  const { context, page, errors } = await openPage(env, { width: 390, path: '#/beds' });
+  const { context, page, errors } = await openPage(env, { width: 390, path: '#/beds', clock: '2026-11-10T10:00:00Z' });
   await page.waitForSelector('.bed');
   const out = await page.evaluate(async () => {
     const { runCommand } = await import('./core/commands.js');

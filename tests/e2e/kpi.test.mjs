@@ -8,7 +8,7 @@ after(async () => { await env.close(); });
 
 for (const width of [390, 1280]) {
   test(`KPI tiles show their definition on tap at ${width}px`, async () => {
-    const { context, page, errors } = await openPage(env, { width });
+    const { context, page, errors } = await openPage(env, { width, clock: '2026-11-10T10:00:00Z' });
     const tiles = page.locator('button.kpi');
     assert.equal(await tiles.count(), 7);
     // Ward nurse owns "discharges before noon", so it comes first.
@@ -30,7 +30,7 @@ for (const width of [390, 1280]) {
 }
 
 test('KPI values recompute from the event log', async () => {
-  const { context, page } = await openPage(env);
+  const { context, page } = await openPage(env, { clock: '2026-11-10T10:00:00Z' });
   const read = () => page.locator('button[data-kpi="open-work-orders"] .kpi-value').textContent();
   const before = Number(await read());
   await page.evaluate(() => window.ospeli.core.appendEvent({ type: 'asset.fault-reported', subject: 'asset-a1-sink-1', actorRole: 'ward-nurse', data: { workOrder: 'wo-e2e', priority: 'routine', title: 'Blocked sink' } }));
