@@ -6,6 +6,7 @@
 // because the core keeps the tail of the audit chain in memory and two writers would fork it.
 // Every write goes to disk first, then to an in-memory copy that reads are served from.
 import { DatabaseSync } from 'node:sqlite';
+import { writeFileSync, unlinkSync } from 'node:fs';
 
 const KEYS = { entities: 'id', events: 'seq', audit: 'seq', meta: 'id' };
 const STORES = Object.keys(KEYS);
@@ -84,6 +85,12 @@ export class SqliteAdapter {
   async clear(store) { this._s(store); this.db.exec(`DELETE FROM ${store}`); this.data[store].clear(); }
   async count(store) { return this._s(store).size; }
   // A complete copy of the data file, safe to take while the server runs.
-  backupTo(path) { this.db.prepare('VACUUM INTO ?').run(path); }
+  // The file is made first, empty, new and readable by this account only, and the copy is written
+  // into it. Before 23 Nov SQLite made the file itself, readable by other accounts until the whole
+  // copy was on disk, and wrote into a file or through a link that was already there.
+  backupTo(path) {
+    writeFileSync(path, '', { flag: 'wx', mode: 0o600 });
+    try { this.db.prepare('VACUUM INTO ?').run(path); } catch (err) { try { unlinkSync(path); } catch { /* nothing to remove */ } throw err; }
+  }
   async close() { this.db.close(); }
 }

@@ -351,7 +351,7 @@ test('restart and backup: data, the dial, keys and waiting proposals are kept; o
   const counts = { events: await first.core.eventCount(), audit: (await first.core.auditLog()).length };
   const copy = join(dir, 'copy.db');
   assert.match(await first.consoleLine(`backup ${copy}`), /Saved a copy of all data/);
-  assert.match(await first.consoleLine(`backup ${copy}`), /already there; give a new name/);
+  assert.match(await first.consoleLine(`backup ${copy}`), /already there\. Nothing was saved\. Give a new name/);
   await first.close();
 
   const second = await startServer({ file, port: 0, end: END, clock });

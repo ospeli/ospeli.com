@@ -17,7 +17,7 @@ import { createServer } from 'node:http';
 import { createServer as createTlsServer } from 'node:https';
 import { createHash, randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import { networkInterfaces } from 'node:os';
-import { mkdirSync, chmodSync, statSync, readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
+import { mkdirSync, chmodSync, statSync, lstatSync, realpathSync, readFileSync, writeFileSync, unlinkSync, existsSync } from 'node:fs';
 import { readFile, stat, realpath } from 'node:fs/promises';
 import { dirname, resolve, extname, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -760,10 +760,25 @@ export async function startServer({
   // A locked copy: a plain copy is made beside the target for a moment (SQLite writes its own
   // file), sealed in memory, and removed. Then the sealed file is read back and opened, so a
   // copy that says "saved" is a copy that opens (issue #93, the recovery story).
+  // Where a copy may be written. Not onto anything already there (a file, or a link that could
+  // lead somewhere else), and never inside the folder Ospeli hands out to browsers: a copy saved
+  // there was given, whole, to anyone on the network who asked for it by name (deep pass, 23 Nov).
+  // Returns the words of the refusal, or null when the place is fine.
+  function copyPlaceProblem(to) {
+    let there = false;
+    try { lstatSync(to); there = true; } catch { /* nothing there: good */ }
+    if (there) return `A file called ${to} is already there. Nothing was saved. Give a new name.`;
+    let folder; let served;
+    try { folder = realpathSync(dirname(to)); } catch { return `The folder for ${to} does not exist. Nothing was saved.`; }
+    try { served = realpathSync(webRoot); } catch { served = resolve(webRoot); }
+    if (folder === served || folder.startsWith(served + sep)) return 'That folder holds the files Ospeli gives to every browser that asks, so a copy saved there could be read by anyone on the network. Nothing was saved. Give a place outside it.';
+    return null;
+  }
   async function lockedBackup(to, passphrase) {
     const tmp = `${to}.${randomBytes(6).toString('hex')}.part`;
     try {
-      if (existsSync(to)) return `A file called ${to} is already there. Nothing was saved. Give a new name.`;
+      const bad = copyPlaceProblem(to);
+      if (bad) return bad;
       adapter.backupTo(tmp); ownerOnly(tmp);
       if (statSync(tmp).size > MAX_COPY_BYTES) return 'The data file is too large for a locked copy in this version. Nothing was saved. Use backup FILE and keep that file on an encrypted disk.';
       saveLocked(readFileSync(tmp), to, passphrase);
@@ -792,6 +807,8 @@ export async function startServer({
       if (err instanceof NotLockedCopyError) return `${from} is not a locked copy made by Ospeli. Nothing was written. (A copy made with backup FILE is not locked: start Ospeli with --data and its name.)`;
       return `${from} could not be read (${err.code || 'not readable'}). Nothing was written.`;
     }
+    const bad = copyPlaceProblem(to);
+    if (bad) return bad.replace('Nothing was saved', 'Nothing was written');
     try { writeFileSync(to, plain, { flag: 'wx', mode: 0o600 }); ownerOnly(to); } catch (err) {
       return `The opened copy could not be written to ${to} (${err.code === 'EEXIST' ? 'a file with that name is already there; give a new name' : err.code || 'the file could not be written'}). Nothing was written.`;
     }
@@ -948,21 +965,26 @@ export async function startServer({
       if (/^audit\b/i.test(text)) return 'Type audit to check the trail and see its mark. To check a mark you wrote down, type audit check and the mark, for example: audit check 412 3fa9-c01d-77be-0a1b-22cd';
       if ((m = /^locked backup (.+)$/i.exec(text))) {
         const to = resolve(m[1]);
-        if (existsSync(to)) return `A file called ${to} is already there. Nothing was saved. Give a new name.`;
+        const bad = copyPlaceProblem(to);
+        if (bad) return bad;
         wizard = { step: 'lock-pass1', to };
         return ['1 of 2. Choose a passphrase for this copy: at least 12 characters; four or five unrelated words work well.', 'It shows on this screen as you type, so check nobody is watching. It is not stored anywhere.', 'If it is lost, the copy cannot be opened by anyone. (Type cancel to stop.)'].join('\n');
       }
       if ((m = /^open backup (\S+) (\S+)$/i.exec(text))) {
         const from = resolve(m[1]); const to = resolve(m[2]);
         if (!existsSync(from)) return `There is no file ${from}. Nothing was written.`;
-        if (existsSync(to)) return `A file called ${to} is already there. Nothing was written. Give a new name for the opened copy.`;
+        const bad = copyPlaceProblem(to);
+        if (bad) return bad.replace('Nothing was saved', 'Nothing was written');
         wizard = { step: 'open-pass', from, to };
         return 'Type the passphrase for this copy. (Type cancel to stop.)';
       }
       if (/^(locked backup|open backup)\b/i.test(text)) return 'Type locked backup and a file name, for example: locked backup ospeli-copy.locked\nTo open one: open backup ospeli-copy.locked opened.db (file names without spaces)';
       if ((m = /^backup (.+)$/i.exec(text))) {
         const to = resolve(m[1]);
-        try { adapter.backupTo(to); ownerOnly(to); } catch (err) { return `The copy could not be saved to ${to} (${/exist/i.test(err.message) ? 'a file with that name is already there; give a new name' : err.message}).`; }
+        const bad = copyPlaceProblem(to);
+        if (bad) return bad;
+        // The reason is given in Ospeli's words, never the storage engine's own.
+        try { adapter.backupTo(to); ownerOnly(to); } catch (err) { return `The copy could not be saved to ${to} (${err.code === 'EEXIST' ? 'a file with that name is already there; give a new name' : err.code === 'EACCES' || err.code === 'EPERM' ? 'this account may not write there' : 'the file could not be written'}). Nothing was saved.`; }
         await core.recordAs(person(CONSOLE_ADMIN), 'data.backup', null, null);
         return `Saved a copy of all data to ${to}. To use it later, start Ospeli with: --data ${to}\nThis copy is not locked: anyone who gets the file can read it. For a copy that needs a passphrase, type: locked backup FILE`;
       }
