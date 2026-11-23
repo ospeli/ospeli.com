@@ -6,7 +6,7 @@
 // Fixed clock; fictional data only.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment, waitUntil } from './helpers.mjs';
 import { roleById } from '../../web/app/core/model.js';
 import { moduleById } from '../../web/app/modules/registry.js';
 import { departmentById, departmentForRole } from '../../web/app/modules/departments.js';
@@ -38,7 +38,7 @@ const CLOCK = '2026-11-20T18:00:00Z'; // 14:00 at the example site
 const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 async function asRole(page, role, screen = '') {
   await setRole(page, role);
-  await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
+  await waitUntil(page, async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
   await page.evaluate((s) => {
     const x = document.querySelector('.mod-pharmacy');
     if (x) x.dataset.stale = 'true';
@@ -130,7 +130,7 @@ test('front line: the pharmacy technician on a 390 px touch phone opens on the q
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   const t0 = Date.now();
   await setRole(page, 'pharmacy-technician');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'pharmacy-technician');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'pharmacy-technician');
   await openFromNow(page, 'pharmacy-technician');
   await page.waitForFunction(() => document.querySelector('.mod-pharmacy')?.dataset.screen === 'queue');
   assert.match(await page.evaluate(() => location.hash), /^#\/pharmacy/, 'one tap from Now opens the module');
@@ -184,7 +184,7 @@ test('manager: the pharmacy manager on a 390 px touch phone opens on Turnaround,
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   const t0 = Date.now();
   await setRole(page, 'pharmacy-manager');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'pharmacy-manager');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'pharmacy-manager');
   await openFromNow(page, 'pharmacy-manager');
   await page.waitForFunction(() => document.querySelector('.mod-pharmacy')?.dataset.screen === 'summary');
   assert.deepEqual(await phoneProblems(page), []);

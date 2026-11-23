@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment, waitUntil } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -209,7 +209,7 @@ test('Now at 390px: every role gets at least three pages and all of them are bui
   const roles = await page.evaluate(() => [...document.querySelector('#role-select').options].map((o) => o.value));
   for (const role of roles) {
     await setRole(page, role);
-    await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
+    await waitUntil(page, async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
     await page.goto(`${env.appUrl}#/home`);
     await page.reload();
     await page.waitForSelector('html[data-ready="true"]');

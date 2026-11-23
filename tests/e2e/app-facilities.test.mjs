@@ -7,7 +7,7 @@
 // the facilities manager. Fictional data only.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment, waitUntil } from './helpers.mjs';
 import { roleById } from '../../web/app/core/model.js';
 import { moduleById } from '../../web/app/modules/registry.js';
 import { departmentById, departmentForRole } from '../../web/app/modules/departments.js';
@@ -39,7 +39,7 @@ const CLOCK = '2026-11-19T14:00:00Z';
 const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 async function asRole(page, role) {
   await setRole(page, role);
-  await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
+  await waitUntil(page, async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
   await page.evaluate(() => {
     const x = document.querySelector('.fac');
     if (location.hash === '#/facilities') return;
@@ -253,7 +253,7 @@ test('front line: the facilities technician on a 390 px touch phone, with no hel
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   const t0 = Date.now();
   await setRole(page, 'estates-tech');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'estates-tech');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'estates-tech');
   await page.goto(env.appUrl);
   await page.waitForSelector('html[data-ready="true"]');
   await page.waitForSelector('#main [data-test="role-shortcuts"]');
@@ -317,7 +317,7 @@ test('manager: the facilities manager on a 390 px touch phone opens on the modul
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   const t0 = Date.now();
   await setRole(page, 'facilities-manager');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'facilities-manager');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'facilities-manager');
   await openFromNow(page, 'facilities-manager');
   await page.waitForFunction(() => document.querySelector('.fac')?.dataset.role === 'facilities-manager');
   assert.equal(await page.evaluate(() => location.hash), '#/facilities', 'one tap from Now opens the module');

@@ -5,7 +5,7 @@
 // for a person. Fixed clock: Monday 16 Nov 2026, 11:00 site time.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment, waitUntil } from './helpers.mjs';
 import { roleById } from '../../web/app/core/model.js';
 import { moduleById } from '../../web/app/modules/registry.js';
 import { departmentById, departmentForRole } from '../../web/app/modules/departments.js';
@@ -504,7 +504,7 @@ test('a redraw keeps open what the person opened and keeps unsaved picks (record
 test('the liaison officer\'s first five minutes on a 390 px phone: opens on the queue, sees open and overdue counts first, and records a late reply', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   await setRole(page, 'patient-liaison');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'patient-liaison');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'patient-liaison');
   await openFromNow(page, 'patient-liaison');
   await page.waitForSelector('.mod-feedback[data-role="patient-liaison"] [data-test="queue-list"] [data-record]');
   assert.match(await page.evaluate(() => location.hash), /^#\/feedback/, 'one tap from Now opens the module');

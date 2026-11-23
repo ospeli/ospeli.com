@@ -5,7 +5,7 @@
 // a count more than 10 times the top-up level (example setting) asks once before it is saved.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage, setRole } from './helpers.mjs';
+import { startApp, openPage, setRole, waitUntil } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -26,7 +26,7 @@ const counts = (page) => page.evaluate(async () => (await window.ospeli.core.exp
 async function openCount(page) {
   await page.evaluate(() => { try { localStorage.setItem('ospeli-stores-ward', 'ward-a1'); } catch { /* none */ } });
   await setRole(page, 'ward-nurse');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
   await page.evaluate(() => { location.hash = '#/stores/count'; });
   await page.waitForSelector('.sto[data-screen="count"] [data-test="count-input"]');
 }

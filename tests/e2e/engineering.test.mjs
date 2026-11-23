@@ -2,7 +2,7 @@
 // facilities technician, and keep the KPIs in step. Phone and desktop.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage, setRole } from './helpers.mjs';
+import { startApp, openPage, setRole, waitUntil } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -103,7 +103,7 @@ test('work-order dialog never shows "null" or "undefined", for every role (issue
   await page.waitForSelector('main [data-test="wo-list"] [data-wo]');
   for (const role of roles) {
     await setRole(page, role);
-    await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
+    await waitUntil(page, async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
     // The page is drawn again for the new role and swapped in when it is ready. Wait for that queue,
     // so the test never taps a row from the page for the role before.
     await page.waitForSelector(`[data-test="wo-queue"][data-role="${role}"] [data-test="wo-list"] [data-wo]`);
@@ -613,7 +613,7 @@ test('a label link with an unknown asset says so and keeps the form; nothing is 
 test('the operations manager\'s first five minutes in Engineering on a 390 px phone: open count first, a job sent to a team in a few taps', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true });
   await setRole(page, 'ops-manager');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'ops-manager');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'ops-manager');
   await page.goto(env.appUrl);
   await page.waitForSelector('html[data-ready="true"]');
   await page.waitForSelector('[data-test="role-shortcuts"] a');

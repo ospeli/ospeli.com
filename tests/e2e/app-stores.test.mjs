@@ -7,7 +7,7 @@
 // switch; a role with no rights sees no action button; honest empty states on an older device.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment, waitUntil } from './helpers.mjs';
 import { roleById } from '../../web/app/core/model.js';
 import { moduleById } from '../../web/app/modules/registry.js';
 import { departmentById, departmentForRole } from '../../web/app/modules/departments.js';
@@ -52,7 +52,7 @@ const cmd = (page, name, input, role) => page.evaluate(async ([n, i, r]) => {
 // Choose a role in the picker, then open one screen by its address, and wait for a fresh drawing for it.
 async function asRole(page, role, screen) {
   await setRole(page, role);
-  await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
+  await waitUntil(page, async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
   await page.evaluate((target) => {
     const x = document.querySelector('.sto');
     if (location.hash === target) return;
@@ -100,7 +100,7 @@ test('the storekeeper\'s first five minutes on a 390 px touch screen: issues the
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   // A storekeeper's phone: opening the app with no address lands on Now; one tap on their card opens the module, on the requests.
   await setRole(page, 'storekeeper');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'storekeeper');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'storekeeper');
   await openFromNow(page, 'storekeeper');
   await page.waitForFunction(() => document.querySelector('.sto')?.dataset.screen === 'requests' && document.querySelector('[data-test="first-request"]'));
   assert.equal(await page.evaluate(() => location.hash), '#/stores');
@@ -195,7 +195,7 @@ test('a ward count under level raises the request with no extra step, and the wa
 test('the supply chain manager\'s first five minutes on a 390 px phone: sees what is short and what is stuck, and records an order step (#112)', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   await setRole(page, 'supply-manager');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'supply-manager');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'supply-manager');
   await openFromNow(page, 'supply-manager');
   await page.waitForFunction(() => document.querySelector('.sto')?.dataset.screen === 'manage' && document.querySelector('[data-test="stats"]'));
   // The first screen says what is short and what is stuck, in numbers.
@@ -238,7 +238,7 @@ test('the supply chain manager\'s first five minutes on a 390 px phone: sees wha
   const level = Number(await page.locator('[data-test="tool-level"] [data-test="level-input"]').inputValue());
   assert.ok(level > 0 && await page.locator('#lvl-place').inputValue() && await page.locator('#lvl-item').inputValue(), 'the form is filled in');
   await page.locator('[data-test="set-level-save"]').tap();
-  await page.waitForFunction(async (n) => (await window.ospeli.core.events({ type: 'stock.level-set' })).length === n + 1, levels0);
+  await waitUntil(page, async (n) => (await window.ospeli.core.events({ type: 'stock.level-set' })).length === n + 1, levels0);
   assert.equal(await page.evaluate(async () => (await window.ospeli.core.events({ type: 'stock.level-set' })).at(-1).data.level), level);
   assert.deepEqual(errors, []);
   await context.close();
@@ -265,13 +265,13 @@ test('the manager view at 1280 px: measures with their sources, the guide switch
   await page.waitForFunction(() => document.querySelector('[data-test="guide"]')?.dataset.on === 'true');
   // The operations manager approves the order waiting for approval; the reminder the guide offered is sent first.
   await page.locator('[data-test="suggestion"][data-rule="order-waiting"] [data-cmd="ospeli_stores_order_remind"]').click();
-  await page.waitForFunction(async () => (await window.ospeli.core.events({ type: 'stores.order-reminded' })).length === 1);
+  await waitUntil(page, async () => (await window.ospeli.core.events({ type: 'stores.order-reminded' })).length === 1);
   await asRole(page, 'ops-manager', 'orders');
   assert.match(await page.locator('[data-test="reminders"]').textContent(), /Reminder: Order \d+ waiting for approval/);
   const approve = page.locator('[data-cmd="ospeli_stores_order_step"][data-step="approved"]').first();
   const order = await approve.locator('xpath=ancestor::li[@data-order]').getAttribute('data-order');
   await approve.click();
-  await page.waitForFunction(async (o) => (await window.ospeli.core.events({ subject: o })).at(-1)?.data?.step === 'approved', order);
+  await waitUntil(page, async (o) => (await window.ospeli.core.events({ subject: o })).at(-1)?.data?.step === 'approved', order);
   assert.deepEqual(errors, []);
   await context.close();
 });
@@ -288,7 +288,7 @@ test('the stock-out log opens on the nurse\'s own ward, with a way to all wards;
   const li = page.locator(`[data-test="outs-open"] [data-out="${open.id}"]`);
   assert.deepEqual(await li.locator('[data-cmd="ospeli_stock_out_end"]').allTextContents(), ['Back in stock: care was affected', 'Back in stock: care not affected']);
   await li.locator('[data-care="no"]').tap();
-  await page.waitForFunction(async (id) => (await window.ospeli.core.events({ subject: id })).at(-1).type === 'stock.stock-out-ended', open.id);
+  await waitUntil(page, async (id) => (await window.ospeli.core.events({ subject: id })).at(-1).type === 'stock.stock-out-ended', open.id);
   assert.equal(await page.evaluate(async (id) => (await window.ospeli.core.events({ subject: id })).at(-1).data.careAffected, open.id), false);
   assert.deepEqual(await phoneProblems(page), []);
   assert.deepEqual(errors, []);

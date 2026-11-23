@@ -7,7 +7,7 @@
 // with no rights see no buttons.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment, waitUntil } from './helpers.mjs';
 import { roleById } from '../../web/app/core/model.js';
 import { moduleById } from '../../web/app/modules/registry.js';
 import { departmentById, departmentForRole } from '../../web/app/modules/departments.js';
@@ -42,7 +42,7 @@ const noSideways = (page) => page.evaluate(() => document.documentElement.scroll
 // step waits for the state it needs: the role saved, then a fresh drawing of the page for it.
 async function asRole(page, role, screen = '') {
   await setRole(page, role);
-  await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
+  await waitUntil(page, async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
   const hash = screen ? `#/support/${screen}` : '#/support';
   await page.evaluate((target) => {
     const sup = document.querySelector('.sup');
@@ -95,7 +95,7 @@ test('a transport assistant opens the app on a 390 px touch screen and takes the
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   // A transport assistant's phone: the role is saved; opening the app with no address lands on Now, and their card opens the module in one tap.
   await setRole(page, 'porter');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'porter');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'porter');
   await openFromNow(page, 'porter');
   await page.waitForFunction(() => document.querySelector('.sup')?.dataset.role === 'porter');
   assert.equal(await page.evaluate(() => location.hash), '#/support', 'one tap from Now opens the module');
@@ -239,7 +239,7 @@ test('a bed vacated on the bed board is in the cleaner\'s queue with no one aski
   if ((await page.evaluate(() => document.documentElement.dataset.role)) !== 'ward-nurse') {
     await page.evaluate(() => document.querySelectorAll('main .bed').forEach((b) => { b.dataset.oldDrawing = '1'; }));
     await setRole(page, 'ward-nurse');
-    await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
+    await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
     await page.waitForFunction(() => document.querySelector('main .bed') && !document.querySelector('main .bed[data-old-drawing]'));
   }
   assert.equal(await page.evaluate(() => document.documentElement.dataset.role), 'ward-nurse', 'the role (chosen under Me) is Ward nurse');
@@ -382,7 +382,7 @@ test('a role with no rights sees no action button, and one line that says who ca
 test('the supervisor\'s first five minutes on a 390 px phone: opens on the module, sees each team\'s waiting jobs and the oldest wait, and puts a job first in one tap', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   await setRole(page, 'support-supervisor');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'support-supervisor');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'support-supervisor');
   await openFromNow(page, 'support-supervisor');
   await page.waitForFunction(() => document.querySelector('.sup')?.dataset.role === 'support-supervisor');
   assert.equal(await page.evaluate(() => location.hash), '#/support', 'one tap from Now opens the module');

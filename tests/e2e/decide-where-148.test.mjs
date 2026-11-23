@@ -3,7 +3,7 @@
 // raw command name. Agents propose through window.ospeli, as in the issue; synthetic data only.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage, setRole } from './helpers.mjs';
+import { startApp, openPage, setRole, waitUntil } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -87,7 +87,7 @@ test('#148: Now counts only what the role can decide and has a screen for (store
   const { context, page, errors } = await openPage(env, { width: 390, path: '#/home', clock: CLOCK, touch: true });
   await fourProposals(page);
   await setRole(page, 'storekeeper');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'storekeeper');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'storekeeper');
   await page.evaluate(() => { location.hash = '#/home'; });
   // Navigation v2: the h1 on Now is the department; the role's name is in the line under it.
   await page.waitForFunction(() => /Storekeeper/i.test(document.querySelector('main [data-test="now-role"]')?.textContent || ''));

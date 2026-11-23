@@ -1,6 +1,6 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage, setRole } from './helpers.mjs';
+import { startApp, openPage, setRole, waitUntil } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -35,7 +35,7 @@ for (const width of [360, 390, 1024, 1280]) {
 test('patient flow coordinator allocates a waiting patient, the nurse admits, discharges and cleans: all from the event log', async () => {
   const { context, page, errors } = await openPage(env, { clock: CLOCK, width: 390, path: '#/beds' });
   await setRole(page, 'bed-manager');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
   await page.reload(); // start from a settled render as the patient flow coordinator
   await page.waitForSelector('html[data-ready="true"]');
   await page.waitForSelector('[data-find]');
@@ -61,7 +61,7 @@ test('patient flow coordinator allocates a waiting patient, the nurse admits, di
 
   // Ward nurse: patient arrives, goes home, bed is cleaned.
   await setRole(page, 'ward-nurse');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
   const ward = freeBed.replace(/-bed-\d+$/, '');
   await page.goto(`${env.appUrl}#/beds/${ward}`);
   await page.reload();
@@ -153,7 +153,7 @@ for (const [width, height] of [[360, 780], [390, 844]]) {
   test(`find a bed at ${width}px: the banner is in view and holds focus; cancel returns focus (issue #63)`, async () => {
     const { context, page, errors } = await openPage(env, { clock: CLOCK, width, height, path: '#/beds' });
     await setRole(page, 'bed-manager');
-    await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
+    await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
     await page.reload();
     await page.waitForSelector('html[data-ready="true"]');
     await page.waitForSelector('[data-find]');
@@ -197,7 +197,7 @@ for (const [width, height] of [[360, 780], [390, 844]]) {
 test('find a bed with no free bed on the asked-for ward: the banner names the wards that have one and one tap goes there (issue #63)', async () => {
   const { context, page, errors } = await openPage(env, { clock: CLOCK, width: 390, height: 844, path: '#/beds' });
   await setRole(page, 'bed-manager');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
   await page.reload();
   await page.waitForSelector('html[data-ready="true"]');
   await page.waitForSelector('[data-find]');
@@ -235,7 +235,7 @@ for (const [width, height] of [[360, 780], [390, 800]]) {
   test(`ward nurse at ${width} px: my ward's beds are on the first screen, the ward is remembered, the rest of the hospital sits below (issue #10)`, async () => {
     const { context, page, errors } = await openPage(env, { clock: CLOCK, width, height, touch: true });
     await setRole(page, 'ward-nurse');
-    await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
+    await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
     await page.goto(`${env.appUrl}#/beds`);
     await page.waitForSelector('[data-test="bed-grid"] .bed');
     const box = async (sel) => page.locator(sel).first().boundingBox();
@@ -268,7 +268,7 @@ for (const [width, height] of [[360, 780], [390, 800]]) {
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), 0, 'no sideways scroll');
     // Another role on the same phone keeps the usual order and does not get the nurse's ward.
     await setRole(page, 'bed-manager');
-    await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
+    await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
     await page.goto(`${env.appUrl}#/beds`);
     await page.waitForSelector('[data-test="change-ward"]', { state: 'detached' }); // the board redraws for the new role
     await page.waitForSelector('[data-test="bed-grid"] .bed');
@@ -282,7 +282,7 @@ for (const [width, height] of [[360, 780], [390, 800]]) {
 test('ward nurse at 1280 px: the desktop bed board keeps its order (issue #10)', async () => {
   const { context, page, errors } = await openPage(env, { clock: CLOCK, width: 1280 });
   await setRole(page, 'ward-nurse');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
   await page.goto(`${env.appUrl}#/beds`);
   await page.waitForSelector('[data-test="bed-grid"] .bed');
   assert.equal(await page.locator('[data-test="change-ward"]').count(), 0);
@@ -298,7 +298,7 @@ for (const [width, height] of [[360, 780], [390, 844]]) {
   test(`find a bed at ${width} px: a double tap allocates once and opens no dialog; Undo frees the bed and starts the choice again (issue #12)`, async () => {
     const { context, page, errors } = await openPage(env, { clock: CLOCK, width, height, touch: true, path: '#/beds' });
     await setRole(page, 'bed-manager');
-    await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
+    await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
     await page.reload();
     await page.waitForSelector('html[data-ready="true"]');
     await page.waitForSelector('[data-find]');
@@ -446,7 +446,7 @@ for (const width of [390, 1280]) {
 test('the patient flow coordinator\'s first five minutes on a 390 px phone: one tap to the bed board, sees the waiting count first, and places a patient', async () => {
   const { context, page, errors } = await openPage(env, { clock: CLOCK, width: 390, height: 844, touch: true, path: '' });
   await setRole(page, 'bed-manager');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'bed-manager');
   await page.goto(env.appUrl);
   await page.waitForSelector('html[data-ready="true"]');
   // The first roles open on Now, with their pages first on a phone (issue #10): the bed

@@ -8,7 +8,7 @@
 // sees the figures; the technician's on-load test turns the on-load row Done. Fictional data only.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment, waitUntil } from './helpers.mjs';
 import { roleById } from '../../web/app/core/model.js';
 import { moduleById } from '../../web/app/modules/registry.js';
 import { departmentById, departmentForRole } from '../../web/app/modules/departments.js';
@@ -40,7 +40,7 @@ const CLOCK = '2026-11-19T14:00:00Z';
 const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 async function go(page, role, hash = '#/facilities') {
   await setRole(page, role);
-  await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
+  await waitUntil(page, async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
   await page.evaluate((h) => {
     const x = document.querySelector('.fac');
     if (x) x.dataset.stale = 'true';
@@ -240,7 +240,7 @@ test('front line: the facilities assistant on a 390 px touch phone opens on the 
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   const t0 = Date.now();
   await setRole(page, 'facilities-assistant');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'facilities-assistant');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'facilities-assistant');
   await openFromNow(page, 'facilities-assistant');
   await page.waitForFunction(() => document.querySelector('.fac')?.dataset.role === 'facilities-assistant');
   assert.equal(await page.evaluate(() => location.hash), '#/facilities');
@@ -290,7 +290,7 @@ test('manager: the facilities manager on a 390 px touch phone sees the missed wa
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   const t0 = Date.now();
   await setRole(page, 'facilities-manager');
-  await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'facilities-manager');
+  await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'facilities-manager');
   await openFromNow(page, 'facilities-manager');
   await page.waitForFunction(() => document.querySelector('.fac')?.dataset.role === 'facilities-manager');
   assert.equal(await page.evaluate(() => location.hash), '#/facilities');

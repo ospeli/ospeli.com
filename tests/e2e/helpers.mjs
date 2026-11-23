@@ -83,6 +83,24 @@ export async function setRole(page, role) {
   await page.waitForFunction((h) => location.hash === h && (document.documentElement.dataset.route === h || document.documentElement.dataset.route === h.replace(/\/$/, '')), want);
 }
 
+// Wait until a check run in the page comes back true, and return its answer (issue #133).
+// page.waitForFunction cannot do this for an async check: it takes the returned promise as "true" and
+// goes on at once. This asks the page again every 50 ms until the answer is true or the time is up,
+// and a page that is being drawn again between two asks is simply asked again.
+export async function waitUntil(page, check, arg, { timeout = 15000, every = 50 } = {}) {
+  const end = Date.now() + timeout;
+  let last;
+  for (;;) {
+    try { last = await page.evaluate(check, arg); } catch (e) {
+      if (!/Execution context was destroyed|navigation/i.test(String(e))) throw e;
+      last = undefined;
+    }
+    if (last) return last;
+    if (Date.now() > end) throw new Error(`waitUntil: still not true after ${timeout} ms (last answer ${JSON.stringify(last)}): ${String(check).slice(0, 200)}`);
+    await new Promise((r) => setTimeout(r, every));
+  }
+}
+
 // Walk mode's naming sheet (walk-first week, 23 Nov 2026): typing and the two tick boxes are behind
 // "More options". Opens them the way a person does, when they are not open already.
 export async function openMore(page) {

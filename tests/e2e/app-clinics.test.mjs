@@ -362,6 +362,8 @@ test('typed or hostile text cannot reach the screen as HTML: the find box keeps 
   assert.equal(await find.inputValue(), '4');
   assert.equal(await page.locator('.cl img, .cl b b, .cl script').count(), 0, 'no element made from typed text');
   assert.equal(await page.evaluate(() => window.__pwned), false);
+  // Wait for the queue to be drawn for the find box (#133: a fixed 500 ms was not always enough on a busy machine).
+  await until(async () => /No Patient P4 in this clinic today|Patient P4\b/.test(await page.locator('.cl').textContent()), 'the queue filtered to P4');
   assert.match(await page.locator('.cl').textContent(), /No Patient P4 in this clinic today|Patient P4\b/);
   const r = await run(page, 'ospeli_clinics_queue', { find: '<img src=x>' }, 'clinic-receptionist');
   assert.equal(r.error, 'invalid-input');

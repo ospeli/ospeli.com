@@ -7,7 +7,7 @@
 // officer and the diagnostics manager. Fictional data only.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment, waitUntil } from './helpers.mjs';
 import { roleById } from '../../web/app/core/model.js';
 import { moduleById } from '../../web/app/modules/registry.js';
 import { departmentById, departmentForRole } from '../../web/app/modules/departments.js';
@@ -20,7 +20,7 @@ const CLOCK = '2026-11-19T14:00:00Z'; // 10:00 on the example site's clock, afte
 const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 async function asRole(page, role) {
   await setRole(page, role);
-  await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
+  await waitUntil(page, async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
   await page.evaluate(() => {
     const x = document.querySelector('.dx');
     if (location.hash === '#/diagnostics') return;
@@ -60,7 +60,7 @@ const waitSaved = (page, re) => page.waitForFunction((src) => new RegExp(src).te
 // first card of all when the department's pages start with it), and one tap opens it.
 const openHome = async (page, role) => {
   await setRole(page, role);
-  await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
+  await waitUntil(page, async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
   const dept = departmentById(departmentForRole(role));
   await chooseDepartment(page, dept.id);
   await page.goto(env.appUrl);
