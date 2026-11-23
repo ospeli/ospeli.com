@@ -19,6 +19,10 @@ export const TEST_GROUPS = {
   urine: 'Urine tests',
   culture: 'Blood culture',
 };
+// Is this one of the list's own picks? A plain LIST[value] is also true for words every object
+// carries ("constructor", "toString"), so an imported event with such a word passed as a pick, was
+// shown as program text and stopped the lists for everyone (23 Nov).
+export const isPick = (list, value) => typeof value === 'string' && Object.hasOwn(list, value);
 export const URGENCIES = { urgent: 'Urgent', routine: 'Routine' };
 export const URGENCY_LABEL = 'Urgency (set by requester)';
 // The lab sets its acceptance criteria; Ospeli records the reason a person picked (Domain lead, 21 Nov).
@@ -88,7 +92,7 @@ export const EQUIPMENT_KINDS = {
   },
 };
 export const EQUIPMENT_STATES = { up: 'Working', down: 'Down', 'partly-down': 'Partly down' };
-export const isEquipment = (asset) => !!(asset && asset.type === 'asset' && EQUIPMENT_KINDS[asset.kind]);
+export const isEquipment = (asset) => !!(asset && asset.type === 'asset' && Object.hasOwn(EQUIPMENT_KINDS, String(asset.kind)));
 
 const ms = (iso) => Date.parse(iso);
 const pad = (n, w = 5) => String(n).padStart(w, '0');
@@ -121,7 +125,7 @@ export function deriveRequests(events) {
     if (!e.type?.startsWith('diagnostics.') || !REQUEST_RE.test(e.subject || '')) continue;
     const d = e.data || {};
     if (e.type === 'diagnostics.request-made') {
-      if (reqs.has(e.subject) || !isId(d.sourceId) || !TEST_GROUPS[d.testGroup] || !URGENCIES[d.urgency]) continue;
+      if (reqs.has(e.subject) || !isId(d.sourceId) || !isPick(TEST_GROUPS, d.testGroup) || !isPick(URGENCIES, d.urgency)) continue;
       reqs.set(e.subject, {
         id: e.subject, sourceId: d.sourceId, testGroup: d.testGroup, urgency: d.urgency,
         encounter: typeof d.encounter === 'string' && ENC_RE.test(d.encounter) ? d.encounter : null,
@@ -147,7 +151,7 @@ export function deriveRequests(events) {
         Object.assign(r, { state: 'received', receivedAt: e.at, receivedByRole: e.actorRole, lastStepAt: e.at });
         break;
       case 'diagnostics.specimen-rejected': {
-        if (!REJECT_REASONS[d.reason]) break;
+        if (!isPick(REJECT_REASONS, d.reason)) break;
         const after = r.state === 'received';
         if (!after && r.state !== 'requested' && r.state !== 'collected') break;
         Object.assign(r, { state: 'rejected', rejectedAt: e.at, rejectedByRole: e.actorRole, rejectReason: d.reason, rejectedAfterReceipt: after, lastStepAt: e.at });
@@ -175,7 +179,7 @@ export function deriveRequests(events) {
         Object.assign(r, { state: 'released', releasedAt: e.at, releasedByRole: e.actorRole, lastStepAt: e.at });
         break;
       case 'diagnostics.request-cancelled':
-        if ((r.state !== 'requested' && r.state !== 'collected') || !CANCEL_REASONS[d.reason]) break;
+        if ((r.state !== 'requested' && r.state !== 'collected') || !isPick(CANCEL_REASONS, d.reason)) break;
         Object.assign(r, { state: 'cancelled', cancelledAt: e.at, cancelReason: d.reason, cancelledByRole: e.actorRole, lastStepAt: e.at });
         break;
       default:
@@ -217,7 +221,7 @@ export function deriveEquipment(events) {
       if (typeof d.reason !== 'string' || !isId(d.reason) || typeof d.backup !== 'string' || !isId(d.backup)) continue;
       const x = get(e.subject);
       if (x.state !== 'up') continue;
-      const groups = Array.isArray(d.testGroups) ? d.testGroups.filter((g) => TEST_GROUPS[g]) : [];
+      const groups = Array.isArray(d.testGroups) ? d.testGroups.filter((g) => isPick(TEST_GROUPS, g)) : [];
       const ep = { from: e.at, to: null, scope, reason: d.reason, testGroups: groups, workOrder: isId(d.workOrder) ? d.workOrder : null, backup: d.backup };
       x.episodes.push(ep);
       Object.assign(x, { state: scope, since: e.at, reason: d.reason, testGroups: groups, workOrder: ep.workOrder,

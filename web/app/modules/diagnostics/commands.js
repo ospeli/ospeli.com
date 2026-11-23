@@ -26,6 +26,7 @@ import {
   REQUEST_ID, REQUIRED_STEPS, GUIDE_RULES, isEquipment, nextRequestId, codeParts, codeLabel, deriveRequests, isOpen, noCollection, enteredLate, minutesInStep,
   minutesSinceCollection, deriveEquipment, groupsOff, guideOn, labTurnaround, rejectionRate, equipmentAvailability, completeness, missingSteps,
   ruleNotArrived, ruleEquipmentDown, ruleRejectionReview, localStartOfDay, clockText, localHour, whenText, OWN_ROW_GROUPS,
+  isPick,
 } from './logic.js';
 
 export const id = 'diagnostics';
@@ -93,7 +94,7 @@ const OWN = ['diagnostics.request-made', 'diagnostics.specimen-collected', 'diag
   'diagnostics.result-validated', 'diagnostics.request-cancelled', 'diagnostics.equipment-down', 'diagnostics.equipment-up', 'diagnostics.guide-set'];
 const WO_TYPES = ['asset.fault-reported', 'workorder.assigned', 'workorder.started', 'workorder.completed'];
 const own = (core) => core.events({ type: OWN });
-const backupText = (kind, b) => EQUIPMENT_KINDS[kind]?.backups[b] || 'No backup route';
+const backupText = (kind, b) => (EQUIPMENT_KINDS[kind] && isPick(EQUIPMENT_KINDS[kind].backups, b) ? EQUIPMENT_KINDS[kind].backups[b] : 'No backup route');
 // What an agent may be told about: a request from a ward it may see. A department cannot be given
 // to an agent yet, so an agent is never told about a department's requests.
 const visibleTo = (wards) => (r) => !wards || wards.has(r.sourceId);
@@ -138,21 +139,31 @@ async function checkRequest(core, input, actor, events, info) {
   if (!i.sourceIds.has(input.sourceId)) throw new CommandError('not-found', `sourceId must be a ward or a department that sends requests, for example ${i.sources.slice(0, 3).map((s) => s.id).join(', ')}. ospeli_diagnostics_requests_list gives the list under picks.sources.`);
   agentOnDepartment(actor, i, input.sourceId);
   if (input.encounter) {
-    const seen = (await core.events({ subject: input.encounter })).some((e) => /^(patient|ae)\./.test(e.type) || e.type === 'bed.requested');
+    // A ward's request takes one of that ward's patients (the pick list the screen shows). Any
+    // other code gets the same answer, so the answer does not say which codes exist elsewhere.
+    const seen = i.isWard(input.sourceId)
+      ? (await patientsHere(core, i, input.sourceId)).some((x) => x.encounter === input.encounter)
+      : (await core.events({ subject: input.encounter })).some((e) => /^(patient|ae)\./.test(e.type) || e.type === 'bed.requested');
     if (!seen) throw new CommandError('not-found', 'No patient with that encounter id on this site. Leave encounter out, or pick a patient from picks.patients of ospeli_diagnostics_requests_list with sourceId set to the ward.');
   }
   const evs = events ?? await own(core);
   const reqs = deriveRequests(evs);
   if (input.recollectionOf) {
     const first = reqs.get(input.recollectionOf);
-    if (!first) throw new CommandError('not-found', 'recollectionOf must be a rejected request on this site. ospeli_diagnostics_requests_list with stage "rejected" lists them.');
+    // The rejected request must come from the same ward or area as the new one, so the ward gate on
+    // sourceId covers both. An agent is answered as if a request elsewhere were not there, with
+    // nothing about its state (23 Nov: the refusal told an agent another ward's step times, and an
+    // accepted proposal marked another ward's rejection as recollected).
+    const NO_FIRST = 'recollectionOf must be a rejected request on this site. ospeli_diagnostics_requests_list with stage "rejected" lists them.';
+    if (!first || (actor?.type === 'agent' && first.sourceId !== input.sourceId)) throw new CommandError('not-found', NO_FIRST);
+    if (first.sourceId !== input.sourceId) throw new CommandError('invalid-input', `A recollection comes from the same ward or area as the rejected request: ${first.sourceId}.`);
     if (first.state !== 'rejected') throw new CommandError('conflict', `${first.id} is not rejected, so it cannot be collected again as a recollection. ${stateWord(first, i.offsetMinutes)}`);
     if (first.recollectedBy) throw new CommandError('conflict', `${first.id} already has a recollection: ${first.recollectedBy}.`, { existing: first.recollectedBy });
     if (first.testGroup !== input.testGroup) throw new CommandError('invalid-input', `A recollection is for the same test group as the rejected request: ${first.testGroup}.`);
   }
   if (!input.again) {
     const now = Date.parse(core.now());
-    const twin = [...reqs.values()].find((r) => r.sourceId === input.sourceId && r.testGroup === input.testGroup && r.urgency === input.urgency && r.encounter === (input.encounter ?? null)
+    const twin = [...reqs.values()].find((r) => r.state !== 'cancelled' && r.sourceId === input.sourceId && r.testGroup === input.testGroup && r.urgency === input.urgency && r.encounter === (input.encounter ?? null)
       && (r.recollectionOf ?? null) === (input.recollectionOf ?? null) && Math.abs(now - Date.parse(r.madeAt)) < AGAIN_MINUTES * MIN);
     if (twin) throw new CommandError('conflict', `Already saved: ${twin.id} with the same picks was recorded under ${AGAIN_MINUTES} minutes ago. Nothing new was saved. Send again: true if this is a second request.`, { existing: twin.id, already: true });
   }
@@ -186,6 +197,8 @@ async function checkUndo(core, input, actor, events, info) {
   const r = findReq(deriveRequests(events ?? await own(core)), input.requestId);
   if (r.state !== 'received' && r.state !== 'rejected' && r.state !== 'released') throw new CommandError('conflict', `There is no receipt, rejection or release to undo. ${stateWord(r, i.offsetMinutes)}`, { state: r.state });
   if (r.state === 'released' && actor.role !== 'lab-scientist') throw new CommandError('forbidden', 'A result release is undone by: lab-scientist.', { roles: ['lab-scientist'] });
+  // The role that may not make a rejection may not take it back either.
+  if (r.state === 'rejected' && r.rejectedAfterReceipt && actor.role !== 'lab-scientist') throw new CommandError('forbidden', 'A rejection made after receipt is undone by: lab-scientist.', { roles: ['lab-scientist'] });
   if (r.recollectedBy) throw new CommandError('conflict', `${r.id} already has a recollection (${r.recollectedBy}), so its rejection stays.`, { existing: r.recollectedBy });
   if (Date.parse(core.now()) - Date.parse(r.lastStepAt) >= UNDO_MINUTES * MIN) throw new CommandError('conflict', `A receipt, rejection or release can be undone for ${UNDO_MINUTES} minutes only (an example setting). Ask the diagnostics manager to look at it.`);
   return r;
@@ -218,6 +231,9 @@ async function checkEquipment(core, input, actor, events, info) {
   const i = info ?? await siteInfo(core);
   const a = i.equipment.find((x) => x.id === input.assetId);
   if (!a) throw new CommandError('not-found', `assetId must be one of this site's analysers or scanners: ${i.equipment.map((x) => x.id).join(', ') || 'none on this site'}.`, { assets: i.equipment.map((x) => x.id) });
+  // The laboratory and imaging are departments, and a department cannot be given to an agent:
+  // their equipment is for people to mark (as the engineering commands already hold).
+  if (actor?.type === 'agent' && !i.isWard(a.parentId)) throw new CommandError('forbidden', 'An agent may act only in a ward that a person switched on for it. Equipment in a department is for people to mark.');
   const k = EQUIPMENT_KINDS[a.kind];
   if (!k.roles.includes(actor.role)) throw new CommandError('forbidden', `${a.name} is marked down and back by: ${k.roles.join(', ')}.`, { roles: k.roles });
   const x = deriveEquipment(events ?? await own(core)).get(a.id);
@@ -228,8 +244,8 @@ async function checkEquipment(core, input, actor, events, info) {
     return { a, k, x };
   }
   if (now !== 'up') throw new CommandError('conflict', `${a.name} is already marked ${EQUIPMENT_STATES[now].toLowerCase()} since ${clockText(x.since, i.offsetMinutes)}. Mark it back first, then mark it again.`, { state: now });
-  if (!input.reason || !k.reasons[input.reason]) throw new CommandError('invalid-input', `reason must be one of: ${Object.entries(k.reasons).map(([v, w]) => `${v} (${w})`).join(', ')}.`);
-  if (!input.backup || !k.backups[input.backup]) throw new CommandError('invalid-input', `backup must be one of: ${Object.entries(k.backups).map(([v, w]) => `${v} (${w})`).join(', ')}.`);
+  if (!isPick(k.reasons, input.reason)) throw new CommandError('invalid-input', `reason must be one of: ${Object.entries(k.reasons).map(([v, w]) => `${v} (${w})`).join(', ')}.`);
+  if (!isPick(k.backups, input.backup)) throw new CommandError('invalid-input', `backup must be one of: ${Object.entries(k.backups).map(([v, w]) => `${v} (${w})`).join(', ')}.`);
   if (input.state === 'partly-down') {
     if (k.runs.length) {
       const g = input.testGroups || [];
@@ -245,6 +261,8 @@ async function checkEquipment(core, input, actor, events, info) {
 
 // ---- reads ----
 const TODAY_WORD = 'today (since 00:00 site time)';
+const BED_TYPES = ['bed.allocated', 'bed.allocation-cancelled', 'patient.admitted', 'patient.discharged', 'patient.expected-discharge', 'patient.expected-discharge-cancelled', 'bed.vacated', 'bed.clean-started', 'bed.clean-stopped', 'bed.cleaned', 'bed.out-of-service', 'bed.back-in-service', 'bed.requested', 'ae.decision-to-admit'];
+const patientsHere = async (core, info, wardId) => patientsOn(info, await core.events({ type: BED_TYPES }), wardId);
 function patientsOn(info, events, wardId) {
   if (!info.isWard(wardId)) return [];
   const beds = info.beds.filter((b) => b.parentId === wardId);
@@ -256,7 +274,6 @@ function patientsOn(info, events, wardId) {
 const STAGE_RANK = { requested: 0, collected: 1, received: 2, rejected: 3, released: 4, cancelled: 5 };
 async function requestsList(core, input, wards) {
   const now = core.now();
-  const BED_TYPES = ['bed.allocated', 'bed.allocation-cancelled', 'patient.admitted', 'patient.discharged', 'patient.expected-discharge', 'patient.expected-discharge-cancelled', 'bed.vacated', 'bed.clean-started', 'bed.clean-stopped', 'bed.cleaned', 'bed.out-of-service', 'bed.back-in-service', 'bed.requested', 'ae.decision-to-admit'];
   const withBeds = !!(input.sourceId && input.format !== 'short' && (!wards || wards.has(input.sourceId)));
   const [events, info] = await Promise.all([core.events({ type: withBeds ? [...OWN, ...BED_TYPES] : OWN }), siteInfo(core)]);
   const reqs = deriveRequests(events);
@@ -357,7 +374,7 @@ function equipmentRows(info, events, woEvents, now) {
     const linked = x.workOrder ? wos.find((w) => w.id === x.workOrder) : null;
     const offGroups = groupsOff(x, a.kind);
     return { assetId: a.id, name: a.name, kind: a.kind, kindWord: k.word, placeId: a.parentId, placeName: info.nameOf(a.parentId), state: x.state, stateName: EQUIPMENT_STATES[x.state],
-      since: x.since, sinceText: x.since ? whenText(x.since, off, now) : null, reason: x.reason || null, reasonName: x.reason ? k.reasons[x.reason] || null : null,
+      since: x.since, sinceText: x.since ? whenText(x.since, off, now) : null, reason: x.reason || null, reasonName: isPick(k.reasons, x.reason) ? k.reasons[x.reason] : null,
       runs: k.runs.map((g) => ({ id: g, name: TEST_GROUPS[g] })), testGroupsOff: offGroups.map((g) => ({ id: g, name: TEST_GROUPS[g] })),
       workOrder: linked ? { id: linked.id, title: linked.title, state: linked.state, stateName: WO_STATES[linked.state] } : null, openWorkOrders: open,
       expectedBack: x.expectedBack || null, expectedBackText: x.expectedBack ? `Estimate: back by ${whenText(x.expectedBack, off, now)} (set at ${whenText(x.expectedSetAt, off, now)})` : null,
@@ -365,10 +382,13 @@ function equipmentRows(info, events, woEvents, now) {
   });
 }
 const equipmentPicks = () => Object.fromEntries(Object.entries(EQUIPMENT_KINDS).map(([k, v]) => [k, { word: v.word, reasons: { ...v.reasons }, backups: { ...v.backups }, runs: [...v.runs], roles: [...v.roles] }]));
-async function equipmentList(core, input = {}) {
+// What an agent is shown of the equipment: only what stands in a ward it was given. The engineering
+// reads hide a department's assets and work orders from every agent; so do these.
+const equipmentFor = (wards) => (row) => !wards || wards.has(row.placeId);
+async function equipmentList(core, input = {}, wards) {
   const now = core.now();
   const [events, info] = await Promise.all([core.events({ type: [...OWN, ...WO_TYPES] }), siteInfo(core)]);
-  const rows = equipmentRows(info, events, events, now);
+  const rows = equipmentRows(info, events, events, now).filter(equipmentFor(wards));
   const cut = page(rows, input.limit, 50);
   return { asOf: now, synthetic: await isSynthetic(core), equipment: cut.items, total: cut.total, truncated: cut.truncated,
     picks: equipmentPicks(),
@@ -395,7 +415,7 @@ async function overview(core, input, wards) {
   const sourcesSeen = [...new Set([...seen.values()].map((r) => r.sourceId))];
   const byArea = sourcesSeen.map((s) => { const v = rejectionRate(seen, { ...period, sourceId: s }); return { sourceId: s, name: info.nameOf(s), rejected: v.numerator, reached: v.denominator, value: v.denominator >= MIN_AREA ? Math.round(v.value * 10) / 10 : null, tooFew: v.denominator < MIN_AREA }; })
     .filter((x) => x.reached).sort((a, b) => b.rejected - a.rejected || b.reached - a.reached || (a.sourceId < b.sourceId ? -1 : 1));
-  const eqRows = equipmentRows(info, events, woEvents, now);
+  const eqRows = equipmentRows(info, events, woEvents, now).filter(equipmentFor(wards));
   const eq = deriveEquipment(events);
   const avail = eqRows.map((row) => ({ assetId: row.assetId, name: row.name, state: row.state, stateName: row.stateName, ...equipmentAvailability(eq.get(row.assetId), period) }));
   const comp = completeness(seen, period);
@@ -491,6 +511,7 @@ export const COMMANDS = [
       asOf: TIME, synthetic: SYNTHETIC, sourceId: NULLABLE('string'), sourceName: NULLABLE('string'), hours: { type: 'integer' }, requests: { type: 'array', items: REQUEST_OUT },
       total: TOTAL, truncated: TRUNCATED, counts: { type: 'object', description: 'Requests in the list by state, before the limit.' }, picks: { type: 'object' },
       releasedDefinition: { type: 'string' }, filterNote: { type: 'string' }, offlineNote: { type: 'string' }, note: { type: 'string' } } },
+    wardOf: (core, input) => input.sourceId ?? null,
     async run(core, input, { wards }) { return requestsList(core, input, wards); },
     example: { input: { sourceId: 'ward-a2', format: 'short', limit: 10 } },
   },
@@ -677,13 +698,13 @@ export const COMMANDS = [
     output: { type: 'object', required: ['asOf', 'synthetic', 'equipment', 'total', 'truncated', 'note'], properties: {
       asOf: TIME, synthetic: SYNTHETIC, equipment: { type: 'array', items: { type: 'object', required: ['assetId', 'name', 'state', 'stateName'] } }, total: TOTAL, truncated: TRUNCATED,
       picks: { type: 'object' }, expectedBackHours: { type: 'array' }, states: { type: 'object' }, faultNote: { type: 'string' }, imaging: { type: 'string' }, note: { type: 'string' } } },
-    async run(core, input) { return equipmentList(core, input); },
+    async run(core, input, { wards }) { return equipmentList(core, input, wards); },
     example: { input: {} },
   },
   {
     name: 'ospeli_diagnostics_equipment_set',
-    summary: `Mark an analyser or scanner down, partly down (some test groups off; send testGroups) or back working ("up"). Down needs a reason and a backup route, both picked; it may link the open work order for it (workOrderId) and an estimate of when it is back (expectedBackHours: ${EXPECTED_HOURS.join(', ')}). Analysers are marked by laboratory bench staff or the diagnostics manager; scanners by imaging staff or the diagnostics manager. It writes no work order: a fault is reported by a facilities technician or the operations manager. Nothing is sent outside Ospeli. An agent's call becomes a proposal for a person.`,
-    kind: 'write', roles: EQUIPMENT_ROLES, approval: true,
+    summary: `Mark an analyser or scanner down, partly down (some test groups off; send testGroups) or back working ("up"). Down needs a reason and a backup route, both picked; it may link the open work order for it (workOrderId) and an estimate of when it is back (expectedBackHours: ${EXPECTED_HOURS.join(', ')}). Analysers are marked by laboratory bench staff or the diagnostics manager; scanners by imaging staff or the diagnostics manager. It writes no work order: a fault is reported by a facilities technician or the operations manager. Nothing is sent outside Ospeli. People only: the laboratory and imaging are departments, and a department cannot be given to an agent.`,
+    kind: 'write', roles: EQUIPMENT_ROLES, approval: true, agents: false, // a department cannot be given to an agent (23 Nov)
     input: { type: 'object', additionalProperties: false, required: ['assetId', 'state'], properties: {
       assetId: { ...ID, description: 'The analyser or scanner, for example asset-analyser-1 or asset-xray-1.' },
       state: { type: 'string', enum: Object.keys(EQUIPMENT_STATES), description: 'down, partly-down or up (back working).' },
@@ -694,6 +715,7 @@ export const COMMANDS = [
       backup: { type: 'string', pattern: '^[a-z-]{2,30}$', maxLength: 30, description: 'down and partly-down: an analyser: other-analyser, partner-lab, hold, none; a scanner: other-room, other-site, mobile-unit, none.' } } },
     output: { type: 'object', required: ['status'], properties: { status: WRITE_STATUS, assetId: { type: 'string' }, state: { type: 'string' }, events: EVENT_SEQS, proposal: PROPOSAL_OUT } },
     target: (input) => ({ id: input.assetId, word: 'analyser or scanner' }),
+    wardOf: async (core, input) => (await core.getEntity(input.assetId))?.parentId ?? null,
     async precheck(core, input, { actor }) { await checkEquipment(core, input, actor); },
     async run(core, input, { actor }) {
       const info = await siteInfo(core);

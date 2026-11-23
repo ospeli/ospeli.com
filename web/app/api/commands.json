@@ -25527,7 +25527,7 @@
     },
     {
       "name": "ospeli_diagnostics_equipment_set",
-      "summary": "Mark an analyser or scanner down, partly down (some test groups off; send testGroups) or back working (\"up\"). Down needs a reason and a backup route, both picked; it may link the open work order for it (workOrderId) and an estimate of when it is back (expectedBackHours: 1, 2, 4, 8, 24). Analysers are marked by laboratory bench staff or the diagnostics manager; scanners by imaging staff or the diagnostics manager. It writes no work order: a fault is reported by a facilities technician or the operations manager. Nothing is sent outside Ospeli. An agent's call becomes a proposal for a person.",
+      "summary": "Mark an analyser or scanner down, partly down (some test groups off; send testGroups) or back working (\"up\"). Down needs a reason and a backup route, both picked; it may link the open work order for it (workOrderId) and an estimate of when it is back (expectedBackHours: 1, 2, 4, 8, 24). Analysers are marked by laboratory bench staff or the diagnostics manager; scanners by imaging staff or the diagnostics manager. It writes no work order: a fault is reported by a facilities technician or the operations manager. Nothing is sent outside Ospeli. People only: the laboratory and imaging are departments, and a department cannot be given to an agent.",
       "kind": "write",
       "roles": [
         "lab-scientist",
@@ -25535,8 +25535,8 @@
         "diagnostics-manager"
       ],
       "humanApproval": true,
-      "agentsMayCall": true,
-      "agentBehaviour": "recorded as a proposal for a person to accept or decline; nothing changes until they do",
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
       "input": {
         "type": "object",
         "additionalProperties": false,
