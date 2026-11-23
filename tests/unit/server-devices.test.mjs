@@ -317,8 +317,11 @@ test('the device\'s copy: reads work with no connection, the core cannot change 
   const free = await link.run('ospeli_beds_find_free', {}, 'bed-manager');
   const before = await core.eventCount();
   const out = await link.run('ospeli_beds_allocate', { bedId: free.beds[0].bedId, encounter: free.waiting[0].encounter }, 'bed-manager');
-  assert.ok(out);
+  // Issue #95: not only "an answer came back": the allocation was done, for that bed, and the copy shows it.
+  assert.equal(out.status, 'done');
+  assert.equal(out.bedId, free.beds[0].bedId);
   assert.equal(await core.eventCount(), before + 1, 'the copy has the new event');
+  assert.deepEqual([(await core.events()).at(-1).type, (await core.events()).at(-1).subject], ['bed.allocated', free.beds[0].bedId]);
   assert.equal(await s.site.core.eventCount(), before + 1);
   assert.equal((await core.events()).at(-1).actorRole, 'bed-manager');
   // A refusal from the server arrives with its code and message, as the screens expect.
