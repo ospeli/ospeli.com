@@ -522,6 +522,9 @@ test('the supervisor\'s first five minutes on Linen and meals at 390 px: sees wh
   assert.equal(await page.locator('[data-test="meal-waste"] li[data-ward="ward-b1"] [data-meal="midday"]').getAttribute('class'), 'chip sup-below', 'above the usual level is marked');
   assert.match(await page.locator('[data-kpi="linen-stock-outs"]').textContent(), /\d+%\d+ of \d+ area-shifts with a linen item at zero.*Day shift: .*Night shift: .*had no count.*Source: local definition/s);
   assert.match(await page.locator('[data-kpi="meal-waste"]').textContent(), /Source: local definition/);
+  // #172: the limits of the two figures are said beside them, not only under "How it is counted".
+  assert.match(await page.locator('[data-kpi="linen-stock-outs"] [data-test="uncounted"]').textContent(), /may hide a stock-out.*counts as arrived when the store issues it.*can read low/s);
+  assert.match(await page.locator('#lin-meal-h + p').textContent(), /no published figure for whole meals returned/);
   assert.match(await page.locator('[data-test="linen-suggestion"][data-rule="meals-returned"]').textContent(), /Check the midday meal numbers ordered for Ward B1 \(general surgery\) with the ward\./);
   assert.ok(await page.locator('[data-test="linen-suggestion"][data-rule="linen-two-counts"]').count() >= 1);
   assert.match(await page.locator('[data-test="linen-manager"] [data-test="levels-note"]').textContent(), /example settings, not a standard/);

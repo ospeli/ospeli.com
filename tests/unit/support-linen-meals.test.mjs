@@ -221,7 +221,10 @@ test('guide rule "many meals returned uneaten": above the usual level over recen
   const rec = (date, d, r, meal = 'midday', wardId = 'ward-b1') => ({ wardId, date, meal, ordered: d, delivered: d, returned: r, versions: 1 });
   const opts = { toDate: '2026-11-06', placeName: () => 'Ward B1' };
   const [s] = ruleMealsReturned([rec('2026-11-04', 20, 4), rec('2026-11-05', 20, 4), rec('2026-11-06', 20, 4), rec('2026-10-30', 20, 0)], opts);
-  assert.equal(s.text, 'Check the midday meal numbers ordered for Ward B1 with the ward.');
+  // #172: uneaten meals can mean patients are not eating, so the rule never reads as "order less".
+  assert.equal(s.text, 'Check the midday meal numbers ordered for Ward B1 with the ward. Uneaten meals can also mean patients are not eating: tell the nurse in charge, and do not cut the order on this figure alone.');
+  // #172: the 15% has no source; the published figures are weighed plate waste, a different measure.
+  assert.match(s.basis, /no published figure for whole meals returned/);
   assert.match(s.why, /^20% came back uneaten over the last 7 days \(12 of 60 delivered, 3 days recorded\), above the usual level of 15%/);
   assert.equal(s.action, null);
   assert.equal(MEAL_USUAL_PCT, 15);

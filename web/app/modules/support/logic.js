@@ -411,7 +411,7 @@ GUIDE_RULES.push(
   { id: 'linen-two-counts', name: 'Linen under its top-up level twice',
     basis: 'Example setting, not a standard: a fixed rule. An item\'s last two counts in an area were both under its top-up level and it is still under. With no top-up waiting, the guide offers one for exactly what is short; with one waiting, it says so. A person decides.' },
   { id: 'meals-returned', name: 'Many meals returned uneaten',
-    basis: `Example setting, not a standard: over the last ${MEAL_DAYS} days, with at least ${MEAL_MIN_RECORDS} days recorded and ${MEAL_MIN_DELIVERED} meals delivered, more than ${MEAL_USUAL_PCT}% of one ward's meal came back uneaten (the usual level, set locally). Advice only.` },
+    basis: `Example setting, not a standard: over the last ${MEAL_DAYS} days, with at least ${MEAL_MIN_RECORDS} days recorded and ${MEAL_MIN_DELIVERED} meals delivered, more than ${MEAL_USUAL_PCT}% of one ward's meal came back uneaten (the usual level, set locally; there is no published figure for whole meals returned, and published figures are weighed plate waste, a different measure). Advice only.` },
 );
 BASIS['linen-two-counts'] = GUIDE_RULES.find((r) => r.id === 'linen-two-counts').basis;
 BASIS['meals-returned'] = GUIDE_RULES.find((r) => r.id === 'meals-returned').basis;
@@ -484,7 +484,7 @@ export function ruleMealsReturned(records, { toDate, see = () => true, placeName
     if (list.length < MEAL_MIN_RECORDS || t.d < MEAL_MIN_DELIVERED || (100 * t.r) / t.d <= MEAL_USUAL_PCT) continue;
     const name = MEAL_NAME[meal].toLowerCase();
     out.push({ rule: 'meals-returned', id: `meals-returned:${wardId}:${meal}`,
-      text: `Check the ${name} numbers ordered for ${placeName(wardId)} with the ward.`,
+      text: `Check the ${name} numbers ordered for ${placeName(wardId)} with the ward. Uneaten meals can also mean patients are not eating: tell the nurse in charge, and do not cut the order on this figure alone.`,
       why: `${Math.round((100 * t.r) / t.d)}% came back uneaten over the last ${MEAL_DAYS} days (${t.r} of ${t.d} delivered, ${plural(list.length, 'day')} recorded), above the usual level of ${MEAL_USUAL_PCT}% set here (example setting, not a standard). On average ${Math.round(t.o / list.length)} ordered and ${Math.round(t.d / list.length)} delivered a day.`,
       basis: BASIS['meals-returned'], action: null });
   }

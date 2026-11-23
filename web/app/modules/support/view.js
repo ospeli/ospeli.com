@@ -991,7 +991,7 @@ function linenScreen(ctx, { places, names }) {
               return [sel, btn]; })())) : null)))
           : h('p', { class: 'meta', 'data-test': 'linen-none-zero' }, 'No linen item is at zero in any area now.')),
       h('section', { class: 'section', 'aria-labelledby': 'lin-meal-h' }, h('h3', { id: 'lin-meal-h' }, `Meal waste by ward and meal, last ${data.ov.period.days} days`),
-        h('p', { class: 'meta' }, `Meals returned uneaten / meals delivered. A meal with no record is left out, never counted as zero. The guide's usual level is ${data.meals.settings.usualPercent}% (example setting, not a standard).`),
+        h('p', { class: 'meta' }, `Meals returned uneaten / meals delivered. A meal with no record is left out, never counted as zero. The guide's usual level is ${data.meals.settings.usualPercent}% (example setting, not a standard; no published figure for whole meals returned).`),
         meal.byWard?.length ? h('ul', { class: 'sup-meal-waste', 'data-test': 'meal-waste' }, meal.byWard.map((w) => h('li', { 'data-ward': w.id },
           h('p', { class: 'sup-mw-head' }, h('b', {}, w.name), h('span', {}, `${fmtPct(w.value)} (${w.numerator} of ${w.denominator})`)),
           h('p', { class: 'sup-mw-meals' }, w.byMeal.map((x) => h('span', { class: `chip${x.value != null && x.value > data.meals.settings.usualPercent ? ' sup-below' : ''}`, 'data-meal': x.id }, `${x.name}: ${fmtPct(x.value)}`))))))
@@ -1000,7 +1000,7 @@ function linenScreen(ctx, { places, names }) {
         h('p', { class: 'sup-kpi-name' }, x.name), h('p', { class: 'sup-kpi-value' }, fmtPct(x.value)),
         x.id === 'linen-stock-outs' ? [h('p', { class: 'meta' }, `${x.numerator} of ${x.denominator} area-shifts with a linen item at zero`),
           h('p', { class: 'meta', 'data-test': 'by-shift' }, x.byShift.map((b) => `${b.name}: ${fmtPct(b.value)} (${b.numerator} of ${b.denominator})`).join(' · ')),
-          h('p', { class: 'meta', 'data-test': 'uncounted' }, `${x.uncounted} area-shifts had no count: each keeps the last count and the top-ups issued since.`)]
+          h('p', { class: 'meta', 'data-test': 'uncounted' }, `${x.uncounted} area-shifts had no count: each keeps the last count and the top-ups issued since, so an uncounted shift may hide a stock-out. A top-up counts as arrived when the store issues it. So this figure can read low.`)]
           : h('p', { class: 'meta' }, `${x.numerator} of ${x.denominator} meals delivered came back uneaten`),
         h('details', { class: 'sup-def' }, h('summary', {}, 'How it is counted'),
           h('p', {}, x.definition), h('p', {}, `Counts: ${x.counts}`), h('p', {}, `Out of: ${x.outOf}`), h('p', {}, `Leaves out: ${x.leavesOut}`), h('p', {}, `Source: ${x.source}`), h('p', {}, `Target: ${x.targetText}`))))));
