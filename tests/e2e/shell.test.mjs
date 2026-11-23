@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -13,11 +13,15 @@ for (const width of [360, 390, 1024, 1280]) {
   test(`shell loads cleanly at ${width}px with no horizontal scroll`, async () => {
     const { context, page, errors } = await openPage(env, { width });
     assert.equal(await page.locator('.badge-synthetic').isVisible(), true);
-    assert.equal(await page.locator('.brand img').evaluate((img) => img.complete && img.naturalWidth > 0), true);
-    assert.equal(await page.locator('h1').textContent(), 'Ward nurse');
+    // Navigation v2: the top bar has no logo; the Ospeli symbol is on the dock's Walk button.
+    assert.equal(await page.locator('#dock [data-dock="walk"] img').evaluate((img) => img.complete && img.naturalWidth > 0), true);
+    assert.equal(await page.locator('#dock').isVisible(), true);
+    // Now: the department is the heading, the role is named under it.
+    assert.equal(await page.locator('h1').textContent(), 'Wards');
+    assert.match(await page.locator('[data-test="now-role"]').textContent(), /^Ward nurse\./);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     assert.ok(overflow <= 0, `page scrolls sideways by ${overflow}px`);
-    for (const route of ['data', 'beds', 'engineering']) {
+    for (const route of ['data', 'beds', 'engineering', 'journey', 'me']) {
       await page.goto(`${env.appUrl}#/${route}`);
       await page.waitForSelector('main h1');
       const o = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -30,15 +34,29 @@ for (const width of [360, 390, 1024, 1280]) {
 
 test('every role can be chosen; the choice persists and is audited', async () => {
   const { context, page, errors } = await openPage(env);
+  // Navigation v2: the role list is under Me.
+  await page.click('#dock [data-dock="me"]');
+  await page.waitForSelector('#main #role-select');
   const options = await page.locator('#role-select option').allTextContents();
   // The first six keep their place; roles a module adds follow them (tests/unit/module-packs.test.mjs).
   assert.deepEqual(options.slice(0, 6), ['Ward nurse', 'Patient flow coordinator', 'Facilities technician', 'Emergency department nurse in charge', 'Operations manager', 'COO']);
   await page.selectOption('#role-select', 'estates-tech');
+  // The person stays on Me, which is drawn again for the new role, and the toast says so.
   await page.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Facilities technician');
-  const first = await page.locator('[data-test="role-shortcuts"] h3').first().textContent();
-  assert.match(first, /^Engineering/);
+  assert.equal(await page.evaluate(() => location.hash), '#/me');
+  assert.equal(await page.textContent('#toast'), 'Role: Facilities technician');
+  // On Now, "Your pages" lists the department's pages (Wards) first, then the role's: Engineering comes first among the role's.
+  await page.click('#dock [data-dock="home"]');
+  await page.waitForFunction(() => /^Facilities technician\./.test(document.querySelector('[data-test="now-role"]')?.textContent || ''));
+  const cards = await page.locator('[data-test="role-shortcuts"] h3').allTextContents();
+  const pinned = ['Bed board', 'Cleaning and transport', 'Stores and supplies', 'Pharmacy operations'];
+  assert.deepEqual(cards.slice(0, pinned.length), pinned);
+  assert.match(cards[pinned.length], /^Engineering/);
   await page.reload();
   await page.waitForSelector('html[data-ready="true"]');
+  assert.match(await page.locator('[data-test="now-role"]').textContent(), /^Facilities technician\./);
+  await page.click('#dock [data-dock="me"]');
+  await page.waitForSelector('#main #role-select');
   assert.equal(await page.inputValue('#role-select'), 'estates-tech');
   assert.equal(await page.locator('main h1').textContent(), 'Facilities technician');
   const audit = await page.evaluate(() => window.ospeli.core.auditLog());
@@ -48,22 +66,34 @@ test('every role can be chosen; the choice persists and is audited', async () =>
   await context.close();
 });
 
-test('phone menu opens the module list and marks the current page', async () => {
+test('phone dock opens Journey with every page and marks the current page', async () => {
   const { context, page } = await openPage(env, { width: 390 });
-  assert.equal(await page.locator('#nav').isVisible(), false);
-  await page.click('#menu-btn');
-  assert.equal(await page.getAttribute('#menu-btn', 'aria-expanded'), 'true');
-  // A module not built yet (Engineering was built on night 4, so Emergency department flow stands in).
-  await page.click('#nav a[data-module="ae"]');
+  assert.equal(await page.locator('#main .journey').count(), 0);
+  assert.equal(await page.getAttribute('#dock [data-dock="home"]', 'aria-current'), 'page');
+  await page.click('#dock [data-dock="journey"]');
+  await page.waitForSelector('#main .journey');
+  assert.equal(await page.getAttribute('#dock [data-dock="journey"]', 'aria-current'), 'page');
+  assert.equal(await page.locator('#dock [data-dock="home"][aria-current]').count(), 0);
+  // A module not built yet (Engineering was built on night 4, so Emergency department flow stands in), under "Coming later".
+  await page.locator('[data-test="coming-later"] > summary').scrollIntoViewIfNeeded();
+  await page.click('[data-test="coming-later"] > summary');
+  await page.locator('[data-test="coming-later"] a[data-module="ae"]').scrollIntoViewIfNeeded();
+  await page.click('[data-test="coming-later"] a[data-module="ae"]');
   await page.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Emergency department flow');
-  assert.equal(await page.locator('#nav').isVisible(), false);
-  assert.equal(await page.getAttribute('#nav a[data-module="ae"]', 'aria-current'), 'page');
+  assert.equal(await page.locator('#main .journey').count(), 0);
+  // The page sits under Journey: the dock marks Journey as where the person is.
+  assert.equal(await page.getAttribute('#dock [data-dock="journey"]', 'aria-current'), 'true');
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.route), '#/ae');
   assert.match(await page.locator('main').textContent(), /Planned, not built yet/); // was "Coming in week 2" (issue #53: no build-month labels)
   await context.close();
 });
 
 test('keyboard: the first Tab reaches the skip link, and controls are labelled', async () => {
   const { context, page } = await openPage(env);
+  // The department is chosen (openPage); a fresh load of the page then has no sheet open.
+  await page.reload();
+  await page.waitForSelector('html[data-ready="true"]');
+  assert.equal(await page.locator('#dept-sheet[open]').count(), 0);
   await page.keyboard.press('Tab');
   assert.equal(await page.evaluate(() => document.activeElement.className), 'skip');
   const unlabelled = await page.evaluate(() => [...document.querySelectorAll('button, select, input, a')]
@@ -140,12 +170,12 @@ test('two tabs on one device keep one unbroken audit trail (issue #2)', async ()
   await b.goto(env.appUrl);
   await b.waitForSelector('html[data-ready="true"]');
   const before = await a.evaluate(async () => (await window.ospeli.core.auditLog()).length);
-  await a.selectOption('#role-select', 'bed-manager');
-  await a.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Patient flow coordinator');
-  await b.selectOption('#role-select', 'coo');
-  await b.waitForFunction(() => document.querySelector('main h1')?.textContent === 'COO');
-  await a.selectOption('#role-select', 'estates-tech');
-  await a.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Facilities technician');
+  await setRole(a, 'bed-manager');
+  await a.waitForFunction(() => document.querySelector('[data-test="now-role"]')?.textContent.startsWith('Patient flow coordinator.'));
+  await setRole(b, 'coo');
+  await b.waitForFunction(() => document.querySelector('[data-test="now-role"]')?.textContent.startsWith('COO.'));
+  await setRole(a, 'estates-tech');
+  await a.waitForFunction(() => document.querySelector('[data-test="now-role"]')?.textContent.startsWith('Facilities technician.'));
   await a.goto(`${env.appUrl}#/data`);
   await a.waitForFunction(() => /^Self-check passed: \d+ entries$/.test(document.querySelector('[data-test="audit-status"]')?.textContent || ''));
   const audit = await a.evaluate(() => window.ospeli.core.auditLog());
@@ -154,25 +184,31 @@ test('two tabs on one device keep one unbroken audit trail (issue #2)', async ()
   await context.close();
 });
 
-test('Escape closes the phone menu and returns focus to the Menu button (issue #8)', async () => {
+test('Escape closes the phone department sheet and returns focus to the department chip (issue #8)', async () => {
   const { context, page } = await openPage(env, { width: 390 });
-  await page.focus('#menu-btn');
+  await page.focus('#dept-btn');
   await page.keyboard.press('Enter');
-  assert.equal(await page.locator('#nav').isVisible(), true);
+  assert.equal(await page.locator('#dept-sheet').isVisible(), true);
+  assert.equal(await page.getAttribute('#dept-btn', 'aria-haspopup'), 'dialog');
   await page.keyboard.press('Escape');
-  assert.equal(await page.locator('#nav').isVisible(), false);
-  assert.equal(await page.getAttribute('#menu-btn', 'aria-expanded'), 'false');
-  assert.equal(await page.evaluate(() => document.activeElement.id), 'menu-btn');
+  assert.equal(await page.locator('#dept-sheet').isVisible(), false);
+  assert.equal(await page.locator('#dept-sheet[open]').count(), 0);
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'dept-btn');
+  assert.equal(await page.textContent('#dept-name'), 'Wards', 'Escape changes nothing');
   await context.close();
 });
 
 // Issue #53: a role's shortcuts open things that role can use today. Pages that are not built are
 // listed under one "Planned" heading, and no build-month label ("Week 3") is shown anywhere.
-test('Today at 390px: every role gets at least three shortcuts and all of them are built; unbuilt pages sit under Planned (issue #53)', async () => {
+// Navigation v2: the shortcuts are "Your pages" on Now; planned pages are listed only on Journey,
+// under "Coming later", after every built page.
+test('Now at 390px: every role gets at least three pages and all of them are built; unbuilt pages sit under Coming later on Journey (issue #53)', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844 });
+  await page.evaluate(() => { location.hash = '#/me'; });
+  await page.waitForSelector('#main #role-select');
   const roles = await page.evaluate(() => [...document.querySelector('#role-select').options].map((o) => o.value));
   for (const role of roles) {
-    await page.selectOption('#role-select', role);
+    await setRole(page, role);
     await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
     await page.goto(`${env.appUrl}#/home`);
     await page.reload();
@@ -180,18 +216,30 @@ test('Today at 390px: every role gets at least three shortcuts and all of them a
     await page.waitForSelector('[data-test="role-shortcuts"] a');
     const seen = await page.evaluate(() => ({
       shortcuts: [...document.querySelectorAll('[data-test="role-shortcuts"] a')].map((a) => ({ href: a.getAttribute('href'), soon: a.classList.contains('is-soon'), h: a.getBoundingClientRect().height })),
-      planned: [...document.querySelectorAll('[data-test="planned-modules"] a')].map((a) => a.textContent),
-      elsewhere: [...document.querySelectorAll('main a.is-soon')].filter((a) => !a.closest('[data-test="planned-modules"]')).length,
-      plannedBelow: document.querySelector('[data-test="planned-modules"]').getBoundingClientRect().top > document.querySelector('[data-test="role-shortcuts"]').getBoundingClientRect().bottom,
-      text: document.querySelector('main').innerText + ' ' + document.querySelector('#nav').textContent,
+      elsewhere: [...document.querySelectorAll('main a.is-soon, main .pill-soon, main [data-planned]')].length,
+      text: document.querySelector('main').innerText + ' ' + document.querySelector('#dock').textContent,
     }));
     assert.ok(seen.shortcuts.length >= 3, `${role} has ${seen.shortcuts.length} shortcuts`);
     assert.ok(seen.shortcuts.every((s) => !s.soon), `${role}: a shortcut opens a page that is not built`);
     assert.ok(seen.shortcuts.every((s) => s.h >= 44));
+    assert.equal(seen.elsewhere, 0, `${role}: an unbuilt page is listed on Now`);
+    assert.doesNotMatch(seen.text, /week \d/i, `${role}: a build-month label is shown`);
+    await page.evaluate(() => { location.hash = '#/journey'; });
+    await page.waitForSelector('#main .journey');
+    Object.assign(seen, await page.evaluate(() => ({
+      planned: [...document.querySelectorAll('[data-test="coming-later"] a')].map((a) => a.textContent),
+      closed: !document.querySelector('[data-test="coming-later"]').open,
+      elsewhere: [...document.querySelectorAll('main a.is-soon, main a.is-planned, main [data-planned], main .soon-tag')].filter((a) => !a.closest('[data-test="coming-later"]')).length,
+      plannedBelow: document.querySelector('[data-test="coming-later"]').getBoundingClientRect().top > Math.max(...[...document.querySelectorAll('main .journey a[data-module]:not([data-planned])')].map((a) => a.getBoundingClientRect().bottom)),
+      text: document.querySelector('main').innerText + ' ' + document.querySelector('[data-test="coming-later"]').textContent + ' ' + document.querySelector('#dock').textContent,
+    })));
+    assert.ok(seen.closed, `${role}: Coming later starts closed`);
     assert.ok(seen.planned.length >= 1 && seen.planned.every((t) => /Planned/.test(t)), `${role}: unbuilt pages are marked Planned`);
-    assert.equal(seen.elsewhere, 0, `${role}: an unbuilt page is listed outside Planned`);
+    assert.equal(seen.elsewhere, 0, `${role}: an unbuilt page is listed outside Coming later`);
     assert.ok(seen.plannedBelow);
     assert.doesNotMatch(seen.text, /week \d/i, `${role}: a build-month label is shown`);
+    await page.evaluate(() => { location.hash = '#/home'; });
+    await page.waitForSelector('[data-test="role-shortcuts"] a');
     // The first shortcut opens a real page.
     await page.locator('[data-test="role-shortcuts"] a').first().click();
     await page.waitForFunction(() => document.querySelector('main h1') && !/^Planned/.test(document.querySelector('main .eyebrow')?.textContent || ''));
@@ -248,10 +296,10 @@ for (const width of [360, 390, 1280]) {
 }
 
 // Issue #10: on a phone the role's shortcuts come before the key numbers; desktop keeps its order.
-test('Today: shortcuts come before Key numbers on phones (360 and 390 px) and after them at 1280 px (issue #10)', async () => {
+test('Now: Your pages come before Key numbers on phones (360 and 390 px) and after them at 1280 px (issue #10)', async () => {
   for (const [width, height] of [[360, 780], [390, 844], [1280, 860]]) {
     const { context, page, errors } = await openPage(env, { width, height, touch: width < 1000 });
-    await page.selectOption('#role-select', 'ward-nurse');
+    await setRole(page, 'ward-nurse');
     await page.waitForSelector('[data-test="role-shortcuts"] a');
     await page.waitForSelector('#kpi-h');
     const y = await page.evaluate(() => ({ shortcuts: document.querySelector('[data-test="role-shortcuts"] a').getBoundingClientRect(), kpi: document.querySelector('#kpi-h').getBoundingClientRect().top }));

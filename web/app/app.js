@@ -1,13 +1,15 @@
-// Ospeli app shell: storage, role switcher, navigation and routing.
+// Ospeli app shell: storage, the department chip, the dock and routing (navigation v2:
+// ospeli/ospeli docs/design/navigation-v2.md). The role is set under Me (modules/me.js).
 import { Core } from './core/core.js';
 import { openStorage } from './core/db.js';
-import { ROLES, roleById } from './core/model.js';
+import { roleById } from './core/model.js';
 import { MODULES, moduleById, parseRoute } from './modules/registry.js';
 import { renderSoon } from './modules/soon.js';
 import { loadSyntheticHospital, currentHour, setupUnfinished } from './core/generator.js';
 import { runCommand, listCommands, describeCommand, commandByName, CommandError } from './core/commands.js';
 import { waitingDecisions, proposalWords } from './modules/proposals.js';
-import { installDialogTapGuard } from './modules/ui.js';
+import { installDialogTapGuard, h } from './modules/ui.js';
+import { DEPARTMENTS, departmentById, departmentShort, departmentForRole, ME_PAGES } from './modules/departments.js';
 
 const $ = (sel) => document.querySelector(sel);
 const main = $('#main');
@@ -23,87 +25,100 @@ export function toast(msg) {
   toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
 }
 
-function buildNav() {
-  const list = $('#nav-list');
-  list.replaceChildren(...MODULES.map((m) => {
-    const li = document.createElement('li');
-    const a = document.createElement('a');
-    a.href = `#/${m.id}`;
-    a.dataset.module = m.id;
-    a.textContent = m.name;
-    if (!m.load) {
-      const tag = document.createElement('span');
-      tag.className = 'soon-tag';
-      tag.textContent = 'Planned';
-      tag.setAttribute('aria-label', 'planned, not built yet');
-      a.append(tag);
-    }
-    li.append(a);
-    return li;
-  }));
-}
-
-// Issue #52: the menu says where an agent's proposal is waiting for this role. Redrawn after
+// Issue #52, in navigation v2: the Journey page says where an agent's proposal is waiting for this
+// role (a count on the module's chip), and the dock's Journey item carries the total. Redrawn after
 // every page change (a role change routes too) and whenever a proposal is made or decided.
 let countToken = 0;
+function countTag(a, n, words) {
+  let tag = a.querySelector('.nav-count');
+  if (!n) { tag?.remove(); return; }
+  if (!tag) { tag = document.createElement('span'); tag.className = 'nav-count'; a.append(tag); }
+  tag.textContent = String(n);
+  tag.setAttribute('aria-label', words);
+}
 async function showWaiting(ctx) {
   const token = ++countToken;
-  const { modules } = await waitingDecisions(ctx);
+  const { modules, total } = await waitingDecisions(ctx);
   if (token !== countToken) return;
-  for (const a of document.querySelectorAll('#nav-list a')) {
+  for (const a of document.querySelectorAll('#main .journey a[data-module]')) {
     const n = modules.find((x) => x.id === a.dataset.module)?.count || 0;
-    let tag = a.querySelector('.nav-count');
-    if (!n) { tag?.remove(); continue; }
-    if (!tag) { tag = document.createElement('span'); tag.className = 'nav-count'; a.append(tag); }
-    tag.textContent = String(n);
-    tag.setAttribute('aria-label', `${proposalWords(n)} waiting for your decision`);
+    countTag(a, n, `${proposalWords(n)} waiting for your decision`);
   }
+  countTag($('#dock [data-dock="journey"]'), total, `${proposalWords(total)} waiting for your decision`);
 }
 
-// The page a role opens on by itself: only for roles marked startsOnHome (core/model.js) whose
-// home page is built. The first six roles open on Today, as before.
-function homePage(roleId) {
-  const role = roleById(roleId);
-  return role?.startsOnHome && moduleById(role.home)?.load ? `#/${role.home}` : null;
+// The role (job title) is set under Me (modules/me.js calls this). The same role chosen again
+// changes nothing: no event, and the page is not drawn again under the person's hands (issue #95).
+async function setRole(ctx, to, { why = null } = {}) {
+  if (!roleById(to) || to === ctx.role || ctx.site) return;
+  const from = ctx.role;
+  ctx.role = to;
+  document.documentElement.dataset.role = to;
+  await ctx.core.setMeta('role', to);
+  await ctx.core.record(to, 'role.changed', null, why ? { from, to, why } : { from, to });
+  toast(`Role: ${roleById(to).name}`);
+  route(ctx);
 }
 
-function buildRoles(ctx) {
-  const sel = $('#role-select');
-  sel.replaceChildren(...ROLES.map((r) => new Option(r.name, r.id)));
-  sel.value = ctx.role;
-  sel.addEventListener('change', async () => {
-    const to = sel.value;
-    // The same role chosen again changes nothing: no event, and the page is not drawn again under
-    // the person's hands (issue #95: a tap during that redraw was lost).
-    if (!roleById(to) || to === ctx.role) return;
-    const from = ctx.role;
-    ctx.role = to;
-    // A role whose whole job is on one page opens on it (its job is one tap away, not a menu
-    // away): from Today only, so a person looking at another page stays on it. The address
-    // changes at once, before anything is saved, so nothing that happens next (a reload,
-    // another page) can be overtaken by a late jump.
-    const home = parseRoute(location.hash).id === 'home' ? homePage(to) : null;
-    const moved = !!home && location.hash !== home;
-    if (moved) location.hash = home;
-    await ctx.core.setMeta('role', to);
-    await ctx.core.record(to, 'role.changed', null, { from, to });
-    toast(`Role: ${roleById(to).name}`);
-    if (!moved) route(ctx);
-  });
+// The department chip and its sheet (navigation v2). The department is where a person works; it
+// is kept on this device. A first open asks for it; the chip changes it at any time.
+function showDepartment(ctx) {
+  const d = departmentById(ctx.department);
+  $('#dept-name').textContent = d ? departmentShort(d) : 'Department';
+  $('#dept-btn').setAttribute('aria-label', d ? `Department: ${d.name}. Change department` : 'Choose your department');
+  if (d) document.documentElement.dataset.department = d.id; else delete document.documentElement.dataset.department;
 }
-
-function setMenu(open, { focusButton = false } = {}) {
-  $('#nav').classList.toggle('open', open);
-  $('#menu-btn').setAttribute('aria-expanded', String(open));
-  if (!open && focusButton) $('#menu-btn').focus();
+async function setDepartment(ctx, id) {
+  const d = departmentById(id);
+  if (!d) return;
+  const from = ctx.department;
+  const firstRole = !ctx.site && !ctx.roleChosen;
+  if (id !== from) {
+    ctx.department = id;
+    showDepartment(ctx);
+    await ctx.saveDepartment(id, from);
+    toast(`Department: ${departmentShort(d)}`);
+  }
+  // A device where nobody has chosen a role yet starts with the department's usual one, so an
+  // imaging department does not open as a ward nurse (UX review 22 Nov, finding 1). It is changed under Me.
+  ctx.roleChosen = true;
+  if (firstRole && d.role !== ctx.role) { await setRole(ctx, d.role, { why: 'department' }); return; }
+  if (firstRole) await ctx.core.setMeta('role', ctx.role);
+  if (id !== from) route(ctx);
+}
+function openDepartments(ctx) {
+  const sheet = $('#dept-sheet');
+  $('#dept-list').replaceChildren(...DEPARTMENTS.map((d) => h('button', { type: 'button', class: `dept-opt${d.id === ctx.department ? ' is-on' : ''}`, 'data-dept': d.id,
+    'aria-pressed': String(d.id === ctx.department), onclick: () => { sheet.close(); setDepartment(ctx, d.id); } },
+  h('span', { class: 'dept-opt-name' }, d.name), h('span', { class: 'dept-opt-hint' }, d.hint),
+  d.id === ctx.department ? h('span', { class: 'dept-opt-on' }, 'Chosen') : null)));
+  if (!sheet.open) sheet.showModal();
+}
+function buildShell(ctx) {
+  showDepartment(ctx);
+  document.documentElement.dataset.role = ctx.role;
+  $('#dept-btn').addEventListener('click', () => openDepartments(ctx));
+  // A tap on the dimmed page behind the sheet closes it, as Escape does.
+  $('#dept-sheet').addEventListener('click', (e) => { if (e.target === e.currentTarget) e.currentTarget.close(); });
+  // "Sun 22 Nov · 21:00" in the device's own date form; on a narrow phone the day's name gives way.
+  const tick = () => {
+    const now = new Date();
+    const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+    $('#top-time').replaceChildren(h('span', { class: 'top-day' }, `${now.toLocaleDateString(undefined, { weekday: 'short' })} `),
+      h('span', { class: 'top-date' }, now.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })), ' · ', h('span', { class: 'top-clock' }, time));
+  };
+  tick();
+  setInterval(tick, 20000);
+}
+// Which dock item a page belongs to: its own, or Journey for a module page reached from there.
+function dockFor(id, rest) {
+  if (id === 'home') return 'home';
+  if (id === 'process') return rest[0] === 'walk' ? 'walk' : 'maps';
+  if (id === 'me' || ME_PAGES.includes(id)) return 'me';
+  return 'journey';
 }
 
 installDialogTapGuard(); // issue #147: a quick extra tap never falls through a closed dialog
-
-// Escape closes the phone menu and returns focus to the Menu button (issue #8).
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && $('#nav').classList.contains('open')) setMenu(false, { focusButton: true });
-});
 
 // Issue #108 part 1: a new release took over while this page was open (sw.js). The files already
 // loaded are the old ones and the next page's file would be a new one, so the next change of page
@@ -116,10 +131,11 @@ async function route(ctx) {
   if (newRelease) { location.reload(); return; }
   const { id, rest } = parseRoute(location.hash);
   const mod = moduleById(id);
-  for (const a of document.querySelectorAll('#nav-list a')) {
-    if (a.dataset.module === id) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current');
+  const at = dockFor(id, rest);
+  const exact = { home: 'home', journey: 'journey', me: 'me' }[id] === at || (id === 'process' && (at === 'walk' || !rest.length));
+  for (const a of document.querySelectorAll('#dock a')) {
+    if (a.dataset.dock === at) a.setAttribute('aria-current', exact ? 'page' : 'true'); else a.removeAttribute('aria-current');
   }
-  setMenu(false);
   if (typeof cleanup === 'function') { try { cleanup(); } catch { /* ignore */ } }
   cleanup = null;
   // Render off-screen, then swap in only if no newer navigation started meanwhile, so two
@@ -132,7 +148,7 @@ async function route(ctx) {
   try {
     if (mod.load) {
       const view = await mod.load();
-      pageCleanup = await view.render(page, { ...ctx, ...trackRuns(ctx.run), rest, toast });
+      pageCleanup = await view.render(page, { ...ctx, ...trackRuns(ctx.run), rest, toast, setRole: (to) => setRole(ctx, to) });
     } else {
       renderSoon(page, mod);
     }
@@ -141,7 +157,7 @@ async function route(ctx) {
     // away below: what went wrong for it is not this page's error (issue #95).
     if (token !== routeToken) return;
     console.error(err);
-    page.innerHTML = '<div class="card notice"><h2>Something went wrong</h2><p>This page could not load. Your data is safe. Try again, or go back to <a href="#/home">Today</a>.</p></div>';
+    page.innerHTML = '<div class="card notice"><h2>Something went wrong</h2><p>This page could not load. Your data is safe. Try again, or go back to <a href="#/home">Now</a>.</p></div>';
   }
   if (token !== routeToken) {
     if (typeof pageCleanup === 'function') { try { pageCleanup(); } catch { /* ignore */ } }
@@ -149,6 +165,10 @@ async function route(ctx) {
   }
   cleanup = pageCleanup;
   main.replaceChildren(...page.childNodes);
+  // Which page is on screen now, and how many have been drawn: for the shell's styles and for tests
+  // that must wait for a page to be drawn before they act.
+  document.documentElement.dataset.route = `#/${[id, ...rest].join('/')}`;
+  document.documentElement.dataset.drawn = String(Number(document.documentElement.dataset.drawn || 0) + 1);
   showWaiting(ctx);
   if (ctx.routed) main.focus({ preventScroll: true });
   ctx.routed = true;
@@ -232,8 +252,15 @@ async function bootOnSite() {
   const core = await Core.open({ adapter: mirror });
   link.core = core;
   if (link.connected) await link.pull();
-  const ctx = { core, role: who.device.role, storage: 'site', routed: false, site: link, device: who.device };
+  const ctx = { core, role: who.device.role, storage: 'site', routed: false, site: link, device: who.device, roleChosen: true };
   ctx.run = (name, input) => link.run(name, input, ctx.role);
+  // The department is this device's own setting: kept on the device, never sent to the site.
+  // It starts as the department the device's role works in, so nothing is asked here.
+  const keptDept = (await mirror.get('meta', 'device-department'))?.value;
+  ctx.department = departmentById(keptDept) ? keptDept : departmentForRole(ctx.role);
+  ctx.saveDepartment = (id) => mirror.put('meta', { id: 'device-department', value: id });
+  let siteStorage = '';
+  ctx.storageText = () => siteStorage;
   // Agents do not come in through the page here: they use their own key over the site's API.
   const api = {
     version: '0.4.0',
@@ -252,7 +279,7 @@ async function bootOnSite() {
   fixed.className = 'role-fixed';
   fixed.dataset.test = 'device-role';
   fixed.textContent = roleById(ctx.role).name;
-  $('#role-select').closest('label').replaceWith(fixed);
+  $('#top-search').after(fixed);
 
   const bar = document.createElement('p');
   bar.className = 'site-bar';
@@ -268,12 +295,13 @@ async function bootOnSite() {
     // The menu column starts under the top bar, which is taller while the line shows.
     if (connected) document.documentElement.style.removeProperty('--top');
     else document.documentElement.style.setProperty('--top', `${$('.topbar').offsetHeight}px`);
-    $('#storage-status').textContent = connected ? `Connected. Changes are saved · ${who.device.label}` : `Not connected · ${who.device.label}`;
+    siteStorage = connected ? `Connected. Changes are saved · ${who.device.label}` : `Not connected · ${who.device.label}`;
+    const line = $('#storage-status');
+    if (line) line.textContent = siteStorage;
   };
   link.onState(showLink);
   showLink();
-  buildNav();
-  $('#menu-btn').addEventListener('click', () => setMenu(!$('#nav').classList.contains('open')));
+  buildShell(ctx);
   window.addEventListener('hashchange', () => route(ctx));
   // A connected device opens on its role's own screen: the job is one tap away, not a menu away.
   if (!location.hash || location.hash === '#/') history.replaceState(null, '', `#/${roleById(ctx.role).home}`);
@@ -370,7 +398,15 @@ async function boot() {
   await core.setMeta('firstRunDone', true);
   if (adapter.kind === 'indexeddb') await writeMarker(core.now());
   const saved = await core.getMeta('role');
-  const ctx = { core, role: roleById(saved) ? saved : 'ward-nurse', storage: adapter.kind, routed: false };
+  const savedDept = await core.getMeta('department');
+  const ctx = { core, role: roleById(saved) ? saved : 'ward-nurse', storage: adapter.kind, routed: false,
+    roleChosen: !!roleById(saved), department: departmentById(savedDept) ? savedDept : null };
+  // The department is a setting of this device. Like a change of role it goes in the audit trail
+  // (who works where is not something that happened to a patient, so it is not in the event log).
+  ctx.saveDepartment = async (id, from) => {
+    await core.setMeta('department', id);
+    await core.record(ctx.role, 'department.changed', null, { from: from || null, to: id });
+  };
   // People act through the same commands an agent would (backlog A2).
   ctx.run = (name, input) => runCommand(core, name, input, { type: 'human', role: ctx.role });
   // Read-and-propose API for browser agents: they act as a named agent for a role, are
@@ -411,18 +447,18 @@ async function boot() {
   // Ask the browser to keep this site's data, and say what it answered (issue #87).
   let kept = false;
   try { kept = adapter.kind === 'indexeddb' && !!(await navigator.storage?.persist?.()); } catch { kept = false; }
-  $('#storage-status').textContent = adapter.kind !== 'indexeddb' ? 'Not saved: this browser blocks storage'
+  const storageText = adapter.kind !== 'indexeddb' ? 'Not saved: this browser blocks storage'
     : kept ? 'Saved on this device' : 'Saved on this device. The browser may clear it: export a backup.';
+  ctx.storageText = () => storageText;
   await showDataLost(core);
-  buildNav();
-  buildRoles(ctx);
-  $('#menu-btn').addEventListener('click', () => setMenu(!$('#nav').classList.contains('open')));
+  buildShell(ctx);
   window.addEventListener('hashchange', () => route(ctx));
-  if ((!location.hash || location.hash === '#/') && homePage(ctx.role)) history.replaceState(null, '', homePage(ctx.role));
   mark('shell-drawn');
   await route(ctx);
   document.documentElement.dataset.ready = 'true';
   mark('ready');
+  // Navigation v2: a first open asks where the person works, not their job title.
+  if (!ctx.department) openDepartments(ctx);
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(() => { /* the app still works online */ });

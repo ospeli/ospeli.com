@@ -49,7 +49,7 @@
 .mod-stores li.is-moved .sto-marker { color: #8A2412; }
 .mod-stores .sto-hint { margin: 6px 0 8px; color: var(--ink-soft); font-size: .9375rem; }
 .mod-stores .sto-status { margin: 6px 0; font-weight: 700; }
-.mod-stores .sto-savebar { position: sticky; bottom: 0; z-index: 2; padding: 10px 0 12px; background: linear-gradient(to bottom, rgba(246, 241, 231, 0), var(--sand) 30%); }
+.mod-stores .sto-savebar { position: sticky; bottom: var(--dock, 0px); z-index: 2; padding: 10px 0 12px; background: linear-gradient(to bottom, rgba(246, 241, 231, 0), var(--sand) 30%); }
 .mod-stores .sto-save { margin: 0; }
 .mod-stores .sto-result { border-left: 5px solid var(--mango); margin: 8px 0; }
 .mod-stores .sto-result.is-ok { border-left-color: var(--sea); }
@@ -125,7 +125,7 @@
 .mod-stores .btn.sto-issue:disabled { background: #E4E4E4; border-color: #B8B8B8; color: #4A5968; border-style: dashed; cursor: default; }
 .mod-stores a.sto-link { display: inline-flex; align-items: center; min-height: 44px; }
 /* The oldest request's pick list sits above its button; the button stays in reach at the bottom of the screen. */
-.mod-stores .sto-issuebar { position: sticky; bottom: 0; z-index: 2; padding: 8px 0 10px; background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--surface) 30%); }
+.mod-stores .sto-issuebar { position: sticky; bottom: var(--dock, 0px); z-index: 2; padding: 8px 0 10px; background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--surface) 30%); }
 .mod-stores .sto-pick > summary { font-size: .9375rem; }
 .mod-stores .sto-pick .sto-lines > li { padding: 6px 8px; }
 /* A save button that still waits for a pick looks disabled; a tap says what is missing. */

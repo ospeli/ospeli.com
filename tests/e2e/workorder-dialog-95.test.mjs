@@ -3,7 +3,7 @@
 // offered Start with no way to close the job. The dialog now says both before the person acts.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -12,7 +12,7 @@ after(async () => { await env.close(); });
 for (const width of [360, 1280]) {
   test(`work-order dialog: a job in progress warns before Assign, and Start says who closes (${width}px)`, async () => {
     const { context, page, errors } = await openPage(env, { width, height: 780, path: '#/engineering', clock: '2026-11-10T10:00:00Z', touch: width < 500 });
-    await page.selectOption('#role-select', 'ops-manager');
+    await setRole(page, 'ops-manager');
     await page.waitForSelector('[data-test="wo-queue"][data-role="ops-manager"] [data-test="wo-list"] [data-wo]');
     const [started, open] = await page.evaluate(async () => {
       const { runCommand } = await import('./core/commands.js');
@@ -45,7 +45,7 @@ for (const width of [360, 1280]) {
     assert.equal(await dlg.locator('[data-test="who-closes"]').textContent(), 'Closing a work order is for the Facilities technician.');
     await page.keyboard.press('Escape');
     // The facilities technician, who can close, is not told that.
-    await page.selectOption('#role-select', 'estates-tech');
+    await setRole(page, 'estates-tech');
     await page.waitForSelector('[data-test="wo-queue"][data-role="estates-tech"] [data-test="wo-list"] [data-wo]');
     dlg = await openDialog(open);
     assert.equal(await dlg.locator('[data-test="who-closes"]').count(), 0);

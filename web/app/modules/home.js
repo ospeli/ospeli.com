@@ -1,7 +1,9 @@
-// Today: the role's shortcuts (built pages only), the other built pages, what is planned, then
-// what is on this device.
+// Now (navigation v2): the department's pages first, then the role's, the key numbers, and what is
+// on this device. Every other page is on the Journey page; planned pages are listed only there.
+// The flow strip and "Needs you, in flow order" come next (docs/briefs/2026-11-22-walk-first.md).
 import { h } from './ui.js';
-import { MODULES, shortcutsFor, moduleById } from './registry.js';
+import { shortcutsFor, moduleById, ROLE_MODULES } from './registry.js';
+import { departmentById } from './departments.js';
 import { roleById } from '../core/model.js';
 import { loadSyntheticHospital, currentHour } from '../core/generator.js';
 import { kpiContext, kpiTiles } from './kpi-tiles.js';
@@ -14,11 +16,13 @@ const card = (m) => h('a', { class: `card${m.load ? '' : ' is-soon'}`, href: `#/
 
 export async function render(el, ctx) {
   const role = roleById(ctx.role);
-  const mine = shortcutsFor(ctx.role);
+  const dept = departmentById(ctx.department);
+  // The department's pages first, then the role's own; each page once, built pages only.
+  const builtPages = (ids) => ids.map(moduleById).filter((m) => m && m.load);
+  const mine = dept ? [...new Set([...builtPages(dept.pinned), ...builtPages(ROLE_MODULES[ctx.role] || [])])] : shortcutsFor(ctx.role);
   // KPIs this role owns first, then the rest.
   const kpiIds = [...KPIS.filter((k) => k.owner === ctx.role), ...KPIS.filter((k) => k.owner !== ctx.role)].map((k) => k.id);
-  const others = MODULES.filter((m) => m.id !== 'home' && m.load && !mine.includes(m));
-  const planned = MODULES.filter((m) => !m.load);
+  const synthetic = (await ctx.core.getMeta('synthetic', null)) === true;
   const [beds, wards, eventCount, auditCount] = await Promise.all([
     ctx.core.listEntities('bed'), ctx.core.listEntities('ward'), ctx.core.eventCount(), ctx.core.db.count('audit'),
   ]);
@@ -31,7 +35,7 @@ export async function render(el, ctx) {
     h('p', { class: 'meta' }, 'Last 7 days, calculated from the event log. Tap a number to see how it is defined.'),
     kpiTiles(kpiIds, await kpiContext(ctx.core))) : null;
   const shortcuts = [
-    h('h2', { class: 'section', style: phone ? 'margin-top:0' : null }, 'Your shortcuts'),
+    h('h2', { class: 'section', style: phone ? 'margin-top:0' : null }, 'Your pages'),
     h('div', { class: 'grid', 'data-test': 'role-shortcuts' }, mine.map(card)),
   ];
 
@@ -54,18 +58,11 @@ export async function render(el, ctx) {
   el.append(...[
     h('div', { class: 'page-head' },
       h('div', {},
-        h('p', { class: 'eyebrow' }, 'Today'),
-        h('h1', {}, `${role.name}`),
-        h('p', {}, 'Your shortcuts for this role. Change role at the top of the screen.'))),
+        h('p', { class: 'eyebrow' }, 'Now'),
+        h('h1', {}, dept ? dept.name : 'Choose your department'),
+        h('p', { 'data-test': 'now-role' }, `${role.name}. Every other page is under Journey; your role is under Me.`))),
     waitingBox,
     ...(phone ? [...shortcuts, keyNumbers] : [keyNumbers, ...shortcuts]),
-    h('section', { class: 'section', 'aria-labelledby': 'all-h' },
-      h('h2', { id: 'all-h' }, 'Settings and data'),
-      h('div', { class: 'grid' }, others.map(card))),
-    planned.length ? h('section', { class: 'section', 'aria-labelledby': 'planned-h' },
-      h('h2', { id: 'planned-h' }, 'Planned'),
-      h('p', { class: 'meta' }, 'Not built yet. Each opens a short note on what it is planned to do.'),
-      h('div', { class: 'grid', 'data-test': 'planned-modules' }, planned.map(card))) : null,
     h('section', { class: 'section', 'aria-labelledby': 'dev-h' },
       h('h2', { id: 'dev-h' }, 'On this device'),
       h('div', { class: 'stats' },
@@ -82,6 +79,7 @@ export async function render(el, ctx) {
           ctx.toast('Example General Hospital loaded');
           location.reload();
         } }, 'Load Example General Hospital'))),
+    synthetic ? h('p', { class: 'meta now-foot', 'data-test': 'now-foot' }, 'Synthetic demo data · no real patients or sites') : null,
   ].filter(Boolean));
   return off;
 }

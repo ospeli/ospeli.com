@@ -3,7 +3,7 @@
 // text file, and the audit table keeps its Action column readable on a phone.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -41,7 +41,7 @@ for (const width of [360, 390, 1280]) {
 test('#62: the agents notices ("All agents stopped", and the reset one, which shares its style) are navy on a kit tint with a coral edge', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 800, path: '#/agents', touch: true });
   page.on('dialog', (d) => d.accept());
-  await page.selectOption('#role-select', 'ops-manager');
+  await setRole(page, 'ops-manager');
   await page.waitForSelector('[data-dial="advise"]:not([disabled])');
   await page.locator('[data-dial="advise"]').tap();
   await page.waitForSelector('[data-test="agents-dial"][data-dial-now="advise"]');

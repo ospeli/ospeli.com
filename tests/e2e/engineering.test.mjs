@@ -2,7 +2,7 @@
 // facilities technician, and keep the KPIs in step. Phone and desktop.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -40,7 +40,7 @@ for (const width of [390, 1280]) {
 
 test('facilities technician sees the queue first, assigns and closes a work order; the KPI tile follows', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, path: '#/engineering' });
-  await page.selectOption('#role-select', 'estates-tech');
+  await setRole(page, 'estates-tech');
   await page.waitForFunction(() => document.querySelector('main h2')?.textContent === 'Work-order queue');
   await page.waitForSelector('[data-test="wo-list"] [data-wo]');
   await page.waitForFunction(() => document.querySelector('[data-kpi="open-work-orders"]'));
@@ -78,7 +78,7 @@ test('facilities technician sees the queue first, assigns and closes a work orde
 
 test('the COO can read the queue but has no report form or work-order actions', async () => {
   const { context, page, errors } = await openPage(env, { path: '#/engineering' });
-  await page.selectOption('#role-select', 'coo');
+  await setRole(page, 'coo');
   await page.waitForSelector('[data-test="wo-list"] [data-wo]');
   await page.waitForFunction(() => !document.querySelector('[data-test="report-form"]'));
   await page.locator('[data-test="wo-list"] [data-wo]').first().click();
@@ -94,10 +94,15 @@ test('the COO can read the queue but has no report form or work-order actions', 
 test('work-order dialog never shows "null" or "undefined", for every role (issue #28)', async () => {
   const { context, page, errors } = await openPage(env, { width: 360, height: 780, path: '#/engineering', clock: '2026-11-10T10:00:00Z' });
   await page.waitForSelector('[data-test="wo-list"] [data-wo]');
+  // Navigation v2: the role list is on Me. Read every role there, then come back to the queue.
+  await page.evaluate(() => { location.hash = '#/me'; });
+  await page.waitForSelector('#main #role-select');
   const roles = await page.evaluate(() => [...document.querySelector('#role-select').options].map((o) => o.value));
   assert.ok(roles.length >= 6);
+  await page.evaluate(() => { location.hash = '#/engineering'; });
+  await page.waitForSelector('main [data-test="wo-list"] [data-wo]');
   for (const role of roles) {
-    await page.selectOption('#role-select', role);
+    await setRole(page, role);
     await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
     // The page is drawn again for the new role and swapped in when it is ready. Wait for that queue,
     // so the test never taps a row from the page for the role before.
@@ -194,7 +199,7 @@ test('a fault that comes back after a fix is a repeat fault, in plain words (iss
   await page.waitForSelector(`[data-wo="${id}"]`);
   // The page is drawn again for the new role; mark the old queue so the test waits for the new one.
   await page.evaluate(() => { document.querySelector('[data-test="wo-list"]').dataset.old = '1'; });
-  await page.selectOption('#role-select', 'estates-tech');
+  await setRole(page, 'estates-tech');
   await page.waitForSelector(`[data-test="wo-list"]:not([data-old]) [data-wo="${id}"]`);
   await page.click(`[data-wo="${id}"]`);
   await page.waitForSelector('dialog[open]');
@@ -232,7 +237,7 @@ test('at 390 px: a work order closed as "No fault found", then a different fault
   const firstWasRepeat = /Repeat fault/.test(first);
   const id = first.match(/WO-\d{5}/)[0].toLowerCase();
   await page.evaluate(() => { document.querySelector('[data-test="wo-list"]').dataset.old = '1'; });
-  await page.selectOption('#role-select', 'estates-tech');
+  await setRole(page, 'estates-tech');
   await page.waitForSelector(`[data-test="wo-list"]:not([data-old]) [data-wo="${id}"]`);
   await page.locator(`[data-wo="${id}"]`).tap();
   await page.waitForSelector('dialog[open]');
@@ -278,7 +283,7 @@ async function seedJobs(page) {
 }
 async function asTechnician(page) {
   await seedJobs(page);
-  await page.selectOption('#role-select', 'estates-tech');
+  await setRole(page, 'estates-tech');
   await page.waitForSelector('[data-test="wo-queue"][data-role="estates-tech"] [data-test="next-card"][data-mode="suggest"]');
   await page.waitForSelector('[data-test="wo-list"] [data-wo]');
 }
@@ -536,7 +541,7 @@ test('the do-next page has no sideways scroll at 360, 390 and 1280 px; other rol
     assert.ok(await noSideways(page) <= 0, `${width}px, closing`);
     if (width === 1280) {
       // The ward nurse has no do-next card and cannot start a job; the list and the summary line are the same.
-      await page.selectOption('#role-select', 'ward-nurse');
+      await setRole(page, 'ward-nurse');
       await page.waitForSelector('[data-test="wo-queue"][data-role="ward-nurse"] [data-test="wo-list"] [data-wo]');
       assert.equal(await page.locator('[data-test="next-card"]').count(), 0);
       assert.equal(await page.locator('[data-cmd="ospeli_workorders_start"]').count(), 0);
@@ -552,7 +557,7 @@ test('the do-next page has no sideways scroll at 360, 390 and 1280 px; other rol
       assert.match(await page.locator('dialog[open]').innerText(), /In progress/);
       await page.keyboard.press('Escape');
       // The operations manager may start a job from the work order itself.
-      await page.selectOption('#role-select', 'ops-manager');
+      await setRole(page, 'ops-manager');
       await page.waitForSelector('[data-test="wo-queue"][data-role="ops-manager"] [data-test="wo-list"] [data-wo]');
       const row = page.locator('[data-test="wo-list"] [data-wo]:not(:has(.wo-started))').first();
       const id = await row.getAttribute('data-wo');
@@ -603,18 +608,22 @@ test('a label link with an unknown asset says so and keeps the form; nothing is 
 
 // Adoption check (ospeli/ospeli#112): the manager's first five minutes, untrained, on a phone.
 // Engineering has no manager role of its own in this build; the operations manager oversees it and
-// may assign. Opening the app on a touch phone, they reach the queue from Today, see the open count
+// may assign. Opening the app on a touch phone, they reach the queue from Now (or Journey), see the open count
 // and the late ones on the first screen of the module, and send a waiting job to a team.
 test('the operations manager\'s first five minutes in Engineering on a 390 px phone: open count first, a job sent to a team in a few taps', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true });
-  await page.selectOption('#role-select', 'ops-manager');
+  await setRole(page, 'ops-manager');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'ops-manager');
   await page.goto(env.appUrl);
   await page.waitForSelector('html[data-ready="true"]');
   await page.waitForSelector('[data-test="role-shortcuts"] a');
   const shortcut = page.locator('[data-test="role-shortcuts"] a[href^="#/engineering"]').first();
   if (await shortcut.count()) await shortcut.tap();
-  else await page.evaluate(() => { location.hash = '#/engineering'; }); // reached from the menu
+  else {
+    // Not under Your pages: every other page is under Journey (navigation v2), one tap on the dock, one on the chip.
+    await page.locator('#dock [data-dock="journey"]').tap();
+    await page.locator('#main .journey a[data-module="engineering"]').tap();
+  }
   await page.waitForSelector('[data-test="wo-list"] [data-wo]');
   const open = await openCount(page);
   assert.ok(open >= 1);

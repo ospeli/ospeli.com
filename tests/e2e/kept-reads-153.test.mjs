@@ -28,11 +28,23 @@ test('first load: the example site just made is not read back out of storage, an
   assert.ok(first.storage <= 1, `at most one whole read from storage during the first load (the check that the device is empty), got ${first.storage}`);
   assert.ok(first.kept >= 1, 'the first page was drawn from the kept answer');
   await same(page, 'after the first load');
-  const pages = await page.evaluate(() => [...document.querySelectorAll('nav a[href^="#/"]')].filter((a) => !a.querySelector('.soon-tag')).map((a) => a.getAttribute('href')));
+  // Navigation v2: every built page is a link on the dock, a chip on Journey (not the planned ones
+  // under "Coming later"), or a row on Me (AI helpers, Data and audit).
+  const drawnAt = (h) => page.waitForFunction((x) => document.documentElement.dataset.route === x.replace(/\/$/, '') && !document.querySelector('main .loading'), h);
+  const linksOn = async (hash, sel) => {
+    await page.evaluate((h) => { location.hash = h; }, hash);
+    await drawnAt(hash);
+    return page.locator(sel).evaluateAll((as) => as.filter((a) => !a.closest('details[data-test="coming-later"]') && !a.hasAttribute('data-planned') && !a.querySelector('.soon-tag')).map((a) => a.getAttribute('href')));
+  };
+  const dock = await page.locator('#dock a[href^="#/"]').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+  const journey = await linksOn('#/journey', '#main .journey a[data-module][href^="#/"]');
+  const me = await linksOn('#/me', '#main [data-test="me-agents"] a[href^="#/"], #main a[data-test="me-agents"], #main [data-test="me-data"] a[href^="#/"], #main a[data-test="me-data"]');
+  assert.equal(me.length, 2, `Me has the AI helpers and the Data rows: ${me.join(', ')}`);
+  const pages = [...new Set([...dock, ...journey, ...me])];
   assert.ok(pages.length >= 10, `built pages found: ${pages.length}`);
   for (const hash of pages) {
     await page.evaluate((h) => { location.hash = h; }, hash);
-    await page.waitForFunction((h) => document.querySelector(`nav a[href="${h}"]`)?.getAttribute('aria-current') === 'page' && !document.querySelector('main .loading'), hash);
+    await drawnAt(hash);
     await page.waitForTimeout(150);
   }
   const later = await reads(page);

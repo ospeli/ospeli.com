@@ -2,7 +2,7 @@
 // technician queue. (Item 4, reduce motion, is reduced-motion-84.test.mjs.)
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -17,7 +17,7 @@ const readable = (page, sel) => page.locator(sel).evaluate((e) => {
 for (const width of [360, 1280]) {
   test(`engineering: with every job closed, each work-order list says so in words (${width}px)`, async () => {
     const { context, page, errors } = await openPage(env, { width, height: 780, path: '#/engineering', clock: CLOCK, touch: width < 500 });
-    await page.selectOption('#role-select', 'estates-tech');
+    await setRole(page, 'estates-tech');
     await page.waitForSelector('[data-test="wo-queue"][data-role="estates-tech"] [data-test="wo-list"] [data-wo]');
     await page.evaluate(async () => {
       const { runCommand } = await import('./core/commands.js');
@@ -49,7 +49,7 @@ for (const width of [360, 1280]) {
 
 test('patient feedback: an empty queue view says what is empty, not "Nothing here" (390px)', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, path: '#/feedback', clock: '2026-11-16T15:00:00.000Z', touch: true });
-  await page.selectOption('#role-select', 'patient-liaison');
+  await setRole(page, 'patient-liaison');
   await page.waitForSelector('.mod-feedback[data-role="patient-liaison"] [data-test="queue-list"]');
   const seen = new Map();
   for (const view of await page.locator('.fb-views [data-view]').evaluateAll((bs) => bs.map((b) => b.dataset.view))) {

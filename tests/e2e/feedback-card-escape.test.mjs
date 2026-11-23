@@ -4,7 +4,7 @@
 // screen.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -13,7 +13,7 @@ const CLOCK = '2026-11-16T15:00:00.000Z';
 
 test('pressing Escape twice on the feedback card does not drop the patient on the staff screen', async () => {
   const { context, page } = await openPage(env, { width: 1280, height: 900, touch: false, clock: CLOCK, path: '#/feedback' });
-  await page.selectOption('#role-select', 'receptionist');
+  await setRole(page, 'receptionist');
   await page.waitForSelector('.mod-feedback[data-role="receptionist"] .fb-body > *');
   await page.locator('[data-test="hand-over"]').click();
   await page.waitForSelector('dialog[data-test="card"][open]');

@@ -5,7 +5,7 @@
 // What cannot: a wipe of every kind of storage at once looks the same as a first visit.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -21,9 +21,13 @@ async function clearStorage(context, page, types) {
   await cdp.detach();
   await page.goto(`${env.appUrl}#/engineering`);
   await page.waitForSelector('html[data-ready="true"]');
+  // The department went with the rest of the device's data, so the department sheet asks again
+  // (navigation v2); the person answers it before anything else on the page can be tapped.
+  assert.equal(await page.locator('#dept-sheet[open]').count(), 1, 'the cleared device asks for the department again');
+  await chooseDepartment(page, 'wards');
 }
 const startAJob = async (page) => {
-  await page.selectOption('#role-select', 'estates-tech');
+  await setRole(page, 'estates-tech');
   await page.goto(`${env.appUrl}#/engineering`);
   await page.locator('button:has-text("Start job")').first().click();
   await page.waitForFunction(() => /Job in progress/.test(document.querySelector('main').innerText));
@@ -79,8 +83,11 @@ for (const [width, types] of [[390, 'indexeddb,local_storage'], [360, 'indexeddb
   });
 }
 
-test('the menu foot says whether the browser agreed to keep the data; a reset a person chose shows no "browser cleared" notice (issue #87)', async () => {
+test('Me says whether the browser agreed to keep the data; a reset a person chose shows no "browser cleared" notice (issue #87)', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 780, clock: CLOCK, timezoneId: 'UTC' });
+  // Navigation v2: the line that was at the foot of the menu is on Me, under "On this device".
+  await page.click('#dock [data-dock="me"]');
+  await page.waitForSelector('#main #storage-status');
   // The app asks the browser to keep its data and says what the browser answered.
   await page.waitForFunction(() => /^Saved on this device/.test(document.getElementById('storage-status').textContent));
   const kept = await page.evaluate(() => navigator.storage.persisted());
@@ -92,6 +99,7 @@ test('the menu foot says whether the browser agreed to keep the data; a reset a 
   await page.reload();
   await page.waitForSelector('html[data-ready="true"]');
   assert.equal(await page.evaluate(() => window.__askedToPersist === true), true, 'the app asked the browser to keep its data');
+  assert.equal(await page.textContent('#storage-status'), foot, 'Me says the same after a reload');
   // A reset is a person's choice: the pill says "History replaced", and no browser notice appears.
   await page.goto(`${env.appUrl}#/data`);
   page.once('dialog', (d) => d.accept());

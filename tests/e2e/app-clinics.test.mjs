@@ -11,7 +11,7 @@
 // queue opens offline. Synthetic data only.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -25,7 +25,7 @@ async function until(check, what) {
 const roleSaved = (page, role) => until(async () => { const v = await page.evaluate(() => window.ospeli.core.getMeta('role')); return v === role || (v == null && role === 'ward-nurse'); }, `role ${role}`);
 const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 async function asRole(page, role, screen = '') {
-  await page.selectOption('#role-select', role);
+  await setRole(page, role);
   await roleSaved(page, role);
   const hash = screen ? `#/clinics/${screen}` : '#/clinics';
   await page.evaluate((target) => {
@@ -39,11 +39,19 @@ async function asRole(page, role, screen = '') {
     return x && !x.dataset.stale && x.dataset.role === r && (!s || x.dataset.screen === s);
   }, [role, screen]);
 }
+// A cold open as a clinic role working in Outpatients. Navigation v2: every cold open lands on Now,
+// and the role's page is the first card under "Your pages", one tap away (it no longer opens by itself).
 async function openAs(page, role) {
-  await page.selectOption('#role-select', role);
+  await setRole(page, role);
   await roleSaved(page, role);
+  await chooseDepartment(page, 'outpatients');
   await page.goto(env.appUrl);
   await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForSelector('#main [data-test="role-shortcuts"]');
+  assert.match(await page.evaluate(() => location.hash), /^(#\/?(home)?)?$/, 'a cold open lands on Now');
+  const first = page.locator('#main [data-test="role-shortcuts"] a').first();
+  assert.equal(await first.getAttribute('href'), '#/clinics', 'the clinic queue is the first card under Your pages');
+  await first.tap();
   await page.waitForFunction((r) => document.querySelector('.cl')?.dataset.role === r, role);
 }
 const phoneProblems = (page) => page.evaluate(() => {
@@ -85,7 +93,7 @@ for (const width of [360, 390, 1280]) {
 test('the clinic receptionist\'s first five minutes on a 390 px touch screen: opens on the queue and marks the next patient arrived; the row stays put and a second tap writes nothing', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   await openAs(page, 'clinic-receptionist');
-  assert.equal(await page.evaluate(() => location.hash), '#/clinics', 'the receptionist opens on the clinic queue, not on Today');
+  assert.equal(await page.evaluate(() => location.hash), '#/clinics', 'one tap on the first card on Now opens the clinic queue');
   await page.waitForSelector('[data-test="queue"]');
   assert.match(await page.locator('[data-test="clinic"] h2').textContent(), /General medicine clinic, Outpatients/);
   assert.deepEqual(await phoneProblems(page), [], 'queue: phone rules');

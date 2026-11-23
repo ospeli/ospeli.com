@@ -5,17 +5,39 @@
 // for a person. Fixed clock: Monday 16 Nov 2026, 11:00 site time.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
+import { roleById } from '../../web/app/core/model.js';
+import { moduleById } from '../../web/app/modules/registry.js';
+import { departmentById, departmentForRole } from '../../web/app/modules/departments.js';
 
 let env;
 before(async () => { env = await startApp(); });
 after(async () => { await env.close(); });
 
+// A cold open (no address) as this role, in the department it works in. Navigation v2: every cold
+// open lands on Now (the old jump to the role's page is gone); the role's own page is the first card
+// under "Your pages" after the department's pages (the first of all when the department's pages
+// start with it), and one tap opens it.
+async function openFromNow(page, role) {
+  const dept = departmentById(departmentForRole(role));
+  await chooseDepartment(page, dept.id);
+  await page.goto(env.appUrl);
+  await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForSelector('#main [data-test="role-shortcuts"]');
+  assert.match(await page.evaluate(() => location.hash), /^(#\/?(home)?)?$/, 'a cold open lands on Now');
+  const home = roleById(role).home;
+  const deptFirst = dept.pinned.filter((id) => moduleById(id)?.load);
+  const at = deptFirst.includes(home) ? deptFirst.indexOf(home) : deptFirst.length;
+  const cards = page.locator('#main [data-test="role-shortcuts"] a');
+  assert.equal(await cards.nth(at).getAttribute('href'), `#/${home}`, `the role's page is card ${at + 1} under Your pages`);
+  await cards.nth(at).tap();
+}
+
 const CLOCK = '2026-11-16T15:00:00.000Z';
 const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 async function open(width, role, { path = '#/feedback', touch = width < 500 } = {}) {
   const o = await openPage(env, { width, height: width < 500 ? 844 : 900, touch, clock: CLOCK, path });
-  await o.page.selectOption('#role-select', role);
+  await setRole(o.page, role);
   await o.page.waitForSelector(`.mod-feedback[data-role="${role}"] :is(.fb-body > *, [data-test="no-rights"])`);
   return o;
 }
@@ -359,8 +381,8 @@ test('back button or back swipe keeps the patient on the card; after staff close
     await page.waitForSelector('[data-test="card-exit-yes"]');
     assert.ok(await dlg.evaluate((d) => d.open), 'the card is still open');
     assert.equal(await page.evaluate(() => location.hash), '#/feedback/quick');
-    // Nothing of the staff screen is visible: the card covers it, and the topbar is behind the modal.
-    assert.equal(await page.evaluate(() => { const r = document.querySelector('#role-select').getBoundingClientRect(); return document.elementFromPoint(r.x + 5, r.y + 5)?.closest('dialog[data-test="card"]') != null; }), true);
+    // Nothing of the staff screen is visible: the card covers it, and the top bar (its department chip) is behind the modal.
+    assert.equal(await page.evaluate(() => { const r = document.querySelector('#dept-btn').getBoundingClientRect(); return document.elementFromPoint(r.x + 5, r.y + 5)?.closest('dialog[data-test="card"]') != null; }), true);
   }
   assert.equal(await dlg.locator('.fbc-face[aria-pressed="true"]').count(), 1, 'the patient\'s answer is kept');
   await dlg.locator('[data-test="card-exit-yes"]').dispatchEvent('pointerdown'); // staff hold it for two seconds (#122)
@@ -481,12 +503,11 @@ test('a redraw keeps open what the person opened and keeps unsaved picks (record
 // it, see how many are open and overdue on the first screen, and record a late reply in a few taps.
 test('the liaison officer\'s first five minutes on a 390 px phone: opens on the queue, sees open and overdue counts first, and records a late reply', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
-  await page.selectOption('#role-select', 'patient-liaison');
+  await setRole(page, 'patient-liaison');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'patient-liaison');
-  await page.goto(env.appUrl);
-  await page.waitForSelector('html[data-ready="true"]');
+  await openFromNow(page, 'patient-liaison');
   await page.waitForSelector('.mod-feedback[data-role="patient-liaison"] [data-test="queue-list"] [data-record]');
-  assert.match(await page.evaluate(() => location.hash), /^#\/feedback/, 'the liaison officer opens on the module, not on Today');
+  assert.match(await page.evaluate(() => location.hash), /^#\/feedback/, 'one tap from Now opens the module');
   assert.equal(await page.locator('.fb-tabs a[aria-current="page"]').getAttribute('data-tab'), 'queue');
   // The area's status on the first screen: open and overdue counts, and the oldest late one first.
   const overdue = Number(await page.locator('[data-test="count-overdue"]').textContent());

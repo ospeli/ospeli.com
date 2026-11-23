@@ -7,16 +7,38 @@
 // the facilities manager. Fictional data only.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
+import { roleById } from '../../web/app/core/model.js';
+import { moduleById } from '../../web/app/modules/registry.js';
+import { departmentById, departmentForRole } from '../../web/app/modules/departments.js';
 
 let env;
 before(async () => { env = await startApp(); });
 after(async () => { await env.close(); });
 
+// A cold open (no address) as this role, in the department it works in. Navigation v2: every cold
+// open lands on Now (the old jump to the role's page is gone); the role's own page is the first card
+// under "Your pages" after the department's pages (the first of all when the department's pages
+// start with it), and one tap opens it.
+async function openFromNow(page, role) {
+  const dept = departmentById(departmentForRole(role));
+  await chooseDepartment(page, dept.id);
+  await page.goto(env.appUrl);
+  await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForSelector('#main [data-test="role-shortcuts"]');
+  assert.match(await page.evaluate(() => location.hash), /^(#\/?(home)?)?$/, 'a cold open lands on Now');
+  const home = roleById(role).home;
+  const deptFirst = dept.pinned.filter((id) => moduleById(id)?.load);
+  const at = deptFirst.includes(home) ? deptFirst.indexOf(home) : deptFirst.length;
+  const cards = page.locator('#main [data-test="role-shortcuts"] a');
+  assert.equal(await cards.nth(at).getAttribute('href'), `#/${home}`, `the role's page is card ${at + 1} under Your pages`);
+  await cards.nth(at).tap();
+}
+
 const CLOCK = '2026-11-19T14:00:00Z';
 const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 async function asRole(page, role) {
-  await page.selectOption('#role-select', role);
+  await setRole(page, role);
   await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
   await page.evaluate(() => {
     const x = document.querySelector('.fac');
@@ -230,14 +252,14 @@ test('guide suggestions and an agent\'s proposal wait for a person; the guide ca
 test('front line: the facilities technician on a 390 px touch phone, with no help, records a generator test, starts a power outage and ends it; the manager\'s measures change', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   const t0 = Date.now();
-  await page.selectOption('#role-select', 'estates-tech');
+  await setRole(page, 'estates-tech');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'estates-tech');
   await page.goto(env.appUrl);
   await page.waitForSelector('html[data-ready="true"]');
-  await page.waitForFunction(() => location.hash === '#/engineering', null, { timeout: 5000 }).catch(() => {});
-  // The technician's home is Engineering; Facilities is in the menu.
-  await page.tap('#menu-btn');
-  await page.locator('#nav a[href="#/facilities"]').tap();
+  await page.waitForSelector('#main [data-test="role-shortcuts"]');
+  // The technician's own page is Engineering; Facilities is on Journey: the dock, then its chip.
+  await page.locator('#dock [data-dock="journey"]').tap();
+  await page.locator('#main .journey a[data-module="facilities"]').tap();
   await page.waitForFunction(() => document.querySelector('.fac')?.dataset.role === 'estates-tech');
   const tile = await page.locator('[data-tile="generator-test"]').boundingBox();
   assert.ok(tile.y + tile.height <= 844, `the tiles are on the first screen (bottom at ${Math.round(tile.y + tile.height)} px)`);
@@ -294,12 +316,11 @@ test('front line: the facilities technician on a 390 px touch phone, with no hel
 test('manager: the facilities manager on a 390 px touch phone opens on the module, sees the missed check and the open outage first, ends the outage and sets a level; the low-fuel suggestion clears', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   const t0 = Date.now();
-  await page.selectOption('#role-select', 'facilities-manager');
+  await setRole(page, 'facilities-manager');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'facilities-manager');
-  await page.goto(env.appUrl);
-  await page.waitForSelector('html[data-ready="true"]');
+  await openFromNow(page, 'facilities-manager');
   await page.waitForFunction(() => document.querySelector('.fac')?.dataset.role === 'facilities-manager');
-  assert.equal(await page.evaluate(() => location.hash), '#/facilities', 'the manager opens on the module, not on Today');
+  assert.equal(await page.evaluate(() => location.hash), '#/facilities', 'one tap from Now opens the module');
   // First on the page: the missed check and the open outage, above the guide, measures and forms.
   const y = async (sel) => (await page.locator(sel).first().boundingBox()).y;
   const missed = page.locator('[data-test="attention"] [data-test="missed"]');

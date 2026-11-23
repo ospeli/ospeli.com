@@ -5,7 +5,7 @@
 // a count more than 10 times the top-up level (example setting) asks once before it is saved.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -25,7 +25,7 @@ const junkText = (page) => page.evaluate((src) => {
 const counts = (page) => page.evaluate(async () => (await window.ospeli.core.exportData()).events.filter((e) => e.type === 'stock.counted').length);
 async function openCount(page) {
   await page.evaluate(() => { try { localStorage.setItem('ospeli-stores-ward', 'ward-a1'); } catch { /* none */ } });
-  await page.selectOption('#role-select', 'ward-nurse');
+  await setRole(page, 'ward-nurse');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
   await page.evaluate(() => { location.hash = '#/stores/count'; });
   await page.waitForSelector('.sto[data-screen="count"] [data-test="count-input"]');
@@ -47,7 +47,7 @@ test('every built module screen shows no "null", "undefined", "NaN" or "[object"
   const routes = ['#/', '#/beds', '#/engineering', '#/process', '#/kpi', '#/feedback', '#/support', '#/stores', '#/agents', '#/data'];
   const found = [];
   for (const role of ['ward-nurse', 'estates-tech', 'storekeeper', 'coo']) {
-    await page.selectOption('#role-select', role);
+    await setRole(page, role);
     for (const r of routes) {
       await page.evaluate((x) => { location.hash = x; }, r);
       await page.waitForTimeout(600);

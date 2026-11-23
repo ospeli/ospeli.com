@@ -1,7 +1,7 @@
 // Code review, 14 Nov: the "do next" card while "How did it end?" is open and the job under it changes.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -14,7 +14,7 @@ test('"How did it end?" never moves on to a job the person did not choose to clo
     const nurse = { type: 'human', role: 'ward-nurse' };
     for (const [assetId, fault, priority] of [['asset-a1-sink-1', 'Tap leaking', 'urgent'], ['asset-a1-light-1', 'Tripped breaker', 'urgent'], ['asset-b1-sink-1', 'Tap leaking', 'high']]) await runCommand(window.ospeli.core, 'ospeli_workorders_report_fault', { assetId, fault, priority }, nurse);
   });
-  await page.selectOption('#role-select', 'estates-tech');
+  await setRole(page, 'estates-tech');
   const card = page.locator('[data-test="next-card"]');
   await page.waitForSelector('[data-test="next-card"][data-mode="suggest"]');
   // Start job A, look at the next suggestion, start job B: two jobs in progress, B on the card.

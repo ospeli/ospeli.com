@@ -4,7 +4,7 @@
 // Synthetic data only.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -15,7 +15,7 @@ const SUNDAY = '2026-11-22T14:00:00Z'; // Sunday 10:00 at the example site
 for (const width of [360, 390, 1280]) {
   test(`Sunday at ${width} px: the clinic receptionist's queue names the next and last clinic, with no advice to reload`, async () => {
     const { context, page, errors } = await openPage(env, { width, height: 800, clock: SUNDAY, touch: width < 1000, path: '#/clinics' });
-    await page.selectOption('#role-select', 'clinic-receptionist');
+    await setRole(page, 'clinic-receptionist');
     await page.evaluate(() => { location.hash = '#/clinics/_'; location.hash = '#/clinics'; });
     await page.waitForFunction(() => document.querySelector('.cl')?.dataset.role === 'clinic-receptionist' && document.querySelector('[data-test="no-clinic"]'));
     const text = await page.textContent('[data-test="no-clinic"]');

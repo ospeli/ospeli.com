@@ -6,16 +6,38 @@
 // Fixed clock; fictional data only.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
+import { roleById } from '../../web/app/core/model.js';
+import { moduleById } from '../../web/app/modules/registry.js';
+import { departmentById, departmentForRole } from '../../web/app/modules/departments.js';
 
 let env;
 before(async () => { env = await startApp(); });
 after(async () => { await env.close(); });
 
+// A cold open (no address) as this role, in the department it works in. Navigation v2: every cold
+// open lands on Now (the old jump to the role's page is gone); the role's own page is the first card
+// under "Your pages" after the department's pages (the first of all when the department's pages
+// start with it), and one tap opens it.
+async function openFromNow(page, role) {
+  const dept = departmentById(departmentForRole(role));
+  await chooseDepartment(page, dept.id);
+  await page.goto(env.appUrl);
+  await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForSelector('#main [data-test="role-shortcuts"]');
+  assert.match(await page.evaluate(() => location.hash), /^(#\/?(home)?)?$/, 'a cold open lands on Now');
+  const home = roleById(role).home;
+  const deptFirst = dept.pinned.filter((id) => moduleById(id)?.load);
+  const at = deptFirst.includes(home) ? deptFirst.indexOf(home) : deptFirst.length;
+  const cards = page.locator('#main [data-test="role-shortcuts"] a');
+  assert.equal(await cards.nth(at).getAttribute('href'), `#/${home}`, `the role's page is card ${at + 1} under Your pages`);
+  await cards.nth(at).tap();
+}
+
 const CLOCK = '2026-11-20T18:00:00Z'; // 14:00 at the example site
 const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 async function asRole(page, role, screen = '') {
-  await page.selectOption('#role-select', role);
+  await setRole(page, role);
   await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
   await page.evaluate((s) => {
     const x = document.querySelector('.mod-pharmacy');
@@ -107,12 +129,11 @@ test('a role with no rights sees no action button and one line saying who can; t
 test('front line: the pharmacy technician on a 390 px touch phone opens on the queue, starts the oldest discharge request, a double tap skips nothing, then makes a checked one Ready; the turnaround and the ward view change', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   const t0 = Date.now();
-  await page.selectOption('#role-select', 'pharmacy-technician');
+  await setRole(page, 'pharmacy-technician');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'pharmacy-technician');
-  await page.goto(env.appUrl);
-  await page.waitForSelector('html[data-ready="true"]');
+  await openFromNow(page, 'pharmacy-technician');
   await page.waitForFunction(() => document.querySelector('.mod-pharmacy')?.dataset.screen === 'queue');
-  assert.match(await page.evaluate(() => location.hash), /^#\/pharmacy/, 'the technician opens on the module');
+  assert.match(await page.evaluate(() => location.hash), /^#\/pharmacy/, 'one tap from Now opens the module');
   assert.deepEqual(await phoneProblems(page), []);
   // The first Start is on the first screen.
   const first = await page.locator('[data-test="queue"] [data-step="start"]').first().boundingBox();
@@ -162,10 +183,9 @@ test('front line: the pharmacy technician on a 390 px touch phone opens on the q
 test('manager: the pharmacy manager on a 390 px touch phone opens on Turnaround, sees which stage takes the most time and which ward asks late, and moves a request to the front', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   const t0 = Date.now();
-  await page.selectOption('#role-select', 'pharmacy-manager');
+  await setRole(page, 'pharmacy-manager');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'pharmacy-manager');
-  await page.goto(env.appUrl);
-  await page.waitForSelector('html[data-ready="true"]');
+  await openFromNow(page, 'pharmacy-manager');
   await page.waitForFunction(() => document.querySelector('.mod-pharmacy')?.dataset.screen === 'summary');
   assert.deepEqual(await phoneProblems(page), []);
   const ov = await overview(page);

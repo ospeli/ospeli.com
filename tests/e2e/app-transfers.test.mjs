@@ -8,11 +8,33 @@
 // switch; an agent's write waits for a person; roles with no rights see no buttons.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
+import { roleById } from '../../web/app/core/model.js';
+import { moduleById } from '../../web/app/modules/registry.js';
+import { departmentById, departmentForRole } from '../../web/app/modules/departments.js';
 
 let env;
 before(async () => { env = await startApp(); });
 after(async () => { await env.close(); });
+
+// A cold open (no address) as this role, in the department it works in. Navigation v2: every cold
+// open lands on Now (the old jump to the role's page is gone); the role's own page is the first card
+// under "Your pages" after the department's pages (the first of all when the department's pages
+// start with it), and one tap opens it.
+async function openFromNow(page, role) {
+  const dept = departmentById(departmentForRole(role));
+  await chooseDepartment(page, dept.id);
+  await page.goto(env.appUrl);
+  await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForSelector('#main [data-test="role-shortcuts"]');
+  assert.match(await page.evaluate(() => location.hash), /^(#\/?(home)?)?$/, 'a cold open lands on Now');
+  const home = roleById(role).home;
+  const deptFirst = dept.pinned.filter((id) => moduleById(id)?.load);
+  const at = deptFirst.includes(home) ? deptFirst.indexOf(home) : deptFirst.length;
+  const cards = page.locator('#main [data-test="role-shortcuts"] a');
+  assert.equal(await cards.nth(at).getAttribute('href'), `#/${home}`, `the role's page is card ${at + 1} under Your pages`);
+  await cards.nth(at).tap();
+}
 
 const CLOCK = '2026-11-10T14:00:00Z'; // 10:00 at the example site: the day shift
 // Playwright's waitForFunction does not wait for an async check, so a check that reads the store polls from here.
@@ -24,7 +46,7 @@ async function until(check, what) {
 const roleSaved = (page, role) => until(async () => { const v = await page.evaluate(() => window.ospeli.core.getMeta('role')); return v === role || (v == null && role === 'ward-nurse'); }, `role ${role}`);
 const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 async function asRole(page, role, screen = '') {
-  await page.selectOption('#role-select', role);
+  await setRole(page, role);
   await roleSaved(page, role);
   const hash = screen ? `#/transfers/${screen}` : '#/transfers';
   await page.evaluate((target) => {
@@ -38,12 +60,12 @@ async function asRole(page, role, screen = '') {
     return x && !x.dataset.stale && x.dataset.role === r && (!s || x.dataset.screen === s);
   }, [role, screen]);
 }
-// Opening the app with no address, as a phone that keeps its role does.
+// Opening the app with no address, as a phone that keeps its role does: it lands on Now, and the
+// role's card opens the module in one tap.
 async function openAs(page, role) {
-  await page.selectOption('#role-select', role);
+  await setRole(page, role);
   await roleSaved(page, role);
-  await page.goto(env.appUrl);
-  await page.waitForSelector('html[data-ready="true"]');
+  await openFromNow(page, role);
   await page.waitForFunction((r) => document.querySelector('.trf')?.dataset.role === r, role);
 }
 const phoneProblems = (page) => page.evaluate(() => {
@@ -84,7 +106,7 @@ for (const width of [360, 390, 1280]) {
 test('the driver\'s first five minutes on a 390 px touch screen: picks a vehicle, sees the first job on the first screen, taps it through to Handed over; the vehicle is free and the measures change', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   await openAs(page, 'driver');
-  assert.equal(await page.evaluate(() => location.hash), '#/transfers', 'the driver opens on the module, not on Today');
+  assert.equal(await page.evaluate(() => location.hash), '#/transfers', 'one tap from Now opens the module');
   await page.waitForSelector('[data-test="pick-vehicle"]');
   assert.deepEqual(await phoneProblems(page), [], 'vehicle pick: phone rules');
   const before = await board(page);
@@ -108,6 +130,9 @@ test('the driver\'s first five minutes on a 390 px touch screen: picks a vehicle
   for (const step of ['arrived-pickup', 'departed', 'arrived-destination', 'handed-over']) {
     await page.waitForFunction((s) => { const b = document.querySelector('[data-test="main-action"]'); return b && b.dataset.step === s && !b.disabled; }, step);
     labels.push(await main.textContent());
+    // On a phone the dock floats over the foot of the screen: the person scrolls the button clear of
+    // it first, so "where the button was" is where it is once in view.
+    await main.scrollIntoViewIfNeeded();
     const b = await main.boundingBox();
     await main.tap();
     if (step === 'arrived-pickup') {

@@ -2,7 +2,7 @@
 // is the likely cause), then saved as entered on the second tap. Synthetic site.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -10,7 +10,7 @@ after(async () => { await env.close(); });
 
 test('#150: delivered above ordered asks once, then saves what was entered', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: '2026-11-10T14:00:00Z', path: '#/home' });
-  await page.selectOption('#role-select', 'ward-nurse');
+  await setRole(page, 'ward-nurse');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
   await page.evaluate(() => { localStorage.setItem('ospeli-support-linen-area', 'ward-c1'); location.hash = '#/support/linen'; });
   await page.waitForSelector('[data-test="meal-save"]');

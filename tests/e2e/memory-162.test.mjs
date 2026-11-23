@@ -23,7 +23,8 @@ async function meter(page) {
 
 async function go(page, hash) {
   await page.evaluate((h) => { location.hash = h; }, hash);
-  await page.waitForFunction((h) => document.querySelector(`nav a[href="${h}"]`)?.getAttribute('aria-current') === 'page' && !document.querySelector('main .loading'), hash);
+  // Navigation v2: the shell marks the page on screen on <html> once it has been drawn.
+  await page.waitForFunction((h) => document.documentElement.dataset.route === h && !document.querySelector('main .loading'), hash);
   await page.waitForTimeout(250);
 }
 
@@ -44,7 +45,15 @@ for (const screen of ['#/beds', '#/engineering']) {
 test('every built page in a loop: three more loops keep less than 3 MB in all', async () => {
   const { context, page, errors } = await openPage(env, { testHook: false });
   const heap = await meter(page);
-  const pages = await page.evaluate(() => [...document.querySelectorAll('nav a[href^="#/"]')].filter((a) => !a.querySelector('.soon-tag')).map((a) => a.getAttribute('href')));
+  // Navigation v2: every built page is the dock's places, the Journey page's chips (planned ones
+  // are only under "Coming later") and the rows under Me (Agents, Data).
+  await go(page, '#/journey');
+  const journey = await page.evaluate(() => [...document.querySelectorAll('#main .journey a[data-module]:not([data-planned])')].map((a) => a.getAttribute('href')));
+  await go(page, '#/me');
+  const me = await page.evaluate(() => [...document.querySelectorAll('#main [data-test="me-agents"], #main [data-test="me-data"]')].map((a) => a.getAttribute('href')));
+  const dock = await page.evaluate(() => [...document.querySelectorAll('#dock a[href^="#/"]')].map((a) => a.getAttribute('href')));
+  const pages = [...new Set([...dock, ...journey, ...me])];
+  assert.equal(me.length, 2, 'Agents and Data are rows under Me');
   assert.ok(pages.length >= 10, `built pages found: ${pages.length}`);
   const loop = async () => { for (const p of pages) await go(page, p); await go(page, '#/home'); };
   await loop(); await loop();

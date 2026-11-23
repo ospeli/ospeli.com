@@ -12,6 +12,6 @@ export function renderSoon(el, mod) {
       h('h2', {}, 'What this module is planned to do'),
       h('p', {}, mod.soon),
       h('p', { class: 'meta' }, 'Ospeli is built in the open. Each module runs on the same core: one hospital model, one event log and one audit trail.')),
-    h('p', { class: 'section' }, h('a', { href: '#/home' }, 'Back to Today')),
+    h('p', { class: 'section' }, h('a', { href: '#/journey' }, 'Back to Journey')),
   );
 }

@@ -7,19 +7,41 @@
 // with no rights see no buttons.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
+import { roleById } from '../../web/app/core/model.js';
+import { moduleById } from '../../web/app/modules/registry.js';
+import { departmentById, departmentForRole } from '../../web/app/modules/departments.js';
 
 let env;
 before(async () => { env = await startApp(); });
 after(async () => { await env.close(); });
 
+// A cold open (no address) as this role, in the department it works in. Navigation v2: every cold
+// open lands on Now (the old jump to the role's page is gone); the role's own page is the first card
+// under "Your pages" after the department's pages (the first of all when the department's pages
+// start with it), and one tap opens it.
+async function openFromNow(page, role) {
+  const dept = departmentById(departmentForRole(role));
+  await chooseDepartment(page, dept.id);
+  await page.goto(env.appUrl);
+  await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForSelector('#main [data-test="role-shortcuts"]');
+  assert.match(await page.evaluate(() => location.hash), /^(#\/?(home)?)?$/, 'a cold open lands on Now');
+  const home = roleById(role).home;
+  const deptFirst = dept.pinned.filter((id) => moduleById(id)?.load);
+  const at = deptFirst.includes(home) ? deptFirst.indexOf(home) : deptFirst.length;
+  const cards = page.locator('#main [data-test="role-shortcuts"] a');
+  assert.equal(await cards.nth(at).getAttribute('href'), `#/${home}`, `the role's page is card ${at + 1} under Your pages`);
+  await cards.nth(at).tap();
+}
+
 const CLOCK = '2026-11-10T14:00:00Z';
 const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 // Choose a role in the picker, then open the module's page (or one screen of it) by its address:
-// the picker only jumps to a role's own page from Today, so the test never relies on that. Each
+// a role change under Me does not open the role's own page, so the test never relies on that. Each
 // step waits for the state it needs: the role saved, then a fresh drawing of the page for it.
 async function asRole(page, role, screen = '') {
-  await page.selectOption('#role-select', role);
+  await setRole(page, role);
   await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
   const hash = screen ? `#/support/${screen}` : '#/support';
   await page.evaluate((target) => {
@@ -71,13 +93,12 @@ const counts = async (page) => (await page.locator('[data-test="queue-counts"]')
 
 test('a transport assistant opens the app on a 390 px touch screen and takes the first job from waiting to done; a quick second tap cannot finish it; the queue and the measure change', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
-  // A transport assistant's phone: the role is saved, and opening the app with no address opens the module, not Today.
-  await page.selectOption('#role-select', 'porter');
+  // A transport assistant's phone: the role is saved; opening the app with no address lands on Now, and their card opens the module in one tap.
+  await setRole(page, 'porter');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'porter');
-  await page.goto(env.appUrl);
-  await page.waitForSelector('html[data-ready="true"]');
+  await openFromNow(page, 'porter');
   await page.waitForFunction(() => document.querySelector('.sup')?.dataset.role === 'porter');
-  assert.equal(await page.evaluate(() => location.hash), '#/support', 'the transport assistant opens on the module, not on Today');
+  assert.equal(await page.evaluate(() => location.hash), '#/support', 'one tap from Now opens the module');
   assert.equal(await page.locator('.sup-tabs').count(), 0, 'one screen: the team\'s jobs, nothing that balances the work');
   const card = page.locator('[data-test="next-job"]');
   await card.waitFor();
@@ -215,13 +236,13 @@ test('a bed vacated on the bed board is in the cleaner\'s queue with no one aski
   await page.waitForSelector('.bed.st-occupied');
   // A new device starts as a ward nurse. Choosing the role already chosen changes nothing (#95: no
   // event, no new drawing), so the pick and the wait for a new drawing happen only for another role.
-  if ((await page.inputValue('#role-select')) !== 'ward-nurse') {
+  if ((await page.evaluate(() => document.documentElement.dataset.role)) !== 'ward-nurse') {
     await page.evaluate(() => document.querySelectorAll('main .bed').forEach((b) => { b.dataset.oldDrawing = '1'; }));
-    await page.selectOption('#role-select', 'ward-nurse');
+    await setRole(page, 'ward-nurse');
     await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'ward-nurse');
     await page.waitForFunction(() => document.querySelector('main .bed') && !document.querySelector('main .bed[data-old-drawing]'));
   }
-  assert.equal(await page.inputValue('#role-select'), 'ward-nurse');
+  assert.equal(await page.evaluate(() => document.documentElement.dataset.role), 'ward-nurse', 'the role (chosen under Me) is Ward nurse');
   await page.waitForSelector('.bed.st-occupied');
   const bedId = await page.locator('.bed.st-occupied').first().getAttribute('data-bed');
   // The bed board draws itself again for the new role a moment after the pick, which closes a dialog
@@ -360,12 +381,11 @@ test('a role with no rights sees no action button, and one line that says who ca
 // Adoption check (ospeli/ospeli#112): the manager's first five minutes, untrained, on a phone.
 test('the supervisor\'s first five minutes on a 390 px phone: opens on the module, sees each team\'s waiting jobs and the oldest wait, and puts a job first in one tap', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
-  await page.selectOption('#role-select', 'support-supervisor');
+  await setRole(page, 'support-supervisor');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'support-supervisor');
-  await page.goto(env.appUrl);
-  await page.waitForSelector('html[data-ready="true"]');
+  await openFromNow(page, 'support-supervisor');
   await page.waitForFunction(() => document.querySelector('.sup')?.dataset.role === 'support-supervisor');
-  assert.equal(await page.evaluate(() => location.hash), '#/support', 'the supervisor opens on the module, not on Today');
+  assert.equal(await page.evaluate(() => location.hash), '#/support', 'one tap from Now opens the module');
   // The area's status: one count per team, each with its waiting jobs and longest wait, on the first screen.
   const teams = page.locator('[data-test="team-counts"] .stat');
   await teams.first().waitFor();

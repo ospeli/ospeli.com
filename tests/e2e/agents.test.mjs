@@ -2,7 +2,7 @@
 // person accepts or declines, with the audit trail telling them apart (issue #17).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -82,7 +82,7 @@ test('issue #17: an agent proposes, the patient flow coordinator accepts on the 
   // test marks that page and waits for the coordinator's own page before it looks: every check below is
   // made on the coordinator's board, as it was meant to be.
   await page.evaluate(() => { for (const el of document.querySelector('main').children) el.dataset.stale = 'true'; });
-  await page.selectOption('#role-select', 'bed-manager');
+  await setRole(page, 'bed-manager');
   await page.waitForFunction(() => !document.querySelector('main > [data-stale]') && document.querySelector('main .bed'));
   const item = page.locator(`[data-proposal="${prop.id}"]`);
   await item.waitFor();
@@ -189,7 +189,7 @@ test('agent journey: find a free bed and propose it in two window.ospeli calls; 
   assert.ok(out.names.every((n) => /^ospeli_[a-z]+(_[a-z]+)+$/.test(n)), 'only new names are listed');
   assert.equal(out.described, 'ospeli_beds_allocate');
 
-  await page.selectOption('#role-select', 'bed-manager');
+  await setRole(page, 'bed-manager');
   const item = page.locator(`[data-proposal="${out.id}"]`);
   await item.waitFor();
   await item.locator('[data-cmd="ospeli_proposals_accept"]').click();
@@ -350,15 +350,33 @@ test('issue #101: a dry run through window.ospeli queues nothing, an unknown opt
   await context.close();
 });
 
-// Issue #52: the person who has to decide is told on the first screen they open, and in the menu.
+// Issue #52: the person who has to decide is told on the first screen they open, on the dock and on Journey.
 for (const width of [360, 390, 1280]) {
-  test(`issue #52: Today and the menu say when an agent's proposal is waiting for this role (${width}px)`, async () => {
+  test(`issue #52: Now, the dock and Journey say when an agent's proposal is waiting for this role (${width}px)`, async () => {
     const { context, page, errors } = await openPage(env, { width, path: '#/home', clock: '2026-11-10T10:00:00Z', touch: width < 500 });
     const card = page.locator('[data-test="decisions-waiting"]');
-    const menuCounts = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#nav-list a')].filter((a) => a.querySelector('.nav-count')).map((a) => [a.dataset.module, { n: a.querySelector('.nav-count').textContent.trim(), spoken: a.querySelector('.nav-count').getAttribute('aria-label') }])));
+    // Navigation v2: the per-module counts are on the Journey chips, and the dock's Journey item
+    // (on every page) carries the total. journeyCounts opens Journey, reads the chips once they
+    // agree with the dock's total, and goes back to the page the test was on.
+    const tagOf = (a) => ({ n: a.querySelector('.nav-count').textContent.trim(), spoken: a.querySelector('.nav-count').getAttribute('aria-label') });
+    const dockCount = () => page.evaluate(() => { const t = document.querySelector('#dock [data-dock="journey"] .nav-count'); return t ? { n: t.textContent.trim(), spoken: t.getAttribute('aria-label') } : null; });
+    const journeyCounts = async () => {
+      const back = await page.evaluate(() => location.hash);
+      await page.evaluate(() => { location.hash = '#/journey'; });
+      await page.waitForFunction(() => document.documentElement.dataset.route === '#/journey' && document.querySelector('#main .journey a[data-module]'));
+      await page.waitForFunction(() => {
+        const sum = [...document.querySelectorAll('#main .journey a[data-module] .nav-count')].reduce((s, t) => s + Number(t.textContent), 0);
+        return sum === Number(document.querySelector('#dock [data-dock="journey"] .nav-count')?.textContent || 0);
+      });
+      const counts = await page.evaluate(`(${((tag) => Object.fromEntries([...document.querySelectorAll('#main .journey a[data-module]')].filter((a) => a.querySelector('.nav-count')).map((a) => [a.dataset.module, tag(a)])))})(${tagOf})`);
+      await page.evaluate((h) => { location.hash = h; }, back);
+      await page.waitForFunction((h) => document.documentElement.dataset.route === h, back);
+      return counts;
+    };
     // Nothing waiting: no card, no count.
     assert.equal(await card.count(), 0);
-    assert.deepEqual(await menuCounts(), {});
+    assert.equal(await dockCount(), null);
+    assert.deepEqual(await journeyCounts(), {});
     // Three agents propose: a bed action, a work-order action and a new map.
     await page.evaluate(async () => {
       const { runCommand } = await import('./core/commands.js');
@@ -375,7 +393,7 @@ for (const width of [360, 390, 1280]) {
       await window.ospeli.run('ospeli_workorders_complete', { workOrderId: open.workOrders[0].id, outcome: 'fixed' }, { agent: 'fix-bot', role: 'estates-tech' });
       await window.ospeli.run('ospeli_maps_create', { from: 'discharge' }, { agent: 'map-bot', role: 'ops-manager' });
     });
-    // Today updates without a reload. The ward nurse (the role on first open) can decide the two bed proposals and the map.
+    // Now updates without a reload. The ward nurse (the role on first open) can decide the two bed proposals and the map.
     await card.waitFor();
     const read = async () => ({
       heading: (await card.locator('h2').innerText()).trim(),
@@ -393,16 +411,19 @@ for (const width of [360, 390, 1280]) {
     const top = await card.evaluate((e) => e.getBoundingClientRect().top);
     assert.ok(top < (width < 500 ? 780 : 860) * 0.6, `the card starts at ${Math.round(top)} px`);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), 0, 'no sideways scroll');
-    assert.deepEqual(await menuCounts(), { beds: { n: '2', spoken: '2 proposals waiting for your decision' }, process: { n: '1', spoken: '1 proposal waiting for your decision' } });
+    await page.waitForFunction(() => document.querySelector('#dock [data-dock="journey"] .nav-count')?.textContent.trim() === '3', null, { timeout: 10000 }).catch(() => {});
+    assert.deepEqual(await dockCount(), { n: '3', spoken: '3 proposals waiting for your decision' });
+    assert.deepEqual(await journeyCounts(), { beds: { n: '2', spoken: '2 proposals waiting for your decision' }, process: { n: '1', spoken: '1 proposal waiting for your decision' } });
     // The facilities technician sees their share: the work order and the map.
-    await page.selectOption('#role-select', 'estates-tech');
-    await page.waitForFunction(() => /Facilities technician/.test(document.querySelector('main h1')?.textContent || ''));
+    await setRole(page, 'estates-tech');
+    await page.waitForFunction(() => /Facilities technician/.test(document.querySelector('main [data-test="now-role"]')?.textContent || ''));
     await card.waitFor();
     await settle('Waiting for your decision (2)');
     c = await read();
     assert.equal(c.heading, 'Waiting for your decision (2)');
     assert.deepEqual(c.links.map((l) => l.slice(0, 2)), [['#/engineering', 'Engineering: 1 proposal'], ['#/process', 'Process maps: 1 proposal']]);
-    assert.deepEqual(Object.keys(await menuCounts()), ['engineering', 'process']);
+    assert.deepEqual((await dockCount())?.n, '2');
+    assert.deepEqual(Object.keys(await journeyCounts()), ['engineering', 'process']);
     // The Agents screen says, for each agent, how many of its proposals nobody has answered yet.
     await page.evaluate(() => { location.hash = '#/agents'; });
     await page.waitForSelector('.ag-agent[data-agent="flow-bot"] [data-test="agent-waiting"]');
@@ -410,11 +431,12 @@ for (const width of [360, 390, 1280]) {
       [['flow-bot', '2 proposals waiting for a person'], ['fix-bot', '1 proposal waiting for a person'], ['map-bot', '1 proposal waiting for a person']]);
     await page.evaluate(() => { location.hash = '#/home'; });
     await card.waitFor();
-    // One tap goes to the place it is decided; declining it there takes it off the menu and off Today.
+    // One tap goes to the place it is decided; declining it there takes it off Journey, the dock's total and Now.
     await card.locator('a[href="#/engineering"]').evaluate((a) => a.click());
     await page.waitForSelector('[data-test="proposals"] .proposal-item');
     await page.locator('[data-test="proposals"] [data-cmd="ospeli_proposals_decline"]').first().evaluate((b) => b.click());
-    await page.waitForFunction(() => !document.querySelector('#nav-list a[data-module="engineering"] .nav-count'));
+    await page.waitForFunction(() => document.querySelector('#dock [data-dock="journey"] .nav-count')?.textContent.trim() === '1');
+    assert.deepEqual(Object.keys(await journeyCounts()), ['process']);
     await page.evaluate(() => { location.hash = '#/home'; });
     await card.waitFor();
     await settle('Waiting for your decision (1)');
@@ -424,7 +446,8 @@ for (const width of [360, 390, 1280]) {
       const { runCommand } = await import('./core/commands.js');
       for (const p of (await window.ospeli.core.proposals()).filter((x) => x.status === 'pending')) await runCommand(window.ospeli.core, 'ospeli_proposals_decline', { id: p.id, reason: 'Not needed' }, { type: 'human', role: p.command.startsWith('ospeli_beds_') ? 'bed-manager' : 'ops-manager' });
     });
-    await page.waitForFunction(() => !document.querySelector('[data-test="decisions-waiting"]') && !document.querySelector('#nav-list .nav-count'));
+    await page.waitForFunction(() => !document.querySelector('[data-test="decisions-waiting"]') && !document.querySelector('#dock .nav-count'));
+    assert.deepEqual(await journeyCounts(), {});
     assert.deepEqual(errors, []);
     await context.close();
   });
@@ -470,7 +493,7 @@ test('issue #106: map and fault proposals show their title, and the reasons to d
       reasons: [...new Set([...document.querySelectorAll('[data-test="proposals"] select')].map((s) => [...s.options].map((o) => o.value).join(' | ')))],
     }));
   };
-  await page.selectOption('#role-select', 'ops-manager');
+  await setRole(page, 'ops-manager');
   const maps = await cardOn('#/process', 4);
   assert.deepEqual([...maps.lines].sort(), [
     'Start a blank map called "Clinic visit 1"', 'Start a blank map called "Clinic visit 2"', 'Start a blank map called "Clinic visit 3"',
@@ -481,11 +504,11 @@ test('issue #106: map and fault proposals show their title, and the reasons to d
   const faults = await cardOn('#/engineering', 1);
   assert.equal(faults.lines.length, 1);
   assert.deepEqual(faults.reasons, ['Not needed | Already done | Needs a conversation first | Other']);
-  await page.selectOption('#role-select', 'ward-nurse');
+  await setRole(page, 'ward-nurse');
   const beds = await cardOn('#/beds', 1);
   assert.deepEqual(beds.reasons, ['Not needed | Wrong bed or patient | Already done | Needs a conversation first | Other']);
   // Declining a map proposal with one of its own reasons works.
-  await page.selectOption('#role-select', 'ops-manager');
+  await setRole(page, 'ops-manager');
   await cardOn('#/process', 4);
   await page.locator('[data-test="proposals"] [data-cmd="ospeli_proposals_decline"]').first().evaluate((b) => b.click());
   await page.waitForFunction(() => document.querySelectorAll('[data-test="proposals"] .proposal-item').length === 3);

@@ -2,7 +2,7 @@
 // app gets it: no test hook, so every change goes through the screen and window.ospeli.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -18,7 +18,8 @@ function counter(page) {
   c.tap = async (sel) => { c.taps += 1; await page.locator(sel).tap(); };
   return c;
 }
-async function openPhone(width = 360) {
+// department: navigation v2 asks where the person works on a first open; null leaves the sheet open.
+async function openPhone(width = 360, department = 'wards') {
   const context = await env.browser.newContext({ viewport: { width, height: 780 }, hasTouch: true, isMobile: true });
   const page = await context.newPage();
   const errors = [];
@@ -27,24 +28,30 @@ async function openPhone(width = 360) {
   await page.goto(`${env.appUrl}#/agents`);
   await page.waitForSelector('html[data-ready="true"]');
   await page.waitForSelector('[data-test="agents-dial"]');
+  if (department) await chooseDepartment(page, department);
   return { context, page, errors };
 }
 
 test('first-time user at 360 px: an operations manager turns agents on in 2 taps, and any role stops them in 1', async () => {
-  const { context, page, errors } = await openPhone(360);
+  const { context, page, errors } = await openPhone(360, null);
   const c = counter(page);
+  // A first open asks for the department first: one real tap, counted with the rest.
+  assert.equal(await page.locator('#dept-sheet[open]').count(), 1, 'the department sheet opens on a first open');
+  await c.tap('#dept-sheet [data-dept="wards"]');
+  await page.waitForFunction(() => document.documentElement.dataset.department === 'wards' && !document.querySelector('#dept-sheet[open]'));
   // Default role (ward nurse): sees the state, cannot change it, and is told who can.
   assert.equal(await page.getAttribute('[data-test="agents-dial"]', 'data-dial-now'), 'off');
   assert.equal(await page.isDisabled('[data-dial="advise"]'), true);
   assert.match(await page.textContent('[data-test="agents-readonly"]'), /Only the Operations manager or COO can change these settings/);
   assert.equal(await page.locator('[data-test="agents-stop"]').count(), 0, 'nothing to stop while off');
 
-  await page.selectOption('#role-select', 'ops-manager');
+  await setRole(page, 'ops-manager');
   await page.waitForSelector('[data-dial="advise"]:not([disabled])');
-  // Main task for the operations lead: turn agents on. One tap and one confirm.
+  // Main task for the operations lead: turn agents on. One tap and one confirm (after the one
+  // tap that picked the department on the first open).
   await c.tap('[data-dial="advise"]');
   await page.waitForSelector('[data-test="agents-dial"][data-dial-now="advise"]');
-  assert.deepEqual([c.taps, c.confirms], [1, 1]);
+  assert.deepEqual([c.taps, c.confirms], [2, 1]);
   assert.match(await page.textContent('[data-test="agents-status"]'), /Agents are on: Advise/);
 
   // Still refused: on the dial is not enough, the agent must be on the list.
@@ -104,7 +111,7 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
   assert.deepEqual(tiny, []);
 
   // Any other member of staff: stop everything in one tap.
-  await page.selectOption('#role-select', 'ward-nurse');
+  await setRole(page, 'ward-nurse');
   await page.waitForSelector('[data-test="agents-readonly"]');
   assert.equal(await page.isDisabled('[data-ward="ward-a1"]').catch(() => true), true);
   const before = c.taps;
@@ -117,7 +124,7 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
   assert.equal(await page.isDisabled('[data-dial="advise"]'), true, 'a ward nurse cannot start agents again');
 
   // Stop cleared every ward: turning the dial back on does not quietly reopen ward A1.
-  await page.selectOption('#role-select', 'coo');
+  await setRole(page, 'coo');
   await page.waitForSelector('[data-dial="advise"]:not([disabled])');
   await c.tap('[data-dial="advise"]');
   await page.waitForSelector('[data-test="agents-wards"]');
@@ -151,7 +158,7 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
 test('remove an agent: it is refused at once, shows under "Refused", and the list survives a reload; works offline', async () => {
   const { context, page, errors } = await openPage(env, { width: 1280, path: '#/agents', testHook: false });
   page.on('dialog', (d) => d.accept());
-  await page.selectOption('#role-select', 'coo');
+  await setRole(page, 'coo');
   await page.waitForSelector('[data-dial="advise"]:not([disabled])');
   await page.click('[data-dial="advise"]');
   await page.click('[data-test="agents-add"]');
@@ -189,7 +196,7 @@ test('reset and a fresh copy switch agents off and say so, at 360 px (issue #51)
   const { context, page, errors } = await openPhone(360);
   const dialogs = [];
   page.on('dialog', (d) => { dialogs.push(d.message()); d.accept(); });
-  await page.selectOption('#role-select', 'ops-manager');
+  await setRole(page, 'ops-manager');
   await page.waitForSelector('[data-dial="advise"]:not([disabled])');
   await page.locator('[data-dial="advise"]').tap();
   await page.waitForSelector('[data-test="agents-dial"][data-dial-now="advise"]');
@@ -203,7 +210,7 @@ test('reset and a fresh copy switch agents off and say so, at 360 px (issue #51)
   await page.waitForSelector('[data-agent="night-flow-helper"]');
   assert.equal((await asAgent(page, 'ospeli_beds_board', { wardId: 'ward-a1' }, helper)).ok, true);
 
-  await page.selectOption('#role-select', 'ward-nurse');
+  await setRole(page, 'ward-nurse');
   await page.goto(`${env.appUrl}#/data`);
   await page.waitForSelector('[data-test="audit-status"]');
   dialogs.length = 0;

@@ -7,11 +7,33 @@
 // switch; a role with no rights sees no action button; honest empty states on an older device.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
+import { roleById } from '../../web/app/core/model.js';
+import { moduleById } from '../../web/app/modules/registry.js';
+import { departmentById, departmentForRole } from '../../web/app/modules/departments.js';
 
 let env;
 before(async () => { env = await startApp(); });
 after(async () => { await env.close(); });
+
+// A cold open (no address) as this role, in the department it works in. Navigation v2: every cold
+// open lands on Now (the old jump to the role's page is gone); the role's own page is the first card
+// under "Your pages" after the department's pages (the first of all when the department's pages
+// start with it), and one tap opens it.
+async function openFromNow(page, role) {
+  const dept = departmentById(departmentForRole(role));
+  await chooseDepartment(page, dept.id);
+  await page.goto(env.appUrl);
+  await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForSelector('#main [data-test="role-shortcuts"]');
+  assert.match(await page.evaluate(() => location.hash), /^(#\/?(home)?)?$/, 'a cold open lands on Now');
+  const home = roleById(role).home;
+  const deptFirst = dept.pinned.filter((id) => moduleById(id)?.load);
+  const at = deptFirst.includes(home) ? deptFirst.indexOf(home) : deptFirst.length;
+  const cards = page.locator('#main [data-test="role-shortcuts"] a');
+  assert.equal(await cards.nth(at).getAttribute('href'), `#/${home}`, `the role's page is card ${at + 1} under Your pages`);
+  await cards.nth(at).tap();
+}
 
 const CLOCK = '2026-11-10T14:00:00Z';
 const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -29,7 +51,7 @@ const cmd = (page, name, input, role) => page.evaluate(async ([n, i, r]) => {
 }, [name, input, role]);
 // Choose a role in the picker, then open one screen by its address, and wait for a fresh drawing for it.
 async function asRole(page, role, screen) {
-  await page.selectOption('#role-select', role);
+  await setRole(page, role);
   await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
   await page.evaluate((target) => {
     const x = document.querySelector('.sto');
@@ -76,11 +98,10 @@ for (const width of [360, 390, 1024, 1280]) {
 
 test('the storekeeper\'s first five minutes on a 390 px touch screen: issues the oldest request the store can fill, a second tap issues nothing more, and the measure changes', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
-  // A storekeeper's phone: opening the app with no address opens the module, on the requests.
-  await page.selectOption('#role-select', 'storekeeper');
+  // A storekeeper's phone: opening the app with no address lands on Now; one tap on their card opens the module, on the requests.
+  await setRole(page, 'storekeeper');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'storekeeper');
-  await page.goto(env.appUrl);
-  await page.waitForSelector('html[data-ready="true"]');
+  await openFromNow(page, 'storekeeper');
   await page.waitForFunction(() => document.querySelector('.sto')?.dataset.screen === 'requests' && document.querySelector('[data-test="first-request"]'));
   assert.equal(await page.evaluate(() => location.hash), '#/stores');
   const first = page.locator('[data-test="first-request"]');
@@ -173,10 +194,9 @@ test('a ward count under level raises the request with no extra step, and the wa
 
 test('the supply chain manager\'s first five minutes on a 390 px phone: sees what is short and what is stuck, and records an order step (#112)', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
-  await page.selectOption('#role-select', 'supply-manager');
+  await setRole(page, 'supply-manager');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'supply-manager');
-  await page.goto(env.appUrl);
-  await page.waitForSelector('html[data-ready="true"]');
+  await openFromNow(page, 'supply-manager');
   await page.waitForFunction(() => document.querySelector('.sto')?.dataset.screen === 'manage' && document.querySelector('[data-test="stats"]'));
   // The first screen says what is short and what is stuck, in numbers.
   const stats = page.locator('[data-test="stats"]');

@@ -3,7 +3,10 @@
 // Unbuilt modules show a short "what's coming" page so navigation is complete from day one.
 
 export const MODULES = [
-  { id: 'home', name: 'Today', summary: 'Your shortcuts for this role.', load: () => import('./home.js') },
+  { id: 'home', name: 'Now', summary: 'Your department now, and your pages.', shell: true, load: () => import('./home.js') },
+  // Shell pages of navigation v2 (docs/design/navigation-v2.md in ospeli/ospeli): reached from the dock, not listed as modules.
+  { id: 'journey', name: 'Journey', summary: 'Every page, along the patient\'s journey.', shell: true, load: () => import('./journey.js') },
+  { id: 'me', name: 'Me', summary: 'Your role, appearance, AI helpers, and data on this device.', shell: true, load: () => import('./me.js') },
   { id: 'beds', name: 'Bed board', week: 1, summary: 'Live bed state by ward, with flow KPIs.', load: () => import('./beds.js') },
   { id: 'engineering', name: 'Engineering', week: 2, summary: 'Report faults and run the work-order queue.', load: () => import('./engineering.js') },
   { id: 'ae', name: 'Emergency department flow', week: 2, summary: 'Arrival to decision timeline and pressure level.', soon: 'Follow each attendance from arrival to triage, seen, decision and bed, with the department pressure level and action cards.' },

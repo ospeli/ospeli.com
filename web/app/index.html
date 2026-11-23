@@ -17,31 +17,37 @@
 <body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="topbar">
-  <a class="brand" href="#/home" aria-label="Ospeli, go to Today">
-    <img src="../brand/ospeli_horizontal_color.svg" alt="Ospeli" width="118" height="38">
-  </a>
+  <!-- Navigation v2: the department chip, then the date and time, then search. -->
+  <button class="dept-chip" id="dept-btn" type="button" aria-haspopup="dialog" data-test="dept-chip"><span id="dept-name">Department</span><span class="dept-caret" aria-hidden="true">▾</span></button>
+  <span class="top-time" id="top-time" data-test="top-time"></span>
+  <a class="top-search" id="top-search" href="#/journey/search" data-test="top-search">Search</a>
   <div class="hospital">
     <span class="hospital-name">Example General Hospital</span>
     <span class="badge" id="synthetic-badge" data-test="synthetic-badge">Checking data…</span>
     <!-- Issue #37: short messages show over this row of the top bar, which holds no control, so they never cover one. -->
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
   </div>
-  <label class="role">
-    <span class="role-label">Role</span>
-    <select id="role-select" aria-label="Your role"></select>
-  </label>
-  <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="nav">Menu</button>
 </header>
 <div class="layout">
-  <nav id="nav" class="nav" aria-label="Modules">
-    <ul id="nav-list"></ul>
-    <p class="nav-foot"><span id="storage-status">Starting…</span></p>
-  </nav>
   <main id="main" tabindex="-1">
     <noscript><p class="card">The Ospeli app needs JavaScript. The product site is at <a href="../index.html">ospeli.com</a>.</p></noscript>
     <p class="loading">Loading…</p>
   </main>
+  <!-- The dock: five places, words always shown. A left rail on wide screens. -->
+  <nav id="dock" class="dock" aria-label="Main">
+    <a href="#/home" data-dock="home"><span class="dock-word">Now</span></a>
+    <a href="#/journey" data-dock="journey"><span class="dock-word">Journey</span></a>
+    <a href="#/process/walk" data-dock="walk" class="dock-walk"><img src="../brand/ospeli_symbol_dark.svg" alt="" width="34" height="34"><span class="dock-word">Walk</span></a>
+    <a href="#/process" data-dock="maps"><span class="dock-word">Maps</span></a>
+    <a href="#/me" data-dock="me"><span class="dock-word">Me</span></a>
+  </nav>
 </div>
+<dialog id="dept-sheet" class="sheet" aria-labelledby="dept-h" data-test="dept-sheet">
+  <h2 id="dept-h">Where do you work?</h2>
+  <p class="meta" id="dept-why">Ospeli shows your department's pages and words first. You can change this at any time at the top of the screen.</p>
+  <div id="dept-list" class="dept-list"></div>
+  <p class="meta">These departments are an example setting, not a standard.</p>
+</dialog>
 <script type="module" src="app.js"></script>
 </body>
 </html>

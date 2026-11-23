@@ -7,7 +7,10 @@
 // officer and the diagnostics manager. Fictional data only.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
+import { roleById } from '../../web/app/core/model.js';
+import { moduleById } from '../../web/app/modules/registry.js';
+import { departmentById, departmentForRole } from '../../web/app/modules/departments.js';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -16,7 +19,7 @@ after(async () => { await env.close(); });
 const CLOCK = '2026-11-19T14:00:00Z'; // 10:00 on the example site's clock, after the morning rounds began
 const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 async function asRole(page, role) {
-  await page.selectOption('#role-select', role);
+  await setRole(page, role);
   await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
   await page.evaluate(() => {
     const x = document.querySelector('.dx');
@@ -52,11 +55,24 @@ const smallest = (page) => page.evaluate(() => {
 });
 const tap = async (page, sel) => { const l = page.locator(sel).first(); await l.scrollIntoViewIfNeeded(); await l.tap(); };
 const waitSaved = (page, re) => page.waitForFunction((src) => new RegExp(src).test(document.querySelector('[data-test="saved"]')?.textContent || ''), re.source);
+// A cold open as this role, in the department it works in. Navigation v2: every cold open lands on
+// Now; the role's own page is the first card under "Your pages" after the department's pages (the
+// first card of all when the department's pages start with it), and one tap opens it.
 const openHome = async (page, role) => {
-  await page.selectOption('#role-select', role);
+  await setRole(page, role);
   await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
+  const dept = departmentById(departmentForRole(role));
+  await chooseDepartment(page, dept.id);
   await page.goto(env.appUrl);
   await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForSelector('#main [data-test="role-shortcuts"]');
+  assert.match(await page.evaluate(() => location.hash), /^(#\/?(home)?)?$/, 'a cold open lands on Now');
+  const home = roleById(role).home;
+  const deptFirst = dept.pinned.filter((id) => moduleById(id)?.load);
+  const at = deptFirst.includes(home) ? deptFirst.indexOf(home) : deptFirst.length;
+  const cards = page.locator('#main [data-test="role-shortcuts"] a');
+  assert.equal(await cards.nth(at).getAttribute('href'), `#/${home}`, `the role's page is card ${at + 1} under Your pages`);
+  await cards.nth(at).tap();
   await page.waitForFunction((r) => document.querySelector('.dx')?.dataset.role === r, role, { timeout: 20000 });
 };
 
@@ -147,7 +163,7 @@ test('front line: the laboratory reception officer on a 390 px touch phone, with
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   const t0 = Date.now();
   await openHome(page, 'lab-reception');
-  assert.equal(await page.evaluate(() => location.hash), '#/diagnostics', 'opens straight on the hatch list');
+  assert.equal(await page.evaluate(() => location.hash), '#/diagnostics', 'one tap from Now opens the hatch list');
   // First screen: what is on its way, the first Received button and the no-collection count.
   const first = page.locator('[data-test="hatch-row"]').first();
   const btn = await first.locator('[data-test="receive"]').boundingBox();
@@ -220,7 +236,7 @@ test('manager: the diagnostics manager on a 390 px touch phone sees turnaround, 
   await cmd(page, 'ospeli_diagnostics_request_record', { sourceId: 'ward-a1', testGroup: 'chemistry', urgency: 'routine', again: true }, 'unit-clerk');
   const t0 = Date.now();
   await openHome(page, 'diagnostics-manager');
-  assert.equal(await page.evaluate(() => location.hash), '#/diagnostics', 'the manager opens on the module');
+  assert.equal(await page.evaluate(() => location.hash), '#/diagnostics', 'one tap from Now opens the module');
   const sum = await page.locator('[data-test="summary"]').boundingBox();
   assert.ok(sum.y + sum.height <= 844, 'turnaround and rejections on the first screen');
   assert.equal(await page.locator('[data-test="summary"] [data-kpi="lab-turnaround"]').count(), 0, 'no blended turnaround tile');

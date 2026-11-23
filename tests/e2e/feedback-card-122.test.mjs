@@ -3,7 +3,7 @@
 // or letting go early, leaves the card open.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -11,7 +11,7 @@ after(async () => { await env.close(); });
 
 async function openCard(width) {
   const { context, page, errors } = await openPage(env, { width, touch: width < 500, clock: '2026-11-10T14:00:00Z' });
-  await page.selectOption('#role-select', 'receptionist');
+  await setRole(page, 'receptionist');
   await page.evaluate(() => { location.hash = '#/feedback/quick'; });
   await page.waitForSelector('[data-test="hand-over"]');
   await page.locator('[data-test="hand-over"]').click();

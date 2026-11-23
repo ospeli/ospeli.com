@@ -43,12 +43,19 @@ a { color: var(--sea-ink); font-weight: 700; }
 .skip { position: absolute; left: 8px; top: -60px; background: var(--navy); color: #fff; padding: 10px 14px; border-radius: 8px; z-index: 50; }
 .skip:focus { top: 8px; }
 
-/* top bar */
-.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+/* top bar (navigation v2): the department chip, the date and time, search; the site name and the
+   data badge sit on a slim second row that holds no control (messages show over it, issue #37). */
+.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap;
   padding: 10px max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left));
   padding-top: max(10px, env(safe-area-inset-top)); background: var(--surface); border-bottom: 1px solid var(--line); }
-.brand { display: inline-flex; align-items: center; flex: none; }
-.brand img { display: block; height: 34px; width: auto; }
+.dept-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; max-width: 100%; min-width: 0; padding: 8px 14px; border: 0; border-radius: 999px;
+  background: var(--navy); color: #fff; font: inherit; font-weight: 800; font-size: 1rem; cursor: pointer; flex: 0 1 auto; }
+.dept-chip #dept-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dept-caret { flex: none; font-size: 1rem; }
+.top-time { flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; color: var(--ink-soft); font-weight: 700; font-size: .9375rem; }
+.top-search { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 14px; border: 1.5px solid var(--line-strong); border-radius: 999px; background: var(--surface);
+  color: var(--navy); font-weight: 800; font-size: .9375rem; text-decoration: none; margin-left: auto; flex: none; }
+.top-search:hover { background: var(--wash); }
 .hospital { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; flex: 1 1 auto; }
 .hospital-name[hidden] { display: none; }
 .hospital-name { font-weight: 700; color: var(--ink-soft); font-size: .92rem; }
@@ -57,22 +64,84 @@ a { color: var(--sea-ink); font-weight: 700; }
 .badge-synthetic { color: var(--navy); background: #FDF1D9; border-color: var(--mango); }
 .badge-warn { color: var(--navy); background: #FBE3DD; border-color: var(--coral); }
 .badge-synthetic::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--mango); }
-.role { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: .9rem; }
 .role select, .field select, .field input, .field textarea { font: inherit; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line-strong);
   border-radius: 10px; padding: 8px 10px; min-height: 44px; }
-.role select { max-width: 52vw; }
-.menu-btn { display: none; }
 
-/* layout */
-.layout { display: grid; grid-template-columns: 240px minmax(0, 1fr); min-height: calc(100vh - var(--top)); }
-.nav { border-right: 1px solid var(--line); background: var(--surface); padding: 14px 10px; position: sticky; top: var(--top); align-self: start; height: calc(100vh - var(--top)); overflow-y: auto; }
-.nav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
-.nav a { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; min-height: 44px; border-radius: 10px; color: var(--ink); text-decoration: none; font-weight: 700; }
-.nav a:hover { background: var(--wash); }
-.nav a[aria-current="page"] { background: var(--navy); color: #fff; }
-.nav .soon-tag { white-space: nowrap; flex: none; font-size: .72rem; font-weight: 700; color: var(--ink-soft); }
-.nav a[aria-current="page"] .soon-tag { color: #DCE6EE; }
-.nav .nav-count { flex: none; min-width: 24px; padding: 2px 7px; border-radius: 999px; background: var(--mango); color: var(--navy); font-size: .9375rem; font-weight: 800; text-align: center; line-height: 1.3; }
+/* layout: on a phone the page with the dock floating over its foot; from 900 px a left rail. */
+:root { --dock: 96px; }
+html { scroll-padding-bottom: calc(var(--dock) + 8px); }
+.layout { display: block; min-height: calc(100vh - var(--top)); }
+/* The dock: a rounded white bar, 68 px tall, 12 px from the screen edges, with five places in words.
+   The chosen place has a short navy bar above its word. Walk is a raised navy square with the symbol. */
+.dock { position: fixed; z-index: 30; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right)); bottom: max(12px, env(safe-area-inset-bottom));
+  height: 68px; display: grid; grid-template-columns: 1fr 1fr 76px 1fr 1fr; align-items: stretch; gap: 2px; padding: 0 6px;
+  background: var(--surface); border: 1px solid var(--line-strong); border-radius: 22px; box-shadow: 0 6px 20px rgba(11, 47, 78, .14); }
+.dock a { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; min-height: 44px;
+  color: var(--ink-soft); font-weight: 800; font-size: .9375rem; text-decoration: none; border-radius: 16px; }
+.dock a:hover { color: var(--navy); }
+.dock a[aria-current] { color: var(--navy); }
+.dock a[aria-current]:not(.dock-walk)::before { content: ""; position: absolute; top: 12px; width: 24px; height: 4px; border-radius: 2px; background: var(--navy); }
+.dock a:not(.dock-walk) .dock-word { margin-top: 10px; }
+.dock .dock-walk { width: 76px; height: 76px; margin-top: -16px; background: var(--navy); color: #fff; border-radius: 22px; box-shadow: 0 6px 16px rgba(11, 47, 78, .3); gap: 0; }
+.dock .dock-walk:hover, .dock .dock-walk[aria-current] { color: #fff; }
+.dock .dock-walk[aria-current] { outline: 3px solid var(--seafoam); outline-offset: 2px; }
+.dock .dock-walk img { display: block; width: 34px; height: 34px; }
+.dock a:focus-visible, .dept-chip:focus-visible, .top-search:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.nav-count { flex: none; min-width: 24px; padding: 2px 7px; border-radius: 999px; background: var(--mango); color: var(--navy); font-size: .9375rem; font-weight: 800; text-align: center; line-height: 1.3; }
+.dock .nav-count { position: absolute; top: 4px; right: 4px; }
+.soon-tag { white-space: nowrap; flex: none; font-size: .9375rem; font-weight: 700; color: var(--ink-soft); }
+/* The department sheet: a sheet from the foot of the screen on a phone, a centred box on wide screens. */
+.sheet { border: 0; padding: 20px 16px max(20px, env(safe-area-inset-bottom)); width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; color: var(--ink); background: var(--surface);
+  border-radius: 20px 20px 0 0; margin: auto auto 0; }
+.sheet::backdrop { background: rgba(11, 47, 78, .5); }
+.sheet h2 { font-size: 1.3rem; }
+.dept-list { display: grid; gap: 8px; margin: 12px 0; }
+.dept-opt { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; align-items: center; text-align: left; min-height: 56px; padding: 8px 14px; border: 1.5px solid var(--line-strong);
+  border-radius: 14px; background: var(--surface); color: var(--ink); font: inherit; cursor: pointer; }
+.dept-opt:hover { background: var(--wash); }
+.dept-opt.is-on { border-color: var(--navy); border-width: 2.5px; }
+.dept-opt-name { font-weight: 800; font-size: 1.0625rem; grid-column: 1; }
+.dept-opt-hint { grid-column: 1; color: var(--ink-soft); font-size: .9375rem; }
+.dept-opt-on { grid-column: 2; grid-row: 1 / span 2; font-weight: 800; font-size: .9375rem; color: #fff; background: var(--navy); border-radius: 999px; padding: 2px 10px; }
+/* Journey: the spine of stages, each with a coloured marker and its name in words, and its pages as chips. */
+.journey { display: grid; gap: 16px; max-width: 720px; }
+.j-search { font: inherit; width: 100%; min-height: 48px; padding: 10px 14px; border: 1.5px solid var(--line-strong); border-radius: 14px; background: var(--surface); color: var(--ink); }
+.j-spine { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+.j-stage { position: relative; padding: 0 0 20px 40px; }
+.j-stage::before { content: ""; position: absolute; left: 12px; top: 26px; bottom: 0; width: 3px; border-radius: 2px; background: var(--line-strong); }
+.j-stage:last-child::before { display: none; }
+.j-stage:last-child { padding-bottom: 0; }
+.j-marker { position: absolute; left: 0; top: 0; width: 27px; height: 27px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 1.05rem; line-height: 1; }
+.j-arrive .j-marker { background: var(--sea); }
+.j-test .j-marker { background: var(--mango); }
+.j-stay .j-marker { background: var(--seafoam); }
+.j-leave .j-marker { background: var(--coral); }
+.j-stage h2, .j-box h2 { font-size: 1.0625rem; margin: 0 0 8px; padding-top: 2px; }
+.j-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.j-chip { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 16px; border: 1.5px solid var(--line-strong); border-radius: 999px; background: var(--surface);
+  color: var(--navy); font-weight: 800; font-size: 1rem; text-decoration: none; }
+.j-chip[hidden] { display: none; }
+.j-chip:hover { background: var(--wash); }
+.j-chip.is-mine { background: var(--navy); border-color: var(--navy); color: #fff; }
+.j-mine { font-size: .9375rem; font-weight: 700; color: #DCE6EE; }
+.j-chip.is-planned { border-style: dashed; color: var(--ink-soft); }
+.j-box .j-chips + .j-later { margin-top: 12px; }
+.j-later summary { min-height: 44px; display: flex; align-items: center; font-weight: 800; cursor: pointer; color: var(--navy); }
+.j-later .meta { margin: 0 0 8px; }
+.is-empty { display: none; }
+/* Me */
+.me-row { display: block; text-decoration: none; color: var(--ink); margin-top: 12px; position: relative; padding-right: 40px; }
+.me-row::after { content: "›"; position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 1.6rem; color: var(--ink-soft); }
+.me-row h2 { margin: 0 0 2px; }
+.me-row:hover { background: var(--wash); }
+.me-role + .card, .me-row + .card { margin-top: 12px; }
+.me-role .field { display: grid; gap: 4px; max-width: 26rem; }
+.me-role .field label { font-weight: 700; }
+.me-role select { width: 100%; }
+.me-home { margin: 10px 0 0; }
+.me-home a { display: inline-flex; align-items: center; min-height: 44px; }
+.me-role-fixed { font-weight: 800; }
+.now-foot { margin-top: 20px; text-align: center; }
 /* Today: an agent's proposal waiting for this role (issue #52) */
 .decisions { border-left: 6px solid var(--mango); margin-bottom: 16px; }
 .decisions h2 { margin: 0 0 4px; }
@@ -80,30 +149,34 @@ a { color: var(--sea-ink); font-weight: 700; }
 .decision-list a { display: flex; align-items: center; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--navy); font-weight: 800; font-size: 1rem; text-decoration: none; background: var(--surface); }
 .decision-list a::after { content: "›"; margin-left: auto; padding-left: 12px; font-size: 1.3rem; line-height: 1; }
 .decision-list a:hover { background: var(--wash); }
-.nav-foot { margin: 14px 12px 0; font-size: .8rem; color: var(--ink-soft); }
-main { padding: 20px max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left)); max-width: 1120px; width: 100%; min-width: 0; }
+main { padding: 20px max(16px, env(safe-area-inset-right)) calc(var(--dock) + 24px) max(16px, env(safe-area-inset-left)); max-width: 1120px; width: 100%; min-width: 0; }
 main:focus { outline: none; }
 .loading { color: var(--ink-soft); }
 
+/* Wide screens: the dock is a left rail with the same five places; the top bar is one row. */
+@media (min-width: 900px) {
+  :root { --dock: 24px; --top: 65px; }
+  .layout { display: grid; grid-template-columns: 112px minmax(0, 1fr); }
+  main { grid-column: 2; grid-row: 1; }
+  .dock { grid-column: 1; grid-row: 1; position: sticky; top: var(--top); left: auto; right: auto; bottom: auto; align-self: start; height: calc(100vh - var(--top));
+    display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 6px; padding: 16px 10px; border: 0; border-right: 1px solid var(--line); border-radius: 0; box-shadow: none; }
+  .dock a { min-height: 60px; flex: none; }
+  .dock .dock-walk { width: 76px; height: 76px; margin: 6px auto; }
+  .hospital { flex: 0 1 auto; order: 2; }
+  .top-time { order: 3; margin-left: auto; }
+  .top-search { order: 4; margin-left: 0; }
+  .sheet { margin: auto; border-radius: 20px; }
+}
 @media (max-width: 899px) {
-  .layout { display: block; }
-  .menu-btn { display: inline-flex; align-items: center; min-height: 44px; padding: 8px 14px; border-radius: 10px; border: 1.5px solid var(--navy); background: var(--surface); color: var(--navy); font: inherit; font-weight: 800; cursor: pointer; }
-  .menu-btn[aria-expanded="true"] { background: var(--navy); color: #fff; }
-  .nav { display: none; position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); }
-  .nav.open { display: block; }
-  .nav ul { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  /* The two-row top bar is sticky, so a message or heading the app scrolls to stops below it (issue #145). */
+  html { scroll-padding-top: 116px; }
+  .hospital { flex-basis: 100%; order: 5; }
 }
 @media (max-width: 560px) {
-  .topbar { gap: 8px 10px; }
-  .brand img { height: 30px; }
-  .hospital { order: 3; flex-basis: 100%; }
-  .role { margin-left: auto; }
-  .role-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-  /* Issue #145: leave room for the logo and Menu on one row at 360 px (16 + 92 + 10 + 10 + 72 + 16). */
-  .role select { max-width: min(44vw, calc(100vw - 216px)); }
-  /* Issue #145: the two-row top bar (99 px) is sticky, so a message or heading the app scrolls to
-     stops below it, not underneath it. */
-  html { scroll-padding-top: 108px; }
+  .topbar { gap: 6px 8px; }
+  /* 360 px: the chip, the time and Search share one row; the day's name gives way first. */
+  .top-day { display: none; }
+  .dept-chip { padding: 8px 12px; }
 }
 
 /* content */
@@ -548,7 +621,10 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .device-notice span { flex: 1 1 240px; min-width: 0; }
 .device-notice .btn { min-height: 44px; min-width: 64px; }
 .connect .meta { font-size: .9375rem; }
-html[data-site="connect"] .role, html[data-site="connect"] .menu-btn, html[data-site="connect"] .hospital, html[data-site="connect"] .nav { display: none; }
+html[data-site="connect"] .dept-chip, html[data-site="connect"] .top-time, html[data-site="connect"] .top-search, html[data-site="connect"] .hospital, html[data-site="connect"] .dock { display: none; }
+/* The full-screen walk (modules/walk.js sets data-walk-full on <html> while it shows): no dock, no ribbon. */
+html[data-walk-full] .dock, html[data-walk-full] .walk-ribbon { display: none; }
+html[data-walk-full] { --dock: 0px; }
 html[data-site="connect"] .layout { display: block; }
 @media (max-width: 760px) {
   .role-fixed { margin-left: auto; max-width: 46vw; white-space: normal; text-align: right; line-height: 1.2; padding: .375rem .625rem; }
@@ -571,7 +647,7 @@ html[data-site="connect"] .layout { display: block; }
 /* Issue #13: on a phone, text a person acts on is never under 15 px. */
 @media (max-width: 640px) {
   .bed-age, .bed-who, .bed-tag, .chip, .pill, .badge, .eyebrow, .kpi-target, .kpi-dialog dt, .card .meta, .stat span, .board-summary .stat span,
-  th, td code, .ward-tab-counts, .nav .soon-tag, .nav-foot, .pm-step .n, .pm-step .t, .choice .tag, .label-link { font-size: .9375rem; }
+  th, td code, .ward-tab-counts, .pm-step .n, .pm-step .t, .choice .tag, .label-link { font-size: .9375rem; }
   /* Issue #13, rest (fixer, night 12): the hospital name, KPI names, filter and guide chips, small
      buttons, the waiting list, recent changes, meta lines, priority notes, example-card text and tables. */
   .hospital-name, .kpi-name, .chip-btn, .btn-small, .waiting-item, ol.recent li, .meta, .prio-opt small, .choice span, table { font-size: .9375rem; }
@@ -582,8 +658,6 @@ html[data-site="connect"] .layout { display: block; }
      sentence case with no letter spacing (in capitals it pushed the bar onto a third row), the role
      picker is 15 px, and the logo link is a 44 px target. */
   .topbar .badge { font-size: .9375rem; line-height: 20px; text-transform: none; letter-spacing: 0; padding: 2px 8px; gap: 5px; }
-  .role select { font-size: .9375rem; }
-  .brand { min-height: 44px; min-width: 44px; }
 }
 
 /* Walk mode (backlog PM2). One screen, one big button; the state reads at arm's length:

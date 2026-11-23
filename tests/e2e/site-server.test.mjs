@@ -76,7 +76,9 @@ test('first-time user at 360 px: connect the phone with the code and answer an a
   assert.ok(screen.bottom <= 780, 'the Connect button is on the first screen');
   assert.equal(screen.focused, 'connect-code', 'the field is ready to type in');
   assert.ok(screen.words <= 45, `${screen.words} words on the screen`);
-  assert.equal(await page.locator('.topbar .role, .topbar .menu-btn, .topbar .hospital, #nav').evaluateAll((els) => els.filter((e) => e.getClientRects().length).length), 0, 'no menu, role or badge on the connect screen: one task');
+  // Navigation v2: no department chip, time, search, role, badge row or dock on the connect screen.
+  assert.equal(await page.locator('#dept-btn, #top-time, #top-search, [data-test="device-role"], #role-select, .topbar .hospital, #dock').evaluateAll((els) => els.filter((e) => e.getClientRects().length).length), 0, 'no department, search, role, badge or dock on the connect screen: one task');
+  assert.equal(await page.locator('#dept-sheet[open]').count(), 0, 'no department sheet on the connect screen');
   assert.ok(await sideways(page) <= 0);
   for (const bad of ['plain', 'pair', 'sync', 'token', 'session', 'server']) assert.doesNotMatch(await page.locator('[data-test="connect"]').innerText(), new RegExp(`\\b${bad}`, 'i'));
   // A wrong code says so in plain words and keeps the field.
@@ -90,6 +92,7 @@ test('first-time user at 360 px: connect the phone with the code and answer an a
   await page.waitForSelector('html[data-ready="true"]');
   assert.equal(await page.locator('[data-test="device-role"]').textContent(), 'Patient flow coordinator');
   assert.equal(await page.locator('#role-select').count(), 0, 'the role was chosen at the server; there is nothing to pick');
+  assert.equal(await page.locator('#dept-sheet[open]').count(), 0, 'no department sheet: the department starts from the device\'s role, so the count of taps stays 2');
   assert.equal(await page.locator('[data-test="site-status"]').isHidden(), true);
   // The agent's proposal is on the first screen of this role's home; one tap answers it.
   await page.waitForSelector('[data-test="proposals"] [data-cmd="ospeli_proposals_accept"]');
@@ -202,6 +205,7 @@ for (const width of [390, 1280]) {
     await page.locator('[data-test="connect-btn"]').tap();
     await page.waitForSelector('html[data-ready="true"]');
     assert.equal(await page.locator('[data-test="device-role"]').textContent(), 'Facilities technician');
+    assert.equal(await page.locator('#dept-sheet[open]').count(), 0, 'on a site server the department starts from the device\'s role: nothing is asked');
     assert.match(await page.evaluate(() => location.hash), /^#\/engineering/, 'a connected device opens on its role\'s own screen');
     await page.waitForSelector('[data-cmd="ospeli_workorders_start"]');
     const before = await site.core.eventCount();
@@ -217,19 +221,19 @@ for (const width of [390, 1280]) {
     assert.equal(await site.core.eventCount(), before + 2);
     assert.equal((await site.core.events({ type: 'workorder.completed' })).at(-1).subject, ev.subject);
     assert.equal(await page.evaluate(() => window.ospeli.core === undefined), true, 'no test hook: this is the page as a visitor gets it');
-    // With no connection the line sits in the top bar and the page keeps its shape (the menu
-    // beside the page on a wide screen, nothing under the top bar hidden).
+    // With no connection the line sits in the top bar and the page keeps its shape (the dock's
+    // rail beside the page on a wide screen, nothing under the top bar hidden).
     await context.setOffline(true);
     await page.waitForFunction(() => document.documentElement.dataset.site === 'offline', null, { timeout: 15000 });
     await page.evaluate(() => window.scrollTo(0, 400));
     const shape = await page.evaluate(() => {
       const r = (sel) => document.querySelector(sel).getBoundingClientRect();
-      return { bar: r('[data-test="site-status"]'), top: r('.topbar'), nav: r('#nav'), main: r('#main'), wide: getComputedStyle(document.querySelector('.layout')).display === 'grid' };
+      return { bar: r('[data-test="site-status"]'), top: r('.topbar'), nav: r('#dock'), main: r('#main'), wide: getComputedStyle(document.querySelector('.layout')).display === 'grid' };
     });
     assert.ok(shape.bar.top >= 0 && shape.bar.bottom <= shape.top.bottom + 1, 'the line stays on screen inside the top bar when the page is scrolled');
     if (shape.wide) {
-      assert.ok(shape.main.left >= shape.nav.right - 1, 'the page stays beside the menu');
-      assert.ok(shape.nav.top >= shape.top.bottom - 1, 'the menu starts under the taller top bar');
+      assert.ok(shape.main.left >= shape.nav.right - 1, 'the page stays beside the dock\'s rail');
+      assert.ok(shape.nav.top >= shape.top.bottom - 1, 'the dock\'s rail starts under the taller top bar');
     }
     await context.setOffline(false);
     await page.waitForFunction(() => document.documentElement.dataset.site === 'connected', null, { timeout: 15000 });

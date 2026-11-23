@@ -2,20 +2,21 @@
 // scroll (issue #23: the Engineering fault form overflowed a 360 px screen and hid "Routine").
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
 after(async () => { await env.close(); });
 
-const ROUTES = ['#/', '#/beds', '#/engineering', '#/process', '#/kpi', '#/agents', '#/data'];
+// Navigation v2: the menu is gone; every page is under Journey and the role, AI helpers and Data are under Me.
+const ROUTES = ['#/', '#/journey', '#/me', '#/beds', '#/engineering', '#/process', '#/kpi', '#/agents', '#/data'];
 const ROLES = ['ward-nurse', 'estates-tech'];
 
 for (const width of [360, 390, 1024, 1280]) {
   test(`every built screen fits ${width}px with no sideways scroll`, async () => {
     const { context, page, errors } = await openPage(env, { width, height: 800, clock: '2026-11-10T10:00:00Z' });
     for (const role of ROLES) {
-      await page.selectOption('#role-select', role);
+      await setRole(page, role);
       for (const r of ROUTES) {
         await page.evaluate((h) => { location.hash = h; }, r);
         await page.waitForTimeout(700); // modules render async; let the view swap in

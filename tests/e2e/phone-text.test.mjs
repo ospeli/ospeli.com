@@ -4,7 +4,8 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startApp, openPage } from './helpers.mjs';
 
-const ROUTES = ['#/', '#/beds', '#/engineering', '#/process', '#/kpi', '#/agents', '#/data'];
+// Navigation v2 adds Journey and Me to the main pages.
+const ROUTES = ['#/', '#/beds', '#/engineering', '#/process', '#/kpi', '#/agents', '#/data', '#/journey', '#/me'];
 let env;
 before(async () => { env = await startApp(); });
 after(async () => { await env.close(); });

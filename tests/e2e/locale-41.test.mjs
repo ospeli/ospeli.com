@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { startApp } from './helpers.mjs';
+import { startApp, chooseDepartment } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -21,6 +21,8 @@ async function open(locale, path, width = 390) {
   page.on('pageerror', (e) => errors.push(String(e)));
   await page.goto(env.appUrl + path);
   await page.waitForSelector('html[data-ready="true"]');
+  // Navigation v2: a first open asks for the department in a modal sheet; this test is not about that.
+  await chooseDepartment(page, 'wards');
   return { context, page, errors };
 }
 

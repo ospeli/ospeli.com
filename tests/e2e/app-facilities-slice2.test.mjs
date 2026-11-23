@@ -8,16 +8,38 @@
 // sees the figures; the technician's on-load test turns the on-load row Done. Fictional data only.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole, chooseDepartment } from './helpers.mjs';
+import { roleById } from '../../web/app/core/model.js';
+import { moduleById } from '../../web/app/modules/registry.js';
+import { departmentById, departmentForRole } from '../../web/app/modules/departments.js';
 
 let env;
 before(async () => { env = await startApp(); });
 after(async () => { await env.close(); });
 
+// A cold open (no address) as this role, in the department it works in. Navigation v2: every cold
+// open lands on Now (the old jump to the role's page is gone); the role's own page is the first card
+// under "Your pages" after the department's pages (the first of all when the department's pages
+// start with it), and one tap opens it.
+async function openFromNow(page, role) {
+  const dept = departmentById(departmentForRole(role));
+  await chooseDepartment(page, dept.id);
+  await page.goto(env.appUrl);
+  await page.waitForSelector('html[data-ready="true"]');
+  await page.waitForSelector('#main [data-test="role-shortcuts"]');
+  assert.match(await page.evaluate(() => location.hash), /^(#\/?(home)?)?$/, 'a cold open lands on Now');
+  const home = roleById(role).home;
+  const deptFirst = dept.pinned.filter((id) => moduleById(id)?.load);
+  const at = deptFirst.includes(home) ? deptFirst.indexOf(home) : deptFirst.length;
+  const cards = page.locator('#main [data-test="role-shortcuts"] a');
+  assert.equal(await cards.nth(at).getAttribute('href'), `#/${home}`, `the role's page is card ${at + 1} under Your pages`);
+  await cards.nth(at).tap();
+}
+
 const CLOCK = '2026-11-19T14:00:00Z';
 const noSideways = (page) => page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
 async function go(page, role, hash = '#/facilities') {
-  await page.selectOption('#role-select', role);
+  await setRole(page, role);
   await page.waitForFunction(async (r) => (await window.ospeli.core.getMeta('role')) === r, role);
   await page.evaluate((h) => {
     const x = document.querySelector('.fac');
@@ -217,10 +239,9 @@ test('a role with no rights sees no waste button and one line saying who can; an
 test('front line: the facilities assistant on a 390 px touch phone opens on the module, reaches the waste log with no help, records a collection and a missed collection; the manager\'s figures change', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   const t0 = Date.now();
-  await page.selectOption('#role-select', 'facilities-assistant');
+  await setRole(page, 'facilities-assistant');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'facilities-assistant');
-  await page.goto(env.appUrl);
-  await page.waitForSelector('html[data-ready="true"]');
+  await openFromNow(page, 'facilities-assistant');
   await page.waitForFunction(() => document.querySelector('.fac')?.dataset.role === 'facilities-assistant');
   assert.equal(await page.evaluate(() => location.hash), '#/facilities');
   const k0 = await overview(page);
@@ -268,10 +289,9 @@ test('front line: the facilities assistant on a 390 px touch phone opens on the 
 test('manager: the facilities manager on a 390 px touch phone sees the missed waste collection in Needs attention, records the late collection, and it clears while the missed share keeps the miss; the on-load row and figure are there', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
   const t0 = Date.now();
-  await page.selectOption('#role-select', 'facilities-manager');
+  await setRole(page, 'facilities-manager');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'facilities-manager');
-  await page.goto(env.appUrl);
-  await page.waitForSelector('html[data-ready="true"]');
+  await openFromNow(page, 'facilities-manager');
   await page.waitForFunction(() => document.querySelector('.fac')?.dataset.role === 'facilities-manager');
   assert.equal(await page.evaluate(() => location.hash), '#/facilities');
   const att = page.locator('[data-test="attention"]');

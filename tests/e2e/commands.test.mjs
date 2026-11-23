@@ -156,7 +156,7 @@ test('issue #5: import refuses non-synthetic files and personal-detail fields; t
   await page.reload();
   await page.waitForSelector('html[data-ready="true"]');
   assert.equal(await page.textContent('[data-test="synthetic-badge"]'), 'No data loaded');
-  assert.doesNotMatch(await page.textContent('main'), /\bnull\b/, 'issue #7: Today never prints "null"');
+  assert.doesNotMatch(await page.textContent('main'), /\bnull\b/, 'issue #7: Now never prints "null"');
   assert.deepEqual(errors, []);
   await context.close();
 });

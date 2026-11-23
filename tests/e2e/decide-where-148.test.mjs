@@ -1,9 +1,9 @@
-// Issue #148: "Waiting for your decision" on Today leads to the screen that shows each proposal with
+// Issue #148: "Waiting for your decision" on Now leads to the screen that shows each proposal with
 // Accept, one line per screen, counts only what the role can open and decide, and no card shows a
 // raw command name. Agents propose through window.ospeli, as in the issue; synthetic data only.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, setRole } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -30,17 +30,17 @@ async function fourProposals(page) {
   });
 }
 
-const todayLinks = (page) => page.locator('[data-test="decisions-waiting"] a').evaluateAll((as) => as.map((a) => [a.getAttribute('href'), a.innerText.replace(/\s+/g, ' ').trim()]));
+const nowLinks = (page) => page.locator('[data-test="decisions-waiting"] a').evaluateAll((as) => as.map((a) => [a.getAttribute('href'), a.innerText.replace(/\s+/g, ' ').trim()]));
 
 for (const width of [390, 1280]) {
-  test(`#148: each Today link opens the screen with the proposal and its Accept, one line per screen (${width}px)`, async () => {
+  test(`#148: each Now link opens the screen with the proposal and its Accept, one line per screen (${width}px)`, async () => {
     const { context, page, errors } = await openPage(env, { width, path: '#/home', clock: CLOCK, touch: width < 500 });
     assert.deepEqual(await fourProposals(page), ['proposed', 'proposed', 'proposed', 'proposed']);
     const card = page.locator('[data-test="decisions-waiting"]');
     await card.waitFor();
     await page.waitForFunction(() => /\(4\)/.test(document.querySelector('[data-test="decisions-waiting"] h2')?.innerText || ''), null, { timeout: 10000 }).catch(() => {});
     assert.equal((await card.locator('h2').innerText()).trim(), 'Waiting for your decision (4)');
-    const links = await todayLinks(page);
+    const links = await nowLinks(page);
     const hrefs = links.map(([href]) => href);
     assert.equal(new Set(hrefs).size, hrefs.length, `one line per screen: ${JSON.stringify(links)}`);
     assert.deepEqual(links, [
@@ -83,17 +83,18 @@ for (const width of [390, 1280]) {
   });
 }
 
-test('#148: Today counts only what the role can decide and has a screen for (storekeeper: the linen count only)', async () => {
+test('#148: Now counts only what the role can decide and has a screen for (storekeeper: the linen count only)', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, path: '#/home', clock: CLOCK, touch: true });
   await fourProposals(page);
-  await page.selectOption('#role-select', 'storekeeper');
+  await setRole(page, 'storekeeper');
   await page.waitForFunction(async () => (await window.ospeli.core.getMeta('role')) === 'storekeeper');
   await page.evaluate(() => { location.hash = '#/home'; });
-  await page.waitForFunction(() => /Storekeeper/i.test(document.querySelector('main h1')?.textContent || ''));
+  // Navigation v2: the h1 on Now is the department; the role's name is in the line under it.
+  await page.waitForFunction(() => /Storekeeper/i.test(document.querySelector('main [data-test="now-role"]')?.textContent || ''));
   const card = page.locator('[data-test="decisions-waiting"]');
   await card.waitFor();
   assert.equal((await card.locator('h2').innerText()).trim(), 'Waiting for your decision (1)');
-  assert.deepEqual(await todayLinks(page), [['#/support/linen', 'Cleaning and transport, Linen and meals: 1 proposal']]);
+  assert.deepEqual(await nowLinks(page), [['#/support/linen', 'Cleaning and transport, Linen and meals: 1 proposal']]);
   await page.evaluate(() => { location.hash = '#/support/linen'; });
   await page.waitForSelector('main .mod-support[data-screen="linen"] [data-test="proposals"] [data-cmd="ospeli_proposals_accept"]');
   assert.match(await page.locator('main [data-test="proposals"] .proposal-item b').first().innerText(), /^Linen count: /);
@@ -146,7 +147,7 @@ test('#148: a ward agent\'s supplies count is decided on the ward stock count sc
   assert.equal(status, 'proposed');
   const card = page.locator('[data-test="decisions-waiting"]');
   await card.waitFor();
-  assert.deepEqual(await todayLinks(page), [['#/stores/count', 'Stores and supplies, Ward stock count: 1 proposal']]);
+  assert.deepEqual(await nowLinks(page), [['#/stores/count', 'Stores and supplies, Ward stock count: 1 proposal']]);
   await page.evaluate(() => { location.hash = '#/stores/count'; });
   await page.waitForSelector('main .mod-stores[data-screen="count"] [data-test="proposals"] [data-cmd="ospeli_proposals_accept"]');
   assert.doesNotMatch(await page.locator('main [data-test="proposals"] .proposal-item b').first().innerText(), /ospeli_/);

@@ -32,7 +32,7 @@ export async function render(el, ctx) {
   const [wards, bedEntities] = await Promise.all([core.listEntities('ward'), core.listEntities('bed')]);
   if (!bedEntities.length) {
     el.append(h('div', { class: 'page-head' }, h('div', {}, h('p', { class: 'eyebrow' }, 'Bed board'), h('h1', {}, 'Bed board'))),
-      h('div', { class: 'card notice' }, h('p', {}, 'No hospital is loaded on this device. Load Example General Hospital from ', h('a', { href: '#/home' }, 'Today'), ' or ', h('a', { href: '#/data' }, 'Data and audit'), '.')));
+      h('div', { class: 'card notice' }, h('p', {}, 'No hospital is loaded on this device. Load Example General Hospital from ', h('a', { href: '#/home' }, 'Now'), ' or ', h('a', { href: '#/data' }, 'Data and audit'), '.')));
     return null;
   }
   const bedInfo = new Map(bedEntities.map((b) => [b.id, b]));
