@@ -1763,6 +1763,7 @@ const EXAMPLE_NEEDS = {
   ospeli_maps_hide_suggestion: NEED_SUGGESTION,
   ospeli_maps_reset_proposed: NEED_MAP,
   ospeli_walks_step_start: `${NEED_WALK} No step may be running.`,
+  ospeli_walks_rename: `${NEED_WALK} Not a repeat walk: that one carries its map's title.`,
   ospeli_walks_step_done: `${NEED_WALK} A step must be running: ospeli_walks_step_start starts it.`,
   ospeli_walks_step_skip: `${NEED_WALK} It must be a repeat walk (ospeli_walks_start with the mapId of a map made from a walk), with a list step still to come and no step running.`,
   ospeli_walks_step_name: `${NEED_WALK} At least one step must have ended (ospeli_walks_step_start, then ospeli_walks_step_done).`,

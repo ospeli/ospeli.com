@@ -2,7 +2,7 @@
 // fixes patch. Each test fails on the patched code. Synthetic taps only; no real walk is read.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, openMore } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -151,6 +151,7 @@ test('a step name being typed is still there after the Undo button goes (390px)'
   await page.locator('[data-test="walk-main"]').click(); await state(page, 'step');
   await page.clock.runFor(60000);
   await page.locator('[data-test="walk-main"]').click(); await page.waitForSelector('[data-test="walk-sheet"]');
+  await openMore(page);
   await page.fill('#wk-name', 'Weight and height taken');
   await page.clock.runFor(11000);
   await page.waitForFunction(() => !document.querySelector('[data-test="walk-undo"]'));
@@ -163,6 +164,9 @@ test('a step name being typed is still there after the Undo button goes (390px)'
   await page.locator('[data-test="walk-main"]').click(); await state(page, 'step');
   await page.clock.runFor(60000);
   await page.locator('[data-test="walk-main"]').click(); await page.waitForSelector('[data-test="walk-sheet"]');
+  await openMore(page);
   assert.equal(await page.inputValue('#wk-name'), '');
+  assert.equal(await page.inputValue('#wk-role'), '');
+  assert.equal(await page.locator('[data-chip][aria-pressed="true"]').count(), 0, 'and nothing is chosen for it');
   await context.close();
 });

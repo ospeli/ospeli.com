@@ -132,7 +132,9 @@ export function pausedSec(walk, a, b, now = null) {
     if (!end || p.clockBack) continue;
     ms += Math.max(0, Math.min(B, Date.parse(end)) - Math.max(A, Date.parse(p.startAt)));
   }
-  return Math.max(0, Math.round(ms / 1000));
+  // Whole seconds, rounded down: rounding half a second up took a second off the clock on the walk
+  // screen after "I am back" (1:39 where 1:40 had been seen).
+  return Math.max(0, Math.floor(ms / 1000));
 }
 // The same for a recorded wait or step, in the walk's whole seconds, so the parts add up.
 function pausedWhole(walk, a, b) {
@@ -471,22 +473,22 @@ export const WALK_ROLE_CHIPS = ['Reception', 'Nurse', 'Doctor', 'Pharmacy', 'Lab
 // The ids are the app's department ids (modules/departments.js); a unit test keeps the two in step.
 export const WALK_VOCAB = {
   imaging: { follows: 'one patient visit',
-    steps: [['Arrived', 'Patient'], ['Registered', 'Reception'], ['Safety questions', 'Radiographer'], ['Changed into gown', 'Patient'], ['Cannula or prep', 'Radiology nurse'], ['Scan', 'Radiographer'], ['Recovery', 'Radiology nurse'], ['Left', 'Patient']],
+    steps: [['Arrived', 'Patient'], ['Registered', 'Reception'], ['Safety questions', 'Imaging staff'], ['Changed into gown', 'Patient'], ['Cannula or prep', 'Radiology nurse'], ['Scan', 'Imaging staff'], ['Recovery', 'Radiology nurse'], ['Left', 'Patient']],
     later: [['Report signed', 'Radiologist']],
-    roles: ['Reception', 'Radiographer', 'Radiology nurse', 'Porter', 'Radiologist', 'Patient'],
+    roles: ['Reception', 'Imaging staff', 'Radiology nurse', 'Transport assistant', 'Radiologist', 'Patient'],
     titles: ['Outpatient CT', 'Outpatient MRI', 'Walk-in X-ray', 'Inpatient ultrasound'] },
   outpatients: { follows: 'one patient visit',
     steps: [['Checked in at reception', 'Reception'], ['Seen by a nurse', 'Nurse'], ['Seen by a doctor', 'Doctor'], ['Test or scan done', null], ['Medicines collected', 'Pharmacy'], ['Next visit booked', 'Reception']],
     later: [], roles: WALK_ROLE_CHIPS, titles: ['Morning clinic visit', 'Follow-up visit'] },
   emergency: { follows: 'one patient visit',
     steps: [['Arrived', 'Patient'], ['Booked in', 'Reception'], ['Triage', 'Nurse'], ['Seen by a doctor', 'Doctor'], ['Tests taken', 'Nurse'], ['Results back', null], ['Decision made', 'Doctor'], ['Left department', 'Patient']],
-    later: [], roles: ['Reception', 'Nurse', 'Doctor', 'Porter', 'Laboratory', 'Patient'], titles: ['Walk-in visit', 'Arrival by ambulance'] },
+    later: [], roles: ['Reception', 'Nurse', 'Doctor', 'Transport assistant', 'Laboratory', 'Patient'], titles: ['Walk-in visit', 'Arrival by ambulance'] },
   pharmacy: { follows: 'one prescription',
     steps: [['Handed in', 'Patient'], ['Entered', 'Counter staff'], ['Picked', 'Pharmacy assistant'], ['Labelled', 'Pharmacy technician'], ['Final check', 'Pharmacist'], ['Handed over', 'Counter staff']],
     later: [], roles: ['Counter staff', 'Pharmacy assistant', 'Pharmacy technician', 'Pharmacist', 'Patient'], titles: ['Outpatient prescription', 'Medicines to take home'] },
   laboratory: { follows: 'one sample',
-    steps: [['Sample taken', 'Sample taker'], ['Labelled', 'Sample taker'], ['Sent', 'Porter'], ['Received in lab', 'Lab reception'], ['Booked in', 'Lab reception'], ['Prepared', 'Lab assistant'], ['Analysed', 'Lab scientist'], ['Result checked', 'Lab scientist'], ['Result released', 'Lab scientist']],
-    later: [], roles: ['Sample taker', 'Porter', 'Lab reception', 'Lab assistant', 'Lab scientist'], titles: ['Routine sample from a clinic', 'Urgent sample'] },
+    steps: [['Sample taken', 'Sample taker'], ['Labelled', 'Sample taker'], ['Sent', 'Transport assistant'], ['Received in lab', 'Lab reception'], ['Booked in', 'Lab reception'], ['Prepared', 'Lab assistant'], ['Analysed', 'Lab scientist'], ['Result checked', 'Lab scientist'], ['Result released', 'Lab scientist']],
+    later: [], roles: ['Sample taker', 'Transport assistant', 'Lab reception', 'Lab assistant', 'Lab scientist'], titles: ['Routine sample from a clinic', 'Urgent sample'] },
 };
 // Departments a walk can be started from. Wards and the whole hospital have no one visit order,
 // so they keep the short general lists above and nothing is offered as "next".

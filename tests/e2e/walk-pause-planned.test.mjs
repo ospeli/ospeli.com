@@ -180,7 +180,8 @@ test('the longest wait was partly not seen: it is named as "at least" its seen p
   await page.tap('[data-test="walk-main"]'); await state(page, 'step');
   assert.equal(await page.textContent('[data-test="walk-which"]'), 'Step interrupted: the work stopped. Pause: you stepped out.');
   const side = await page.evaluate(() => [...document.querySelectorAll('[data-test="walk-stopped"], [data-test="walk-pause"]')].map((e) => [e.textContent, Math.round(e.getBoundingClientRect().height)]));
-  assert.deepEqual(side.map((x) => x[0]), ['Step interrupted', 'Pause']); assert.ok(side.every((x) => x[1] >= 44));
+  // Pause keeps the first place in every state, so it never moves under a thumb (walk-first week, 23 Nov).
+  assert.deepEqual(side.map((x) => x[0]), ['Pause', 'Step interrupted']); assert.ok(side.every((x) => x[1] >= 44));
   await page.clock.fastForward(60 * 1000);
   await page.tap('[data-test="walk-main"]'); await page.waitForSelector('[data-test="walk-sheet"]');
   await page.tap('[data-test="walk-later"]');

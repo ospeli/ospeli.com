@@ -3,7 +3,7 @@
 // nothing typed. The others cover a reload in the middle, mistakes, names, and no connection.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage } from './helpers.mjs';
+import { startApp, openPage, openMore } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -34,8 +34,8 @@ test('first-time user at 360 px: walk three steps and see the timed map in 16 ta
     const box = document.querySelector('[data-test="walk-before"]'); const ok = document.querySelector('[data-test="walk-before-ok"]');
     const px = (e) => parseFloat(getComputedStyle(e).fontSize);
     return { lines: [...box.querySelectorAll('li')].map((li) => li.textContent), okBottom: ok.getBoundingClientRect().bottom, okH: ok.getBoundingClientRect().height,
-      smallest: Math.min(...[...box.querySelectorAll('h1, li, p, a, button')].map(px)), inputs: box.querySelectorAll('input, select, textarea').length,
-      targets: [...box.querySelectorAll('button, a')].map((e) => Math.round(e.getBoundingClientRect().height)), words: box.innerText.split(/\s+/).length, scrollY: window.scrollY };
+      smallest: Math.min(...[...box.querySelectorAll('h1, li, p, a, button')].map(px)), inputs: [...box.querySelectorAll('input, select, textarea')].map((e) => [e.id, e.type, e.required, e.value]),
+      targets: [...box.querySelectorAll('button, a')].map((e) => Math.round(e.getBoundingClientRect().height)), words: box.innerText.split(/\s+/).length, titleWords: box.querySelector('[data-test="walk-title"]').innerText.split(/\s+/).length, scrollY: window.scrollY };
   });
   assert.equal(before.lines.length, 6);
   assert.match(before.lines[0], /^If care is affected or the patient looks unwell, stop and tell the person in charge\.$/);
@@ -43,8 +43,11 @@ test('first-time user at 360 px: walk three steps and see the timed map in 16 ta
   assert.ok(before.okBottom <= 640 && before.scrollY === 0, `the button is on the first 360 by 640 screen (${before.okBottom})`);
   assert.ok(before.okH >= 44 && before.targets.every((x) => x >= 44), `tap targets ${before.targets}`);
   assert.ok(before.smallest >= 15, `smallest text ${before.smallest}px`);
-  assert.equal(before.inputs, 0, 'nothing to fill in or tick: no consent form, no names');
-  assert.ok(before.words <= 80, `${before.words} words before the walk`);
+  // Walk-first week (founder, 22 Nov): one box asks what is being walked. It can be left empty, as it
+  // is here; there is still nothing to tick, no consent form and no names.
+  assert.deepEqual(before.inputs, [['wk-title', 'text', false, '']], 'one optional box for what is being walked; nothing to tick');
+  assert.ok(before.titleWords <= 12, `${before.titleWords} words in the title box and its examples`);
+  assert.ok(before.words - before.titleWords <= 80, `${before.words - before.titleWords} words before the walk`);
   assert.equal((await stored(page)).length, 0, 'no walk and no clock until the button is tapped');
   await page.setViewportSize({ width: 360, height: 780 });
   await tap('[data-test="walk-before-ok"]');
@@ -160,6 +163,7 @@ test('a reload in the middle loses nothing; undo, name it later, work stopped, a
   // Step 1: a typed person's name is refused; a role is asked for.
   await page.tap('[data-test="walk-main"]');
   await page.waitForSelector('[data-test="walk-sheet"]');
+  await openMore(page);
   await page.fill('#wk-name', 'Seen by Dr Sarah Jones');
   await page.fill('#wk-role', 'Doctor');
   await page.tap('[data-test="walk-save"]');
@@ -168,6 +172,7 @@ test('a reload in the middle loses nothing; undo, name it later, work stopped, a
   assert.equal(await page.inputValue('#wk-name'), 'Seen by Dr Sarah Jones', 'what was typed is still there to change');
   assert.equal((await stored(page))[0].steps[0].name, null, 'nothing was saved');
   // The hand-over: the next step had already started, so there is no wait before it.
+  await openMore(page);
   await page.fill('#wk-name', 'Seen by a doctor');
   await page.fill('#wk-role', 'Doctor');
   await page.check('#wk-next');
@@ -283,6 +288,7 @@ test('a half-answered step is kept when the next step is timed, and "Name it lat
   assert.equal(w.steps[0].name, 'Seen by a nurse', 'the half answer was kept');
   assert.equal(w.steps[0].role, null);
   // Step 2: the next step had already started, and the name is left for later.
+  await openMore(page);
   await page.check('#wk-next');
   await page.tap('[data-test="walk-later"]');
   await state('step');

@@ -82,3 +82,11 @@ export async function setRole(page, role) {
   const want = await page.evaluate(() => location.hash);
   await page.waitForFunction((h) => location.hash === h && (document.documentElement.dataset.route === h || document.documentElement.dataset.route === h.replace(/\/$/, '')), want);
 }
+
+// Walk mode's naming sheet (walk-first week, 23 Nov 2026): typing and the two tick boxes are behind
+// "More options". Opens them the way a person does, when they are not open already.
+export async function openMore(page) {
+  if (await page.locator('[data-test="walk-more-box"]').count()) return;
+  await page.locator('[data-test="walk-more"]').click();
+  await page.waitForSelector('[data-test="walk-more-box"]');
+}

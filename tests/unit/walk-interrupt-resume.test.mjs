@@ -20,7 +20,7 @@ async function setup(start = '2026-11-16T09:00:00.000Z') {
   const step = async (wait, work) => { tick(wait); await tap('ospeli_walks_step_start'); tick(work); return tap('ospeli_walks_step_done'); };
   return { core, tick, at, tap, step };
 }
-const SIX = [['Arrived', 'Patient'], ['Registered', 'Reception'], ['Safety questions', 'Radiographer'], ['Scan', 'Radiographer'], ['Recovery', 'Radiology nurse'], ['Left', 'Patient']];
+const SIX = [['Arrived', 'Patient'], ['Registered', 'Reception'], ['Safety questions', 'Imaging staff'], ['Scan', 'Imaging staff'], ['Recovery', 'Radiology nurse'], ['Left', 'Patient']];
 
 // Walk 1: six steps, each after a 60 s wait and 120 s long, but step 4 (Scan) is interrupted after
 // 120 s, stands still for 300 s and then carries on for 180 s more.
@@ -30,7 +30,7 @@ async function walkOne(x) {
     if (i !== 3) { await x.step(60, 120); await x.tap('ospeli_walks_step_name', { name: SIX[i][0], role: SIX[i][1] }); continue; }
     x.tick(60); await x.tap('ospeli_walks_step_start'); x.tick(120);
     await x.tap('ospeli_walks_step_done', { interrupted: true });
-    await x.tap('ospeli_walks_step_name', { name: 'Scan', role: 'Radiographer' });
+    await x.tap('ospeli_walks_step_name', { name: 'Scan', role: 'Imaging staff' });
     x.tick(300);
     // The person taps the main button again: by default it is the same step carrying on.
     const back = await x.tap('ospeli_walks_step_start', { resume: true });

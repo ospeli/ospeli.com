@@ -41,7 +41,7 @@ test('imaging: the next step in the usual order is offered with its usual role, 
   const x = await setup();
   const before = await x.tap('ospeli_walks_get', { department: 'imaging' });
   assert.deepEqual(before.stepChips, ['Arrived', 'Registered', 'Safety questions', 'Changed into gown', 'Cannula or prep', 'Scan', 'Recovery', 'Left', 'Report signed']);
-  assert.deepEqual(before.roleChips, ['Reception', 'Radiographer', 'Radiology nurse', 'Porter', 'Radiologist', 'Patient']);
+  assert.deepEqual(before.roleChips, ['Reception', 'Imaging staff', 'Radiology nurse', 'Transport assistant', 'Radiologist', 'Patient']);
   assert.deepEqual(before.titles, ['Outpatient CT', 'Outpatient MRI', 'Walk-in X-ray', 'Inpatient ultrasound']);
   const started = await x.tap('ospeli_walks_start', { department: 'imaging', title: 'Outpatient CT', guidanceSeen: true });
   assert.equal(started.walk.department, 'imaging');
@@ -56,9 +56,9 @@ test('imaging: the next step in the usual order is offered with its usual role, 
   await x.tap('ospeli_walks_step_name', { name: 'Sent to the other desk', role: 'Reception' });
   let chips = await x.tap('ospeli_walks_get');
   assert.equal(chips.stepChips[0], 'Sent to the other desk', 'a name typed once is offered straight away');
-  assert.equal(chips.usualRoles.Scan, 'Radiographer');
+  assert.equal(chips.usualRoles.Scan, 'Imaging staff');
   // A step named out of order moves the offer on from there: Scan, then Recovery.
-  await x.step(30, 60); await x.tap('ospeli_walks_step_name', { name: 'Scan', role: 'Radiographer' });
+  await x.step(30, 60); await x.tap('ospeli_walks_step_name', { name: 'Scan', role: 'Imaging staff' });
   w = (await x.step(30, 60)).walk;
   assert.deepEqual(w.suggest, { name: 'Recovery', role: 'Radiology nurse' });
   chips = await x.tap('ospeli_walks_get');

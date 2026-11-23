@@ -198,7 +198,7 @@ async function prepare(core, c) {
   if (name.startsWith('ospeli_walks_')) {
     assert.match(c.example.needs, /ospeli_walks_start/, `${name}: the needs line says how a walk starts`);
     // The taps a person makes before this one.
-    const before = { ospeli_walks_step_start: [], ospeli_walks_discard: [], ospeli_walks_step_done: ['step_start'], ospeli_walks_undo: ['step_start'], ospeli_walks_pause: [], ospeli_walks_resume: ['pause'],
+    const before = { ospeli_walks_step_start: [], ospeli_walks_rename: [], ospeli_walks_discard: [], ospeli_walks_step_done: ['step_start'], ospeli_walks_undo: ['step_start'], ospeli_walks_pause: [], ospeli_walks_resume: ['pause'],
       ospeli_walks_step_name: ['step_start', 'step_done'], ospeli_walks_finish: ['step_start', 'step_done'] }[name];
     // A list step can only be marked "did not happen" on a repeat walk: walk one step, finish, walk that map again.
     if (name === 'ospeli_walks_step_skip') {

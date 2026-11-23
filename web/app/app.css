@@ -684,9 +684,9 @@ html[data-site="connect"] .layout { display: block; }
 .walk-meta { font-size: 1rem; color: var(--ink); font-variant-numeric: tabular-nums; }
 .walk-def { margin: 0; font-size: 1rem; color: var(--ink); text-align: center; }
 .btn.walk-main { width: 100%; min-height: 76px; font-size: 1.5rem; font-weight: 800; justify-content: center; border-radius: 16px; }
-.walk-side { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; min-height: 48px; }
-.walk-side .btn { min-height: 48px; background: var(--surface); }
-.walk-sheet { margin: 0; display: grid; gap: 10px; }
+.walk-side { display: grid; grid-template-columns: 84px minmax(0, 1fr) minmax(0, 1fr); gap: 8px; min-height: 48px; }
+.walk-side .btn { min-height: 48px; background: var(--surface); justify-content: center; text-align: center; line-height: 1.15; white-space: normal; padding-inline: 6px; min-width: 0; }
+.walk-sheet { margin: 0; display: grid; gap: 6px; min-width: 0; background: var(--surface); border: 1.5px solid var(--line-strong); border-radius: 14px; padding: 8px 10px; }
 .walk-sheet h2 { margin: 0; font-size: 1.1rem; }
 .walk-sheet-hint { margin: 0; font-size: 1rem; color: var(--ink); }
 .walk-sheet .field { display: grid; gap: 6px; min-width: 0; }
@@ -738,3 +738,61 @@ html[data-site="connect"] .layout { display: block; }
   .walk.is-repeat .walk-side { gap: 6px; }
   .walk.is-repeat .walk-side .btn { min-height: 44px; padding-inline: 12px; }
 }
+
+/* Walk-first week (founder, 22 Nov 2026): the walk is full screen and its main button never leaves
+   the screen. The bar is pinned to the bottom: the naming sheet (or the line saying what was saved),
+   then Pause, Undo and one other choice in three places that never move, then the main button.
+   modules/walk.js sets --walk-bar to the bar's height so the page keeps that much room under the walk. */
+.walk { margin-bottom: var(--walk-bar, 0px); }
+.walk-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; gap: 8px; min-width: 0;
+  padding: 10px max(12px, calc((100vw - 560px) / 2)) calc(14px + env(safe-area-inset-bottom));
+  background: var(--surface); border-top: 2px solid var(--line-strong); box-shadow: 0 -6px 16px rgba(11, 47, 78, .14);
+  max-height: calc(100dvh - 120px); display: flex; flex-direction: column; overflow: hidden; }
+/* Only the naming sheet gives way when room is short (typing with the keyboard up): the clock, Pause and the main button stay. */
+.walk-bar > * { flex: none; }
+.walk-bar > .walk-sheet { flex: 0 1 auto; min-height: 96px; overflow-y: auto; overscroll-behavior: contain; align-content: start; }
+.walk.is-waiting .walk-bar { background: #FDF0EC; border-top-color: #E0583E; }
+.walk.is-step .walk-bar { background: #E6F4F3; border-top-color: #0A9396; }
+.walk.is-paused .walk-bar { background: var(--sand); border-top-color: #5B6B7A; }
+/* Wide screens: the bar is the foot of the walk card, and stays at the bottom of the window when the card is taller than it. */
+@media (min-width: 900px) {
+  .walk { margin-bottom: 0; }
+  .walk-bar { position: sticky; bottom: 12px; left: auto; right: auto; padding: 10px 12px 12px; border: 2px solid var(--line-strong); border-radius: 14px; box-shadow: 0 4px 14px rgba(11, 47, 78, .12); max-height: calc(100vh - 140px); }
+  .walk.is-waiting .walk-bar { border-color: #E0583E; } .walk.is-step .walk-bar { border-color: #0A9396; } .walk.is-paused .walk-bar { border-color: #5B6B7A; }
+}
+.btn.walk-main.is-long { font-size: 1.2rem; line-height: 1.15; white-space: normal; padding-block: 8px; text-align: center; }
+.walk-top { display: grid; gap: 0; }
+.walk-leave { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; justify-self: start; padding: 0 10px 0 2px; font-weight: 800; font-size: 1rem; color: var(--navy); text-decoration: none; }
+.walk-leave-mark { width: 10px; height: 10px; border-right: 3px solid currentColor; border-bottom: 3px solid currentColor; transform: translateY(-3px) rotate(45deg); flex: none; }
+.walk-resume { margin: 0; text-align: center; font-weight: 800; font-size: 1rem; color: var(--navy); }
+.walk-keep { margin: 0; padding: 8px 10px; border-left: 5px solid #EE9B00; background: #FFF6E5; border-radius: 8px; font-size: 1rem; color: var(--ink); }
+.walk-sheet-head { display: flex; flex-wrap: wrap; gap: 0 10px; align-items: baseline; }
+.walk-sheet-head h2 { font-size: 1.05rem; }
+.walk-sheet-hint { font-size: .9375rem; }
+.walk-chips.is-row { min-height: 46px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; align-items: center; margin-inline: -10px; padding-inline: 10px; overscroll-behavior-x: contain; }
+.walk-chips.is-row::-webkit-scrollbar { display: none; }
+.walk-chips.is-row .walk-chip { flex: none; min-height: 44px; white-space: nowrap; }
+.walk-row-word { flex: none; min-width: 36px; font-size: .9375rem; font-weight: 800; color: var(--ink); }
+.walk-sheet-foot { display: flex; gap: 6px; }
+.walk-sheet-foot .btn { flex: 1 1 0; min-width: 0; min-height: 44px; padding-inline: 6px; font-size: .9375rem; justify-content: center; text-align: center; line-height: 1.15; white-space: normal; }
+.walk-more-box { display: grid; gap: 8px; }
+.walk-pick .walk-chips { max-height: 40vh; overflow-y: auto; }
+.walk-saved.walk-flash { background: var(--surface); }
+.walk-title { display: grid; gap: 4px; min-width: 0; }
+.walk-before .walk-title input { min-height: 44px; padding-block: 6px; }
+.walk-title label, .walk-rename label { font-weight: 800; }
+.walk-title input, .walk-rename input { font: inherit; min-height: 48px; padding: 8px 10px; border: 1.5px solid var(--line-strong); border-radius: 10px; width: 100%; min-width: 0; color: var(--ink); background: var(--surface); }
+.walk-title .walk-chips.is-row { margin-inline: 0; padding-inline: 0; }
+.walk-rename { display: grid; gap: 6px; background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.walk-rename .btn { min-height: 48px; }
+.walk-error .btn { margin-top: 6px; min-height: 44px; }
+/* With the naming sheet (or the pick list) open, the state and the clock are one line above the buttons. */
+.walk.has-sheet .walk-now { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; gap: 0 10px; padding: 0; }
+.walk.has-sheet .walk-timer { font-size: 1.75rem; line-height: 1.1; }
+.walk.has-sheet .walk-state { font-size: 1.25rem; }
+.walk.has-sheet .walk-meta { display: none; }
+.walk-bar .walk-now { padding: 0; }
+@media (max-height: 720px) { .walk-bar .walk-timer { font-size: 3.5rem; line-height: 1; } .walk.has-sheet .walk-timer { font-size: 1.75rem; } }
+.walk-side .walk-finish:disabled { opacity: 1; color: #5B6B7A; border-color: var(--line); background: transparent; cursor: default; }
+.walk-bar .walk-confirm .form-actions { display: grid; gap: 6px; }
+.walk-bar .walk-confirm .btn { justify-content: center; }

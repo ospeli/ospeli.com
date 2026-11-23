@@ -10622,7 +10622,8 @@
       "example": {
         "input": {
           "title": "Outpatient CT"
-        }
+        },
+        "needs": "A walk in progress on this device: ospeli_walks_start starts one (ospeli_walks_get shows whether one is open). Not a repeat walk: that one carries its map's title."
       }
     },
     {
