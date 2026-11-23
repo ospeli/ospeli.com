@@ -88,7 +88,8 @@ const RECORD_NUMBER = { test: (t) => /\b(?:MRN|NHS|ID|IDs|No|Nr|Num|Number|Ref|R
   || /\b(?:MRN|NHS|ID|IDs|Record|Chart|Case)\b[\s.:#-]*(?:(?:no|nr|num|number)\b[\s.:#-]*)?\d{3,}\b/i.test(t)
   // "Hosp no 44871", "Hospital number 4487", "Patient # 512" (#150, critic 22 Nov): a hospital or patient
   // number needs the number word or # after it, so "Hospital 2" and "Patient 3 of 12" still pass.
-  || /\b(?:Hosp|Hospital|Patient|Pt)\b\.?[\s:-]*(?:(?:no|nr|num|number)\b\.?|#)[\s.:#-]*\d{3,}\b/i.test(t) };
+  // The number may be written with a letter in front or in groups ("A44871", "44 871"): the same number (23 Nov).
+  || /\b(?:Hosp|Hospital|Patient|Pt)\b\.?[\s:-]*(?:(?:no|nr|num|number)\b\.?|#)[\s.:#-]*[A-Za-z]{0,3}\d(?:[\s-]?\d){2,}\b/i.test(t) };
 const CALL_NUMBER = /\b(?:phone|call|ring|tel|telephone|text|page|fax|ext|extension|mobile|cell|whatsapp)\b\D{0,12}(\d[\d\s().-]{4,}\d)/gi;
 const PERSONAL = [
   [/[\w.+-]+@[\w-]+\.[\w.]+/, 'an email address'],
@@ -100,7 +101,10 @@ const PERSONAL = [
 ];
 // Maps measure flows, never people (issue #38): a title followed by a name ("Dr Sarah Jones",
 // "Sister Mary Brown") is refused. A title followed by a job word ("Nurse Manager") is a role.
-const TITLE_NAME = /\b(?:Dr|Doctor|Nurse|Sister|Matron|Mr|Mrs|Ms|Miss|Mx|Prof|Professor)\.?\s+([A-Z][A-Za-z'’-]+)/g;
+// A title is read as typed in the usual way or all in capitals ("Mr", "MR"); not all in small
+// letters, so "near miss A and E" is not a title.
+const titles = (list) => list.flatMap((t) => [t, t.toUpperCase()]).join('|');
+const TITLE_NAME = new RegExp(`\\b(?:${titles(['Dr', 'Doctor', 'Nurse', 'Sister', 'Matron', 'Mr', 'Mrs', 'Ms', 'Miss', 'Mx', 'Prof', 'Professor'])})\\.?\\s+([A-Z][A-Za-z'’-]+)`, 'g');
 const JOB_WORDS = new Set(`admin administrator admissions anaesthetist assistant biomedical booking care caretaker carer charge chief
   cleaner cleaning clerk clinic clinical clinician community consultant coordinator dental dentist department desk diagnostics dietitian
   discharge dispenser doctor driver duty education educator emergency engineer engineering equipment facilities family finance flow
@@ -111,7 +115,8 @@ const JOB_WORDS = new Set(`admin administrator admissions anaesthetist assistant
   specialist staff stores supervisor support surgeon surgical team technician theatre therapist therapy transport triage unit visitor
   volunteer ward worker and for in of on the at`.split(/\s+/));
 // A personal title and an initial ("Mr J. Smith", "Dr K Patel", "Ms A") is a person (#150, critic 22 Nov).
-const TITLE_INITIAL = /\b(?:Dr|Mr|Mrs|Ms|Miss|Mx|Prof)\.?\s+[A-Z](?:\.|\b)/;
+// The spelt-out titles count too ("Doctor K Patel"), 23 Nov.
+const TITLE_INITIAL = new RegExp(`\\b(?:${titles(['Dr', 'Doctor', 'Mr', 'Mrs', 'Ms', 'Miss', 'Mx', 'Prof', 'Professor'])})\\.?\\s+[A-Z](?:\\.|\\b)`);
 const isJobWord = (w) => JOB_WORDS.has(w.toLowerCase().replace(/[^a-z-]/g, ''));
 export function personNameIn(text, { roleField = false } = {}) {
   const s = String(text);
