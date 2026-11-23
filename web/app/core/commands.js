@@ -2061,7 +2061,7 @@ async function runChecked(core, name, input, actor, opts = {}) {
   let same = null;
   if (cmd.kind !== 'read') {
     try {
-      if (cmd.precheck) await cmd.precheck(core, input, { actor: who });
+      if (cmd.precheck) await cmd.precheck(core, input, { actor: who, wards: allowedWards });
     } catch (err) {
       if (err instanceof CommandError) { err.refusal = true; err.reason = 'target'; }
       throw err;

@@ -115,9 +115,13 @@ const STATE_IN = { type: 'string', enum: ['raised', 'started', 'checked', 'ready
 const WARD_IN = { ...ID, description: 'A ward id, for example ward-a1. ospeli_pharmacy_ward_requests lists the wards.' };
 const pickList = (o) => Object.entries(o).map(([k, v]) => `${k} (${v})`).join(', ');
 
-async function findRequest(core, requestId, events) {
+// who: { actor, wards } on an agent's call. An agent acts only on a request from a ward it was
+// given; a request whose "ward" is some other kind of place (an edited import) is answered as not
+// there, as the agent's reads already do (23 Nov: the write gate, which looks at real wards only,
+// let a step on such a request queue).
+async function findRequest(core, requestId, events, who) {
   const r = deriveRequests(events ?? await core.events()).get(requestId);
-  if (!r) throw new CommandError('not-found', 'No request with that id. ospeli_pharmacy_queue_list lists the open requests with their ids.');
+  if (!r || (who?.actor?.type === 'agent' && !(who.wards && who.wards.has(r.wardId)))) throw new CommandError('not-found', 'No request with that id. ospeli_pharmacy_queue_list lists the open requests with their ids.');
   return r;
 }
 function expect(r, input) {
@@ -222,21 +226,28 @@ const peopleOnlyUndo = (input, actor) => {
 
 // A new request: the ward exists, the bed is on that ward, the picks fit the kind, one open
 // discharge request per bed, and the same picks again within two minutes is "already saved".
-async function checkRaise(core, input, events, info) {
+// A wrong ward id says which ids would work. An agent is told only the wards it was given, never
+// the id of every ward on the site (23 Nov).
+const wardIdsFor = (info, wards) => info.wards.filter((w) => !wards || wards.has(w.id)).map((w) => w.id);
+async function checkRaise(core, input, events, info, wards) {
   const i = info ?? await siteInfo(core);
-  if (!i.wardById.has(input.wardId)) throw new CommandError('not-found', `wardId must be one of this site's wards: ${i.wards.map((w) => w.id).join(', ') || 'none on this site'}.`, { wards: i.wards.map((w) => w.id) });
+  if (!i.wardById.has(input.wardId)) { const can = wardIdsFor(i, wards); throw new CommandError('not-found', `wardId must be one of this site's wards: ${can.join(', ') || 'none open to this caller'}.`, { wards: can }); }
   if (input.bedId != null && i.bedById.get(input.bedId)?.parentId !== input.wardId) throw new CommandError('not-found', 'bedId must be a bed on that ward, for example ward-a1-bed-04. ospeli_pharmacy_ward_requests with the wardId lists its beds.');
   if (input.kind === 'discharge') {
     if (!input.planned) throw new CommandError('invalid-input', `A discharge request needs planned, the planned discharge: ${pickList(PLANNED)}.`);
     if (!input.bedId) throw new CommandError('invalid-input', 'A discharge request needs bedId: the bed of the patient going home.');
   } else if (input.planned) throw new CommandError('invalid-input', 'planned is for a discharge request only.');
-  const all = deriveRequests(events ?? await core.events());
+  const evs = events ?? await core.events();
+  const all = deriveRequests(evs);
   const nowMs = Date.parse(core.now());
   if (input.kind === 'discharge') {
+    // Discharge medicines are for a patient going home. The screen offers only beds with a
+    // patient; the command holds the same line (23 Nov: it saved one for a bed being cleaned).
+    if (!await encounterOf(core, i, input.bedId, evs)) throw new CommandError('conflict', 'There is no patient in that bed now, so there are no discharge medicines to ask for. ospeli_pharmacy_ward_requests with the wardId lists the beds with a patient.');
     const open = [...all.values()].find((r) => isOpen(r) && r.kind === 'discharge' && r.bedId === input.bedId);
     if (open) throw new CommandError('conflict', `${open.id} is already open for discharge medicines for this bed (${STATE_WORDS[stateOf(open)].toLowerCase()}). Nothing new was saved.`, { existing: open.id });
   }
-  const same = [...all.values()].find((r) => r.wardId === input.wardId && (r.bedId ?? null) === (input.bedId ?? null) && r.kind === input.kind && r.priority === input.priority
+  const same = [...all.values()].find((r) => isOpen(r) && r.wardId === input.wardId && (r.bedId ?? null) === (input.bedId ?? null) && r.kind === input.kind && r.priority === input.priority
     && (r.planned ?? null) === (input.planned ?? null) && r.items === input.items && Math.abs(nowMs - Date.parse(r.raisedAt)) < DOUBLE_TAP_MINUTES * MIN);
   if (same) throw new CommandError('conflict', `Already saved: ${same.id} with the same picks was saved a moment ago. No second request was saved.`, { existing: same.id });
 }
@@ -375,7 +386,7 @@ export const COMMANDS = [
     async run(core, input, { wards }) {
       const now = core.now(); const nowMs = Date.parse(now);
       const [events, info] = await Promise.all([core.events(), siteInfo(core)]);
-      if (input.wardId && !info.wardById.has(input.wardId)) throw new CommandError('not-found', `wardId must be one of this site's wards: ${info.wards.map((w) => w.id).join(', ')}.`);
+      if (input.wardId && !info.wardById.has(input.wardId)) throw new CommandError('not-found', `wardId must be one of this site's wards: ${wardIdsFor(info, wards).join(', ') || 'none open to this caller'}.`);
       const all = deriveRequests(events);
       const seen = visible(wards);
       const board = deriveBoard(info.beds, events.filter((e) => /^(bed|patient)\./.test(e.type)));
@@ -430,7 +441,7 @@ export const COMMANDS = [
     output: WRITE_OUT,
     target: (input) => ({ id: `${input.wardId}:${input.bedId || input.kind}`, word: 'request' }),
     wardOf: (core, input) => input.wardId ?? null,
-    async precheck(core, input) { await checkRaise(core, input); },
+    async precheck(core, input, { wards }) { await checkRaise(core, input, null, null, wards); },
     async run(core, input, { actor }) {
       let requestId = null;
       const info = await siteInfo(core);
@@ -460,7 +471,7 @@ export const COMMANDS = [
     target: (input) => ({ id: input.requestId, word: 'request' }),
     wardOf: wardOfRequest,
     async snapshot(core, input) { const r = deriveRequests(await core.events()).get(input.requestId); return r ? { seenState: stateOf(r) } : {}; },
-    async precheck(core, input, { actor }) { peopleOnlyUndo(input, actor); planStep(await findRequest(core, input.requestId), input, actor, core.now()); },
+    async precheck(core, input, { actor, wards }) { peopleOnlyUndo(input, actor); planStep(await findRequest(core, input.requestId, null, { actor, wards }), input, actor, core.now()); },
     async run(core, input, { actor }) {
       let r = null;
       const recs = await core.appendChecked(async (events) => { r = await findRequest(core, input.requestId, events); return planStep(r, input, actor, core.now()); });
@@ -481,7 +492,7 @@ export const COMMANDS = [
     target: (input) => ({ id: input.requestId, word: 'request' }),
     wardOf: wardOfRequest,
     async snapshot(core, input) { const r = deriveRequests(await core.events()).get(input.requestId); return r ? { seenState: stateOf(r) } : {}; },
-    async precheck(core, input, { actor }) { peopleOnlyUndo(input, actor); planCheck(await findRequest(core, input.requestId), input, actor, core.now()); },
+    async precheck(core, input, { actor, wards }) { peopleOnlyUndo(input, actor); planCheck(await findRequest(core, input.requestId, null, { actor, wards }), input, actor, core.now()); },
     async run(core, input, { actor }) {
       const recs = await core.appendChecked(async (events) => planCheck(await findRequest(core, input.requestId, events), input, actor, core.now()));
       await core.recordAs(actor, recs[0].type, input.requestId, input.undo ? { step: 'checked', undo: true } : {});
@@ -500,7 +511,7 @@ export const COMMANDS = [
     target: (input) => ({ id: input.requestId, word: 'request' }),
     wardOf: wardOfRequest,
     async snapshot(core, input) { const r = deriveRequests(await core.events()).get(input.requestId); return r ? { seenState: stateOf(r) } : {}; },
-    async precheck(core, input, { actor }) { peopleOnlyUndo(input, actor); planCollect(await findRequest(core, input.requestId), input, actor, core.now()); },
+    async precheck(core, input, { actor, wards }) { peopleOnlyUndo(input, actor); planCollect(await findRequest(core, input.requestId, null, { actor, wards }), input, actor, core.now()); },
     async run(core, input, { actor }) {
       const recs = await core.appendChecked(async (events) => planCollect(await findRequest(core, input.requestId, events), input, actor, core.now()));
       await core.recordAs(actor, recs[0].type, input.requestId, input.undo ? { step: 'collected', undo: true } : {});
@@ -521,7 +532,7 @@ export const COMMANDS = [
     target: (input) => ({ id: input.requestId, word: 'request' }),
     wardOf: wardOfRequest,
     async snapshot(core, input) { const r = deriveRequests(await core.events()).get(input.requestId); return r ? { seenState: stateOf(r) } : {}; },
-    async precheck(core, input, { actor }) { peopleOnlyUndo(input, actor); planCancel(await findRequest(core, input.requestId), input, actor, core.now()); },
+    async precheck(core, input, { actor, wards }) { peopleOnlyUndo(input, actor); planCancel(await findRequest(core, input.requestId, null, { actor, wards }), input, actor, core.now()); },
     async run(core, input, { actor }) {
       const recs = await core.appendChecked(async (events) => planCancel(await findRequest(core, input.requestId, events), input, actor, core.now()));
       await core.recordAs(actor, recs[0].type, input.requestId, input.undo ? { step: 'cancelled', undo: true } : { reason: input.reason });
