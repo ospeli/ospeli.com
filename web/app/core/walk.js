@@ -13,6 +13,11 @@
 //     (a private moment). It is neither waiting nor hands-on. It stays inside start to finish,
 //     is taken out of the step or wait it fell in. The seen part of a wait that was partly not
 //     seen is a floor: such a wait is compared by its seen part and named as "at least" that long;
+//   interrupted and carried on = a step whose work stopped ("Step interrupted") and later went on
+//     again is one step, not two. The time it stood still is waiting (nothing was being done for
+//     the patient or item), kept inside that step's waiting as interruptedWaitSec, and the step
+//     says how many times it was interrupted. Practice in the manner of value stream mapping,
+//     not a standard;
 //   planned or required wait = a wait a person marked on the map as needed by the process itself.
 //     It still counts as waiting; it is only left out of "longest wait". Ospeli holds no list of
 //     such waits: the mark records what staff said.
@@ -36,7 +41,7 @@ const secs = (walk, a, b) => Math.max(0, offSec(walk, b) - offSec(walk, a));
 function latestTap(walk) {
   const all = [walk.startedAt];
   for (const s of walk.steps) all.push(s.startAt, s.endAt);
-  if (walk.current) all.push(walk.current.startAt);
+  if (walk.current) { all.push(walk.current.startAt); for (const g of walk.current.gaps || []) all.push(g.startAt, g.endAt); }
   for (const p of walk.pauses || []) { all.push(p.startAt); if (p.endAt) all.push(p.endAt); }
   return Math.max(...all.map((t) => Date.parse(t)));
 }
@@ -58,9 +63,10 @@ export const NOT_ALWAYS_WASTE = 'Waiting is not always waste. Some waits are pla
 // A repeat walk (issue #124 item 1) carries the saved step list of the map it repeats: plan is
 // that map's steps (id, name, role, msg) at the moment the walk started, repeatOf is the map and
 // walkNo says which walk of that map this is. A first walk has none of the three.
-export function newWalk({ id, title, at, role, guidanceSeen = false, plan = null, repeatOf = null, walkNo = null }) {
+// department: the department chosen on the device when the walk began (WALK_DEPARTMENTS), or null.
+export function newWalk({ id, title, at, role, guidanceSeen = false, plan = null, repeatOf = null, walkNo = null, department = null }) {
   return { id, title, startedAt: at, steps: [], current: null, pauses: [], last: null, status: 'walking', mapId: null, createdByRole: role, finishedAt: null, guidanceSeenAt: guidanceSeen ? at : null,
-    ...(plan ? { plan, repeatOf, walkNo, skipped: [] } : {}) };
+    ...(department ? { department } : {}), ...(plan ? { plan, repeatOf, walkNo, skipped: [] } : {}) };
 }
 
 // ---- repeat walks: the saved step list ----
@@ -164,6 +170,27 @@ export function sinceAt(walk) {
   return last ? last.endAt : walk.startedAt;
 }
 
+// True when the step that ended last was interrupted, so the next "Step starts" can be the same
+// step carrying on (the default on the walk screen) and not a new step.
+export const canResume = (walk) => !walk.current && !!walk.steps.length && !!walk.steps[walk.steps.length - 1].interrupted;
+
+// The interrupted step carries on: it runs again as the same step (the same place on a repeat
+// walk's list, the same name), and the time it stood still is kept as a gap inside it.
+export function stepResume(walk, at) {
+  if (openPause(walk)) throw new Error('The walk is paused. Say you are back first.');
+  if (walk.current) throw new Error('A step is already running.');
+  if (!canResume(walk)) throw new Error('The last step was not interrupted, so there is nothing to carry on.');
+  if (isDoubleStart(walk, at)) throw new Error('That tap came less than a second after the step before ended.');
+  const last = walk.steps.pop();
+  // A coming back stamped before the interruption: the device clock was set back. The gap is then empty.
+  const back = Date.parse(at) < Date.parse(last.endAt);
+  if (back) walk.clockBack = true;
+  walk.current = { startAt: last.startAt, gaps: [...(last.gaps || []), { startAt: last.endAt, endAt: back ? last.endAt : at }],
+    ...(last.planIndex != null ? { planIndex: last.planIndex } : {}), ...(last.name ? { name: last.name } : {}), ...(last.role ? { role: last.role } : {}), ...(last.msg ? { msg: true } : {}) };
+  walk.last = 'start';
+  return walk;
+}
+
 export function stepStart(walk, at) {
   if (openPause(walk)) throw new Error('The walk is paused. Say you are back first.');
   if (walk.current) throw new Error('A step is already running.');
@@ -182,8 +209,10 @@ export function stepDone(walk, at, { interrupted = false } = {}) {
   if (isDoubleTap(walk, at)) throw new Error('That tap came less than a second after the step started.');
   // On a repeat walk the step takes its name and role from the saved list: nothing to name.
   const p = walk.plan && walk.current.planIndex != null ? walk.plan[walk.current.planIndex] : null;
-  walk.steps.push({ startAt: walk.current.startAt, endAt: at, name: p ? p.name : null, role: p ? p.role : null, msg: p ? !!p.msg : false,
-    ...(p ? { planIndex: walk.current.planIndex } : {}), ...(interrupted ? { interrupted: true } : {}) });
+  // A step that was interrupted and carried on keeps the name it was given at the interruption.
+  const c = walk.current;
+  walk.steps.push({ startAt: c.startAt, endAt: at, name: p ? p.name : c.name || null, role: p ? p.role : c.role || null, msg: p ? !!p.msg : !!c.msg,
+    ...(p ? { planIndex: c.planIndex } : {}), ...(interrupted ? { interrupted: true } : {}), ...(c.gaps?.length ? { gaps: c.gaps } : {}) });
   walk.current = null;
   walk.last = 'done';
   return walk;
@@ -215,6 +244,12 @@ export function clockMoved(walk) {
   for (const s of walk.steps) taps.push(s.startAt, s.endAt);
   if (walk.current) taps.push(walk.current.startAt);
   if (walk.finishedAt) taps.push(walk.finishedAt);
+  // The stops inside a step lie between its start and its end, in order.
+  for (const s of [...walk.steps, ...(walk.current ? [walk.current] : [])]) {
+    let t = Date.parse(s.startAt);
+    for (const g of s.gaps || []) { if (Date.parse(g.startAt) < t || Date.parse(g.endAt) < Date.parse(g.startAt)) return true; t = Date.parse(g.endAt); }
+    if (s.endAt && Date.parse(s.endAt) < t) return true;
+  }
   for (let i = 1; i < taps.length; i++) if (Date.parse(taps[i]) < Date.parse(taps[i - 1])) return true;
   for (const p of walk.pauses || []) if (Date.parse(p.startAt) < Date.parse(walk.startedAt) || (p.endAt && Date.parse(p.endAt) < Date.parse(p.startAt))) return true;
   return false;
@@ -247,10 +282,21 @@ export function undoLast(walk) {
   if (openPause(walk)) throw new Error('The walk is paused. Say you are back first.');
   if (walk.last === 'skip' && walk.skipped?.length) { walk.skipped.pop(); walk.last = null; return 'skip'; }
   walk.last = null;
+  // A step that carried on after an interruption goes back to being interrupted: its earlier part is kept.
+  if (walk.current?.gaps?.length) {
+    const c = walk.current; const gaps = c.gaps.slice(0, -1); const g = c.gaps[c.gaps.length - 1];
+    walk.steps.push({ startAt: c.startAt, endAt: g.startAt, name: c.name || null, role: c.role || null, msg: !!c.msg,
+      ...(c.planIndex != null ? { planIndex: c.planIndex } : {}), interrupted: true, ...(gaps.length ? { gaps } : {}) });
+    // On a repeat walk the list step keeps its list name.
+    const p = walk.plan && c.planIndex != null ? walk.plan[c.planIndex] : null;
+    if (p) Object.assign(walk.steps[walk.steps.length - 1], { name: p.name, role: p.role, msg: !!p.msg });
+    walk.current = null;
+    return 'step-resume';
+  }
   if (walk.current) { walk.current = null; return 'step-start'; }
   const last = walk.steps.pop();
   if (!last) throw new Error('There is nothing to undo.');
-  walk.current = { startAt: last.startAt, ...(last.planIndex != null ? { planIndex: last.planIndex } : {}) };
+  walk.current = { startAt: last.startAt, ...(last.planIndex != null ? { planIndex: last.planIndex } : {}), ...(last.gaps?.length ? { gaps: last.gaps } : {}) };
   return 'step-done';
 }
 
@@ -262,10 +308,16 @@ export function walkSteps(walk) {
     const from = i === 0 ? walk.startedAt : walk.steps[i - 1].endAt;
     const waitNotSeenSec = Math.min(secs(walk, from, s.startAt), pausedWhole(walk, from, s.startAt));
     const workNotSeenSec = Math.min(secs(walk, s.startAt, s.endAt), pausedWhole(walk, s.startAt, s.endAt));
+    // The time the step stood still between an interruption and carrying on, less any of it not
+    // seen: waiting, inside this step. It is part of waitSec and not of workSec, so the parts add up.
+    const stood = (s.gaps || []).reduce((n, g) => n + Math.max(0, secs(walk, g.startAt, g.endAt) - pausedWhole(walk, g.startAt, g.endAt)), 0);
+    const interruptedWaitSec = Math.min(stood, secs(walk, s.startAt, s.endAt) - workNotSeenSec);
+    const interruptions = (s.gaps || []).length + (s.interrupted ? 1 : 0);
     return {
       name: s.name || `Step ${i + 1}`, role: s.role || ROLE_NOT_SET, msg: !!s.msg, interrupted: !!s.interrupted, ...(s.planIndex != null ? { planIndex: s.planIndex } : {}),
-      waitSec: secs(walk, from, s.startAt) - waitNotSeenSec, workSec: secs(walk, s.startAt, s.endAt) - workNotSeenSec,
+      waitSec: secs(walk, from, s.startAt) - waitNotSeenSec + interruptedWaitSec, workSec: secs(walk, s.startAt, s.endAt) - workNotSeenSec - interruptedWaitSec,
       ...(waitNotSeenSec ? { waitNotSeenSec } : {}), ...(workNotSeenSec ? { workNotSeenSec } : {}),
+      ...(interruptedWaitSec ? { interruptedWaitSec } : {}), ...(interruptions ? { interruptions } : {}),
     };
   });
 }
@@ -277,7 +329,8 @@ export function walkTotals(walk, now = null) {
   const workSec = steps.reduce((n, s) => n + s.workSec, 0); const waitSec = steps.reduce((n, s) => n + s.waitSec, 0);
   const notSeenSec = steps.reduce((n, s) => n + (s.waitNotSeenSec || 0) + (s.workNotSeenSec || 0), 0);
   const end = walk.finishedAt || now || (walk.steps.length ? walk.steps[walk.steps.length - 1].endAt : walk.startedAt);
-  return { steps: steps.length, workSec, waitSec, notSeenSec, elapsedSec: secs(walk, walk.startedAt, end) };
+  const interruptions = steps.reduce((n, s) => n + (s.interruptions || 0), 0);
+  return { steps: steps.length, workSec, waitSec, notSeenSec, elapsedSec: secs(walk, walk.startedAt, end), ...(interruptions ? { interruptions } : {}) };
 }
 
 // Share of the observed time that was waiting, as a whole percentage: waiting / (waiting + hands-on).
@@ -291,6 +344,7 @@ export function mapStepsFromWalk(walk, mapId) {
     id: `${mapId}-s${i + 1}`, name: s.name, role: s.role, wait: Math.round(s.waitSec / 60), work: Math.round(s.workSec / 60),
     waitSec: s.waitSec, workSec: s.workSec, msg: s.msg, par: false, ...(s.interrupted ? { interrupted: true } : {}),
     ...(s.waitNotSeenSec ? { waitNotSeenSec: s.waitNotSeenSec } : {}), ...(s.workNotSeenSec ? { workNotSeenSec: s.workNotSeenSec } : {}),
+    ...(s.interruptedWaitSec ? { interruptedWaitSec: s.interruptedWaitSec } : {}), ...(s.interruptions ? { interruptions: s.interruptions } : {}),
   }));
 }
 
@@ -302,7 +356,7 @@ export const stepsInSeconds = (list) => list.map((s) => ({ ...s, wait: s.waitSec
 // changed by hand, so the seconds are dropped and the step is marked as edited.
 export function dropStaleSeconds(list) {
   for (const s of list) {
-    if (s.waitSec != null && Math.round(s.waitSec / 60) !== s.wait) { delete s.waitSec; s.edited = true; }
+    if (s.waitSec != null && Math.round(s.waitSec / 60) !== s.wait) { delete s.waitSec; delete s.interruptedWaitSec; s.edited = true; }
     if (s.workSec != null && Math.round(s.workSec / 60) !== s.work) { delete s.workSec; s.edited = true; }
   }
   return list;
@@ -334,6 +388,9 @@ export const waitCanBeNamed = (x) => !x.plannedWait;
 // How a named wait reads: "27 min", or "at least 27 min" with the part not seen beside it.
 export const waitWords = (x) => (x.waitNotSeenSec ? `at least ${fmtSeconds(x.wait)}` : fmtSeconds(x.wait));
 export const notSeenWords = (x) => (x.waitNotSeenSec ? ` (${fmtSeconds(x.waitNotSeenSec)} more of it not seen)` : '');
+// A wait that includes time the step itself stood still (interrupted, then carried on): where it was, and how much.
+export const waitPlace = (x) => (x.interruptedWaitSec ? `at “${x.name}”` : `before “${x.name}”`);
+export const interruptedWords = (x) => (x.interruptedWaitSec ? ` (${fmtSeconds(x.interruptedWaitSec)} of it while the step was interrupted)` : '');
 export function longestWaits(stepsSec) {
   const open = stepsSec.filter(waitCanBeNamed);
   const max = Math.max(0, ...open.map((x) => x.wait || 0));
@@ -348,6 +405,7 @@ export const WALK_BASIS = {
   limits: 'Method: a process walk in the manner of lean value stream mapping (Rother and Shook, Learning to See). One walk is one observation.',
   clock: 'Local definition: a tap stamped earlier than the tap before it (a step tap, Pause or I am back) means the device clock was set back.',
   planned: 'Local definition: a planned or required wait is one a person marked as needed by the process itself. It counts as waiting and is left out of the longest wait. Ospeli keeps no list of such waits.',
+  interrupted: 'Local definition, in the manner of value stream mapping practice (not a standard): a step that was interrupted and carried on is one step. The time it stood still counts as waiting, inside that step, and the step says how many times it was interrupted.',
   notSeen: 'Local definition: time between Pause and I am back is not seen. It is neither waiting nor hands-on. A wait that was partly not seen is compared by the part that was seen and named as "at least" that long.',
 };
 export function suggestWalk(list, { clockMoved: moved = false } = {}) {
@@ -363,8 +421,8 @@ export function suggestWalk(list, { clockMoved: moved = false } = {}) {
   } else if (top.length) {
     const t = fmtSeconds(top[0].wait);
     out.push({ id: `walk-wait-${top[0].id}`, kind: 'ask', stepId: top[0].id,
-      title: top.length === 1 ? `Longest wait on this walk: ${waitWords(top[0])} before “${top[0].name}”${notSeenWords(top[0])}`
-        : `Longest wait on this walk, tied: ${t} each${top.some((x) => x.waitNotSeenSec) ? ' or more' : ''}, before ${top.map((x) => `“${x.name}”`).join(' and before ')}`,
+      title: top.length === 1 ? `Longest wait on this walk: ${waitWords(top[0])} ${waitPlace(top[0])}${notSeenWords(top[0])}${interruptedWords(top[0])}`
+        : `Longest wait on this walk, tied: ${t} each${top.some((x) => x.waitNotSeenSec) ? ' or more' : ''}, ${top.map((x) => waitPlace(x)).join(' and ')}`,
       text: 'Ask what it was waiting for: a person, information, a room, equipment or supplies, transport, a decision, or a queue. A wait belongs to the process, not to the role that comes next. Then walk it again on another day or at another time before changing anything.',
       why: `Calculated from the tap times of this one walk.${left ? ' Waits marked planned or required are left out.' : ''}${top.some((x) => x.waitNotSeenSec) ? ' Part of this wait was not seen, so it was at least this long.' : ''}`, basis: WALK_BASIS.longestWait });
   }
@@ -379,6 +437,13 @@ export function suggestWalk(list, { clockMoved: moved = false } = {}) {
     out.push({ id: 'walk-not-seen', kind: 'ask', title: `${fmtSeconds(notSeen)} of this walk was not seen`,
       text: 'The walk was paused while the person walking stepped out. That time is inside start to finish, and is counted as neither waiting nor hands-on.',
       why: 'Calculated from the Pause and I am back taps.', basis: WALK_BASIS.notSeen });
+  }
+  const stops = list.reduce((n, x) => n + (x.interruptions || 0), 0);
+  if (stops) {
+    const stood = list.reduce((n, x) => n + (x.interruptedWaitSec || 0), 0);
+    out.push({ id: 'walk-interrupted', kind: 'ask', title: `${stops} ${stops === 1 ? 'interruption' : 'interruptions'} on this walk${stood ? `: ${fmtSeconds(stood)} stood still` : ''}`,
+      text: 'Ask what stopped the work each time: a call, a missing item, another patient, equipment, or a person who was needed elsewhere. Time a step stood still counts as waiting.',
+      why: 'Counted from the “Step interrupted” taps of this one walk.', basis: WALK_BASIS.interrupted });
   }
   const unnamed = list.filter((s) => s.role === ROLE_NOT_SET || /^Step \d+$/.test(s.name));
   if (unnamed.length) {
@@ -395,6 +460,67 @@ export function suggestWalk(list, { clockMoved: moved = false } = {}) {
 // standard: a site's own words come from the steps and roles it has already used.
 export const WALK_STEP_CHIPS = ['Checked in at reception', 'Seen by a nurse', 'Seen by a doctor', 'Test or scan done', 'Medicines collected', 'Next visit booked'];
 export const WALK_ROLE_CHIPS = ['Reception', 'Nurse', 'Doctor', 'Pharmacy', 'Laboratory', 'Imaging'];
+
+// Step and role words by department (walk-first week, founder 22 Nov 2026; the department is the
+// one chosen in the app's department chip). Every set is an example setting a site can change,
+// not a standard: plain words that read the same in any health system, operations only.
+//   steps: in the usual order of one visit (or one item), each with the role that usually does it
+//     (an example, offered already chosen and changed with one tap; null where no role is usual);
+//   later: a step that happens after the patient or item has left, so it is never offered as "next";
+//   titles: examples for "What are you walking?".
+// The ids are the app's department ids (modules/departments.js); a unit test keeps the two in step.
+export const WALK_VOCAB = {
+  imaging: { follows: 'one patient visit',
+    steps: [['Arrived', 'Patient'], ['Registered', 'Reception'], ['Safety questions', 'Radiographer'], ['Changed into gown', 'Patient'], ['Cannula or prep', 'Radiology nurse'], ['Scan', 'Radiographer'], ['Recovery', 'Radiology nurse'], ['Left', 'Patient']],
+    later: [['Report signed', 'Radiologist']],
+    roles: ['Reception', 'Radiographer', 'Radiology nurse', 'Porter', 'Radiologist', 'Patient'],
+    titles: ['Outpatient CT', 'Outpatient MRI', 'Walk-in X-ray', 'Inpatient ultrasound'] },
+  outpatients: { follows: 'one patient visit',
+    steps: [['Checked in at reception', 'Reception'], ['Seen by a nurse', 'Nurse'], ['Seen by a doctor', 'Doctor'], ['Test or scan done', null], ['Medicines collected', 'Pharmacy'], ['Next visit booked', 'Reception']],
+    later: [], roles: WALK_ROLE_CHIPS, titles: ['Morning clinic visit', 'Follow-up visit'] },
+  emergency: { follows: 'one patient visit',
+    steps: [['Arrived', 'Patient'], ['Booked in', 'Reception'], ['Triage', 'Nurse'], ['Seen by a doctor', 'Doctor'], ['Tests taken', 'Nurse'], ['Results back', null], ['Decision made', 'Doctor'], ['Left department', 'Patient']],
+    later: [], roles: ['Reception', 'Nurse', 'Doctor', 'Porter', 'Laboratory', 'Patient'], titles: ['Walk-in visit', 'Arrival by ambulance'] },
+  pharmacy: { follows: 'one prescription',
+    steps: [['Handed in', 'Patient'], ['Entered', 'Counter staff'], ['Picked', 'Pharmacy assistant'], ['Labelled', 'Pharmacy technician'], ['Final check', 'Pharmacist'], ['Handed over', 'Counter staff']],
+    later: [], roles: ['Counter staff', 'Pharmacy assistant', 'Pharmacy technician', 'Pharmacist', 'Patient'], titles: ['Outpatient prescription', 'Medicines to take home'] },
+  laboratory: { follows: 'one sample',
+    steps: [['Sample taken', 'Sample taker'], ['Labelled', 'Sample taker'], ['Sent', 'Porter'], ['Received in lab', 'Lab reception'], ['Booked in', 'Lab reception'], ['Prepared', 'Lab assistant'], ['Analysed', 'Lab scientist'], ['Result checked', 'Lab scientist'], ['Result released', 'Lab scientist']],
+    later: [], roles: ['Sample taker', 'Porter', 'Lab reception', 'Lab assistant', 'Lab scientist'], titles: ['Routine sample from a clinic', 'Urgent sample'] },
+};
+// Departments a walk can be started from. Wards and the whole hospital have no one visit order,
+// so they keep the short general lists above and nothing is offered as "next".
+export const WALK_DEPARTMENTS = ['imaging', 'outpatients', 'emergency', 'pharmacy', 'laboratory', 'wards', 'whole-hospital'];
+export const WALK_TITLES_GENERAL = ['Clinic visit', 'Discharge from a ward'];
+export const walkVocab = (department) => WALK_VOCAB[department] || null;
+
+// The step to offer, already chosen, for the step that just ended on a first walk: the one after
+// the furthest step of the department's list named so far on this walk, with its usual role.
+// Null when the walk has no department list, follows a saved list (a repeat walk), or the list is used up.
+// It is an offer on the screen only: nothing is saved until the person's next tap.
+export function suggestStep(walk) {
+  const v = walkVocab(walk.department);
+  if (!v || walk.plan) return null;
+  const names = v.steps.map((x) => x[0]);
+  let top = -1;
+  for (const s of walk.steps) if (s.name) top = Math.max(top, names.indexOf(s.name));
+  const next = v.steps[top + 1];
+  return next ? { name: next[0], role: next[1] } : null;
+}
+// The chips for the walk screen: the person's own words from this walk first (a name typed once
+// is offered straight away), then the department's list starting at the step offered as next.
+export function walkChips(walk, department) {
+  const v = walkVocab(walk?.department || department);
+  if (!v) return null;
+  const uniq = (list) => [...new Set(list.filter(Boolean))];
+  const mine = walk ? [...walk.steps].reverse() : [];
+  const names = v.steps.map((x) => x[0]);
+  const at = walk ? Math.max(0, names.indexOf(suggestStep(walk)?.name)) : 0;
+  const own = uniq(mine.map((s) => s.name)).filter((n) => !names.includes(n) && !v.later.some((x) => x[0] === n));
+  return { stepChips: uniq([...own, ...names.slice(at), ...names.slice(0, at), ...v.later.map((x) => x[0])]),
+    roleChips: uniq([...mine.map((s) => s.role).filter((r) => !v.roles.includes(r)), ...v.roles]),
+    usualRoles: Object.fromEntries([...v.steps, ...v.later].filter((x) => x[1])), titles: v.titles, follows: v.follows };
+}
 
 // ---- repeat walks: one record per walk, and the ranges across walks (issue #124 item 1) ----
 // Local definitions, not a standard (decision record 18 Nov 2026):
@@ -421,7 +547,7 @@ export function recordFromWalk(walk, { finishedAt, mapId = null, leftover = 'not
       stepId: walk.plan ? (s.planIndex != null ? ids[s.planIndex] : null) : `${mapId}-s${i + 1}`,
       ...(walk.plan && s.planIndex == null ? { name: s.name, role: s.role } : {}),
       waitSec: s.waitSec, workSec: s.workSec, ...(s.waitNotSeenSec ? { waitNotSeenSec: s.waitNotSeenSec } : {}), ...(s.workNotSeenSec ? { workNotSeenSec: s.workNotSeenSec } : {}),
-      ...(s.interrupted ? { interrupted: true } : {}) })),
+      ...(s.interrupted ? { interrupted: true } : {}), ...(s.interruptedWaitSec ? { interruptedWaitSec: s.interruptedWaitSec } : {}), ...(s.interruptions ? { interruptions: s.interruptions } : {}) })),
     ...(walk.plan ? { didNotHappen: [...(walk.skipped || []).map((i) => ids[i]), ...(leftover === 'did-not-happen' ? left : [])] } : {}),
     // List steps left when the walk was finished and not said to be missing: the person stopped early.
     ...(walk.plan && left.length && leftover !== 'did-not-happen' ? { stoppedEarly: true, notTimed: left } : {}),
