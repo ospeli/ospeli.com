@@ -141,11 +141,30 @@ test('agent object is read-only and returns data, never results', async () => {
   await context.close();
 });
 
-test('the move-bookings proposal never moves a booking earlier than its booked time', async () => {
-  const { context, page, errors } = await open(1280);
-  const rows = (await page.locator('#sugg').textContent()).match(/\d\d:\d\d CT \d → \d\d:\d\d CT \d/g) || [];
-  assert.ok(rows.length >= 1, 'a move is proposed');
-  for (const r of rows) { const [from, to] = r.match(/\d\d:\d\d/g); assert.ok(to >= from, `moved earlier: ${r}`); }
-  assert.deepEqual(errors, []);
-  await context.close();
-});
+// Issue #167: the rows show clock times only, so a move from 23:50 to 00:10 (the next day) reads as
+// earlier when compared as words. Every booked and free slot in a move is in the next 24 hours (the
+// guide only moves bookings not yet started), so each time is placed as minutes after the page's
+// clock, which is the true order. Run once on the real clock and once pinned to 22:30, where the
+// proposed moves cross midnight.
+const minutesAfter = (hhmm, nowMin) => { const [h, m] = hhmm.split(':').map(Number); return (h * 60 + m - nowMin + 1440) % 1440; };
+for (const pin of [null, '2026-11-22T22:30:00Z']) {
+  test(`the move-bookings proposal never moves a booking earlier than its booked time${pin ? ' (clock 22:30, moves cross midnight)' : ''}`, async () => {
+    const context = await env.browser.newContext({ viewport: { width: 1280, height: 900 }, ...(pin ? { timezoneId: 'UTC' } : {}) });
+    const page = await context.newPage();
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e)));
+    if (pin) await page.clock.install({ time: new Date(pin) });
+    await page.goto(env.base + '/demo/diagnostics/');
+    await page.waitForSelector('#kpis .stat');
+    const nowMin = await page.evaluate(() => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); });
+    const rows = (await page.locator('#sugg').textContent()).match(/\d\d:\d\d CT \d → \d\d:\d\d CT \d/g) || [];
+    assert.ok(rows.length >= 1, 'a move is proposed');
+    if (pin) assert.ok(rows.some((r) => { const [f, t] = r.match(/\d\d:\d\d/g); return t < f; }), 'at 22:30 at least one move crosses midnight (so this run tests the case in #167)');
+    for (const r of rows) {
+      const [from, to] = r.match(/\d\d:\d\d/g);
+      assert.ok(minutesAfter(to, nowMin) >= minutesAfter(from, nowMin), `moved earlier: ${r}`);
+    }
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}
