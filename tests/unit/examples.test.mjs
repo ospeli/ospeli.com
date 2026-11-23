@@ -228,7 +228,17 @@ test('what an example says it needs is true: with that in place it runs (issue #
     const input = { ...structuredClone(c.example.input), ...ids };
     try {
       const out = await runCommand(core, c.name, input, callerFor(c, role));
-      assert.ok(out, c.name);
+      assert.ok(out && typeof out === 'object', c.name);
+      // Issue #95: an answer coming back is not enough. A write an agent calls only queues a proposal,
+      // so a person of that role says yes and the change must then run ("accepted", not "expired").
+      if (out.status === 'proposed') {
+        const yes = await runCommand(core, 'ospeli_proposals_accept', { id: out.proposal.id }, human(role));
+        assert.equal(yes.status, 'accepted', `${c.name}: with "${c.example.needs}" in place the queued example does not run when a person says yes: ${yes.message || yes.status}`);
+      } else if (out.status !== undefined) {
+        assert.ok(['done', 'accepted', 'declined'].includes(out.status), `${c.name}: the example ran to "${out.status}"`);
+      } else {
+        assert.ok(Object.keys(out).length > 0, `${c.name}: an empty answer`);
+      }
     } catch (err) {
       assert.fail(`${c.name}: with "${c.example.needs}" in place the example is still refused: ${err.code || ''} ${err.message}`);
     }
