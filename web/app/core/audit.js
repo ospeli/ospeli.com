@@ -47,6 +47,7 @@ export async function verifyChain(entries) {
   let prev = null;
   for (const e of entries) {
     const expectSeq = prev ? prev.seq + 1 : 1;
+    if (!e || typeof e !== 'object') return { ok: false, at: expectSeq, reason: 'entry is not an entry' };
     if (e.seq !== expectSeq) return { ok: false, at: e.seq, reason: `expected entry ${expectSeq}` };
     if (e.prev !== (prev ? prev.hash : GENESIS)) return { ok: false, at: e.seq, reason: 'previous hash does not match' };
     if (e.hash !== await sha256(canonical(body(e)))) return { ok: false, at: e.seq, reason: 'entry was changed' };

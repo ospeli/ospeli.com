@@ -153,6 +153,10 @@ const toHHMM = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m
 // slots is 09:00, 09:20, 09:40, 10:00. A part slot at the end is not a slot.
 export function slotGrid(start, minutes, slotMinutes) {
   const out = [];
+  // No slots unless the numbers can make some. A slot length of 0 (one number in an imported
+  // file) made this loop run for ever and fill the device's memory on every page that reads
+  // sessions (deep pass, 23 Nov).
+  if (typeof start !== 'string' || !/^\d{2}:\d{2}$/.test(start) || !Number.isFinite(minutes) || !Number.isFinite(slotMinutes) || slotMinutes < 1) return out;
   const s = toMinutes(start);
   for (let k = 0; (k + 1) * slotMinutes <= minutes && s + k * slotMinutes < 24 * 60; k++) out.push(toHHMM(s + k * slotMinutes));
   return out;

@@ -4,6 +4,7 @@
 import { MemoryAdapter } from './db.js';
 import { ENTITY_TYPES, validateEntity, validateEvent, roleById } from './model.js';
 import { makeEntry, verifyChain } from './audit.js';
+import { isIsoTime } from './schema.js';
 import { personalDetailIn, personNameIn, thingNameReadsAsPerson } from './processmap.js';
 
 export const EXPORT_FORMAT = 'ospeli-export';
@@ -41,6 +42,7 @@ export function findIdentifierFields(data) {
 const HASH_KEY = /^(prev|hash)$/;
 const PLACE_OR_ASSET = new Set(['site', 'building', 'department', 'ward', 'bed', 'asset', 'store']);
 const ISO_TIME = /^\d{4}-\d{2}-\d{2}(T[\d:.]+(Z|[+-]\d{2}:?\d{2})?)?$/;
+const fieldNameCarriesDetail = (k) => !!(personalDetailIn(k) || personNameIn(k));
 export function findIdentifierValues(data) {
   const hits = [];
   const check = (val, path, entityName) => {
@@ -54,8 +56,13 @@ export function findIdentifierValues(data) {
     if (typeof v !== 'object') return;
     for (const [k, val] of Object.entries(v)) {
       if (hits.length >= 10) return;
+      // A field's name is text from the file like any value, so it is read too; the answer gives
+      // where it is, never the name itself (deep pass, 23 Nov).
+      if (!Array.isArray(v) && fieldNameCarriesDetail(k)) { hits.push(`${path} (a field name)`); continue; }
       const here = Array.isArray(v) ? `${path}[${k}]` : `${path}.${k}`;
       if (typeof val === 'string') { if (Array.isArray(v) || !HASH_KEY.test(k)) check(val, here, k === 'name' && top); }
+      // A phone or record number written as a number, not as text, is the same number.
+      else if (typeof val === 'number') { if (Number.isFinite(val) && personalDetailIn(String(val))) hits.push(here); }
       else walk(val, here);
     }
   };
@@ -390,6 +397,14 @@ export class Core {
     if (data.synthetic !== true) return ['This build accepts synthetic data only, and this file is not marked synthetic.'];
     for (const k of ['entities', 'events', 'audit']) if (!Array.isArray(data[k])) errs.push(`${k} must be a list`);
     if (errs.length) return errs;
+    // Every entry is an object, and an event's data is an object or nothing. Checked first, so a
+    // null in a list gets a plain answer (it used to stop the check with the engine's own words),
+    // and so nothing sits where the personal-detail checks below do not read: a sentence as the
+    // whole of an event's data was never read (deep pass, 23 Nov).
+    const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+    for (const k of ['entities', 'events', 'audit']) if (!data[k].every(isObj)) errs.push(`${k}: every entry must be an object`);
+    if (!errs.length && !data.events.every((ev) => ev.data == null || isObj(ev.data))) errs.push('events: the data of an event must be an object or empty');
+    if (errs.length) return errs;
     const ids = findIdentifierFields(data);
     if (ids.length) return [`This file has fields that look like personal details (${ids.slice(0, 3).join(', ')}). This build accepts synthetic data only.`];
     const vals = findIdentifierValues(data);
@@ -412,6 +427,10 @@ export class Core {
       const v = validateEvent(ev);
       if (v.length) errs.push(`event ${ev?.seq ?? i}: ${v.join('; ')}`);
       if (ev.seq !== i + 1) errs.push(`event ${i + 1}: sequence broken`);
+      // Both times are time stamps and nothing else. `at` only had to be something a date could
+      // be read from, so a sentence with a name and a birth date passed, and an empty one stopped
+      // eleven lists after the import; `recordedAt` was not looked at at all (deep pass, 23 Nov).
+      if (!isIsoTime(ev.at) || !isIsoTime(ev.recordedAt)) errs.push(`event ${i + 1}: at and recordedAt must be time stamps`);
       // Only the fields Ospeli writes. Any other field would be stored as it is and never read
       // by the personal-detail checks, which look at subject and data (security sweep, 17 Nov).
       // The answer gives the place, never the field's name or value.
