@@ -59,7 +59,7 @@ export function installRibbon(ctx, { toast }) {
   const clock = h('span', { class: 'wr-clock', 'data-test': 'ribbon-clock', 'aria-hidden': 'true' });
   const open = h('a', { class: 'wr-open', href: WALK_HREF, 'data-test': 'ribbon-open' },
     segs, h('span', { class: 'wr-line' }, title, step), h('span', { class: 'wr-line wr-now' }, words, h('span', { class: 'wr-dot', 'aria-hidden': 'true' }, ' · '), clock));
-  const act = h('button', { type: 'button', class: 'wr-act', 'data-test': 'ribbon-act' });
+  const act = h('button', { type: 'button', class: 'wr-act', 'data-test': 'ribbon-act' }, 'Next tap');
   // Spoken when the state changes, never for the ticking clock.
   const said = h('span', { class: 'sr-only', role: 'status', 'aria-live': 'polite', 'data-test': 'ribbon-status' });
   const band = h('div', { class: 'walk-ribbon', id: 'walk-ribbon', role: 'region', 'aria-label': 'Walk running', 'data-test': 'walk-ribbon', hidden: true }, open, act, said);

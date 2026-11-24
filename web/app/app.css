@@ -143,6 +143,41 @@ html { scroll-padding-bottom: calc(var(--dock) + var(--ribbon) + 8px); }
 .me-home a { display: inline-flex; align-items: center; min-height: 44px; }
 .me-role-fixed { font-weight: 800; }
 .now-foot { margin-top: 20px; text-align: center; }
+/* Now: the flow strip (navigation v2). Stages left to right as tiles with the number there now (or
+   "–", not counted yet, said in words under the strip); the longest wait between two stages is a
+   striped mango connector with the coral forward arrow, and its minutes in words. */
+.flow { margin: 4px 0 8px; }
+.flow-strip { display: grid; grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr) 16px minmax(0, 1fr) 16px minmax(0, 1fr); align-items: stretch; }
+.flow-tile { display: grid; align-content: center; justify-items: center; gap: 0; min-height: 64px; min-width: 0; padding: 6px 4px; border: 1.5px solid var(--line-strong); border-radius: 14px;
+  background: var(--surface); color: var(--navy); font: inherit; text-decoration: none; text-align: center; cursor: pointer; }
+.flow-tile:hover { background: var(--wash); }
+.flow-tile[aria-expanded="true"] { border-color: var(--navy); border-width: 2.5px; }
+.flow-name { font-weight: 800; font-size: .9375rem; line-height: 1.15; overflow-wrap: anywhere; }
+.flow-n { font-size: 1.5rem; font-weight: 800; line-height: 1.1; }
+.flow-tile.is-none .flow-n { color: var(--ink-soft); }
+.flow-conn { align-self: center; height: 4px; margin: 0 2px; border-radius: 2px; background: var(--line-strong); position: relative; }
+.flow-conn.is-wait { height: 12px; margin: 0; background: repeating-linear-gradient(135deg, var(--mango) 0 4px, #F8CB70 4px 8px); color: var(--coral); font-weight: 800; font-size: 1.4rem; line-height: 0; display: flex; align-items: center; justify-content: flex-end; }
+.flow-key { margin: 8px 0 0; font-size: .9375rem; color: var(--ink); }
+.flow-wait { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; font-size: .9375rem; font-weight: 700; }
+.flow-swatch { flex: none; width: 22px; height: 10px; border-radius: 3px; background: repeating-linear-gradient(135deg, var(--mango) 0 4px, #F8CB70 4px 8px); }
+.flow-arrow { flex: none; color: var(--coral); font-weight: 800; }
+.flow-pick { margin: 8px 0 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.flow-pick[hidden] { display: none; }
+.flow-pick-h { margin: 0 0 4px; font-weight: 800; font-size: .9375rem; }
+.flow-pick ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.flow-pick a { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 14px; border: 1.5px solid var(--line-strong); border-radius: 999px; text-decoration: none; color: var(--navy); }
+.flow-caption { margin: 6px 0 0; font-size: .8125rem; }
+/* Needs you, in flow order: each card says where on the flow and which page, then its status in words. */
+.needs > h2 { margin-bottom: 10px; }
+.needs-where { display: block; font-size: .8125rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.decision-list li > .needs-where { margin: 0 0 2px 2px; }
+.needs-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.needs-card { display: grid; gap: 6px; text-decoration: none; color: var(--navy); min-height: 44px; }
+.needs-card:hover { background: var(--wash); }
+.needs-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-word { display: inline-block; padding: 2px 10px; border-radius: 999px; background: var(--mango-tint); border: 1px solid var(--mango); color: var(--navy); font-weight: 700; font-size: .9375rem; }
+.now-walk p { margin: 0 0 6px; font-weight: 700; }
+.now-walk-link { display: inline-flex; align-items: center; min-height: 44px; }
 /* Today: an agent's proposal waiting for this role (issue #52) */
 .decisions { border-left: 6px solid var(--mango); margin-bottom: 16px; }
 .decisions h2 { margin: 0 0 4px; }

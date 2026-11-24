@@ -5,20 +5,21 @@
 // `module`: the department's own module on the Journey page. `pinned`: pages shown first on Now.
 // `role`: the job title a device starts with when no one has chosen one yet (changed under Me).
 // `stages`: the flow strip on Now, left to right; `pages` are the pages that serve the stage.
+// `place`: the department's place id in the example hospital (wards: every ward), for what Now counts there.
 export const DEPARTMENTS = [
-  { id: 'imaging', name: 'Imaging', hint: 'X-ray, CT, ultrasound and other scans', module: 'diagnostics', pinned: ['diagnostics', 'clinics', 'engineering', 'transfers'], role: 'radiographer',
+  { id: 'imaging', place: 'dept-imaging', name: 'Imaging', hint: 'X-ray, CT, ultrasound and other scans', module: 'diagnostics', pinned: ['diagnostics', 'clinics', 'engineering', 'transfers'], role: 'radiographer',
     stages: [{ id: 'arrive', name: 'Arrive', pages: ['clinics'] }, { id: 'prep', name: 'Prep', pages: ['diagnostics'] }, { id: 'scan', name: 'Scan', pages: ['engineering', 'diagnostics'] }, { id: 'leave', name: 'Leave', pages: ['transfers'] }] },
-  { id: 'outpatients', name: 'Outpatients and clinics', short: 'Outpatients', hint: 'Booked clinics and their queues', module: 'clinics', pinned: ['clinics', 'feedback', 'diagnostics'], role: 'clinic-receptionist',
+  { id: 'outpatients', place: 'dept-outpatients', name: 'Outpatients and clinics', short: 'Outpatients', hint: 'Booked clinics and their queues', module: 'clinics', pinned: ['clinics', 'feedback', 'diagnostics'], role: 'clinic-receptionist',
     stages: [{ id: 'arrive', name: 'Arrive', pages: ['clinics'] }, { id: 'wait', name: 'Wait', pages: ['clinics'] }, { id: 'seen', name: 'Seen', pages: ['clinics', 'diagnostics'] }, { id: 'leave', name: 'Leave', pages: ['pharmacy', 'transfers'] }] },
-  { id: 'emergency', name: 'Emergency department', short: 'Emergency', hint: 'Walk-in and ambulance arrivals', module: 'ae', pinned: ['beds', 'transfers', 'diagnostics'], role: 'ae-nic',
+  { id: 'emergency', place: 'dept-emergency', name: 'Emergency department', short: 'Emergency', hint: 'Walk-in and ambulance arrivals', module: 'ae', pinned: ['beds', 'transfers', 'diagnostics'], role: 'ae-nic',
     stages: [{ id: 'arrive', name: 'Arrive', pages: ['transfers'] }, { id: 'assess', name: 'Assess', pages: ['diagnostics'] }, { id: 'treat', name: 'Treat', pages: ['diagnostics', 'pharmacy'] }, { id: 'leave', name: 'Leave', pages: ['beds', 'transfers'] }] },
-  { id: 'pharmacy', name: 'Pharmacy', hint: 'Dispensing and discharge medicines', module: 'pharmacy', pinned: ['pharmacy', 'stores'], role: 'pharmacy-technician',
+  { id: 'pharmacy', place: null, name: 'Pharmacy', hint: 'Dispensing and discharge medicines', module: 'pharmacy', pinned: ['pharmacy', 'stores'], role: 'pharmacy-technician',
     stages: [{ id: 'received', name: 'Received', pages: ['pharmacy'] }, { id: 'prepared', name: 'Prepared', pages: ['pharmacy', 'stores'] }, { id: 'checked', name: 'Checked', pages: ['pharmacy'] }, { id: 'collected', name: 'Collected', pages: ['pharmacy'] }] },
-  { id: 'laboratory', name: 'Laboratory', hint: 'Samples from asked to done', module: 'diagnostics', pinned: ['diagnostics', 'stores', 'engineering'], role: 'lab-scientist',
+  { id: 'laboratory', place: 'dept-laboratory', name: 'Laboratory', hint: 'Samples from asked to done', module: 'diagnostics', pinned: ['diagnostics', 'stores', 'engineering'], role: 'lab-scientist',
     stages: [{ id: 'asked', name: 'Asked', pages: ['diagnostics'] }, { id: 'collected', name: 'Collected', pages: ['diagnostics'] }, { id: 'received', name: 'Received', pages: ['diagnostics', 'engineering'] }, { id: 'done', name: 'Done', pages: ['diagnostics'] }] },
-  { id: 'wards', name: 'Wards', hint: 'Beds, discharges and ward supplies', module: 'beds', pinned: ['beds', 'support', 'stores', 'pharmacy'], role: 'ward-nurse',
+  { id: 'wards', place: 'ward-*', name: 'Wards', hint: 'Beds, discharges and ward supplies', module: 'beds', pinned: ['beds', 'support', 'stores', 'pharmacy'], role: 'ward-nurse',
     stages: [{ id: 'arrive', name: 'Arrive', pages: ['beds'] }, { id: 'stay', name: 'Stay', pages: ['beds', 'stores'] }, { id: 'ready', name: 'Ready to leave', pages: ['pharmacy', 'beds'] }, { id: 'leave', name: 'Leave', pages: ['transfers', 'support'] }] },
-  { id: 'whole-hospital', name: 'Whole hospital (managers)', short: 'Whole hospital', hint: 'Every department, for managers', module: null, pinned: ['beds', 'process', 'engineering'], role: 'ops-manager',
+  { id: 'whole-hospital', place: '*', name: 'Whole hospital (managers)', short: 'Whole hospital', hint: 'Every department, for managers', module: null, pinned: ['beds', 'process', 'engineering'], role: 'ops-manager',
     stages: [{ id: 'arrive', name: 'Arrive and book', pages: ['clinics', 'feedback'] }, { id: 'test', name: 'Test and treat', pages: ['diagnostics', 'pharmacy'] }, { id: 'stay', name: 'Stay', pages: ['beds'] }, { id: 'leave', name: 'Leave and move', pages: ['transfers'] }] },
 ];
 export const departmentById = (id) => DEPARTMENTS.find((d) => d.id === id) || null;
