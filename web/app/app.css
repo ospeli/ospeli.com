@@ -866,3 +866,12 @@ html[data-site="connect"] .layout { display: block; }
 .walk-side .walk-finish:disabled { opacity: 1; color: #5B6B7A; border-color: var(--line); background: transparent; cursor: default; }
 .walk-bar .walk-confirm .form-actions { display: grid; gap: 6px; }
 .walk-bar .walk-confirm .btn { justify-content: center; }
+
+/* Result page, crew night 9 (walk-first week, night 2): "Walk the next patient" is the main button
+   on a walked map and in the list of maps; the headline first; one "How to read this". */
+.map-list li.is-walked { display: grid; gap: 6px; }
+.map-list a.btn.walk-again, .walk-again-box .btn.walk-again { display: flex; width: 100%; min-height: 52px; justify-content: center; text-align: center;
+  background: var(--navy); color: #fff; border: 1.5px solid var(--navy); border-radius: 10px; font-weight: 800; font-size: 1.05rem; padding: 9px 16px; }
+.map-list a.btn.walk-again:hover, .walk-again-box .btn.walk-again:hover { background: #12406A; }
+.map-list a.btn.walk-again:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+@media (min-width: 641px) { .walk-again-box .btn.walk-again { width: auto; justify-self: start; padding-inline: 22px; } }

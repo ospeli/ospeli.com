@@ -47,6 +47,7 @@ const PRECACHE = [
   'modules/engineering.js',
   'modules/beds.js',
   'modules/process.js',
+  'modules/result-words.js',
   'modules/walk.js',
   'modules/agents.js',
   'modules/connect.js',

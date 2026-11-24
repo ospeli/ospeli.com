@@ -38,7 +38,8 @@ test('first-time user at 360 px: walk the same three steps again in 10 taps, not
   await firstWalk(page);
   // One walk: the share stays, beside "this walk", and the map offers the second walk.
   assert.match(await text(page, '[data-test="walk-answer"]'), /37 min waiting \(70% of this walk\)/);
-  assert.equal((await text(page, '[data-test="walk-again"]')).trim(), 'Walk it again (walk 2 of 3)');
+  assert.equal((await text(page, '[data-test="walk-again"]')).trim(), 'Walk the next patient');
+  assert.match(await text(page, '[data-test="walk-again-note"]'), /^Walk 2 of 3 on the same steps\./);
 
   // Another day, another hour.
   await page.clock.setSystemTime(new Date('2026-11-19T14:30:00Z'));
@@ -108,7 +109,8 @@ test('first-time user at 360 px: walk the same three steps again in 10 taps, not
   assert.match(answer, /Longest wait: before “Seen by a doctor” on both walks/);
   assert.equal(await page.locator('[data-test="walk-list"]').count(), 0, 'no walk is left out, so none is listed in the answer: each walk\'s day and hour is on its bar');
   assert.doesNotMatch(answer, /%/, 'no percentage on a map with more than one walk');
-  assert.equal((await text(page, '[data-test="walk-again"]')).trim(), 'Walk it again (walk 3 of 3)');
+  assert.equal((await text(page, '[data-test="walk-again"]')).trim(), 'Walk the next patient');
+  assert.match(await text(page, '[data-test="walk-again-note"]'), /^Walk 3 of 3 on the same steps\./);
   // The answer starts on the first screen of a 360 by 640 phone, range and longest wait included.
   await page.setViewportSize({ width: 360, height: 640 });
   await page.evaluate(() => window.scrollTo(0, 0));

@@ -9,6 +9,7 @@ import { h } from './ui.js';
 import { fmtMinutes, EXAMPLES } from '../core/processmap.js';
 import { fmtSeconds, stepsInSeconds, longestWaits, waitWords, notSeenWords, MIN_LONGEST_WAIT_SEC, PLANNED_WAIT_RULE, NOT_ALWAYS_WASTE, fmtRange } from '../core/walk.js';
 import { renderWalk } from './walk.js';
+import { minWords } from './result-words.js';
 import { proposalsCard } from './proposals.js';
 
 const ROLE_COLOURS = ['#0A9396', '#EE9B00', '#E0583E', '#0B2F4E', '#94D2BD', '#7A5C9E', '#3E7CB1', '#A0522D', '#5B8C5A', '#C2185B'];
@@ -74,8 +75,13 @@ export async function render(el, ctx) {
     if (out) { location.hash = `#/process/${out.mapId}`; }
   }
 
+  // "Walk the next patient": the repeat walk of a walked map (ospeli_walks_start with mapId, on the
+  // before-you-walk points of modules/walk.js). The main button wherever a walked map is shown.
+  const nextPatientBtn = (mapId, label) => h('a', { class: 'btn walk-again', href: `#/process/walk/${mapId}`, 'data-test': 'walk-again', ...(label ? { 'aria-label': label } : {}) }, 'Walk the next patient');
+
   // Walk mode entry: first on the page. A walk in progress (a reload, a phone handed over) is offered again.
-  function walkCard() {
+  // repeatFirst: a walked map of this department is listed above, so a new map is the second choice.
+  function walkCard(repeatFirst = false) {
     if (walkNow) {
       return h('section', { class: 'card walk-card', 'aria-labelledby': 'walkcard-h', 'data-test': 'walk-card' },
         h('h2', { id: 'walkcard-h' }, 'Walk in progress'),
@@ -86,10 +92,11 @@ export async function render(el, ctx) {
             onclick: async () => { if (!window.confirm('Delete this walk? Its times are not kept.')) return; if (await run('ospeli_walks_discard', {})) { ctx.toast('Walk deleted.'); draw(); } } }, 'Delete walk')));
     }
     return h('section', { class: 'card walk-card', 'aria-labelledby': 'walkcard-h', 'data-test': 'walk-card' },
-      h('h2', { id: 'walkcard-h' }, 'Walk it and time it'),
-      h('p', {}, 'Follow one visit with your phone and time each step as it happens. Finish, and you get a timed map. No names, no patient details. Works with no connection.'),
+      h('h2', { id: 'walkcard-h' }, repeatFirst ? 'Walk a different visit' : 'Walk it and time it'),
+      h('p', {}, repeatFirst ? 'For another kind of visit, start a new map. To time the same visit again, use “Walk the next patient” on its map above.'
+        : 'Follow one visit with your phone and time each step as it happens. Finish, and you get a timed map. No names, no patient details. Works with no connection.'),
       // One tap opens the before-you-walk points (modules/walk.js); the walk and its clock start there.
-      h('a', { class: 'btn walk-start', href: '#/process/walk', 'data-test': 'walk-start' }, 'Start a walk'));
+      h('a', { class: `btn walk-start${repeatFirst ? ' btn-ghost' : ''}`, href: '#/process/walk', 'data-test': 'walk-start' }, repeatFirst ? 'Start a new map' : 'Start a walk'));
   }
 
   function chooser(withHeading) {
@@ -117,16 +124,22 @@ export async function render(el, ctx) {
     if (ui.mapId && !list.maps.some((m) => m.id === ui.mapId)) ui.mapId = null;
     headFor();
     if (!ui.mapId) {
-      body.replaceChildren(...[
-        list.maps.length ? h('section', { class: 'section', 'aria-labelledby': 'maps-h' },
-          h('h2', { id: 'maps-h' }, 'Your maps'),
-          h('ul', { class: 'map-list' }, list.maps.map((m) => h('li', {},
-            h('a', { href: `#/process/${m.id}`, 'data-test': 'map-link' }, h('b', {}, m.title),
-              h('span', { class: 'meta' }, m.walk && m.walkCount > 1 ? `${m.steps} steps · ${m.walkCount} walks`
-                : m.walk ? `${m.steps} steps · ${fmtSeconds(m.elapsedSecToday)} start to finish · measured on one walk`
-                : `${m.steps} steps · ${fmtMinutes(m.elapsedToday)} start to finish${m.elapsedProposed !== m.elapsedToday ? ` · Proposed ${fmtMinutes(m.elapsedProposed)}` : ''}`)))))) : null,
-        chooser(list.maps.length ? 'Start another map' : 'No maps yet')].filter(Boolean));
-      body.prepend(walkCard());
+      // A walked map is walked again from its own row: the next patient goes onto the same map
+      // (UX review 23 Nov: "Start a walk" made a new map that nobody linked to the first).
+      const walkedMaps = list.maps.filter((m) => m.walk && m.steps);
+      const deptOf = new Map(await Promise.all(walkedMaps.map(async (m) => [m.id, (await ctx.run('ospeli_maps_get', { mapId: m.id, format: 'short' })).walk?.department || null])));
+      // A walked map of this department (or one walked before departments were kept) comes first.
+      const here = walkedMaps.some((m) => !deptOf.get(m.id) || !ctx.department || deptOf.get(m.id) === ctx.department);
+      const mapsBox = list.maps.length ? h('section', { class: 'section', 'aria-labelledby': 'maps-h' },
+        h('h2', { id: 'maps-h' }, 'Your maps'),
+        h('ul', { class: 'map-list' }, list.maps.map((m) => h('li', { class: m.walk && m.steps ? 'is-walked' : null },
+          h('a', { href: `#/process/${m.id}`, 'data-test': 'map-link' }, h('b', {}, m.title),
+            h('span', { class: 'meta' }, m.walk && m.walkCount > 1 ? `${m.steps} steps · ${m.walkCount} walks`
+              : m.walk ? `${m.steps} steps · ${minWords(m.elapsedSecToday)} start to finish · measured on one walk`
+              : `${m.steps} steps · ${fmtMinutes(m.elapsedToday)} start to finish${m.elapsedProposed !== m.elapsedToday ? ` · Proposed ${fmtMinutes(m.elapsedProposed)}` : ''}`)),
+          m.walk && m.steps && !walkNow ? nextPatientBtn(m.id, `${m.title}: walk the next patient on the same ${m.steps} steps`) : null)))) : null;
+      const card = walkCard(here && !walkNow);
+      body.replaceChildren(...[here && !walkNow ? mapsBox : card, here && !walkNow ? card : mapsBox, chooser(list.maps.length ? 'Start another map' : 'No maps yet')].filter(Boolean));
       return;
     }
     await drawMap();
@@ -168,11 +181,11 @@ export async function render(el, ctx) {
     // On the walks version the ring goes to every step that was a walk's longest wait.
     if (rangeView) hotIds = rg.longest.map((l) => l.stepId).filter(Boolean);
     const first = multi ? rg.walks[0] : null;
-    // "Walk it again (walk 2 of 3)": the walk and its clock start on the before-you-walk points.
+    // "Walk the next patient" (walk 2 of 3): the walk and its clock start on the before-you-walk points.
     const nextNo = walked ? rg.count + 1 : 0;
     const againBtn = walked && !walkNow && m.today.steps.length ? h('div', { class: 'walk-again-box' },
-      h('a', { class: 'btn walk-again', href: `#/process/walk/${m.id}`, 'data-test': 'walk-again' }, `Walk it again (walk ${nextNo}${nextNo <= rg.aim ? ` of ${rg.aim}` : ''})`),
-      h('p', { class: 'meta' }, 'Same steps. Saved on this phone only.')) : null;
+      nextPatientBtn(m.id),
+      h('p', { class: 'meta', 'data-test': 'walk-again-note' }, `Walk ${nextNo}${nextNo <= rg.aim ? ` of ${rg.aim}` : ''} on the same steps. Saved on this phone only.`)) : null;
 
     const seg = (id, label, on, onclick, extra = {}) => h('button', { type: 'button', class: 'chip-btn', 'aria-pressed': String(on), 'data-test': id, onclick, ...extra }, label);
     const head = h('div', { class: 'map-head' },
@@ -208,6 +221,7 @@ export async function render(el, ctx) {
       rg.totals.elapsed.n ? h('p', { class: 'wa-big', 'data-test': 'walk-range' }, h('b', {}, fmtRange(rg.totals.elapsed, { count: false })), ` start to finish${partOf(rg.totals.elapsed)}`)
         : h('p', { class: 'wa-line', 'data-test': 'walk-range' }, 'No walk has been walked to the end of the list yet, so there is no start-to-finish time.'),
       rg.totals.elapsed.n ? h('p', { class: 'wa-line', 'data-test': 'walk-range-parts' }, h('b', {}, `Waiting ${fmtRange(rg.totals.wait, { count: false })}`), ` · hands-on ${fmtRange(rg.totals.work, { count: false })}`) : null,
+      againBtn,
       h('p', { class: 'wa-line wa-wait', 'data-test': 'walk-longest' }, lo.length ? h('b', {}, 'Longest wait: ') : null, longestLine),
       rg.totals.notSeen.n ? h('p', { class: 'wa-line', 'data-test': 'walk-not-seen' }, `Not seen (walk paused) on ${rg.totals.notSeen.n} ${rg.totals.notSeen.n === 1 ? 'walk' : 'walks'}: ${fmtRange(rg.totals.notSeen, { count: false })}. It is inside start to finish, and in neither waiting nor hands-on.`) : null,
       h('p', { class: 'wa-line wa-count', 'data-test': 'walk-count' }, rg.count < rg.aim
@@ -215,12 +229,12 @@ export async function render(el, ctx) {
         : `Shortest to longest from ${rg.count} walks. These are examples, not an average or a fixed number. Ask why the time changes from walk to walk.`),
       h('p', { class: 'wa-line wa-waste', 'data-test': 'walk-waste' }, NOT_ALWAYS_WASTE),
       // Each walk's day and hour is on its bar below; a walk that is left out is also said here.
-      rg.walks.some((w) => !w.complete) ? h('ul', { class: 'wa-walks', 'data-test': 'walk-list' }, rg.walks.filter((w) => !w.complete).map((w) => h('li', {}, walkWord(w)))) : null,
-      againBtn) : null;
+      rg.walks.some((w) => !w.complete) ? h('ul', { class: 'wa-walks', 'data-test': 'walk-list' }, rg.walks.filter((w) => !w.complete).map((w) => h('li', {}, walkWord(w)))) : null) : null;
     const answer = rangeView ? rangeAnswer : measuredView ? h('section', { class: `card walk-answer${moved ? ' is-warn' : ''}`, 'data-test': 'walk-answer', 'aria-label': 'What this walk showed' },
       moved ? h('p', { class: 'walk-clock', role: 'alert', 'data-test': 'walk-clock' }, h('b', {}, 'The phone\'s clock changed during this walk.'), ' The times on this map may be wrong. Walk it again to get times you can use.') : null,
       h('p', { class: 'wa-big' }, h('b', {}, T(a.elapsed + extra.notSeen)), moved ? ' (may be wrong) start to finish on this walk' : ' start to finish on this walk'),
       h('p', { class: 'wa-line' }, h('b', {}, `${T(a.wait)} waiting`), waitShare(a) == null ? '' : ` (${waitShare(a)}% of ${extra.notSeen ? 'the time seen on this walk' : 'this walk'})`, ` · ${T(a.work)} hands-on`),
+      againBtn,
       extra.planned ? h('p', { class: 'wa-line', 'data-test': 'walk-planned' }, `Of the waiting, ${T(extra.planned)} was marked planned or required.`) : null,
       extra.notSeen ? h('p', { class: 'wa-line', 'data-test': 'walk-not-seen' }, `${T(extra.notSeen)} not seen (walk paused): not counted as waiting or hands-on.`) : null,
       moved ? null : top.length
@@ -228,8 +242,7 @@ export async function render(el, ctx) {
         : h('p', { class: 'wa-line', 'data-test': 'walk-longest' }, `No wait of ${MIN_LONGEST_WAIT_SEC} seconds or more on this walk.`),
       h('p', { class: 'wa-line wa-waste', 'data-test': 'walk-waste' }, NOT_ALWAYS_WASTE),
       h('p', { class: 'wa-line', 'data-test': 'walk-handoffs' }, `${a.handoffs} ${a.handoffs === 1 ? 'handoff' : 'handoffs'} between roles`),
-      h('p', { class: 'meta wa-note' }, 'One walk, one observation. Ask what the wait was for, and walk it again before changing anything.'),
-      againBtn) : null;
+      h('p', { class: 'meta wa-note' }, 'One walk, one observation. Ask what the wait was for, and walk it again before changing anything.')) : null;
     const stats = measuredView ? h('div', { class: 'pm-stats is-answer', 'data-test': 'pm-stats' }, answer) : h('div', { class: 'pm-stats', 'data-test': 'pm-stats' },
       stat(T(a.elapsed), measuredView ? 'start to finish on this walk' : 'start to finish', T(t.elapsed), a.elapsed < t.elapsed),
       stat(T(a.work), 'hands-on work', T(t.work), false),
