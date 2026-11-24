@@ -10,6 +10,7 @@ import { runCommand, listCommands, describeCommand, commandByName, CommandError 
 import { waitingDecisions, proposalWords } from './modules/proposals.js';
 import { installDialogTapGuard, h } from './modules/ui.js';
 import { DEPARTMENTS, departmentById, departmentShort, departmentForRole, ME_PAGES } from './modules/departments.js';
+import { installRibbon } from './modules/ribbon.js';
 
 const $ = (sel) => document.querySelector(sel);
 const main = $('#main');
@@ -109,6 +110,8 @@ function buildShell(ctx) {
   };
   tick();
   setInterval(tick, 20000);
+  // The walk ribbon (issue #179): a running walk shows on every page but the walk itself.
+  ctx.ribbon = installRibbon(ctx, { toast });
 }
 // Which dock item a page belongs to: its own, or Journey for a module page reached from there.
 function dockFor(id, rest) {
@@ -170,6 +173,7 @@ async function route(ctx) {
   document.documentElement.dataset.route = `#/${[id, ...rest].join('/')}`;
   document.documentElement.dataset.drawn = String(Number(document.documentElement.dataset.drawn || 0) + 1);
   showWaiting(ctx);
+  ctx.ribbon?.refresh();
   if (ctx.routed) main.focus({ preventScroll: true });
   ctx.routed = true;
   window.scrollTo(0, 0);

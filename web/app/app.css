@@ -68,8 +68,9 @@ a { color: var(--sea-ink); font-weight: 700; }
   border-radius: 10px; padding: 8px 10px; min-height: 44px; }
 
 /* layout: on a phone the page with the dock floating over its foot; from 900 px a left rail. */
-:root { --dock: 96px; }
-html { scroll-padding-bottom: calc(var(--dock) + 8px); }
+:root { --dock: 96px; --ribbon: 0px; }
+/* --ribbon is the walk ribbon's height and gap while a walk runs (modules/ribbon.js measures it). */
+html { scroll-padding-bottom: calc(var(--dock) + var(--ribbon) + 8px); }
 .layout { display: block; min-height: calc(100vh - var(--top)); }
 /* The dock: a rounded white bar, 68 px tall, 12 px from the screen edges, with five places in words.
    The chosen place has a short navy bar above its word. Walk is a raised navy square with the symbol. */
@@ -149,7 +150,34 @@ html { scroll-padding-bottom: calc(var(--dock) + 8px); }
 .decision-list a { display: flex; align-items: center; min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; color: var(--navy); font-weight: 800; font-size: 1rem; text-decoration: none; background: var(--surface); }
 .decision-list a::after { content: "›"; margin-left: auto; padding-left: 12px; font-size: 1.3rem; line-height: 1; }
 .decision-list a:hover { background: var(--wash); }
-main { padding: 20px max(16px, env(safe-area-inset-right)) calc(var(--dock) + 24px) max(16px, env(safe-area-inset-left)); max-width: 1120px; width: 100%; min-width: 0; }
+/* The walk ribbon (navigation v2; issue #179): a navy band above the dock while a walk runs. One
+   segment per step: done teal, the present wait striped mango, hands-on seafoam, still to come dim.
+   Every colour has its words beside it. On wide screens it sits at the foot of the page, beside the rail. */
+.walk-ribbon { position: fixed; z-index: 29; left: max(12px, env(safe-area-inset-left)); right: max(12px, env(safe-area-inset-right));
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 68px + 22px); display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px;
+  padding: 8px 8px 8px 12px; background: var(--navy); color: #fff; border-radius: 16px; box-shadow: 0 6px 18px rgba(11, 47, 78, .28); cursor: pointer; }
+.walk-ribbon[hidden] { display: none; }
+.wr-open { display: grid; gap: 2px; min-width: 0; min-height: 44px; align-content: center; color: #fff; text-decoration: none; font-weight: 700; font-size: .9375rem; line-height: 1.25; border-radius: 8px; }
+.wr-open:hover { color: #fff; }
+.wr-open:focus-visible, .wr-act:focus-visible { outline: 3px solid var(--mango); outline-offset: 2px; }
+.wr-segs { display: flex; gap: 3px; height: 6px; margin-bottom: 4px; }
+.wr-seg { flex: 1 1 0; min-width: 4px; border-radius: 3px; background: rgba(255, 255, 255, .22); }
+.wr-seg.is-done { background: var(--sea); }
+.wr-seg.is-wait { background: repeating-linear-gradient(135deg, var(--mango) 0 5px, #F8CB70 5px 10px); }
+.wr-seg.is-step { background: var(--seafoam); }
+.wr-seg.is-paused { background: repeating-linear-gradient(135deg, #9FB1C2 0 5px, #6F8599 5px 10px); }
+.wr-line { display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wr-title { font-weight: 800; }
+.wr-now { color: #E8EEF3; }
+.wr-clock { font-variant-numeric: tabular-nums; font-weight: 800; color: #fff; }
+.wr-act { min-height: 44px; max-width: 44vw; padding: 6px 14px; border: 0; border-radius: 12px; background: #fff; color: var(--navy); font: inherit; font-weight: 800; font-size: .9375rem; line-height: 1.15; cursor: pointer; }
+.wr-act:disabled { opacity: .7; cursor: wait; }
+.walk-ribbon[data-state="waiting"] .wr-act { background: var(--mango); }
+/* The dock's Walk while a walk runs: a live dot and the word "Running". */
+.dock .dock-walk.is-running { outline: 3px solid var(--mango); outline-offset: 2px; }
+.dock-live { position: absolute; top: 7px; right: 7px; width: 12px; height: 12px; border-radius: 50%; background: var(--mango); box-shadow: 0 0 0 2px var(--navy); animation: dock-live 1.6s ease-in-out infinite; }
+@keyframes dock-live { 50% { opacity: .35; } }
+main { padding: 20px max(16px, env(safe-area-inset-right)) calc(var(--dock) + var(--ribbon) + 24px) max(16px, env(safe-area-inset-left)); max-width: 1120px; width: 100%; min-width: 0; }
 main:focus { outline: none; }
 .loading { color: var(--ink-soft); }
 
@@ -162,6 +190,8 @@ main:focus { outline: none; }
     display: flex; flex-direction: column; align-items: stretch; justify-content: flex-start; gap: 6px; padding: 16px 10px; border: 0; border-right: 1px solid var(--line); border-radius: 0; box-shadow: none; }
   .dock a { min-height: 60px; flex: none; }
   .dock .dock-walk { width: 76px; height: 76px; margin: 6px auto; }
+  .walk-ribbon { left: calc(112px + 16px); right: 24px; bottom: 16px; max-width: 1080px; }
+  .wr-act { max-width: 20rem; }
   .hospital { flex: 0 1 auto; order: 2; }
   .top-time { order: 3; margin-left: auto; }
   .top-search { order: 4; margin-left: 0; }
