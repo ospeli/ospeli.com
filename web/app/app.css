@@ -788,9 +788,6 @@ html[data-site="connect"] .layout { display: block; }
 .walk-saved span { min-width: 0; overflow-wrap: anywhere; flex: 1 1 160px; }
 .walk-saved .walk-change { min-height: 44px; }
 .walk-again-box { display: grid; gap: 4px; margin-top: 8px; }
-/* #179 item 4: on a phone "Walk it again" never sits under the dock (or the walk ribbon): when the page
-   would put it below them, it stays just above them while its card is on screen. */
-@media (max-width: 899px) { .walk-again-box { position: sticky; bottom: calc(var(--dock) + var(--ribbon) + 8px); z-index: 2; background: var(--surface); padding: 6px 0 2px; } }
 .walk-again-box .meta { font-size: .9375rem; color: var(--ink); }
 .btn.walk-again { min-height: 52px; font-size: 1.05rem; justify-content: center; }
 .walk-answer .wa-count { font-weight: 800; }
