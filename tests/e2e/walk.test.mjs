@@ -113,7 +113,8 @@ test('first-time user at 360 px: walk three steps and see the timed map in 16 ta
   assert.equal(await page.textContent('[data-test="v-today"]'), 'This walk');
   assert.doesNotMatch(await page.textContent('[data-test="process-body"]'), /Today/, 'a dated walk is never called Today');
   assert.match(await page.textContent('[data-test="walk-note"]'), /Times from one walk on .+, started \d\d:\d\d\. This is what happened once, not how the process usually runs\./);
-  assert.match(await page.textContent('[data-test="pm-stats"]'), /\d+ s\s*start to finish on this walk/);
+  assert.match(await page.textContent('[data-test="pm-stats"]'), /under 1 min\s*start to finish on this walk/);
+  assert.match(await page.getAttribute('[data-test="pm-stats"] .wa-big', 'data-sec'), /^\d+$/, 'the exact seconds stay on the figure');
   assert.equal(await page.locator('[data-test="step-list"] li').count(), 3);
   const text = await page.textContent('[data-test="process-body"]');
   for (const [name, role] of steps) { assert.ok(text.includes(name)); assert.ok(text.includes(role)); }

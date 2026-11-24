@@ -3,13 +3,13 @@
 // (core/commands.js: ospeli_maps_list, ospeli_maps_get, ospeli_maps_suggest, ospeli_maps_create, map.step.*, ospeli_maps_try_suggestion,
 // ospeli_maps_hide_suggestion, ospeli_maps_reset_proposed, ospeli_maps_guide_set), the same ones an agent would.
 // Walk mode (backlog PM2): #/process/walk is the walk in progress (modules/walk.js); a finished walk
-// opens here as a map whose times are shown in seconds and labelled as measured on one walk.
+// opens here as a map whose times are shown in whole minutes (modules/result-words.js) and labelled as measured on one walk.
 // Deep link: #/process/<mapId>. The guide is rule-based, says why, and has an off switch.
 import { h } from './ui.js';
 import { fmtMinutes, EXAMPLES } from '../core/processmap.js';
-import { fmtSeconds, stepsInSeconds, longestWaits, waitWords, notSeenWords, MIN_LONGEST_WAIT_SEC, PLANNED_WAIT_RULE, NOT_ALWAYS_WASTE, fmtRange } from '../core/walk.js';
+import { stepsInSeconds, longestWaits, PLANNED_WAIT_RULE, NOT_ALWAYS_WASTE, WALK_BASIS, RANGE_BASIS } from '../core/walk.js';
 import { renderWalk } from './walk.js';
-import { minWords } from './result-words.js';
+import { minWords, waitAmount, rangeWords, fromCoreSpan, spanOf, totalSpan, longestOneWalk, longestWalks, longestTitle, NO_LONG_WAIT, SAME_RULE, guideTitle } from './result-words.js';
 import { proposalsCard } from './proposals.js';
 
 const ROLE_COLOURS = ['#0A9396', '#EE9B00', '#E0583E', '#0B2F4E', '#94D2BD', '#7A5C9E', '#3E7CB1', '#A0522D', '#5B8C5A', '#C2185B'];
@@ -155,7 +155,7 @@ export async function render(el, ctx) {
     // highest, in whole minutes, with no percentage. One walk reads as before.
     const rg = walked ? m.range : null;
     const multi = !!rg && rg.count > 1;
-    T = walked ? fmtSeconds : fmtMinutes;
+    T = walked ? minWords : fmtMinutes;
     NOW = multi ? 'The walks' : walked ? 'This walk' : 'Today';
     // A walked map says "measured" only where that is true: on the walk version, and only while
     // no time was changed by hand and no step was added by hand.
@@ -208,47 +208,85 @@ export async function render(el, ctx) {
     // On a walked map: waiting a person marked planned or required (still waiting), and time not seen (paused).
     const extrasOf = (list) => ({ planned: list.reduce((n, x) => n + (x.plannedWait ? x.wait || 0 : 0), 0), notSeen: list.reduce((n, x) => n + (x.waitNotSeenSec || 0) + (x.workNotSeenSec || 0), 0) });
     const extra = walked ? extrasOf(steps) : { planned: 0, notSeen: 0 };
-    // A walked map opens with the answer: how long, how much of it was waiting, and the longest wait.
+    // A walked map opens with the answer (walk-first week, night 2): the longest wait first, then
+    // start to finish and waiting, then the main button; every caveat and definition is gathered
+    // in one "How to read this", one tap away. Whole minutes (modules/result-words.js); the exact
+    // seconds stay in data-sec.
     const walkWord = (w) => `Walk ${w.n}: ${day(w.startedAt)}, ${clock(w.startedAt)}${w.clockMoved ? ' · the phone\'s clock changed, left out' : w.stoppedEarly ? ' · stopped early, left out of the totals' : ''}`;
-    const nameQ = (l) => `“${l.name}”`;
-    const lo = rangeView ? rg.longest : [];
-    const longestLine = !lo.length ? `No wait of ${MIN_LONGEST_WAIT_SEC} seconds or more on these walks.`
-      : lo.length === 1 && lo[0].walks.length === rg.longestOf ? `before ${nameQ(lo[0])} on ${rg.longestOf === 2 ? 'both' : `all ${rg.longestOf}`} walks`
-        : lo.every((l) => l.walks.length === 1) ? `it moved: ${lo.map((l) => `before ${nameQ(l)} on walk ${l.walks[0]}`).join('; ')}`
-          : `before ${nameQ(lo[0])} on ${lo[0].walks.length} of ${rg.longestOf} walks; ${lo.slice(1).map((l) => `before ${nameQ(l)} on walk ${l.walks.join(' and ')}`).join('; ')}`;
     const partOf = (r) => (r.n < rg.count ? ` (${r.n} of ${rg.count} walks)` : '');
-    const rangeAnswer = rangeView ? h('section', { class: 'card walk-answer', 'data-test': 'walk-answer', 'aria-label': 'What these walks showed' },
-      rg.totals.elapsed.n ? h('p', { class: 'wa-big', 'data-test': 'walk-range' }, h('b', {}, fmtRange(rg.totals.elapsed, { count: false })), ` start to finish${partOf(rg.totals.elapsed)}`)
-        : h('p', { class: 'wa-line', 'data-test': 'walk-range' }, 'No walk has been walked to the end of the list yet, so there is no start-to-finish time.'),
-      rg.totals.elapsed.n ? h('p', { class: 'wa-line', 'data-test': 'walk-range-parts' }, h('b', {}, `Waiting ${fmtRange(rg.totals.wait, { count: false })}`), ` · hands-on ${fmtRange(rg.totals.work, { count: false })}`) : null,
-      againBtn,
-      h('p', { class: 'wa-line wa-wait', 'data-test': 'walk-longest' }, lo.length ? h('b', {}, 'Longest wait: ') : null, longestLine),
-      rg.totals.notSeen.n ? h('p', { class: 'wa-line', 'data-test': 'walk-not-seen' }, `Not seen (walk paused) on ${rg.totals.notSeen.n} ${rg.totals.notSeen.n === 1 ? 'walk' : 'walks'}: ${fmtRange(rg.totals.notSeen, { count: false })}. It is inside start to finish, and in neither waiting nor hands-on.`) : null,
-      h('p', { class: 'wa-line wa-count', 'data-test': 'walk-count' }, rg.count < rg.aim
-        ? `${rg.count} of ${rg.aim} walks: shortest to longest. These are examples, not an average. Walk the ${rg.count === 2 ? 'third' : 'next'} on another day or at another hour.`
-        : `Shortest to longest from ${rg.count} walks. These are examples, not an average or a fixed number. Ask why the time changes from walk to walk.`),
-      h('p', { class: 'wa-line wa-waste', 'data-test': 'walk-waste' }, NOT_ALWAYS_WASTE),
-      // Each walk's day and hour is on its bar below; a walk that is left out is also said here.
-      rg.walks.some((w) => !w.complete) ? h('ul', { class: 'wa-walks', 'data-test': 'walk-list' }, rg.walks.filter((w) => !w.complete).map((w) => h('li', {}, walkWord(w)))) : null) : null;
+    const headline = (w, none, sec = null) => h('p', { class: 'wa-head', 'data-test': 'walk-longest', ...(w ? {} : { 'data-none': 'true' }), ...(w && sec != null ? { 'data-sec': String(sec) } : {}) }, w ? [h('b', {}, w.lead), w.text] : none);
+    // What the map says about its own steps (rule of 21 Nov: unnamed, interrupted and hand-edited steps are said).
+    const stepFacts = (list) => {
+      const unnamed = list.filter((x) => x.role === 'Not set' || /^Step \d+$/.test(x.name)).length;
+      const stopped = rangeView ? 0 : list.filter((x) => x.interrupted || x.interruptions).length;
+      const edited = list.filter((x) => x.edited).length; const added = list.filter((x) => x.waitSec == null && x.workSec == null).length;
+      const bits = [unnamed ? `${unnamed} ${unnamed === 1 ? 'step has' : 'steps have'} no name or role yet` : null, stopped ? `${stopped} ${stopped === 1 ? 'step was' : 'steps were'} interrupted` : null,
+        edited ? `${edited} ${edited === 1 ? 'step\'s time was' : 'steps\' times were'} changed by hand` : null, added ? `${added} ${added === 1 ? 'step was' : 'steps were'} added by hand, not timed` : null].filter(Boolean);
+      return bits.length ? `${bits.join('; ')}. Each is marked on its step below.` : null;
+    };
+    const anyPartly = (sp) => sp && (sp.partly || sp.maxAtLeast);
+    const readThis = (items) => h('details', { class: 'read-this', 'data-test': 'read-this' },
+      h('summary', {}, 'How to read this'),
+      h('ul', {}, items.filter(Boolean).map((x) => (typeof x === 'string' ? h('li', {}, x) : x))));
+    const walkNoteText = rangeView
+      ? `Same step list, one bar per walk. This is what happened on ${rg.count} visits, not how the process usually runs. Time after the last step is not recorded.${rg.walks.some((w) => w.guidanceSeen === false) ? ' The before-you-walk points were not confirmed for every walk.' : ''}`
+      : walked ? `Times from ${multi ? 'walk 1' : 'one walk'} on ${day(m.walk.startedAt)}, started ${clock(m.walk.startedAt)}. This is what happened once, not how the process usually runs. Time after the last step is not recorded.${byHand ? ' Some times or steps were changed by hand after the walk.' : ''}${m.walk.guidanceSeen === false ? ' The before-you-walk points were not confirmed for this walk.' : ''}` : '';
+    const walkNote = (inside) => h(inside ? 'li' : 'p', { class: inside ? 'walk-note' : 'meta notice walk-note', 'data-test': 'walk-note' }, walkNoteText);
+    let rangeAnswer = null;
+    if (rangeView) {
+      const tot = { elapsed: totalSpan(rg, 'elapsed'), wait: totalSpan(rg, 'wait'), work: totalSpan(rg, 'work') };
+      const lw = longestWalks(rg);
+      const partly = anyPartly(tot.wait) || anyPartly(tot.work) || rg.steps.some((x) => x.wait.maxAtLeast || x.work.maxAtLeast);
+      rangeAnswer = h('section', { class: 'card walk-answer', 'data-test': 'walk-answer', 'aria-label': 'What these walks showed' },
+        headline(lw, NO_LONG_WAIT(true)),
+        tot.elapsed.n ? h('p', { class: 'wa-big', 'data-test': 'walk-range', 'data-sec': `${tot.elapsed.min}-${tot.elapsed.max}` }, h('b', {}, rangeWords(tot.elapsed)), ` start to finish${partOf(tot.elapsed)}`)
+          : h('p', { class: 'wa-line', 'data-test': 'walk-range' }, 'No walk has been walked to the end of the list yet, so there is no start-to-finish time.'),
+        tot.elapsed.n ? h('p', { class: 'wa-line', 'data-test': 'walk-range-parts' }, h('b', {}, `Waiting ${rangeWords(tot.wait)}`), ` · hands-on ${rangeWords(tot.work)}`) : null,
+        againBtn,
+        rg.totals.notSeen.n ? h('p', { class: 'wa-line', 'data-test': 'walk-not-seen' }, `Not seen (walk paused) on ${rg.totals.notSeen.n} ${rg.totals.notSeen.n === 1 ? 'walk' : 'walks'}: ${rangeWords(spanOf(rg.walks.filter((w) => w.complete && w.notSeenSec).map((w) => [w.notSeenSec, false])))}.`) : null,
+        // Each walk's day and hour is on its bar below; a walk that is left out is also said here.
+        rg.walks.some((w) => !w.complete) ? h('ul', { class: 'wa-walks', 'data-test': 'walk-list' }, rg.walks.filter((w) => !w.complete).map((w) => h('li', {}, walkWord(w)))) : null,
+        readThis([
+          h('li', { 'data-test': 'walk-count' }, rg.count < rg.aim
+            ? `${rg.count} of ${rg.aim} walks: shortest to longest. These are examples, not an average. Walk the ${rg.count === 2 ? 'third' : 'next'} on another day or at another hour.`
+            : `Shortest to longest from ${rg.count} walks. These are examples, not an average or a fixed number. Ask why the time changes from walk to walk.`),
+          h('li', { 'data-test': 'walk-waste' }, NOT_ALWAYS_WASTE),
+          walkNote(true),
+          `Times are in whole minutes, from the taps on this phone. ${SAME_RULE}`,
+          `The longest wait is each walk's own longest wait. ${WALK_BASIS.longestWait}`,
+          partly || rg.totals.notSeen.n ? '“Not seen”: the walk was paused (the person walking stepped out). That time is inside start to finish, and in neither waiting nor hands-on. “At least” is said only of a walk that was paused during that time; “partly not seen” means another walk was paused during it, so its time may have been longer.' : null,
+          `${RANGE_BASIS.range} ${RANGE_BASIS.compare}`,
+          stepFacts(m.today.steps),
+        ]));
+    }
+    const lw1 = measuredView && !rangeView && !moved ? longestOneWalk(top) : null;
     const answer = rangeView ? rangeAnswer : measuredView ? h('section', { class: `card walk-answer${moved ? ' is-warn' : ''}`, 'data-test': 'walk-answer', 'aria-label': 'What this walk showed' },
       moved ? h('p', { class: 'walk-clock', role: 'alert', 'data-test': 'walk-clock' }, h('b', {}, 'The phone\'s clock changed during this walk.'), ' The times on this map may be wrong. Walk it again to get times you can use.') : null,
-      h('p', { class: 'wa-big' }, h('b', {}, T(a.elapsed + extra.notSeen)), moved ? ' (may be wrong) start to finish on this walk' : ' start to finish on this walk'),
+      moved ? null : headline(lw1, NO_LONG_WAIT(false), top[0]?.wait),
+      h('p', { class: 'wa-big', 'data-sec': String(a.elapsed + extra.notSeen) }, h('b', {}, T(a.elapsed + extra.notSeen)), moved ? ' (may be wrong) start to finish on this walk' : ' start to finish on this walk'),
       h('p', { class: 'wa-line' }, h('b', {}, `${T(a.wait)} waiting`), waitShare(a) == null ? '' : ` (${waitShare(a)}% of ${extra.notSeen ? 'the time seen on this walk' : 'this walk'})`, ` · ${T(a.work)} hands-on`),
       againBtn,
       extra.planned ? h('p', { class: 'wa-line', 'data-test': 'walk-planned' }, `Of the waiting, ${T(extra.planned)} was marked planned or required.`) : null,
       extra.notSeen ? h('p', { class: 'wa-line', 'data-test': 'walk-not-seen' }, `${T(extra.notSeen)} not seen (walk paused): not counted as waiting or hands-on.`) : null,
-      moved ? null : top.length
-        ? h('p', { class: 'wa-line wa-wait', 'data-test': 'walk-longest' }, h('b', {}, top.length === 1 ? 'Longest wait: ' : 'Longest waits, tied: '), top.length === 1 ? `${waitWords(top[0])} before “${top[0].name}”${notSeenWords(top[0])}` : `${T(top[0].wait)}${top.some((x) => x.waitNotSeenSec) ? ' or more' : ''} before ${top.map((x) => `“${x.name}”`).join(' and ')}`)
-        : h('p', { class: 'wa-line', 'data-test': 'walk-longest' }, `No wait of ${MIN_LONGEST_WAIT_SEC} seconds or more on this walk.`),
-      h('p', { class: 'wa-line wa-waste', 'data-test': 'walk-waste' }, NOT_ALWAYS_WASTE),
-      h('p', { class: 'wa-line', 'data-test': 'walk-handoffs' }, `${a.handoffs} ${a.handoffs === 1 ? 'handoff' : 'handoffs'} between roles`),
-      h('p', { class: 'meta wa-note' }, 'One walk, one observation. Ask what the wait was for, and walk it again before changing anything.')) : null;
+      h('p', { class: 'wa-line', 'data-test': 'walk-handoffs' }, `${a.handoffs} ${a.handoffs === 1 ? 'handover' : 'handovers'} between roles`),
+      readThis([
+        h('li', { class: 'wa-note' }, 'One walk, one observation. Ask what the wait was for, and walk it again before changing anything.'),
+        h('li', { 'data-test': 'walk-waste' }, NOT_ALWAYS_WASTE),
+        walkNote(true),
+        'Times are in whole minutes, from the taps on this phone. Waiting is the time between one step ending and the next starting; hands-on is the time a step was under way.',
+        `Waiting share: waiting divided by ${extra.notSeen ? 'the time seen (start to finish less the time not seen)' : 'start to finish'}, as a whole percent. Local definition.`,
+        WALK_BASIS.longestWait,
+        extra.planned ? `${WALK_BASIS.planned}` : null,
+        extra.notSeen ? `${WALK_BASIS.notSeen} “At least” is said only of a wait the walk was paused during.` : null,
+        `A handover is a step done by a different role from the step before. Local definition.`,
+        stepFacts(m.today.steps),
+      ])) : null;
     const stats = measuredView ? h('div', { class: 'pm-stats is-answer', 'data-test': 'pm-stats' }, answer) : h('div', { class: 'pm-stats', 'data-test': 'pm-stats' },
       stat(T(a.elapsed), measuredView ? 'start to finish on this walk' : 'start to finish', T(t.elapsed), a.elapsed < t.elapsed),
       stat(T(a.work), 'hands-on work', T(t.work), false),
       walked ? stat(waitShare(a) == null ? '–' : `${waitShare(a)}%`, measuredView ? 'of this walk is waiting' : 'of the time is waiting', waitShare(t) == null ? null : `${waitShare(t)}%`, waitShare(a) < waitShare(t))
         : stat(a.workShare == null ? '–' : `${a.workShare}%`, 'of the time is work', t.workShare == null ? null : `${t.workShare}%`, a.elapsed < t.elapsed),
-      stat(String(a.handoffs), 'handoffs between roles', String(t.handoffs), a.handoffs < t.handoffs));
+      stat(String(a.handoffs), 'handovers between roles', String(t.handoffs), a.handoffs < t.handoffs));
 
     // Time bars: one for Today; once Proposed differs, both stacked, on the same scale.
     // Waiting is never shown by colour alone (issue #124): it is hatched, and the legend names each
@@ -283,8 +321,7 @@ export async function render(el, ctx) {
       rg.walks.map((w) => walkBar(w, Math.max(...rg.walks.map((y) => y.elapsedSec)) || 1)),
       h('p', { class: 'legend meta', 'data-test': 'bar-legend' },
         key('w', 'Waiting'), rg.walks.some((w) => w.plannedWaitSec) ? key('p', 'Planned or required wait') : null, key('k', 'Hands-on work'), rg.walks.some((w) => w.notSeenSec) ? key('n', 'Not seen') : null),
-      h('p', { class: 'meta notice walk-note', 'data-test': 'walk-note' },
-        `Same step list, one bar per walk. This is what happened on ${rg.count} visits, not how the process usually runs. Time after the last step is not recorded.${rg.walks.some((w) => w.guidanceSeen === false) ? ' The before-you-walk points were not confirmed for every walk.' : ''}`)) : null;
+      null) : null;
     const bars = walkBars || h('section', { class: 'card bars', 'aria-labelledby': 'bars-h' },
       h('h3', { id: 'bars-h' }, walked ? 'Where the time went' : 'Where the time goes'),
       bar(multi ? 'Walk 1' : NOW, statsOf(m.today), scale, 'bar-today', xToday),
@@ -294,8 +331,7 @@ export async function render(el, ctx) {
         extra.planned ? key('p', `Planned or required wait ${T(extra.planned)}`) : null,
         key('k', `Hands-on work ${T(a.work)}`),
         extra.notSeen ? key('n', `Not seen ${T(extra.notSeen)}`) : null),
-      walked ? h('p', { class: 'meta notice walk-note', 'data-test': 'walk-note' },
-        `Times from ${multi ? 'walk 1' : 'one walk'} on ${day(m.walk.startedAt)}, started ${clock(m.walk.startedAt)}. This is what happened once, not how the process usually runs. Time after the last step is not recorded.${byHand ? ' Some times or steps were changed by hand after the walk.' : ''}${m.walk.guidanceSeen === false ? ' The before-you-walk points were not confirmed for this walk.' : ''}`) : null,
+      walked && !measuredView ? walkNote(false) : null,
       m.changed ? h('p', { class: 'meta', 'data-test': 'whatif-note' }, 'A what-if from your map, not a prediction. Test it and measure.',
         ' ', h('button', { type: 'button', class: 'linkish', 'data-cmd': 'ospeli_maps_reset_proposed', onclick: async () => { if (await run('ospeli_maps_reset_proposed', { mapId: m.id })) { ctx.toast(`Proposed is a copy of ${NOW} again.`); drawMap(); } } }, 'Reset Proposed')) : null);
 
@@ -306,7 +342,7 @@ export async function render(el, ctx) {
         : [
           h('p', { class: 'meta' }, `${rangeView ? 'The guide uses simple rules you can check, on this device. It reads the range across the walks, asks questions and offers no change to try.' : walked ? 'The guide uses simple rules you can check, on this device. One walk is one observation, so it asks questions and offers no change to try.' : 'The guide uses simple rules you can check, on this device. Suggestions only change the Proposed version.'}${sugg.hidden ? ` ${sugg.hidden} hidden.` : ''}`),
           suggList(sugg.suggestions.map((sg) => h('li', { class: `sg ${sg.kind}`, 'data-suggestion': sg.id },
-            h('b', {}, sg.title), h('p', {}, sg.text), h('p', { class: 'why' }, `Why: ${sg.why}`), sg.basis ? h('p', { class: 'why basis', 'data-test': 'sg-basis' }, sg.basis) : null,
+            h('b', {}, walked ? guideTitle(sg, steps, rangeView ? rg : null) : sg.title), h('p', {}, sg.text), h('p', { class: 'why' }, `Why: ${sg.why}`), sg.basis ? h('p', { class: 'why basis', 'data-test': 'sg-basis' }, sg.basis) : null,
             h('div', { class: 'sg-actions' },
               sg.tryable ? h('button', { type: 'button', class: 'btn btn-small', 'data-cmd': 'ospeli_maps_try_suggestion', disabled: sg.tried && isP ? true : null,
                 onclick: async () => {
@@ -331,7 +367,7 @@ export async function render(el, ctx) {
         h('h3', { id: 'steps-h' }, `Steps (${steps.length})`),
         h('div', { class: 'chips', role: 'group', 'aria-label': 'View' },
           seg('view-list', 'List', ui.view === 'list', () => { ui.view = 'list'; drawMap(); }),
-          seg('view-map', 'Swimlanes', ui.view === 'map', () => { ui.view = 'map'; drawMap(); }))),
+          seg('view-map', 'By role', ui.view === 'map', () => { ui.view = 'map'; drawMap(); }))),
       !steps.length ? h('p', { class: 'card empty', 'data-test': 'steps-empty' }, 'Add the first step: what happens, and who does it. Rough times are fine; the guide points out missing ones.')
         : ui.view === 'map' ? lanes(steps, a, colour, m) : stepList(steps, a, colour, m));
 
@@ -370,17 +406,18 @@ export async function render(el, ctx) {
   // How a step's wait and hands-on time read: one time, or the range across the walks with the
   // number of walks it rests on when that is not all of them.
   const stepRange = (s) => (rangeOf ? rangeOf.get(s.id) || null : null);
-  const waitOf = (s) => { const r = stepRange(s); return r ? `${fmtRange(r.wait, { count: false })}${r.wait.n && r.wait.n < r.of ? ` (${r.wait.n} of ${r.of} walks)` : ''}` : T(s.wait); };
-  const workOf = (s) => { const r = stepRange(s); return r ? fmtRange(r.work, { count: false }) : T(s.work); };
+  // The wait is counted from the walks where the step happened ("4 min (on 1 of 2 walks)").
+  const waitOf = (s) => { const r = stepRange(s); return r ? rangeWords(fromCoreSpan(r.wait), { of: r.happened }) : T(s.wait); };
+  const workOf = (s) => { const r = stepRange(s); return r ? rangeWords(fromCoreSpan(r.work)) : T(s.work); };
   const walksNote = (s) => { const r = stepRange(s); if (!r) return ''; return `${r.happened < r.of ? ` · on ${r.happened} of ${r.of} walks` : ''}${r.again ? ` · done again on ${r.again} ${r.again === 1 ? 'walk' : 'walks'}` : ''}`; };
   // The wait before a step. On a walked map it opens one choice: mark the wait as planned or
   // required (ospeli_maps_step_update with plannedWait). Two taps; the rule is shown with the choice.
   function waitLine(s, hot, m) {
-    const seen = s.waitNotSeenSec ? ` or more · ${T(s.waitNotSeenSec)} more not seen` : '';
+    const seen = s.waitNotSeenSec ? ` · ${T(s.waitNotSeenSec)} more not seen` : '';
     const r = stepRange(s);
     if (!r && !(s.wait || s.par || s.waitNotSeenSec || s.plannedWait)) return null;
     const text = r ? `Waits ${waitOf(s)}${s.plannedWait ? ' · planned or required' : ''}${hot ? ' · longest wait' : ''}` : s.par ? `Starts alongside the step before${s.wait ? `, after ${T(s.wait)}` : ''}`
-      : `Waits ${T(s.wait)}${seen}${s.plannedWait ? ' · planned or required' : ''}${hot ? (T === fmtSeconds ? ' · the longest wait on this walk' : ' · the biggest wait') : ''}`;
+      : `Waits ${walkedNow ? waitAmount(s) : T(s.wait)}${seen}${s.plannedWait ? ' · planned or required' : ''}${hot ? (walkedNow ? ' · the longest wait on this walk' : ' · the biggest wait') : ''}`;
     const cls = `wait${hot ? ' hot' : ''}${s.plannedWait ? ' planned' : ''}`;
     if (!walkedNow || s.par) return h('div', { class: cls }, text);
     const open = ui.waitOpen === s.id;
@@ -405,7 +442,7 @@ export async function render(el, ctx) {
         h('div', { class: `row${changedNote(s, m) ? ' changed' : ''}` },
           h('span', { class: 'num' }, String(i + 1)),
           h('div', { class: 'what' }, h('b', {}, s.name),
-            h('span', {}, h('span', { class: 'role-dot', style: `background:${colour(s.role)}` }), `${s.role} · ${T === fmtSeconds ? 'hands-on' : 'work'} ${workOf(s)}${walksNote(s)}${s.msg ? ' · passes on information' : ''}${rangeOf ? '' : s.interrupted ? ' · interrupted' : ''}${s.workNotSeenSec ? ` · ${T(s.workNotSeenSec)} more not seen` : ''}${s.edited ? ' · time changed by hand' : ''}${T === fmtSeconds && s.waitSec == null && s.workSec == null && !s.edited ? ' · added by hand' : ''}`)),
+            h('span', {}, h('span', { class: 'role-dot', style: `background:${colour(s.role)}` }), `${s.role} · ${walkedNow ? 'hands-on' : 'work'} ${workOf(s)}${walksNote(s)}${s.msg ? ' · passes on information' : ''}${rangeOf ? '' : s.interrupted ? ' · interrupted' : s.interruptions ? ` · interrupted ${s.interruptions === 1 ? 'once' : `${s.interruptions} times`}, then carried on` : ''}${s.workNotSeenSec ? ` · ${T(s.workNotSeenSec)} more not seen` : ''}${s.edited ? ' · time changed by hand' : ''}${walkedNow && s.waitSec == null && s.workSec == null && !s.edited ? ' · added by hand' : ''}`)),
           h('div', { class: 'ctl' },
             h('button', { type: 'button', class: 'icon', 'data-cmd': 'ospeli_maps_step_move', 'aria-label': `Move step ${i + 1} up`, disabled: i === 0 ? true : null, onclick: mv('up') }, '↑'),
             h('button', { type: 'button', class: 'icon', 'data-cmd': 'ospeli_maps_step_move', 'aria-label': `Move step ${i + 1} down`, disabled: i === steps.length - 1 ? true : null, onclick: mv('down') }, '↓'),
@@ -487,6 +524,12 @@ export async function render(el, ctx) {
     return form;
   }
 
+  // A printed map keeps every caveat and definition: "How to read this" opens for the print, then closes again.
+  let printOpened = [];
+  const beforePrint = () => { printOpened = [...el.querySelectorAll('details.read-this:not([open])')]; printOpened.forEach((d) => { d.open = true; }); };
+  const afterPrint = () => { printOpened.forEach((d) => { d.open = false; }); printOpened = []; };
+  window.addEventListener('beforeprint', beforePrint); window.addEventListener('afterprint', afterPrint);
+
   await Promise.all([draw(), props.load()]);
   let t = null;
   const off = core.onChange(({ kind, detail }) => {
@@ -497,5 +540,5 @@ export async function render(el, ctx) {
     clearTimeout(t);
     t = setTimeout(() => { if (!ui.busy) draw(); }, 150);
   });
-  return () => { off(); clearTimeout(t); if (walkOff) walkOff(); };
+  return () => { off(); clearTimeout(t); if (walkOff) walkOff(); window.removeEventListener('beforeprint', beforePrint); window.removeEventListener('afterprint', afterPrint); };
 }

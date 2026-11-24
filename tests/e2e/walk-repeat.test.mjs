@@ -103,10 +103,9 @@ test('first-time user at 360 px: walk the same three steps again in 10 taps, not
   // walk's day and hour, and no percentage anywhere in the answer.
   const answer = (await page.locator('[data-test="walk-answer"]').innerText()).replace(/\s+/g, ' ');
   assert.equal((await text(page, '[data-test="walk-badge"]')).trim().toLowerCase(), '2 walks');
-  assert.match(answer, /^53 min \(the same on both walks\) start to finish/, 'the range comes first');
-  assert.match(answer, /2 of 3 walks: shortest to longest\. These are examples, not an average\. Walk the third on another day or at another hour\./);
+  assert.match(answer, /^Longest wait: 20 to 25 min before “Seen by a doctor”, on both walks 53 min \(the same on both walks\) start to finish/, 'the longest wait comes first, then the range');
+  assert.match(await text(page, '[data-test="read-this"]'), /2 of 3 walks: shortest to longest\. These are examples, not an average\. Walk the third on another day or at another hour\./, 'the count and what it means, in "How to read this"');
   assert.match(answer, /Waiting 36 to 37 min · hands-on 16 to 17 min/);
-  assert.match(answer, /Longest wait: before “Seen by a doctor” on both walks/);
   assert.equal(await page.locator('[data-test="walk-list"]').count(), 0, 'no walk is left out, so none is listed in the answer: each walk\'s day and hour is on its bar');
   assert.doesNotMatch(answer, /%/, 'no percentage on a map with more than one walk');
   assert.equal((await text(page, '[data-test="walk-again"]')).trim(), 'Walk the next patient');
@@ -119,7 +118,8 @@ test('first-time user at 360 px: walk the same three steps again in 10 taps, not
   await page.setViewportSize({ width: 360, height: 780 });
   // One bar per walk, and each step with its own range.
   assert.equal(await page.locator('[data-test="bar-walk"]').count(), 2);
-  assert.match(await text(page, '[data-test="walk-bars"]'), /Where the time went.*Walk 1 · Tue,? 17 Nov, 09:00 · 53 min.*Walk 2 · Thu,? 19 Nov, 14:30 · 53 min.*Same step list, one bar per walk/s);
+  assert.match(await text(page, '[data-test="walk-bars"]'), /Where the time went.*Walk 1 · Tue,? 17 Nov, 09:00 · 53 min.*Walk 2 · Thu,? 19 Nov, 14:30 · 53 min/s);
+  assert.match(await text(page, '[data-test="read-this"] [data-test="walk-note"]'), /^Same step list, one bar per walk/, 'the note on the bars is in "How to read this"');
   const steps = (await page.locator('[data-test="step-list"]').innerText()).replace(/\s+/g, ' ');
   assert.match(steps, /Waits 1 to 2 min.*Reception · hands-on 3 to 4 min.*Waits 10 to 15 min.*Nurse · hands-on 4 to 5 min.*Waits 20 to 25 min · longest wait.*Doctor · hands-on 8 to 9 min/);
   // The guide says how the walks are compared and what that rests on; people decide.

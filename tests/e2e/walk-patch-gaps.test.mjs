@@ -109,7 +109,7 @@ test('the map from a walk opens with the answer: how long, how much was waiting,
   const answer = (await page.textContent('[data-test="walk-answer"]')).replace(/\s+/g, ' ');
   assert.match(answer, /56 min start to finish on this walk/);
   assert.match(answer, /40 min waiting \(71% of this walk\) · 16 min hands-on/);
-  assert.match(answer, /2 handoffs between roles/);
+  assert.match(answer, /2 handovers between roles/);
   assert.match(answer, /Longest waits, tied: 18 min before “Seen by a nurse” and “Seen by a doctor”/);
   assert.match(answer, /One walk, one observation/);
   // It is the first thing in the map's main column, and it starts on the first screen.

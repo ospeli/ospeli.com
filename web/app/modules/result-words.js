@@ -67,11 +67,14 @@ export function rangeWords(r, { of = null } = {}) {
   const count = of && r.n < of ? ` (${walksWords(r.n, of)})` : '';
   let partly = !!r.partly;
   const end = (sec, atLeast) => { if (atLeast && sec < 60) { partly = true; return minWords(sec); } return atLeast ? atLeastWords(sec) : minWords(sec); };
-  if (r.n === 1) { const t = end(r.max, r.maxAtLeast); return `${t}${count}${partly ? ' · partly not seen' : ''}`; }
+  if (r.n === 1) return `${r.maxAtLeast ? atLeastWords(r.max) : minWords(r.max)}${count}${partly ? ' · partly not seen' : ''}`;
   const a = end(r.min, false); const b = end(r.max, r.maxAtLeast);
   let text;
   if (a === b && sameWithin(r.min, r.max) && !partly) text = `${a} (the same ${walksWords(r.n, of || r.n)})`;
-  else if (a === b || minWords(r.min) === minWords(r.max)) { text = `about ${minWords(r.max)} ${walksWords(r.n, of || r.n)}`; if (r.maxAtLeast) partly = true; }
+  else if (a === b || minWords(r.min) === minWords(r.max)) {
+    const t = minWords(r.max);
+    text = `${t === 'under 1 min' ? t : `about ${t}`} ${walksWords(r.n, of || r.n)}`; if (r.maxAtLeast) partly = true;
+  }
   else {
     // "41 to 58 min" says the unit once; "54 min to 1 h 8 min" keeps both.
     const short = /^\d+ min$/.test(a) && /^(at least )?\d+ min$/.test(b);
@@ -134,4 +137,30 @@ export function totalSpan(rg, key) {
   const full = rg.walks.filter((w) => w.complete);
   const pick = { elapsed: (w) => [w.elapsedSec, false], wait: (w) => [w.waitSec, w.waitNotSeenSec > 0], work: (w) => [w.workSec, w.workNotSeenSec > 0] }[key];
   return spanOf(full.map(pick));
+}
+
+// The guide's titles on a walked map, in the same whole minutes as the result. The guide's rules
+// and their reasons are the core's (core/walk.js suggestWalk, suggestWalks); only the times in a
+// title are said again here, from the same steps. steps: the map's steps in seconds.
+export function guideTitle(sg, steps, rg = null) {
+  if (sg.id === 'walks-longest' && rg) return longestTitle(rg) || sg.title;
+  if (rg) return sg.title;
+  if (sg.id.startsWith('walk-wait-')) {
+    const top = steps.filter((x) => !x.plannedWait);
+    const max = Math.max(0, ...top.map((x) => x.wait || 0));
+    const tied = top.filter((x) => x.wait === max);
+    const w = longestOneWalk(tied);
+    if (!w) return sg.title;
+    return tied.length === 1 ? `Longest wait on this walk: ${w.text}` : `Longest wait on this walk, tied: ${minWords(max)} each, ${tied.map((x) => waitPlace(x)).join(' and ')}${tied.some((x) => x.waitNotSeenSec > 0) ? ' · partly not seen' : ''}`;
+  }
+  if (sg.id === 'walk-planned') {
+    const p = steps.filter((x) => x.plannedWait);
+    return `${p.length} ${p.length === 1 ? 'wait is' : 'waits are'} marked planned or required: ${minWords(p.reduce((n, x) => n + (x.wait || 0), 0))}`;
+  }
+  if (sg.id === 'walk-not-seen') return `${minWords(steps.reduce((n, x) => n + (x.waitNotSeenSec || 0) + (x.workNotSeenSec || 0), 0))} of this walk was not seen`;
+  if (sg.id === 'walk-interrupted') {
+    const stops = steps.reduce((n, x) => n + (x.interruptions || 0), 0); const stood = steps.reduce((n, x) => n + (x.interruptedWaitSec || 0), 0);
+    return `${stops} ${stops === 1 ? 'interruption' : 'interruptions'} on this walk${stood ? `: ${minWords(stood)} stood still` : ''}`;
+  }
+  return sg.title;
 }

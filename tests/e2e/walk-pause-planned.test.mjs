@@ -76,10 +76,11 @@ test('Pause at 360 px: one tap out, one tap back, the paused time is "not seen" 
   const answer = (await page.textContent('[data-test="walk-answer"]')).replace(/\s+/g, ' ');
   assert.match(answer, /5 min( \d s)? not seen \(walk paused\): not counted as waiting or hands-on\./);
   assert.match(answer, /% of the time seen on this walk\)/);
-  assert.match(answer, /Longest wait: 6 min 4\d s before “Seen by a doctor”/, 'the wait that was partly not seen is not the one named');
+  assert.match(answer, /Longest wait: 7 min before “Seen by a doctor”/, 'the wait that was partly not seen is not the one named');
+  assert.match(await page.getAttribute('[data-test="walk-longest"]', 'data-sec'), /^4[0-4]\d$/, 'the exact seconds stay on the headline (6 min 4x s)');
   assert.match(answer, /Waiting is not always waste\. Some waits are planned or needed\./);
   const list = (await page.textContent('[data-test="step-list"]')).replace(/\s+/g, ' ');
-  assert.match(list, /Waits 2 min 3\d s or more · 5 min( \d s)? more not seen/);
+  assert.match(list, /Waits at least 2 min · 5 min more not seen/);
   // The bar: four kinds would be three here, each named in words with its time.
   const legend = (await page.textContent('[data-test="bar-legend"]')).replace(/\s+/g, ' ');
   assert.match(legend, /Waiting \d+ min.*Hands-on work 6 min.*Not seen 5 min/);
@@ -189,7 +190,7 @@ test('the longest wait was partly not seen: it is named as "at least" its seen p
   await page.waitForSelector('[data-test="walk-answer"]');
   assert.match((await page.textContent('[data-test="walk-longest"]')).replace(/\s+/g, ' '), /^Longest wait: at least 11 min( \d s)? before “Seen by a doctor” \(5 min( \d s)? more of it not seen\)$/);
   assert.equal(await page.locator('[data-test="step-list"] .wait.hot').count(), 1);
-  assert.match((await page.textContent('[data-step$="-s2"] .wait')).replace(/\s+/g, ' '), /Waits 11 min( \d s)? or more · 5 min( \d s)? more not seen · the longest wait on this walk/);
+  assert.match((await page.textContent('[data-step$="-s2"] .wait')).replace(/\s+/g, ' '), /Waits at least 11 min · 5 min more not seen · the longest wait on this walk/);
   assert.deepEqual(errors, []);
   await context.close();
 });
