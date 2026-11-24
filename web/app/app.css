@@ -148,7 +148,7 @@ html { scroll-padding-bottom: calc(var(--dock) + var(--ribbon) + 8px); }
    striped mango connector with the coral forward arrow, and its minutes in words. */
 .flow { margin: 0; }
 .flow-strip { display: grid; grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr) 16px minmax(0, 1fr) 16px minmax(0, 1fr); align-items: stretch; }
-.flow-tile { display: grid; align-content: center; justify-items: center; gap: 0; min-height: 58px; min-width: 0; padding: 4px; border: 1.5px solid var(--line-strong); border-radius: 14px;
+.flow-tile { display: grid; align-content: center; justify-items: center; gap: 0; min-height: 52px; min-width: 0; padding: 4px; border: 1.5px solid var(--line-strong); border-radius: 14px;
   background: var(--surface); color: var(--navy); font: inherit; text-decoration: none; text-align: center; cursor: pointer; }
 .flow-tile:hover { background: var(--wash); }
 .flow-tile[aria-expanded="true"] { border-color: var(--navy); border-width: 2.5px; }
@@ -157,8 +157,8 @@ html { scroll-padding-bottom: calc(var(--dock) + var(--ribbon) + 8px); }
 .flow-tile.is-none .flow-n { color: var(--ink-soft); }
 .flow-conn { align-self: center; height: 4px; margin: 0 2px; border-radius: 2px; background: var(--line-strong); position: relative; }
 .flow-conn.is-wait { height: 12px; margin: 0; background: repeating-linear-gradient(135deg, var(--mango) 0 4px, #F8CB70 4px 8px); color: var(--coral); font-weight: 800; font-size: 1.4rem; line-height: 0; display: flex; align-items: center; justify-content: flex-end; }
-.flow-key { margin: 6px 0 0; font-size: .8125rem; line-height: 1.35; color: var(--ink-soft); }
-.flow-wait { display: flex; align-items: center; gap: 6px; margin: 8px 0 0; line-height: 1.3; font-size: .9375rem; font-weight: 700; }
+.flow-key { margin: 6px 0 0; font-size: .9375rem; line-height: 1.35; color: var(--ink-soft); }
+.flow-wait { display: flex; align-items: center; gap: 6px; margin: 6px 0 0; line-height: 1.3; font-size: .9375rem; font-weight: 700; }
 .flow-swatch { flex: none; width: 22px; height: 10px; border-radius: 3px; background: repeating-linear-gradient(135deg, var(--mango) 0 4px, #F8CB70 4px 8px); }
 .flow-arrow { flex: none; color: var(--coral); font-weight: 800; }
 .flow-pick { margin: 8px 0 0; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
@@ -168,9 +168,9 @@ html { scroll-padding-bottom: calc(var(--dock) + var(--ribbon) + 8px); }
 .flow-pick a { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 14px; border: 1.5px solid var(--line-strong); border-radius: 999px; text-decoration: none; color: var(--navy); }
 .flow-caption { font-style: italic; }
 /* Needs you, in flow order: each card says where on the flow and which page, then its status in words. */
-.section.needs { margin-top: 16px; }
+.section.needs { margin-top: 12px; }
 .needs > h2 { margin-bottom: 8px; }
-.needs-where { display: block; font-size: .8125rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.needs-where { display: block; font-size: .9375rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
 .decision-list li > .needs-where { margin: 0 0 2px 2px; }
 .needs-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
 .needs-card { display: grid; gap: 6px; text-decoration: none; color: var(--navy); min-height: 44px; }

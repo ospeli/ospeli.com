@@ -54,13 +54,15 @@ test('every department has a strip of four stages, numbers only where the data h
     await page.evaluate(() => { location.hash = '#/home'; });
     const { chooseDepartment } = await import('./helpers.mjs');
     await chooseDepartment(page, d.id);
-    await page.waitForSelector('[data-test="now-flow"]');
+    // The page is drawn again for the department: wait for its own stages, then check them.
+    await page.waitForFunction((want) => JSON.stringify([...document.querySelectorAll('.flow-tile .flow-name')].map((e) => e.textContent)) === want, JSON.stringify(d.stages.map((s) => s.name)), { timeout: 10000 }).catch(() => {});
+    assert.equal(await page.textContent('#main h1'), d.name, `${d.id}: Now is drawn for the department`);
     const names = await page.locator('.flow-tile .flow-name').allTextContents();
     assert.deepEqual(names, d.stages.map((s) => s.name), d.id);
     const bars = await page.locator('[data-test="flow-wait-bar"]').count();
     const line = await page.locator('[data-test="flow-wait"]').count();
     assert.ok(bars <= 1 && bars === line, `${d.id}: one mango bar with its words, or none`);
-    if (line) assert.match(await page.textContent('[data-test="flow-wait"]'), /^→Longest wait now: (\d+ min|\d+ h( \d+)?|under 1 min) before .+ \(.+\)$/);
+    if (line) assert.match(await page.textContent('[data-test="flow-wait"]'), /^→Longest wait now: (\d+ min|\d+ h( \d+)?|under 1 min) before .+$/);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${d.id}: no sideways scroll`);
     assert.equal(await page.locator('#kpi-h').count(), ['wards', 'emergency', 'whole-hospital'].includes(d.id) ? 1 : 0, `${d.id}: Key numbers`);
   }

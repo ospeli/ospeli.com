@@ -200,9 +200,10 @@ function flowStrip(dept, flow) {
     h('h2', { id: 'flow-h', class: 'sr-only' }, `${dept.name} flow now`),
     h('div', { class: 'flow-strip', 'data-test': 'flow-strip' }, tiles),
     w ? h('p', { class: 'flow-wait', 'data-test': 'flow-wait' }, h('span', { class: 'flow-swatch', 'aria-hidden': 'true' }), h('span', { class: 'flow-arrow', 'aria-hidden': 'true' }, '→'),
-      `Longest wait now: ${fmtWholeMin(w.minutes * 60)} before ${between[1]} (${w.words})`) : null,
+      h('span', { class: 'flow-wait-text', title: w.words }, `Longest wait now: ${fmtWholeMin(w.minutes * 60)} before ${between[1]}`)) : null,
     h('p', { class: 'flow-key', 'data-test': 'flow-key' },
-      counted.map((s) => `${s.name} ${flow.counts[s.id].n} ${flow.counts[s.id].words}`).join(' · '),
+      // Left to right, as the tiles above: the number and what it counts, in words.
+      counted.map((s) => `${flow.counts[s.id].n} ${flow.counts[s.id].words}`).join(' · '),
       none.length ? `${counted.length ? ' · ' : ''}${none.map((s) => s.name).join(', ')}: not counted yet` : '',
       ' · ', h('span', { class: 'flow-caption' }, 'Example setting, a site can edit these stages.')),
     pick,
