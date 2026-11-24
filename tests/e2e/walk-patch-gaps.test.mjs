@@ -80,7 +80,7 @@ test('#102: when the phone clock moves back mid-walk, the walk screen says its t
   await page.locator('[data-test="walk-finish"]').click();
   await page.locator('[data-test="walk-finish-yes"]').click();
   await page.waitForSelector('[data-test="walk-answer"]');
-  assert.match(await page.textContent('[data-test="walk-clock"]'), /clock changed during this walk\. The times on this map may be wrong\. Walk it again to get times you can use\./);
+  assert.match(await page.textContent('[data-test="walk-clock"]'), /clock changed during this walk\. The times on this map may be wrong\. Walk the next patient to get times you can use\./);
   assert.equal(await page.locator('[data-test="walk-longest"]').count(), 0);
   assert.equal(await page.locator('[data-test="step-list"] .wait.hot').count(), 0);
   assert.match(await page.textContent('[data-test="guide"]'), /The phone's clock changed during this walk/);

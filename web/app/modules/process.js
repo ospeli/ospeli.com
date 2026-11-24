@@ -261,7 +261,7 @@ export async function render(el, ctx) {
     }
     const lw1 = measuredView && !rangeView && !moved ? longestOneWalk(top) : null;
     const answer = rangeView ? rangeAnswer : measuredView ? h('section', { class: `card walk-answer${moved ? ' is-warn' : ''}`, 'data-test': 'walk-answer', 'aria-label': 'What this walk showed' },
-      moved ? h('p', { class: 'walk-clock', role: 'alert', 'data-test': 'walk-clock' }, h('b', {}, 'The phone\'s clock changed during this walk.'), ' The times on this map may be wrong. Walk it again to get times you can use.') : null,
+      moved ? h('p', { class: 'walk-clock', role: 'alert', 'data-test': 'walk-clock' }, h('b', {}, 'The phone\'s clock changed during this walk.'), ' The times on this map may be wrong. Walk the next patient to get times you can use.') : null,
       moved ? null : headline(lw1, NO_LONG_WAIT(false), top[0]?.wait),
       h('p', { class: 'wa-big', 'data-sec': String(a.elapsed + extra.notSeen) }, h('b', {}, T(a.elapsed + extra.notSeen)), moved ? ' (may be wrong) start to finish on this walk' : ' start to finish on this walk'),
       h('p', { class: 'wa-line' }, h('b', {}, `${T(a.wait)} waiting`), waitShare(a) == null ? '' : ` (${waitShare(a)}% of ${extra.notSeen ? 'the time seen on this walk' : 'this walk'})`, ` · ${T(a.work)} hands-on`),
@@ -270,7 +270,7 @@ export async function render(el, ctx) {
       extra.notSeen ? h('p', { class: 'wa-line', 'data-test': 'walk-not-seen' }, `${T(extra.notSeen)} not seen (walk paused): not counted as waiting or hands-on.`) : null,
       h('p', { class: 'wa-line', 'data-test': 'walk-handoffs' }, `${a.handoffs} ${a.handoffs === 1 ? 'handover' : 'handovers'} between roles`),
       readThis([
-        h('li', { class: 'wa-note' }, 'One walk, one observation. Ask what the wait was for, and walk it again before changing anything.'),
+        h('li', { class: 'wa-note' }, 'One walk, one observation. Ask what the wait was for, and walk the next patient before changing anything.'),
         h('li', { 'data-test': 'walk-waste' }, NOT_ALWAYS_WASTE),
         walkNote(true),
         'Times are in whole minutes, from the taps on this phone. Waiting is the time between one step ending and the next starting; hands-on is the time a step was under way.',
