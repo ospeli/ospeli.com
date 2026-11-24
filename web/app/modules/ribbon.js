@@ -57,12 +57,14 @@ export function installRibbon(ctx, { toast }) {
   const step = h('span', { class: 'wr-step', 'data-test': 'ribbon-step' });
   const words = h('span', { class: 'wr-words', 'data-test': 'ribbon-words' });
   const clock = h('span', { class: 'wr-clock', 'data-test': 'ribbon-clock', 'aria-hidden': 'true' });
+  // The title line runs the whole width; the state and clock sit beside the button, as the link to the walk.
+  const head = h('span', { class: 'wr-head', 'aria-hidden': 'true' }, title, step);
   const open = h('a', { class: 'wr-open', href: WALK_HREF, 'data-test': 'ribbon-open' },
-    segs, h('span', { class: 'wr-line' }, title, step), h('span', { class: 'wr-line wr-now' }, words, h('span', { class: 'wr-dot', 'aria-hidden': 'true' }, ' · '), clock));
+    h('span', { class: 'wr-now' }, words, h('span', { class: 'wr-dot', 'aria-hidden': 'true' }, ' · '), clock));
   const act = h('button', { type: 'button', class: 'wr-act', 'data-test': 'ribbon-act' }, 'Next tap');
   // Spoken when the state changes, never for the ticking clock.
   const said = h('span', { class: 'sr-only', role: 'status', 'aria-live': 'polite', 'data-test': 'ribbon-status' });
-  const band = h('div', { class: 'walk-ribbon', id: 'walk-ribbon', role: 'region', 'aria-label': 'Walk running', 'data-test': 'walk-ribbon', hidden: true }, open, act, said);
+  const band = h('div', { class: 'walk-ribbon', id: 'walk-ribbon', role: 'region', 'aria-label': 'Walk running', 'data-test': 'walk-ribbon', hidden: true }, segs, head, open, act, said);
   // A tap anywhere on the band but the button opens the walk.
   band.addEventListener('click', (e) => { if (!e.target.closest('.wr-act, .wr-open')) location.hash = WALK_HREF; });
   document.querySelector('#dock').before(band);

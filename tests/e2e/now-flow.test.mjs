@@ -60,7 +60,7 @@ test('every department has a strip of four stages, numbers only where the data h
     const bars = await page.locator('[data-test="flow-wait-bar"]').count();
     const line = await page.locator('[data-test="flow-wait"]').count();
     assert.ok(bars <= 1 && bars === line, `${d.id}: one mango bar with its words, or none`);
-    if (line) assert.match(await page.textContent('[data-test="flow-wait"]'), /^→Longest wait now: (\d+ min|\d+ h( \d+)?|under 1 min), .+ to .+ \(.+\)$/);
+    if (line) assert.match(await page.textContent('[data-test="flow-wait"]'), /^→Longest wait now: (\d+ min|\d+ h( \d+)?|under 1 min) before .+ \(.+\)$/);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${d.id}: no sideways scroll`);
     assert.equal(await page.locator('#kpi-h').count(), ['wards', 'emergency', 'whole-hospital'].includes(d.id) ? 1 : 0, `${d.id}: Key numbers`);
   }

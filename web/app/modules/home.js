@@ -199,13 +199,14 @@ function flowStrip(dept, flow) {
   return h('section', { class: 'flow', 'aria-labelledby': 'flow-h', 'data-test': 'now-flow' },
     h('h2', { id: 'flow-h', class: 'sr-only' }, `${dept.name} flow now`),
     h('div', { class: 'flow-strip', 'data-test': 'flow-strip' }, tiles),
+    w ? h('p', { class: 'flow-wait', 'data-test': 'flow-wait' }, h('span', { class: 'flow-swatch', 'aria-hidden': 'true' }), h('span', { class: 'flow-arrow', 'aria-hidden': 'true' }, '→'),
+      `Longest wait now: ${fmtWholeMin(w.minutes * 60)} before ${between[1]} (${w.words})`) : null,
     h('p', { class: 'flow-key', 'data-test': 'flow-key' },
       counted.map((s) => `${s.name} ${flow.counts[s.id].n} ${flow.counts[s.id].words}`).join(' · '),
-      none.length ? `${counted.length ? ' · ' : ''}${none.map((s) => s.name).join(', ')}: not counted yet` : ''),
-    w ? h('p', { class: 'flow-wait', 'data-test': 'flow-wait' }, h('span', { class: 'flow-swatch', 'aria-hidden': 'true' }), h('span', { class: 'flow-arrow', 'aria-hidden': 'true' }, '→'),
-      `Longest wait now: ${fmtWholeMin(w.minutes * 60)}, ${between[0]} to ${between[1]} (${w.words})`) : null,
+      none.length ? `${counted.length ? ' · ' : ''}${none.map((s) => s.name).join(', ')}: not counted yet` : '',
+      ' · ', h('span', { class: 'flow-caption' }, 'Example setting, a site can edit these stages.')),
     pick,
-    h('p', { class: 'meta flow-caption' }, 'Example setting, a site can edit these stages.'));
+  );
 }
 
 export async function render(el, ctx) {
@@ -274,7 +275,7 @@ export async function render(el, ctx) {
       h('div', {},
         h('p', { class: 'eyebrow' }, 'Now'),
         h('h1', {}, dept ? dept.name : 'Choose your department'),
-        h('p', { 'data-test': 'now-role' }, `${role.name}. Every other page is under Journey; your role is under Me.`))),
+        h('p', { 'data-test': 'now-role' }, `${role.name}. Your role is under Me; every page is under Journey.`))),
     dept ? flowStrip(dept, flow) : null,
     needs,
     walks,
