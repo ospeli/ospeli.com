@@ -38,21 +38,43 @@ jobs:
       - name: End-to-end tests
         run: npm run test:e2e
 
-  deploy:
+  # The site is packed in its own job, before the publish job starts. Since 23 Nov 2026 the publish
+  # step, run in the same job a fraction of a second after the upload, was told "No artifacts named
+  # github-pages were found" on every run (ospeli/ospeli backlog note, 25 Nov; the same fault is
+  # reported at actions/deploy-pages#451). A separate job gives the upload time to be listed.
+  package:
     needs: check
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: web
+
+  deploy:
+    needs: package
+    runs-on: ubuntu-latest
     permissions:
-      contents: read
       pages: write
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url || steps.second.outputs.page_url || steps.third.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: web
+      # Only the publish step is tried again (after 30 s, then 60 s). The upload is never repeated:
+      # two "github-pages" uploads in one run make every later publish fail.
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+      - if: steps.deployment.outcome == 'failure'
+        run: sleep 30
+      - id: second
+        if: steps.deployment.outcome == 'failure'
+        uses: actions/deploy-pages@v5
+        continue-on-error: true
+      - if: steps.deployment.outcome == 'failure' && steps.second.outcome == 'failure'
+        run: sleep 60
+      - id: third
+        if: steps.deployment.outcome == 'failure' && steps.second.outcome == 'failure'
+        uses: actions/deploy-pages@v5
