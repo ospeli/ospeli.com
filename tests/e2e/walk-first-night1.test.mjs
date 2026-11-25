@@ -5,6 +5,8 @@
 //     from the before-you-walk screen and nothing typed;
 //   - a walk that had an interruption is walked again and every tap is filed under its own step.
 // The clock is the page's own, moved forward by the test.
+// Since the one-screen result (crew night 3) a walked map opens on its Result tab; the step list
+// and the guide are read on the Edit map tab (a tap after the walk, so not in the walk's count).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startApp, openPage, openMore } from './helpers.mjs';
@@ -88,6 +90,8 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     const w = (await stored(page))[0];
     assert.deepEqual(w.steps.map((s) => [s.name, s.role]), IMAGING);
     assert.equal(w.department, 'imaging');
+    await page.tap('[data-test="tab-edit"]');
+    await page.waitForSelector('[data-test="tab-edit"][aria-selected="true"]');
     assert.equal(await page.locator('[data-test="step-list"] li').count(), 6);
     assert.equal(await page.evaluate(() => document.documentElement.dataset.walkFull), undefined, 'the dock is back after the walk');
     assert.notEqual(await page.evaluate(() => getComputedStyle(document.querySelector('.dock')).display), 'none');
@@ -223,12 +227,17 @@ test('390 px: after "Step interrupted" the main button carries the same step on 
   // Start to finish is the six steps and the time the fourth stood still and went on: 6 x 180 + 300 + 180 s = 26 min
   // (the undo and the second coming back are real taps, so a second or two more).
   assert.match(await page.textContent('[data-test="pm-stats"]'), /26 min( [1-3] s)?\s*start to finish on this walk/);
-  // The guide counts the interruption and says where the longest wait was.
+  // The guide counts the interruption and says where the longest wait was (on the Edit map tab).
+  await page.tap('[data-test="tab-edit"]');
+  await page.waitForSelector('[data-test="tab-edit"][aria-selected="true"]');
   const guide = await page.textContent('[data-test="guide"]');
   assert.match(guide, /Longest wait on this walk: 6 min( [1-3] s)? at “Changed into gown” \(5 min( [1-3] s)? of it while the step was interrupted\)/);
   assert.match(guide, /1 interruption on this walk: 5 min( [1-3] s)? stood still/);
 
   // Walk 2 of the same map: the button names each list step, and each tap is filed under it.
+  // "Walk the next patient" is on the Result tab.
+  await page.tap('[data-test="tab-result"]');
+  await page.waitForSelector('[data-test="result-panel"]');
   await page.tap('[data-test="walk-again"]');
   await page.waitForSelector('[data-test="walk-before"]');
   assert.equal(await page.locator('#wk-title').count(), 0, 'a repeat walk carries its map\'s title: nothing to name');
