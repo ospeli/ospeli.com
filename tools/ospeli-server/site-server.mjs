@@ -474,6 +474,26 @@ export async function startServer({
     });
   }
 
+  // A device's change that was carried out, remembered for ten minutes so the same change sent
+  // again with the same Idempotency-Key (its first answer was lost on the way) is answered, not
+  // made twice (issue #109). In memory only: a server restart forgets it, and nothing is stored.
+  const DEVICE_REPLAY_MS = 10 * 60 * 1000;
+  const DEVICE_REPLAY_MAX = 500;
+  const deviceAnswers = new Map();
+  const deviceChange = (d, name, idem, input, carryOut) => {
+    const tag = sha(`${d.id}|${name}|${idem}|${canonical(input)}`);
+    return oneAtATime(`device|${tag}`, async () => {
+      const now = Date.parse(core.now());
+      for (const [k, v] of deviceAnswers) if (now - v.at > DEVICE_REPLAY_MS) deviceAnswers.delete(k);
+      const earlier = deviceAnswers.get(tag);
+      if (earlier) return { answer: earlier.answer, replayed: true };
+      const answer = await carryOut();
+      deviceAnswers.set(tag, { at: now, answer });
+      while (deviceAnswers.size > DEVICE_REPLAY_MAX) deviceAnswers.delete(deviceAnswers.keys().next().value);
+      return { answer, replayed: false };
+    });
+  };
+
   // Calls from a connected device: a person in the device's role, via "app".
   async function handleDevice(req, res, path, m, from) {
     const notConnected = (reason) => fail(res, 'not-connected', 'This device is not connected.', 'Ask the person who looks after Ospeli here for a code (they type: add device).', { reason }, reason === 'missing' ? {} : { 'Set-Cookie': deviceCookie('gone', 0) });
@@ -528,8 +548,14 @@ export async function startServer({
       const body = await jsonBody();
       // Who is acting comes from the cookie. A body that says anything else is refused.
       if (Object.keys(body).some((k) => k !== 'input')) throw badBody('The body may hold only "input". Who is acting comes from the connected device.');
-      const result = await runCommand(core, m[1], body.input ?? {}, asDevice());
-      return send(res, 200, { ok: true, command: commandByName(m[1])?.name || m[1], result });
+      const input = body.input ?? {};
+      const carryOut = async () => ({ ok: true, command: commandByName(m[1])?.name || m[1], result: await runCommand(core, m[1], input, asDevice()) });
+      // The app sends a key with each change and the same key when it sends that change again.
+      const idem = req.headers['idempotency-key'];
+      if (idem === undefined) return send(res, 200, await carryOut());
+      if (!IDEMPOTENCY_KEY.test(idem)) throw badBody('Idempotency-Key must be 8 to 128 letters, digits, dots, dashes, underscores or colons.');
+      const { answer, replayed } = await deviceChange(d, m[1], idem, input, carryOut);
+      return send(res, 200, answer, replayed ? { 'Idempotent-Replay': 'true' } : {});
     } catch (err) {
       if (!(err instanceof CommandError)) throw err;
       // A call turned away at the door (wrong role, no such command, input the command does not

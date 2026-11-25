@@ -236,7 +236,7 @@ async function bootOnSite() {
   const link = new SiteLink({ mirror });
   let who = await link.session();
   if (who.needsCode) {
-    await mirror.wipe(); // nothing from an earlier connection stays on a device that must ask again
+    await mirror.wipe({ all: true }); // nothing from an earlier connection stays on a device that must ask again
     document.documentElement.dataset.site = 'connect'; // one task on this screen: no menu, no role, no badge
     document.documentElement.dataset.ready = 'connect';
     who = await renderConnect(main, link);
