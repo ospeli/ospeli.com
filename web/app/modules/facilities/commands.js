@@ -87,8 +87,10 @@ async function siteInfo(core) {
   const anyPlace = new Map(all.filter((e) => ['site', 'building', 'department', 'ward'].includes(e.type)).map((e) => [e.id, e]));
   // An id that is not on this site is never answered as its own name (#138).
   const nameOf = (x) => { const e = assetById.get(x) || anyPlace.get(x); return e ? currentWords(e.name) : GONE_PLACE; };
+  // Nor is it answered as an id: an imported id-shaped sentence never reaches a reader as one (#138).
+  const idOf = (x) => (assetById.has(x) || anyPlace.has(x) ? x : null);
   const isWard = (x) => anyPlace.get(x)?.type === 'ward'; // by type, never by how the id is spelt
-  return { places, assets, assetById, offsetMinutes, nameOf, isWard, targets: scheduleTargets(SCHEDULE, { assets, places }) };
+  return { places, assets, assetById, offsetMinutes, nameOf, idOf, isWard, targets: scheduleTargets(SCHEDULE, { assets, places }) };
 }
 const synth = (core) => isSynthetic(core);
 
@@ -105,17 +107,17 @@ function checkWords(c, showNoLoad = true) {
   return parts.join(', ');
 }
 const checkOut = (c, info) => ({
-  id: c.id, kind: 'check', checkKind: c.checkKind, checkName: CHECK_KINDS[c.checkKind].name, targetId: c.targetId, targetName: info.nameOf(c.targetId),
+  id: c.id, kind: 'check', checkKind: c.checkKind, checkName: CHECK_KINDS[c.checkKind].name, targetId: info.idOf(c.targetId), targetName: info.nameOf(c.targetId),
   at: c.at, byRole: c.byRole, ...(c.result ? { result: c.result } : {}), ...(c.runMinutes ? { runMinutes: c.runMinutes } : {}),
   ...(c.levelPct != null ? { levelPct: c.levelPct } : {}), ...(c.levelBand ? { levelBand: c.levelBand } : {}), ...(c.load ? { load: c.load } : {}), words: checkWords(c),
 });
 const wasteOut = (w, info) => ({
-  id: w.id, kind: 'waste', stream: w.stream, streamName: WASTE_STREAMS[w.stream], placeId: w.placeId, placeName: info.nameOf(w.placeId), outcome: w.outcome,
+  id: w.id, kind: 'waste', stream: w.stream, streamName: WASTE_STREAMS[w.stream], placeId: info.idOf(w.placeId), placeName: info.nameOf(w.placeId), outcome: w.outcome,
   ...(w.outcome === 'collected' ? { containers: w.containers } : { reason: w.reason, reasonName: WASTE_REASONS[w.reason] }),
   at: w.at, byRole: w.byRole, backdatedMinutes: w.backdatedMinutes, words: wasteWords(w),
 });
 const outageOut = (o, info, now) => ({
-  id: o.id, kind: 'outage', utility: o.utility, utilityName: UTILITIES[o.utility], placeId: o.placeId, placeName: info.nameOf(o.placeId),
+  id: o.id, kind: 'outage', utility: o.utility, utilityName: UTILITIES[o.utility], placeId: info.idOf(o.placeId), placeName: info.nameOf(o.placeId),
   cause: o.cause, causeName: CAUSES[o.cause], planned: o.cause === 'planned-shutdown', startedAt: o.startedAt, endedAt: o.endedAt, at: o.endedAt || o.startedAt,
   open: !o.endedAt, minutes: Math.max(0, Math.round(((o.endedAt ? Date.parse(o.endedAt) : Date.parse(now)) - Date.parse(o.startedAt)) / MIN)),
   startedByRole: o.startedByRole, endedByRole: o.endedByRole, startBackdatedMinutes: o.startBackdatedMinutes, endBackdatedMinutes: o.endBackdatedMinutes,

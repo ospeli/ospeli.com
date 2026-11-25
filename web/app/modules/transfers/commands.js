@@ -64,7 +64,9 @@ async function world(core) {
   const siteOf = (id) => { let p = map.get(id); for (let i = 0; p && p.type !== 'site' && i < 8; i++) p = map.get(p.parentId); return p?.type === 'site' ? p : null; };
   // An id that is not on this site is never answered as its own name (#138).
   const name = (id, gone = 'a place no longer on this site') => (map.has(id) ? currentWords(map.get(id).name) : gone);
-  return { all, map, offsetMinutes, shifts: shifts.length ? shifts : SHIFTS, vehicles, siteOf, name,
+  // Nor is it answered as an id: an imported id-shaped sentence never reaches a reader as one (#138).
+  const idOf = (id) => (map.has(id) ? id : null);
+  return { all, map, offsetMinutes, shifts: shifts.length ? shifts : SHIFTS, vehicles, siteOf, name, idOf,
     sites: all.filter((e) => e.type === 'site'), wards: all.filter((e) => e.type === 'ward'), departments: all.filter((e) => e.type === 'department'), beds: all.filter((e) => e.type === 'bed') };
 }
 const wardOfId = (w, placeId) => (w.map.get(placeId)?.type === 'ward' ? placeId : null);
@@ -80,14 +82,14 @@ function transferOut(t, w, now, fleetMap) {
   const v = t.vehicleId ? fleetMap?.get(t.vehicleId) : null;
   return {
     id: t.id, type: t.type, typeName: TYPE_NAME[t.type], state: t.state, stateName: STATE_NAMES[t.state],
-    pickup: { id: t.fromPlace, name: w.name(t.fromPlace), siteName: site ? currentWords(site.name) : null },
-    destination: t.toSite ? { kind: 'site', id: t.toSite, name: w.name(t.toSite) } : { kind: 'outside', id: t.toOutside, name: OUTSIDE_NAME[t.toOutside] },
+    pickup: { id: w.idOf(t.fromPlace), name: w.name(t.fromPlace), siteName: site ? currentWords(site.name) : null },
+    destination: t.toSite ? { kind: 'site', id: w.idOf(t.toSite), name: w.name(t.toSite) } : { kind: 'outside', id: t.toOutside, name: OUTSIDE_NAME[t.toOutside] },
     needed: t.needed, bookedFor: t.bookedFor, neededText: t.needed === 'booked' ? `Booked for ${whenText(t.bookedFor, now, w.offsetMinutes)}` : 'As soon as possible',
     requestedAt: t.requestedAt, waitMinutes: Math.max(0, minsBetween(t.requestedAt, t.steps.departed || now)),
     minutesToBooked: t.needed === 'booked' ? minsBetween(now, t.bookedFor) : null, late,
     mobility: t.mobility, mobilityName: MOBILITY_NAME[t.mobility], escort: t.escort, escortName: ESCORT_NAME[t.escort],
     equipment: t.equipment.map((x) => ({ id: x, name: EQUIPMENT_NAME[x] })), bayMove: t.bayMove,
-    vehicleId: t.vehicleId, vehicleName: t.vehicleId ? w.name(t.vehicleId, 'a vehicle no longer on this site') : null, vehicleOffRoad: !!v?.offRoad,
+    vehicleId: t.vehicleId ? w.idOf(t.vehicleId) : null, vehicleName: t.vehicleId ? w.name(t.vehicleId, 'a vehicle no longer on this site') : null, vehicleOffRoad: !!v?.offRoad,
     nextStep: step ? { id: step.id, label: step.label } : null,
     steps: STEPS.map((s) => ({ id: s.id, label: s.label, at: t.steps[s.id] || null, clock: t.steps[s.id] ? whenText(t.steps[s.id], now, w.offsetMinutes) : null })),
     delays: t.delays.map((d) => ({ at: d.at, reason: d.reason, reasonName: REASON[d.reason].name, byRole: d.byRole })),
