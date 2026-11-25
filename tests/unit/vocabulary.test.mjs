@@ -49,7 +49,7 @@ test('every role shows its new name and keeps its id', () => {
     ['ward-nurse', 'Ward nurse'],
     ['bed-manager', 'Patient flow coordinator'],
     ['estates-tech', 'Facilities technician'],
-    ['ae-nic', 'Emergency department nurse in charge'],
+    ['ae-nic', 'Emergency department charge nurse'],
     ['ops-manager', 'Operations manager'],
     ['coo', 'COO'],
   ]);
@@ -147,6 +147,6 @@ test('issue #91: example site names are system-neutral; stored old names read wi
   assert.equal(currentWords(['Block', 'A (inpatients)'].join(' ')), 'Building A (inpatients)');
   assert.equal(currentWords(['Block B (emergency and', 'theatres)'].join(' ')), 'Building B (emergency and operating rooms)');
   assert.equal(currentWords(['Energy', 'centre'].join(' ')), 'Utilities building');
-  assert.equal(currentWords(['Bed lift,', 'Block', 'A'].join(' ')), 'Bed lift, Building A');
+  assert.equal(currentWords(['Bed lift,', 'Block', 'A'].join(' ')), 'Bed elevator, Building A');
   assert.equal(currentWords(['North health', 'centre'].join(' ')), 'North clinic');
 });

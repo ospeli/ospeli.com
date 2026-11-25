@@ -484,7 +484,7 @@ export function ruleMealsReturned(records, { toDate, see = () => true, placeName
     if (list.length < MEAL_MIN_RECORDS || t.d < MEAL_MIN_DELIVERED || (100 * t.r) / t.d <= MEAL_USUAL_PCT) continue;
     const name = MEAL_NAME[meal].toLowerCase();
     out.push({ rule: 'meals-returned', id: `meals-returned:${wardId}:${meal}`,
-      text: `Check the ${name} numbers ordered for ${placeName(wardId)} with the ward. Uneaten meals can also mean patients are not eating: tell the nurse in charge, and do not cut the order on this figure alone.`,
+      text: `Check the ${name} numbers ordered for ${placeName(wardId)} with the ward. Uneaten meals can also mean patients are not eating: tell the charge nurse, and do not cut the order on this figure alone.`,
       why: `${Math.round((100 * t.r) / t.d)}% came back uneaten over the last ${MEAL_DAYS} days (${t.r} of ${t.d} delivered, ${plural(list.length, 'day')} recorded), above the usual level of ${MEAL_USUAL_PCT}% set here (example setting, not a standard). On average ${Math.round(t.o / list.length)} ordered and ${Math.round(t.d / list.length)} delivered a day.`,
       basis: BASIS['meals-returned'], action: null });
   }

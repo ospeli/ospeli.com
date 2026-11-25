@@ -210,7 +210,7 @@ var CATS = [
   ['slip', 'Slip, trip or fall'], ['secur', 'Security or aggression'], ['it', 'IT or phones down'],
   ['hand', 'Message or handover missed'], ['waste', 'Waste or sharps disposal'], ['other', 'Something else']
 ];
-var PLACES = ['Ward 3 (medical)', 'Ward 5 (surgical)', 'Ward 7 (older people)', 'Emergency department', 'Outpatients', 'Theatres', 'Main stores', 'Kitchen', 'Main entrance', 'Car park', 'Somewhere else'];
+var PLACES = ['Ward 3 (medical)', 'Ward 5 (surgical)', 'Ward 7 (older people)', 'Emergency department', 'Outpatients', 'Theatres', 'Main stores', 'Kitchen', 'Main entrance', 'Parking area', 'Somewhere else'];
 var WHEN = [['now', 'Just now', 0], ['today', 'Earlier today', 4 * HOUR], ['yday', 'Yesterday', DAY], ['before', 'Before that', 3 * DAY]];
 var RESPONSES = ['Fix locally', 'Discuss at safety huddle', 'Learning review', 'No further action needed'];
 var OWNERS = ['Facilities manager', 'Supplies manager', 'Housekeeping supervisor', 'Security lead', 'IT service lead', 'Ward manager, Ward 3', 'Ward manager, Ward 5', 'Ward manager, Ward 7', 'Emergency department manager', 'Theatres manager', 'Quality and safety lead'];
@@ -224,7 +224,7 @@ function seed() {
   function inMonth(daysAgo) { return Math.max(now - daysAgo * DAY, ms + HOUR * 2); }
   // [days ago, category, place, what happened, near miss, anonymous, days to first review (null = new), response, theme]
   var R = [
-    [40, 'slip', 'Car park', 'Pothole near the staff entrance; someone nearly turned an ankle in the dark.', 1, 0, 9, 'Fix locally'],
+    [40, 'slip', 'Parking area', 'Pothole near the staff entrance; someone nearly turned an ankle in the dark.', 1, 0, 9, 'Fix locally'],
     [30, 'it', 'Outpatients', 'Clinic phones were down for a whole morning; messages were taken on paper.', 0, 0, 4, 'Fix locally'],
     [25, 'supply', 'Main stores', 'Wrong size oxygen tubing delivered to two wards.', 0, 1, 7, 'Discuss at safety huddle'],
     [20, 'slip', 'Main entrance', 'Entrance mat curled up and caught a wheelchair wheel.', 1, 0, 4, 'Discuss at safety huddle', 'T-1'],

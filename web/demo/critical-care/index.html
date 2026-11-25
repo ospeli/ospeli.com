@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="only light">
 <title>Critical care capacity demo · Ospeli</title>
-<meta name="description" content="Critical care beds by state, patients ready to step down waiting for ward beds, referrals, and transfers out for capacity: a phone board for the nurse in charge, a step-down list for patient flow, and live numbers for operations. Fictional example data; runs in your browser.">
+<meta name="description" content="Critical care beds by state, patients ready to step down waiting for ward beds, referrals, and transfers out for capacity: a phone board for the charge nurse, a step-down list for patient flow, and live numbers for operations. Fictional example data; runs in your browser.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Ospeli">
 <meta property="og:title" content="Critical care capacity demo · Ospeli">
-<meta property="og:description" content="Critical care beds by state, patients ready to step down waiting for ward beds, referrals, and transfers out for capacity: a phone board for the nurse in charge, a step-down list for patient flow, and live numbers for operations. Fictional example data; runs in your browser.">
+<meta property="og:description" content="Critical care beds by state, patients ready to step down waiting for ward beds, referrals, and transfers out for capacity: a phone board for the charge nurse, a step-down list for patient flow, and live numbers for operations. Fictional example data; runs in your browser.">
 <meta property="og:url" content="https://ospeli.com/demo/critical-care/">
 <meta property="og:image" content="https://ospeli.com/og.png">
 <meta property="og:image:width" content="1200">
@@ -185,7 +185,7 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
   <p class="lead">One live board for the critical care unit. Every bed shows its state and whether it is staffed. Patients the team has decided are ready to step down are timed until they leave for a ward bed. Referrals refused and transfers out for lack of capacity are counted, day and night. The clinical team decides who is admitted or stepped down; Ospeli records it and shows the flow.</p>
 
   <div class="roles" role="group" aria-label="Whose view">
-    <button type="button" id="r-nic" aria-pressed="false">Nurse in charge (phone)</button>
+    <button type="button" id="r-nic" aria-pressed="false">Charge nurse (phone)</button>
     <button type="button" id="r-flow" aria-pressed="false">Patient flow coordinator</button>
     <button type="button" id="r-ops" aria-pressed="false">Operations manager</button>
   </div>
@@ -243,7 +243,7 @@ var STATES = {
   unstaffed: { label: 'Empty, not staffed', short: 'Not staffed' },
   closed:    { label: 'Closed', short: 'Closed' }
 };
-var ROLE_NAME = { nic: 'Nurse in charge', flow: 'Patient flow coordinator', ops: 'Operations manager' };
+var ROLE_NAME = { nic: 'Charge nurse', flow: 'Patient flow coordinator', ops: 'Operations manager' };
 // Example settings for this demo only, not a standard: each organisation sets its own.
 var DEFAULTS = { limitH: 4, staffedLevel: 13, oohFrom: 22, oohTo: 7 };
 
@@ -280,7 +280,7 @@ function seed() {
   var ev = [
     [t('06:50'), 'Team decided P-5072 (bed 14) is ready to step down. Ward bed requested on Ward 2.'],
     [t('07:05'), 'Team decided P-1958 (bed 2) is ready to step down. Ward bed requested on Ward 5.'],
-    [t('07:30'), 'Nurse in charge checked bed states at handover: 16 beds, 1 closed.'],
+    [t('07:30'), 'Charge nurse checked bed states at handover: 16 beds, 1 closed.'],
     [t('07:40'), 'Team decided P-1730 (bed 5) is ready to step down. Ward bed requested on Ward 3.'],
     [t('08:45'), 'Team decided P-3306 (bed 4) is ready to step down. Ward bed requested on Ward 3.'],
     [t('09:10'), 'Bed 11 closed: equipment repair.'],
@@ -416,7 +416,7 @@ function undoReady(x) {
 function offerBed(x, wardBed) {
   x.offer = x.ward + ' bed ' + wardBed; x.offerAt = now(); state.ui = {};
   addLog('Patient flow coordinator recorded a ward bed offered for ' + x.code + ': ' + x.offer + '.');
-  render(); toast('Ward bed offered. The nurse in charge can see it.');
+  render(); toast('Ward bed offered. The charge nurse can see it.');
 }
 function leave(x) {
   x.leftAt = now(); var b = bedN(x.bed); b.occ = false; b.code = null; b.staffed = true;
@@ -429,7 +429,7 @@ function setStaffed(b, on, why) {
   render(); toast('Bed ' + b.n + (on ? ' is staffed and can take a patient.' : ' is not staffed.'));
 }
 function setClosed(b, on) {
-  b.closed = on; if (on) b.why = 'Closed by the nurse in charge'; else { b.why = null; b.staffed = false; }
+  b.closed = on; if (on) b.why = 'Closed by the charge nurse'; else { b.why = null; b.staffed = false; }
   addLog('Bed ' + b.n + (on ? ' closed.' : ' reopened, not staffed yet.'));
   render(); toast(on ? 'Bed ' + b.n + ' closed.' : 'Bed ' + b.n + ' reopened. Mark it staffed when it is.');
 }
@@ -450,7 +450,7 @@ function lc(s) { return s === 'Emergency department' ? 'the emergency department
 
 // ---------- Render ----------
 var HINTS = {
-  nic: 'The nurse in charge\'s phone. Keep every bed\'s state and staffing true, record a patient code ready to step down when the team decides, and record what happened to each referral. A few taps each.',
+  nic: 'The charge nurse\'s phone. Keep every bed\'s state and staffing true, record a patient code ready to step down when the team decides, and record what happened to each referral. A few taps each.',
   flow: 'The patient flow coordinator\'s view. Everyone ready to step down, longest wait first, with the ward requested. Find the ward bed on the bed board, then record the offer here.',
   ops: 'The operations manager\'s view for the daily bed meeting: occupancy, staffed against open beds, delayed step-downs, and what lack of capacity caused this month.'
 };
@@ -491,7 +491,7 @@ function kpiBlock(below) {
   return wrap;
 }
 
-// --- Nurse in charge (phone first) ---
+// --- Charge nurse (phone first) ---
 function nurseView() {
   var frag = document.createDocumentFragment(), c = counts();
   // Referrals waiting first: they need an answer.
@@ -703,7 +703,7 @@ document.getElementById('t-ref').addEventListener('click', function () {
   var from = SOURCES[state.seq % SOURCES.length], code = 'P-' + (++state.seq);
   state.refs.push({ id: 'R' + state.seq, code: code, from: from, at: now(), outcome: null });
   addLog('Referral received: ' + code + ' from ' + lc(from) + '.');
-  render(); toast('Referral from ' + lc(from) + ' is waiting for the nurse in charge.');
+  render(); toast('Referral from ' + lc(from) + ' is waiting for the charge nurse.');
 });
 document.getElementById('t-sick').addEventListener('click', function () {
   var b = state.beds.filter(function (x) { return bedState(x) === 'free'; }).pop();

@@ -900,18 +900,18 @@
   "name": "Maternity and children's flow",
   "group": "Patient flow and clinical services",
   "month": "Jan 2027",
-  "oneLine": "Shows maternity beds, cots and children's beds live, with transfers tracked.",
-  "today": "Free cots are often found by phoning round. Units can close to admissions with little notice. Transfers out are often arranged by phone, with the reason unrecorded.",
+  "oneLine": "Shows maternity beds, neonatal care spaces and children's beds live, with transfers tracked.",
+  "today": "Free neonatal care spaces are often found by phoning round. Units can close to admissions with little notice. Transfers out are often arranged by phone, with the reason unrecorded.",
   "todaySystem": "The record system holds each admission, but unit closures, transfer requests and their reasons are often kept on paper or in messages.",
-  "withOspeli": "Live boards show labour rooms, maternity beds, cots and children's beds. Closures and transfers are logged with reasons and times, and mother and baby codes stay linked across moves.",
+  "withOspeli": "Live boards show birthing rooms, maternity beds, neonatal care spaces and children's beds. Closures and transfers are logged with reasons and times, and mother and baby codes stay linked across moves.",
   "people": [
    {
-    "role": "Midwife in charge",
-    "does": "Updates rooms, beds and cots on a phone; records closures and reasons."
+    "role": "Charge midwife",
+    "does": "Updates rooms, beds and care spaces on a phone; records closures and reasons."
    },
    {
-    "role": "Neonatal unit nurse in charge",
-    "does": "Updates cot state and staffing, logs transfers in and out."
+    "role": "Neonatal unit charge nurse",
+    "does": "Updates care space state and staffing, logs transfers in and out."
    },
    {
     "role": "Children's ward charge nurse",
@@ -929,11 +929,11 @@
   "screens": [
    {
     "name": "Maternity and children's board",
-    "shows": "Labour rooms, maternity beds, cots and children's beds: occupied, ready, closed."
+    "shows": "Birthing rooms, maternity beds, neonatal care spaces and children's beds: occupied, ready, closed."
    },
    {
     "name": "My unit (phone)",
-    "shows": "Unit rooms, beds or cots, staffed status and pending admissions, updated in taps."
+    "shows": "Unit rooms, beds or care spaces, staffed status and pending admissions, updated in taps."
    },
    {
     "name": "Transfers",
@@ -945,20 +945,20 @@
    }
   ],
   "captures": [
-   "Room, bed or cot occupied, ready or closed: drives capacity.",
+   "Room, bed or care space occupied, ready or closed: drives capacity.",
    "Unit closed or reopened to admissions, with reason: shows lost capacity.",
    "Transfer requested, accepted and completed, with reason category: shows delays.",
-   "Transfer out for lack of cot or bed: shows capacity gaps.",
+   "Transfer out for lack of a care space or bed: shows capacity gaps.",
    "Mother and baby codes linked: keeps moves together without names.",
    "Admission and discharge with event times: drives occupancy and stay."
   ],
   "kpis": [
    {
-    "name": "Cot occupancy",
-    "definition": "occupied cot-days / available cot-days",
+    "name": "Neonatal care space occupancy",
+    "definition": "occupied care-space days / available care-space days",
     "kind": "ratio",
-    "numerator": "Occupied cot-days",
-    "denominator": "Available cot-days",
+    "numerator": "Occupied care-space days",
+    "denominator": "Available care-space days",
     "statistic": "Share (%), per period",
     "exclusions": "None by default; a site adds its own",
     "source": "Editable default (no published standard found)"
@@ -975,9 +975,9 @@
    },
    {
     "name": "Transfers out for capacity",
-    "definition": "transfers out for lack of cot or bed / all transfers out",
+    "definition": "transfers out for lack of a care space or bed / all transfers out",
     "kind": "ratio",
-    "numerator": "Transfers out for lack of cot or bed",
+    "numerator": "Transfers out for lack of a care space or bed",
     "denominator": "All transfers out",
     "statistic": "Share (%), per period",
     "exclusions": "None by default; a site adds its own",
@@ -997,7 +997,7 @@
    }
   ],
   "guide": [
-   "When cots or beds will run short at expected admissions, alerts the flow coordinator early, citing the board.",
+   "When care spaces or beds will run short at expected admissions, alerts the flow coordinator early, citing the board.",
    "When a unit closes repeatedly for the same reason, suggests a review of that cause with the manager.",
    "When a transfer request waits beyond the set time, prompts escalation to the named role."
   ],
@@ -1039,7 +1039,7 @@
   "withOspeli": "A live board shows critical care beds, staffed status and patients ready to step down. Delays waiting for ward beds are timed and transfers out for capacity are logged with reasons.",
   "people": [
    {
-    "role": "Critical care nurse in charge",
+    "role": "Critical care charge nurse",
     "does": "Updates beds and staffed status, marks patients ready to step down."
    },
    {
@@ -1508,7 +1508,7 @@
    },
    {
     "name": "Compliance calendar",
-    "shows": "Fire, water safety, lifts, pressure systems and gas inspections: due, done, overdue."
+    "shows": "Fire, water safety, elevators, pressure systems and gas inspections: due, done, overdue."
    },
    {
     "name": "Waste log",
@@ -2090,7 +2090,7 @@
   ],
   "captures": [
    "Shift gap raised: start of the time-to-fill measure.",
-   "Cover filled, by bank, overtime, agency or redeployment: shows cost and reliance.",
+   "Cover filled, by staff pool, overtime, agency or redeployment: shows cost and reliance.",
    "Unit workload count per shift: the demand side of staffing.",
    "Unplanned absence logged at shift start: drives same-day cover.",
    "Credential or training expiry date: prevents working out of date.",
@@ -3651,7 +3651,7 @@
    },
    {
     "role": "Community services manager",
-    "does": "Reviews capacity, visit completion and readiness across health centres."
+    "does": "Reviews capacity, visit completion and readiness across clinics."
    }
   ],
   "screens": [
@@ -3673,7 +3673,7 @@
    },
    {
     "name": "Readiness check",
-    "shows": "Health centre readiness items: staff, equipment, tracer medicines, basic services."
+    "shows": "Clinic readiness items: staff, equipment, tracer medicines, basic services."
    }
   ],
   "captures": [

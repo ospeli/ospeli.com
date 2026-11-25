@@ -293,7 +293,7 @@ var THEMES = [
   { id: 'noise', name: 'Noise at night', kw: ['noise', 'noisy', 'sleep', 'loud', 'banging'] },
   { id: 'food', name: 'Food and drink', kw: ['food', 'meal', 'drink', 'water', 'hungry', 'tea'] },
   { id: 'clean', name: 'Cleanliness', kw: ['clean', 'dirty', 'toilet', 'bathroom', 'bins', 'smell'] },
-  { id: 'access', name: 'Getting here and finding us', kw: ['park', 'sign', 'find', 'lift', 'bus', 'wheelchair', 'lost'] },
+  { id: 'access', name: 'Getting here and finding us', kw: ['park', 'sign', 'find', 'lift', 'elevator', 'bus', 'wheelchair', 'lost'] },
   { id: 'kind', name: 'Kindness and respect', kw: ['kind', 'rude', 'respect', 'caring', 'lovely', 'friendly', 'dignity'] },
   { id: 'appt', name: 'Appointments and letters', kw: ['appointment', 'cancel', 'booking', 'rebook', 'letter', 'phone line'] }
 ];
@@ -303,7 +303,7 @@ var SAYS = {
   noise: ['Too noisy at night to sleep.', 'Doors banging all night.', 'Loud talking at the desk at night.'],
   food: ['Food arrived cold.', 'Hard to get a drink of water at night.', 'Meal came while I was asleep and was taken away.'],
   clean: ['The bathroom needed cleaning more often.', 'Bins were full in the bay.'],
-  access: ['Hard to find the department; better signs please.', 'Parking was very difficult.', 'The lift was out and there was no sign.'],
+  access: ['Hard to find the department; better signs please.', 'Parking was very difficult.', 'The elevator was out and there was no sign.'],
   kind: ['Staff were kind and patient with my mum.', 'Everyone was friendly and caring.', 'Treated with real respect.'],
   appt: ['My appointment was cancelled the day before.', 'The booking phone line is always busy.', 'The letter came after the appointment date.']
 };
@@ -403,7 +403,7 @@ function seed() {
       closed: c[7] == null ? null : rec + c[7], owner: OWNERS[c[8]], draft: '', reminded: null });
   });
   // Agreed actions: [id, svc, theme, text, due (days from today), closed (days from today or null), from]
-  [['A-11', 'ed', 'access', 'Lit signs to the department entrance from the car park', -30, -34, 'C-2026'],
+  [['A-11', 'ed', 'access', 'Lit signs to the department entrance from the parking area', -30, -34, 'C-2026'],
    ['A-12', 'w7', 'food', 'Check meal temperature on the ward before serving', -10, -12, 'C-2029'],
    ['A-13', 'opd', 'appt', 'Text reminder two days before, with a rebooking number', -15, -20, 'C-2027'],
    ['A-14', 'w4', 'noise', 'Soft-close bins and a quiet-hours check at 23:00', -3, -5, 'C-2032'],
@@ -413,7 +413,7 @@ function seed() {
    ['A-18', 'ed', 'comm', 'One contact role each shift for updates to relatives', 14, null, 'C-2035'],
    ['A-19', 'rad', 'wait', 'Text patients when the scanner list is running late', 20, null, 'C-2038']
   ].forEach(function (a) { s.actions.push({ id: a[0], svc: a[1], theme: a[2], text: a[3], due: a[4], closed: a[5], from: a[6], owner: 'Department lead' }); });
-  s.cards.push({ id: 'Y-7', svc: 'ed', action: 'A-11', said: 'It was hard to find us at night.', did: 'We put lit signs from the car park to the entrance.', status: 'published', day: -32 });
+  s.cards.push({ id: 'Y-7', svc: 'ed', action: 'A-11', said: 'It was hard to find us at night.', did: 'We put lit signs from the parking area to the entrance.', status: 'published', day: -32 });
   s.cards.push({ id: 'Y-8', svc: 'w7', action: 'A-12', said: 'Food sometimes arrived cold.', did: 'We now check the temperature of each meal on the ward before serving.', status: 'published', day: -11 });
   s.cards.push({ id: 'Y-9', svc: 'opd', action: 'A-13', said: 'Appointments were missed because letters came late.', did: 'We now send a text reminder two days before, with a number to rebook.', status: 'published', day: -18 });
   s.cards.push({ id: 'Y-10', svc: 'w4', action: 'A-14', said: 'It was noisy at night.', did: 'We made night rounds quieter and fitted soft-close bins.', status: 'published', day: -4 });

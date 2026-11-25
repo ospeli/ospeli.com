@@ -595,7 +595,7 @@ function leadView() {
   });
   box.appendChild(rl);
   var rf = el('form', { class: 'formgrid', id: 'risk-form', autocomplete: 'off', onsubmit: function (e) { e.preventDefault(); var t = document.getElementById('nr-text').value.trim(); if (!t) { document.getElementById('nr-text').focus(); return; } var kind = document.getElementById('nr-kind').value, lvl = document.getElementById('nr-level').value; p.risks.push({ id: 'r' + Date.now().toString(36), kind: kind, level: lvl, text: t.slice(0, 120), open: true }); addLog('Project lead added a ' + lvl + ' ' + kind + ' on ' + p.name + ': ' + t.slice(0, 120) + '.'); render(); toast('Added.'); } }, [
-    el('label', { class: 'full' }, ['New risk or issue', el('input', { type: 'text', id: 'nr-text', maxlength: '120', placeholder: 'e.g. Lift out of action during works' })]),
+    el('label', { class: 'full' }, ['New risk or issue', el('input', { type: 'text', id: 'nr-text', maxlength: '120', placeholder: 'e.g. Elevator out of action during works' })]),
     el('label', {}, ['Type', selectOf('nr-kind', [['risk', 'Risk (might happen)'], ['issue', 'Issue (happening now)']])]),
     el('label', {}, ['Level', selectOf('nr-level', [['high', 'High'], ['medium', 'Medium'], ['low', 'Low']], 'medium')]),
     el('button', { type: 'submit', class: 'full', text: 'Add' })
