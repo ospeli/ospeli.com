@@ -211,6 +211,29 @@ function queueScreen(ctx) {
     if (px) li.style.minHeight = `${px}px`;
     return li;
   }
+  // Issue #163: on a day with no clinic, a look at the next or the last clinic day. Read only: no
+  // Arrived, Call in, Finished, missed or undo, because those steps do not check the clinic's date.
+  const lookBtn = (which, label, sessionId) => h('button', { class: 'btn btn-ghost', type: 'button', 'data-test': `look-${which}`,
+    onclick: () => { ui.sessionId = sessionId; ui.find = ''; if (findInput) findInput.value = ''; ui.active.clear(); ui.stay.clear(); load(); } }, label);
+  function drawLook(c) {
+    const lookRow = (p) => h('li', { class: `cl-row st-${p.state}`, 'data-appointment': p.appointmentId, 'data-state': p.state },
+      h('div', { class: 'cl-row-text' },
+        h('p', { class: 'cl-who' }, h('b', { class: 'cl-time' }, p.slotTime), h('b', {}, p.label), h('span', { class: 'chip' }, p.slotTypeWord)),
+        h('p', { class: 'cl-state' }, stateLine(p))));
+    const ahead = c.date > data.date;
+    setKids(box,
+      h('div', { class: 'card notice', 'data-test': 'look', role: 'status' },
+        h('p', {}, h('b', {}, `${shortDate(c.date)}: a look ${ahead ? 'ahead' : 'back'}, read only.`)),
+        h('p', { class: 'cl-hint' }, `Today is ${shortDate(data.date)}. Arrived and Call in are marked on the clinic's own day.`),
+        h('button', { class: 'btn btn-ghost', type: 'button', 'data-test': 'look-back', onclick: () => { ui.sessionId = null; load(); } }, 'Back to today')),
+      h('section', { class: 'cl-clinic', 'data-test': 'clinic', 'data-session': c.sessionId, 'aria-labelledby': 'cl-clinic-h' },
+        h('h2', { id: 'cl-clinic-h' }, c.name),
+        h('p', { class: 'cl-hint' }, `${shortDate(c.date)}, ${c.start} to ${c.end}${c.state === 'cancelled' ? ` · Cancelled: ${c.reason}` : c.state === 'reduced' ? ` · Reduced: ${c.reason}` : ''}`)),
+      h('h3', { class: 'cl-sec' }, `Booked (${data.patients.length})`),
+      data.patients.length ? h('ol', { class: 'cl-rows', 'data-test': 'look-rows' }, data.patients.map(lookRow))
+        : h('p', { class: 'cl-empty', 'data-test': 'queue-empty' }, 'Nobody is booked in this clinic.'),
+      h('p', { class: 'card meta notice', 'data-test': 'not-for' }, data.note));
+  }
   function draw() {
     if (!data) return;
     clearTimeout(timer);
@@ -223,9 +246,14 @@ function queueScreen(ctx) {
           h('p', { class: 'cl-hint' }, 'A hospital loaded before clinics were added has none. Load Example General Hospital again on the ', h('a', { href: '#/data' }, 'Data and audit'), ' page.'))
         : h('div', { class: 'card notice', 'data-test': 'no-clinic' }, h('p', {}, `No clinic today (${shortDate(data.date)}).`),
           h('p', { class: 'cl-hint', 'data-test': 'next-clinic' }, data.nextClinic ? `Next clinic: ${when(data.nextClinic)}.` : 'No clinic is planned in the coming weeks.'),
-          data.lastClinic ? h('p', { class: 'cl-hint', 'data-test': 'last-clinic' }, `Last clinic: ${when(data.lastClinic)}.`) : null));
+          data.lastClinic ? h('p', { class: 'cl-hint', 'data-test': 'last-clinic' }, `Last clinic: ${when(data.lastClinic)}.`) : null,
+          // A look at another day's list, read only (the steps do not check the clinic's date).
+          data.nextClinic || data.lastClinic ? h('div', { class: 'cl-look-btns' },
+            data.nextClinic ? lookBtn('next', `See the list for ${shortDate(data.nextClinic.date)}`, data.nextClinic.sessionId) : null,
+            data.lastClinic ? lookBtn('last', `See the list for ${shortDate(data.lastClinic.date)}`, data.lastClinic.sessionId) : null) : null));
       return;
     }
+    if (c.date !== data.date) return drawLook(c);
     const n = c.counts;
     const pick = data.clinics.length > 1 ? h('div', { class: 'cl-pick', role: 'group', 'aria-label': 'Which clinic' }, data.clinics.map((x) => h('button', {
       class: 'chip-btn', type: 'button', 'aria-pressed': String(x.sessionId === data.sessionId), 'data-session': x.sessionId,

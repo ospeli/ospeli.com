@@ -129,3 +129,5 @@
 @media (max-width: 420px) {
   .mod-clinics .cl-row-act { max-width: none; }
 }
+.mod-clinics .cl-look-btns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.mod-clinics .cl-look-btns .btn, .mod-clinics [data-test="look-back"] { min-height: 44px; }
