@@ -89,8 +89,13 @@ export function whenText(ms, nowMs, off = 0) {
 // A step that does not follow from the state is ignored (an edited import cannot skip a stage).
 export function deriveRequests(events) {
   const out = new Map();
-  for (const e of events) {
-    if (typeof e?.type !== 'string' || !e.type.startsWith('pharmacy.request-') && e.type !== 'pharmacy.priority-set' && e.type !== 'pharmacy.step-undone') continue;
+  for (const ev of events) {
+    if (typeof ev?.type !== 'string' || !ev.type.startsWith('pharmacy.request-') && ev.type !== 'pharmacy.priority-set' && ev.type !== 'pharmacy.step-undone') continue;
+    // Every time is held in one form, UTC (#175): an imported time written with an offset
+    // ("+09:00") is the same moment, and the measures and lists compare times as text.
+    const t = Date.parse(ev.at);
+    if (Number.isNaN(t)) continue;
+    const e = { ...ev, at: new Date(t).toISOString() };
     const d = e.data || {};
     if (e.type === 'pharmacy.request-raised') {
       if (!RX.test(String(e.subject)) || out.has(e.subject) || !isId(d.wardId) || !KINDS[d.kind] || !PRIORITIES[d.priority]) continue;
@@ -272,8 +277,11 @@ export const STAGE_PAIRS = [
 export function stageTimes(all, { since, until }) {
   const list = [...all.values()].filter((r) => r.stage !== 'cancelled');
   const stages = STAGE_PAIRS.map((p) => {
-    const xs = list.filter((r) => r[p.from] && inPeriod(r[p.to], since, until)).map((r) => activeMinutes(r, r[p.from], r[p.to]));
-    return { id: p.id, name: p.name, value: median(xs), n: xs.length };
+    // A pair whose later step was recorded earlier (a device clock set back) is left out, and
+    // counted, never entered as a time below zero (#175).
+    const all = list.filter((r) => r[p.from] && inPeriod(r[p.to], since, until)).map((r) => activeMinutes(r, r[p.from], r[p.to]));
+    const xs = all.filter((m) => m >= 0);
+    return { id: p.id, name: p.name, value: median(xs), n: xs.length, ...(all.length > xs.length ? { clockBack: all.length - xs.length } : {}) };
   });
   const known = stages.filter((s) => s.value != null);
   const longest = known.length ? known.reduce((a, b) => (b.value > a.value ? b : a)) : null;

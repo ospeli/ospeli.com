@@ -26676,7 +26676,7 @@
                 },
                 "stages": {
                   "type": "array",
-                  "description": "Time by stage only: each stage's median and count."
+                  "description": "Time by stage only: each stage's median and count, and clockBack: stages left out because the later step was recorded earlier (a device clock set back)."
                 },
                 "longest": {
                   "type": [

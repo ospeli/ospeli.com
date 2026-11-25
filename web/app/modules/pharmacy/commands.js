@@ -46,7 +46,7 @@ export const KPIS = [
     leavesOut: 'Cancelled requests; requests not ready yet; ward and other requests.', source: 'local definition', target: null, targetText: NO_TARGET },
   { id: 'stage-times', name: 'Time by stage', unit: 'min',
     definition: 'For every kind of request: Raised to Started, Started to Checked and Checked to Ready, median minutes each with time on hold taken out, for steps recorded in the period. The figure shown is the stage with the longest median, so the main delay shows. Started to checked includes dispensing and the wait for the check, so it does not measure the check alone. Method: the time of each stage of a dispensing service, as in a process map (method only, no result is quoted: JMIR Human Factors 2022, PMID 36222805, doi:10.2196/37905).',
-    counts: 'Each stage recorded in the period.', outOf: 'None (medians).', leavesOut: 'Cancelled requests; a step undone as tapped by mistake.',
+    counts: 'Each stage recorded in the period.', outOf: 'None (medians).', leavesOut: 'Cancelled requests; a step undone as tapped by mistake; a stage whose later step was recorded before the earlier one (a device clock set back), counted as clockBack on that stage.',
     source: 'local definition (method as in PMID 36222805)', target: null, targetText: NO_TARGET },
   { id: 'collection-wait', name: 'Collection wait', unit: 'min',
     definition: 'For requests collected in the period: the minutes from Ready to Collected, median. A ready request is never put on hold, so this time is counted here and only here.',
@@ -243,8 +243,11 @@ async function checkRaise(core, input, events, info, wards) {
   if (input.kind === 'discharge') {
     // Discharge medicines are for a patient going home. The screen offers only beds with a
     // patient; the command holds the same line (23 Nov: it saved one for a bed being cleaned).
-    if (!await encounterOf(core, i, input.bedId, evs)) throw new CommandError('conflict', 'There is no patient in that bed now, so there are no discharge medicines to ask for. ospeli_pharmacy_ward_requests with the wardId lists the beds with a patient.');
-    const open = [...all.values()].find((r) => isOpen(r) && r.kind === 'discharge' && r.bedId === input.bedId);
+    const enc = await encounterOf(core, i, input.bedId, evs);
+    if (!enc) throw new CommandError('conflict', 'There is no patient in that bed now, so there are no discharge medicines to ask for. ospeli_pharmacy_ward_requests with the wardId lists the beds with a patient.');
+    // One open request per patient in the bed (#175): a request left open by the bed's last
+    // patient never blocks, or shows as, the next patient's.
+    const open = [...all.values()].find((r) => isOpen(r) && r.kind === 'discharge' && r.bedId === input.bedId && forPatient(r, enc));
     if (open) throw new CommandError('conflict', `${open.id} is already open for discharge medicines for this bed (${STATE_WORDS[stateOf(open)].toLowerCase()}). Nothing new was saved.`, { existing: open.id });
   }
   const same = [...all.values()].find((r) => isOpen(r) && r.wardId === input.wardId && (r.bedId ?? null) === (input.bedId ?? null) && r.kind === input.kind && r.priority === input.priority
@@ -252,6 +255,9 @@ async function checkRaise(core, input, events, info, wards) {
   if (same) throw new CommandError('conflict', `Already saved: ${same.id} with the same picks was saved a moment ago. No second request was saved.`, { existing: same.id });
 }
 
+// Whether an open discharge request is for the patient now in its bed: the encounter it was raised
+// for is that patient's. A request saved with no encounter (an older log) is taken as theirs.
+const forPatient = (r, encounter) => r.encounter == null || r.encounter === encounter;
 async function encounterOf(core, info, bedId, events) {
   if (!bedId) return null;
   const board = deriveBoard(info.beds.filter((b) => b.id === bedId), events.filter((e) => /^(bed|patient)\./.test(e.type)));
@@ -324,7 +330,7 @@ const KPI_OUT = { type: 'object', required: ['id', 'name', 'unit', 'value', 'n']
   outsideWorkDay: { type: 'object', description: 'Discharge turnaround only: requests raised outside the example working day, with their own median.' },
   hold: { type: 'object', description: 'Discharge turnaround only: the median time on hold of the requests that were held, and how many.' },
   readyBeforePlanned: { type: 'object', description: 'Discharge turnaround only: ready by the planned time, n of N.' },
-  byPlanned: { type: 'array' }, byWard: { type: 'array' }, stages: { type: 'array', description: 'Time by stage only: each stage\'s median and count.' },
+  byPlanned: { type: 'array' }, byWard: { type: 'array' }, stages: { type: 'array', description: 'Time by stage only: each stage\'s median and count, and clockBack: stages left out because the later step was recorded earlier (a device clock set back).' },
   longest: { type: ['string', 'null'] }, waitingNow: { type: 'integer' },
   numerator: { type: ['number', 'null'] }, denominator: { type: ['number', 'null'] },
   definition: { type: 'string' }, counts: { type: 'string' }, outOf: { type: 'string' }, leavesOut: { type: 'string' }, source: { type: 'string' } } };
@@ -390,11 +396,12 @@ export const COMMANDS = [
       const all = deriveRequests(events);
       const seen = visible(wards);
       const board = deriveBoard(info.beds, events.filter((e) => /^(bed|patient)\./.test(e.type)));
-      const openDischarge = new Map([...all.values()].filter((r) => isOpen(r) && r.kind === 'discharge' && r.bedId).map((r) => [r.bedId, r]));
+      const openDischarge = new Map();
+      for (const r of all.values()) if (isOpen(r) && r.kind === 'discharge' && r.bedId) openDischarge.set(r.bedId, [...(openDischarge.get(r.bedId) || []), r]);
       const list = [...all.values()].filter((r) => seen(r) && (!input.wardId || r.wardId === input.wardId)
         && (isOpen(r) || nowMs - Date.parse(r.collectedAt || r.cancelledAt) <= DAY)).sort((a, b) => (a.raisedAt < b.raisedAt ? 1 : -1));
       const cut = page(list, input.limit, 50);
-      const bedRow = (b) => { const s = board.beds.get(b.id); const r = openDischarge.get(b.id);
+      const bedRow = (b) => { const s = board.beds.get(b.id); const r = (openDischarge.get(b.id) || []).find((x) => forPatient(x, s.encounter));
         return { bedId: b.id, bedName: currentWords(b.name), wardId: b.parentId, wardName: info.wardName(b.parentId), plannedDischarge: s.state === 'expected-discharge',
           ...(s.expectedAt ? { expectedAt: s.expectedAt, expectedText: whenText(Date.parse(s.expectedAt), nowMs, info.offsetMinutes) } : {}),
           request: r ? { id: r.id, state: stateOf(r), stateName: STATE_WORDS[stateOf(r)] } : null }; };
