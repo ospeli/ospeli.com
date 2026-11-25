@@ -47,7 +47,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
+      # No configure-pages step: it only reads the Pages settings for site builders, and this job has
+      # read access to the code and nothing else. The site is plain files with no build step.
       - uses: actions/upload-pages-artifact@v5
         with:
           path: web
