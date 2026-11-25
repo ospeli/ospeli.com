@@ -666,11 +666,14 @@ async function placesById(core) {
   const all = await core.listEntities();
   return new Map(all.filter((e) => ['ward', 'department', 'building', 'site'].includes(e.type)).map((e) => [e.id, e]));
 }
-const wardOrNull = (place) => (place?.type === 'ward' ? place.id : null);
+// What a wardOf answers for a real target that sits in no ward (a department, plant, a lift, a
+// vehicle). The agent gate refuses it unless the agent is allowed on every ward of the site (#26).
+export const OUTSIDE_WARDS = Symbol('outside-wards');
 async function wardOfAsset(core, assetId) {
   const a = await core.getEntity(assetId);
   if (!a || a.type !== 'asset') return null;
-  return wardOrNull(await core.getEntity(a.parentId));
+  const place = await core.getEntity(a.parentId);
+  return place?.type === 'ward' ? place.id : OUTSIDE_WARDS;
 }
 // Issue #24: one open work order for a fault on an asset. A second report of the same fault is
 // refused, and the answer names the work order that is already open.
@@ -1902,6 +1905,7 @@ const REFUSAL_WHY = {
   'personal-detail': 'The text looked like it held a personal detail.',
   'ward-off': 'Agent access is off for a ward the call named.',
   'ward-not-listed': 'The agent is not allowed on a ward the call named.',
+  'outside-wards': 'The call named a place outside any ward, and the agent is not allowed on every ward.',
   'queue-full': 'The agent already has the most proposals one agent may have waiting.',
 };
 export async function auditRefusal(core, name, input, actor, err) {
@@ -2051,6 +2055,14 @@ async function runChecked(core, name, input, actor, opts = {}) {
     const said = typedByCaller.has(w) ? `ward ${w}` : 'a ward this call touches';
     if (access.wards[w] !== true) refuse('agents-off', `Agent access is off for ${said}.`, null, 'ward-off');
     if (!listed.wards.includes(w)) refuse('forbidden', `Agent ${who.agent} is not allowed on ${said}.`, null, 'ward-not-listed');
+  }
+  // A target that is real but in no ward (#26): access is given ward by ward, and places outside a
+  // ward cannot be switched on yet, so only an agent allowed on every ward of the site (and switched
+  // on for each) may name one. A site with no ward gives no such agent. The refusal names nothing.
+  if ((Array.isArray(claimed) ? claimed : [claimed]).includes(OUTSIDE_WARDS)) {
+    const siteWards = (await core.listEntities('ward')).map((w) => w.id);
+    const everyWard = siteWards.length > 0 && siteWards.every((w) => access.wards[w] === true && listed.wards.includes(w));
+    if (!everyWard) refuse('agents-off', 'Agent access is off for places outside a ward (departments, plant, lifts and other site-wide places). Only an agent allowed on every ward of this site may act on them.', null, 'outside-wards');
   }
   const ward = wardsNamed[0] ?? null;
   const allowedWards = new Set(listed.wards.filter((id) => access.wards[id] === true));
