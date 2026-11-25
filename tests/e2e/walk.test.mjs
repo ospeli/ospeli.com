@@ -106,15 +106,30 @@ test('first-time user at 360 px: walk three steps and see the timed map in 16 ta
   assert.ok(Date.now() - started < 5 * 60 * 1000, 'well under five minutes');
 
   // The map: measured on one walk, in seconds, and it says what one walk can show.
+  // Since the one-screen result (crew night 3) a walked map opens on its Result tab, whose header
+  // is the title alone with the badge beside it; the step list, the guide and "This walk" /
+  // Proposed are on the Edit map tab (one more tap, not counted above: the map is already seen).
   assert.match(page.url(), /#\/process\/map-001$/);
+  assert.match(await page.textContent('[data-test="walk-badge"]'), /^Measured on one walk$/);
+  assert.match(await page.textContent('[data-test="map-title"]'), /^Walk 1$/);
+  assert.match(await page.textContent('.walk-when'), /Walked [A-Z][a-z]{2} \d{1,2} [A-Z][a-z]{2}, started \d\d:\d\d/);
+  assert.doesNotMatch(await page.textContent('[data-test="process-body"]'), /Today/, 'a dated walk is never called Today');
+  assert.match(await page.textContent('[data-test="walk-note"]'), /Times from one walk on .+, started \d\d:\d\d\. This is what happened once, not how the process usually runs\./);
+  assert.match(await page.textContent('[data-test="pm-stats"]'), /under 1 min\s*start to finish on this walk/);
+  assert.match(await page.getAttribute('[data-test="pm-stats"] .wa-big', 'data-sec'), /^\d+$/, 'the exact seconds stay on the figure');
+  const resultText = await page.textContent('[data-test="process-body"]');
+  for (const [name, role] of steps) { assert.ok(resultText.includes(name)); assert.ok(resultText.includes(role)); }
+  assert.doesNotMatch(resultText, /null|undefined|NaN/);
+  assert.equal(await page.locator('[data-cmd="ospeli_maps_try_suggestion"]').count(), 0, 'no change is offered on one walk');
+  assert.ok(await noSideways(page) <= 0);
+  await page.locator('[data-test="tab-edit"]').tap();
+  await page.waitForSelector('[data-test="tab-edit"][aria-selected="true"]');
+  assert.match(page.url(), /#\/process\/map-001\/edit$/);
   assert.match(await page.textContent('[data-test="walk-badge"]'), /^Measured on one walk$/);
   assert.match(await page.textContent('[data-test="map-title"]'), /^Walk 1 · This walk$/);
   assert.match(await page.textContent('.walk-when'), /Walked [A-Z][a-z]{2} \d{1,2} [A-Z][a-z]{2}, started \d\d:\d\d/);
   assert.equal(await page.textContent('[data-test="v-today"]'), 'This walk');
   assert.doesNotMatch(await page.textContent('[data-test="process-body"]'), /Today/, 'a dated walk is never called Today');
-  assert.match(await page.textContent('[data-test="walk-note"]'), /Times from one walk on .+, started \d\d:\d\d\. This is what happened once, not how the process usually runs\./);
-  assert.match(await page.textContent('[data-test="pm-stats"]'), /under 1 min\s*start to finish on this walk/);
-  assert.match(await page.getAttribute('[data-test="pm-stats"] .wa-big', 'data-sec'), /^\d+$/, 'the exact seconds stay on the figure');
   assert.equal(await page.locator('[data-test="step-list"] li').count(), 3);
   const text = await page.textContent('[data-test="process-body"]');
   for (const [name, role] of steps) { assert.ok(text.includes(name)); assert.ok(text.includes(role)); }
@@ -198,6 +213,11 @@ test('a reload in the middle loses nothing; undo, name it later, work stopped, a
   await page.waitForSelector('[data-test="pm-stats"]');
   const body = await page.textContent('[data-test="process-body"]');
   assert.match(body, /Step 2/); assert.match(body, /Not set/); assert.match(body, /interrupted/);
+  // The guide and the step list are on the Edit map tab (crew night 3); the same words are there.
+  await page.tap('[data-test="tab-edit"]');
+  await page.waitForSelector('[data-test="tab-edit"][aria-selected="true"]');
+  const editBody = await page.textContent('[data-test="process-body"]');
+  assert.match(editBody, /Step 2/); assert.match(editBody, /Not set/); assert.match(editBody, /interrupted/);
   assert.match(await page.textContent('[data-test="guide"]'), /1 step has no name or role yet/);
   // Naming it on the map keeps its measured time; changing a time by hand says so.
   await page.click('[data-test="step-list"] li >> nth=1 >> [aria-label="Change step 2"]');
@@ -215,7 +235,13 @@ test('a reload in the middle loses nothing; undo, name it later, work stopped, a
   assert.match(await page.textContent('[data-test="step-list"]'), /Waits 4 min/);
   // The map no longer says "measured": a time was changed by hand. Proposed is a what-if.
   assert.equal(await page.textContent('[data-test="walk-badge"]'), 'One walk, changed by hand');
+  // The walk's note now sits in "How to read this" on the Result tab.
+  await page.click('[data-test="tab-result"]');
+  await page.waitForSelector('[data-test="result-panel"]');
+  assert.equal(await page.textContent('[data-test="walk-badge"]'), 'One walk, changed by hand');
   assert.match(await page.textContent('[data-test="walk-note"]'), /changed by hand after the walk/);
+  await page.click('[data-test="tab-edit"]');
+  await page.waitForSelector('[data-test="v-proposed"]');
   await page.click('[data-test="v-proposed"]');
   await page.waitForFunction(() => document.querySelector('[data-test="walk-badge"]')?.textContent === 'What-if, not measured');
   assert.doesNotMatch(await page.textContent('[data-test="pm-stats"]'), /on this walk/);
