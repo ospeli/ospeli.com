@@ -35,7 +35,7 @@ export const FAULT_TYPES = {
   bed: [['Bed brake faulty', 'estates']],
   generator: [['Generator test fault', 'estates']],
   chiller: [['Chiller high temperature', 'estates']],
-  lift: [['Lift out of service', 'estates']],
+  lift: [['Elevator out of service', 'estates']],
   boiler: [['Boiler pressure low', 'estates']],
   imaging: [['X-ray detector error', 'biomed']],
   lab: [['Analyser calibration error', 'biomed']],

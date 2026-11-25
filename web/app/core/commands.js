@@ -2062,7 +2062,7 @@ async function runChecked(core, name, input, actor, opts = {}) {
   if ((Array.isArray(claimed) ? claimed : [claimed]).includes(OUTSIDE_WARDS)) {
     const siteWards = (await core.listEntities('ward')).map((w) => w.id);
     const everyWard = siteWards.length > 0 && siteWards.every((w) => access.wards[w] === true && listed.wards.includes(w));
-    if (!everyWard) refuse('agents-off', 'Agent access is off for places outside a ward (departments, plant, lifts and other site-wide places). Only an agent allowed on every ward of this site may act on them.', null, 'outside-wards');
+    if (!everyWard) refuse('agents-off', 'Agent access is off for places outside a ward (departments, plant, elevators and other site-wide places). Only an agent allowed on every ward of this site may act on them.', null, 'outside-wards');
   }
   const ward = wardsNamed[0] ?? null;
   const allowedWards = new Set(listed.wards.filter((id) => access.wards[id] === true));

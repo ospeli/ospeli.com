@@ -94,8 +94,8 @@ const PLANT_ASSETS = [
   ['asset-generator-1', 'Standby generator 1', 'bld-main-plant', 'generator'],
   ['asset-generator-2', 'Standby generator 2', 'bld-main-plant', 'generator'],
   ['asset-chiller-1', 'Chiller 1', 'bld-main-plant', 'chiller'],
-  ['asset-lift-a', 'Bed lift, Building A', 'bld-main-a', 'lift'],
-  ['asset-lift-b', 'Bed lift, Building B', 'bld-main-b', 'lift'],
+  ['asset-lift-a', 'Bed elevator, Building A', 'bld-main-a', 'lift'],
+  ['asset-lift-b', 'Bed elevator, Building B', 'bld-main-b', 'lift'],
   ['asset-boiler-1', 'Steam boiler 1', 'bld-main-plant', 'boiler'],
   ['asset-xray-1', 'General X-ray room 1', 'dept-imaging', 'imaging'],
   ['asset-analyser-1', 'Chemistry analyser 1', 'dept-laboratory', 'lab'],
@@ -109,7 +109,7 @@ const FAULTS = {
   'infusion-pump': ['IV pump alarm', 'biomed'], suction: ['Suction unit not pulling', 'biomed'], 'o2-flowmeter': ['Oxygen flowmeter check', 'biomed'],
   'call-bell': ['Nurse call not working', 'estates'], ac: ['AC filter blocked', 'estates'], sink: ['Blocked sink', 'estates'],
   'door-closer': ['Door closer broken', 'estates'], light: ['Light fitting out', 'estates'], bed: ['Bed brake faulty', 'estates'],
-  generator: ['Generator test fault', 'estates'], chiller: ['Chiller high temperature', 'estates'], lift: ['Lift out of service', 'estates'],
+  generator: ['Generator test fault', 'estates'], chiller: ['Chiller high temperature', 'estates'], lift: ['Elevator out of service', 'estates'],
   boiler: ['Boiler pressure low', 'estates'], imaging: ['X-ray detector error', 'biomed'], lab: ['Analyser calibration error', 'biomed'],
 };
 
@@ -133,7 +133,7 @@ export function buildModel() {
   for (const [id, name, parentId] of VEHICLES) entities.push({ id, type: 'asset', name, parentId, kind: 'vehicle' });
   // One store: the place that holds stock and supplies the wards (the shared stock item, core/stock.js).
   entities.push({ id: 'store-main', type: 'store', name: 'Main store', parentId: 'bld-main-plant' });
-  for (const r of [['ward-nurse', 'Ward nurse'], ['bed-manager', 'Patient flow coordinator'], ['estates-tech', 'Facilities technician'], ['ae-nic', 'Emergency department nurse in charge'], ['ops-manager', 'Operations manager'], ['coo', 'COO']]) {
+  for (const r of [['ward-nurse', 'Ward nurse'], ['bed-manager', 'Patient flow coordinator'], ['estates-tech', 'Facilities technician'], ['ae-nic', 'Emergency department charge nurse'], ['ops-manager', 'Operations manager'], ['coo', 'COO']]) {
     entities.push({ id: `role-${r[0]}`, type: 'role', name: r[1], roleId: r[0] });
   }
   // Roles a module added (core/model.js) follow the first six, in the order they were added.

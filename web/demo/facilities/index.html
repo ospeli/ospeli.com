@@ -226,7 +226,7 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
 <main class="wrap">
   <span class="badge">Preview · fictional example data</span>
   <h1>Facilities and utilities: faults, planned work and plant checks</h1>
-  <p class="lead">Anyone can report a leak, power cut, broken light, ventilation or cooling, lift or door fault from the room in three taps. Technicians work the queue on a phone. The facilities manager sees open work orders, planned maintenance, utility checks and which plant is up or down. The guide points out patterns; a person decides.</p>
+  <p class="lead">Anyone can report a leak, power failure, broken light, ventilation or cooling, elevator or door fault from the room in three taps. Technicians work the queue on a phone. The facilities manager sees open work orders, planned maintenance, utility checks and which plant is up or down. The guide points out patterns; a person decides.</p>
 
   <div class="roles" role="group" aria-label="Whose view">
     <button type="button" id="r-anyone" data-role="anyone" aria-pressed="false">Anyone</button>
@@ -265,7 +265,7 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
       <div id="decide"></div>
     </aside>
   </div>
-  <p class="foot">Everything here is invented: Example General Hospital, its buildings, rooms, plant, jobs and times. It measures jobs, checks and outages, never individual technicians. It is not a building management or control system and never switches plant. This page is a design sketch. A first version of this area now runs in the app with synthetic example data: <a href="../../app/#/facilities">open Facilities and utilities in the app</a> (a utilities log on a phone for generator tests on load or off load, fuel, water and medical gas checks and outages, a waste log of collections and missed collections, and a manager view of checks due or missed and open outages; building and plant faults are reported as work orders in Medical equipment and maintenance). Planned, not built yet: QR labels for every room and plant item, the compliance calendar for fire, water safety, lift, pressure system and gas inspections with certificates. <a href="../../areas/facilities-utilities/">About this area</a> · <a href="../">All demos</a></p>
+  <p class="foot">Everything here is invented: Example General Hospital, its buildings, rooms, plant, jobs and times. It measures jobs, checks and outages, never individual technicians. It is not a building management or control system and never switches plant. This page is a design sketch. A first version of this area now runs in the app with synthetic example data: <a href="../../app/#/facilities">open Facilities and utilities in the app</a> (a utilities log on a phone for generator tests on load or off load, fuel, water and medical gas checks and outages, a waste log of collections and missed collections, and a manager view of checks due or missed and open outages; building and plant faults are reported as work orders in Medical equipment and maintenance). Planned, not built yet: QR labels for every room and plant item, the compliance calendar for fire, water safety, elevator, pressure system and gas inspections with certificates. <a href="../../areas/facilities-utilities/">About this area</a> · <a href="../">All demos</a></p>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -279,7 +279,7 @@ var STORE = 'ospeli.facilities.v1';
 var BUILDINGS = {
   main: { name: 'Main block', floors: [
     ['G', 'Ground', [['M-G-01', 'Emergency department waiting area'], ['M-G-02', 'Emergency department cubicles'], ['M-G-03', 'Main entrance'], ['M-G-04', 'Imaging department'], ['M-G-05', 'Pharmacy store']]],
-    ['1', 'Floor 1', [['M-1-01', 'Ward 1 bay A'], ['M-1-02', 'Ward 1 bay B'], ['M-1-03', 'Ward 2 bay A'], ['M-1-04', 'Ward 2 soiled utility room'], ['M-1-05', 'Ward 2 staff station'], ['M-1-06', 'Floor 1 lift lobby']]],
+    ['1', 'Floor 1', [['M-1-01', 'Ward 1 bay A'], ['M-1-02', 'Ward 1 bay B'], ['M-1-03', 'Ward 2 bay A'], ['M-1-04', 'Ward 2 soiled utility room'], ['M-1-05', 'Ward 2 staff station'], ['M-1-06', 'Floor 1 elevator lobby']]],
     ['2', 'Floor 2', [['M-2-01', 'Theatres corridor'], ['M-2-02', 'Recovery'], ['M-2-03', 'Ward 3 bay A'], ['M-2-04', 'Ward 3 single room 4']]]
   ] },
   east: { name: 'East block', floors: [
@@ -297,10 +297,10 @@ var FAULTS = {
   power:  { label: 'No power',         ic: '⚡',    hint: 'sockets or supply off',  trade: 'elec',  pri: 'urgent' },
   lights: { label: 'Lights',           ic: '\u{1F4A1}', hint: 'out or flickering',      trade: 'elec',  pri: 'routine' },
   ac:     { label: 'Ventilation or cooling', ic: '❄️', hint: 'too hot, cold, noisy', trade: 'hvac',  pri: 'high' },
-  lift:   { label: 'Lift',             ic: '↕️', hint: 'stuck or not coming', trade: 'lift',  pri: 'urgent' },
+  lift:   { label: 'Elevator',             ic: '↕️', hint: 'stuck or not coming', trade: 'lift',  pri: 'urgent' },
   door:   { label: 'Door or lock',     ic: '\u{1F6AA}', hint: 'will not close or lock', trade: 'lift',  pri: 'routine' }
 };
-var TRADES = { plumb: 'Plumbing', elec: 'Electrical', hvac: 'Heating, ventilation and cooling', lift: 'Lifts and doors' };
+var TRADES = { plumb: 'Plumbing', elec: 'Electrical', hvac: 'Heating, ventilation and cooling', lift: 'Elevators and doors' };
 var PRI = { urgent: 'Urgent', high: 'High', routine: 'Routine' };
 var PRI_ORDER = { urgent: 0, high: 1, routine: 2 };
 // Example settings for this demo only, not a standard: each organisation sets its own.
@@ -337,7 +337,7 @@ function seed() {
   // Open now: [fault, room, hours ago reported, status, detail, priority, room out of use, notes]
   [['leak', 'M-1-04', 5, 'new', 'Water under the sink unit', null, false, ''],
    ['leak', 'M-1-04', 0.8, 'new', 'Drip from a ceiling tile near the door', null, false, ''],
-   ['lift', 'M-1-06', 28, 'parts', 'Lift B stops between floors; door sensor faulty', 'high', false, 'Door sensor ordered. Lift B locked off; Lift A in use.'],
+   ['lift', 'M-1-06', 28, 'parts', 'Elevator B stops between floors; door sensor faulty', 'high', false, 'Door sensor ordered. Elevator B locked off; Elevator A in use.'],
    ['power', 'M-2-02', 0.7, 'accepted', 'Two wall sockets dead, bay 3', null, false, ''],
    ['lights', 'M-G-03', 70, 'new', 'Two ceiling lights out by the doors', null, false, ''],
    ['lights', 'E-1-05', 140, 'new', 'Corridor light flickering', null, false, ''],
@@ -359,7 +359,7 @@ function seed() {
   // Planned maintenance this week: [id, task, place, day offset, clinical area, done (hour on due day) or null, slot (day, hour) or null]
   s.pm = [['pm1', 'Emergency lighting monthly test', 'Outpatient clinic rooms', -1, true, 10, null], ['pm2', 'Chiller 2 quarterly service', 'Chiller plant', -2, false, 14, null],
     ['pm3', 'Roof gutter and drain check', 'Main block roof', -1, false, null, null], ['pm4', 'Fire door inspection', 'Main block floor 1', 0, true, null, null],
-    ['pm5', 'Air handling unit filter change', 'Theatres corridor', 1, true, null, null], ['pm6', 'Lift A monthly service', 'Floor 1 lift lobby', 2, true, null, null],
+    ['pm5', 'Air handling unit filter change', 'Theatres corridor', 1, true, null, null], ['pm6', 'Elevator A monthly service', 'Floor 1 elevator lobby', 2, true, null, null],
     ['pm7', 'Water outlet flushing (little-used taps)', 'Ward 6', 3, true, null, null], ['pm8', 'Medical gas alarm panel test', 'Ward 3', 4, true, null, [4, 19]]
   ].map(function (r) {
     return { id: r[0], task: r[1], place: r[2], due: T0 + r[3] * D + D - M, clinical: r[4], done: r[5] != null ? T0 + r[3] * D + r[5] * H : null, slot: r[6] ? T0 + r[6][0] * D + r[6][1] * H : null };
@@ -381,12 +381,12 @@ function seed() {
   s.plant = {
     gen1: { name: 'Generator 1', up: true, since: T - 30 * D }, gen2: { name: 'Generator 2', up: true, since: T - 30 * D },
     ch1: { name: 'Chiller 1', up: true, since: T - 30 * D }, ch2: { name: 'Chiller 2', up: true, since: T - 2 * D, note: 'Serviced 2 days ago' },
-    liftA: { name: 'Lift A · Main block', up: true, since: T - 30 * D }, liftB: { name: 'Lift B · Main block', up: false, since: T - 28 * H, note: 'Locked off; waiting for a part' },
-    liftC: { name: 'Lift C · East block', up: true, since: T - 30 * D }, pumps: { name: 'Water pumps', up: true, since: T - 30 * D }
+    liftA: { name: 'Elevator A · Main block', up: true, since: T - 30 * D }, liftB: { name: 'Elevator B · Main block', up: false, since: T - 28 * H, note: 'Locked off; waiting for a part' },
+    liftC: { name: 'Elevator C · East block', up: true, since: T - 30 * D }, pumps: { name: 'Water pumps', up: true, since: T - 30 * D }
   };
   s.outages = [{ util: 'Power (mains)', start: T - 6 * D - 4 * H, end: T - 6 * D - 4 * H + 35 * M, note: 'Generators carried the load' },
                { util: 'Water', start: T - 12 * D - 9 * H, end: T - 12 * D - 9 * H + 130 * M, note: 'Pump changeover' },
-               { util: 'Lift B', start: T - 28 * H, end: null, note: 'Door sensor' }];
+               { util: 'Elevator B', start: T - 28 * H, end: null, note: 'Door sensor' }];
   // Log from events so far
   var ev = [];
   s.jobs.forEach(function (j) { ['req', 'acc', 'onsite', 'parts', 'done'].forEach(function (k) { if (j[k] && T - j[k] < 3 * D) ev.push({ t: j[k], text: eventText(s, j, k) }); }); });
@@ -443,7 +443,7 @@ function kpis() {
   var pmDue = state.pm.filter(function (p) { return p.due < endToday; }), pmOk = pmDue.filter(function (p) { return p.done && p.done <= p.due; });
   var gs = state.genSched.filter(function (g) { return g.due <= now() && g.due > now() - 56 * D; }), gd = gs.filter(function (g) { return g.done; });
   var open = openJobs();
-  var outH = state.outages.filter(function (o) { return o.util.indexOf('Lift') < 0 && o.start > now() - 30 * D; }).reduce(function (s, o) { return s + ((o.end || now()) - o.start) / H; }, 0);
+  var outH = state.outages.filter(function (o) { return o.util.indexOf('Elevator') < 0 && o.start > now() - 30 * D; }).reduce(function (s, o) { return s + ((o.end || now()) - o.start) / H; }, 0);
   return {
     open: open.length, overdue: open.filter(isOver).length, waitingParts: open.filter(function (j) { return j.parts; }).length,
     completionMedianH: med(null), completionByPriorityH: { urgent: med('urgent'), high: med('high'), routine: med('routine') }, closed14d: closed.length,
@@ -578,7 +578,7 @@ function advance(j, to) {
     j.done = now();
     addLog(eventText(state, j, 'done') + (j.notes ? ' Note: ' + j.notes : ''));
     if (j.closedRoom && !openJobs().some(function (x) { return x.room === j.room && x.closedRoom; })) addLog(ROOMS[j.room].name + ' can go back into use (the area in charge decides).');
-    if (j.fault === 'lift' && !state.plant.liftB.up && /Lift B/.test(j.detail)) { setPlant('liftB', true, true); }
+    if (j.fault === 'lift' && !state.plant.liftB.up && /Elevator B/.test(j.detail)) { setPlant('liftB', true, true); }
     render(); toast('Closed in ' + fmtH(ageH(j)) + ' from report.');
   }
 }
@@ -662,7 +662,7 @@ function stChip(j) { var st = status(j); return st === 'new' ? null : el('span',
 // Anyone: report a fault
 function reporter() {
   var frag = document.createDocumentFragment(), r = state.rep;
-  frag.appendChild(el('p', { class: 'safety', text: 'If anyone is in danger (fire, flooding near electrics, a smell of gas, someone stuck in a lift), follow your local emergency procedure first, then report here.' }));
+  frag.appendChild(el('p', { class: 'safety', text: 'If anyone is in danger (fire, flooding near electrics, a smell of gas, someone stuck in an elevator), follow your local emergency procedure first, then report here.' }));
   var steps = el('div', { class: 'steps' });
   // 1. Where
   var s1 = el('div', {}, [el('p', { class: 'stepq' + (r.room ? ' done' : '') }, [el('i', { text: '1' }), 'Where is it?'])]);

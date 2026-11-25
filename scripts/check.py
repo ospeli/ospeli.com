@@ -378,7 +378,24 @@ OLD_WORDS = [(re.compile(r"\bbed managers?\b", re.I), "Bed manager", "Patient fl
              (re.compile(r"(?<![Ww]ard or )\b[Uu]nit clerks?\b"), "Unit clerk (alone)", "Ward or unit clerk"),
              (re.compile(r"\b[Bb]ooking clerks?\b"), "Booking clerk", "Appointments scheduler"),
              (re.compile(r"\bAntenatal\b|\b(?:the|an|from) antenatal\b"), "Antenatal (alone)", "Pregnancy care"),
-             (re.compile(r"(?:\bHaemolysed|\b(?:or|and|is|was|be|are) haemolysed)\b(?! \(hemolyzed\)| or hemolyzed)"), "Haemolysed (alone)", "Haemolysed (hemolyzed)")]
+             (re.compile(r"(?:\bHaemolysed|\b(?:or|and|is|was|be|are) haemolysed)\b(?! \(hemolyzed\)| or hemolyzed)"), "Haemolysed (alone)", "Haemolysed (hemolyzed)"),
+             # Issue #104: everyday building, staffing and maternity words from one English. A word alone
+             # in a script string ('lift', 'cot') is an id (asset kind, check item, tile) and is left alone,
+             # as are hyphenated ids (asset-lift-a). A vehicle's patient or wheelchair lift is not an
+             # elevator, and the vehicle check's item ids are listed by id ("body, lift, fixings"). Blood
+             # bank, load bank and a light fitting bank are not staff.
+             (re.compile(r"(?<![-\w])(?<![Pp]atient )(?<![Ww]heelchair )(?<!body, )(?:Lifts?|(?<=[A-Za-z0-9,;:.'(] )lifts?)(?![-\w])"), "lift", "elevator"),
+             (re.compile(r"\bcar[- ]?parks?\b", re.I), "car park", "parking area"),
+             (re.compile(r"\bpower cuts?\b", re.I), "power cut", "power failure"),
+             (re.compile(r"(?<![-\w])(?:Cots?|(?<=[A-Za-z0-9,;:.'(] )cots?)(?![\w])"), "cot / neonatal cots", "neonatal care space"),
+             (re.compile(r"\blabour (?:wards?|rooms?)\b", re.I), "Labour ward / labour room", "Birthing unit / birthing room"),
+             (re.compile(r"\b(?:nurses?|midwi(?:fe|ves)) in charge\b", re.I), "nurse in charge / midwife in charge", "charge nurse / charge midwife"),
+             (re.compile(r"\bhealth cent(?:re|er)s?\b", re.I), "Health Centre", "clinic"),
+             (re.compile(r"\bestate halls?\b", re.I), "estate hall", "community hall"),
+             (re.compile(r"\bby bank\b|\bbank (?:staff|shifts?|nurses?|workers?|cover)\b", re.I), "bank (staff)", "staff pool")]
+# Issue #104: core/processmap.js holds the words people TYPE that mark a place or a thing (lift,
+# car park), so a typed name is read either way; it is a list to recognise, never shown.
+OLD_WORDS_TYPED_LISTS = {"web/app/core/processmap.js": {"lift", "car park"}}
 
 def js_strings(src):
     """The string and template literals of a script, joined; comments and code are left out."""
@@ -424,7 +441,10 @@ for f in vocab_files:
         continue
     text = f.read_text(encoding="utf-8")
     text = page_words(text) if f.suffix == ".html" else js_strings(text) if f.suffix in (".js", ".mjs") else text
+    typed = OLD_WORDS_TYPED_LISTS.get(f.relative_to(ROOT.parent).as_posix(), set())
     for old, new, where in old_word_hits(text):
+        if old in typed:
+            continue
         old_word_count += 1
         errors.append(f"{f.relative_to(ROOT.parent).as_posix()}: says \"{old}\"; the word is now \"{new}\" (issues #82, #91): \"{where}\"")
 if "--old-words" in sys.argv:

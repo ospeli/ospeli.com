@@ -421,7 +421,7 @@ a.ghost { color: var(--ink); text-decoration: none; }
     var b = bedById(id);
     var picking = S.picking && S.queue.filter(function (q) { return q.key === S.picking; })[0];
     if (picking && fits(b, picking)) {
-      sheet('Allocate ' + b.ward + ' ' + b.no + ' to ' + picking.key + '?', 'The ward is told straight away. The nurse in charge accepts when the patient arrives, or declines with a reason.', [
+      sheet('Allocate ' + b.ward + ' ' + b.no + ' to ' + picking.key + '?', 'The ward is told straight away. The charge nurse accepts when the patient arrives, or declines with a reason.', [
         el('div', { class: 'sheet-foot' }, [
           el('button', { type: 'button', class: 'ghost', text: 'Cancel', onclick: closeSheet }),
           el('button', { type: 'button', class: 'primary', text: 'Allocate bed', onclick: function () {

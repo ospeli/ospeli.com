@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="color-scheme" content="only light">
 <title>Primary and community care demo · Ospeli</title>
-<meta name="description" content="Home visit rounds and clinic lists on a phone that keep working offline, a health centre view of sessions, follow-ups, stock and hospital referrals, and an area view of community places. Fictional example data; runs in your browser.">
+<meta name="description" content="Home visit rounds and clinic lists on a phone that keep working offline, a clinic view of sessions, follow-ups, stock and hospital referrals, and an area view of community places. Fictional example data; runs in your browser.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Ospeli">
 <meta property="og:title" content="Primary and community care demo · Ospeli">
-<meta property="og:description" content="Home visit rounds and clinic lists on a phone that keep working offline, a health centre view of sessions, follow-ups, stock and hospital referrals, and an area view of community places. Fictional example data; runs in your browser.">
+<meta property="og:description" content="Home visit rounds and clinic lists on a phone that keep working offline, a clinic view of sessions, follow-ups, stock and hospital referrals, and an area view of community places. Fictional example data; runs in your browser.">
 <meta property="og:url" content="https://ospeli.com/demo/community/">
 <meta property="og:image" content="https://ospeli.com/og.png">
 <meta property="og:image:width" content="1200">
@@ -251,11 +251,11 @@ ol.log .qd { display: inline-block; font-size: 0.7rem; font-weight: 800; text-tr
 <main class="wrap">
   <span class="badge">Preview · fictional example data</span>
   <h1>Primary and community care: visits, clinics, follow-ups and community places</h1>
-  <p class="lead">Home visit rounds and clinic lists on a phone that keeps working without a signal. Health centre managers see sessions, follow-ups, stock and referrals from the hospital in one place. The area manager compares centres as rates and sees which community places are free for patients ready to leave hospital. The guide points things out; a person decides.</p>
+  <p class="lead">Home visit rounds and clinic lists on a phone that keeps working without a signal. Clinic managers see sessions, follow-ups, stock and referrals from the hospital in one place. The area manager compares clinics as rates and sees which community places are free for patients ready to leave hospital. The guide points things out; a person decides.</p>
 
   <div class="roles" role="group" aria-label="Whose view">
     <button type="button" id="r-front" aria-pressed="false">Nurse or clinic</button>
-    <button type="button" id="r-manager" aria-pressed="false">Centre manager</button>
+    <button type="button" id="r-manager" aria-pressed="false">Clinic manager</button>
     <button type="button" id="r-district" aria-pressed="false">Area manager</button>
   </div>
   <p class="rolehint" id="rolehint"></p>
@@ -290,7 +290,7 @@ ol.log .qd { display: inline-block; font-size: 0.7rem; font-weight: 800; text-tr
       <div id="decide"></div>
     </aside>
   </div>
-  <p class="foot">Everything here is invented: the community services of Example General Hospital, its four health centres, areas, sessions and times. Patients appear only as codes. It measures visits, sessions, follow-ups and waits, never individual staff, and it does not judge clinical control, change treatment or decide who is clinically eligible for a place. Coming in Mar 2027: clinic sessions, visit rounds and follow-up lists sharing one log, with wards able to see community and step-down capacity and placement waits timed. <a href="../../areas/community-care/">About this area</a> · <a href="../">All demos</a></p>
+  <p class="foot">Everything here is invented: the community services of Example General Hospital, its four clinics, areas, sessions and times. Patients appear only as codes. It measures visits, sessions, follow-ups and waits, never individual staff, and it does not judge clinical control, change treatment or decide who is clinically eligible for a place. Coming in Mar 2027: clinic sessions, visit rounds and follow-up lists sharing one log, with wards able to see community and step-down capacity and placement waits timed. <a href="../../areas/community-care/">About this area</a> · <a href="../">All demos</a></p>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -303,7 +303,7 @@ var START = TODAY * DAY + 11 * 60 + 40; // demo clock starts at 11:40 on Tuesday
 var DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 // ---------- Fixed reference data (fictional) ----------
-var CENTRES = { N: 'North Health Centre', E: 'East Health Centre', S: 'South Health Centre', W: 'West Health Centre' };
+var CENTRES = { N: 'North Clinic', E: 'East Clinic', S: 'South Clinic', W: 'West Clinic' };
 var CIDS = ['N', 'E', 'S', 'W'];
 var PROGS = { ltc: 'Long-term conditions', child: 'Child health', wound: 'Wound care', mat: 'Maternal and newborn', older: 'Older adults at home' };
 var PIDS = ['ltc', 'child', 'wound', 'mat', 'older'];
@@ -331,19 +331,19 @@ function seed() {
     pending: [], dismissed: {}, log: [], seq: 100, resched: null,
     visits: [], clinic: [], fu: [], sessions: [], stock: {}, ready: {}, refs: [], places: [], waits: [], week: {}, waitOther: { E: 24, S: 15, W: 31 } };
   var T = TODAY * DAY, hm = function (h, m) { return T + h * 60 + m; };
-  // Today's home visit round for one community nursing team at North Health Centre (planned order).
+  // Today's home visit round for one community nursing team at North Clinic (planned order).
   [['P-3104', 'hill', 'Blue gate, ring twice', 'wound', hm(8, 30), 'seen', hm(8, 41), hm(9, 5)],
    ['P-2259', 'riv', 'Flat 2, ground floor', 'older', hm(9, 15), 'seen', hm(9, 28), hm(9, 52)],
    ['P-4471', 'hill', 'House behind the corner shop', 'ltc', hm(10, 0), 'nothome', hm(10, 14), hm(10, 14)],
    ['P-1836', 'old', 'Side door, dog in the yard', 'wound', hm(10, 45), 'seen', hm(10, 58), hm(11, 21)],
-   ['P-5012', 'riv', 'Top floor, lift often out of order', 'mat', hm(11, 30), 'planned'],
+   ['P-5012', 'riv', 'Top floor, elevator often out of order', 'mat', hm(11, 30), 'planned'],
    ['P-2790', 'hill', 'Green door at the top of the steps', 'older', hm(12, 15), 'planned'],
    ['P-3348', 'old', 'Ask at the pharmacy for the yard key', 'ltc', hm(13, 0), 'planned'],
-   ['P-4105', 'riv', 'Back entrance by the car park', 'wound', hm(13, 45), 'planned'],
+   ['P-4105', 'riv', 'Back entrance by the parking area', 'wound', hm(13, 45), 'planned'],
    ['P-1977', 'hill', 'Second house past the school', 'mat', hm(14, 30), 'planned'],
    ['P-2611', 'old', 'Knock loudly, hard of hearing', 'older', hm(15, 15), 'planned']
   ].forEach(function (r, i) { s.visits.push({ id: 'V' + (i + 1), code: r[0], area: r[1], note: r[2], prog: r[3], plan: r[4], status: r[5], arr: r[6] || null, done: r[7] || null, order: i + 1, fu: null, when: null }); });
-  // Today's clinic list at North Health Centre.
+  // Today's clinic list at North Clinic.
   var am = [[9, 0, 'seen', 8, 52, 10], [9, 15, 'seen', 9, 13, 21], [9, 30, 'dna'], [9, 45, 'seen', 9, 41, 22], [10, 0, 'seen', 9, 58, 12], [10, 15, 'seen', 10, 9, 18],
             [10, 30, 'seen', 10, 31, 15], [10, 45, 'seen', 10, 44, 27], [11, 0, 'seen', 10, 57, 31], [11, 15, 'arrived', 11, 12], [11, 30, 'arrived', 11, 33], [11, 45, 'booked']];
   am.forEach(function (r, i) { var c = { id: 'C' + (i + 1), code: code(), sess: 'am', prog: 'ltc', slot: hm(r[0], r[1]), status: r[2], arr: r[3] != null ? hm(r[3], r[4]) : null, seen: null };
@@ -371,7 +371,7 @@ function seed() {
   // Follow-ups linked to today's visits, and due soon on this team's caseload.
   [['V3', 'nothome'], ['V5'], ['V7']].forEach(function (x) { var v = byIdIn(s.visits, x[0]); var f = { id: 'F' + (++fid), centre: 'N', code: v.code, prog: v.prog, due: TODAY, status: x[1] === 'nothome' ? 'missed' : 'due', booked: null, mine: true, visit: v.id }; v.fu = f.id; s.fu.push(f); });
   [['P-2048', 'riv', 'wound', 2], ['P-3561', 'old', 'older', 2], ['P-4720', 'riv', 'ltc', 3], ['P-1593', 'hill', 'mat', 4]].forEach(function (x) { s.fu.push({ id: 'F' + (++fid), centre: 'N', code: x[0], area: x[1], prog: x[2], due: x[3], status: 'due', booked: null, mine: true }); });
-  // Clinic sessions this week for each centre.
+  // Clinic sessions this week for each clinic.
   var sid = 0;
   CIDS.forEach(function (c) {
     for (var d = 0; d < 5; d++) {
@@ -400,7 +400,7 @@ function seed() {
   });
   // Visits completed as planned earlier this week (Monday), per centre: [planned, completed on the day].
   s.week = { N: [11, 9], E: [14, 10], S: [9, 9], W: [12, 8] };
-  // Referrals received from the hospital for community services, per centre.
+  // Referrals received from the hospital for community services, per clinic.
   var rid = 0, svc = ['Home nursing', 'Wound care', 'Long-term conditions review', 'Maternal and newborn visits'];
   CIDS.forEach(function (c, ci) {
     for (var i = 0; i < 6; i++) { var recv = (TODAY - 1 - Math.floor(R() * 9)) * DAY + 9 * 60 + Math.floor(R() * 420); s.refs.push({ id: 'R' + (++rid), centre: c, code: code(), service: svc[Math.floor(R() * 4)], recv: recv, acc: recv + Math.round((4 + R() * (c === 'W' ? 40 : 22)) * 60), status: 'accepted' }); }
@@ -420,9 +420,9 @@ function seed() {
   // Build today's log from the seeded events, in time order.
   var ev = [];
   s.visits.forEach(function (v) { if (v.arr) ev.push([v.arr, 'Community nurse arrived: ' + v.code + ', ' + AREAS[v.area]]); if (v.status === 'seen') ev.push([v.done, 'Visit done: ' + v.code + ' (' + PROGS[v.prog] + ')']); if (v.status === 'nothome') ev.push([v.done, 'Not home: ' + v.code + '. Follow-up recorded as missed.']); });
-  s.clinic.forEach(function (c) { if (c.arr) ev.push([c.arr, 'Checked in at North Health Centre: ' + c.code]); if (c.seen) ev.push([c.seen, 'Seen: ' + c.code + ' (waited ' + (c.seen - c.arr) + ' min)']); if (c.status === 'dna') ev.push([c.slot + 20, 'No-show: ' + c.code + '. Added to recalls.']); });
+  s.clinic.forEach(function (c) { if (c.arr) ev.push([c.arr, 'Checked in at North Clinic: ' + c.code]); if (c.seen) ev.push([c.seen, 'Seen: ' + c.code + ' (waited ' + (c.seen - c.arr) + ' min)']); if (c.status === 'dna') ev.push([c.slot + 20, 'No-show: ' + c.code + '. Added to recalls.']); });
   s.refs.forEach(function (r) { if (Math.floor(r.recv / DAY) === TODAY) ev.push([r.recv, 'Referral received from Example General Hospital: ' + r.code + ', ' + r.service + ' (' + CENTRES[r.centre] + ')']); });
-  ev.push([hm(8, 2), 'North Health Centre opened. Readiness check done by the centre manager.']);
+  ev.push([hm(8, 2), 'North Clinic opened. Readiness check done by the clinic manager.']);
   ev.push([hm(8, 20), 'Community nurse round synced to the phone: 10 visits.']);
   ev.push([hm(9, 10), 'Placement coordinator accepted ' + s.placeRefs[1].code + ' for a step-down bed and held place 8.']);
   ev.sort(function (a, b) { return b[0] - a[0]; });
@@ -577,12 +577,12 @@ function suggest() {
         why: 'A referral accepted for this service has no place yet, and a place of the same kind shows free. It does not decide who is clinically suitable; the placement coordinator checks that.',
         acts: [{ label: 'Propose holding the place' + (n > 1 ? 's' : ''), primary: true, fn: function () { propose({ id: id, kind: 'hold', pairs: pairs, who: 'district', text: 'Hold ' + pairs.map(function (x) { return SERVICES[k].toLowerCase().replace(/s$/, '') + ' ' + byIdIn(state.places, x.p).n + ' for ' + byIdIn(state.placeRefs, x.h).code; }).join(', ') + '.' }); } }] });
     });
-    // 7. Overdue follow-ups by programme across centres.
+    // 7. Overdue follow-ups by programme across clinics.
     var hot = [];
     CIDS.forEach(function (c) { PIDS.forEach(function (p) { var st = fuStats(c, p); if (st.overdue >= state.settings.recallAt) hot.push({ c: c, p: p, n: st.overdue, pct: st.pct }); }); });
     if (hot.length) out.push({ id: 'dist-fu-' + hot.map(function (h) { return h.c + h.p + h.n; }).join(''), kind: 'time', tag: 'Follow-ups', title: hot.length + ' programme' + (hot.length > 1 ? 's' : '') + ' with ' + state.settings.recallAt + '+ overdue follow-ups',
       list: hot.map(function (h) { return CENTRES[h.c] + ', ' + PROGS[h.p] + ': ' + h.n + ' overdue (' + h.pct + '% missed in 4 weeks)'; }),
-      why: 'From each centre\'s follow-up register. The centre manager books recalls; the threshold is an example setting.',
+      why: 'From each clinic\'s follow-up register. The clinic manager books recalls; the threshold is an example setting.',
       acts: [{ label: 'Open ' + CENTRES[hot[0].c], fn: function () { state.role = 'manager'; state.centre = hot[0].c; render(); window.scrollTo(0, 0); } }] });
   }
   return out.filter(function (x) { return !state.dismissed[x.id]; });
@@ -633,7 +633,7 @@ function visitAct(v, what, when) {
   var t = now();
   if (what === 'arrive') { v.status = 'arrived'; v.arr = t; addLog('Community nurse arrived: ' + v.code + ', ' + AREAS[v.area], true); toast('Arrived at ' + hhmm(t) + '.' + saved()); }
   else if (what === 'seen') { v.status = 'seen'; v.done = t; if (!v.arr) v.arr = t; linkFu(v, 'attended'); addLog('Visit done: ' + v.code + ' (' + PROGS[v.prog] + ')', true); toast('Visit done.' + saved()); }
-  else if (what === 'nothome') { v.status = 'nothome'; v.done = t; linkFu(v, 'missed'); addLog('Not home: ' + v.code + '. Follow-up recorded as missed; the centre can recall.', true); toast('Recorded as not home.' + saved()); }
+  else if (what === 'nothome') { v.status = 'nothome'; v.done = t; linkFu(v, 'missed'); addLog('Not home: ' + v.code + '. Follow-up recorded as missed; the clinic can recall.', true); toast('Recorded as not home.' + saved()); }
   else if (what === 'resched') { v.status = 'resched'; v.done = t; v.when = when; if (v.fu) { var f = byIdIn(state.fu, v.fu); f.due = when === 'tomorrow' ? TODAY + 1 : TODAY + 2; f.status = 'booked'; f.booked = f.due; } addLog('Visit rescheduled to ' + (when === 'tomorrow' ? 'tomorrow' : 'later this week') + ': ' + v.code, true); toast('Rescheduled.' + saved()); }
   state.resched = null; render();
   var n = document.querySelector('#round .go'); if (n && what !== 'arrive') n.focus({ preventScroll: true });
@@ -642,7 +642,7 @@ function visitAct(v, what, when) {
 function linkFu(v, st) { if (!v.fu) return; var f = byIdIn(state.fu, v.fu); if (f) f.status = st; }
 function clinicAct(c, what) {
   var t = now();
-  if (what === 'arrive') { c.status = 'arrived'; c.arr = t; addLog('Checked in at North Health Centre: ' + c.code, true); toast('Checked in. The wait clock has started.' + saved()); }
+  if (what === 'arrive') { c.status = 'arrived'; c.arr = t; addLog('Checked in at North Clinic: ' + c.code, true); toast('Checked in. The wait clock has started.' + saved()); }
   else if (what === 'seen') { c.status = 'seen'; c.seen = t; addLog('Seen: ' + c.code + ' (waited ' + fmt(t - c.arr) + ')', true); toast('Seen after ' + fmt(t - c.arr) + '.' + saved()); }
   else if (what === 'dna') { c.status = 'dna'; addLog('No-show: ' + c.code + '. Added to recalls.', true); toast('Recorded. Added to recalls.' + saved()); }
   else if (what === 'resched') { c.status = 'resched'; addLog('Clinic appointment rescheduled: ' + c.code, true); toast('Rescheduled.' + saved()); }
@@ -676,16 +676,16 @@ function setOffline(off) {
 // ---------- Render ----------
 var HINTS = {
   front: 'A community nurse\'s or clinic worker\'s phone. Work down today\'s visits or the clinic list with one thumb. Try switching the network off: it keeps working and sends changes later.',
-  manager: 'A health centre manager\'s view. Referrals from the hospital, follow-ups overdue by programme, sessions this week, stock of key items and the readiness check.',
-  district: 'An area manager\'s view. Health centres compared as rates, not people, and community places free, held or occupied for patients ready to leave hospital.'
+  manager: 'A clinic manager\'s view. Referrals from the hospital, follow-ups overdue by programme, sessions this week, stock of key items and the readiness check.',
+  district: 'An area manager\'s view. Clinics compared as rates, not people, and community places free, held or occupied for patients ready to leave hospital.'
 };
 function render() {
   var aid = document.activeElement && document.activeElement.id;
   ['front', 'manager', 'district'].forEach(function (r) { document.getElementById('r-' + r).setAttribute('aria-pressed', String(state.role === r)); });
   document.getElementById('rolehint').textContent = HINTS[state.role];
   document.getElementById('viewcard').classList.toggle('front', state.role === 'front');
-  document.getElementById('view-h').textContent = state.role === 'front' ? (state.mode === 'visits' ? 'Today\'s visits' : 'Today\'s clinic list') : state.role === 'manager' ? 'Health centre' : 'Community services: all centres';
-  document.getElementById('kpihint').textContent = state.role === 'front' ? 'This team at North Health Centre. Tap a tile for its definition.' : 'Tap a tile for its definition.';
+  document.getElementById('view-h').textContent = state.role === 'front' ? (state.mode === 'visits' ? 'Today\'s visits' : 'Today\'s clinic list') : state.role === 'manager' ? 'Clinic' : 'Community services: all clinics';
+  document.getElementById('kpihint').textContent = state.role === 'front' ? 'This team at North Clinic. Tap a tile for its definition.' : 'Tap a tile for its definition.';
   renderClock();
   renderKpis();
   document.getElementById('headtools').textContent = '';
@@ -710,17 +710,17 @@ function renderKpis() {
     tile('done', k.visitsDoneToday + ' of ' + k.visitsToday, 'Visits done today', k.visitsLeftToday + ' still to do', 'Home visits marked done today out of the visits on today\'s round. Local definition.'),
     tile('plan', pctS(k.visitsAsPlannedPct), 'Visits completed as planned', ap.done + ' of ' + ap.planned + ' this week', 'Visits completed on the planned day / visits planned, counting only visits with an outcome so far this week. Local definition.'),
     tile('fu', String(k.followUpsDueThisWeek), 'Follow-ups due, not booked', 'next 3 days, this caseload', 'Follow-ups on this team\'s caseload due in the next 3 days with no visit or slot booked yet. Local definition.', k.followUpsDueThisWeek > 0),
-    tile('wait', k.clinicWaitMedianMin == null ? '–' : fmt(k.clinicWaitMedianMin), 'Clinic wait today', 'check-in to seen, median', 'Minutes from checking in at the health centre to being seen (median, today). Local definition.')];
+    tile('wait', k.clinicWaitMedianMin == null ? '–' : fmt(k.clinicWaitMedianMin), 'Clinic wait today', 'check-in to seen, median', 'Minutes from checking in at the clinic to being seen (median, today). Local definition.')];
   else if (r === 'manager') { var fs = fuStats(state.centre); t = [
     tile('missed', pctS(k.missedFollowUpPct), 'Missed follow-up rate', fs.missed + ' of ' + fs.due + ' due · last 4 weeks', 'Follow-ups missed / follow-ups due in the period (last 4 weeks, including today so far). Local definition.', k.missedFollowUpPct >= 15),
     tile('wait', k.clinicWaitMedianMin == null ? '–' : fmt(k.clinicWaitMedianMin), 'Clinic wait today', 'check-in to seen, median', 'Minutes from checking in to being seen (median, today). Local definition.'),
-    tile('acc', k.referralAcceptMedianH == null ? '–' : fmtH(k.referralAcceptMedianH), 'Referral to accepted', k.referralsWaiting + ' waiting now', 'Hours from a hospital referral being received to the centre accepting it (median, last 14 days). Local definition.', k.referralsWaiting > 0 && waitingRefs(state.centre).some(function (x) { return (now() - x.recv) / 60 >= state.settings.acceptHours; })),
-    tile('ready', k.readinessPct + '%', 'Service readiness index', 'from today\'s readiness check', 'General service readiness index (WHO SARA approach): mean availability of tracer items across domains, for this centre. The items here are a short example list.', k.readinessPct < 85)]; }
+    tile('acc', k.referralAcceptMedianH == null ? '–' : fmtH(k.referralAcceptMedianH), 'Referral to accepted', k.referralsWaiting + ' waiting now', 'Hours from a hospital referral being received to the clinic accepting it (median, last 14 days). Local definition.', k.referralsWaiting > 0 && waitingRefs(state.centre).some(function (x) { return (now() - x.recv) / 60 >= state.settings.acceptHours; })),
+    tile('ready', k.readinessPct + '%', 'Service readiness index', 'from today\'s readiness check', 'General service readiness index (WHO SARA approach): mean availability of tracer items across domains, for this clinic. The items here are a short example list.', k.readinessPct < 85)]; }
   else t = [
-    tile('plan', pctS(k.visitsAsPlannedAllPct), 'Visits completed as planned', 'all centres, this week', 'Visits completed on the planned day / visits planned, all four centres, this week so far. Local definition.'),
-    tile('missed', pctS(k.missedFollowUpAllPct), 'Missed follow-up rate', 'all centres · last 4 weeks', 'Follow-ups missed / follow-ups due in the last 4 weeks, all centres. Local definition.', k.missedFollowUpAllPct >= 15),
+    tile('plan', pctS(k.visitsAsPlannedAllPct), 'Visits completed as planned', 'all clinics, this week', 'Visits completed on the planned day / visits planned, all four clinics, this week so far. Local definition.'),
+    tile('missed', pctS(k.missedFollowUpAllPct), 'Missed follow-up rate', 'all clinics · last 4 weeks', 'Follow-ups missed / follow-ups due in the last 4 weeks, all clinics. Local definition.', k.missedFollowUpAllPct >= 15),
     tile('place', k.placementWaitMedianDays == null ? '–' : k.placementWaitMedianDays + ' days', 'Step-down placement wait', 'median, last ' + state.waits.length + ' placements', 'Referral from hospital accepted → community place started (median, recent placements). Local definition.'),
-    tile('ready', k.readinessAllPct + '%', 'Service readiness index', 'mean of 4 centres', 'General service readiness index (WHO SARA approach): mean availability of tracer items across domains, averaged over the centres. Short example item list.', k.readinessAllPct < 85)];
+    tile('ready', k.readinessAllPct + '%', 'Service readiness index', 'mean of 4 clinics', 'General service readiness index (WHO SARA approach): mean availability of tracer items across domains, averaged over the clinics. Short example item list.', k.readinessAllPct < 85)];
   t.forEach(function (x) { box.appendChild(x); });
 }
 function netbar() {
@@ -822,7 +822,7 @@ function managerView() {
   var f = document.createDocumentFragment(), c = state.centre;
   var sel = el('select', { id: 'centre-pick', onchange: function (e) { state.centre = e.target.value; render(); } });
   CIDS.forEach(function (id) { sel.appendChild(el('option', { value: id, text: CENTRES[id] })); }); sel.value = c;
-  var ht = document.getElementById('headtools'); ht.appendChild(el('label', { for: 'centre-pick', class: 'sr' }, ['Health centre'])); ht.appendChild(sel);
+  var ht = document.getElementById('headtools'); ht.appendChild(el('label', { for: 'centre-pick', class: 'sr' }, ['Clinic'])); ht.appendChild(sel);
   if (queued() && c === 'N') f.appendChild(el('p', { class: 'syncnote', text: 'A community nurse\'s phone has ' + queued() + ' change' + (queued() > 1 ? 's' : '') + ' not sent yet (no signal). This view updates when they arrive.' }));
   // Referrals
   var wr = waitingRefs(c), recent = state.refs.filter(function (r) { return r.centre === c && r.acc && now() - r.acc < 2 * DAY; }).sort(function (a, b) { return b.acc - a.acc; }).slice(0, 3);
@@ -912,7 +912,7 @@ function sessCard(x) {
 }
 function districtView() {
   var f = document.createDocumentFragment();
-  f.appendChild(el('h3', { class: 'sec', text: 'Health centres compared' }));
+  f.appendChild(el('h3', { class: 'sec', text: 'Clinics compared' }));
   var data = CIDS.map(function (c) { return { c: c, plan: asPlanned(c).pct, missed: fuStats(c).pct, acc: acceptHours(c), ready: readiness(c).pct, held: sessHeld(c) }; });
   var worst = function (k, hi) { var v = data.map(function (d) { return d[k]; }); return hi ? Math.max.apply(null, v) : Math.min.apply(null, v); };
   var g = el('div', { class: 'centres', id: 'centres' });
@@ -925,12 +925,12 @@ function districtView() {
       el('button', { type: 'button', class: 'small', 'aria-label': 'Open ' + CENTRES[d.c], onclick: function () { state.role = 'manager'; state.centre = d.c; render(); window.scrollTo(0, 0); }, text: 'Open centre' })]));
   });
   f.appendChild(g);
-  f.appendChild(el('p', { class: 'fine', text: 'Rates and medians for each centre, never individual staff. The lowest or slowest value on each line is marked.' }));
-  // Missed follow-up rate by programme and centre
+  f.appendChild(el('p', { class: 'fine', text: 'Rates and medians for each clinic, never individual staff. The lowest or slowest value on each line is marked.' }));
+  // Missed follow-up rate by programme and clinic
   f.appendChild(el('h3', { class: 'sec', text: 'Missed follow-up rate by programme · last 4 weeks' }));
   var tb = el('tbody');
   PIDS.forEach(function (p) { tb.appendChild(el('tr', {}, [el('td', { text: PROGS[p] })].concat(CIDS.map(function (c) { var s = fuStats(c, p); return el('td', { class: 'r' + (s.overdue >= state.settings.recallAt ? ' hi' : ''), title: s.overdue + ' overdue now', text: pctS(s.pct) + ' (' + s.overdue + ')' }); })))); });
-  f.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Programme' })].concat(CIDS.map(function (c) { return el('th', { class: 'r', text: CENTRES[c].replace(' Health Centre', '') }); })))]), tb])]));
+  f.appendChild(el('div', { class: 'tablewrap' }, [el('table', { class: 't' }, [el('thead', {}, [el('tr', {}, [el('th', { text: 'Programme' })].concat(CIDS.map(function (c) { return el('th', { class: 'r', text: CENTRES[c].replace(' Clinic', '') }); })))]), tb])]));
   f.appendChild(el('p', { class: 'fine', text: 'Missed rate, with follow-ups overdue now in brackets. Marked: ' + state.settings.recallAt + ' or more overdue (example setting).' }));
   // Community places
   f.appendChild(el('h3', { class: 'sec', text: 'Community places for hospital discharges' }));
@@ -1008,7 +1008,7 @@ setInterval(function () { var a = document.activeElement; if (a && (a.tagName ==
 
 // Read-only view for software agents (no writes): window.ospeliCommunityDemo
 window.ospeliCommunityDemo = Object.freeze({
-  describe: function () { return 'Read-only primary and community care demo for the fictional community services of Example General Hospital (four health centres). get() returns today\'s visit round, clinic list, follow-ups overdue by programme and centre, sessions, stock, readiness, hospital referrals and community places; kpis() the headline measures; suggestions() the guide\'s current suggestions. Patients are codes only. Runs in the browser; nothing is sent anywhere.'; },
+  describe: function () { return 'Read-only primary and community care demo for the fictional community services of Example General Hospital (four clinics). get() returns today\'s visit round, clinic list, follow-ups overdue by programme and clinic, sessions, stock, readiness, hospital referrals and community places; kpis() the headline measures; suggestions() the guide\'s current suggestions. Patients are codes only. Runs in the browser; nothing is sent anywhere.'; },
   get: function () {
     return clone({ role: state.role, demoClock: 'Tue ' + hhmm(now()), offline: state.offline, queuedChanges: queued(),
       visitRound: state.visits.slice().sort(function (a, b) { return a.order - b.order; }).map(function (v) { return { id: v.id, code: v.code, area: AREAS[v.area], programme: PROGS[v.prog], planned: hhmm(v.plan), status: v.status }; }),

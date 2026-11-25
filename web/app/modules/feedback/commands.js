@@ -576,7 +576,7 @@ const NOTES = {
   waiting: ['Waited over two hours with no update', 'Clinic started late and nobody said why', 'Long queue at the pharmacy window'],
   communication: ['Was not told the appointment had moved', 'Discharge letter was hard to understand', 'Results took a long time to be explained'],
   environment: ['Toilets on the ground floor were not clean', 'Too noisy at night to sleep', 'Waiting area was very hot'],
-  access: ['Phone line rang out several times', 'Could not book a follow-up before leaving', 'Hard to find the entrance from the car park'],
+  access: ['Phone line rang out several times', 'Could not book a follow-up before leaving', 'Hard to find the entrance from the parking area'],
   food: ['Meal arrived cold', 'No choice left by the time the meal cart came'],
   billing: ['Asked to fill in the same form twice', 'Invoice did not match what was explained'],
   attitude: ['Felt rushed at the front desk', 'Questions were brushed off'],

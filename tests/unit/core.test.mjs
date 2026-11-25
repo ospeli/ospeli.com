@@ -18,7 +18,7 @@ const tree = [
 
 test('the six build-month roles exist', () => {
   // The first six never change place. Roles a module adds follow them (tests/unit/module-packs.test.mjs).
-  assert.deepEqual(ROLES.slice(0, 6).map((r) => r.name), ['Ward nurse', 'Patient flow coordinator', 'Facilities technician', 'Emergency department nurse in charge', 'Operations manager', 'COO']);
+  assert.deepEqual(ROLES.slice(0, 6).map((r) => r.name), ['Ward nurse', 'Patient flow coordinator', 'Facilities technician', 'Emergency department charge nurse', 'Operations manager', 'COO']);
 });
 
 test('entity validation rejects bad ids, types and names', () => {

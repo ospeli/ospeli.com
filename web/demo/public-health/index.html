@@ -275,7 +275,7 @@ ol.log .chip { margin-left: 6px; }
       <div id="decide"></div>
     </aside>
   </div>
-  <p class="foot">Everything here is invented: the outreach programme of Example General Hospital, its health centres, venues, teams, vehicles, stock and readings. It counts sessions, people checked in, stock and temperatures, never individual staff. It does not track cases or contacts, decide who should be vaccinated or screened, or judge whether stock is safe to use after an excursion; those decisions stay with the responsible people. Coming in Mar 2027: campaign plans, session check-ins, stock by site and cold chain readings sharing one log, with transfers between sites and work orders for faulty fridges. <a href="../../areas/public-health-operations/">About this area</a> · <a href="../">All demos</a></p>
+  <p class="foot">Everything here is invented: the outreach programme of Example General Hospital, its clinics, venues, teams, vehicles, stock and readings. It counts sessions, people checked in, stock and temperatures, never individual staff. It does not track cases or contacts, decide who should be vaccinated or screened, or judge whether stock is safe to use after an excursion; those decisions stay with the responsible people. Coming in Mar 2027: campaign plans, session check-ins, stock by site and cold chain readings sharing one log, with transfers between sites and work orders for faulty fridges. <a href="../../areas/public-health-operations/">About this area</a> · <a href="../">All demos</a></p>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -291,7 +291,7 @@ var DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 function dow(d) { return ((2 + d) % 7 + 7) % 7; }
 
 // ---------- Fixed reference data (fictional) ----------
-var SITES = { C: 'Central store', N: 'Northside Health Centre', E: 'Eastfield Health Centre', H: 'Hill Road Clinic' };
+var SITES = { C: 'Central store', N: 'Northside Clinic', E: 'Eastfield Clinic', H: 'Hill Road Clinic' };
 var SIDS = ['C', 'N', 'E', 'H'];
 var ITEMS = {
   VA: { name: 'Vaccine A', unit: 'vials', pack: '10-dose vials', doses: 10 },
@@ -316,7 +316,7 @@ var DEFAULT_SET = { monthTarget: 3000, nearExpiry: 14, gapDays: 3, checkEvery: 6
 // Past sessions this month rotate through these: [type, venue, site, expected, item]
 var TEMPL = [
   ['vax', 'Market square shelter', 'N', 120, 'VA'], ['vax', 'Riverside flats community room', 'E', 90, 'VA'],
-  ['screen', 'Eastfield Health Centre', 'E', 40, 'SK'], ['vax', 'Old Mill estate hall', 'H', 70, 'VB'],
+  ['screen', 'Eastfield Clinic', 'E', 40, 'SK'], ['vax', 'Old Mill community hall', 'H', 70, 'VB'],
   ['screen', 'Hill Road community hall', 'H', 60, 'SK'], ['vax', 'Bus station concourse', 'N', 100, 'VA'],
   ['vax', 'Eastfield School hall', 'N', 160, 'VA']
 ];
@@ -345,13 +345,13 @@ function seed() {
   // Today and the next seven days.
   s.sessions = [
     ses('S1', 0, 9 * 60, 13 * 60, 'vax', 'Market square shelter', 'N', 140, 'VA', 12, 'T2', 'V1', { issued: true }),
-    ses('S2', 0, 13 * 60, 16 * 60, 'screen', 'Eastfield Health Centre', 'E', 40, 'SK', 40, 'T3', null, { onsite: true }),
+    ses('S2', 0, 13 * 60, 16 * 60, 'screen', 'Eastfield Clinic', 'E', 40, 'SK', 40, 'T3', null, { onsite: true }),
     ses('S3', 1, 9 * 60, 13 * 60, 'vax', 'Riverside flats community room', 'E', 90, 'VA', 10, 'T1', 'V2'),
     ses('S4', 2, 9 * 60, 13 * 60, 'vax', 'Eastfield School hall', 'N', 160, 'VA', 18, 'T2', 'V1'),
     ses('S5', 2, 10 * 60, 14 * 60, 'screen', 'Hill Road community hall', 'H', 60, 'SK', 60, 'T4', null),
-    ses('S6', 3, 9 * 60, 13 * 60, 'vax', 'Old Mill estate hall', 'H', 70, 'VB', 70, null, 'V2'),
+    ses('S6', 3, 9 * 60, 13 * 60, 'vax', 'Old Mill community hall', 'H', 70, 'VB', 70, null, 'V2'),
     ses('S7', 6, 9 * 60, 13 * 60, 'vax', 'Bus station concourse', 'N', 100, 'VA', 12, 'T1', 'V1'),
-    ses('S8', 7, 13 * 60, 16 * 60, 'screen', 'Northside Health Centre', 'N', 50, 'SK', 50, 'T3', null, { onsite: true })
+    ses('S8', 7, 13 * 60, 16 * 60, 'screen', 'Northside Clinic', 'N', 50, 'SK', 50, 'T3', null, { onsite: true })
   ];
   // Stock lots on hand: [site, item, quantity, expires in N days]
   s.lots = [];
@@ -377,7 +377,7 @@ function seed() {
     X3: [{ t: -3 * DAY + 11 * 60 + 25, text: 'Cold packs swapped for spares' }]
   };
   s.log = [
-    { t: 7 * 60 + 35, text: 'Northside Health Centre issued 12 vials of Vaccine A to Outreach team 2 for Market square shelter.' },
+    { t: 7 * 60 + 35, text: 'Northside Clinic issued 12 vials of Vaccine A to Outreach team 2 for Market square shelter.' },
     { t: 7 * 60 + 50, text: 'Van 1 left Northside with Outreach team 2.' },
     { t: 8 * 60 + 40, text: 'Cold box reading 4.6 °C logged by Outreach team 2 (in range).' },
     { t: 9 * 60 + 5, text: 'Vaccination outreach at Market square shelter started.' },
@@ -512,7 +512,7 @@ function suggest() {
         title: 'Stock may run short at Market square shelter',
         text: 'About ' + remaining + ' more people are expected and the team has ' + dosesLeft + ' doses left. Ask Northside to send ' + plural(vials, 'more vial') + ' of Vaccine A.',
         why: 'Expected ' + x1.expected + ' (set when the session was planned), ' + seen + ' checked in, ' + (ph.carried - ph.opened) + ' unopened vials of ' + ITEMS.VA.doses + ' doses.',
-        propose: { kind: 'topup', qty: vials, text: 'Northside Health Centre sends ' + plural(vials, 'vial') + ' of Vaccine A to Outreach team 2 at Market square shelter.' } });
+        propose: { kind: 'topup', qty: vials, text: 'Northside Clinic sends ' + plural(vials, 'vial') + ' of Vaccine A to Outreach team 2 at Market square shelter.' } });
     }
   }
   if (state.offline && state.queue.length) out.push({ id: 'offline-' + state.queue.length, roles: ['worker'], kind: 'ask', tagText: 'Working offline',

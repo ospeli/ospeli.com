@@ -21,7 +21,7 @@ export const ROLES = [
   { id: 'ward-nurse', name: 'Ward nurse', home: 'beds' },
   { id: 'bed-manager', name: 'Patient flow coordinator', home: 'beds' },
   { id: 'estates-tech', name: 'Facilities technician', home: 'engineering' },
-  { id: 'ae-nic', name: 'Emergency department nurse in charge', home: 'ae' },
+  { id: 'ae-nic', name: 'Emergency department charge nurse', home: 'ae' },
   { id: 'ops-manager', name: 'Operations manager', home: 'dashboard' },
   { id: 'coo', name: 'COO', home: 'dashboard' },
   // Roles added with a module (module crew). New roles go at the end: the order is kept in stored data.
@@ -72,6 +72,10 @@ const WORD_CHANGES = [
   [/\bemergency and theatres\b/g, 'emergency and operating rooms'],
   [/\bEnergy centre\b/g, 'Utilities building'],
   [/\bNorth health centre\b/g, 'North clinic'],
+  // Issue #104: an elevator asset and its fault, and the emergency department's role name.
+  [/\bBed lift\b/g, 'Bed elevator'],
+  [/\bLift out of service\b/g, 'Elevator out of service'],
+  [/\bEmergency department nurse in charge\b/g, 'Emergency department charge nurse'],
 ];
 export const currentWords = (text) => (typeof text === 'string' ? WORD_CHANGES.reduce((s, [old, now]) => s.replace(old, now), text) : text);
 

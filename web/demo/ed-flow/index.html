@@ -178,7 +178,7 @@ ol.log span small { color: var(--soft); font-size: 0.85rem; }
   <p class="lead">Every step from arrival to leaving the department gets a time, so the team can see who is waiting, for what, and where the day slows down. Pick a role to see its view. Ospeli records times and suggests operational actions; people decide, and clinical decisions stay with the care team.</p>
 
   <div class="roles" role="group" aria-label="Choose a role">
-    <button type="button" data-role="nurse" aria-pressed="true">Nurse in charge<small>phone or tablet</small></button>
+    <button type="button" data-role="nurse" aria-pressed="true">Charge nurse<small>phone or tablet</small></button>
     <button type="button" data-role="flow" aria-pressed="false">Patient flow coordinator<small>beds</small></button>
     <button type="button" data-role="ops" aria-pressed="false">Operations manager<small>pressure and flow</small></button>
   </div>
@@ -224,7 +224,7 @@ var STEPS = [
 ];
 var WAITING_FOR = { triage: 'Waiting for triage', seen: 'Waiting to be seen', decision: 'Waiting for a decision', bedreq: 'Waiting for a bed request', left: 'Waiting to leave' };
 var WARDS = ['Medical ward A', 'Medical ward B', 'Surgical ward', 'Older people’s ward', 'Short-stay unit'];
-var ROLE_NAME = { nurse: 'Nurse in charge', flow: 'Patient flow coordinator', ops: 'Operations manager' };
+var ROLE_NAME = { nurse: 'Charge nurse', flow: 'Patient flow coordinator', ops: 'Operations manager' };
 var LEVEL_NAME = ['', 'Normal', 'Busy', 'Under pressure', 'Severe pressure'];
 // Example action cards. Each site writes its own.
 var CARDS = {
@@ -318,7 +318,7 @@ function suggest() {
     var up = pr.level > state.openLevel;
     out.push({ id: 'level-' + pr.level + '-' + state.openLevel, kind: up ? 'time' : 'ask',
       title: up ? 'Thresholds point to level ' + pr.level + '; the level ' + state.openLevel + ' card is open' : 'Conditions now fit level ' + pr.level + '; level ' + state.openLevel + ' is open',
-      text: up ? 'Proposal: open the level ' + pr.level + ' action card (' + LEVEL_NAME[pr.level].toLowerCase() + ') so its checklist starts.' : 'Proposal: step down to level ' + pr.level + '. Check with the nurse in charge before you do.',
+      text: up ? 'Proposal: open the level ' + pr.level + ' action card (' + LEVEL_NAME[pr.level].toLowerCase() + ') so its checklist starts.' : 'Proposal: step down to level ' + pr.level + '. Check with the charge nurse before you do.',
       why: pr.reasons.length ? 'Now: ' + pr.reasons.join('; ') + '. Thresholds are set by this site.' : 'Now: occupancy ' + pr.occupancy + '% and ' + pr.waitingBed + ' waiting for a bed, below the level 2 thresholds this site set.',
       label: up ? 'Propose level ' + pr.level : 'Propose step down', confirm: 'Open the level ' + pr.level + ' action card now?', by: 'ops',
       apply: function () { setLevel(pr.level, 'Operations manager, confirmed from the guide'); } });
@@ -326,7 +326,7 @@ function suggest() {
   var noReq = bw.filter(function (p) { return p.ev.bedreq == null && state.now - p.ev.decision >= NO_REQ_MIN; });
   if (noReq.length) {
     out.push({ id: 'noreq', kind: 'ask', title: noReq.length + ' decision' + (noReq.length > 1 ? 's' : '') + ' to admit with no bed request yet',
-      text: noReq.map(function (p) { return 'Patient ' + p.code + ' (decision ' + clock(p.ev.decision) + ')'; }).join('; ') + '. A bed request starts the bed search; the nurse in charge can record it in one tap.',
+      text: noReq.map(function (p) { return 'Patient ' + p.code + ' (decision ' + clock(p.ev.decision) + ')'; }).join('; ') + '. A bed request starts the bed search; the charge nurse can record it in one tap.',
       why: 'Decision to admit recorded ' + NO_REQ_MIN + ' min or more ago (a demo setting), with no bed request time.',
       label: 'Show in the nurse view', show: function () { state.role = 'nurse'; state.filter = 'bed'; } });
   }
