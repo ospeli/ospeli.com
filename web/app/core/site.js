@@ -33,9 +33,13 @@ export class MirrorAdapter {
 
   // ---- only the sync below writes the copy ----
   async syncState() { return (await this.inner.get('meta', SYNC_STATE))?.value || null; }
-  async wipe() {
+  // The site's data goes. With { all: true } (the server says this device is not connected,
+  // issue #109) everything goes: the device's name and role and its own settings too. A server
+  // restart or a broken sync keeps the device's own settings.
+  async wipe({ all = false } = {}) {
     for (const s of SITE_STORES) await this.inner.clear(s);
-    await this.inner.putMany('meta', [...SITE_META, SYNC_STATE].map((id) => ({ id, value: null })));
+    if (all) await this.inner.clear('meta');
+    else await this.inner.putMany('meta', [...SITE_META, SYNC_STATE].map((id) => ({ id, value: null })));
   }
   async _carriesOn(answer, state) {
     const run = (list, after) => Array.isArray(list) && list.every((x, i) => x && x.seq === after + i + 1);
@@ -85,6 +89,7 @@ export class SiteLink {
     this.listeners = new Set();
     this.pulling = null;
     this.lastAt = null; // when this device last heard from the server
+    this.unsure = null; // a change that was sent and never answered: { sig, key }
   }
   onState(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); }
   _set(connected, reason = null) {
@@ -132,7 +137,7 @@ export class SiteLink {
       const st = await this.mirror.syncState();
       const q = st ? `?epoch=${encodeURIComponent(st.epoch)}&rev=${st.rev}&events=${st.events}&audit=${st.audit}` : '';
       const r = await this._call(`/sync${q}`);
-      if (r.status === 401) { await this.mirror.wipe(); this._set(false, 'needs-code'); return false; }
+      if (r.status === 401) { await this.mirror.wipe({ all: true }); this._set(false, 'needs-code'); return false; }
       if (!r.ok) { this._set(false); return false; }
       const changed = await this.mirror.apply(r.body, this.clock().toISOString());
       if (changed === 'again') continue;
@@ -148,9 +153,16 @@ export class SiteLink {
   async run(name, input, role) {
     const cmd = commandByName(name);
     if (cmd?.kind === 'read') return runCommand(this.core, name, input, { type: 'human', role });
-    const r = await this._call(`/commands/${encodeURIComponent(name)}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input: input ?? {} }) });
-    if (r.status === 0) { this._set(false); throw new CommandError('offline', OFFLINE); }
-    if (r.status === 401) { await this.mirror.wipe(); this._set(false, 'needs-code'); throw new CommandError('forbidden', 'This device is not connected any more. Ask for a new code.'); }
+    // Each change carries a key (issue #109). A change that got no answer may or may not have
+    // reached the server; when the person tries the same change again it goes with the same key,
+    // and the server answers with what it did the first time instead of doing it twice.
+    const body = JSON.stringify({ input: input ?? {} });
+    const sig = `${name}|${body}`;
+    const key = this.unsure?.sig === sig ? this.unsure.key : [...globalThis.crypto.getRandomValues(new Uint8Array(16))].map((b) => b.toString(16).padStart(2, '0')).join('');
+    const r = await this._call(`/commands/${encodeURIComponent(name)}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Idempotency-Key': key }, body });
+    if (r.status === 0) { this.unsure = { sig, key }; this._set(false); throw new CommandError('offline', OFFLINE); }
+    this.unsure = null;
+    if (r.status === 401) { await this.mirror.wipe({ all: true }); this._set(false, 'needs-code'); throw new CommandError('forbidden', 'This device is not connected any more. Ask for a new code.'); }
     if (!r.ok) {
       await this.pullAfterChange(); // the refusal may mean this device's copy was behind
       throw new CommandError(r.body.error?.code || 'error', r.body.error?.message || 'Not saved.', r.body.error?.detail ?? null);
