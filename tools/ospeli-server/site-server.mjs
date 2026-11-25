@@ -149,7 +149,7 @@ export async function startServer({
   const deviceLimiter = new Limiter(600, clock);
   const pairLimiter = new Limiter(10, clock);
   const anonLimiter = new Limiter(30, clock);
-  const synthetic = async () => (await core.getMeta('synthetic', true)) !== false;
+  const synthetic = async () => (await core.getMeta('synthetic', false)) === true; // as kit.js isSynthetic (issue #178)
   const person = (role) => ({ type: 'human', role, via: 'console' });
   const asPerson = (name, input, role = CONSOLE_ADMIN) => runCommand(core, name, input, person(role));
 

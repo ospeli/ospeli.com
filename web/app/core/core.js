@@ -382,7 +382,9 @@ export class Core {
       format: EXPORT_FORMAT,
       version: EXPORT_VERSION,
       exportedAt: this.now(),
-      synthetic: (await this.getMeta('synthetic', true)) !== false,
+      // Same reading as kit.js isSynthetic (issue #178): only a device that marks its data synthetic
+      // writes the mark the import gate checks.
+      synthetic: (await this.getMeta('synthetic', false)) === true,
       entities: await this.db.getAll('entities'),
       events: await this.db.getAll('events'),
       audit: await this.db.getAll('audit'),
@@ -459,6 +461,8 @@ export class Core {
       await this.db.putMany('audit', data.audit);
       await this._loadTails();
       await this.setMeta('synthetic', true);
+      // The replaced data's seed and end time do not describe the new data (issue #178).
+      await this.db.put('meta', { id: 'generator', value: null });
       await this.db.put('meta', { id: 'history-replaced', value: { at: this.now(), by: 'import' } });
       await this._clearAgentAccess(actorRole, 'import', was);
       await this._audit(actorRole, 'data.imported', null, {
