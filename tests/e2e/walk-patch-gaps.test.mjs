@@ -82,6 +82,9 @@ test('#102: when the phone clock moves back mid-walk, the walk screen says its t
   await page.waitForSelector('[data-test="walk-answer"]');
   assert.match(await page.textContent('[data-test="walk-clock"]'), /clock changed during this walk\. The times on this map may be wrong\. Walk the next patient to get times you can use\./);
   assert.equal(await page.locator('[data-test="walk-longest"]').count(), 0);
+  // The step list and the guide are on the Edit map tab (one-screen result, crew night 3).
+  await page.locator('[data-test="tab-edit"]').click();
+  await page.waitForSelector('[data-test="tab-edit"][aria-selected="true"]');
   assert.equal(await page.locator('[data-test="step-list"] .wait.hot').count(), 0);
   assert.match(await page.textContent('[data-test="guide"]'), /The phone's clock changed during this walk/);
   await context.close();
@@ -111,14 +114,21 @@ test('the map from a walk opens with the answer: how long, how much was waiting,
   assert.match(answer, /40 min waiting \(71% of this walk\) · 16 min hands-on/);
   assert.match(answer, /2 handovers between roles/);
   assert.match(answer, /Longest waits, tied: 18 min before “Seen by a nurse” and “Seen by a doctor”/);
-  assert.match(answer, /One walk, one observation/);
+  // The caveat is in "How to read this", next to the answer on the Result tab.
+  assert.match(await page.textContent('[data-test="read-this"]'), /One walk, one observation/);
   // It is the first thing in the map's main column, and it starts on the first screen.
   // The Adoption lead's blocking point (18 Nov): the whole answer is on the first screen of a small
   // phone (360 by 640), with nothing to scroll past; the tiles that repeated it are gone.
-  assert.equal(await page.evaluate(() => document.querySelector('.pm-main').firstElementChild.firstElementChild.dataset.test), 'walk-answer');
+  assert.equal(await page.evaluate(() => document.querySelector('[data-test="result-panel"]').firstElementChild.firstElementChild.dataset.test), 'walk-answer');
   const box = await page.locator('[data-test="walk-longest"]').boundingBox();
   assert.ok(box.y + box.height <= 640, `the longest wait ends at ${Math.round(box.y + box.height)} px, inside a 640 px tall screen`);
   assert.equal(await page.locator('[data-test="pm-stats"] .pm-stat').count(), 0);
+  // The page still has its heading for a screen reader.
+  assert.equal(await page.locator('h1').count(), 1);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, 'no sideways scroll');
+  // The guide, its switch and the step list are on the Edit map tab.
+  await page.tap('[data-test="tab-edit"]');
+  await page.waitForSelector('[data-test="tab-edit"][aria-selected="true"]');
   // The guide switch is still on the page, and the page still has its heading for a screen reader.
   assert.equal(await page.locator('[data-test="guide-switch"]').isVisible(), true);
   assert.equal(await page.locator('h1').count(), 1);
@@ -131,12 +141,16 @@ test('the map from a walk opens with the answer: how long, how much was waiting,
   assert.match(guide, /A wait belongs to the process, not to the role that comes next/);
   assert.match(await page.locator('[data-test="sg-basis"]').first().textContent(), /^Example setting, not a standard/);
   // Proposed is a what-if: the answer card is for the measured walk only. Guide off: no basis text, the map still works.
+  // The answer card lives on the Result tab; Proposed and the guide switch on the Edit map tab.
   await page.tap('[data-test="v-proposed"]');
-  await page.waitForFunction(() => !document.querySelector('[data-test="walk-answer"]'));
+  await page.waitForFunction(() => document.querySelector('[data-test="v-proposed"]')?.getAttribute('aria-pressed') === 'true' && !document.querySelector('[data-test="walk-answer"]'));
   await page.tap('[data-test="v-today"]');
-  await page.waitForSelector('[data-test="walk-answer"]');
+  await page.waitForFunction(() => document.querySelector('[data-test="v-today"]')?.getAttribute('aria-pressed') === 'true');
   await page.tap('[data-test="guide-switch"]');
   await page.waitForFunction(() => /The guide is off/.test(document.querySelector('[data-test="guide"]')?.textContent || ''));
+  assert.equal(await page.locator('[data-test="sg-basis"]').count(), 0);
+  await page.tap('[data-test="tab-result"]');
+  await page.waitForSelector('[data-test="walk-answer"]');
   assert.equal(await page.locator('[data-test="sg-basis"]').count(), 0);
   assert.equal(await page.locator('[data-test="walk-answer"]').count(), 1, 'the answer does not need the guide');
   assert.deepEqual(errors, []);
