@@ -47,6 +47,12 @@ test('#177 item 7: "Rename this walk" with a person\'s name asks the question un
   assert.match(await page.textContent('[data-test="name-question"]'), /Is “S\. Jones” a person's name\?/);
   assert.equal(await page.inputValue('#wk-rename'), 'S. Jones clinic', 'what was typed is still in the field');
   assert.notEqual((await stored(page))[0].title, 'S. Jones clinic', 'nothing saved yet');
+  // Both answers are on the screen and nothing (the walk's pinned bar) lies over them; no second save beside them.
+  for (const sel of ['[data-test="name-keep"]', '[data-test="name-question"] .btn:not(.btn-ghost)']) {
+    const onTop = await page.evaluate((q) => { const e = document.querySelector(`[data-test="walk-rename-form"] ${q}`); const b = e.getBoundingClientRect(); return b.top >= 0 && b.bottom <= innerHeight && e.contains(document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2)); }, sel);
+    assert.ok(onTop, `${sel} can be tapped at 360 by 640 with the question showing`);
+  }
+  assert.equal(await page.locator('[data-test="walk-rename-save"]').count(), 0, 'no "Save name" beside the two answers');
   await page.tap('[data-test="walk-rename-form"] [data-test="name-keep"]');
   await page.waitForFunction(() => !document.querySelector('[data-test="walk-rename-form"]'));
   assert.equal((await stored(page))[0].title, 'S. Jones clinic');

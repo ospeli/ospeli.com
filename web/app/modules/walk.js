@@ -88,6 +88,13 @@ export async function renderWalk(box, ctx, againOf = null) {
   }
   // The step and role words can change with every name saved (a name typed once is offered at once).
   async function refreshChips() { try { const d = await ctx.run('ospeli_walks_get', {}); data = { ...data, stepChips: d.stepChips, roleChips: d.roleChips, usualRoles: d.usualRoles }; } catch { /* the words on screen stay */ } }
+  // Scroll an element up so it ends above the walk's bar when that bar is pinned (phones).
+  function liftAboveBar(el) {
+    const bar = box.querySelector('[data-test="walk-bar"]');
+    if (!el || !bar || !/fixed|sticky/.test(getComputedStyle(bar).position)) return;
+    const over = el.getBoundingClientRect().bottom - (bar.getBoundingClientRect().top - 8);
+    if (over > 0) window.scrollBy(0, over);
+  }
   async function afterNamed() { resetSheet(); await refreshChips(); draw(); }
   // What is chosen or typed in the sheet and not yet saved.
   function pending() {
@@ -389,16 +396,17 @@ export async function renderWalk(box, ctx, againOf = null) {
           const out = await tap('ospeli_walks_rename', { title });
           if (out) { ui.rename = false; ui.question = null; ui.renameText = undefined; say(`Walk named ${title}.`); }
           draw(); // a refused name shows its question here, under the field (#177 item 7)
-          // The walk's bar is pinned to the foot of the screen: bring the field and its question up above it.
-          if (!out) box.querySelector('[data-test="walk-rename-form"]')?.scrollIntoView({ block: 'start' });
+          // On a phone the walk's bar is pinned to the foot of the screen: lift the question and both
+          // answers clear above it (Adoption lead, 25 Nov: they were under the bar at 360 px).
+          if (!out) liftAboveBar(box.querySelector('[data-test="walk-rename-form"] [data-test="name-question"]'));
         } },
           h('label', { for: 'wk-rename' }, 'What are you walking?'),
           h('input', { id: 'wk-rename', maxlength: '80', autocomplete: 'off', value: ui.renameText ?? (/^Walk \d+$/.test(w.title) ? '' : w.title), placeholder: `For example, ${(data.titles || [])[0] || 'Clinic visit'}`, oninput: (e) => { ui.renameText = e.target.value; } }),
           ui.question && !ui.sheet ? h('div', { class: 'name-question', role: 'alert', 'data-test': 'name-question' },
             h('p', {}, h('b', {}, `Is “${ui.question.looks}” a person's name?`)),
-            h('p', {}, 'Ospeli times steps, never people. Name what is followed instead, for example Outpatient CT.'),
+            h('p', {}, 'Name the place or service instead, for example Outpatient CT.'),
             h('div', { class: 'form-actions' },
-              h('button', { type: 'button', class: 'btn', onclick: () => { ui.question = null; draw(); box.querySelector('#wk-rename')?.focus(); } }, 'Change the wording'),
+              h('button', { type: 'button', class: 'btn', onclick: () => { ui.question = null; draw(); box.querySelector('#wk-rename')?.focus(); } }, 'Change it'),
               h('button', { type: 'button', class: 'btn btn-ghost', 'data-test': 'name-keep', onclick: async () => {
                 const title = box.querySelector('#wk-rename').value.trim(); ui.question = null;
                 const out = await tap('ospeli_walks_rename', { title, notAName: true });
@@ -406,7 +414,8 @@ export async function renderWalk(box, ctx, againOf = null) {
                 draw();
               } }, 'Not a name. Save it'))) : null,
           h('div', { class: 'form-actions' },
-            h('button', { type: 'submit', class: 'btn', 'data-cmd': 'ospeli_walks_rename', 'data-test': 'walk-rename-save' }, 'Save name'),
+            // While the question shows, its two answers are the ways forward: no second "save" beside them.
+            ui.question && !ui.sheet ? null : h('button', { type: 'submit', class: 'btn', 'data-cmd': 'ospeli_walks_rename', 'data-test': 'walk-rename-save' }, 'Save name'),
             h('button', { type: 'button', class: 'btn btn-ghost', onclick: () => { ui.rename = false; ui.question = null; ui.renameText = undefined; draw(); } }, 'Cancel')))
         : h('p', { class: 'meta walk-foot' }, h('button', { type: 'button', class: 'linkish', 'data-test': 'walk-rename', onclick: () => { ui.rename = true; draw(); box.querySelector('#wk-rename')?.focus(); } }, 'Rename this walk')),
       h('p', { class: 'meta walk-foot' }, h('button', { type: 'button', class: 'linkish', 'data-test': 'walk-delete', 'data-cmd': 'ospeli_walks_discard',
