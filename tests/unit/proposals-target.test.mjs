@@ -35,6 +35,11 @@ test('a fault that is not one of the asset\'s faults is refused before it is que
   const F = { type: 'agent', role: 'estates-tech', agent: 'fix-bot' };
   // A generator cannot have a blocked sink; a person who tries this is refused (invalid-input).
   await assert.rejects(runCommand(core, 'ospeli_workorders_report_fault', { assetId: 'asset-generator-1', fault: 'Blocked sink', priority: 'routine' }, human('estates-tech')), refused('invalid-input'));
+  // The generator is in plant, outside any ward: since #26 only an agent allowed on every ward may
+  // name it (an agent with no ward is refused agents-off first), so this agent is given every ward.
+  const wards = (await core.listEntities('ward')).map((w) => w.id);
+  await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: Object.fromEntries(wards.map((w) => [w, true])) }, human('coo'));
+  await runCommand(core, 'ospeli_agents_add', { name: 'fix-bot', role: 'estates-tech', wards, days: 30 }, human('coo'));
   await assert.rejects(runCommand(core, 'ospeli_workorders_report_fault', { assetId: 'asset-generator-1', fault: 'Blocked sink', priority: 'routine' }, F), refused('invalid-input'));
 });
 
