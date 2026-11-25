@@ -424,11 +424,13 @@ export async function render(el, ctx) {
         totals: [...panel.querySelectorAll('.walk-answer .wa-big, .walk-answer .wa-line')].map((p) => p.textContent.replace(/\s+/g, ' ').trim()),
         read: 'Times are whole minutes from the taps on one phone. Waiting is the time between one step ending and the next starting; hands-on is the time a step was under way. Waiting is not always waste. No average is given.' });
       const synthetic = (await core.getMeta('synthetic', null)) === true;
-      panel.append(stats, barsCard(model),
-        actionsRow({ ctx, model, list: m.today.steps, records: records || [], department: dept, again: againBtn, text: summary }),
+      // After one walk the next thing to do is walk the next patient, so on a phone's first screen the
+      // button comes before the bar (#179 item 4). With two or more walks the bars come first.
+      panel.append(...[stats, multi ? null : againBtn, barsCard(model),
+        actionsRow({ ctx, model, list: m.today.steps, records: records || [], department: dept, again: multi ? againBtn : null, text: summary }),
         records ? tableCard(model, extrasCard(model)) : h('p', { class: 'card meta', 'data-test': 'result-table' }, 'The walks\' step times could not be read on this device.'),
         read,
-        h('p', { class: 'print-only print-foot', 'data-test': 'print-foot' }, `${synthetic ? 'Synthetic demo data · no real patients or sites · ' : ''}Printed `, h('span', { class: 'print-date' }, new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }))));
+        h('p', { class: 'print-only print-foot', 'data-test': 'print-foot' }, `${synthetic ? 'Synthetic demo data · no real patients or sites · ' : ''}Printed `, h('span', { class: 'print-date' }, new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })))].filter(Boolean));
       body.replaceChildren(head, panel);
       return;
     }

@@ -50,7 +50,7 @@ for (const [width, height] of [[390, 844], [360, 640]]) {
       const r = (sel) => document.querySelector(sel).getBoundingClientRect();
       return { head: document.querySelector('[data-test="walk-longest"]').innerText.replace(/\s+/g, ' '), headBottom: r('[data-test="walk-longest"]').bottom,
         firstInAnswer: document.querySelector('[data-test="walk-answer"]').firstElementChild.dataset.test,
-        btnBottom: r('[data-test="result-actions"] [data-test="walk-again"]').bottom, btnH: r('[data-test="result-actions"] [data-test="walk-again"]').height, btnW: r('[data-test="result-actions"] [data-test="walk-again"]').width,
+        btnBottom: r('[data-test="result-panel"] [data-test="walk-again"]').bottom, btnH: r('[data-test="result-panel"] [data-test="walk-again"]').height, btnW: r('[data-test="result-panel"] [data-test="walk-again"]').width,
         answerW: r('[data-test="walk-answer"]').width, vh: innerHeight };
     });
     assert.equal(look.firstInAnswer, 'walk-longest', 'the headline is the first thing in the result');
@@ -100,7 +100,7 @@ test('390 px: after a pause during the longest wait, "at least", never "at least
 test('360 by 640: "Walk the next patient" is on the map and in the list of maps, above starting a new map, and starts a repeat walk', async () => {
   const { context, page, errors } = await openPage(env, { width: 360, height: 640, path: '#/process', touch: true, locale: 'en-GB', timezoneId: 'UTC', clock: '2026-11-20T08:00:00Z' });
   await walk(page, LONG.slice(0, 2));
-  assert.equal((await page.textContent('[data-test="result-actions"] [data-test="walk-again"]')).trim(), 'Walk the next patient');
+  assert.equal((await page.textContent('[data-test="result-panel"] [data-test="walk-again"]')).trim(), 'Walk the next patient');
   await page.locator('a.back').tap();
   await page.waitForSelector('[data-test="map-link"]');
   const list = await page.evaluate(() => {
