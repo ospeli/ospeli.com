@@ -195,7 +195,7 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
 <main class="wrap">
   <span class="badge">Preview · fictional example data</span>
   <h1>Health records: charts, coding and requests</h1>
-  <p class="lead">For hospitals that still run paper charts alongside their systems. Every chart movement is recorded with a tap, so tomorrow's clinic charts are found today. Coders see uncoded discharges by age. The records manager sees charts out too long, the coding backlog and record requests against their due dates. Patients appear only as anonymous record codes; nothing clinical is shown. The guide suggests; a person decides.</p>
+  <p class="lead">For hospitals that still run paper charts alongside their systems. Every chart movement is recorded with a tap, so tomorrow's clinic charts are found today. Coders see uncoded discharges by age. The records manager sees charts out too long, the coding backlog and record requests against their due dates. Patients appear only as record codes, never names; nothing clinical is shown. The guide suggests; a person decides.</p>
 
   <div class="roles" role="group" aria-label="Whose view">
     <button type="button" id="r-clerk" aria-pressed="false">Records clerk</button>
@@ -234,7 +234,7 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
       <div id="decide"></div>
     </aside>
   </div>
-  <p class="foot">Everything here is invented: Example General Hospital, its wards, clinics, shelf bays, record codes, dates and times. Patients appear only as anonymous record codes, and no clinical content is shown. Periods and due dates are example settings, not standards; the legal period for answering record requests depends on where you are. It measures charts, queues and requests, never individual clerks or coders, and it does not code anything or give coding advice. Coming next (Feb 2027): duplicate record review for a person to confirm or reject, an access audit trail, breach reports that start a response clock, and retention schedules for approval. <a href="../../areas/health-records/">About this area</a> · <a href="../">All demos</a></p>
+  <p class="foot">Everything here is invented: Example General Hospital, its wards, clinics, shelf bays, record codes, dates and times. Patients appear only as record codes, never names, and no clinical content is shown. Periods and due dates are example settings, not standards; the legal period for answering record requests depends on where you are. It measures charts, queues and requests, never individual clerks or coders, and it does not code anything or give coding advice. Coming next (Feb 2027): duplicate record review for a person to confirm or reject, an access audit trail, breach reports that start a response clock, and retention schedules for approval. <a href="../../areas/health-records/">About this area</a> · <a href="../">All demos</a></p>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -835,7 +835,7 @@ document.getElementById('t-reset').addEventListener('click', function () { var r
 
 // Read-only view for software agents (no writes): window.ospeliRecordsDemo
 window.ospeliRecordsDemo = Object.freeze({
-  describe: function () { return 'Read-only health records demo for a fictional hospital that still uses paper charts. get() returns tomorrow\'s pull list with chart locations, charts out by location, the coding backlog and record requests; kpis() the measures; suggestions() the guide\'s current suggestions. Patients appear only as anonymous record codes; no clinical content. Runs in the browser; nothing is sent anywhere. Changes are made by people in the page, never through this object.'; },
+  describe: function () { return 'Read-only health records demo for a fictional hospital that still uses paper charts. get() returns tomorrow\'s pull list with chart locations, charts out by location, the coding backlog and record requests; kpis() the measures; suggestions() the guide\'s current suggestions. Patients appear only as record codes, never names; no clinical content. Runs in the browser; nothing is sent anywhere. Changes are made by people in the page, never through this object.'; },
   get: function () {
     return clone({ role: state.role, clock: hhmm(nowMin()), settings: state.settings,
       pullList: state.pull.map(function (p) { var c = chartOf(p.code); return { code: p.code, clinic: clinicOf(p.clinic).name, slot: 'Tue ' + hhmm(p.slot), status: pullStatus(p), location: c.loc === 'shelf' ? 'Library bay ' + c.bay : c.where, searchStarted: state.search[p.code] != null }; }),

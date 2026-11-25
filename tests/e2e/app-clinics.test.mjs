@@ -574,3 +574,20 @@ test('the desk: after "Did not come?" or "Left before being seen" saves, the row
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+test('#184: beside slot utilisation the page says a missed appointment counts as used, with attended and missed slots, matching the command (360 and 390 px)', async () => {
+  for (const width of [360, 390]) {
+    const { context, page, errors } = await openPage(env, { width, clock: CLOCK, path: '#/clinics' });
+    await asRole(page, 'outpatient-manager', 'summary');
+    const k = (await run(page, 'ospeli_clinics_day_summary', {}, 'outpatient-manager')).kpis.find((x) => x.id === 'slot-utilisation');
+    assert.ok(k.attended + k.missed <= k.numerator && k.missed > 0, 'the example history has missed appointments in held clinics');
+    const line = (await page.locator('[data-kpi="slot-utilisation"] [data-test="used-split"]').textContent()).replace(/\s+/g, ' ');
+    assert.match(line, /A missed appointment counts as a used slot/);
+    assert.ok(line.includes(`${k.attended} attended`) && line.includes(`${k.missed} missed`), line);
+    const px = await page.locator('[data-kpi="slot-utilisation"] [data-test="used-split"]').evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    assert.ok(px >= 15, `text ${px} px`);
+    assert.equal(await noSideways(page), 0);
+    assert.deepEqual(errors, []);
+    await context.close();
+  }
+});

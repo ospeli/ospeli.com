@@ -15,7 +15,7 @@ import { deriveSlots } from '../../web/app/core/slots.js';
 import { deriveCodes, appointmentsByCode } from '../../web/app/core/codes.js';
 import * as pack from '../../web/app/modules/clinics/commands.js';
 import {
-  missedRate, slotUtilisation, referralToFirst, clinicWait, startPunctuality, nextFreeSlots, sessionsFromDerived, waitingReferrals,
+  missedRate, slotUtilisation, usedSlots, referralToFirst, clinicWait, startPunctuality, nextFreeSlots, sessionsFromDerived, waitingReferrals,
   ruleMissedHigh, ruleEmptySoon, ruleArrivalsBunched, guideOn,
 } from '../../web/app/modules/clinics/logic.js';
 
@@ -112,6 +112,9 @@ test('the five measures, recomputed from a hand-built log through the shared hel
   //    The cancelled session and today's running one are not in it.
   assert.deepEqual(slotUtilisation(d, p), { value: 0.75, numerator: 6, denominator: 8 });
   assert.deepEqual(slotUtilisation(d, { ...p, service: 'eye' }), { value: 0.5, numerator: 1, denominator: 2 });
+  // #184: the same used slots, split: 4 attended (arrived), 2 missed; eye: 1 attended, 0 missed.
+  assert.deepEqual(usedSlots(d, p), { used: 6, attended: 4, missed: 2 });
+  assert.deepEqual(usedSlots(d, { ...p, service: 'eye' }), { used: 1, attended: 1, missed: 0 });
   // 3. Referral to first appointment: 7, 10, 4 and 6 days; median 6.5. Still waiting: pc-3, 5, 6, 8 and 9 = 5.
   const cd = codesOf(E); const index = appointmentsByCode(d);
   const r = referralToFirst(cd, index, { ...p, minGroup: 1 });
@@ -133,6 +136,8 @@ test('the day summary shows the same measures from the log, with definitions and
   assert.deepEqual(Object.keys(k), ['missed-appointment-rate', 'slot-utilisation', 'referral-to-first-appointment', 'clinic-wait', 'clinic-start-punctuality']);
   assert.deepEqual([k['missed-appointment-rate'].numerator, k['missed-appointment-rate'].denominator], [2, 7]);
   assert.deepEqual([k['slot-utilisation'].numerator, k['slot-utilisation'].denominator, k['slot-utilisation'].value], [6, 8, 0.75]);
+  // #184: beside slot utilisation, the used slots split into attended and missed (a missed appointment counts as used).
+  assert.deepEqual([k['slot-utilisation'].attended, k['slot-utilisation'].missed], [4, 2], 'of the 6 used: 4 attended, 2 missed');
   assert.deepEqual([k['referral-to-first-appointment'].value, k['referral-to-first-appointment'].n, k['referral-to-first-appointment'].waiting], [null, 4, 5], 'still waiting is shown beside the median');
   assert.deepEqual([k['clinic-wait'].value, k['clinic-wait'].n], [15, 5]);
   assert.deepEqual([k['clinic-start-punctuality'].numerator, k['clinic-start-punctuality'].denominator], [2, 3]);

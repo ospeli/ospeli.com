@@ -249,7 +249,7 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
       <div id="decide"></div>
     </aside>
   </div>
-  <p class="foot">Everything here is invented: Example General Hospital, its units, partner sites, codes and times. Women, babies and children appear only as anonymous codes; a baby's code is linked to the mother's so they move together. Ospeli does not assess labour, decide transfers on clinical grounds or prioritise women, babies or children, and never scores midwives or nurses. Coming next (Jan 2027): the full maternity and children's board across sites, mother and baby codes linked across every move, and the capacity review and transfer walk playbooks. <a href="../../areas/maternity-and-children-flow/">About this area</a> · <a href="../">All demos</a></p>
+  <p class="foot">Everything here is invented: Example General Hospital, its units, partner sites, codes and times. Women, babies and children appear only as codes, never names; a baby's code is linked to the mother's so they move together. Ospeli does not assess labour, decide transfers on clinical grounds or prioritise women, babies or children, and never scores midwives or nurses. Coming next (Jan 2027): the full maternity and children's board across sites, mother and baby codes linked across every move, and the capacity review and transfer walk playbooks. <a href="../../areas/maternity-and-children-flow/">About this area</a> · <a href="../">All demos</a></p>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -910,7 +910,7 @@ document.getElementById('t-reset').addEventListener('click', function () { var r
 
 // Read-only view for software agents (no writes): window.ospeliMaternityDemo
 window.ospeliMaternityDemo = Object.freeze({
-  describe: function () { return 'Read-only maternity and children\'s flow demo for a fictional hospital. get() returns labour rooms, postnatal beds, neonatal cots and children\'s beds by state and unit, expected admissions, transfer requests by stage and wait, and closures and diverts with reason and decision maker role; kpis() the capacity numbers; suggestions() the guide\'s current suggestions. Women, babies and children are anonymous codes. It does not assess labour, decide transfers or prioritise anyone. Runs in the browser; nothing is sent anywhere.'; },
+  describe: function () { return 'Read-only maternity and children\'s flow demo for a fictional hospital. get() returns labour rooms, postnatal beds, neonatal cots and children\'s beds by state and unit, expected admissions, transfer requests by stage and wait, and closures and diverts with reason and decision maker role; kpis() the capacity numbers; suggestions() the guide\'s current suggestions. Women, babies and children are codes, never names. It does not assess labour, decide transfers or prioritise anyone. Runs in the browser; nothing is sent anywhere.'; },
   get: function () {
     return clone({ role: state.role, unit: state.unit, now: new Date(now()).toISOString(), settings: state.settings,
       units: UNITS.map(function (u) { var c = count(u.id), k = openClosure(u.id); return { id: u.id, name: u.name, places: c.total, occupied: c.occ, ready: c.ready, cleaning: c.clean, closed: c.closed, staffed: c.staffed, closedToAdmissions: !!k }; }),

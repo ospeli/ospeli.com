@@ -22,7 +22,7 @@ import {
 } from '../../core/slots.js';
 import { CODE_EVENT_TYPES, deriveCodes, appointmentsByCode, codeLabel } from '../../core/codes.js';
 import {
-  SESSION_TYPE, CODE_KIND, GUIDE_SUBJECT, ON_TIME_MINUTES, MIN_GROUP, GUIDE_RULES, guideOn, clinicView, missedRate, slotUtilisation, referralToFirst, clinicWait,
+  SESSION_TYPE, CODE_KIND, GUIDE_SUBJECT, ON_TIME_MINUTES, MIN_GROUP, GUIDE_RULES, guideOn, clinicView, missedRate, slotUtilisation, usedSlots, referralToFirst, clinicWait,
   startPunctuality, queueOf, dayOf, moveTargets, sessionsFromDerived, waitingReferrals, MOVE_NOTICE_HOURS, LATE_MINUTES, ruleMissedHigh, ruleEmptySoon, ruleArrivalsBunched,
 } from './logic.js';
 
@@ -127,6 +127,8 @@ const KPI_OUT = { type: 'object', required: ['id', 'name', 'unit', 'value'], pro
   leftOut: { type: 'integer', description: 'Waiting time in clinic only: patients closed as "Seen, no times" with no call time, left out of the median.' },
   nobodyCalled: { type: 'integer', description: 'Start punctuality only: sessions held in which nobody was called.' },
   noCallTimes: { type: 'integer', description: 'Start punctuality only: sessions held whose patients were seen but closed with no call time ("Seen, no times"); left out.' },
+  attended: { type: 'integer', description: 'Slot utilisation only: of the used slots, those whose patient arrived.' },
+  missed: { type: 'integer', description: 'Slot utilisation only: of the used slots, those marked "Missed appointment" (a missed appointment counts as a used slot).' },
   lateMaybe: { type: 'integer', description: 'Start punctuality only: sessions counted late on the first recorded call that may have started on time, because a patient seen with no times arrived before that call.' },
   definition: { type: 'string' }, counts: { type: 'string' }, outOf: { type: 'string' }, leavesOut: { type: 'string' }, source: { type: 'string' }, targetText: { type: 'string' } } };
 const SUGGESTION = { type: 'object', required: ['rule', 'id', 'text', 'why', 'basis'], properties: {
@@ -223,7 +225,7 @@ function kpisOut(st, { since, until }, short) {
   const wait = clinicWait(st.d, { since, until });
   const values = {
     'missed-appointment-rate': ratio((o) => missedRate(st.d, o)),
-    'slot-utilisation': ratio((o) => slotUtilisation(st.d, o)),
+    'slot-utilisation': (() => { const u = usedSlots(st.d, { since, until }); return { ...ratio((o) => slotUtilisation(st.d, o)), attended: u.attended, missed: u.missed }; })(),
     'referral-to-first-appointment': { value: ref.medianDays, n: ref.n, waiting: ref.waiting, numerator: null, denominator: null,
       byService: services.map((s) => ({ service: s, name: SERVICES[s], value: ref.byService[s]?.medianDays ?? null, n: ref.byService[s]?.n ?? 0,
         waiting: referralToFirst({ ...st.codesD, codes: new Map([...st.codesD.codes].filter(([, c]) => c.service === s)) }, st.index, { since, until }).waiting })) },
@@ -236,7 +238,7 @@ function kpisOut(st, { since, until }, short) {
     const base = { id: k.id, name: k.name, unit: k.unit, value: v.value, numerator: v.numerator, denominator: v.denominator, n: v.n, waiting: v.waiting ?? null, targetText: k.targetText };
     if (short) return base;
     return { ...base, byService: v.byService, ...(v.nobodyCalled != null ? { nobodyCalled: v.nobodyCalled, noCallTimes: v.noCallTimes, lateMaybe: v.lateMaybe } : {}),
-      ...(v.leftOut != null ? { leftOut: v.leftOut } : {}), definition: k.definition, counts: k.counts, outOf: k.outOf, leavesOut: k.leavesOut, source: k.source };
+      ...(v.leftOut != null ? { leftOut: v.leftOut } : {}), ...(v.attended != null ? { attended: v.attended, missed: v.missed } : {}), definition: k.definition, counts: k.counts, outOf: k.outOf, leavesOut: k.leavesOut, source: k.source };
   });
 }
 function templatesOut(st) {

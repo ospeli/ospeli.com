@@ -8,15 +8,15 @@
   "oneLine": "Shows referrals, bookings, waiting lists and clinic days in one place.",
   "today": "Referrals often sit in inboxes and paper books, with no single waiting list. Patients are often all booked for the start of clinic, slots go unfilled, and missed appointments are rarely followed up.",
   "todaySystem": "A booking system holds the appointments, but waits inside the clinic and the reasons for empty slots often go unrecorded.",
-  "withOspeli": "Every referral lands on one list with its wait shown. Clinic templates set slots, reminders go out, and check-in times are logged, so waits, empty slots and missed appointments (no-shows) show clearly.",
+  "withOspeli": "Every referral lands on one list with its wait shown. Clinic templates set slots and check-in times are logged, so waits, empty slots and missed appointments show clearly. Reminders are planned, not built yet.",
   "people": [
    {
     "role": "Clinic receptionist",
-    "does": "Checks patients in by code on a tablet, marks arrived, seen or no-show."
+    "does": "Checks patients in by patient code on a tablet, marks arrived, seen or missed appointment."
    },
    {
     "role": "Appointments scheduler",
-    "does": "Works the referral list, books slots from templates, sends reminders, rebooks cancellations."
+    "does": "Works the referral list, books slots from templates, rebooks cancellations. Sending reminders is planned, not built yet."
    },
    {
     "role": "Clinic nurse",
@@ -34,7 +34,7 @@
   "screens": [
    {
     "name": "Clinic queue (phone)",
-    "shows": "Today's patients by anonymous code: booked time, arrived, waiting time, called, finished."
+    "shows": "Today's patients by patient code: booked time, arrived, waiting time, called, finished."
    },
    {
     "name": "Referral and waiting list",
@@ -46,76 +46,76 @@
    },
    {
     "name": "Clinic day summary",
-    "shows": "Slots used, empty, cancelled and no-show, start time and overrun per clinic."
+    "shows": "Slots used, empty, cancelled and missed, start time and overrun per clinic."
    }
   ],
   "captures": [
    "Referral received and accepted: starts the waiting-time clock.",
    "Appointment booked, rebooked or cancelled, with who cancelled: shows churn.",
-   "Reminder sent and reply: links reminders to attendance.",
+   "Reminder sent and reply (planned, not built yet): will link reminders to attendance.",
    "Patient arrived and checked in: starts the in-clinic wait.",
    "Called in and consultation finished: measures in-clinic wait and clinic overrun.",
-   "No-show recorded: drives the missed appointment rate and rebooking.",
+   "Missed appointment recorded: drives the missed appointment rate and rebooking.",
    "Clinic cancelled or reduced at short notice, with reason: shows lost capacity."
   ],
   "kpis": [
    {
     "name": "Missed appointment rate",
-    "definition": "appointments marked no-show / appointments booked",
+    "definition": "Clinic appointments marked \"Missed appointment\", divided by clinic appointments due in the period. Clinic sessions only: a home visit or outreach day is never counted here. The follow-up after a missed appointment is measured elsewhere.",
     "kind": "ratio",
-    "numerator": "Appointments marked no-show",
-    "denominator": "Appointments booked",
+    "numerator": "Clinic appointments marked missed (the patient never arrived; recorded only after the booked time plus the grace, an example setting of 15 minutes).",
+    "denominator": "Clinic appointments whose booked time is in the period.",
     "statistic": "Share (%), per period",
-    "exclusions": "None by default; a site adds its own",
+    "exclusions": "Appointments cancelled before the day of the appointment (site date). A patient who arrived and then left is not missed.",
     "source": "Editable default (no published standard found)"
    },
    {
     "name": "Slot utilisation",
-    "definition": "slots used / slots available in the template",
+    "definition": "Clinic slots used, divided by clinic slots released, for clinic sessions held in the period, after any reduction. A missed appointment counts as used: the slot could not be given to anyone else. Not the same as theatre session utilisation.",
     "kind": "ratio",
-    "numerator": "Slots used",
-    "denominator": "Slots available in the template",
+    "numerator": "Slots with a booking that kept its place (attended, missed, or arrived and left).",
+    "denominator": "Released slots of clinic sessions marked held, after reductions.",
     "statistic": "Share (%), per period",
-    "exclusions": "None by default; a site adds its own",
+    "exclusions": "Cancelled sessions, sessions not yet marked held, and sessions not released for booking.",
     "source": "Editable default (no published standard found)"
    },
    {
     "name": "Referral to first appointment",
-    "definition": "referral accepted → first appointment attended, median by service",
+    "definition": "Days between \"Referral accepted\" and the first finished clinic visit of the same patient code, median, in all and by service, for codes whose first visit finished in the period. Shown with the number still waiting.",
     "kind": "time",
-    "numerator": "Time between the two events, for each case",
-    "denominator": "Cases with both times recorded in the period",
+    "numerator": "Codes whose first finished visit after the referral was accepted falls in the period.",
+    "denominator": "None (a median).",
     "startEvent": "Referral accepted",
-    "endEvent": "First appointment attended",
+    "endEvent": "First clinic visit finished",
     "statistic": "Median by service",
-    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "exclusions": "Referrals with no finished visit yet: they are counted as \"still waiting\" beside the median, never hidden. A service with fewer than 5 codes shows no median (small-number rule, an example setting).",
     "source": "Editable default (no published standard found)"
    },
    {
     "name": "Waiting time in clinic",
-    "definition": "patient checked in → called in, median per clinic",
+    "definition": "Minutes between \"Arrived\" and \"Called in\", median, in all and by clinic, for patients called in the period.",
     "kind": "time",
-    "numerator": "Time between the two events, for each case",
-    "denominator": "Cases with both times recorded in the period",
-    "startEvent": "Patient checked in",
+    "numerator": "Clinic appointments called in the period that were marked arrived first.",
+    "denominator": "None (a median).",
+    "startEvent": "Arrived",
     "endEvent": "Called in",
     "statistic": "Median per clinic",
-    "exclusions": "Cases missing either time are not counted; their number is shown beside the result",
+    "exclusions": "Patients not called yet (shown live on the queue), and patients closed as \"Seen, no times\" with no call time (their number is shown beside it). A clinic with fewer than 5 patients called shows no median (small-number rule, an example setting).",
     "source": "Editable default (no published standard found)"
    },
    {
     "name": "Clinic start punctuality",
-    "definition": "clinics starting within the set window of scheduled time / clinics held",
+    "definition": "Clinic sessions held in the period whose first patient was called no later than 15 minutes after the planned start (earlier counts as on time), divided by clinic sessions held in which anyone was called. The 15-minute window is an example setting, not a standard.",
     "kind": "ratio",
-    "numerator": "Clinics starting within the set window of scheduled time",
-    "denominator": "Clinics held",
+    "numerator": "Sessions held whose first \"Called in\" came within 15 minutes of the planned start, or before it.",
+    "denominator": "Clinic sessions marked held in the period with at least one patient called.",
     "statistic": "Share (%), per period",
-    "exclusions": "None by default; a site adds its own",
+    "exclusions": "Sessions held in which nobody was called, and sessions held whose patients were all closed as \"Seen, no times\" with no call time (each number is shown beside it), cancelled sessions and sessions not yet marked held. A session counted late on its first recorded call, where a patient seen with no times arrived before that call, may have started on time: their number is shown beside it.",
     "source": "Editable default (no published standard found)"
    }
   ],
   "guide": [
-   "When a clinic's missed appointment rate rises above its usual range, suggests extra reminders or a booking review for that clinic, citing recent weeks.",
+   "When a clinic's missed appointment rate rises above its usual range, suggests a review of how that clinic books, citing recent weeks (extra reminders once reminders are built; they are planned).",
    "When slots stay empty within two days of clinic, suggests offering them to the longest waiting referrals for that service.",
    "When patients are all booked for the clinic start, suggests a staggered template, showing the current arrival-to-called waits."
   ],
@@ -180,7 +180,7 @@
   "screens": [
    {
     "name": "Department board",
-    "shows": "Patients by anonymous code and area: stage, time since arrival, waiting for what."
+    "shows": "Patients by patient code and area: stage, time since arrival, waiting for what."
    },
    {
     "name": "Log a stage (phone)",
@@ -416,7 +416,7 @@
     "denominator": "Inpatients",
     "statistic": "Share (%), per period",
     "exclusions": "None by default; a site adds its own",
-    "source": "Editable default (no published standard found)"
+    "source": "7 days: the threshold of “more than six days” for a weekly review of long stays, in Guide to reducing long hospital stays (NHS Improvement, June 2018). 21 days: editable default (no published definition confirmed)."
    }
   ],
   "guide": [

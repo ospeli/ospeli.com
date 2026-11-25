@@ -230,7 +230,10 @@ if re.search(r"allocation with reasons for declines", visible_text(home), re.I):
 COVERS = re.compile(r"\bcover(?:s|ing|ed)?\s+(?:all\s+|every\s+)?(?:\d+|twenty|thirty|forty)[\w-]*\s+(?:\w+\s+){0,2}areas\b", re.I)
 CLAIMS = [(COVERS, 'claims a number of areas "covered"; say what is built and what is a preview'),
           (re.compile(r"standards\s+it\s+follows", re.I), 'says "Standards it follows"; use "Standards and methods it is designed around"'),
-          (re.compile(r"\brun(?:s|ning)?\s+full\b", re.I), 'promises an outcome ("run full")')]
+          (re.compile(r"\brun(?:s|ning)?\s+full\b", re.I), 'promises an outcome ("run full")'),
+          # Issue #184, decision record 20 Nov (patient codes): a site holds the key that links a code
+          # to a person, so the code is pseudonymous, never "anonymous".
+          (re.compile(r"\banonymous\s+(?:patient\s+|record\s+)?codes?\b", re.I), 'calls a patient code "anonymous"; say "patient code" (it is pseudonymous: the site holds the key)')]
 claim_files = [(p, p.relative_to(ROOT).as_posix()) for p in pages]
 claim_files += [(ROOT / n, n) for n in ("llms.txt", "agents.md", "areas/areas.json") if (ROOT / n).exists()]
 for f, rel in claim_files:

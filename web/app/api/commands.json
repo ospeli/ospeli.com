@@ -23894,6 +23894,14 @@
                   "type": "integer",
                   "description": "Start punctuality only: sessions held whose patients were seen but closed with no call time (\"Seen, no times\"); left out."
                 },
+                "attended": {
+                  "type": "integer",
+                  "description": "Slot utilisation only: of the used slots, those whose patient arrived."
+                },
+                "missed": {
+                  "type": "integer",
+                  "description": "Slot utilisation only: of the used slots, those marked \"Missed appointment\" (a missed appointment counts as a used slot)."
+                },
                 "lateMaybe": {
                   "type": "integer",
                   "description": "Start punctuality only: sessions counted late on the first recorded call that may have started on time, because a patient seen with no times arrived before that call."

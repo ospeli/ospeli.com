@@ -224,7 +224,7 @@ ol.log li.new { background: var(--wash); border-radius: 6px; }
       <div id="decide"></div>
     </aside>
   </div>
-  <p class="foot">Everything here is invented: Example General Hospital, its patients (shown only as anonymous codes), payer groups, claims and amounts (in currency units). Rules such as "appeal within 7 days" are example settings, not a standard. It measures claims and steps, never individual staff. Coming next (Feb 2027): one timeline per claim from registration to payment, denials routed to the right queue with appeal deadlines, and a month-end receivables pack. <a href="../../areas/revenue-cycle/">About this area</a> · <a href="../">All demos</a></p>
+  <p class="foot">Everything here is invented: Example General Hospital, its patients (shown only as codes, never names), payer groups, claims and amounts (in currency units). Rules such as "appeal within 7 days" are example settings, not a standard. It measures claims and steps, never individual staff. Coming next (Feb 2027): one timeline per claim from registration to payment, denials routed to the right queue with appeal deadlines, and a month-end receivables pack. <a href="../../areas/revenue-cycle/">About this area</a> · <a href="../">All demos</a></p>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -730,7 +730,7 @@ document.getElementById('t-reset').addEventListener('click', function () { var r
 
 // Read-only view for software agents (no writes): window.ospeliRevenueDemo
 window.ospeliRevenueDemo = Object.freeze({
-  describe: function () { return 'Read-only revenue cycle demo (optional module, off by default) for a fictional hospital. get() returns today\'s arrivals, encounters and claims; kpis() the measures; suggestions() the guide\'s current suggestions. Patients are anonymous codes; amounts are currency units. Runs in the browser; nothing is sent anywhere.'; },
+  describe: function () { return 'Read-only revenue cycle demo (optional module, off by default) for a fictional hospital. get() returns today\'s arrivals, encounters and claims; kpis() the measures; suggestions() the guide\'s current suggestions. Patients are codes, never names; amounts are currency units. Runs in the browser; nothing is sent anywhere.'; },
   get: function () {
     return clone({ role: state.role, moduleOn: state.module, demoClock: hhmm(state.clock), settings: SET,
       arrivalsToday: state.arr.map(function (a) { return { patient: a.id, time: hhmm(a.t), kind: KINDS[a.kind].label, coverageRecorded: !!a.payer, payerGroup: a.payer ? PAYERS[a.payer] : null, authorisationNeeded: KINDS[a.kind].auth ? (a.payer ? arrNeedsAuth(a) : 'unknown') : false, authorisation: a.auth }; }),

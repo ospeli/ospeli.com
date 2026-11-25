@@ -661,7 +661,7 @@ function nurseView() {
   frag.appendChild(el('h3', { class: 'sec', text: 'Request an isolation room' }));
   var p = el('div', { class: 'panel' });
   p.appendChild(el('p', { class: 'stepq' }, ['Patient ', el('span', { class: 'code', id: 'q-code', text: f.code })]));
-  p.appendChild(el('p', { class: 'fine', style: 'margin:0 0 12px', text: 'An anonymous code from the ward list. No names, no reason recorded here.' }));
+  p.appendChild(el('p', { class: 'fine', style: 'margin:0 0 12px', text: 'An patient code from the ward list. No names, no reason recorded here.' }));
   p.appendChild(el('p', { class: 'stepq', text: 'Room needed (as the clinical team decides)' }));
   var ch = el('div', { class: 'choices', role: 'group', 'aria-label': 'Room needed' });
   [['any', 'Any isolation room', 'standard single room is fine'], ['lobby', 'Room with a lobby', 'lobby or anteroom']].forEach(function (o) {
@@ -937,7 +937,7 @@ document.getElementById('t-reset').addEventListener('click', function () { var r
 
 // Read-only view for software agents (no writes): window.ospeliInfectionPreventionDemo
 window.ospeliInfectionPreventionDemo = Object.freeze({
-  describe: function () { return 'Read-only infection prevention operations demo for a fictional hospital: isolation rooms by status, isolation requests, audit compliance by area and ward closures. get() returns the data; kpis() the measures; suggestions() the guide\'s current suggestions. Operational only: no diagnoses or treatment; patients are anonymous codes. Runs in the browser; nothing is sent anywhere.'; },
+  describe: function () { return 'Read-only infection prevention operations demo for a fictional hospital: isolation rooms by status, isolation requests, audit compliance by area and ward closures. get() returns the data; kpis() the measures; suggestions() the guide\'s current suggestions. Operational only: no diagnoses or treatment; patients are codes, never names. Runs in the browser; nothing is sent anywhere.'; },
   get: function () {
     var n = nowMin();
     return clone({ role: state.role, clock: hhmm(n), settings: SETTINGS,

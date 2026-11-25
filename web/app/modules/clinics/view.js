@@ -615,6 +615,7 @@ function kpiSection(d) {
       h('p', { class: 'cl-kpi-name' }, k.name), h('p', { class: 'cl-kpi-value' }, fmtKpi(k)),
       k.id === 'referral-to-first-appointment' ? h('p', { class: 'cl-kpi-waiting', 'data-test': 'still-waiting' }, `Still waiting: ${k.waiting}`) : null,
       h('p', { class: 'cl-hint' }, sub(k)),
+      k.id === 'slot-utilisation' && k.attended != null ? h('p', { class: 'cl-hint', 'data-test': 'used-split' }, `A missed appointment counts as a used slot: of the ${k.numerator} used, ${k.attended} attended and ${k.missed} missed.`) : null,
       h('ul', { class: 'cl-breakdown' }, k.byService.map((b) => h('li', {}, `${b.name.replace(/ clinic$/, '')}: ${by(k, b)}`))),
       h('details', { class: 'cl-def' }, h('summary', {}, 'How it is counted'),
         h('p', {}, k.definition), h('p', {}, `Counts: ${k.counts}`), h('p', {}, `Out of: ${k.outOf}`), h('p', {}, `Leaves out: ${k.leavesOut}`), h('p', {}, `Source: ${k.source}`), h('p', {}, `Target: ${k.targetText}`))))));

@@ -581,7 +581,7 @@ document.getElementById('guide-on').addEventListener('change', function (e) { st
 
 // Read-only view for software agents (no writes): window.ospeliEdFlowDemo
 window.ospeliEdFlowDemo = Object.freeze({
-  describe: function () { return 'Read-only emergency department flow demo. get() returns the board (patients as anonymous codes with step times in minutes after midnight), kpis() the headline measures, suggestions() the guide\'s operational suggestions. No clinical data. Fictional example; runs in the browser.'; },
+  describe: function () { return 'Read-only emergency department flow demo. get() returns the board (patients as codes, never names with step times in minutes after midnight), kpis() the headline measures, suggestions() the guide\'s operational suggestions. No clinical data. Fictional example; runs in the browser.'; },
   get: function () { var pr = pressure(); return clone({ clock: clock(state.now), role: state.role, bedRequestLimitMin: state.limit, spaces: state.spaces, thresholds: state.thr, openLevel: state.openLevel, thresholdLevel: pr.level, occupancyPct: pr.occupancy,
     patients: state.pts.map(function (p) { return { code: 'Patient ' + p.code, times: p.ev, nextStep: p.ev.left != null ? null : nextStep(p), outcome: p.outcome, wardRequested: p.ward, escalated: p.escalated, bedReady: p.bedReady }; }), log: state.log }); },
   kpis: function () { var k = kpis(), out = {}; Object.keys(k).forEach(function (x) { out[x] = clone(k[x]); }); out.slowestStep = slowest(); return out; },

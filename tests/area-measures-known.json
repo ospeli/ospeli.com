@@ -1,0 +1,23 @@
+[
+ "A5: Laboratory turnaround time",
+ "A5: Specimen rejection rate",
+ "A6: Discharge medicines turnaround",
+ "B1: Equipment availability",
+ "B2: Generator test compliance",
+ "B2: Utility outage hours",
+ "B3: Bed turnaround time",
+ "B3: Cleanliness audit score",
+ "B3: Linen stock-outs",
+ "B3: Meal waste",
+ "B3: Transport request to completion",
+ "B4: Fill rate",
+ "B4: Order cycle time",
+ "B4: Stock-out rate on tracer items",
+ "B5: Fleet availability",
+ "B5: Handover time at destination",
+ "B5: On-time pickup",
+ "B5: Transfer wait",
+ "E4: Acknowledgement time",
+ "E4: Response time",
+ "E4: Responses on time"
+]

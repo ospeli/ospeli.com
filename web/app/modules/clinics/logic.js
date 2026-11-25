@@ -2,13 +2,14 @@
 // No screen code, no storage and no clock: the caller passes `now`. Every measure is worked out
 // by the shared helpers of the slot object (core/slots.js) and the patient code object
 // (core/codes.js); this file only picks which sessions and codes they are asked about (clinic
-// sessions, one service) and never counts in its own way.
+// sessions, one service) and never counts in its own way (one breakdown, usedSlots, splits the
+// helper's used slots with the helper's own rules).
 //
 // Operations only. A clinic is a service at a place, never a person: no figure here names, times
 // or ranks a clinician. A patient is a code ("Patient P12"); two codes are never matched.
 
 import {
-  utilisation, noShowRate, waitInClinic, firstCalledVsStart, overrun, sessionFill, slotTimes, placeTaken, dueMs, localInstant, localDate, addDays, weekdayOf,
+  utilisation, noShowRate, waitInClinic, firstCalledVsStart, overrun, sessionFill, appointmentsOf, holdsPlace, slotTimes, placeTaken, dueMs, localInstant, localDate, addDays, weekdayOf,
 } from '../../core/slots.js';
 import { stageToFirstAttended, codeLabel, waitingDays, attendanceOf } from '../../core/codes.js';
 
@@ -75,6 +76,24 @@ export const missedRate = (d, { since, until, service = null }) => noShowRate(cl
 // 2. Slot utilisation: slots used (a missed appointment used its slot) out of slots released in
 //    clinic sessions held in the period, after reductions. Helper utilisation.
 export const slotUtilisation = (d, { since, until, service = null }) => utilisation(clinicView(d, service), { since, until, sessionType: SESSION_TYPE });
+// Beside it (#184), the same used slots split into attended and missed, so a reader can see that a
+// missed appointment counts as a used slot. The same sessions as the helper utilisation (held,
+// released, started in the period) and the same "kept its place" rule (holdsPlace); capped at the
+// session's capacity as the helper is, missed first. Not a sixth measure: a breakdown of the second.
+export function usedSlots(d, { since, until, service = null }) {
+  const v = clinicView(d, service);
+  const lo = since == null ? -Infinity : Date.parse(since); const hi = Date.parse(until);
+  let used = 0; let attended = 0; let missed = 0;
+  for (const s of v.sessions.values()) {
+    if (s.state !== 'held' || !s.released || !(s.startMs >= lo && s.startMs < hi)) continue;
+    const f = sessionFill(v, s.id);
+    const kept = appointmentsOf(v, s.id).filter(holdsPlace);
+    const m = Math.min(kept.filter((a) => a.state === 'no-show').length, f.capacity);
+    const n = Math.min(f.booked, f.capacity);
+    used += n; missed += m; attended += Math.min(kept.filter((a) => a.arrivedAt).length, n - m);
+  }
+  return { used, attended, missed };
+}
 // 3. Referral to first appointment: days from referral accepted to the first finished visit,
 //    median, by service; with the referrals still waiting beside it. Helper stageToFirstAttended.
 export const referralToFirst = (codesD, index, { since, until, minGroup = MIN_GROUP }) => stageToFirstAttended(codesD, index, { stage: ACCEPTED, since, until, kind: CODE_KIND, minGroup });
