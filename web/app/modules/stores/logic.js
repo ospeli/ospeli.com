@@ -344,3 +344,11 @@ export function ruleTransfer(stock, { now, isArea, see = all, placeName = (id) =
   }
   return out.sort((a, b) => (a.id < b.id ? -1 : 1));
 }
+
+// A percent measure in words. A rate rounded to 0 for the answer is shown as "under 0.1%" while the
+// count under it is not zero, so a small rate never reads as none (#113). null: no value yet.
+export function percentText(value, numerator) {
+  if (value == null) return null;
+  if (value < 0.1 && numerator > 0) return 'under 0.1%';
+  return `${value < 10 ? Math.round(value * 10) / 10 : Math.round(value)}%`;
+}

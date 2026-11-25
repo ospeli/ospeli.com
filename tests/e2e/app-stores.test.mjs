@@ -187,6 +187,9 @@ test('a ward count under level raises the request with no extra step, and the wa
   await page.waitForSelector('[data-test="count-list"] > li[data-item="gloves-m"] [data-test="on-its-way"]');
   // Issued seconds ago reads "just now", never "1 h ago" (#145; the same words as the linen screen).
   assert.match(await gloves.locator('[data-test="on-its-way"]').textContent(), /^Issued from the store just now: on its way\. Count it once it is on the shelf\.$/);
+  // Counted under level before the delivery is on the shelf: the marker warns it would ask again (#113).
+  await gloves.getByRole('button', { name: /One less/ }).tap();
+  assert.match(await gloves.locator('[data-test="marker"]').textContent(), /^Under level: saving asks the store again for \d+, though stock was issued just now\. Is it on the shelf yet\?$/);
   assert.match(await page.locator('[data-test="count-list"] > li').first().locator('[data-test="at-level"]').textContent(), /^At level: \d+$/);
   assert.deepEqual(errors, []);
   await context.close();
@@ -320,6 +323,52 @@ test('a role with no rights sees no action button; with no stock history and wit
   await page.reload();
   await page.waitForSelector('[data-test="no-store"]');
   assert.match(await page.locator('[data-test="no-store"]').textContent(), /No store is set up/);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('at 390 px the sticky Issue button never hides a pick line: it is solid, and a line moved to is clear of it (#113)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/stores' });
+  await asRole(page, 'storekeeper', 'requests');
+  const first = page.locator('[data-test="first-request"]');
+  await first.locator('[data-test="pick-list"]').waitFor();
+  // Solid: a stepper half under the bar does not show through above the button, where a tap would land on Issue.
+  assert.equal(await first.locator('.sto-issuebar').evaluate((el) => getComputedStyle(el).backgroundImage), 'none', 'no see-through fade over the lines');
+  // The line under the bar when the screen opens: moving to its number brings it clear of the bar.
+  const under = await first.evaluate((card) => {
+    const bar = card.querySelector('.sto-issuebar').getBoundingClientRect();
+    const l = [...card.querySelectorAll('.sto-pick li[data-item]')].find((x) => { const r = x.querySelector('.sto-num')?.getBoundingClientRect(); return r && r.bottom > bar.top; });
+    return l?.dataset.item;
+  });
+  assert.ok(under, 'a pick line starts under the bar');
+  await first.locator(`.sto-pick li[data-item="${under}"] .sto-num`).focus();
+  await page.waitForTimeout(100);
+  const [num, bar] = await first.evaluate((card, id) => [card.querySelector(`li[data-item="${id}"] .sto-num`).getBoundingClientRect().bottom, card.querySelector('.sto-issuebar').getBoundingClientRect().top], under);
+  assert.ok(num <= bar, `the number (bottom ${Math.round(num)} px) is above the bar (top ${Math.round(bar)} px)`);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('a short line offers its next step in one tap: the open request or a stock-out for a ward with none left, an order for the store (#113)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/stores' });
+  await asRole(page, 'supply-manager', 'manage');
+  const none = page.locator('[data-test="short"] li[data-kind="none-left"]');
+  assert.ok(await none.count() >= 1, 'a ward line with none left');
+  for (const li of await none.all()) {
+    const next = li.locator('[data-test="short-next"]');
+    assert.equal(await next.count(), 1, 'a next step beside "Change the top-up level"');
+    assert.match(await next.textContent(), /^(See Request \d+|Start a stock-out|Stock-out open: see the log)$/);
+    assert.match(await next.getAttribute('href'), /^#\/stores\/(requests|outs)$/);
+  }
+  const store = page.locator('[data-test="short"] li[data-kind="store-not-on-order"]').first();
+  const item = await store.getAttribute('data-item');
+  const ask = store.locator('[data-test="short-next"]');
+  assert.equal(await ask.textContent(), 'Request an order');
+  const orders0 = await page.evaluate(async () => (await window.ospeli.core.events({ type: 'stores.order-step' })).length);
+  await ask.tap();
+  await page.waitForFunction((id) => document.querySelector('.sto')?.dataset.screen === 'orders' && document.querySelector(`[data-test="order-new"][open] li[data-item="${id}"]`), item);
+  assert.equal(await page.evaluate(async () => (await window.ospeli.core.events({ type: 'stores.order-step' })).length), orders0, 'one tap opens the form with the item; nothing is saved');
+  assert.deepEqual(await phoneProblems(page), []);
   assert.deepEqual(errors, []);
   await context.close();
 });

@@ -125,7 +125,10 @@
 .mod-stores .btn.sto-issue:disabled { background: #E4E4E4; border-color: #B8B8B8; color: #4A5968; border-style: dashed; cursor: default; }
 .mod-stores a.sto-link { display: inline-flex; align-items: center; min-height: 44px; }
 /* The oldest request's pick list sits above its button; the button stays in reach at the bottom of the screen. */
-.mod-stores .sto-issuebar { position: sticky; bottom: var(--dock, 0px); z-index: 2; padding: 8px 0 10px; background: linear-gradient(to bottom, rgba(255, 255, 255, 0), var(--surface) 30%); }
+/* Solid, with a top edge: a line under the bar is hidden, never half shown above the button where a tap
+   would land on Issue. A pick line moved to (keyboard, or the number field) stops clear of the bar (#113). */
+.mod-stores .sto-issuebar { position: sticky; bottom: var(--dock, 0px); z-index: 2; padding: 8px 0 10px; background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -6px 8px -6px rgba(11, 47, 78, .25); }
+.mod-stores .sto-req.is-first .sto-pick li, .mod-stores .sto-req.is-first .sto-pick :is(input, button) { scroll-margin-bottom: calc(var(--dock, 0px) + 100px); }
 .mod-stores .sto-pick > summary { font-size: .9375rem; }
 .mod-stores .sto-pick .sto-lines > li { padding: 6px 8px; }
 /* A save button that still waits for a pick looks disabled; a tap says what is missing. */

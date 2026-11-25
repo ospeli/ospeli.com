@@ -15,7 +15,7 @@ import * as pack from '../../web/app/modules/stores/commands.js';
 import { MODULE_PACKS } from '../../web/app/core/modules.js';
 import {
   CATALOGUE, deriveSupplies, deriveOrders, orderSteps, overUsual, tracerStockOutRate, requestWaitHours, orderCycleTime, fillRatePercent,
-  ruleLevelCheck, ruleOrderWaiting, ruleTransfer, guideOn, GUIDE_RULES, shortNow, SHORT_SHARE, REQUEST_USUAL_HOURS,
+  ruleLevelCheck, ruleOrderWaiting, ruleTransfer, guideOn, GUIDE_RULES, shortNow, SHORT_SHARE, REQUEST_USUAL_HOURS, percentText,
 } from '../../web/app/modules/stores/logic.js';
 
 const END = '2026-11-06T18:00:00.000Z';
@@ -428,4 +428,15 @@ test('the rest of a part-received order can be cancelled with a reason; it is th
   assert.deepEqual([problems, o.state, o.cancelReason, o.lines[0].received], [0, 'cancelled', 'Ordered another way', 10]);
   assert.deepEqual(orderSteps(o, at(10)).map((x) => [x.step, x.days]), [['requested', 1], ['approved', 1], ['ordered', 3], ['delivered', null], ['part-received', 4]]);
   assert.deepEqual([orderCycleTime(orders, { since: at(0), until: at(10) }).n, orderCycleTime(orders, { since: at(0), until: at(10) }).open], [0, 0]);
+});
+
+test('a percent measure never reads "0%" when the count under it is not zero (#113)', () => {
+  assert.equal(percentText(null, 0), null, 'no value: the caller says "none yet"');
+  assert.equal(percentText(0, 0), '0%', 'nothing at all is 0%');
+  assert.equal(percentText(0, 0.02), 'under 0.1%', 'a tiny rate, rounded to 0 for the answer, is not 0%');
+  assert.equal(percentText(0.04, 0.02), 'under 0.1%');
+  assert.equal(percentText(0.1, 1), '0.1%');
+  assert.equal(percentText(3.25, 4), '3.3%');
+  assert.equal(percentText(12.6, 30), '13%');
+  assert.equal(percentText(100, 30), '100%');
 });
