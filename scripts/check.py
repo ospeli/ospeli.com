@@ -67,6 +67,15 @@ if sw.exists():
             if rel not in listed:
                 errors.append(f"app/sw.js: {rel} is not precached, so it will not work offline")
 
+# The offline cache VERSION must be bumped when a cached file changes (cache_stamp.py).
+# --stamp-cache records the new stamp, and refuses if files changed but VERSION did not.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import cache_stamp
+STAMP = ROOT.parent / "scripts" / "sw-cache-stamp.json"
+if sw.exists():
+    refused = cache_stamp.write_stamp(APP, STAMP) if "--stamp-cache" in sys.argv else []
+    errors.extend(refused or cache_stamp.stamp_errors(APP, STAMP))
+
 # The command layer (backlog A2/A3): every command has schemas and an example, and
 # web/app/api/commands.json matches the registry.
 if (APP / "core" / "commands.js").exists():
@@ -479,6 +488,26 @@ for f in sorted(ROOT.rglob("*")):
     for line in src.splitlines():
         if re.search(r"behavior\s*:\s*['\"]smooth['\"]", line) and "prefers-reduced-motion" not in line:
             errors.append(f"{rel}: smooth scroll that ignores the reduce-motion setting (issue #84): \"{line.strip()[:90]}\"")
+
+# Pre-merge checklist (founder, 24 Nov 2026, build review scenario E), the parts a file read can check.
+# - Light only (issue #159): every page says "only light" in its head, so a phone set to dark does
+#   not repaint it, and the app's stylesheet says it again at the root.
+# - Neutral words: the OLD_WORDS guard above already reads every page, script and text under web/,
+#   so every module, new or old, is covered with no list to keep.
+# - Offline cache: every app file is precached and the cache VERSION moves with them (above).
+# - The browser part (no sideways scroll at 360 and 390 px, taps at least 44 px, text at least 15 px,
+#   axe, no console errors) is tests/e2e/premerge.test.mjs; speed is scripts/speed-report.mjs --check.
+ONLY_LIGHT = re.compile(r'<meta\s+name="color-scheme"\s+content="only light"\s*/?>', re.I)
+for page in pages:
+    rel = page.relative_to(ROOT).as_posix()
+    head = page.read_text(encoding="utf-8").split("</head>", 1)[0]
+    if not ONLY_LIGHT.search(head):
+        errors.append(f'{rel}: no <meta name="color-scheme" content="only light"> in the head; a phone set to dark would repaint it (issue #159)')
+if (APP / "app.css").exists() and not re.search(r":root\s*\{[^}]*color-scheme:\s*only light", (APP / "app.css").read_text(encoding="utf-8")):
+    errors.append("app/app.css: the :root rule must say color-scheme: only light (issue #159)")
+_known = ROOT.parent / "tests" / "premerge-known.json"
+if not _known.exists():
+    errors.append("tests/premerge-known.json: missing (the browser checklist's list of faults already in the app)")
 
 for e in errors:
     print("FAIL", e)

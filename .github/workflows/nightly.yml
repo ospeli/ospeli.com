@@ -31,12 +31,29 @@ jobs:
           node-version: "22"
       - name: Unit tests
         run: npm test
-      - name: Install Playwright (tests only; the site has no build step)
+      - name: Install Playwright and axe-core (tests only; the site has no build step)
+        run: |
+          npm install --no-save --no-package-lock playwright@1.63.0 axe-core@4.14.1
+          npx playwright install --with-deps chromium
+      - name: End-to-end tests (includes the pre-merge checklist, tests/e2e/premerge.test.mjs)
+        run: npm run test:e2e
+
+  # Pre-merge checklist, speed part (scenario E, 24 Nov; ospeli/ospeli#153). Runs beside the tests and
+  # does not hold back publishing: a red mark here means a page change went over 300 ms on both later
+  # visits. The table, with first load against its 2 s budget, is in the run's summary page.
+  speed:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Playwright
         run: |
           npm install --no-save --no-package-lock playwright@1.63.0
           npx playwright install --with-deps chromium
-      - name: End-to-end tests
-        run: npm run test:e2e
+      - name: Speed per page against the budget
+        run: node scripts/speed-report.mjs --check --summary "$GITHUB_STEP_SUMMARY"
 
   # The site is packed in its own job, before the publish job starts. Since 23 Nov 2026 the publish
   # step, run in the same job a fraction of a second after the upload, was told "No artifacts named

@@ -4,12 +4,18 @@
 // build. Synthetic example data; a local static server; nothing leaves this machine.
 //   node scripts/speed-report.mjs            the phone profile (360 px, processor 4x slower, 1.6 Mbit/s, 150 ms)
 //   node scripts/speed-report.mjs --json     the same numbers as JSON
+//   node scripts/speed-report.mjs --check    the pre-merge checklist (scenario E, 24 Nov): exits 1 when a
+//       built page takes longer than the 300 ms budget to open on BOTH later visits (one slow visit
+//       on a busy machine is not enough). The first load is printed against its budget but does not
+//       fail yet: it is known to be over (#153, #6) and fails once it is inside it.
+//   Add --summary FILE to append the table, as Markdown, to FILE (the pipeline's job summary).
 // The local server sends files uncompressed, so the first load is measured twice: as the local
 // server sends the files, and compressed as a static host sends them. Both sizes are printed.
 import { createRequire } from 'node:module';
 import http from 'node:http';
 import zlib from 'node:zlib';
 import { createServer } from './serve.mjs';
+import { MODULES } from '../web/app/modules/registry.js';
 
 const require = createRequire(import.meta.url);
 const { chromium } = require('playwright');
@@ -73,9 +79,10 @@ export async function measure({ runs = 2, gzip = false, pages = true } = {}) {
       await page.waitForSelector('html[data-ready="true"]', { timeout: 120000 });
       out.repeatLoadMs.push(Date.now() - t0);
       // Every built page: tap its menu link, time until the page's own heading is drawn.
-      const ids = await page.evaluate(() => [...document.querySelectorAll('nav a[href^="#/"]')].filter((a) => !a.querySelector('.soon-tag')).map((a) => a.getAttribute('href').slice(2)));
+      // Every built page in the module registry (navigation v2 has no menu listing them all).
+      const ids = MODULES.filter((m) => m.load && m.id !== 'data').map((m) => m.id);
       for (const id of i === 0 && pages ? ids : []) { // page changes are timed on the first run only
-        for (const pass of ['first', 'again']) {
+        for (const pass of ['first', 'again', 'again']) {
           await page.evaluate(() => { location.hash = '#/data'; });
           await page.waitForTimeout(1500); // the page before settles
           const ms = await page.evaluate((to) => new Promise((resolve) => {
@@ -109,5 +116,17 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   console.log(`Repeat load           ${s(worst(out.repeatLoadMs))}`);
   console.log('Tap a menu link to the page\'s heading drawn (first time / again), budget 300 ms. A page whose heading is drawn before its data reads low:');
   for (const [id, p] of Object.entries(out.pages)) console.log(`  ${id.padEnd(12)} ${String(worst(p.first)).padStart(5)} ms / ${String(worst(p.again)).padStart(5)} ms   ${mark(worst(p.again), BUDGET.pageChangeMs)}`);
-  console.log('This report measures only. It never fails a build (ospeli/ospeli#153).');
+  const slow = Object.entries(out.pages).filter(([, p]) => p.again.length && Math.min(...p.again.map((x) => (x == null ? Infinity : x))) > BUDGET.pageChangeMs).map(([id]) => id);
+  const at = process.argv.indexOf('--summary');
+  if (at > 0 && process.argv[at + 1]) {
+    const { appendFileSync } = await import('node:fs');
+    const rows = Object.entries(out.pages).map(([id, p]) => `| ${id} | ${worst(p.first)} | ${Math.min(...p.again.filter((x) => x != null))} | ${slow.includes(id) ? 'OVER' : 'within'} |`);
+    appendFileSync(process.argv[at + 1], [`### Speed against the budget (ospeli/ospeli#153)`, `Phone profile: ${PROFILE.width} px, processor ${PROFILE.cpu}x slower, ${PROFILE.downKbps / 1000} Mbit/s, ${PROFILE.latencyMs} ms.`, '',
+      `First load, files compressed: **${s(worst(zipped.firstLoadMs))}** (budget ${s(BUDGET.firstLoadMs)}, ${mark(worst(zipped.firstLoadMs), BUDGET.firstLoadMs)}; reported, not yet a failure). Repeat load ${s(worst(out.repeatLoadMs))}.`, '',
+      '| Page | First visit (ms) | Later visit, best of 2 (ms) | 300 ms budget |', '|---|---|---|---|', ...rows, ''].join('\n'));
+  }
+  if (process.argv.includes('--check')) {
+    if (slow.length) { console.log(`FAIL over the 300 ms page-change budget on both later visits: ${slow.join(', ')}`); process.exit(1); }
+    console.log('Page changes: every built page within the 300 ms budget. First load: reported only (#153).');
+  } else console.log('This report measures only; --check makes a slow page change fail (ospeli/ospeli#153).');
 }

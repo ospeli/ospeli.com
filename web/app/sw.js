@@ -1,6 +1,6 @@
 // Ospeli app service worker: precache the shell so the app opens offline.
 // Strategy: serve from cache at once, refresh the cache from the network in the background.
-// Bump VERSION when the precache list changes. scripts/check.py checks that every file exists.
+// Bump VERSION when the precache list or any precached file changes. scripts/check.py checks both.
 const VERSION = 'ospeli-app-v82';
 const PRECACHE = [
   './',
