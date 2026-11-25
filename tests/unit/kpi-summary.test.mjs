@@ -31,6 +31,7 @@ test('#105: every input of every command has a description an agent can act on',
 
 test('#105: ospeli_kpi_get returns the unit, the text on the tile and whether it is on target', async () => {
   const core = await setup();
+  assert.ok(KPIS.length > 0, 'there are measures to check');
   for (const kpi of KPIS) {
     const out = await runCommand(core, 'ospeli_kpi_get', { id: kpi.id }, human('coo'));
     ok('ospeli_kpi_get', out);

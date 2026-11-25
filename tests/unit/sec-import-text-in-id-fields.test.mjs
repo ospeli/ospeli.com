@@ -29,7 +29,13 @@ test('an imported file cannot carry a sentence into the utilities log or the dis
 
   const core = await Core.open({ adapter: new MemoryAdapter(), clock });
   const errs = await core.validateImport(data);
-  if (errs.length) return; // refused at the door: the right answer
+  if (errs.length) {
+    // Refused at the door: the right answer, but only when it is refused for the three events added
+    // above (issue #95, 23 Nov: a bare return here checked nothing).
+    const first = data.events.length - 2;
+    assert.ok(errs.every((e) => Number(/^event (\d+):/.exec(e)?.[1]) >= first), `refused, but not for the added events: ${errs.join(' | ')}`);
+    return;
+  }
   await core.importData(data, 'ops-manager');
   const run = (name, input, who) => runCommand(core, name, input, typeof who === 'string' ? { type: 'human', role: who } : who);
   await run('ospeli_agents_set_access', { allowed: true, wards: { 'ward-a2': true } }, 'coo');

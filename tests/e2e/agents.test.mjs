@@ -2,7 +2,7 @@
 // person accepts or declines, with the audit trail telling them apart (issue #17).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { startApp, openPage, setRole } from './helpers.mjs';
+import { startApp, openPage, setRole, waitUntil } from './helpers.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -401,7 +401,8 @@ for (const width of [360, 390, 1280]) {
     });
     // The card appears with the first proposal and draws itself again as the next ones land (issue
     // #95: reading it once saw 2 of 3). Wait for it to settle on the expected heading, then check it.
-    const settle = (want) => page.waitForFunction((w) => document.querySelector('[data-test="decisions-waiting"] h2')?.innerText.trim() === w, want, { timeout: 10000 }).catch(() => {});
+    // A wait that runs out fails here and says so (issue #95, 23 Nov: it was swallowed before).
+    const settle = (want) => waitUntil(page, (w) => document.querySelector('[data-test="decisions-waiting"] h2')?.innerText.trim() === w, want, { timeout: 10000 });
     await settle('Waiting for your decision (3)');
     let c = await read();
     assert.equal(c.heading, 'Waiting for your decision (3)');
@@ -411,7 +412,7 @@ for (const width of [360, 390, 1280]) {
     const top = await card.evaluate((e) => e.getBoundingClientRect().top);
     assert.ok(top < (width < 500 ? 780 : 860) * 0.6, `the card starts at ${Math.round(top)} px`);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth), 0, 'no sideways scroll');
-    await page.waitForFunction(() => document.querySelector('#dock [data-dock="journey"] .nav-count')?.textContent.trim() === '3', null, { timeout: 10000 }).catch(() => {});
+    await waitUntil(page, () => document.querySelector('#dock [data-dock="journey"] .nav-count')?.textContent.trim() === '3', undefined, { timeout: 10000 });
     assert.deepEqual(await dockCount(), { n: '3', spoken: '3 proposals waiting for your decision' });
     assert.deepEqual(await journeyCounts(), { beds: { n: '2', spoken: '2 proposals waiting for your decision' }, process: { n: '1', spoken: '1 proposal waiting for your decision' } });
     // The facilities technician sees their share: the work order and the map.
