@@ -12,7 +12,7 @@ import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
 import { TITLES, screensFor } from './screens.js';
-import { STEP_ROLES, STEP_NAMES, UNITS } from './logic.js';
+import { STEP_ROLES, STEP_NAMES, UNITS, percentText } from './logic.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
 // Role names in full on this page ("COO" spelled out).
@@ -255,7 +255,7 @@ function countScreen(ctx, shared) {
         const under = v != null && v < r.level;
         li.classList.toggle('is-under', under);
         li.classList.toggle('is-counted', v != null);
-        marker.textContent = v == null ? (ui.moved.has(r.itemId) ? 'Count again' : '') : under ? (r.openRequestId ? `Under level: already asked for (${reqName(r.openRequestId)})` : `Under level: ${r.level - v} will be asked for`) : 'At or over level';
+        marker.textContent = v == null ? (ui.moved.has(r.itemId) ? 'Count again' : '') : under ? (r.openRequestId ? `Under level: already asked for (${reqName(r.openRequestId)})` : onWay.has(r.itemId) ? `Under level: saving asks the store again for ${r.level - v}, though stock was issued ${agoWords(onWay.get(r.itemId))}. Is it on the shelf yet?` : `Under level: ${r.level - v} will be asked for`) : 'At or over level';
         label();
       };
       li.append(...[
@@ -467,6 +467,8 @@ function ordersScreen(ctx, shared) {
   const box = h('div', { class: 'sto-orders' });
   const mayRequest = STEP_ROLES.requested.includes(ctx.role);
   const ui = { open: new Set(), lines: new Map(), cancel: new Map(), msg: null };
+  // #/stores/orders/new/<item>: the form opens with that item on it; the person sets how many and saves.
+  if (mayRequest && ctx.rest[1] === 'new' && shared.item.has(ctx.rest[2])) { ui.lines.set(ctx.rest[2], null); ui.open.add('new'); }
   const props = proposalsCard(ctx, { match: matchMine, describe: (p) => describe(p, shared) });
   let data = null;
   const load = async () => {
@@ -489,7 +491,7 @@ function ordersScreen(ctx, shared) {
     sel.addEventListener('change', () => { if (sel.value) { ui.lines.set(sel.value, null); draw(); } });
     newLabel();
     return keepOpen(ui.open, 'new', 'Request a new order', h('div', { class: 'sto-form' },
-      h('ul', { class: 'sto-lines' }, [...ui.lines.keys()].map((itemId) => h('li', {}, h('div', { class: 'sto-line-head' }, h('b', {}, shared.item.get(itemId)?.name || itemId), h('span', { class: 'meta' }, shared.item.get(itemId)?.unit || '')),
+      h('ul', { class: 'sto-lines' }, [...ui.lines.keys()].map((itemId) => h('li', { 'data-item': itemId }, h('div', { class: 'sto-line-head' }, h('b', {}, shared.item.get(itemId)?.name || itemId), h('span', { class: 'meta' }, shared.item.get(itemId)?.unit || '')),
         h('div', { class: 'sto-line-acts' }, stepper({ get: () => ui.lines.get(itemId) ?? null, set: (v) => { ui.lines.set(itemId, v); newLabel(); }, label: `${shared.item.get(itemId)?.name}, how many to order` }),
           h('button', { type: 'button', class: 'btn btn-ghost btn-small', onclick: () => { ui.lines.delete(itemId); draw(); } }, 'Remove'))))),
       h('div', { class: 'field' }, h('label', { for: 'ord-add' }, 'Item'), sel), newBtn,
@@ -600,12 +602,13 @@ function manageScreen(ctx, shared) {
   const props = proposalsCard(ctx, { match: matchMine, describe: (p) => describe(p, shared) });
   let data = null;
   const load = async () => {
-    const [ov, levels, orders, reqs, items] = await Promise.all([
+    const [ov, levels, orders, reqs, items, outs] = await Promise.all([
       ctx.run('ospeli_stores_overview', { days: 30 }), ctx.run('ospeli_stock_levels', { category: 'supplies', format: 'short', limit: 500 }),
-      ctx.run('ospeli_stores_orders', { state: 'open', limit: 200 }), ctx.run('ospeli_stock_requests', { state: 'waiting', limit: 200 }), ctx.run('ospeli_stock_items', { category: 'supplies', limit: 500 })]);
+      ctx.run('ospeli_stores_orders', { state: 'open', limit: 200 }), ctx.run('ospeli_stock_requests', { state: 'waiting', limit: 200 }), ctx.run('ospeli_stock_items', { category: 'supplies', limit: 500 }),
+      ctx.run('ospeli_stock_outs', { category: 'supplies', state: 'open', limit: 200 })]);
     for (const r of levels.levels) shared.names.set(r.placeId, r.placeName);
     shared.items = items; shared.item = new Map(items.items.map((it) => [it.id, it]));
-    data = { ov, levels: levels.levels, orders: orders.orders, reqs: reqs.requests };
+    data = { ov, levels: levels.levels, orders: orders.orders, reqs: reqs.requests, outs: outs.stockOuts };
     draw();
     await props.load();
   };
@@ -664,13 +667,24 @@ function manageScreen(ctx, shared) {
     const row = (x) => levelOf(x);
     const levelOf = (x) => data.levels.find((r) => r.placeId === x.placeId && r.itemId === x.itemId) || null;
     const shown = ui.showAll ? sh.lines : sh.lines.slice(0, 10);
+    // The next step in one tap (it opens the screen; nothing is saved): the ward's open request or a
+    // stock-out for a ward with none left, an order for a store item not on order.
+    const link = (href, words) => h('a', { class: 'btn btn-ghost btn-small', href, 'data-test': 'short-next' }, words);
+    const next = (x) => {
+      if (x.kind === 'store-not-on-order') return STEP_ROLES.requested.includes(ctx.role) ? link(`#/stores/orders/new/${x.itemId}`, 'Request an order') : null;
+      if (x.kind !== 'none-left') return null;
+      const reqId = levelOf(x)?.openRequestId;
+      if (reqId && screensFor(ctx.role).includes('requests')) return link('#/stores/requests', `See ${reqName(reqId)}`);
+      if (data.outs.some((o) => o.open && o.itemId === x.itemId && o.placeId === x.placeId)) return link('#/stores/outs', 'Stock-out open: see the log');
+      return can(ctx.role, 'ospeli_stock_out_start') ? link('#/stores/outs', 'Start a stock-out') : null;
+    };
     return h('section', { class: 'section', 'aria-labelledby': 'sto-short-h', 'data-test': 'short' },
       h('h2', { id: 'sto-short-h' }, `What is short (${plural(sh.lines.length, 'line')})`),
       h('p', { class: 'meta' }, `${sh.note} Ordinary top-ups are on each ward's count.`),
       sh.lines.length ? h('ul', { class: 'sto-plain' }, shown.map((x) => h('li', { class: x.kind === 'none-left' ? 'is-zero' : null, 'data-kind': x.kind, 'data-item': x.itemId || null, 'data-place': x.placeId },
         h('p', {}, h('b', {}, x.itemName ? `${x.itemName}, ${x.placeName}` : x.placeName), ' ', h('span', { class: 'chip sto-kind' }, KIND[x.kind])),
         h('p', { class: 'meta' }, x.kind === 'request-waiting' ? `${reqName(x.requestId)} has waited ${hoursText(x.hours)}.` : `${x.usable} usable; ${levelWord(x.kind === 'store-not-on-order')} ${x.level} (${x.unit}).`),
-        mayLevel && x.itemId && row(x) ? levelEditor(row(x)) : null))) : h('p', { class: 'meta', 'data-test': 'short-none' }, 'Nothing needs a look right now.'),
+        next(x), mayLevel && x.itemId && row(x) ? levelEditor(row(x)) : null))) : h('p', { class: 'meta', 'data-test': 'short-none' }, 'Nothing needs a look right now.'),
       sh.lines.length > 10 ? h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'aria-expanded': String(ui.showAll), onclick: () => { ui.showAll = !ui.showAll; draw(); } }, ui.showAll ? 'Show the first 10' : `See all ${sh.lines.length}`) : null);
   }
   function stuckList() {
@@ -684,7 +698,7 @@ function manageScreen(ctx, shared) {
       reqs.length ? h('ul', { class: 'sto-plain' }, reqs.map((q) => h('li', { 'data-request': q.id }, h('b', {}, q.placeName), ` · ${reqName(q.id)} · waiting ${hoursText(q.waitHours)} · ${plural(q.lines.filter((l) => l.left > 0).length, 'item')}${q.canIssueInFull ? '' : ' · the store is short'}`))) : null,
       h('div', { class: 'sto-acts' }, h('a', { class: 'btn btn-ghost btn-small', href: '#/stores/orders' }, 'All orders'), h('a', { class: 'btn btn-ghost btn-small', href: '#/stores/requests' }, 'All requests')));
   }
-  const fmtKpi = (k) => (k.value == null ? 'None yet' : k.unit === '%' ? `${k.value < 10 ? Math.round(k.value * 10) / 10 : Math.round(k.value)}%` : k.unit === 'hours' ? hoursText(k.value) : daysText(k.value));
+  const fmtKpi = (k) => (k.value == null ? 'None yet' : k.unit === '%' ? percentText(k.value, k.numerator) : k.unit === 'hours' ? hoursText(k.value) : daysText(k.value));
   function kpiSection(ov) {
     const extra = (k) => (k.open != null ? `${plural(k.open, k.id === 'stores-order-cycle' ? 'order' : 'request')} not finished yet${k.longestOpen != null ? `, the longest ${k.unit === 'hours' ? hoursText(k.longestOpen) : daysText(k.longestOpen)} so far` : ''}.` : null);
     const sub = (k) => {
@@ -701,8 +715,8 @@ function manageScreen(ctx, shared) {
         h('p', { class: 'sto-kpi-name' }, k.name), h('p', { class: 'sto-kpi-value' }, fmtKpi(k)),
         h('p', { class: 'meta' }, sub(k)),
         extra(k) ? h('p', { class: 'meta' }, extra(k)) : null,
-        (k.byArea || []).filter((x) => ids.has(x.placeId)).map((x) => h('p', { class: 'meta', 'data-test': 'store-line' }, `${x.placeName}: ${x.value == null ? 'none' : `${x.value}%`} (${x.numerator} of ${x.denominator} item-days)`)),
-        k.byArea?.length ? keepOpen(ui.open, `area:${k.id}`, 'Each ward', h('ul', { class: 'sto-mini' }, k.byArea.filter((x) => !ids.has(x.placeId)).map((x) => h('li', {}, `${x.placeName}: ${x.value == null ? 'none' : `${x.value}%`} (${x.numerator} of ${x.denominator} item-days)`))), { class: 'sto-def' }) : null,
+        (k.byArea || []).filter((x) => ids.has(x.placeId)).map((x) => h('p', { class: 'meta', 'data-test': 'store-line' }, `${x.placeName}: ${x.value == null ? 'none' : percentText(x.value, x.numerator)} (${x.numerator} of ${x.denominator} item-days)`)),
+        k.byArea?.length ? keepOpen(ui.open, `area:${k.id}`, 'Each ward', h('ul', { class: 'sto-mini' }, k.byArea.filter((x) => !ids.has(x.placeId)).map((x) => h('li', {}, `${x.placeName}: ${x.value == null ? 'none' : percentText(x.value, x.numerator)} (${x.numerator} of ${x.denominator} item-days)`))), { class: 'sto-def' }) : null,
         keepOpen(ui.open, `def:${k.id}`, 'How it is counted', [h('p', {}, k.definition), h('p', {}, `Counts: ${k.counts}`), h('p', {}, `Leaves out: ${k.leavesOut}`), h('p', {}, `Source: ${k.source}`), h('p', {}, `Target: ${k.targetText}`)], { class: 'sto-def' })))));
   }
   function tools() {
