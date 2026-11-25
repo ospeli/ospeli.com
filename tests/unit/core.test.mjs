@@ -121,6 +121,8 @@ test('the audit chain verifies and detects tampering', async () => {
 test('export then import round-trips and is audited', async () => {
   const core = await open();
   await core.putEntities(tree, 'system');
+  assert.equal((await core.exportData()).synthetic, false, 'a device that does not mark its data synthetic does not export it as synthetic (issue #178)');
+  await core.setMeta('synthetic', true); // a bare Core marks nothing; the export only says synthetic when the device does (issue #178)
   await core.appendEvent({ type: 'bed.vacated', subject: 'bed-1-01', actorRole: 'ward-nurse' });
   const dump = await core.exportData();
   assert.equal(dump.format, 'ospeli-export');
@@ -142,6 +144,7 @@ test('export then import round-trips and is audited', async () => {
 
 test('a bad import file changes nothing', async () => {
   const core = await open();
+  await core.setMeta('synthetic', true); // a bare Core marks nothing; the export only says synthetic when the device does (issue #178)
   await core.putEntities(tree, 'system');
   const dump = await core.exportData();
   const before = await core.exportData();
@@ -223,6 +226,7 @@ test('the self-check catches an edit without re-hashing and nothing else, as the
 
 test('a reset or an import marks the history as replaced; a first trail is not marked (issue #79)', async () => {
   const core = await open();
+  await core.setMeta('synthetic', true); // a bare Core marks nothing; the export only says synthetic when the device does (issue #178)
   await core.record('coo', 'role.changed', null, { to: 'coo' });
   let check = await core.auditCheck();
   assert.equal(check.ok, true); assert.equal(check.entries, 1); assert.equal(check.replaced, null);
