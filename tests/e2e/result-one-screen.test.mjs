@@ -48,8 +48,8 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     // Extra and redone steps, in words, never dropped.
     const table = flat(await page.innerText('[data-test="result-table"]'));
     assert.match(table, /\+ Contrast check · Radiology nurse Not on the list · Only on walk 2/);
-    assert.match(table, /Done again on walk 2 \(2 times\)/);
-    assert.match(table, /stopped 3 min, interrupted 1 time/);
+    assert.match(table, /Done 2 times/);
+    assert.match(table, /wait 8 min \(3 min stopped, interrupted 1 time\) · 4 min/);
     assert.match(flat(await page.textContent('[data-test="result-extras"] summary')), /^Not as listed: 1 extra step, 1 step done again$/);
     // Phone rules: no sideways scroll, text 15 px (13 px captions), targets 44 px.
     const rules = await page.evaluate(() => {
@@ -80,7 +80,7 @@ test('table cells equal the walk records to the second (data-sec), shown in whol
     const at = recs[w].steps.filter((s) => s.stepId === `map-001-s${i + 1}`);
     assert.equal(status, 'timed', `${IMAGING[i][0]} on walk ${w + 1}`);
     assert.equal(sec, `${at.reduce((n, s) => n + s.waitSec, 0)},${at.reduce((n, s) => n + s.workSec, 0)}`, `${IMAGING[i][0]} on walk ${w + 1}`);
-    assert.match(text, /^wait (under 1 min|\d+ min) · (under 1 min|\d+ min)/);
+    assert.match(text, /^(1st: )?wait (under 1 min|\d+ min)( \(\d+ min stopped, interrupted 1 time\))? · (under 1 min|\d+ min)/);
     assert.doesNotMatch(text, /\d+ s\b/);
   }));
   // The seconds behind the cells are the seconds the walks were timed with.
@@ -131,7 +131,7 @@ test('Copy as text, Download CSV (with the formula attack) and Share; Share is a
   const copied = await page.waitForFunction(() => window.__copied).then((h) => h.jsonValue());
   assert.match(copied, /^Outpatient CT\n2 walks · Imaging · 17\s?[–-]\s?18 Nov 2026\n\nLongest wait: 10 to 13 min before “Scan”, on both walks\n/);
   assert.match(copied, /Walk 1, Tue,? 17 Nov, 09:00: \d+ min start to finish · waiting \d+ min · hands-on \d+ min\. Longest wait: 10 min before “Scan”/);
-  assert.match(copied, /\n5\. Scan \(Imaging staff\): wait 10 min · 15 min \| wait 18 min · 21 min · done 2 times\n/);
+  assert.match(copied, /\n5\. Scan \(Imaging staff\): wait 10 min · 15 min \| 1st: wait 13 min · 14 min; 2nd: wait 5 min · 7 min\n/);
   assert.match(copied, /\n {2}\+ =1\+2 check \(-Porter, not on the list\): – \| wait 2 min · 3 min\n/);
   assert.match(copied, /How to read this: .+\nMeasured on 2 walks: examples, not a sample\.$/);
   // Download CSV.
@@ -140,7 +140,7 @@ test('Copy as text, Download CSV (with the formula attack) and Share; Share is a
   const csv = (await readFile(await dl.path(), 'utf8')).replace(/^﻿/, '');
   const lines = csv.trimEnd().split('\r\n');
   assert.equal(lines.length, 1 + WALK1.length + WALK2.length, 'one row per walk per step');
-  assert.match(lines[0], /^"map","department","walk number","walk date","step order","step","role","on list","wait seconds","hands-on seconds","not-seen seconds","interrupted count","stopped seconds","done again"/);
+  assert.match(lines[0], /^"map","department","walk number","walk date","step order","step","role","on list","wait seconds","hands-on seconds","not-seen seconds","interrupted count","stopped seconds \(inside wait\)","done again"/);
   assert.match(csv, /"Outpatient CT","Imaging","2","2026-11-18","5","'=1\+2 check","'-Porter","no","120","180","0","0","0","no","timed"/);
   for (const l of lines) for (const f of l.match(/"(?:[^"]|"")*"/g)) assert.doesNotMatch(f, /^"[=+\-@\t\r]/, `field ${f} would run as a formula`);
   const recs = await records(page);

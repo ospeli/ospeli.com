@@ -268,7 +268,7 @@ export async function render(el, ctx) {
     let readBox = null;
     // The same caveats the guide's own notes repeat (#182 item 13): said once, here.
     const limits = 'People may work differently when someone is watching, and work that ran at the same time as another step is not recorded. Steps are timed, never people.';
-    const tableWords = 'The table shows each step walk by walk, in whole minutes: the wait before the step, then the hands-on time. A step not on the list stays on its own walk; a step done again has its times added together.';
+    const tableWords = 'The table shows each step walk by walk, in whole minutes: the wait before the step, then the hands-on time. A step not on the list stays on its own walk; a step done again shows each time on its own. Time a step stood still is part of its wait.';
     if (rangeView) {
       const tot = { elapsed: totalSpan(rg, 'elapsed'), wait: totalSpan(rg, 'wait'), work: totalSpan(rg, 'work') };
       const lw = longestWalks(rg, records);

@@ -102,8 +102,8 @@ export function tableCard(model, after = null) {
           h('span', { class: 'rt-role' }, ` · ${r.role}`),
           r.kind === 'extra' ? h('span', { class: 'rt-only', 'data-test': 'only-on' }, `Not on the list · Only on walk ${r.walk}`) : null),
         r.cells.map((c, k) => h('td', { role: 'cell', class: colCls(k), 'data-status': c.status, ...(c.status === 'timed' ? { 'data-sec': `${c.waitSec},${c.workSec}` } : {}) },
-          c.status === 'not-on-walk' ? [h('span', { 'aria-hidden': 'true' }, '–'), h('span', { class: 'sr-only' }, 'not on this walk')] : cellWords(c).replace(/ · done (\d+) times/, ''),
-          c.times > 1 ? h('span', { class: 'rt-again', 'data-test': 'done-again' }, `Done again on walk ${model.walks[k].n} (${c.times} times)`) : null)))))),
+          c.status === 'not-on-walk' ? [h('span', { 'aria-hidden': 'true' }, '–'), h('span', { class: 'sr-only' }, 'not on this walk')] : cellWords(c),
+          c.times > 1 ? h('span', { class: 'rt-again', 'data-test': 'done-again' }, `Done ${c.times} times`) : null)))))),
     after);
 }
 
@@ -116,7 +116,7 @@ export function extrasCard(model) {
     h('summary', {}, h('b', {}, `Not as listed: ${words}`)),
     h('ul', {},
       extra.map((x) => h('li', {}, h('b', {}, `“${x.name}”`), ` (${x.role}): only on walk ${x.walk}${x.after ? `, after “${x.after}”` : ', before the first list step'}. Wait ${minWords(x.waitSec)} · ${minWords(x.workSec)} hands-on.`)),
-      again.map((x) => h('li', {}, h('b', {}, `“${x.name}”`), `: done again on walk ${x.walk} (${x.times} times). Its times are added together in the table.`))),
+      again.map((x) => h('li', {}, h('b', {}, `“${x.name}”`), `: done ${x.times} times on walk ${x.walk}. The table shows each time on its own.`))),
     h('p', { class: 'meta' }, 'A step not on the list stays on its own walk; the saved list is not changed.'));
 }
 

@@ -81,22 +81,29 @@ function cellOf(at, rec, stepId) {
     return { status: 'not-timed' };
   }
   const sum = (k) => at.reduce((n, x) => n + (x[k] || 0), 0);
-  return { status: 'timed', times: at.length, waitSec: sum('waitSec'), workSec: sum('workSec'), waitNotSeenSec: sum('waitNotSeenSec'), workNotSeenSec: sum('workNotSeenSec'),
+  return { status: 'timed', times: at.length, each: at.map((x) => ({ waitSec: x.waitSec, workSec: x.workSec, waitNotSeenSec: x.waitNotSeenSec, workNotSeenSec: x.workNotSeenSec, interruptions: x.interruptions, stoppedSec: x.stoppedSec })), waitSec: sum('waitSec'), workSec: sum('workSec'), waitNotSeenSec: sum('waitNotSeenSec'), workNotSeenSec: sum('workNotSeenSec'),
     interruptions: sum('interruptions'), stoppedSec: sum('stoppedSec') };
 }
 
-// A cell in words, whole minutes: "wait 13 min · 4 min", "did not happen", "not timed",
-// "… · done 2 times", "… · stopped 2 min, interrupted 1 time".
+// A cell in words, whole minutes: "wait 13 min · 4 min", "did not happen", "not timed".
+// Time a step stood still is inside its wait (core/walk.js), so it is said as part of the wait,
+// never beside it: "wait 8 min (3 min stopped, interrupted 1 time) · 4 min".
+// A step done more than once on a walk says each time on its own, so no wait reads longer than
+// the walk's longest wait: "1st: wait 13 min · 15 min; 2nd: wait 5 min · 6 min".
+const ORDINAL = ['1st', '2nd', '3rd'];
+function onceWords(c) {
+  const wait = c.waitNotSeenSec > 0 ? atLeastWords(c.waitSec) : minWords(c.waitSec);
+  const work = c.workNotSeenSec > 0 ? atLeastWords(c.workSec) : minWords(c.workSec);
+  const times = c.interruptions ? `interrupted ${c.interruptions} ${c.interruptions === 1 ? 'time' : 'times'}` : '';
+  const stop = c.interruptions ? ` (${c.stoppedSec ? `${minWords(c.stoppedSec)} stopped, ` : ''}${times})` : '';
+  return `wait ${wait}${stop} · ${work}`;
+}
 export function cellWords(c) {
   if (c.status === 'did-not-happen') return 'did not happen';
   if (c.status === 'not-timed') return 'not timed';
   if (c.status === 'not-on-walk') return '–';
-  const wait = c.waitNotSeenSec > 0 ? atLeastWords(c.waitSec) : minWords(c.waitSec);
-  const work = c.workNotSeenSec > 0 ? atLeastWords(c.workSec) : minWords(c.workSec);
-  const bits = [`wait ${wait} · ${work}`];
-  if (c.times > 1) bits.push(`done ${c.times} times`);
-  if (c.interruptions) bits.push(`${c.stoppedSec ? `stopped ${minWords(c.stoppedSec)}, ` : ''}interrupted ${c.interruptions} ${c.interruptions === 1 ? 'time' : 'times'}`);
-  return bits.join(' · ');
+  if (c.times > 1 && c.each) return c.each.map((x, i) => `${ORDINAL[i] || `${i + 1}th`}: ${onceWords(x)}`).join('; ');
+  return onceWords(c);
 }
 
 // The steps not on the list and the list steps done again, walk by walk, never dropped.
@@ -135,7 +142,7 @@ export function csvCell(v) {
   if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return `"${s.replace(/"/g, '""')}"`;
 }
-export const CSV_HEAD = ['map', 'department', 'walk number', 'walk date', 'step order', 'step', 'role', 'on list', 'wait seconds', 'hands-on seconds', 'not-seen seconds', 'interrupted count', 'stopped seconds', 'done again', 'status'];
+export const CSV_HEAD = ['map', 'department', 'walk number', 'walk date', 'step order', 'step', 'role', 'on list', 'wait seconds', 'hands-on seconds', 'not-seen seconds', 'interrupted count', 'stopped seconds (inside wait)', 'done again', 'status'];
 // One row per walk per step, in the order the steps happened; then, for that walk, each list step
 // that did not happen or was not timed (no seconds). dateOf: the walk's date as YYYY-MM-DD.
 export function csvOf({ title, department, list, records, dateOf }) {

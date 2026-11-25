@@ -52,7 +52,7 @@ test('resultTable: one row per list step in list order, the off-list step under 
   const rows = resultTable(list, [W1, W2]);
   assert.deepEqual(rows.map((r) => (r.kind === 'extra' ? `+${r.name}@${r.after}` : r.name)), ['Arrived', 'Registered', '+Contrast check@map-001-s2', 'Scan', 'Left']);
   const scan = rows.find((r) => r.name === 'Scan');
-  // A step done again: its times are added together, and the cell says how many times.
+  // A step done again: the cell keeps the sums and says each time on its own.
   assert.deepEqual([scan.cells[1].waitSec, scan.cells[1].workSec, scan.cells[1].times], [780 + 300, 840 + 400, 2]);
   assert.deepEqual([scan.cells[0].waitSec, scan.cells[0].workSec, scan.cells[0].times], [600, 900, 1]);
   const extra = rows.find((r) => r.kind === 'extra');
@@ -75,9 +75,9 @@ test('an off-list step that came first sits at the top; "did not happen" and "no
 
 test('cellWords: whole minutes, wait then hands-on, interruptions in the cell, "at least" only after a pause', () => {
   assert.equal(cellWords({ status: 'timed', times: 1, waitSec: 780, workSec: 240, waitNotSeenSec: 0, workNotSeenSec: 0, interruptions: 0, stoppedSec: 0 }), 'wait 13 min · 4 min');
-  assert.equal(cellWords({ status: 'timed', times: 1, waitSec: 360, workSec: 180, interruptions: 1, stoppedSec: 120 }), 'wait 6 min · 3 min · stopped 2 min, interrupted 1 time');
-  assert.equal(cellWords({ status: 'timed', times: 1, waitSec: 360, workSec: 180, interruptions: 2, stoppedSec: 0 }), 'wait 6 min · 3 min · interrupted 2 times');
-  assert.equal(cellWords({ status: 'timed', times: 2, waitSec: 1080, workSec: 1240 }), 'wait 18 min · 21 min · done 2 times');
+  assert.equal(cellWords({ status: 'timed', times: 1, waitSec: 360, workSec: 180, interruptions: 1, stoppedSec: 120 }), 'wait 6 min (2 min stopped, interrupted 1 time) · 3 min');
+  assert.equal(cellWords({ status: 'timed', times: 1, waitSec: 360, workSec: 180, interruptions: 2, stoppedSec: 0 }), 'wait 6 min (interrupted 2 times) · 3 min');
+  assert.equal(cellWords({ status: 'timed', times: 2, waitSec: 1080, workSec: 1260, each: [{ waitSec: 780, workSec: 900 }, { waitSec: 300, workSec: 360 }] }), '1st: wait 13 min · 15 min; 2nd: wait 5 min · 6 min');
   assert.equal(cellWords({ status: 'timed', times: 1, waitSec: 600, workSec: 60, waitNotSeenSec: 300 }), 'wait at least 10 min · 1 min');
   assert.equal(cellWords({ status: 'did-not-happen' }), 'did not happen');
   assert.equal(cellWords({ status: 'not-timed' }), 'not timed');
@@ -154,7 +154,7 @@ test('csvOf: one row per walk per step, every field quoted, the formula attack d
   const csv = csvOf({ title: '+Outpatient CT', department: 'Imaging', list, records: [W1, evil], dateOf: (iso) => iso.slice(0, 10) });
   const lines = csv.trimEnd().split('\r\n');
   assert.equal(lines[0], CSV_HEAD.map((x) => `"${x}"`).join(','));
-  assert.deepEqual(CSV_HEAD.slice(0, 14), ['map', 'department', 'walk number', 'walk date', 'step order', 'step', 'role', 'on list', 'wait seconds', 'hands-on seconds', 'not-seen seconds', 'interrupted count', 'stopped seconds', 'done again']);
+  assert.deepEqual(CSV_HEAD.slice(0, 14), ['map', 'department', 'walk number', 'walk date', 'step order', 'step', 'role', 'on list', 'wait seconds', 'hands-on seconds', 'not-seen seconds', 'interrupted count', 'stopped seconds (inside wait)', 'done again']);
   assert.equal(lines.length, 1 + W1.steps.length + W2.steps.length);
   for (const l of lines) for (const f of l.match(/"(?:[^"]|"")*"/g)) assert.doesNotMatch(f, /^"[=+\-@\t\r]/, `field ${f} could run as a formula`);
   assert.match(csv, /"'\+Outpatient CT","Imaging","2","2026-11-18","3","'=cmd\|""\/c calc""!A1","'@Porter","no","120","180"/);
