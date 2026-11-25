@@ -5,12 +5,19 @@
 // Walk mode (backlog PM2): #/process/walk is the walk in progress (modules/walk.js); a finished walk
 // opens here as a map whose times are shown in whole minutes (modules/result-words.js) and labelled as measured on one walk.
 // Deep link: #/process/<mapId>. The guide is rule-based, says why, and has an off switch.
+// A map made from a walk has two tabs (walk-first week, crew night 3): Result (#/process/<mapId>),
+// the one-screen answer with the bars, the step table and Print, Copy, CSV and Share
+// (modules/result-view.js); and Edit map (#/process/<mapId>/edit), the step list, the guide and
+// Today / Proposed. A map typed by hand has no tabs.
 import { h } from './ui.js';
 import { fmtMinutes, EXAMPLES } from '../core/processmap.js';
 import { stepsInSeconds, longestWaits, PLANNED_WAIT_RULE, NOT_ALWAYS_WASTE, WALK_BASIS, RANGE_BASIS } from '../core/walk.js';
 import { renderWalk } from './walk.js';
-import { minWords, waitAmount, rangeWords, fromCoreSpan, spanOf, totalSpan, longestOneWalk, longestWalks, longestTitle, NO_LONG_WAIT, SAME_RULE, guideTitle } from './result-words.js';
+import { minWords, waitAmount, rangeWords, fromCoreSpan, spanOf, totalSpan, longestOneWalk, longestWalks, NO_LONG_WAIT, SAME_RULE, guideTitle, rangeBasisWords, hotWords } from './result-words.js';
 import { proposalsCard } from './proposals.js';
+import { departmentById } from './departments.js';
+import { recordsOf, resultModel, barsCard, tableCard, extrasCard, actionsRow, summaryOf } from './result-view.js';
+import { recordFromSteps } from './result-data.js';
 
 const ROLE_COLOURS = ['#0A9396', '#EE9B00', '#E0583E', '#0B2F4E', '#94D2BD', '#7A5C9E', '#3E7CB1', '#A0522D', '#5B8C5A', '#C2185B'];
 const SOURCE_TEXT = {
@@ -22,7 +29,7 @@ const phone = () => window.matchMedia('(max-width: 640px)').matches;
 
 export async function render(el, ctx) {
   const { core } = ctx;
-  const ui = { mapId: ctx.rest[0] || null, version: 'today', view: phone() ? 'list' : 'map', editing: null, busy: false, waitOpen: null };
+  const ui = { mapId: ctx.rest[0] || null, version: 'today', view: phone() ? 'list' : 'map', editing: null, busy: false, waitOpen: null, tab: ctx.rest[1] === 'edit' ? 'edit' : 'result' };
   const body = h('div', { 'data-test': 'process-body' });
   // T: how a time reads on the map in view (minutes, or seconds for a map made from a walk).
   let T = fmtMinutes; let todayView = []; let walkOff = null; let walkNow = null;
@@ -30,7 +37,7 @@ export async function render(el, ctx) {
   // and the clock did not move. Null on other maps, which ring the biggest wait as before.
   let hotIds = null; let walkedNow = false;
   // On a map with two or more walks, in its walks version: each step's range across the walks, by step id.
-  let rangeOf = null;
+  let rangeOf = null; let rangeNow = null;
   const isHot = (a, s) => (hotIds ? hotIds.includes(s.id) : a.biggestWaitStepId === s.id);
   // What the first version is called: "Today", or "This walk" on a map made from one walk.
   let NOW = 'Today';
@@ -149,8 +156,11 @@ export async function render(el, ctx) {
 
   async function drawMap() {
     const m = await ctx.run('ospeli_maps_get', { mapId: ui.mapId });
-    const sugg = await ctx.run('ospeli_maps_suggest', { mapId: ui.mapId, version: ui.version });
     const walked = !!m.walk;
+    // A walked map: the Result tab always reads the walks themselves, never a what-if.
+    const tab = walked ? ui.tab : null;
+    if (tab === 'result') { ui.version = 'today'; ui.editing = null; }
+    const sugg = await ctx.run('ospeli_maps_suggest', { mapId: ui.mapId, version: ui.version });
     // Two or more walks of one step list (issue #124 item 1): the map reads as a range, lowest to
     // highest, in whole minutes, with no percentage. One walk reads as before.
     const rg = walked ? m.range : null;
@@ -177,7 +187,7 @@ export async function render(el, ctx) {
     const top = walked && !moved ? longestWaits(steps) : [];
     hotIds = walked ? top.map((x) => x.id) : null;
     const rangeView = multi && measuredView;
-    rangeOf = rangeView ? new Map(rg.steps.map((x) => [x.stepId, x])) : null;
+    rangeOf = rangeView ? new Map(rg.steps.map((x) => [x.stepId, x])) : null; rangeNow = rangeView ? rg : null;
     // On the walks version the ring goes to every step that was a walk's longest wait.
     if (rangeView) hotIds = rg.longest.map((l) => l.stepId).filter(Boolean);
     const first = multi ? rg.walks[0] : null;
@@ -188,7 +198,26 @@ export async function render(el, ctx) {
       h('p', { class: 'meta', 'data-test': 'walk-again-note' }, `Walk ${nextNo}${nextNo <= rg.aim ? ` of ${rg.aim}` : ''} on the same steps. Saved on this phone only.`)) : null;
 
     const seg = (id, label, on, onclick, extra = {}) => h('button', { type: 'button', class: 'chip-btn', 'aria-pressed': String(on), 'data-test': id, onclick, ...extra }, label);
-    const head = h('div', { class: 'map-head' },
+    // The walks' own records, for the Result tab's bars, table, CSV and the "at" in the headline.
+    const records = walked ? (multi ? await recordsOf(core, m) : null) || (multi ? null : [recordFromSteps(stepsInSeconds(m.today.steps), m.walk)]) : null;
+    const dept = walked && m.walk.department ? departmentById(m.walk.department)?.name || null : null;
+    // The header line of the Result tab: department, walks and dates, in the device's own format.
+    const dates = (() => {
+      if (!multi) return `Walked ${day(m.walk.startedAt)}, started ${clock(m.walk.startedAt)}`;
+      const ts = rg.walks.map((w) => new Date(w.startedAt)).filter((d) => !Number.isNaN(+d));
+      const f = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+      const a = new Date(Math.min(...ts)); const b = new Date(Math.max(...ts));
+      try { return f.formatRange(a, b); } catch { return f.format(a) === f.format(b) ? f.format(a) : `${f.format(a)} to ${f.format(b)}`; }
+    })();
+    const tabs = walked ? tabList(m.id) : null;
+    const head = tab === 'result' ? h('div', { class: 'map-head result-head' },
+      h('div', {},
+        h('a', { href: '#/process', class: 'back' }, '← All maps'),
+        h('h2', { id: 'map-h', 'data-test': 'map-title' }, m.title),
+        h('p', { class: 'walk-when', 'data-test': 'result-header' },
+          h('span', { class: 'chip walk-badge', 'data-test': 'walk-badge' }, multi ? `${rg.count} walks` : byHand ? 'One walk, changed by hand' : 'Measured on one walk'),
+          dept ? h('span', { class: 'rh-bit', 'data-test': 'result-dept' }, ` ${dept} ·`) : null, ` ${dates}`)),
+      tabs) : h('div', { class: 'map-head' },
       h('div', {},
         h('a', { href: '#/process', class: 'back' }, '← All maps'),
         h('h2', { id: 'map-h', 'data-test': 'map-title' }, `${m.title} · ${isP ? 'Proposed' : NOW}`),
@@ -197,6 +226,7 @@ export async function render(el, ctx) {
         : walked ? h('p', { class: 'walk-when' }, h('span', { class: 'chip walk-badge', 'data-test': 'walk-badge' }, !measuredView ? 'What-if, not measured' : byHand ? 'One walk, changed by hand' : 'Measured on one walk'),
           ` Walked ${day(m.walk.startedAt)}, started ${clock(m.walk.startedAt)}`) : null,
         m.start ? h('p', { class: 'meta' }, `Starts when: ${m.start}`) : null),
+      tabs,
       h('div', { class: 'chips', role: 'group', 'aria-label': 'Version' },
         seg('v-today', NOW, !isP, () => { ui.version = 'today'; ui.editing = null; drawMap(); }),
         seg('v-proposed', m.changed ? 'Proposed (changed)' : 'Proposed', isP, () => { ui.version = 'proposed'; ui.editing = null; drawMap(); })));
@@ -233,20 +263,24 @@ export async function render(el, ctx) {
       : walked ? `Times from ${multi ? 'walk 1' : 'one walk'} on ${day(m.walk.startedAt)}, started ${clock(m.walk.startedAt)}. This is what happened once, not how the process usually runs. Time after the last step is not recorded.${byHand ? ' Some times or steps were changed by hand after the walk.' : ''}${m.walk.guidanceSeen === false ? ' The before-you-walk points were not confirmed for this walk.' : ''}` : '';
     const walkNote = (inside) => h(inside ? 'li' : 'p', { class: inside ? 'walk-note' : 'meta notice walk-note', 'data-test': 'walk-note' }, walkNoteText);
     let rangeAnswer = null;
+    // "How to read this": on the Result tab, after the table; it holds every caveat and definition.
+    let readBox = null;
+    // The same caveats the guide's own notes repeat (#182 item 13): said once, here.
+    const limits = 'People may work differently when someone is watching, and work that ran at the same time as another step is not recorded. Steps are timed, never people.';
+    const tableWords = 'The table shows each step walk by walk, in whole minutes: the wait before the step, then the hands-on time. A step not on the list stays on its own walk; a step done again has its times added together.';
     if (rangeView) {
       const tot = { elapsed: totalSpan(rg, 'elapsed'), wait: totalSpan(rg, 'wait'), work: totalSpan(rg, 'work') };
-      const lw = longestWalks(rg);
+      const lw = longestWalks(rg, records);
       const partly = anyPartly(tot.wait) || anyPartly(tot.work) || rg.steps.some((x) => x.wait.maxAtLeast || x.work.maxAtLeast);
       rangeAnswer = h('section', { class: 'card walk-answer', 'data-test': 'walk-answer', 'aria-label': 'What these walks showed' },
         headline(lw, NO_LONG_WAIT(true)),
         tot.elapsed.n ? h('p', { class: 'wa-big', 'data-test': 'walk-range', 'data-sec': `${tot.elapsed.min}-${tot.elapsed.max}` }, h('b', {}, rangeWords(tot.elapsed)), ` start to finish${partOf(tot.elapsed)}`)
           : h('p', { class: 'wa-line', 'data-test': 'walk-range' }, 'No walk has been walked to the end of the list yet, so there is no start-to-finish time.'),
         tot.elapsed.n ? h('p', { class: 'wa-line', 'data-test': 'walk-range-parts' }, h('b', {}, `Waiting ${rangeWords(tot.wait)}`), ` · hands-on ${rangeWords(tot.work)}`) : null,
-        againBtn,
         rg.totals.notSeen.n ? h('p', { class: 'wa-line', 'data-test': 'walk-not-seen' }, `Not seen (walk paused) on ${rg.totals.notSeen.n} ${rg.totals.notSeen.n === 1 ? 'walk' : 'walks'}: ${rangeWords(spanOf(rg.walks.filter((w) => w.complete && w.notSeenSec).map((w) => [w.notSeenSec, false])))}.`) : null,
         // Each walk's day and hour is on its bar below; a walk that is left out is also said here.
-        rg.walks.some((w) => !w.complete) ? h('ul', { class: 'wa-walks', 'data-test': 'walk-list' }, rg.walks.filter((w) => !w.complete).map((w) => h('li', {}, walkWord(w)))) : null,
-        readThis([
+        rg.walks.some((w) => !w.complete) ? h('ul', { class: 'wa-walks', 'data-test': 'walk-list' }, rg.walks.filter((w) => !w.complete).map((w) => h('li', {}, walkWord(w)))) : null);
+      readBox = readThis([
           h('li', { 'data-test': 'walk-count' }, rg.count < rg.aim
             ? `${rg.count} of ${rg.aim} walks: shortest to longest. These are examples, not an average. Walk the ${rg.count === 2 ? 'third' : 'next'} on another day or at another hour.`
             : `Shortest to longest from ${rg.count} walks. These are examples, not an average or a fixed number. Ask why the time changes from walk to walk.`),
@@ -255,9 +289,11 @@ export async function render(el, ctx) {
           `Times are in whole minutes, from the taps on this phone. ${SAME_RULE}`,
           `The longest wait is each walk's own longest wait. ${WALK_BASIS.longestWait}`,
           partly || rg.totals.notSeen.n ? '“Not seen”: the walk was paused (the person walking stepped out). That time is inside start to finish, and in neither waiting nor hands-on. “At least” is said only of a walk that was paused during that time; “partly not seen” means another walk was paused during it, so its time may have been longer.' : null,
-          `${RANGE_BASIS.range} ${RANGE_BASIS.compare}`,
+          tableWords,
+          limits,
+          `${rangeBasisWords(RANGE_BASIS.range, rg)} ${RANGE_BASIS.compare}`,
           stepFacts(m.today.steps),
-        ]));
+        ]);
     }
     const lw1 = measuredView && !rangeView && !moved ? longestOneWalk(top) : null;
     const answer = rangeView ? rangeAnswer : measuredView ? h('section', { class: `card walk-answer${moved ? ' is-warn' : ''}`, 'data-test': 'walk-answer', 'aria-label': 'What this walk showed' },
@@ -265,11 +301,11 @@ export async function render(el, ctx) {
       moved ? null : headline(lw1, NO_LONG_WAIT(false), top[0]?.wait),
       h('p', { class: 'wa-big', 'data-sec': String(a.elapsed + extra.notSeen) }, h('b', {}, T(a.elapsed + extra.notSeen)), moved ? ' (may be wrong) start to finish on this walk' : ' start to finish on this walk'),
       h('p', { class: 'wa-line' }, h('b', {}, `${T(a.wait)} waiting`), waitShare(a) == null ? '' : ` (${waitShare(a)}% of ${extra.notSeen ? 'the time seen on this walk' : 'this walk'})`, ` · ${T(a.work)} hands-on`),
-      againBtn,
       extra.planned ? h('p', { class: 'wa-line', 'data-test': 'walk-planned' }, `Of the waiting, ${T(extra.planned)} was marked planned or required.`) : null,
       extra.notSeen ? h('p', { class: 'wa-line', 'data-test': 'walk-not-seen' }, `${T(extra.notSeen)} not seen (walk paused): not counted as waiting or hands-on.`) : null,
-      h('p', { class: 'wa-line', 'data-test': 'walk-handoffs' }, `${a.handoffs} ${a.handoffs === 1 ? 'handover' : 'handovers'} between roles`),
-      readThis([
+      h('p', { class: 'wa-line', 'data-test': 'walk-handoffs' }, `${a.handoffs} ${a.handoffs === 1 ? 'handover' : 'handovers'} between roles`)) : null;
+    if (measuredView && !rangeView) {
+      readBox = readThis([
         h('li', { class: 'wa-note' }, 'One walk, one observation. Ask what the wait was for, and walk the next patient before changing anything.'),
         h('li', { 'data-test': 'walk-waste' }, NOT_ALWAYS_WASTE),
         walkNote(true),
@@ -279,8 +315,11 @@ export async function render(el, ctx) {
         extra.planned ? `${WALK_BASIS.planned}` : null,
         extra.notSeen ? `${WALK_BASIS.notSeen} “At least” is said only of a wait the walk was paused during.` : null,
         `A handover is a step done by a different role from the step before. Local definition.`,
+        tableWords,
+        limits,
         stepFacts(m.today.steps),
-      ])) : null;
+      ]);
+    }
     const stats = measuredView ? h('div', { class: 'pm-stats is-answer', 'data-test': 'pm-stats' }, answer) : h('div', { class: 'pm-stats', 'data-test': 'pm-stats' },
       stat(T(a.elapsed), measuredView ? 'start to finish on this walk' : 'start to finish', T(t.elapsed), a.elapsed < t.elapsed),
       stat(T(a.work), 'hands-on work', T(t.work), false),
@@ -340,9 +379,9 @@ export async function render(el, ctx) {
       h('h3', { id: 'guide-h' }, 'Guide'),
       !sugg.guideOn ? h('p', { class: 'meta' }, 'The guide is off. The map, times and editing all work without it.')
         : [
-          h('p', { class: 'meta' }, `${rangeView ? 'The guide uses simple rules you can check, on this device. It reads the range across the walks, asks questions and offers no change to try.' : walked ? 'The guide uses simple rules you can check, on this device. One walk is one observation, so it asks questions and offers no change to try.' : 'The guide uses simple rules you can check, on this device. Suggestions only change the Proposed version.'}${sugg.hidden ? ` ${sugg.hidden} hidden.` : ''}`),
+          h('p', { class: 'meta' }, `${rangeView ? 'The guide uses simple rules you can check, on this device. It reads the range across the walks, asks questions and offers no change to try.' : walked ? 'The guide uses simple rules you can check, on this device. It asks questions and offers no change to try.' : 'The guide uses simple rules you can check, on this device. Suggestions only change the Proposed version.'}${walked ? ' What one walk can show, and every definition, is under “How to read this” on the Result tab.' : ''}${sugg.hidden ? ` ${sugg.hidden} hidden.` : ''}`),
           suggList(sugg.suggestions.map((sg) => h('li', { class: `sg ${sg.kind}`, 'data-suggestion': sg.id },
-            h('b', {}, walked ? guideTitle(sg, steps, rangeView ? rg : null) : sg.title), h('p', {}, sg.text), h('p', { class: 'why' }, `Why: ${sg.why}`), sg.basis ? h('p', { class: 'why basis', 'data-test': 'sg-basis' }, sg.basis) : null,
+            h('b', {}, walked ? guideTitle(sg, steps, rangeView ? rg : null, records) : sg.title), h('p', {}, sg.text), h('p', { class: 'why' }, `Why: ${sg.why}`), sg.basis ? h('p', { class: 'why basis', 'data-test': 'sg-basis' }, rangeView ? rangeBasisWords(sg.basis, rg) : sg.basis) : null,
             h('div', { class: 'sg-actions' },
               sg.tryable ? h('button', { type: 'button', class: 'btn btn-small', 'data-cmd': 'ospeli_maps_try_suggestion', disabled: sg.tried && isP ? true : null,
                 onclick: async () => {
@@ -371,14 +410,61 @@ export async function render(el, ctx) {
       !steps.length ? h('p', { class: 'card empty', 'data-test': 'steps-empty' }, 'Add the first step: what happens, and who does it. Rough times are fine; the guide points out missing ones.')
         : ui.view === 'map' ? lanes(steps, a, colour, m) : stepList(steps, a, colour, m));
 
+    if (tab === 'result') {
+      // The Result tab: the header and the answer, the bars, then the actions, the table, the extra
+      // and redone steps, and "How to read this". Nothing on it changes the map.
+      const model = resultModel({ m, rg, records: records || [], list: m.today.steps, oneWalkTop: multi ? null : moved ? [] : top.map((x) => x.id), day, clock });
+      const panel = h('div', { class: 'result', id: 'tab-result-panel', role: 'tabpanel', 'aria-labelledby': 'tab-result', 'data-test': 'result-panel' });
+      const read = readBox ? h('section', { class: 'card result-read', 'aria-label': 'How to read this' }, readBox) : null;
+      const textOf = (sel) => (panel.querySelector(sel)?.innerText || panel.querySelector(sel)?.textContent || '').replace(/\s+/g, ' ').trim();
+      const summary = () => summaryOf({ model,
+        headLines: [m.title, `${multi ? `${rg.count} walks` : 'Measured on one walk'}${dept ? ` · ${dept}` : ''} · ${dates}`],
+        headline: textOf('[data-test="walk-longest"]') || textOf('[data-test="walk-clock"]'),
+        totals: [...panel.querySelectorAll('.walk-answer .wa-big, .walk-answer .wa-line')].map((p) => p.textContent.replace(/\s+/g, ' ').trim()),
+        read: 'Times are whole minutes from the taps on one phone. Waiting is the time between one step ending and the next starting; hands-on is the time a step was under way. Waiting is not always waste. No average is given.' });
+      const synthetic = (await core.getMeta('synthetic', null)) === true;
+      panel.append(stats, barsCard(model),
+        actionsRow({ ctx, model, list: m.today.steps, records: records || [], department: dept, again: againBtn, text: summary }),
+        records ? tableCard(model, extrasCard(model)) : h('p', { class: 'card meta', 'data-test': 'result-table' }, 'The walks\' step times could not be read on this device.'),
+        read,
+        h('p', { class: 'print-only print-foot', 'data-test': 'print-foot' }, `${synthetic ? 'Synthetic demo data · no real patients or sites · ' : ''}Printed `, h('span', { class: 'print-date' }, new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }))));
+      body.replaceChildren(head, panel);
+      return;
+    }
     const editor = stepEditor(m, v.steps); // the form works in minutes, on the stored steps
-    const layout = h('div', { class: 'pm-layout' },
-      h('div', { class: 'pm-main' }, stats, bars), h('div', { class: 'pm-guide' }, guide), h('div', { class: 'pm-steps' }, stepsBox, editor));
+    // Edit map tab: the stats are the answer's, so on the walks' own version they live on Result.
+    const editNote = walked && measuredView ? h('p', { class: 'meta', 'data-test': 'edit-note' }, 'The answer, Print and the table are on the Result tab. Changes here change the map for every walk.') : null;
+    const layout = h('div', { class: 'pm-layout', ...(walked ? { id: 'tab-edit-panel', role: 'tabpanel', 'aria-labelledby': 'tab-edit' } : {}) },
+      h('div', { class: 'pm-main' }, walked && measuredView ? editNote : stats, bars), h('div', { class: 'pm-guide' }, guide), h('div', { class: 'pm-steps' }, stepsBox, editor));
     // On a phone the guide switch sits in the Guide card of an open map, so the map starts at its
     // title and the answer is on the first screen (at the card's foot, clear of the short messages). It is the same button either way.
     if (phone()) guide.append(h('div', { class: 'guide-head in-card' }, guideBtn, h('span', { class: 'meta' }, 'People decide; Ospeli suggests.')));
     else if (guideBtn.parentNode !== guideHome) guideHome.prepend(guideBtn);
     body.replaceChildren(head, layout);
+  }
+
+  // The two tabs of a walked map: Result and Edit map. Real tabs: arrow keys, Home and End move
+  // between them; the choice is kept in the address so a reload and Back keep it.
+  function tabList(mapId) {
+    const tabs = [['result', 'Result', `#/process/${mapId}`], ['edit', 'Edit map', `#/process/${mapId}/edit`]];
+    const go = (id, focus) => {
+      if (id !== ui.tab) {
+        ui.tab = id; ui.waitOpen = null;
+        history.pushState(null, '', tabs.find((t) => t[0] === id)[2]);
+        document.documentElement.dataset.route = tabs.find((t) => t[0] === id)[2];
+      }
+      drawMap().then(() => { if (focus) document.getElementById(`tab-${id}`)?.focus(); });
+    };
+    return h('div', { class: 'map-tabs', role: 'tablist', 'aria-label': 'This map', 'data-test': 'map-tabs' },
+      tabs.map(([id, label]) => h('button', { type: 'button', role: 'tab', id: `tab-${id}`, class: 'map-tab', 'data-test': `tab-${id}`, 'aria-selected': String(ui.tab === id),
+        ...(ui.tab === id ? { 'aria-controls': `tab-${id}-panel` } : {}), tabindex: ui.tab === id ? '0' : '-1',
+        onclick: () => go(id, true),
+        onkeydown: (e) => {
+          const i = tabs.findIndex((t) => t[0] === id);
+          const to = { ArrowRight: (i + 1) % tabs.length, ArrowLeft: (i + tabs.length - 1) % tabs.length, Home: 0, End: tabs.length - 1 }[e.key];
+          if (to == null) return;
+          e.preventDefault(); go(tabs[to][0], true);
+        } }, label)));
   }
 
   function lanes(steps, a, colour, m) {
@@ -416,7 +502,7 @@ export async function render(el, ctx) {
     const seen = s.waitNotSeenSec ? ` · ${T(s.waitNotSeenSec)} more not seen` : '';
     const r = stepRange(s);
     if (!r && !(s.wait || s.par || s.waitNotSeenSec || s.plannedWait)) return null;
-    const text = r ? `Waits ${waitOf(s)}${s.plannedWait ? ' · planned or required' : ''}${hot ? ' · longest wait' : ''}` : s.par ? `Starts alongside the step before${s.wait ? `, after ${T(s.wait)}` : ''}`
+    const text = r ? `Waits ${waitOf(s)}${s.plannedWait ? ' · planned or required' : ''}${hot ? ` · ${hotWords(rangeNow, s.id) || 'longest wait'}` : ''}` : s.par ? `Starts alongside the step before${s.wait ? `, after ${T(s.wait)}` : ''}`
       : `Waits ${walkedNow ? waitAmount(s) : T(s.wait)}${seen}${s.plannedWait ? ' · planned or required' : ''}${hot ? (walkedNow ? ' · the longest wait on this walk' : ' · the biggest wait') : ''}`;
     const cls = `wait${hot ? ' hot' : ''}${s.plannedWait ? ' planned' : ''}`;
     if (!walkedNow || s.par) return h('div', { class: cls }, text);

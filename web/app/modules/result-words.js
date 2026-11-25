@@ -98,20 +98,31 @@ export const NO_LONG_WAIT = (several) => `No wait of ${MIN_LONGEST_WAIT_SEC} sec
 
 // Two or more walks: rg is ospeli_maps_get's range. Each walk's own longest wait, with its own
 // time and its own pause; "n of m walks" counts the walks where that step happened.
-export function longestWalks(rg) {
+// records (optional): the walks' own records, in walk order. The range does not carry the time a
+// step stood still, so "at" a step (the wait was inside an interrupted step, #169 item 5) is read
+// from them; without them every wait reads "before".
+export function longestWalks(rg, records = null) {
   const lo = rg.longest || [];
   if (!lo.length) return null;
   const keyOf = (l) => (l.stepId || `off:${l.name}`);
   const valOf = (l, n) => rg.walks[n - 1]?.longest.find((x) => x.key === keyOf(l));
   const happened = (l) => (l.stepId ? rg.steps.find((s) => s.stepId === l.stepId)?.happened || l.walks.length : l.walks.length);
   const usable = rg.usable ?? rg.walks.filter((w) => w.usable).length;
-  const timeOf = (l) => rangeWords(spanOf(l.walks.map((n) => { const v = valOf(l, n); return [v?.waitSec || 0, !!v?.atLeast]; })));
+  // The time alone: where it happened is said once, after it ("on 2 of 3 walks"), never twice.
+  const timeOf = (l) => {
+    const r = spanOf(l.walks.map((n) => { const v = valOf(l, n); return [v?.waitSec || 0, !!v?.atLeast]; }));
+    if (r.n > 1 && minWords(r.min) === minWords(r.max)) return `${r.maxAtLeast ? atLeastWords(r.max) : minWords(r.max)}${r.partly ? ' · partly not seen' : ''}`;
+    return rangeWords(r);
+  };
   const where = (l) => {
     const m = happened(l);
     if (!l.stepId && l.walks.length === 1) return `on walk ${l.walks[0]} only`;
     return `${walksWords(l.walks.length, m)}${m < usable && l.walks.length === m ? ' it happened on' : ''}`;
   };
-  const one = (l) => `${timeOf(l)} before “${l.name}”`;
+  // "at" when, on any walk where it was the longest, that wait was partly the step standing still.
+  const stood = (l) => !!records && l.walks.some((n) => { const v = valOf(l, n); const r = records[n - 1];
+    return v && r && r.steps.some((s) => (s.stepId || `off:${s.name}`) === keyOf(l) && s.waitSec === v.waitSec && s.interruptedWaitSec > 0); });
+  const one = (l) => `${timeOf(l)} ${stood(l) ? 'at' : 'before'} “${l.name}”`;
   // Every walk's longest wait at one step: one sentence.
   if (lo.length === 1) return { lead: 'Longest wait: ', text: `${one(lo[0])}, ${where(lo[0])}` };
   // It moved: walk by walk.
@@ -125,8 +136,8 @@ export function longestWalks(rg) {
 
 // The guide's title for where the longest wait fell, in the same words (core/walk.js
 // suggestWalks says "on all 1 walks" when only one walk had a wait over the floor).
-export function longestTitle(rg) {
-  const w = longestWalks(rg);
+export function longestTitle(rg, records = null) {
+  const w = longestWalks(rg, records);
   if (!w) return null;
   return w.lead.startsWith('Longest wait moved') ? 'The longest wait moved on each walk' : `The longest wait was ${w.text}`;
 }
@@ -142,8 +153,8 @@ export function totalSpan(rg, key) {
 // The guide's titles on a walked map, in the same whole minutes as the result. The guide's rules
 // and their reasons are the core's (core/walk.js suggestWalk, suggestWalks); only the times in a
 // title are said again here, from the same steps. steps: the map's steps in seconds.
-export function guideTitle(sg, steps, rg = null) {
-  if (sg.id === 'walks-longest' && rg) return longestTitle(rg) || sg.title;
+export function guideTitle(sg, steps, rg = null, records = null) {
+  if (sg.id === 'walks-longest' && rg) return longestTitle(rg, records) || sg.title;
   if (rg) return sg.title;
   if (sg.id.startsWith('walk-wait-')) {
     const top = steps.filter((x) => !x.plannedWait);
@@ -163,4 +174,20 @@ export function guideTitle(sg, steps, rg = null) {
     return `${stops} ${stops === 1 ? 'interruption' : 'interruptions'} on this walk${stood ? `: ${minWords(stood)} stood still` : ''}`;
   }
   return sg.title;
+}
+
+// The core's range basis says "3 walks are examples, not a sample" from the aim, whatever the
+// count (core/walk.js RANGE_BASIS.range). Said with the real count of walks on this map.
+export function rangeBasisWords(text, rg) {
+  if (!text || !rg || rg.count === rg.aim) return text;
+  return text.replace(`${rg.aim} walks are examples, not a sample`, `${rg.count} ${rg.count === 1 ? 'walk is an example' : 'walks are examples'}, not a sample`);
+}
+
+// What a step's ring says on a map with two or more walks: "longest wait" when it was the longest
+// on every walk that named one, otherwise which walks ("longest wait on walk 1", "… on walks 1 and 3").
+export function hotWords(rg, stepId) {
+  const l = (rg?.longest || []).find((x) => x.stepId === stepId);
+  if (!l) return '';
+  if (l.walks.length >= (rg.longestOf || 0) && rg.longest.length === 1) return 'longest wait';
+  return `longest wait on ${l.walks.length === 1 ? 'walk' : 'walks'} ${l.walks.join(' and ')}`;
 }
