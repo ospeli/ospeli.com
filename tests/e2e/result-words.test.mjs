@@ -2,6 +2,8 @@
 // screen, whole minutes and "1 h 49 min", "at least" only after a pause during that wait, one
 // "How to read this", and "Walk the next patient" on the map and in the list of maps, which starts
 // a repeat walk. Staged walks with synthetic times; the page's clock is moved by the test.
+// Since the one-screen result (crew night 3) "Walk the next patient" sits in the Result tab's
+// actions row, and the step list with each step's wait is on the "Edit map" tab.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startApp, openPage } from './helpers.mjs';
@@ -48,7 +50,7 @@ for (const [width, height] of [[390, 844], [360, 640]]) {
       const r = (sel) => document.querySelector(sel).getBoundingClientRect();
       return { head: document.querySelector('[data-test="walk-longest"]').innerText.replace(/\s+/g, ' '), headBottom: r('[data-test="walk-longest"]').bottom,
         firstInAnswer: document.querySelector('[data-test="walk-answer"]').firstElementChild.dataset.test,
-        btnBottom: r('.walk-answer [data-test="walk-again"]').bottom, btnH: r('.walk-answer [data-test="walk-again"]').height, btnW: r('.walk-answer [data-test="walk-again"]').width,
+        btnBottom: r('[data-test="result-actions"] [data-test="walk-again"]').bottom, btnH: r('[data-test="result-actions"] [data-test="walk-again"]').height, btnW: r('[data-test="result-actions"] [data-test="walk-again"]').width,
         answerW: r('[data-test="walk-answer"]').width, vh: innerHeight };
     });
     assert.equal(look.firstInAnswer, 'walk-longest', 'the headline is the first thing in the result');
@@ -83,6 +85,10 @@ test('390 px: after a pause during the longest wait, "at least", never "at least
   await walk(page, [['Checked in at reception', 'Reception', 60, 120], ['Seen by a nurse', 'Nurse', 600, 300], ['Seen by a doctor', 'Doctor', 240, 120]], { pauseBefore: 1 });
   const head = (await page.textContent('[data-test="walk-longest"]')).replace(/\s+/g, ' ');
   assert.match(head, /^Longest wait: at least 10 min before “Seen by a nurse” \(5 min more of it not seen\)$/);
+  assert.doesNotMatch((await page.textContent('[data-test="process-body"]')).replace(/\s+/g, ' '), /at least under/);
+  // The step list, with each step's wait, is on the Edit map tab.
+  await page.tap('[data-test="tab-edit"]');
+  await page.waitForSelector('[data-test="tab-edit"][aria-selected="true"]');
   const all = (await page.textContent('[data-test="process-body"]')).replace(/\s+/g, ' ');
   assert.doesNotMatch(all, /at least under/);
   assert.match(all, /Waits at least 10 min · 5 min more not seen · the longest wait on this walk/);
@@ -94,7 +100,7 @@ test('390 px: after a pause during the longest wait, "at least", never "at least
 test('360 by 640: "Walk the next patient" is on the map and in the list of maps, above starting a new map, and starts a repeat walk', async () => {
   const { context, page, errors } = await openPage(env, { width: 360, height: 640, path: '#/process', touch: true, locale: 'en-GB', timezoneId: 'UTC', clock: '2026-11-20T08:00:00Z' });
   await walk(page, LONG.slice(0, 2));
-  assert.equal((await page.textContent('.walk-answer [data-test="walk-again"]')).trim(), 'Walk the next patient');
+  assert.equal((await page.textContent('[data-test="result-actions"] [data-test="walk-again"]')).trim(), 'Walk the next patient');
   await page.locator('a.back').tap();
   await page.waitForSelector('[data-test="map-link"]');
   const list = await page.evaluate(() => {
