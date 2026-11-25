@@ -153,7 +153,7 @@ export function csvOf({ title, department, list, records, dateOf }) {
 }
 // A file name from a typed title: letters and digits only, never a path.
 export function fileNameOf(title, ext = 'csv') {
-  const slug = String(title || '').normalize('NFKD').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');
+  const slug = String(title || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40).replace(/-+$/, '');
   return `ospeli-${slug || 'map'}-walks.${ext}`;
 }
 
