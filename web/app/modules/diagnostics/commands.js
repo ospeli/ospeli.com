@@ -26,7 +26,7 @@ import {
   REQUEST_ID, REQUIRED_STEPS, GUIDE_RULES, isEquipment, nextRequestId, codeParts, codeLabel, deriveRequests, isOpen, noCollection, enteredLate, minutesInStep,
   minutesSinceCollection, deriveEquipment, groupsOff, guideOn, labTurnaround, rejectionRate, equipmentAvailability, completeness, missingSteps,
   ruleNotArrived, ruleEquipmentDown, ruleRejectionReview, localStartOfDay, clockText, localHour, whenText, OWN_ROW_GROUPS,
-  isPick,
+  isPick, reachedLab,
 } from './logic.js';
 
 export const id = 'diagnostics';
@@ -217,6 +217,8 @@ async function checkResult(core, input, actor, events, info) {
   agentOnDepartment(actor, i, r.sourceId);
   if (r.state === 'released') throw new CommandError('conflict', `Already saved: ${stateWord(r, i.offsetMinutes)}`, { state: r.state, already: true });
   if (r.state !== 'received') throw new CommandError('conflict', `A result is released only for a specimen received at the lab. ${stateWord(r, i.offsetMinutes)}`, { state: r.state });
+  // A device clock set back since the receipt would save a release before it, and a negative turnaround (#176).
+  if (Date.parse(core.now()) < Date.parse(r.receivedAt)) throw new CommandError('conflict', `${r.id} was received at ${clockText(r.receivedAt, i.offsetMinutes)}, later than this device's clock now (${clockText(core.now(), i.offsetMinutes)}). Check the device's date and time, then release the result again.`, { state: r.state, receivedAt: r.receivedAt });
   return r;
 }
 async function checkCancel(core, input, actor, events, info) {
@@ -327,7 +329,7 @@ async function specimenLog(core, input, wards) {
   const onTheWay = all.filter((r) => r.state === 'collected');
   const lim = input.limit ?? 100;
   const blocks = hatchBlocks(onTheWay.filter((r) => !notArrived.has(r.id)).slice(), info, now, notArrived);
-  const reachedToday = all.filter((r) => { const at = r.state === 'rejected' ? r.rejectedAt : r.receivedAt; return at && at >= today; });
+  const reachedToday = all.filter((r) => { const at = reachedLab(r); return at && at >= today; });
   const recent = all.filter((r) => (r.state === 'received' || r.state === 'rejected') && Date.parse(now) - Date.parse(r.lastStepAt) < UNDO_MINUTES * MIN && !r.recollectedBy)
     .sort((a, b) => (a.lastStepAt < b.lastStepAt ? 1 : -1)).slice(0, 5);
   const waiting = all.filter((r) => r.state === 'received').sort((a, b) => (a.receivedAt < b.receivedAt ? -1 : 1));
@@ -336,7 +338,7 @@ async function specimenLog(core, input, wards) {
   const byHour = Array.from({ length: 24 }, (_, h) => ({ hour: h, received: 0, rejected: 0 }));
   const bySource = new Map();
   for (const r of reachedToday) {
-    const at = r.state === 'rejected' ? r.rejectedAt : r.receivedAt;
+    const at = reachedLab(r); // by the time it reached the lab, as the rejection rate counts (#176)
     byHour[localHour(at, info.offsetMinutes)][r.state === 'rejected' ? 'rejected' : 'received'] += 1;
     const s = bySource.get(r.sourceId) || { sourceId: r.sourceId, sourceName: info.nameOf(r.sourceId), received: 0, rejected: 0 };
     s[r.state === 'rejected' ? 'rejected' : 'received'] += 1;
@@ -446,7 +448,7 @@ async function overview(core, input, wards) {
     ...ruleRejectionReview(seen, { now, nameOf: info.nameOf }),
   ].filter(vis) : [];
   const today = localStartOfDay(now, info.offsetMinutes);
-  const todayReached = [...seen.values()].filter((r) => { const at = r.state === 'rejected' ? r.rejectedAt : r.receivedAt; return at && at >= today; });
+  const todayReached = [...seen.values()].filter((r) => { const at = reachedLab(r); return at && at >= today; });
   return {
     asOf: now, synthetic: await isSynthetic(core), period,
     counts: { onTheWay: [...seen.values()].filter((r) => r.state === 'collected').length, waitingResult: [...seen.values()].filter((r) => r.state === 'received').length,

@@ -195,6 +195,9 @@ export const isOpen = (r) => r.state === 'requested' || r.state === 'collected' 
 export const reachedLab = (r) => r.receivedAt || (r.state === 'rejected' ? r.rejectedAt : null);
 // Received with no collection time: the bag reached the lab but nobody recorded the collection.
 export const noCollection = (r) => !r.collectedAt && !!reachedLab(r);
+// A release timed before its receipt (a device clock set back, or an edited import): the pair cannot
+// give a turnaround, so it is left out of the measure and counted as a gap in data completeness (#176).
+export const releaseBeforeReceipt = (r) => !!(r.releasedAt && r.receivedAt && ms(r.releasedAt) < ms(r.receivedAt));
 export const enteredLate = (r) => !!r.collectedAt && r.backdatedMinutes > LATE_ENTRY_MINUTES;
 // Minutes in the current step, to now (or to the end, once finished).
 export function minutesInStep(r, now) {
@@ -258,14 +261,15 @@ export function percentile(xs, p) {
 const inPeriod = (at, since, until) => !!at && (!since || at >= since) && (!until || at < until);
 
 // KPI 1. Laboratory turnaround time: received at lab -> result released, minutes, for requests whose
-// result was released in the period. Rejected and cancelled requests never reach "released".
+// result was released in the period. Rejected and cancelled requests never reach "released". A
+// release timed before its receipt is left out (it counts against data completeness instead).
 // Blood culture is reported over days (a first report, then a final one): it is never part of a
 // figure across test groups, and shown in its own row only.
 export const OWN_ROW_GROUPS = ['culture'];
 export function labTurnaround(reqs, { since, until, testGroup = null, urgency = null, leaveOut = [] } = {}) {
   const mins = [];
   for (const r of reqs.values()) {
-    if (r.state !== 'released' || !r.receivedAt || !inPeriod(r.releasedAt, since, until)) continue;
+    if (r.state !== 'released' || !r.receivedAt || !inPeriod(r.releasedAt, since, until) || releaseBeforeReceipt(r)) continue;
     if (testGroup && r.testGroup !== testGroup) continue;
     if (leaveOut.includes(r.testGroup)) continue;
     if (urgency && r.urgency !== urgency) continue;
@@ -277,11 +281,12 @@ export function labTurnaround(reqs, { since, until, testGroup = null, urgency = 
 
 // KPI 2. Specimen rejection rate: rejected / (received + rejected), for specimens that reached the
 // lab in the period (by the time of the receipt, or of the rejection when never received). A
-// specimen rejected after receipt counts as rejected only.
+// specimen rejected after receipt counts as rejected only, in the period of its receipt (#176), so
+// the rate and the missing-steps count beside it are over the same specimens.
 export function rejectionRate(reqs, { since, until, sourceId = null, reason = null } = {}) {
   let rejected = 0; let reached = 0;
   for (const r of reqs.values()) {
-    const at = r.state === 'rejected' ? r.rejectedAt : r.receivedAt;
+    const at = reachedLab(r);
     if (!at || !inPeriod(at, since, until)) continue;
     if (sourceId && r.sourceId !== sourceId) continue;
     reached += 1;
@@ -311,6 +316,7 @@ export function equipmentAvailability(x, { since, until, hoursPerDay = SCHEDULED
 // Data completeness (KPI dictionary D-21): requests finished in the period (result released, or
 // rejected) with every required step timed, out of requests finished in the period. Required steps:
 // request made, specimen collected, received or rejected, and result released for a released one.
+// A release timed before its receipt is not a full record (#176).
 export const REQUIRED_STEPS = ['request-made', 'specimen-collected', 'specimen-received or specimen-rejected', 'result-validated (released requests)'];
 export function completeness(reqs, { since, until, sourceId = null } = {}) {
   let done = 0; let full = 0;
@@ -318,7 +324,7 @@ export function completeness(reqs, { since, until, sourceId = null } = {}) {
     const end = r.state === 'released' ? r.releasedAt : r.state === 'rejected' ? r.rejectedAt : null;
     if (!end || !inPeriod(end, since, until) || (sourceId && r.sourceId !== sourceId)) continue;
     done += 1;
-    if (r.madeAt && r.collectedAt && reachedLab(r)) full += 1;
+    if (r.madeAt && r.collectedAt && reachedLab(r) && !releaseBeforeReceipt(r)) full += 1;
   }
   return { value: done ? (100 * full) / done : null, numerator: full, denominator: done, n: done };
 }
