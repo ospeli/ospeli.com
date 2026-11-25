@@ -203,6 +203,7 @@ export async function render(el, ctx) {
     const dept = walked && m.walk.department ? departmentById(m.walk.department)?.name || null : null;
     // The header line of the Result tab: department, walks and dates, in the device's own format.
     const dates = (() => {
+      if (!walked) return '';
       if (!multi) return `Walked ${day(m.walk.startedAt)}, started ${clock(m.walk.startedAt)}`;
       const ts = rg.walks.map((w) => new Date(w.startedAt)).filter((d) => !Number.isNaN(+d));
       const f = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
