@@ -14,7 +14,7 @@ after(async () => { await env.close(); });
 
 const demoDir = fileURLToPath(new URL('../../web/demo/', import.meta.url));
 const demos = readdirSync(demoDir).filter((d) => existsSync(join(demoDir, d, 'index.html')));
-const paths = ['/', '/app/', ...demos.map((d) => `/demo/${d}/`)];
+const paths = ['/', '/overview.html', '/app/', ...demos.map((d) => `/demo/${d}/`)];
 
 async function motionLeft(page) {
   return page.evaluate(() => {

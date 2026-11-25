@@ -32,7 +32,8 @@
 - [Revenue cycle (optional) preview](https://ospeli.com/demo/revenue/): For organisations that bill payers: coverage at the front desk, claims ready or missing something, and denials by reason. Off by default; never affects care. Fictional data.
 - [Public health operations preview](https://ospeli.com/demo/public-health/): Outreach sessions that work without signal, stock and expiry by site, cold chain readings and alarms, and people reached against the local target. Fictional data.
 - [All 30 areas](https://ospeli.com/areas/): each page says in words whether the area is Built, a Preview or Planned, then what it is designed to do, who uses it, what it records and its measures. Only the pages of Built areas list assistant commands, copied from the app's command list; the other pages name none, because their commands are defined when the area is built. Ospeli is not certified against any standard named there. Spec in https://ospeli.com/areas/areas.json.
-- [Front page](https://ospeli.com/): what Ospeli is, its modules, how a pilot runs, and its governance rules.
+- [Front page](https://ospeli.com/): one screen: walk one patient visit with a phone and see where the waiting is, with short answers on what Ospeli is, what it will not do and where the data goes.
+- [Overview](https://ospeli.com/overview.html): its modules (Built or Preview), how a pilot runs, the roadmap and its governance rules.
 
 ## For agents
 - Start here, not from the preview pages: the app's commands (`window.ospeli` on https://ospeli.com/app/) are the agent API. Page objects on preview pages are preview only, not the agent API.

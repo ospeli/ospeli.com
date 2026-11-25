@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 
 const web = new URL('../../web/', import.meta.url);
-const html = readFileSync(new URL('index.html', web), 'utf8');
+const html = readFileSync(new URL('overview.html', web), 'utf8') // the old front page, moved whole (website v2, 25 Nov);
 const demos = readdirSync(new URL('demo/', web)).filter((d) => statSync(new URL(`demo/${d}`, web)).isDirectory());
 // The old standalone pages of the areas that are built in the app are not previews (the last three
 // since 17 and 18 Nov, issue #118: their pages now link into the app).

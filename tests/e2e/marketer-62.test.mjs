@@ -1,6 +1,8 @@
 // Issue #62 (marketer, 12 Nov), items 1 to 4: the agents notices in kit v3.1 colours, the header
 // never shows a hospital name beside "No data loaded", the phone footer says the agent guide is a
 // text file, and the audit table keeps its Action column readable on a phone.
+// Website v2 (25 Nov 2026): the old front page, with these sections, moved whole to /overview.html;
+// the homepage itself is checked in home-v2.test.mjs. The assertions below are unchanged.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startApp, openPage, setRole } from './helpers.mjs';
@@ -82,7 +84,7 @@ test('#62: the audit table hides the Hash column on a phone and keeps it on a wi
 test('#62: the front page footer link to the agent guide says it is a text file', async () => {
   const context = await env.browser.newContext({ viewport: { width: 360, height: 780 }, hasTouch: true, isMobile: true });
   const page = await context.newPage();
-  await page.goto(`${env.base}/`);
+  await page.goto(`${env.base}/overview.html`);
   const links = await page.$$eval('a[href="agents.md"]', (as) => as.map((a) => a.textContent.trim()));
   assert.ok(links.length >= 1);
   for (const t of links) assert.match(t, /text file/);

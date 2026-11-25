@@ -277,7 +277,7 @@ def area_page(a, by_id):
     planned = f'First version planned <b>{e(a["month"])}</b>.'
     note = {"Built": "Built on the shared core today. The demo uses fictional data.",
             "Preview": f"Preview on fictional data; not yet built on the shared core. {planned}",
-            "Planned": f'Planned; nothing to try yet. {planned} <a href="../../#roadmap">See the roadmap</a>.'}[word]
+            "Planned": f'Planned; nothing to try yet. {planned} <a href="../../overview.html#roadmap">See the roadmap</a>.'}[word]
     cta = (f'<p><a class="go" href="{e(live[1])}">{e(live[0])}</a></p>' if live else "") + f'<p class="lead">{note}</p>'
     people = "".join(f'<div class="person"><b>{e(p["role"])}</b><span>{e(p["does"])}</span></div>' for p in a["people"])
     screens = "".join(f'<li><b>{e(s["name"])}</b>: {e(s["shows"])}</li>' for s in a["screens"])

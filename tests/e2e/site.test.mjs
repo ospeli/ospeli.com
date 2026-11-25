@@ -1,4 +1,6 @@
 // Public front page (web/index.html): phone layout checks (issue #14). Desktop must not change.
+// Website v2 (25 Nov 2026): the old front page, with these sections, moved whole to /overview.html;
+// the homepage itself is checked in home-v2.test.mjs. The assertions below are unchanged.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startApp } from './helpers.mjs';
@@ -7,13 +9,13 @@ let env;
 before(async () => { env = await startApp(); });
 after(async () => { await env.close(); });
 
-async function open(width) {
+async function open(width, path = '/overview.html') {
   const mobile = width < 641;
   const context = await env.browser.newContext({ viewport: { width, height: mobile ? 780 : 860 }, isMobile: mobile, hasTouch: mobile });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${env.base}/`);
+  await page.goto(`${env.base}${path}`);
   await page.waitForLoadState('networkidle');
   return { context, page, errors };
 }
@@ -76,7 +78,7 @@ test('desktop front page keeps its three actions, with the demo as the coral mai
 });
 
 test('an agent can discover Ospeli from the public site (backlog A1, issue #18)', async () => {
-  const { context, page, errors } = await open(1280);
+  const { context, page, errors } = await open(1280, '/');
   const files = await page.evaluate(async () => {
     const out = {};
     for (const p of ['llms.txt', 'agents.md', 'robots.txt', 'sitemap.xml', 'app/api/README.md', 'app/api/commands.json']) {

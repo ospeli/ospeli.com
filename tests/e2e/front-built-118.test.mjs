@@ -1,6 +1,8 @@
 // Issue #118: the front page lists what the app has. Six modules are in the app, so the front page
 // shows six Built rows on a desktop, each opening the app; on a phone the three newer ones sit in
 // the closed list with a "Built" tag and open the app; nothing in the app is tagged Preview.
+// Website v2 (25 Nov 2026): the old front page, with these sections, moved whole to /overview.html;
+// the homepage itself is checked in home-v2.test.mjs. The assertions below are unchanged.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startApp } from './helpers.mjs';
@@ -13,7 +15,7 @@ const ROUTES = ['app/#/beds', 'app/#/engineering', 'app/#/process', 'app/#/store
 test('desktop 1280 px: six Built rows, each opening its module in the app; none of them tagged Preview', async () => {
   const context = await env.browser.newContext({ viewport: { width: 1280, height: 860 } });
   const page = await context.newPage();
-  await page.goto(`${env.base}/`);
+  await page.goto(`${env.base}/overview.html`);
   const rows = await page.$$eval('#modules .mod', (els) => els.map((m) => ({ tag: m.querySelector('.st')?.textContent.trim(), href: m.querySelector('a')?.getAttribute('href'), visible: !!m.getClientRects().length })));
   const built = rows.filter((r) => r.tag === 'Built');
   assert.deepEqual(built.map((r) => r.href).sort(), [...ROUTES].sort());
@@ -26,7 +28,7 @@ for (const width of [360, 390]) {
   test(`phone ${width} px: the closed list names the three newer modules as Built and opens the app`, async () => {
     const context = await env.browser.newContext({ viewport: { width, height: 800 }, hasTouch: true, isMobile: true });
     const page = await context.newPage();
-    await page.goto(`${env.base}/`);
+    await page.goto(`${env.base}/overview.html`);
     await page.locator('.pv-wrap > summary').tap();
     const links = await page.$$eval('.pv-list a', (els) => els.map((a) => ({ href: a.getAttribute('href'), tag: getComputedStyle(a, '::after').content, h: a.getBoundingClientRect().height })));
     for (const r of ['app/#/stores', 'app/#/support', 'app/#/feedback', 'app/#/facilities', 'app/#/transfers', 'app/#/clinics', 'app/#/diagnostics', 'app/#/pharmacy']) {

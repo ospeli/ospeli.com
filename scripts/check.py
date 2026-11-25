@@ -123,6 +123,16 @@ else:
             errors.append("index.html: JSON-LD is not a SoftwareApplication")
     except ValueError as e:
         errors.append(f"index.html: JSON-LD does not parse ({e})")
+import json  # top level, so the rules below never depend on the JSON-LD branch above
+
+# Website v2 (founder, 24 and 25 Nov 2026; ospeli/ospeli docs/design/website-v2.md): the homepage is
+# one slide. The module rows, roadmap, pilot and governance moved whole, links unchanged, to
+# overview.html beside it, so the front-page rules below (#31, #45, #88, #100, #118) follow that
+# content there. The JSON-LD stays on index.html (above).
+OVERVIEW = ROOT / "overview.html"
+if not OVERVIEW.exists():
+    errors.append("overview.html: missing; it holds the Built rows, roadmap and governance that the front-page rules check")
+home = OVERVIEW.read_text(encoding="utf-8") if OVERVIEW.exists() else ""
 
 # Honest claims (issue #31): features not built yet (FHIR, HL7, CSV export, sync between devices)
 # may only appear on the front page and in the agent files in a sentence that says they are
@@ -145,7 +155,7 @@ for name in ("agents.md", "llms.txt"):
         if tok not in _cmds:
             errors.append(f"{name}: names a command that does not exist: {tok}")
 
-for name in ("index.html", "llms.txt", "agents.md"):
+for name in ("index.html", "overview.html", "llms.txt", "agents.md"):
     f = ROOT / name
     if not f.exists():
         continue
@@ -162,30 +172,30 @@ for _row in re.findall(r'<div class="mod[^"]*">\s*<span class="st built">Built</
     _name = re.search(r"<h3>(.*?)</h3>", _row, re.S)
     _hrefs = re.findall(r'<a\b[^>]*href="([^"]+)"', _row)
     if not _hrefs or any(not h.startswith("app/") for h in _hrefs):
-        errors.append(f"index.html: the Built row \"{_name.group(1) if _name else '?'}\" must link into app/ (found {_hrefs}); a preview is not the built module")
+        errors.append(f"overview.html: the Built row \"{_name.group(1) if _name else '?'}\" must link into app/ (found {_hrefs}); a preview is not the built module")
 # Issue #100: the roadmap's "now" entry says the same as the Built rows. It names every Built
 # module, opens each in the app, and never links a built module to its retired preview
 # (every link in the entry opens the app).
 _built_names = [re.sub(r"\s+", " ", n).strip() for n in re.findall(r'<div class="mod[^"]*">\s*<span class="st built">Built</span>\s*<h3>(.*?)</h3>', home, re.S)]
 _now = re.search(r'<li><span class="wk">[^<]*\bnow</span>.*?</li>', home, re.S | re.I)
 if not _now:
-    errors.append("index.html: the roadmap has no entry marked \"now\"")
+    errors.append("overview.html: the roadmap has no entry marked \"now\"")
 else:
     _now_html = _now.group(0)
     _now_text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", _now_html)).lower()
     _now_hrefs = re.findall(r'<a\b[^>]*href="([^"]+)"', _now_html)
     for _n in _built_names:
         if _n.lower() not in _now_text:
-            errors.append(f"index.html: the roadmap's \"now\" entry does not name the Built module \"{_n}\"")
+            errors.append(f"overview.html: the roadmap's \"now\" entry does not name the Built module \"{_n}\"")
     _built_hrefs = re.findall(r'<div class="mod[^"]*">\s*<span class="st built">Built</span>.*?<a\b[^>]*href="([^"]+)"', home, re.S)
     for _h in _built_hrefs:
         if _h not in _now_hrefs:
-            errors.append(f"index.html: the roadmap's \"now\" entry must link to {_h}, as its Built row does")
+            errors.append(f"overview.html: the roadmap's \"now\" entry must link to {_h}, as its Built row does")
     for _h in _now_hrefs:
         if not _h.startswith("app/"):
-            errors.append(f"index.html: the roadmap's \"now\" entry links to {_h}; a built module opens in app/, never in a preview under demo/")
+            errors.append(f"overview.html: the roadmap's \"now\" entry links to {_h}; a built module opens in app/, never in a preview under demo/")
     if re.search(r"live previews? of", _now_text):
-        errors.append("index.html: the roadmap's \"now\" entry calls built modules \"live previews\"")
+        errors.append("overview.html: the roadmap's \"now\" entry calls built modules \"live previews\"")
 # Issue #118: the public words follow the build. Every operational module the app loads (a `load`
 # with a `week` or its own `commands` in modules/registry.js) has a Built row on the front page
 # that opens it in the app, is never also tagged Preview there or called "planned" in the
@@ -201,16 +211,16 @@ _agent_files = {n: (ROOT / n).read_text(encoding="utf-8") for n in ("llms.txt", 
 for _id, _nm in _mods:
     _href = f"app/#/{_id}"
     if not any(f'href="{_href}"' in r for r in _built_rows):
-        errors.append(f"index.html: the app has the module \"{_nm}\" ({_href}) but the front page has no Built row opening it (issue #118)")
+        errors.append(f"overview.html: the app has the module \"{_nm}\" ({_href}) but the front page has no Built row opening it (issue #118)")
     for r in _preview_rows:
         if f'href="{_href}"' in r or f"<h3>{_nm}</h3>" in r:
-            errors.append(f"index.html: \"{_nm}\" is in the app but tagged Preview on the front page (issue #118)")
+            errors.append(f"overview.html: \"{_nm}\" is in the app but tagged Preview on the front page (issue #118)")
     for _n, _txt in _agent_files.items():
         if f"app/#/{_id}" not in _txt:
             errors.append(f"{_n}: does not name the built module \"{_nm}\" with its app link {_href} (issue #118)")
 for _w in ("cleaning and patient transport", "stores,", "patient feedback", "walk a patient journey"):
     if _w in _road_planned:
-        errors.append(f"index.html: the roadmap calls \"{_w.strip(',')}\" planned for a later month, but it is in the app (issue #118)")
+        errors.append(f"overview.html: the roadmap calls \"{_w.strip(',')}\" planned for a later month, but it is in the app (issue #118)")
 _ba = (ROOT.parent / "scripts" / "build_areas.py").read_text(encoding="utf-8")
 _pref = re.findall(r'"(ospeli_[a-z]+_)"', _ba.split("COMMAND_PREFIXES", 1)[1].split("}", 1)[0])
 for _c in sorted(c for c in _cmds if c.startswith("ospeli_")):
@@ -218,7 +228,7 @@ for _c in sorted(c for c in _cmds if c.startswith("ospeli_")):
         errors.append(f"commands.json: {_c} belongs to no Built area page; add its prefix to COMMAND_PREFIXES in scripts/build_areas.py (issue #118)")
         break
 if re.search(r"allocation with reasons for declines", visible_text(home), re.I):
-    errors.append("index.html: \"allocation with reasons for declines\" describes the old preview, not the built bed board")
+    errors.append("overview.html: \"allocation with reasons for declines\" describes the old preview, not the built bed board")
 
 # Honest public claims (issue #43): no coverage, compliance or outcome claims on public pages.
 # - "covers 28 areas": most areas are previews, so a count of areas "covered" is not true.
@@ -461,7 +471,7 @@ if areas_file.exists():
 # Issue #45: no public page or the area spec may name an assistant command that does not exist.
 # Area pages of Built areas list their commands from commands.json (scripts/build_areas.py);
 # the other area pages say commands are defined when the area is built. areas.json holds none.
-for f in sorted((ROOT / "areas").rglob("*.html")) + [ROOT / "areas" / "areas.json", ROOT / "index.html"]:
+for f in sorted((ROOT / "areas").rglob("*.html")) + [ROOT / "areas" / "areas.json", ROOT / "index.html", ROOT / "overview.html"]:
     if not f.exists():
         continue
     for tok in sorted(set(re.findall(r"\bospeli_[a-z_]+\b", f.read_text(encoding="utf-8")))):

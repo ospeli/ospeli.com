@@ -71,7 +71,7 @@ async function differs(one, two) {
 const web = new URL('../../web/', import.meta.url);
 const folders = (dir) => readdirSync(new URL(dir, web), { withFileTypes: true })
   .filter((d) => d.isDirectory() && existsSync(new URL(`${dir}${d.name}/index.html`, web))).map((d) => `/${dir}${d.name}/`);
-const everyPage = ['/', '/app/', '/areas/', '/demo/', ...folders('areas/'), ...folders('demo/')];
+const everyPage = ['/', '/overview.html', '/app/', '/areas/', '/demo/', ...folders('areas/'), ...folders('demo/')];
 
 test('the browser used for this test really repaints a page that does not opt out (the check can fail)', async () => {
   const html = 'data:text/html,<meta name="viewport" content="width=device-width"><body style="background:%23F6F1E7;color:%230B2F4E"><h1>Plain page</h1>';
@@ -105,7 +105,7 @@ test('every public page and the app declare "only light", in the page head and i
   assert.deepEqual(wrong, []);
 });
 
-for (const path of ['/', '/app/', '/areas/', '/areas/process-mapping/', '/demo/', '/demo/bed-board/', '/demo/clinics/']) {
+for (const path of ['/', '/overview.html', '/app/', '/areas/', '/areas/process-mapping/', '/demo/', '/demo/bed-board/', '/demo/clinics/']) {
   test(`${path} looks the same on a phone set to dark, and in a browser that forces dark, as on a phone set to light`, async () => {
     const light = await shot(plain, path, { colorScheme: 'light' });
     const dark = await shot(plain, path, { colorScheme: 'dark' });
