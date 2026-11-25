@@ -15,7 +15,7 @@ for (const width of [390, 1280]) {
   test(`a page left by a role change while it loads gives no error, and the new role's page opens (${width}px)`, async () => {
     const { context, page, errors } = await openPage(env, { width, clock: '2026-11-16T15:00:00.000Z', touch: width < 500 });
     await setRole(page, 'patient-liaison');
-    await page.waitForFunction(() => /Patient liaison/.test(document.querySelector('main h1')?.textContent || '') || !!document.querySelector('.mod-feedback'));
+    await page.waitForFunction(() => /Patient relations/.test(document.querySelector('main h1')?.textContent || '') || !!document.querySelector('.mod-feedback'));
     // Hold every read of the event log until the test lets it go.
     await page.evaluate(() => {
       const core = window.ospeli.core;

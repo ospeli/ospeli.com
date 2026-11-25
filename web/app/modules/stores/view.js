@@ -30,9 +30,9 @@ const daysText = (d) => (d == null ? '' : d < 1 ? `${Math.max(1, Math.round(d * 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const day = (iso) => { const d = new Date(iso); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; };
 const when = (iso) => { const d = new Date(iso); return `${day(iso)}, ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
-const CHECK_TIMES = 10; // a count over this many times the top-up level is asked about once (example setting, not a standard)
+const CHECK_TIMES = 10; // a count over this many times the fill-to level is asked about once (example setting, not a standard)
 const ISSUED_RECENT_HOURS = 4; // an issue this recent may still be on its way to the ward (example setting, not a standard)
-const levelWord = (isStore) => (isStore ? 'reorder level' : 'top-up level');
+const levelWord = (isStore) => (isStore ? 'reorder level' : 'fill-to level');
 // Issued is not arrived: the ward sees that the store issued it, never that it arrived.
 const stateWords = (q) => ({ open: 'Waiting', part: 'Part issued from the store', issued: 'Issued from the store', cancelled: 'Cancelled' })[q.state] || q.stateName;
 const plural = (n, one, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -202,12 +202,12 @@ function countScreen(ctx, shared) {
     if (refuseBad(ctx)) return;
     const lines = counted().map(([itemId, qty]) => ({ itemId, qty }));
     if (!lines.length) return;
-    // A count far over the top-up level is often a slip (400 for 4): ask once, then save what was typed.
+    // A count far over the fill-to level is often a slip (400 for 4): ask once, then save what was typed.
     const big = lines.map((l) => ({ ...l, row: data.rows.find((r) => r.itemId === l.itemId) })).filter((l) => l.row?.level && l.qty > l.row.level * CHECK_TIMES);
     const key = JSON.stringify(big.map((l) => [l.itemId, l.qty]));
     if (big.length && ui.checked !== key) {
       ui.checked = key;
-      ui.result = { check: big.map((l) => `${l.qty} of ${l.row.itemName} (${l.row.unit}; top-up level ${l.row.level})`).join('; ') };
+      ui.result = { check: big.map((l) => `${l.qty} of ${l.row.itemName} (${l.row.unit}; fill-to level ${l.row.level})`).join('; ') };
       draw();
       saveBtn.focus();
       return;
@@ -229,10 +229,10 @@ function countScreen(ctx, shared) {
     const select = placeSelect('count-ward', ui.wards, { blank: 'Choose your ward', value: ui.ward, onchange: (v) => { ui.ward = v; store.set('ospeli-stores-ward', v); ui.values.clear(); ui.moved.clear(); ui.result = null; load(); } });
     const top = h('div', { class: 'field sto-field' }, h('label', { for: 'count-ward' }, 'Your ward'), select);
     if (!ui.wards.length) {
-      setKids(box, h('p', { class: 'card sto-empty', 'data-test': 'count-empty' }, 'No ward has a top-up list yet, so there is nothing to count on this device. The supply chain manager sets the top-up levels for each ward.'));
+      setKids(box, h('p', { class: 'card sto-empty', 'data-test': 'count-empty' }, 'No ward has a top-up list yet, so there is nothing to count on this device. The supply chain manager sets the fill-to levels for each ward.'));
       return;
     }
-    if (!ui.ward) { setKids(box, top, h('p', { class: 'meta' }, 'Choose your ward to see its supplies and their top-up levels.')); return; }
+    if (!ui.ward) { setKids(box, top, h('p', { class: 'meta' }, 'Choose your ward to see its supplies and their fill-to levels.')); return; }
     const all = data.reqs?.requests || [];
     const waiting = all.filter((q) => q.state === 'open' || q.state === 'part');
     const status = waiting.length
@@ -259,7 +259,7 @@ function countScreen(ctx, shared) {
         label();
       };
       li.append(...[
-        h('div', { class: 'sto-line-head' }, h('b', {}, r.itemName), h('span', { class: 'meta' }, `${r.unit} · top-up level ${r.level}`)),
+        h('div', { class: 'sto-line-head' }, h('b', {}, r.itemName), h('span', { class: 'meta' }, `${r.unit} · fill-to level ${r.level}`)),
         onWay.has(r.itemId) ? h('p', { class: 'sto-fact', 'data-test': 'on-its-way' }, `Issued from the store ${agoWords(onWay.get(r.itemId))}: on its way. Count it once it is on the shelf.`) : null,
         mayCount ? h('div', { class: 'sto-line-acts' },
           stepper({ get: () => ui.values.get(r.itemId) ?? null, set: (v) => { if (v == null) ui.values.delete(r.itemId); else ui.values.set(r.itemId, v); mark(); }, label: `${r.itemName}, how many are there`, test: 'count-input' }),
@@ -280,10 +280,10 @@ function countScreen(ctx, shared) {
       offline() ? h('p', { class: 'card notice', 'data-test': 'offline' }, 'Not connected to the site: the count cannot be saved until the connection is back. Keep this screen open; your count is kept.') : null,
       top, status, result,
       rows.length ? [
-        h('p', { class: 'sto-hint' }, mayCount ? 'Count what is on the shelf. Leave an item blank if you did not count it. "At level" fills in the top-up level; if there is more than that, use +. Anything under its top-up level is asked for when you save.' : `${roleName(ctx.role)} can see this list. Counts are saved by ${roleNames(commandByName('ospeli_stock_count').roles)}.`),
+        h('p', { class: 'sto-hint' }, mayCount ? 'Count what is on the shelf. Leave an item blank if you did not count it. "At level" fills in the fill-to level; if there is more than that, use +. Anything under its fill-to level is asked for when you save.' : `${roleName(ctx.role)} can see this list. Counts are saved by ${roleNames(commandByName('ospeli_stock_count').roles)}.`),
         list,
         mayCount ? h('div', { class: 'sto-savebar' }, saveBtn) : null,
-      ] : h('p', { class: 'card sto-empty', 'data-test': 'count-empty' }, 'No top-up levels are set for this ward yet. The supply chain manager sets them.'),
+      ] : h('p', { class: 'card sto-empty', 'data-test': 'count-empty' }, 'No fill-to levels are set for this ward yet. The supply chain manager sets them.'),
       wardRequests());
   }
   function wardRequests() {
@@ -507,7 +507,7 @@ function ordersScreen(ctx, shared) {
       mayRequest ? newOrder() : null,
       h('section', { class: 'section', 'aria-labelledby': 'ord-open-h' }, h('h2', { id: 'ord-open-h' }, `Open orders (${data.open.length})`),
         data.open.length ? h('ul', { class: 'sto-order-list', 'data-test': 'orders' }, data.open.map((o) => orderCard(ctx, shared, o, { ui, act, remind: remind.get(o.id), guideOn: data.ov.guide.on })))
-          : h('p', { class: 'card sto-empty', 'data-test': 'orders-empty' }, 'No order is open. An order starts when a storekeeper or the supply chain manager requests one.')),
+          : h('p', { class: 'card sto-empty', 'data-test': 'orders-empty' }, 'No order is open. An order starts when a stores assistant or the supply chain manager requests one.')),
       data.closed.length ? h('section', { class: 'section', 'aria-labelledby': 'ord-done-h' }, h('h2', { id: 'ord-done-h' }, 'Recently closed'),
         h('ul', { class: 'sto-plain' }, data.closed.map((o) => h('li', { 'data-order': o.id }, h('b', {}, ordName(o.id)), ` ${o.stateName.toLowerCase()}${o.cycleDays != null ? ` ${daysText(o.cycleDays)} after it was requested` : ''} · ${o.lines.slice(0, 3).map((l) => `${l.itemName} ${l.received}/${l.qty}`).join(', ')}${o.lines.length > 3 ? ` and ${o.lines.length - 3} more` : ''}`)))) : null);
   }
@@ -659,11 +659,11 @@ function manageScreen(ctx, shared) {
       h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_stock_level_set', 'data-test': 'level-save',
         onclick: () => { const v = ui.level.get(key); if (v == null) return; act('ospeli_stock_level_set', { itemId: r.itemId, placeId: r.placeId, level: v, expectedLevel: r.level ?? 0 }, `The ${word} of ${r.itemName} at ${r.placeName} is now ${v}`, { onDone: () => { ui.level.delete(key); ui.open.delete(`lvl:${key}`); } }); } }, `Save ${word}`)), { class: 'sto-more' });
   }
-  // What is short: not every item under its top-up level (that is normal between top-ups and each
+  // What is short: not every item under its fill-to level (that is normal between top-ups and each
   // ward's count asks for it), only what needs a person to look (overview "short", example settings).
   function shortList() {
     const sh = data.ov.short;
-    const KIND = { 'none-left': 'Nothing left', 'below-share': `Below ${Math.round(sh.share * 100)}% of its top-up level`, 'store-not-on-order': 'Store below its reorder level, not on order', 'request-waiting': `Request waiting more than ${sh.requestUsualHours} h` };
+    const KIND = { 'none-left': 'Nothing left', 'below-share': `Below ${Math.round(sh.share * 100)}% of its fill-to level`, 'store-not-on-order': 'Store below its reorder level, not on order', 'request-waiting': `Request waiting more than ${sh.requestUsualHours} h` };
     const row = (x) => levelOf(x);
     const levelOf = (x) => data.levels.find((r) => r.placeId === x.placeId && r.itemId === x.itemId) || null;
     const shown = ui.showAll ? sh.lines : sh.lines.slice(0, 10);
@@ -737,7 +737,7 @@ function manageScreen(ctx, shared) {
     const addBtn = h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_stock_item_add', 'data-test': 'add-save', onclick: () => {
       if (a.name.trim().length < 2 || !a.unit) { ui.msg.set('add', 'Write the item\'s name and choose its unit first.'); draw(); return; }
       const label = a.name.trim();
-      act('ospeli_stock_item_add', { name: label, unit: a.unit, category: 'supplies', tracer: a.tracer }, `Item added: ${label} (${a.unit})`, { onDone: () => { ui.msg.set('add', `Added: ${label}. Set its top-up level for each ward that keeps it, and the store's reorder level.`); ui.add = { name: '', unit: '', tracer: false }; }, onError: (e) => ui.msg.set('add', `Not saved. ${e.message}`) });
+      act('ospeli_stock_item_add', { name: label, unit: a.unit, category: 'supplies', tracer: a.tracer }, `Item added: ${label} (${a.unit})`, { onDone: () => { ui.msg.set('add', `Added: ${label}. Set its fill-to level for each ward that keeps it, and the store's reorder level.`); ui.add = { name: '', unit: '', tracer: false }; }, onError: (e) => ui.msg.set('add', `Not saved. ${e.message}`) });
     } }, 'Add item');
     const tracer = h('input', { type: 'checkbox', id: 'add-tracer', checked: a.tracer || null });
     tracer.addEventListener('change', () => { a.tracer = tracer.checked; });
@@ -754,12 +754,12 @@ function manageScreen(ctx, shared) {
       mayLevel ? keepOpen(ui.open, 'tool:level', 'Set a level', h('div', { class: 'sto-form' },
         h('div', { class: 'field' }, h('label', { for: 'lvl-place' }, 'Place'), placeSelect('lvl-place', places(), { blank: 'Choose the place', value: f.place, onchange: (v) => { f.place = v; } })),
         h('div', { class: 'field' }, h('label', { for: 'lvl-item' }, 'Item'), placeSelect('lvl-item', itemOpts, { blank: 'Choose the item', value: f.item, onchange: (v) => { f.item = v; } })),
-        h('div', { class: 'field' }, h('span', { class: 'label' }, 'Level: the top-up level for a ward, the reorder level for the store (0 clears it)'), stepper({ get: () => f.level, set: (v) => { f.level = v; }, label: 'Level', test: 'level-input' })),
+        h('div', { class: 'field' }, h('span', { class: 'label' }, 'Level: the fill-to level for a ward, the reorder level for the store (0 clears it)'), stepper({ get: () => f.level, set: (v) => { f.level = v; }, label: 'Level', test: 'level-input' })),
         lvlBtn, msg('lvl')), { class: 'card sto-tool', 'data-test': 'tool-level' }) : null,
       can(ctx.role, 'ospeli_stock_item_add') ? keepOpen(ui.open, 'tool:add', 'Add an item this site keeps', h('div', { class: 'sto-form' },
         h('div', { class: 'field' }, h('label', { for: 'add-name' }, 'Name of the thing (no brand, supplier or person)'), name),
         h('div', { class: 'field' }, h('label', { for: 'add-unit' }, 'Counted in'), placeSelect('add-unit', UNITS.map((u) => [u, u]), { blank: 'Choose the unit', value: a.unit, onchange: (v) => { a.unit = v; } })),
-        h('label', { class: 'sto-check', for: 'add-tracer' }, tracer, ' A tracer item (watched as a sign of how well stock is kept)'),
+        h('label', { class: 'sto-check', for: 'add-tracer' }, tracer, ' A critical item: one that must never run out (watched as a sign of how well stock is kept)'),
         addBtn, msg('add')), { class: 'card sto-tool', 'data-test': 'tool-add' }) : null,
       can(ctx.role, 'ospeli_stock_transfer') ? keepOpen(ui.open, 'tool:move', 'Record a move between places', h('div', { class: 'sto-form' },
         h('p', { class: 'meta' }, 'For stock that has been moved: it leaves the first place and arrives at the second.'),
@@ -775,7 +775,7 @@ function manageScreen(ctx, shared) {
     const forMe = (ov.reminders || []).filter((r) => r.roles.includes(ctx.role));
     setKids(box,
       props.el,
-      ov.hasHistory ? null : h('p', { class: 'card notice', 'data-test': 'no-history' }, 'No supplies are held anywhere on this device yet: no level is set and nothing has been received. Set the top-up levels for each ward and the store\'s reorder levels below, and receive the store\'s stock, to start.'),
+      ov.hasHistory ? null : h('p', { class: 'card notice', 'data-test': 'no-history' }, 'No supplies are held anywhere on this device yet: no level is set and nothing has been received. Set the fill-to levels for each ward and the store\'s reorder levels below, and receive the store\'s stock, to start.'),
       forMe.length ? h('div', { class: 'card notice', 'data-test': 'reminders' }, forMe.map((r) => h('p', {}, h('b', {}, `Reminder: ${ordName(r.orderId)}`), ` ${r.waitingFor.toLowerCase()}. `, h('a', { class: 'sto-link', href: '#/stores/orders' }, 'Open the order tracker')))) : null,
       h('div', { class: 'stats sto-stats', 'data-test': 'stats' },
         h('div', { class: 'stat', 'data-stat': 'short' }, h('span', {}, 'Short now'), h('b', {}, String(sc.itemLines)), h('span', {}, `item lines in ${plural(sc.wards, 'ward')}${sc.noneLeft ? `, ${sc.noneLeft} with none left` : ''}${sc.storeLines ? `; ${sc.storeLines} store items not on order` : ''}`)),

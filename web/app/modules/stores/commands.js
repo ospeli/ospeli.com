@@ -28,10 +28,10 @@ export const EVENT_PREFIX = 'stores.';
 // Every number has a definition and a source. No target is set: none of these has a cited standard.
 const NO_TARGET = 'No target set: track the trend. A site may set its own (an example setting, not a standard).';
 export const KPIS = [
-  { id: 'stores-tracer-stock-out-rate', name: 'Stock-out rate on tracer items', unit: '%',
-    definition: 'Item-days with nothing usable divided by item-days held, for tracer supplies items, in all and for each area (the core measure "Stock-out rate", KPI dictionary D-17). A day out counts when a person declared a stock-out or the balances show nothing usable; the two are joined, never counted twice.',
-    counts: 'Item-days with nothing usable, for tracer items.', outOf: 'Item-days tracer items were held, from each holding\'s first event (a level set or a movement).',
-    leavesOut: 'Items that are not tracer items, and other modules\' stock (medicines, vaccines).',
+  { id: 'stores-tracer-stock-out-rate', name: 'Stock-out rate on critical items', unit: '%',
+    definition: 'Item-days with nothing usable divided by item-days held, for critical supply items (the few that must never run out, often called tracer items), in all and for each area (the core measure "Stock-out rate", KPI dictionary D-17). A day out counts when a person declared a stock-out or the balances show nothing usable; the two are joined, never counted twice.',
+    counts: 'Item-days with nothing usable, for critical items.', outOf: 'Item-days critical items were held, from each holding\'s first event (a level set or a movement).',
+    leavesOut: 'Items that are not critical items, and other modules\' stock (medicines, vaccines).',
     source: 'local definition (the core measure "Stock-out rate", KPI dictionary D-17)', target: null, targetText: NO_TARGET },
   { id: 'stores-request-wait', name: 'Request wait', unit: 'hours',
     definition: 'Median hours from a ward\'s request being raised (by a count or by hand) to it being issued in full, for requests issued in full in the period. A part issue leaves the clock running.',
@@ -115,14 +115,14 @@ async function overview(core, input, wards) {
       ordersOpen: open.length, longestAtStepDays: open.length ? Math.max(...open.map((o) => daysAtStep(o, now))) : null,
       stockOutsOpen: outs.length, notDeclared: notDeclared.length,
     },
-    // What needs a person to look now (not every item under its top-up level: see shortNow).
-    short: { share: SHORT_SHARE, requestUsualHours: REQUEST_USUAL_HOURS, note: `Example settings, not standards: a ward item with nothing usable or below ${SHORT_SHARE * 100}% of its top-up level, a ward request waiting more than ${REQUEST_USUAL_HOURS} hours, a store item below its reorder level with no open order.`,
+    // What needs a person to look now (not every item under its fill-to level: see shortNow).
+    short: { share: SHORT_SHARE, requestUsualHours: REQUEST_USUAL_HOURS, note: `Example settings, not standards: a ward item with nothing usable or below ${SHORT_SHARE * 100}% of its fill-to level, a ward request waiting more than ${REQUEST_USUAL_HOURS} hours, a store item below its reorder level with no open order.`,
       counts: short.counts, lines: short.lines.slice(0, 200).map((x) => ({ ...x, placeName: c.placeName(x.placeId), ...(x.itemId ? { itemName: c.itemName(x.itemId), unit: stock.items.get(x.itemId)?.unit ?? null } : {}) })) },
     // Reminders sent for open orders at the step they wait at, and the roles each is for.
     reminders: open.map((o) => ({ o, r: lastReminder(o) })).filter((x) => x.r).map(({ o, r }) => ({ orderId: o.id, step: o.state, waitingFor: WAITING_FOR[o.state].words, roles: [...WAITING_FOR[o.state].roles], at: r.at, byRole: r.byRole })),
     kpis, planned: PLANNED_KPIS.map((x) => ({ ...x })),
     guide: { on, rules: GUIDE_RULES.map((r) => ({ ...r })), suggestions },
-    note: 'Counts items, requests and orders, never a storekeeper, nurse or anyone else. Not for medicines dispensing (pharmacy operations), vaccine stock and cold chain, or choosing suppliers. Ospeli does not approve purchases; people do.',
+    note: 'Counts items, requests and orders, never a stores assistant, nurse or anyone else. Not for medicines dispensing (pharmacy operations), vaccine stock and cold chain, or choosing suppliers. Ospeli does not approve purchases; people do.',
   };
 }
 
@@ -227,7 +227,7 @@ const STEP_WRITERS = [...new Set(Object.values(STEP_ROLES).flat())];
 export const COMMANDS = [
   {
     name: 'ospeli_stores_overview',
-    summary: 'Stores and supplies at a glance, in one call: the four measures with their definitions and sources (stock-out rate on tracer items, request wait, order cycle time, fill rate), how many items are under their top-up level, requests waiting, open orders and stock-outs, reminders sent, and the guide\'s suggestions with their reasons and basis (empty while the guide is off). Inventory turns is listed as planned, with no value. Counts items, requests and orders, never people. Read-only.',
+    summary: 'Stores and supplies at a glance, in one call: the four measures with their definitions and sources (stock-out rate on critical items, request wait, order cycle time, fill rate), how many items are under their fill-to level, requests waiting, open orders and stock-outs, reminders sent, and the guide\'s suggestions with their reasons and basis (empty while the guide is off). Inventory turns is listed as planned, with no value. Counts items, requests and orders, never people. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, properties: {
       days: { type: 'integer', minimum: 1, maximum: 90, description: 'The period for the measures: the last this many days. Default 30.' },
@@ -237,7 +237,7 @@ export const COMMANDS = [
       hasStore: { type: 'boolean', description: 'False on a device whose hospital has no store set up: nothing can be issued or received.' },
       hasHistory: { type: 'boolean', description: 'False when no supplies are held anywhere yet (no level set, no movement).' },
       stores: { type: 'array', description: 'The stores, with ids.' },
-      short: { type: 'object', description: 'What needs a person to look now: lines of kind none-left, below-share (a ward item below a share of its top-up level), store-not-on-order or request-waiting, with counts (itemLines and wards for the wards; storeLines; requestsLate). The share and the wait are example settings, not standards.' },
+      short: { type: 'object', description: 'What needs a person to look now: lines of kind none-left, below-share (a ward item below a share of its fill-to level), store-not-on-order or request-waiting, with counts (itemLines and wards for the wards; storeLines; requestsLate). The share and the wait are example settings, not standards.' },
       counts: { type: 'object', description: 'underLevel, areasShort, requestsWaiting, oldestWaitHours, ordersOpen, longestAtStepDays, stockOutsOpen, notDeclared (items with a level and nothing usable, with no stock-out declared).' },
       reminders: { type: 'array', description: 'Reminders sent for open orders at the step they wait at: { orderId, step, waitingFor, roles, at, byRole }.' },
       kpis: { type: 'array', items: KPI_OUT }, planned: { type: 'array', items: { type: 'object', required: ['id', 'name', 'status'] } },
@@ -330,7 +330,7 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_stores_guide_set',
-    summary: 'Switch the stores guide on or off for this site. The guide is three fixed rules: a top-up level that use has outgrown, an order waiting at one step longer than usual, and a transfer from an area with far more than its level to one that is short. They suggest; a person decides. With it off everything else works the same. People only.',
+    summary: 'Switch the stores guide on or off for this site. The guide is three fixed rules: a fill-to level that use has outgrown, an order waiting at one step longer than usual, and a transfer from an area with far more than its level to one that is short. They suggest; a person decides. With it off everything else works the same. People only.',
     kind: 'write', roles: ['supply-manager', 'ops-manager', 'coo'], approval: true, agents: false,
     input: { type: 'object', additionalProperties: false, required: ['on'], properties: { on: { type: 'boolean', description: 'true: show the guide\'s suggestions. false: none.' } } },
     output: WRITE_OUT({ on: { type: 'boolean' } }),
@@ -359,7 +359,7 @@ export async function prepareExample(core, command, { run }) {
 // ---- synthetic history for the example hospital: thirty days of ward supplies ----
 // Generic patterns only, entirely fictional: each ward uses its items at a steady rate with day to
 // day noise, counts them every two to four days, and the count raises a request for what is under
-// the top-up level; the store issues within hours in its working day, in part when it is short;
+// the fill-to level; the store issues within hours in its working day, in part when it is short;
 // the supply chain manager reviews the store weekly and orders what is under the store's level,
 // through approval, order, delivery and receipt. One donation arrives. Two stock-outs are declared
 // and ended. At the end: a few requests waiting, one ward item at zero with an open stock-out, one

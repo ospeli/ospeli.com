@@ -11,7 +11,7 @@ import { KPIS } from '../../web/app/modules/stores/commands.js';
 const html = readFileSync(new URL('../../web/demo/stores-stock/index.html', import.meta.url), 'utf8');
 
 test('#44 (c): the stores demo gives order cycle time and the tracer stock-out rate the app\'s definition', () => {
-  const shared = KPIS.filter((k) => ['Order cycle time', 'Stock-out rate on tracer items'].includes(k.name));
+  const shared = KPIS.filter((k) => ['Order cycle time', 'Stock-out rate on critical items'].includes(k.name));
   assert.equal(shared.length, 2, 'both measures are in the built module');
   for (const k of shared) {
     const at = html.indexOf(`def: ['${k.name}', `);

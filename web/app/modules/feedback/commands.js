@@ -31,7 +31,7 @@ const THEMES_ROLES = ['patient-liaison', 'receptionist', 'ward-nurse', 'quality-
 const UPDATE_ROLES = ['patient-liaison', 'quality-lead', 'ward-nurse', 'ops-manager'];
 const LEADS = ['patient-liaison', 'quality-lead'];
 const GUIDE_ROLES = ['patient-liaison', 'quality-lead'];
-// Steps the owner role may take on its own records; the rest are for the liaison officer and the quality lead.
+// Steps the owner role may take on its own records; the rest are for the patient relations lead and the quality lead.
 // Passing a record to clinical review after it was logged (and taking it back) is for the leads:
 // it changes how the reply is timed, so it is not left to the owner.
 const OWNER_STEPS = ['acknowledge', 'reply'];
@@ -41,7 +41,7 @@ const STEPS = {
 };
 const roleName = roleLabel;
 const roleNames = (list) => list.map(roleName).join(', ');
-const stepRolesText = (step) => (OWNER_STEPS.includes(step) ? 'the owner role or the Patient liaison officer' : roleNames(LEADS));
+const stepRolesText = (step) => (OWNER_STEPS.includes(step) ? 'the owner role or the Patient relations lead' : roleNames(LEADS));
 const LATEST_DAYS_BACK = 60;   // a received date further back than this is refused as a likely typing slip
 const DOUBLE_TAP_SECONDS = 10; // the same staff record from the same role within this time is one record (not cards: see verifyLog)
 const MAX_ACTIONS = 20;
@@ -413,7 +413,7 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_experience_record_update',
-    summary: 'Move a complaint or concern on, one step: acknowledge (with the channel used), reply (the site sent the full reply, by which channel; Ospeli sends nothing), set-owner (a role, never a person), close (with the outcome; before a reply only as withdrawn), clinical-review (mark it as passed to clinical review; nothing about the care is recorded; the acknowledgement stays timed, the reply is not called overdue while it waits), clinical-return (it came back from clinical review). For a compliment or card: share (shared with the service). The owner role may acknowledge and reply on its own records; the patient liaison officer and the quality lead may take every step.',
+    summary: 'Move a complaint or concern on, one step: acknowledge (with the channel used), reply (the site sent the full reply, by which channel; Ospeli sends nothing), set-owner (a role, never a person), close (with the outcome; before a reply only as withdrawn), clinical-review (mark it as passed to clinical review; nothing about the care is recorded; the acknowledgement stays timed, the reply is not called overdue while it waits), clinical-return (it came back from clinical review). For a compliment or card: share (shared with the service). The owner role may acknowledge and reply on its own records; the patient relations lead and the quality lead may take every step.',
     kind: 'write', roles: UPDATE_ROLES, approval: true,
     input: {
       type: 'object', additionalProperties: false, required: ['recordId', 'step'],
@@ -449,7 +449,7 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_experience_action_set',
-    summary: 'Agree an action on a complaint or concern (what, picked from a list; the owner role; due in a number of days; an optional short checked note), or close an agreed action. This is how "what changed" is tracked until done. Agreeing is for the patient liaison officer, the quality lead or the record\'s owner role; the action\'s owner role may also close it.',
+    summary: 'Agree an action on a complaint or concern (what, picked from a list; the owner role; due in a number of days; an optional short checked note), or close an agreed action. This is how "what changed" is tracked until done. Agreeing is for the patient relations lead, the quality lead or the record\'s owner role; the action\'s owner role may also close it.',
     kind: 'write', roles: UPDATE_ROLES, approval: true,
     input: {
       type: 'object', additionalProperties: false, required: ['op', 'recordId'],

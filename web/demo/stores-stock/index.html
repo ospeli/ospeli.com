@@ -183,7 +183,7 @@ a { color: var(--ink); }
   <div class="top">
     <div class="roles" role="group" aria-label="Whose view">
       <button type="button" data-role="ward" aria-pressed="true">Ward staff<small>phone</small></button>
-      <button type="button" data-role="store" aria-pressed="false">Storekeeper<small>phone or tablet</small></button>
+      <button type="button" data-role="store" aria-pressed="false">Stores assistant<small>phone or tablet</small></button>
       <button type="button" data-role="manager" aria-pressed="false">Supply manager<small>laptop</small></button>
     </div>
     <div class="clock"><span id="clock">Example General Hospital</span><button type="button" class="small" id="reset">Reset example</button></div>
@@ -209,7 +209,7 @@ a { color: var(--ink); }
       <button type="button" class="small" id="logmore" hidden>Show all</button>
     </section>
   </div>
-  <p class="foot">Items, quantities, usage and orders are invented for this demo. Tracer items are a short local list of items that must never run out; the settings used here (4 hours for “on time”, 1.5 days of use for a top-up level, 7 days for delivery) are example settings an organisation would choose for itself. This page is a design sketch. A first version of this area now runs in the app with synthetic example data: <a href="../../app/#/stores">open Stores and supplies in the app</a> (a ward stock count that raises a request for what is short, requests and issues from the store, receiving a delivery, the order tracker, the stock-out log, and a manager view). Planned, not built yet: inventory turns. It holds no prices. Not for medicines dispensing or choosing suppliers; people approve purchases, the software does not. <a href="../../areas/supply-chain-stores/">About this area</a> · <a href="../">All demos</a></p>
+  <p class="foot">Items, quantities, usage and orders are invented for this demo. Critical items are a short local list of items that must never run out; the settings used here (4 hours for “on time”, 1.5 days of use for a fill-to level, 7 days for delivery) are example settings an organisation would choose for itself. This page is a design sketch. A first version of this area now runs in the app with synthetic example data: <a href="../../app/#/stores">open Stores and supplies in the app</a> (a ward stock count that raises a request for what is short, requests and issues from the store, receiving a delivery, the order tracker, the stock-out log, and a manager view). Planned, not built yet: inventory turns. It holds no prices. Not for medicines dispensing or choosing suppliers; people approve purchases, the software does not. <a href="../../areas/supply-chain-stores/">About this area</a> · <a href="../">All demos</a></p>
 </main>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -240,7 +240,7 @@ var CAUSES = ['Not known yet', 'Store out', 'Not requested in time', 'Delivery l
 var STEPS = ['Requested', 'Approved', 'Ordered', 'Delivered', 'Received'];
 var WAITING = ['Waiting for purchasing approval', 'Approved, waiting to be ordered', 'Ordered, waiting for delivery', 'Delivered, waiting to be checked in', 'Received'];
 var USUAL = [2, 1, 7, 1];
-// [item, on hand, top-up level, average use per day]
+// [item, on hand, fill-to level, average use per day]
 var WARD = {
   W4: [['GLM', 3, 8, 5], ['GLL', 6, 6, 2], ['APR', 3, 3, 2], ['IVS', 10, 10, 6], ['SYR', 4, 4, 2], ['SUC', 4, 10, 6], ['OXM', 0, 12, 7], ['NCN', 10, 10, 3], ['DRS', 10, 10, 3], ['LIN', 12, 20, 16], ['SHB', 4, 4, 1], ['HRB', 7, 8, 3]],
   W7: [['GLM', 22, 8, 5], ['GLL', 6, 6, 2], ['APR', 3, 3, 1], ['IVS', 30, 15, 10], ['SYR', 4, 4, 2], ['SUC', 8, 8, 3], ['OXM', 10, 10, 4], ['DRS', 14, 20, 9], ['LIN', 18, 20, 12], ['SHB', 4, 4, 1], ['HRB', 7, 8, 3]],
@@ -285,7 +285,7 @@ function seed() {
   var L = function (t, who, text) { s.log.push({ t: t, who: who, text: text }); };
   L(520, 'Ward staff', 'Ward 4: oxygen masks reported out of stock.');
   L(525, 'Ward staff', 'Ward 4: urgent top-up requested, oxygen masks × 12.');
-  L(545, 'Storekeeper', 'Morning store run: 10 request lines to 4 areas. Oxygen masks not issued (store out).');
+  L(545, 'Stores assistant', 'Morning store run: 10 request lines to 4 areas. Oxygen masks not issued (store out).');
   L(590, 'Ward staff', 'Emergency dept: top-up requested, IV giving sets × 18.');
   L(605, 'Ward staff', 'Ward 4: top-up requested, suction catheters × 6.');
   L(630, 'Ward staff', 'Emergency dept: top-up requested, suction catheters × 23.');
@@ -367,14 +367,14 @@ function suggest(role) {
   }
   if (role === 'ward') {
     var need = IDS.filter(function (id) { var w = state.ward[a][id]; return w && w.on < w.top && !openReq(a, id); });
-    if (need.length >= 2) out.push({ id: 'reqall-' + a, tag: 'Stock', who: 'You decide', title: need.length + ' items here are below their top-up level and not requested yet',
+    if (need.length >= 2) out.push({ id: 'reqall-' + a, tag: 'Stock', who: 'You decide', title: need.length + ' items here are below their fill-to level and not requested yet',
       text: 'Request them in one go: ' + names(need) + '. Each request tops the item back up to its level.',
-      why: 'Count is below the top-up level and there is no open request for these items.',
+      why: 'Count is below the fill-to level and there is no open request for these items.',
       label: 'Request all ' + need.length, confirm: 'Raise ' + need.length + ' top-up requests for ' + SHORT[a] + '?',
       run: function () { need.forEach(function (id) { request(a, id, false, true); }); log('Ward staff', SHORT[a] + ': ' + need.length + ' top-up requests raised in one go.'); return need.length + ' requests sent to the store.'; } });
     levelCands().filter(function (c) { return c.area === a; }).slice(0, 1).forEach(function (c) {
       var k = c.area + ':' + c.item, asked = state.levelAsks[k];
-      out.push({ id: 'lvl-' + k, tag: 'Top-up level', who: 'Supply manager decides', title: ITEMS[c.item].name + ' runs out between top-ups here',
+      out.push({ id: 'lvl-' + k, tag: 'Fill-to level', who: 'Supply manager decides', title: ITEMS[c.item].name + ' runs out between top-ups here',
         text: 'Use here is about ' + round1(c.use) + ' a day, but the level is ' + c.from + '. Ask the supply manager to look at a level of about ' + c.to + '.',
         why: 'Last 7 days of use: ' + c.last7.join(', ') + '. Rule: a level should cover ' + RULES.levelCoverDays + ' days of use (example setting).',
         label: asked ? 'Sent to the supply manager' : 'Send to the supply manager', done: !!asked,
@@ -412,7 +412,7 @@ function suggest(role) {
         why: 'Uses about ' + round1(c.use) + ' a day (14-day average, all areas). Rule: propose when cover is under ' + (RULES.leadDays + RULES.bufferDays) + ' days (' + RULES.leadDays + ' days delivery plus ' + RULES.bufferDays + ' spare; example settings).',
         label: role === 'manager' ? 'Propose this order' : 'Send to the supply manager', confirm: role === 'manager' ? 'Send an order request for ' + c.qty + ' × ' + ITEMS[c.item].name.toLowerCase() + ' to purchasing approval? It is not placed until it is approved.' : null,
         run: function () {
-          if (role !== 'manager') { log('Storekeeper', 'Flagged low cover of ' + ITEMS[c.item].name.toLowerCase() + ' to the supply manager.'); state.dismissed['ord-' + c.item + ':store'] = true; return 'Flagged to the supply manager.'; }
+          if (role !== 'manager') { log('Stores assistant', 'Flagged low cover of ' + ITEMS[c.item].name.toLowerCase() + ' to the supply manager.'); state.dismissed['ord-' + c.item + ':store'] = true; return 'Flagged to the supply manager.'; }
           var o = { id: 'PO-' + (state.poSeq++), item: c.item, qty: c.qty, status: 0, atStep: 0, ago: 0, due: null, fromGuide: true };
           state.orders.unshift(o); log('Supply manager', 'Order request ' + o.id + ' raised: ' + c.qty + ' × ' + ITEMS[c.item].name.toLowerCase() + ' (proposed by the guide, confirmed by the supply manager). Now waiting for purchasing approval.');
           return o.id + ' sent for purchasing approval.';
@@ -431,11 +431,11 @@ function suggest(role) {
     });
     levelCands().slice(0, 1).forEach(function (c) {
       var k = c.area + ':' + c.item;
-      out.push({ id: 'lvl-' + k, tag: 'Top-up level', who: 'You decide', title: 'Raise the ' + ITEMS[c.item].name.toLowerCase() + ' level on ' + SHORT[c.area] + ' from ' + c.from + ' to ' + c.to,
+      out.push({ id: 'lvl-' + k, tag: 'Fill-to level', who: 'You decide', title: 'Raise the ' + ITEMS[c.item].name.toLowerCase() + ' level on ' + SHORT[c.area] + ' from ' + c.from + ' to ' + c.to,
         text: 'Use has run ahead of the level, so the ward runs short before the next top-up.' + (state.levelAsks[k] ? ' Ward staff on ' + SHORT[c.area] + ' flagged this too.' : ''),
         why: 'Last 7 days of use: ' + c.last7.join(', ') + ' (14-day average ' + round1(c.use) + '). Rule: a level should cover ' + RULES.levelCoverDays + ' days of use (example setting).',
-        label: 'Propose new level', confirm: 'Change the top-up level for ' + ITEMS[c.item].name.toLowerCase() + ' on ' + SHORT[c.area] + ' to ' + c.to + '?',
-        run: function () { state.ward[c.area][c.item].top = c.to; log('Supply manager', SHORT[c.area] + ': top-up level for ' + ITEMS[c.item].name.toLowerCase() + ' changed from ' + c.from + ' to ' + c.to + ' (proposed by the guide).'); return 'Level changed to ' + c.to + '.'; } });
+        label: 'Propose new level', confirm: 'Change the fill-to level for ' + ITEMS[c.item].name.toLowerCase() + ' on ' + SHORT[c.area] + ' to ' + c.to + '?',
+        run: function () { state.ward[c.area][c.item].top = c.to; log('Supply manager', SHORT[c.area] + ': fill-to level for ' + ITEMS[c.item].name.toLowerCase() + ' changed from ' + c.from + ' to ' + c.to + ' (proposed by the guide).'); return 'Level changed to ' + c.to + '.'; } });
     });
   }
   if (role === 'store' || role === 'manager') {
@@ -481,13 +481,13 @@ function issue(rid) {
   endOut(r.area, r.item);
   if (!r.full) state.requests.push({ id: 'R' + (100 + state.seq++), area: r.area, item: r.item, qty: r.qty - q, raised: r.raised, urgent: r.urgent, issued: null, issuedQty: 0, status: 'open', full: null, balance: true });
   if (st.on <= 0) startOut('STORE', r.item, 'Not known yet');
-  log('Storekeeper', 'Issued ' + q + ' × ' + ITEMS[r.item].name.toLowerCase() + ' to ' + SHORT[r.area] + (r.full ? '.' : ' (' + q + ' of ' + r.qty + '; the balance stays open).'));
+  log('Stores assistant', 'Issued ' + q + ' × ' + ITEMS[r.item].name.toLowerCase() + ' to ' + SHORT[r.area] + (r.full ? '.' : ' (' + q + ' of ' + r.qty + '; the balance stays open).'));
   return r;
 }
 function receive(oid) {
   var o = state.orders.filter(function (x) { return x.id === oid; })[0]; if (!o || o.status !== 2) return;
   o.status = 4; o.atStep = 0; state.store[o.item].on += o.qty; state.cycles.push(Math.max(1, o.ago)); endOut('STORE', o.item);
-  log('Storekeeper', o.id + ' received and checked in: ' + o.qty + ' × ' + ITEMS[o.item].name.toLowerCase() + '.');
+  log('Stores assistant', o.id + ' received and checked in: ' + o.qty + ' × ' + ITEMS[o.item].name.toLowerCase() + '.');
 }
 function advance(oid) {
   var o = state.orders.filter(function (x) { return x.id === oid; })[0]; if (!o || o.status > 1) return;
@@ -497,7 +497,7 @@ function advance(oid) {
 function transfer(id, from, to, q) {
   state.ward[from][id].on -= q; state.ward[to][id].on += q; endOut(to, id);
   var r = openReq(to, id); if (r) { r.qty = Math.max(0, r.qty - q); if (!r.qty) r.status = 'cancelled'; }
-  log(state.role === 'manager' ? 'Supply manager' : 'Storekeeper', 'Transfer: ' + q + ' × ' + ITEMS[id].name.toLowerCase() + ' from ' + SHORT[from] + ' to ' + SHORT[to] + ' (proposed by the guide, confirmed by a person).');
+  log(state.role === 'manager' ? 'Supply manager' : 'Stores assistant', 'Transfer: ' + q + ' × ' + ITEMS[id].name.toLowerCase() + ' from ' + SHORT[from] + ' to ' + SHORT[to] + ' (proposed by the guide, confirmed by a person).');
 }
 
 // ---------- Helpers ----------
@@ -526,7 +526,7 @@ function when(o) { if (o.startDay === 0) return fmtT(o.start); if (o.startDay ==
 var showAllBelow = false, openKpi = null, openCount = null, pending = null, filter = '', showAllLog = false, lastK = null;
 var HINT = {
   ward: 'Ward staff on a phone: find an item, request a top-up, report it out of stock, count the shelf, and see when it will arrive.',
-  store: 'Storekeeper on a phone or tablet: work the pick list, receive deliveries, and count one shelf at a time.',
+  store: 'Stores assistant on a phone or tablet: work the pick list, receive deliveries, and count one shelf at a time.',
   manager: 'Supply manager: stock-outs today, items below their level with days of stock left, and orders stuck in purchasing.'
 };
 function render() {
@@ -541,12 +541,12 @@ function render() {
 function renderKpis() {
   var k = kpis(), box = document.getElementById('kpis'); box.textContent = '';
   var tiles = [
-    { id: 'outs', v: String(k.tracerStockOuts), l: 'tracer stock-outs now', s: '14-day rate ' + k.stockOutRate14dPct + '%', cls: k.tracerStockOuts ? 'bad' : 'good',
-      def: ['Stock-out rate on tracer items', 'Item-days with nothing usable divided by item-days held, for tracer supplies items, in all and for each area (the core measure "Stock-out rate", KPI dictionary D-17). A day out counts when a person declared a stock-out or the balances show nothing usable; the two are joined, never counted twice. Here: the last 14 days. Editable default (no published standard found). Tracer items are a short list that must never run out (here: ' + IDS.filter(function (i) { return ITEMS[i].tracer; }).map(function (i) { return ITEMS[i].name.toLowerCase(); }).join(', ') + '). The big number counts tracer items at zero right now, in any area or the main store: ' + (k.tracerStockOutList.map(function (o) { return o.item.toLowerCase() + ' (' + o.where + ')'; }).join(', ') || 'none') + '.'] },
+    { id: 'outs', v: String(k.tracerStockOuts), l: 'critical item stock-outs now', s: '14-day rate ' + k.stockOutRate14dPct + '%', cls: k.tracerStockOuts ? 'bad' : 'good',
+      def: ['Stock-out rate on critical items', 'Item-days with nothing usable divided by item-days held, for critical supply items (the few that must never run out, often called tracer items), in all and for each area (the core measure "Stock-out rate", KPI dictionary D-17). A day out counts when a person declared a stock-out or the balances show nothing usable; the two are joined, never counted twice. Here: the last 14 days. Editable default (no published standard found). Critical items are a short list that must never run out (here: ' + IDS.filter(function (i) { return ITEMS[i].tracer; }).map(function (i) { return ITEMS[i].name.toLowerCase(); }).join(', ') + '). The big number counts critical items at zero right now, in any area or the main store: ' + (k.tracerStockOutList.map(function (o) { return o.item.toLowerCase() + ' (' + o.where + ')'; }).join(', ') || 'none') + '.'] },
     { id: 'ontime', v: k.filledOnTime.pct == null ? '–' : k.filledOnTime.pct + '%', l: 'requests filled on time', s: k.filledOnTime.inFullOnTime + ' of ' + k.filledOnTime.lines + ' lines today', cls: '',
       def: ['Requests filled on time', 'Request lines issued in full within 4 hours ÷ request lines issued or overdue today (editable default, no published standard found; 4 hours is an example setting). It builds on fill rate: request lines issued in full ÷ request lines raised.'] },
     { id: 'days', v: k.fewestDaysOfStock.days + ' days', l: 'fewest days of stock', s: k.fewestDaysOfStock.item + ', main store', cls: k.fewestDaysOfStock.days < 3 ? 'bad' : '',
-      def: ['Days of stock', 'Main-store stock on hand ÷ average daily use over the last 14 days, worked out for each tracer item (editable default, no published standard found). The tile shows the tracer item closest to running out. Stock on order is not counted until it is received.'] },
+      def: ['Days of stock', 'Main-store stock on hand ÷ average daily use over the last 14 days, worked out for each critical item (editable default, no published standard found). The tile shows the critical item closest to running out. Stock on order is not counted until it is received.'] },
     { id: 'cycle', v: k.orderCycleMedianDays + ' days', l: 'order cycle time', s: 'median, request to received', cls: '',
       def: ['Order cycle time', 'Median days from an order being requested to the receipt into stock that completes it (every line received; a receipt names the order). Here: recent orders. Editable default (no published standard found). The order tracker shows which step the time goes in.'] }
   ];
@@ -599,7 +599,7 @@ function itemRow(a, id) {
   var row = el('div', { class: 'item ' + st, 'data-item': id, 'data-name': it.name.toLowerCase() });
   row.appendChild(el('div', { class: 'ih' }, [el('div', { class: 'nm' }, [it.name + ' ', it.tracer ? el('span', { class: 'chip tracer', text: 'Tracer' }) : null]), el('span', { class: 'chip ' + st, text: st === 'out' ? 'Out' : st === 'low' ? 'Low' : 'OK' })]));
   row.appendChild(el('div', { class: 'imeta', text: w.on + ' of ' + w.top + ' (' + it.unit + ') · ' + daysTxt(w.on / u) }));
-  row.appendChild(el('div', { class: 'meter', role: 'img', 'aria-label': w.on + ' on the shelf, top-up level ' + w.top }, [el('i', { style: 'width:' + Math.min(100, 100 * w.on / w.top) + '%' })]));
+  row.appendChild(el('div', { class: 'meter', role: 'img', 'aria-label': w.on + ' on the shelf, fill-to level ' + w.top }, [el('i', { style: 'width:' + Math.min(100, 100 * w.on / w.top) + '%' })]));
   if (r) row.appendChild(el('div', { class: 'ireq' }, [el('b', { text: (r.urgent ? 'Urgent request ' : 'Requested ') + fmtT(r.raised) + ' · ' + r.qty + ' to come. ' }), eta(r)]));
   row.appendChild(el('div', { class: 'iacts' }, [
     el('button', { type: 'button', class: 'req' + (r || st === 'ok' ? '' : ' primary'), disabled: r ? 'disabled' : false, 'aria-label': (r ? 'Already requested: ' : 'Request top-up: ') + it.name, text: r ? 'Requested' : 'Request top-up',
@@ -632,7 +632,7 @@ function viewStore(root) {
   var open = state.requests.filter(function (r) { return r.status === 'open'; }).sort(function (x, y) {
     var rk = function (r) { return (r.urgent ? 0 : 2) + (ITEMS[r.item].tracer ? 0 : 1); }; return rk(x) - rk(y) || x.raised - y.raised; });
   var pc = el('section', { class: 'card', 'aria-labelledby': 'p-h' }, [el('div', { class: 'cardhead' }, [el('h2', { id: 'p-h', text: 'Pick list' }), el('span', { class: 'chip wait', text: open.length + ' open' })]),
-    el('p', { class: 'sub', text: 'Urgent and tracer items first, then oldest. Issue sends the stock to the area and closes the request.' })]);
+    el('p', { class: 'sub', text: 'Urgent and critical items first, then oldest. Issue sends the stock to the area and closes the request.' })]);
   var ul = el('ul', { class: 'rows', id: 'picklist' });
   open.forEach(function (r) {
     var st = state.store[r.item].on, q = Math.min(st, r.qty), late = now() - r.raised > RULES.onTimeMin;
@@ -659,7 +659,7 @@ function viewStore(root) {
     e.preventDefault(); var diffs = [], n = 0;
     IDS.filter(function (id) { return ITEMS[id].shelf === state.shelf; }).forEach(function (id) { var v = document.getElementById('cc-' + id).value; if (v === '') return; n++; var c = Math.max(0, Math.round(+v)), was = state.store[id].on; if (c !== was) diffs.push(ITEMS[id].name.toLowerCase() + ' ' + (c > was ? '+' : '') + (c - was)); state.store[id].on = c; if (c <= 0) startOut('STORE', id, 'Not known yet'); else endOut('STORE', id); });
     if (!n) { toast('Type at least one count.'); return; }
-    log('Storekeeper', 'Shelf ' + state.shelf + ' counted: ' + n + ' item' + (n > 1 ? 's' : '') + (diffs.length ? ', ' + diffs.length + ' differ (' + diffs.join(', ') + ').' : ', all match the record.'));
+    log('Stores assistant', 'Shelf ' + state.shelf + ' counted: ' + n + ' item' + (n > 1 ? 's' : '') + (diffs.length ? ', ' + diffs.length + ' differ (' + diffs.join(', ') + ').' : ', all match the record.'));
     render(); toast(diffs.length ? 'Count saved. ' + diffs.length + ' difference' + (diffs.length > 1 ? 's' : '') + ' logged.' : 'Count saved. All match.');
   } });
   var grid = el('div', { class: 'cc' });

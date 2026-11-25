@@ -211,7 +211,7 @@ test('the supply chain manager\'s first five minutes on a 390 px phone: sees wha
   const ov = await cmd(page, 'ospeli_stores_overview', {}, 'supply-manager');
   assert.ok(ov.short.lines.length < ov.counts.underLevel, `${ov.short.lines.length} short lines, not the ${ov.counts.underLevel} under their level`);
   assert.equal(await page.locator('[data-test="short"] li[data-kind]').count(), Math.min(10, ov.short.lines.length));
-  assert.match(await page.locator('[data-test="short"]').textContent(), /What is short \(\d+ lines?\).*below 50% of its top-up level/s);
+  assert.match(await page.locator('[data-test="short"]').textContent(), /What is short \(\d+ lines?\).*below 50% of its fill-to level/s);
   assert.deepEqual(await phoneProblems(page), [], 'manager view on a phone: phone rules');
   // Acts: the order that is approved is marked as ordered, from the stuck list.
   const btn = page.locator('[data-test="stuck"] [data-cmd="ospeli_stores_order_step"][data-step="ordered"]').first();
@@ -306,7 +306,7 @@ test('a role with no rights sees no action button; with no stock history and wit
     assert.equal(await page.locator('.sto [data-cmd]').count(), 0, `${screen}: no action button for a role with no rights`);
   }
   await asRole(page, 'estates-tech', 'requests');
-  assert.match(await page.locator('[data-test="read-only"]').textContent(), /issued by Storekeeper/);
+  assert.match(await page.locator('[data-test="read-only"]').textContent(), /issued by Stores assistant/);
   // A device whose example hospital was made before this module: no stock history.
   await olderDevice(page, 'history');
   await asRole(page, 'supply-manager', 'manage');

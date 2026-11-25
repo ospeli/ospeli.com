@@ -325,7 +325,7 @@ export function themesBoard(records, { since, until, offsetMinutes = 0 } = {}) {
 export const GUIDE_RULES = [
   {
     id: 'reply-due-soon',
-    words: `A complaint or concern is within ${SETTINGS.remindDaysBefore} days of its reply due date, or past it, and no reply is recorded: shown to the owner role and the patient liaison officer. Not while it waits on clinical review (passed before its reply was due).`,
+    words: `A complaint or concern is within ${SETTINGS.remindDaysBefore} days of its reply due date, or past it, and no reply is recorded: shown to the owner role and the patient relations lead. Not while it waits on clinical review (passed before its reply was due).`,
     basis: `Fixed rule. The ${SETTINGS.remindDaysBefore} days and the due dates are example settings, not a standard.`,
   },
   {

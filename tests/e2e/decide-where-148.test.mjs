@@ -90,7 +90,7 @@ test('#148: Now counts only what the role can decide and has a screen for (store
   await waitUntil(page, async () => (await window.ospeli.core.getMeta('role')) === 'storekeeper');
   await page.evaluate(() => { location.hash = '#/home'; });
   // Navigation v2: the h1 on Now is the department; the role's name is in the line under it.
-  await page.waitForFunction(() => /Storekeeper/i.test(document.querySelector('main [data-test="now-role"]')?.textContent || ''));
+  await page.waitForFunction(() => /Stores assistant/i.test(document.querySelector('main [data-test="now-role"]')?.textContent || ''));
   const card = page.locator('[data-test="decisions-waiting"]');
   await card.waitFor();
   assert.equal((await card.locator('h2').innerText()).trim(), 'Waiting for your decision (1)');

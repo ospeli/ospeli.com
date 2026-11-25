@@ -64,7 +64,7 @@ for (const width of [390, 1280]) {
     }
     // A role that does not use feedback sees one line saying who does, and no button.
     const { context, page, errors } = await open(width, 'estates-tech');
-    assert.match(await page.locator('[data-test="no-rights"]').textContent(), /It is for: Patient liaison officer, Receptionist/);
+    assert.match(await page.locator('[data-test="no-rights"]').textContent(), /It is for: Patient relations lead, Receptionist/);
     assert.equal(await page.locator('.mod-feedback [data-cmd]').count(), 0);
     assert.deepEqual(errors, []);
     await context.close();
@@ -208,7 +208,7 @@ test('the patient liaison officer at 1280px: overdue first, records a late reply
   await page.selectOption('#fb-reply-ch', 'email');
   await page.click('[data-step="reply"]');
   await page.waitForSelector(`[data-test="record"][data-stage="replied"]`);
-  assert.match(await page.locator('[data-test="timeline"]').textContent(), /Reply sent.*Patient liaison officer · Email/);
+  assert.match(await page.locator('[data-test="timeline"]').textContent(), /Reply sent.*Patient relations lead · Email/);
   // Closing is now open to the liaison officer.
   assert.equal(await page.locator('[data-step="close"]').count(), 1);
   await page.click('.fb-tabs a[data-tab="queue"]');

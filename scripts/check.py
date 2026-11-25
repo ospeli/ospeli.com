@@ -394,7 +394,16 @@ OLD_WORDS = [(re.compile(r"\bbed managers?\b", re.I), "Bed manager", "Patient fl
              (re.compile(r"\b(?:nurses?|midwi(?:fe|ves)) in charge\b", re.I), "nurse in charge / midwife in charge", "charge nurse / charge midwife"),
              (re.compile(r"\bhealth cent(?:re|er)s?\b", re.I), "Health Centre", "clinic"),
              (re.compile(r"\bestate halls?\b", re.I), "estate hall", "community hall"),
-             (re.compile(r"\bby bank\b|\bbank (?:staff|shifts?|nurses?|workers?|cover)\b", re.I), "bank (staff)", "staff pool")]
+             (re.compile(r"\bby bank\b|\bbank (?:staff|shifts?|nurses?|workers?|cover)\b", re.I), "bank (staff)", "staff pool"),
+             # Issue #120: words from stores and patient feedback. The role ids 'storekeeper' and
+             # 'patient-liaison', the item field 'tracer' and the measure id 'stores-tracer-stock-out-rate'
+             # stay, so stored data and agents' calls still work; ids are never shown. "Tracer items" is
+             # said once, in the definition ("often called tracer items"); WHO's own method names
+             # ("tracer medicines", SARA's "availability of tracer items") are cited as they are.
+             (re.compile(r"\bStorekeepers?\b|\bstorekeepers\b|\b(?:the|a|an|and|or|by|of|to|for|each|one) storekeeper\b"), "Storekeeper", "Stores assistant"),
+             (re.compile(r"(?<!often called )(?<!availability of )\b[Tt]racer (?:items?|stock|supplies|holdings)\b|\bfixed tracer list\b"), "tracer items", "critical items"),
+             (re.compile(r"\btop-up levels?\b", re.I), "top-up level", "fill-to level"),
+             (re.compile(r"\b[Pp]atient liaison\b|\bliaison officers?\b", re.I), "Patient liaison officer", "Patient relations lead")]
 # Issue #104: core/processmap.js holds the words people TYPE that mark a place or a thing (lift,
 # car park), so a typed name is read either way; it is a list to recognise, never shown.
 OLD_WORDS_TYPED_LISTS = {"web/app/core/processmap.js": {"lift", "car park"}}

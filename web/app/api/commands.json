@@ -13564,7 +13564,7 @@
     },
     {
       "name": "ospeli_stock_items",
-      "summary": "The items this site keeps stock of (name, unit, category, whether it is a tracer item and whether it is tracked by batch), the stores, the reasons to pick from and which roles may do what. Use the ids with the other ospeli_stock_ commands. No prices, brands or suppliers are kept. Read-only.",
+      "summary": "The items this site keeps stock of (name, unit, category, whether it is a critical item and whether it is tracked by batch), the stores, the reasons to pick from and which roles may do what. Use the ids with the other ospeli_stock_ commands. No prices, brands or suppliers are kept. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -13690,7 +13690,7 @@
     },
     {
       "name": "ospeli_stock_levels",
-      "summary": "What each place holds now: for every item its usable stock, stock on hold, expired stock still on the shelf, its top-up level and how far under it is, any open request, and (detailed) batches with expiry dates and days of stock left. Items under their level come first. Pass placeId for one ward or store. \"asOfSeq\" is what a count sends back as seenSeq. Read-only.",
+      "summary": "What each place holds now: for every item its usable stock, stock on hold, expired stock still on the shelf, its fill-to level and how far under it is, any open request, and (detailed) batches with expiry dates and days of stock left. Items under their level come first. Pass placeId for one ward or store. \"asOfSeq\" is what a count sends back as seenSeq. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -13759,7 +13759,7 @@
           },
           "underLevelOnly": {
             "type": "boolean",
-            "description": "true: only items under their top-up level. Default false."
+            "description": "true: only items under their fill-to level. Default false."
           },
           "format": {
             "type": "string",
@@ -13967,7 +13967,7 @@
     },
     {
       "name": "ospeli_stock_outs",
-      "summary": "The stock-out log: each stock-out a person declared, with the item, the place, when it started and ended, how long it lasted, its cause and whether care was affected (yes or no, nothing clinical). Also \"notDeclared\": items with a top-up level that have nothing usable now and no open stock-out, as a fact for a person to look at. Read-only.",
+      "summary": "The stock-out log: each stock-out a person declared, with the item, the place, when it started and ended, how long it lasted, its cause and whether care was affected (yes or no, nothing clinical). Also \"notDeclared\": items with a fill-to level that have nothing usable now and no open stock-out, as a fact for a person to look at. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -14103,7 +14103,7 @@
     },
     {
       "name": "ospeli_stock_count",
-      "summary": "Record a count of stock at a place: for each line, how many are there and usable now (stock on hold is not counted). Only the lines counted change. Every counted item that is then under its top-up level, with no request already open, goes on one new request to the store in the same step, for exactly what is short. An agent's call becomes a proposal for a person.",
+      "summary": "Record a count of stock at a place: for each line, how many are there and usable now (stock on hold is not counted). Only the lines counted change. Every counted item that is then under its fill-to level, with no request already open, goes on one new request to the store in the same step, for exactly what is short. An agent's call becomes a proposal for a person.",
       "kind": "write",
       "roles": [
         "ward-nurse",
@@ -15374,7 +15374,7 @@
     },
     {
       "name": "ospeli_stock_level_set",
-      "summary": "Set the top-up level of an item at a place: the number the place is topped back up to, and the line a count is compared with. 0 clears it. People only: a guide may suggest a level, a person sets it.",
+      "summary": "Set the fill-to level of an item at a place: the number the place is topped back up to, and the line a count is compared with. 0 clears it. People only: a guide may suggest a level, a person sets it.",
       "kind": "write",
       "roles": [
         "support-supervisor",
@@ -15408,7 +15408,7 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 100000,
-            "description": "The top-up level in the item's own unit. 0 means no level here."
+            "description": "The fill-to level in the item's own unit. 0 means no level here."
           },
           "expectedLevel": {
             "type": "integer",
@@ -19735,7 +19735,7 @@
     },
     {
       "name": "ospeli_experience_record_update",
-      "summary": "Move a complaint or concern on, one step: acknowledge (with the channel used), reply (the site sent the full reply, by which channel; Ospeli sends nothing), set-owner (a role, never a person), close (with the outcome; before a reply only as withdrawn), clinical-review (mark it as passed to clinical review; nothing about the care is recorded; the acknowledgement stays timed, the reply is not called overdue while it waits), clinical-return (it came back from clinical review). For a compliment or card: share (shared with the service). The owner role may acknowledge and reply on its own records; the patient liaison officer and the quality lead may take every step.",
+      "summary": "Move a complaint or concern on, one step: acknowledge (with the channel used), reply (the site sent the full reply, by which channel; Ospeli sends nothing), set-owner (a role, never a person), close (with the outcome; before a reply only as withdrawn), clinical-review (mark it as passed to clinical review; nothing about the care is recorded; the acknowledgement stays timed, the reply is not called overdue while it waits), clinical-return (it came back from clinical review). For a compliment or card: share (shared with the service). The owner role may acknowledge and reply on its own records; the patient relations lead and the quality lead may take every step.",
       "kind": "write",
       "roles": [
         "patient-liaison",
@@ -19871,7 +19871,7 @@
     },
     {
       "name": "ospeli_experience_action_set",
-      "summary": "Agree an action on a complaint or concern (what, picked from a list; the owner role; due in a number of days; an optional short checked note), or close an agreed action. This is how \"what changed\" is tracked until done. Agreeing is for the patient liaison officer, the quality lead or the record's owner role; the action's owner role may also close it.",
+      "summary": "Agree an action on a complaint or concern (what, picked from a list; the owner role; due in a number of days; an optional short checked note), or close an agreed action. This is how \"what changed\" is tracked until done. Agreeing is for the patient relations lead, the quality lead or the record's owner role; the action's owner role may also close it.",
       "kind": "write",
       "roles": [
         "patient-liaison",
@@ -21210,7 +21210,7 @@
     },
     {
       "name": "ospeli_support_guide_set",
-      "summary": "Switch the cleaning and transport guide on or off for this site. The guide is a set of fixed rules that suggest which cleans to do first, when a team is busier than usual, when an area should be audited again, when linen stays under its top-up level and when many meals come back uneaten; a person decides. With it off everything else works the same. People only.",
+      "summary": "Switch the cleaning and transport guide on or off for this site. The guide is a set of fixed rules that suggest which cleans to do first, when a team is busier than usual, when an area should be audited again, when linen stays under its fill-to level and when many meals come back uneaten; a person decides. With it off everything else works the same. People only.",
       "kind": "write",
       "roles": [
         "support-supervisor",
@@ -21267,7 +21267,7 @@
     },
     {
       "name": "ospeli_stores_overview",
-      "summary": "Stores and supplies at a glance, in one call: the four measures with their definitions and sources (stock-out rate on tracer items, request wait, order cycle time, fill rate), how many items are under their top-up level, requests waiting, open orders and stock-outs, reminders sent, and the guide's suggestions with their reasons and basis (empty while the guide is off). Inventory turns is listed as planned, with no value. Counts items, requests and orders, never people. Read-only.",
+      "summary": "Stores and supplies at a glance, in one call: the four measures with their definitions and sources (stock-out rate on critical items, request wait, order cycle time, fill rate), how many items are under their fill-to level, requests waiting, open orders and stock-outs, reminders sent, and the guide's suggestions with their reasons and basis (empty while the guide is off). Inventory turns is listed as planned, with no value. Counts items, requests and orders, never people. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -21365,7 +21365,7 @@
           },
           "short": {
             "type": "object",
-            "description": "What needs a person to look now: lines of kind none-left, below-share (a ward item below a share of its top-up level), store-not-on-order or request-waiting, with counts (itemLines and wards for the wards; storeLines; requestsLate). The share and the wait are example settings, not standards."
+            "description": "What needs a person to look now: lines of kind none-left, below-share (a ward item below a share of its fill-to level), store-not-on-order or request-waiting, with counts (itemLines and wards for the wards; storeLines; requestsLate). The share and the wait are example settings, not standards."
           },
           "counts": {
             "type": "object",
@@ -21698,7 +21698,7 @@
               "delivered",
               "cancelled"
             ],
-            "description": "The step to record: requested, approved, ordered, delivered, cancelled. Who records each: requested by Supply chain manager or Storekeeper; approved by Operations manager or Chief operating officer; ordered by Supply chain manager; delivered by Storekeeper or Supply chain manager; cancelled by Supply chain manager or Operations manager."
+            "description": "The step to record: requested, approved, ordered, delivered, cancelled. Who records each: requested by Supply chain manager or Stores assistant; approved by Operations manager or Chief operating officer; ordered by Supply chain manager; delivered by Stores assistant or Supply chain manager; cancelled by Supply chain manager or Operations manager."
           },
           "orderId": {
             "type": "string",
@@ -21899,7 +21899,7 @@
     },
     {
       "name": "ospeli_stores_guide_set",
-      "summary": "Switch the stores guide on or off for this site. The guide is three fixed rules: a top-up level that use has outgrown, an order waiting at one step longer than usual, and a transfer from an area with far more than its level to one that is short. They suggest; a person decides. With it off everything else works the same. People only.",
+      "summary": "Switch the stores guide on or off for this site. The guide is three fixed rules: a fill-to level that use has outgrown, an order waiting at one step longer than usual, and a transfer from an area with far more than its level to one that is short. They suggest; a person decides. With it off everything else works the same. People only.",
       "kind": "write",
       "roles": [
         "supply-manager",

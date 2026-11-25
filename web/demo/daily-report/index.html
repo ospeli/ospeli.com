@@ -281,7 +281,7 @@ var ACTIONS = [
   { id: 'a1', text: 'Agree weekend discharge cover with the medical wards', owner: 'Operations manager', due: -5 },
   { id: 'a2', text: 'Fix missing “left department” times in emergency department records', owner: 'Data owner, emergency department', due: -3 },
   { id: 'a3', text: 'Review transport task routing at the 10:00–12:00 peak', owner: 'Support services manager', due: -2 },
-  { id: 'a4', text: 'Confirm reorder levels for the tracer items list', owner: 'Stores manager', due: -1 },
+  { id: 'a4', text: 'Confirm reorder levels for the critical items list', owner: 'Stores manager', due: -1 },
   { id: 'a5', text: 'Agree a cleaning response time for beds freed by discharge', owner: 'Support services supervisor', due: 0 },
   { id: 'a6', text: 'Clear overdue planned maintenance on ward monitors', owner: 'Equipment manager', due: 0 },
   { id: 'a7', text: 'Share bottleneck finder results with ward managers', owner: 'Operations manager', due: 3 },
@@ -301,7 +301,7 @@ var SOURCES = [
   { id: 'beds', name: 'Bed status events', field: 'a “bed ready” time' },
   { id: 'ed', name: 'Emergency department records', field: 'a “left department” time' },
   { id: 'wo', name: 'Equipment work orders', field: 'a completion time' },
-  { id: 'stores', name: 'Tracer stock counts', field: 'a morning count' },
+  { id: 'stores', name: 'Critical item counts', field: 'a morning count' },
   { id: 'support', name: 'Support task records', field: 'a start time' },
   { id: 'staff', name: 'Shift cover records', field: 'staff-on-duty numbers' }
 ];
@@ -326,7 +326,7 @@ var DEFS = {
   woOpen: ['Open work orders', 'Equipment repair and planned maintenance work orders not closed at the ' + SNAP + ' snapshot.', 'Equipment manager'],
   woOver: ['Overdue work orders', 'Open work orders past their due date at the ' + SNAP + ' snapshot.', 'Equipment manager'],
   woOld: ['Oldest overdue work order', 'Days past its due date for the oldest open work order.', 'Equipment manager'],
-  outs: ['Tracer stock-outs', 'Items on the fixed tracer list (' + TRACERS.length + ' items counted every morning) with no stock in central stores at the morning count.', 'Stores manager'],
+  outs: ['Critical item stock-outs', 'Items on the fixed list of critical items (' + TRACERS.length + ' items counted every morning) with no stock in central stores at the morning count.', 'Stores manager'],
   supWait: ['Support tasks waiting', 'Transport and cleaning tasks requested but not started at the ' + SNAP + ' snapshot (today so far: at ' + SO_FAR + ').', 'Support services manager'],
   supOld: ['Oldest waiting task', 'Minutes since the oldest task that is still waiting was requested.', 'Support services manager'],
   sup30: ['Tasks that waited over 30 minutes', 'Tasks that waited more than 30 minutes from request to start, that day.', 'Support services manager'],
@@ -501,7 +501,7 @@ function decisions() {
     title: 'Approve cover for ' + plural(st.shifts, 'shift') + ' below planned', text: 'Decide whether to approve extra shifts or move staff between units.',
     why: st.short + ' staff short in total' + (st.rows[0] ? '; most in ' + st.rows[0].unit + ' (' + st.rows[0].which + ')' : '') + '. 14-day median ' + ms + ' shifts.' });
   if (day.outs.length) out.push({ id: 'stores', area: 'stores', score: 1.5 + day.outs.length,
-    title: 'Approve an urgent order for ' + (day.outs.length === 1 ? day.outs[0] : plural(day.outs.length, 'tracer item')), text: 'Decide whether to use the urgent purchasing route or borrow stock, and who confirms a delivery date.',
+    title: 'Approve an urgent order for ' + (day.outs.length === 1 ? day.outs[0] : plural(day.outs.length, 'critical item')), text: 'Decide whether to use the urgent purchasing route or borrow stock, and who confirms a delivery date.',
     why: 'Out of stock in central stores at the morning count: ' + day.outs.join(', ') + '.' });
   var mo = med14(function (d) { return d.woOver; });
   out.push({ id: 'equipment', area: 'equipment', score: score(day.woOver, mo, 'up'),
@@ -553,7 +553,7 @@ function suggest() {
     if (st.shifts >= 3) out.push({ id: 'staff', kind: 'ask', title: plural(st.shifts, 'shift') + ' below planned cover in ' + plural(st.rows.length, 'unit'),
       text: 'Check cover for the rest of the day before the huddle ends, unit by unit.', why: st.rows.map(function (r) { return r.unit + ': ' + r.which; }).slice(0, 3).join('; ') + '.',
       huddle: 'Check cover: ' + st.rows.map(function (r) { return r.unit + ' (' + r.short + ' short)'; }).slice(0, 3).join(', ') });
-    else out.push({ id: 'stores', kind: 'ask', title: plural(day.outs.length, 'tracer item') + ' out of stock', text: 'Ask stores for a delivery date and whether wards hold stock that can be shared.', why: 'Morning count: ' + day.outs.join(', ') + '.', huddle: 'Stores to confirm delivery dates for ' + day.outs.join(', ') });
+    else out.push({ id: 'stores', kind: 'ask', title: plural(day.outs.length, 'critical item') + ' out of stock', text: 'Ask stores for a delivery date and whether wards hold stock that can be shared.', why: 'Morning count: ' + day.outs.join(', ') + '.', huddle: 'Stores to confirm delivery dates for ' + day.outs.join(', ') });
   }
   return out.filter(function (s) { return !state.dismissed[dayKey() + ':' + s.id]; }).slice(0, 4);
 }
@@ -639,7 +639,7 @@ function areaGrid(day, compact) {
     ['Overdue', num('woOver', String(day.woOver)), compact ? null : vs(day.woOver, m(function (d) { return d.woOver; }))],
     ['Oldest overdue', num('woOld', plural(day.woOld, 'day'))]
   ]));
-  grid.appendChild(area('stores', 'Stores', [['Tracer stock-outs', num('outs', day.outs.length + ' of ' + TRACERS.length)]], day.outs.length ? el('ul', { class: 'mini' }, day.outs.map(function (t) { return el('li', { text: 'Out: ' + t }); })) : el('p', { class: 'mini', text: 'All tracer items in stock.' })));
+  grid.appendChild(area('stores', 'Stores', [['Critical item stock-outs', num('outs', day.outs.length + ' of ' + TRACERS.length)]], day.outs.length ? el('ul', { class: 'mini' }, day.outs.map(function (t) { return el('li', { text: 'Out: ' + t }); })) : el('p', { class: 'mini', text: 'All critical items in stock.' })));
   grid.appendChild(area('support', 'Support tasks', [
     ['Waiting at ' + (day.partial ? SO_FAR : SNAP), num('supWait', String(day.supWait))],
     ['Oldest waiting', num('supOld', fmtMin(day.supOld)), compact ? null : vs(day.supOld, m(function (d) { return d.supOld; }), ' min')],
@@ -826,7 +826,7 @@ function summaryText() {
   L.push('', 'Beds: ' + day.free + ' free at ' + SNAP + '; ' + day.waiting + ' waiting for a bed; ' + (day.partial ? 'discharges planned today ' + day.disch : 'discharges before noon ' + day.noon + ' of ' + day.disch) + '.');
   L.push('Emergency department: ' + day.attend + ' arrivals; median waits: triage ' + fmtMin(day.ed['ed-triage']) + ', first seen ' + fmtMin(day.ed['ed-seen']) + ', decision ' + fmtMin(day.ed['ed-decision']) + ', decision to admit to leaving ' + fmtMin(day.ed['ed-bed']) + '.');
   L.push('Equipment: ' + day.woOpen + ' open work orders, ' + day.woOver + ' overdue (oldest ' + plural(day.woOld, 'day') + ').');
-  L.push('Stores: ' + day.outs.length + ' of ' + TRACERS.length + ' tracer items out' + (day.outs.length ? ' (' + day.outs.join(', ') + ')' : '') + '.');
+  L.push('Stores: ' + day.outs.length + ' of ' + TRACERS.length + ' critical items out' + (day.outs.length ? ' (' + day.outs.join(', ') + ')' : '') + '.');
   L.push('Support tasks: ' + day.supWait + ' waiting; oldest ' + fmtMin(day.supOld) + '; ' + day.sup30 + ' waited over 30 min.');
   L.push('Staffing: ' + plural(st.shifts, 'shift') + ' below planned cover, ' + st.short + ' staff short' + (st.rows.length ? ' (' + st.rows.map(function (r) { return r.unit + ' ' + r.short; }).join(', ') + ')' : '') + '.');
   L.push('Actions: ' + acts.length + ' overdue.');
@@ -851,7 +851,7 @@ function renderReport() {
     ['Emergency department', 'Arrivals', day.attend, 'attend']
   ].concat(STEPS.slice(0, 4).map(function (s) { return ['Emergency department', DEFS[s.id][0], fmtMin(day.ed[s.id]), s.id]; })).concat([
     ['Equipment', 'Open work orders', day.woOpen, 'woOpen'], ['Equipment', 'Overdue work orders', day.woOver, 'woOver'],
-    ['Stores', 'Tracer stock-outs', day.outs.length + ' of ' + TRACERS.length + (day.outs.length ? ': ' + day.outs.join(', ') : ''), 'outs'],
+    ['Stores', 'Critical item stock-outs', day.outs.length + ' of ' + TRACERS.length + (day.outs.length ? ': ' + day.outs.join(', ') : ''), 'outs'],
     ['Support tasks', 'Waiting', day.supWait, 'supWait'], ['Support tasks', 'Oldest waiting', fmtMin(day.supOld), 'supOld'], ['Support tasks', 'Waited over 30 min', day.sup30, 'sup30'],
     ['Staffing', 'Shifts below planned cover', st.shifts + (st.rows.length ? ' (' + st.rows.map(function (x) { return x.unit + ': ' + x.which; }).join('; ') + ')' : ''), 'below'],
     ['Actions', 'Overdue', actionsNow().filter(function (a) { return a.overdue; }).length, 'overdue']

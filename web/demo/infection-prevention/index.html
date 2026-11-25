@@ -467,7 +467,7 @@ function suggest() {
   });
   return out.filter(function (x) { return !state.dismissed[x.id]; }).slice(0, 4);
 }
-function reopenItems(c) { return ['Deep clean of each bay that was closed (' + (c.maxBays || c.bays || 1) + ')', 'Curtains changed in those bays', 'Bays restocked to top-up levels', 'Closure signs and visitor notice taken down', 'Patient flow team told the beds are open', 'Final status note sent to leadership']; }
+function reopenItems(c) { return ['Deep clean of each bay that was closed (' + (c.maxBays || c.bays || 1) + ')', 'Curtains changed in those bays', 'Bays restocked to fill-to levels', 'Closure signs and visitor notice taken down', 'Patient flow team told the beds are open', 'Final status note sent to leadership']; }
 function propose(p) {
   if (state.pending.some(function (x) { return x.id === p.id; })) return;
   p.at = nowMin(); state.pending.push(p);

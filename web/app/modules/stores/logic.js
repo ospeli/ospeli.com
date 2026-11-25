@@ -25,7 +25,7 @@ export const STOCK_CATEGORIES = {
   } },
 };
 // About twenty generic consumables: no brand, supplier, price or currency, nothing cold-chain and
-// nothing that is a medicine (medicines are pharmacy operations). Tracer items are the few watched
+// nothing that is a medicine (medicines are pharmacy operations). Critical items are the few watched
 // as a sign of how well stock is kept; which ones is an example choice, set locally.
 export const STOCK_ITEMS = [
   { id: 'gloves-m', name: 'Examination gloves, medium', unit: 'box of 100', category: 'supplies', tracer: true },
@@ -188,7 +188,7 @@ export function guideOn(events) {
 // ---- KPIs. Each is (stock or orders, { since, until, see }) -> { value, numerator, denominator, n, ... } ----
 // `see(placeId)` keeps the places the caller may see (an agent's wards); a person sees all.
 const all = () => true;
-// 1. Stock-out rate on tracer items: the core KPI (dictionary D-17), filtered to supplies tracer
+// 1. Stock-out rate on critical items: the core KPI (dictionary D-17), filtered to supplies tracer
 // items, in all and per area. The module works out no formula of its own.
 export function tracerStockOutRate(stock, { since, until, see = all }) {
   const pick = (it, h) => isSupply(it) && it.tracer && see(h.placeId);
@@ -225,9 +225,9 @@ export function fillRatePercent(stock, { since, until, see = all }) {
   return { value: v.value, numerator: v.numerator, denominator: v.denominator, n: v.requests, cancelled: v.cancelled };
 }
 
-// ---- what is short now: not every item under its top-up level (a ward under its level is normal
+// ---- what is short now: not every item under its fill-to level (a ward under its level is normal
 // between top-ups and is asked for by its count), but what needs a person to look ----
-export const SHORT_SHARE = 0.5; // a ward item below half its top-up level (example setting, not a standard)
+export const SHORT_SHARE = 0.5; // a ward item below half its fill-to level (example setting, not a standard)
 export const REQUEST_USUAL_HOURS = 24; // a ward request waiting longer than this (example setting, not a standard)
 export function shortNow(stock, orders, { now, isArea, isStore, see = all }) {
   const t = typeof now === 'string' ? Date.parse(now) : now;
@@ -257,14 +257,14 @@ export function shortNow(stock, orders, { now, isArea, isStore, see = all }) {
 export const LEVEL_WEEK_DAYS = 7; // the guide assumes an area is topped up about once a week (example setting)
 export const LEVEL_EXTRA = 0.25; // a quarter on top of a week's use (example setting)
 export const LEVEL_MIN_HISTORY_DAYS = 14; // no suggestion from less history than this (example setting)
-export const FAR_MORE = 2; // "far more" means at least twice the top-up level (example setting)
+export const FAR_MORE = 2; // "far more" means at least twice the fill-to level (example setting)
 export const GUIDE_RULES = [
-  { id: 'level-check', name: 'Use runs ahead of the top-up level',
-    basis: `Example setting, not a standard: a fixed rule. When an area's use of an item over the last ${USE_PERIOD_DAYS} days (what counts found gone) averages more in a week than its top-up level, a new level of one week's use plus a quarter is suggested. It assumes the area is topped up about once a week and needs ${LEVEL_MIN_HISTORY_DAYS} days of history; both are set locally. A person sets the level.` },
+  { id: 'level-check', name: 'Use runs ahead of the fill-to level',
+    basis: `Example setting, not a standard: a fixed rule. When an area's use of an item over the last ${USE_PERIOD_DAYS} days (what counts found gone) averages more in a week than its fill-to level, a new level of one week's use plus a quarter is suggested. It assumes the area is topped up about once a week and needs ${LEVEL_MIN_HISTORY_DAYS} days of history; both are set locally. A person sets the level.` },
   { id: 'order-waiting', name: 'An order has waited at one step longer than usual',
     basis: `Example setting, not a standard: the usual longest waits set here are ${USUAL_DAYS.requested} days for approval, ${USUAL_DAYS.approved} days to be ordered, ${USUAL_DAYS.ordered} days for delivery and ${USUAL_DAYS.delivered} day to be received into stock. A person sends the reminder; at most one a day for one order at one step.` },
   { id: 'transfer', name: 'One area holds far more than another that is short',
-    basis: `Example setting, not a standard: one area holds at least ${FAR_MORE} times its top-up level of an item while another area is under its level. The amount suggested is the smaller of the extra and what is short, and what the store holds is shown beside it. Cold-chain items are left out. A person moves the stock and then records the move.` },
+    basis: `Example setting, not a standard: one area holds at least ${FAR_MORE} times its fill-to level of an item while another area is under its level. The amount suggested is the smaller of the extra and what is short, and what the store holds is shown beside it. Cold-chain items are left out. A person moves the stock and then records the move.` },
 ];
 const BASIS = Object.fromEntries(GUIDE_RULES.map((r) => [r.id, r.basis]));
 const roleList = (ids) => ids.map((r) => (r === 'coo' ? 'Chief operating officer' : roleById(r)?.name || r)).join(' or ');
@@ -286,8 +286,8 @@ export function ruleLevelCheck(stock, { now, isArea, see = all, placeName = (id)
     const level = Math.min(MAX_QTY, Math.ceil(week * (1 + LEVEL_EXTRA)));
     out.push({
       rule: 'level-check', id: `level-check:${h.placeId}:${h.itemId}`, placeId: h.placeId, itemId: h.itemId,
-      text: `${it.name}, ${placeName(h.placeId)}: think about a top-up level of ${level}.`,
-      why: `Used in the last ${Math.round(span)} days: ${used} (${it.unit}), about ${Math.round(week * 10) / 10} a week. The top-up level is ${h.level}.`,
+      text: `${it.name}, ${placeName(h.placeId)}: think about a fill-to level of ${level}.`,
+      why: `Used in the last ${Math.round(span)} days: ${used} (${it.unit}), about ${Math.round(week * 10) / 10} a week. The fill-to level is ${h.level}.`,
       basis: BASIS['level-check'],
       action: { label: `Set the level to ${level}`, command: 'ospeli_stock_level_set', inputs: [{ itemId: h.itemId, placeId: h.placeId, level, expectedLevel: h.level }] },
     });
@@ -337,7 +337,7 @@ export function ruleTransfer(stock, { now, isArea, see = all, placeName = (id) =
     out.push({
       rule: 'transfer', id: `transfer:${itemId}:${rich.placeId}:${short.placeId}`, itemId, fromPlaceId: rich.placeId, toPlaceId: short.placeId,
       text: `${it.name}: ${placeName(rich.placeId)} could send ${qty} (${it.unit}) to ${placeName(short.placeId)}.`,
-      why: `${placeName(rich.placeId)} has ${rich.usable} (top-up level ${rich.level}); ${placeName(short.placeId)} has ${short.usable} (level ${short.level}).${store == null ? '' : ` The store has ${store} usable.`}`,
+      why: `${placeName(rich.placeId)} has ${rich.usable} (fill-to level ${rich.level}); ${placeName(short.placeId)} has ${short.usable} (level ${short.level}).${store == null ? '' : ` The store has ${store} usable.`}`,
       basis: BASIS.transfer,
       action: { label: `Record: ${qty} moved from ${placeName(rich.placeId)} to ${placeName(short.placeId)}`, command: 'ospeli_stock_transfer', inputs: [{ fromPlaceId: rich.placeId, toPlaceId: short.placeId, lines: [{ itemId, qty }] }] },
     });

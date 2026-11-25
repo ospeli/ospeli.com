@@ -189,7 +189,7 @@ test('a complaint moves received, acknowledged, replied, closed; each step only 
   const { core, c } = await site();
   const { recordId: id } = await run(core, LOG, complaint({ serviceId: 'ward-a1' }), 'patient-liaison');
   // Before an owner is set, the ward nurse is not the owner and cannot act.
-  await assert.rejects(run(core, UPD, { recordId: id, step: 'acknowledge', channel: 'letter' }, 'ward-nurse'), code('forbidden', /owner role is Patient liaison officer/));
+  await assert.rejects(run(core, UPD, { recordId: id, step: 'acknowledge', channel: 'letter' }, 'ward-nurse'), code('forbidden', /owner role is Patient relations lead/));
   await assert.rejects(run(core, UPD, { recordId: id, step: 'close', outcome: 'resolved' }, 'patient-liaison'), code('conflict', /no reply recorded yet/));
   await assert.rejects(run(core, UPD, { recordId: id, step: 'acknowledge' }, 'patient-liaison'), code('invalid-input', /needs channel/));
   await assert.rejects(run(core, UPD, { recordId: id, step: 'set-owner', ownerRole: 'ward-nurse', channel: 'letter' }, 'patient-liaison'), code('invalid-input', /takes no channel/));

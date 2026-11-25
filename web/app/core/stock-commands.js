@@ -4,7 +4,7 @@
 //
 // People decide, Ospeli suggests: an agent may read stock; anything it asks to change waits as a
 // proposal for a person, and is checked again when the person accepts. Releasing held stock,
-// setting a top-up level and adding an item are for people only.
+// setting a fill-to level and adding an item are for people only.
 // Operations only: no dose for a person, no decision that stock is fit to use, no purchase
 // approval, no price. The only typed text is the name and unit of an item a site adds, and it is
 // checked for personal details.
@@ -238,7 +238,7 @@ export function stockCommands(packs = []) {
     // ---------------------------------------------------------------- reads
     {
       name: 'ospeli_stock_items',
-      summary: 'The items this site keeps stock of (name, unit, category, whether it is a tracer item and whether it is tracked by batch), the stores, the reasons to pick from and which roles may do what. Use the ids with the other ospeli_stock_ commands. No prices, brands or suppliers are kept. Read-only.',
+      summary: 'The items this site keeps stock of (name, unit, category, whether it is a critical item and whether it is tracked by batch), the stores, the reasons to pick from and which roles may do what. Use the ids with the other ospeli_stock_ commands. No prices, brands or suppliers are kept. Read-only.',
       kind: 'read', roles: ALL_ROLES, approval: false, freeText: true,
       input: { type: 'object', additionalProperties: false, properties: { category: CATEGORY, coldChain: COLD, limit: LIMIT(100, 500, 'items') } },
       output: { type: 'object', required: ['synthetic', 'items', 'categories', 'stores', 'picks', 'total', 'truncated'], properties: {
@@ -264,11 +264,11 @@ export function stockCommands(packs = []) {
     },
     {
       name: 'ospeli_stock_levels',
-      summary: 'What each place holds now: for every item its usable stock, stock on hold, expired stock still on the shelf, its top-up level and how far under it is, any open request, and (detailed) batches with expiry dates and days of stock left. Items under their level come first. Pass placeId for one ward or store. "asOfSeq" is what a count sends back as seenSeq. Read-only.',
+      summary: 'What each place holds now: for every item its usable stock, stock on hold, expired stock still on the shelf, its fill-to level and how far under it is, any open request, and (detailed) batches with expiry dates and days of stock left. Items under their level come first. Pass placeId for one ward or store. "asOfSeq" is what a count sends back as seenSeq. Read-only.',
       kind: 'read', roles: ALL_ROLES, approval: false, freeText: true,
       input: { type: 'object', additionalProperties: false, properties: {
         placeId: PLACE('Only this place.'), itemId: { ...ITEM, description: 'Only this item, for example to see every place that holds it.' }, category: CATEGORY, coldChain: COLD,
-        underLevelOnly: { type: 'boolean', description: 'true: only items under their top-up level. Default false.' },
+        underLevelOnly: { type: 'boolean', description: 'true: only items under their fill-to level. Default false.' },
         format: FORMAT('balances and levels', 'batches, near-expiry count and days of stock left too'), limit: LIMIT(100, 500, 'lines') } },
       output: { type: 'object', required: ['asOf', 'asOfSeq', 'synthetic', 'levels', 'total', 'truncated'], properties: {
         asOf: TIME, asOfSeq: { type: 'integer', description: 'The newest stock event behind this answer. Send it as seenSeq with a count.' }, synthetic: SYNTHETIC, total: TOTAL, truncated: TRUNCATED,
@@ -317,7 +317,7 @@ export function stockCommands(packs = []) {
     },
     {
       name: 'ospeli_stock_outs',
-      summary: 'The stock-out log: each stock-out a person declared, with the item, the place, when it started and ended, how long it lasted, its cause and whether care was affected (yes or no, nothing clinical). Also "notDeclared": items with a top-up level that have nothing usable now and no open stock-out, as a fact for a person to look at. Read-only.',
+      summary: 'The stock-out log: each stock-out a person declared, with the item, the place, when it started and ended, how long it lasted, its cause and whether care was affected (yes or no, nothing clinical). Also "notDeclared": items with a fill-to level that have nothing usable now and no open stock-out, as a fact for a person to look at. Read-only.',
       kind: 'read', roles: ALL_ROLES, approval: false, freeText: true,
       input: { type: 'object', additionalProperties: false, properties: {
         placeId: PLACE('Only this place.'), itemId: { ...ITEM, description: 'Only this item, across every place.' }, category: CATEGORY,
@@ -348,7 +348,7 @@ export function stockCommands(packs = []) {
     // ---------------------------------------------------------------- count, request, issue
     write({
       name: 'ospeli_stock_count',
-      summary: 'Record a count of stock at a place: for each line, how many are there and usable now (stock on hold is not counted). Only the lines counted change. Every counted item that is then under its top-up level, with no request already open, goes on one new request to the store in the same step, for exactly what is short. An agent\'s call becomes a proposal for a person.',
+      summary: 'Record a count of stock at a place: for each line, how many are there and usable now (stock on hold is not counted). Only the lines counted change. Every counted item that is then under its fill-to level, with no request already open, goes on one new request to the store in the same step, for exactly what is short. An agent\'s call becomes a proposal for a person.',
       verbs: ['count'], required: ['placeId', 'lines'],
       props: {
         placeId: PLACE('The place counted.'), lines: LINES(0, { date: true }, 'What was counted: the number there now, 0 when there is none.'),
@@ -613,10 +613,10 @@ export function stockCommands(packs = []) {
     // ---------------------------------------------------------------- people only: levels and items
     write({
       name: 'ospeli_stock_level_set',
-      summary: 'Set the top-up level of an item at a place: the number the place is topped back up to, and the line a count is compared with. 0 clears it. People only: a guide may suggest a level, a person sets it.',
+      summary: 'Set the fill-to level of an item at a place: the number the place is topped back up to, and the line a count is compared with. 0 clears it. People only: a guide may suggest a level, a person sets it.',
       verbs: ['levels'], people: true, required: ['itemId', 'placeId', 'level'],
       props: { itemId: { ...ITEM, description: 'The item, from ospeli_stock_items.' }, placeId: PLACE('The place the level is for.'),
-        level: { ...QTY(0), description: 'The top-up level in the item\'s own unit. 0 means no level here.' },
+        level: { ...QTY(0), description: 'The fill-to level in the item\'s own unit. 0 means no level here.' },
         expectedLevel: { ...QTY(0), description: 'The level the caller last saw (0 for none). If it has changed since, the command is refused (conflict).' } },
       out: { itemId: { type: 'string' }, placeId: ID, level: { type: ['integer', 'null'] } },
       verify(c) {

@@ -1,5 +1,5 @@
 /* Stores and supplies. Every rule starts with .mod-stores. Shell colours only (brand kit v3.1).
-   Phone first for the ward nurse and the storekeeper: text 15 px or more, every control at least
+   Phone first for the ward nurse and the stores assistant: text 15 px or more, every control at least
    44 px tall, the count's save button always in reach at the bottom of the screen. */
 .mod-stores.sto { font-size: 1rem; min-width: 0; }
 .mod-stores .meta, .mod-stores .chip, .mod-stores .chip-btn, .mod-stores .stat span, .mod-stores .btn-small, .mod-stores label, .mod-stores .label { font-size: .9375rem; }

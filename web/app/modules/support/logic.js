@@ -257,7 +257,7 @@ export function ruleAuditFailedTwice(audits, placeName) {
 
 // ================================================================ Linen and meals (slice 2)
 // Linen is the shared stock item (core/stock.js): this module adds the category and a few example
-// items, and every count, top-up level, request, issue and stock-out goes through the shared
+// items, and every count, fill-to level, request, issue and stock-out goes through the shared
 // ospeli_stock_* commands. Nothing here moves stock; it only reads the log. Meals are counts for a
 // ward, a date and a meal (ordered, delivered, returned uneaten), never a person, a diet or an
 // allergy: those stay with the site's own catering and clinical process.
@@ -265,7 +265,7 @@ export function ruleAuditFailedTwice(audits, placeName) {
 // Who may do what with linen. Every verb is listed; [] means nobody does it here. Clean linen is
 // kept in the site's store (the example hospital has one store and no linen room), so the
 // storekeeper receives it from the laundry and issues top-ups; the support services supervisor
-// sets the top-up levels and looks after the rest.
+// sets the fill-to levels and looks after the rest.
 const SUPERVISOR = ['support-supervisor'];
 const STORE = ['storekeeper'];
 const ON_THE_WARD = ['cleaner', 'ward-nurse', 'support-supervisor'];
@@ -408,8 +408,8 @@ export const MEAL_USUAL_PCT = 15; // usual share returned uneaten, per ward and 
 export const MEAL_MIN_RECORDS = 3; // at least this many days recorded before the rule says anything
 export const MEAL_MIN_DELIVERED = 30; // and at least this many meals delivered
 GUIDE_RULES.push(
-  { id: 'linen-two-counts', name: 'Linen under its top-up level twice',
-    basis: 'Example setting, not a standard: a fixed rule. An item\'s last two counts in an area were both under its top-up level and it is still under. With no top-up waiting, the guide offers one for exactly what is short; with one waiting, it says so. A person decides.' },
+  { id: 'linen-two-counts', name: 'Linen under its fill-to level twice',
+    basis: 'Example setting, not a standard: a fixed rule. An item\'s last two counts in an area were both under its fill-to level and it is still under. With no top-up waiting, the guide offers one for exactly what is short; with one waiting, it says so. A person decides.' },
   { id: 'meals-returned', name: 'Many meals returned uneaten',
     basis: `Example setting, not a standard: over the last ${MEAL_DAYS} days, with at least ${MEAL_MIN_RECORDS} days recorded and ${MEAL_MIN_DELIVERED} meals delivered, more than ${MEAL_USUAL_PCT}% of one ward's meal came back uneaten (the usual level, set locally; there is no published figure for whole meals returned, and published figures are weighed plate waste, a different measure). Advice only.` },
 );
@@ -452,7 +452,7 @@ export function ruleLinenTwoCounts(events, { stock, now, isArea = () => true, se
       const lines = p.ask.sort((a, b) => (a.itemId < b.itemId ? -1 : 1)).map((x) => ({ itemId: x.itemId, qty: x.level - x.usable }));
       out.push({ rule: 'linen-two-counts', id: `linen-two-counts:${placeId}`,
         text: `Ask for a linen top-up for ${place}: ${andList(lines.map((l) => `${itemName(l.itemId).toLowerCase()} ${l.qty}`))}.`,
-        why: `Under the top-up level on the last two counts, and no top-up is waiting: ${words(p.ask)}.`,
+        why: `Under the fill-to level on the last two counts, and no top-up is waiting: ${words(p.ask)}.`,
         basis: BASIS['linen-two-counts'],
         action: { label: 'Ask for this top-up', command: 'ospeli_stock_request', inputs: [{ placeId, lines }] } });
     }
@@ -461,7 +461,7 @@ export function ruleLinenTwoCounts(events, { stock, now, isArea = () => true, se
       const hrs = Math.max(...p.waiting.map((x) => (Date.parse(now) - Date.parse(x.request.at)) / HOUR_MS));
       out.push({ rule: 'linen-two-counts', id: `linen-two-counts:${placeId}:waiting`,
         text: `Check the linen top-up for ${place}: ${andList(ids)} ${ids.length === 1 ? 'is' : 'are'} still waiting.`,
-        why: `Under the top-up level on the last two counts: ${words(p.waiting)}. The top-up was asked for ${Math.round(hrs)} h ago and is not issued in full yet.`,
+        why: `Under the fill-to level on the last two counts: ${words(p.waiting)}. The top-up was asked for ${Math.round(hrs)} h ago and is not issued in full yet.`,
         basis: BASIS['linen-two-counts'], action: null });
     }
   }

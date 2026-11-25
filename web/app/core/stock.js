@@ -13,7 +13,7 @@
 //
 // Events (all { type, subject, actorRole, at, data }); a line is { itemId, qty, batch?, expiresOn? }:
 //   stock.item-added        subject item id      data: the item's fields, its name as `label` (an item a site added)
-//   stock.level-set         subject place id     { itemId, level }            top-up level; 0 clears it
+//   stock.level-set         subject place id     { itemId, level }            fill-to level; 0 clears it
 //   stock.received          subject place id     { lines, source, orderRef? } + at the place
 //   stock.requested         subject request id   { placeId, fromPlaceId, lines, raisedBy }
 //   stock.issued            subject request id   { lines }                     - supplier, + asker
@@ -349,7 +349,7 @@ export function stockOutRate(stock, { since, until, pick = () => true }) {
   const d = (x) => Math.round((100 * x) / DAY) / 100;
   return { value: total ? (100 * out) / total : null, numerator: d(out), denominator: d(total), holdings, declaredDays: d(declared), derivedDays: d(derived) };
 }
-// Tracer items available now: tracer holdings with a top-up level that have usable stock, out of all such holdings.
+// Critical items available now: critical-item holdings with a fill-to level that have usable stock, out of all such holdings.
 export function tracerAvailability(stock, { now, pick = () => true }) {
   const list = [...stock.holdings.values()].filter((h) => { const it = stock.items.get(h.itemId); return it?.tracer && h.level && pick(it, h); });
   const have = list.filter((h) => balance(h, now, stock.offsetMinutes).usable > 0).length;

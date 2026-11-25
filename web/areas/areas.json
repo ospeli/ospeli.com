@@ -783,7 +783,7 @@
    },
    {
     "role": "Pharmacy manager",
-    "does": "Reviews stock-outs, expiries, top-up levels and dispensing turnaround."
+    "does": "Reviews stock-outs, expiries, fill-to levels and dispensing turnaround."
    },
    {
     "role": "Discharge coordinator",
@@ -801,7 +801,7 @@
    },
    {
     "name": "Stock levels",
-    "shows": "Items by location against top-up level, stock-outs, days of stock left."
+    "shows": "Items by location against fill-to level, stock-outs, days of stock left."
    },
    {
     "name": "Expiry watch",
@@ -811,7 +811,7 @@
   "captures": [
    "Dispensing request received: starts turnaround.",
    "Item checked and ready, then collected: ends turnaround, shows collection wait.",
-   "Stock below top-up level: triggers reorder before a stock-out.",
+   "Stock below fill-to level: triggers reorder before a stock-out.",
    "Stock-out start and end, by item: drives availability and duration.",
    "Stock expired or wasted: shows avoidable loss.",
    "Stock received from supplier or stores: links to supply delays."
@@ -831,10 +831,10 @@
    },
    {
     "name": "Tracer medicine availability",
-    "definition": "tracer items in stock on the day / tracer items listed",
+    "definition": "tracer medicines in stock on the day / tracer medicines listed",
     "kind": "ratio",
-    "numerator": "Tracer items in stock on the day",
-    "denominator": "Tracer items listed",
+    "numerator": "Tracer medicines in stock on the day",
+    "denominator": "Tracer medicines listed",
     "statistic": "Share (%), per period",
     "exclusions": "None by default; a site adds its own",
     "source": "WHO harmonized PSM indicators"
@@ -1663,7 +1663,7 @@
    },
    {
     "name": "Linen and meals",
-    "shows": "Linen stock against top-up level by area; meal orders, deliveries and returns."
+    "shows": "Linen stock against fill-to level by area; meal orders, deliveries and returns."
    }
   ],
   "captures": [
@@ -1671,7 +1671,7 @@
    "Clean started and finished, bed ready: drives bed turnaround.",
    "Transport requested, collected, delivered: shows transfer delays.",
    "Cleaning audit result by room and risk category: shows standards met.",
-   "Linen count below top-up level: warns before running out.",
+   "Linen count below fill-to level: warns before running out.",
    "Meals ordered, delivered and returned uneaten: measures waste.",
    "Security incident logged: links to incident review."
   ],
@@ -1771,19 +1771,19 @@
   "oneLine": "Shows what stock each area has, what is running out, and what's ordered.",
   "today": "Wards often find out an item is gone when the box is empty. Some areas hold extra while others run short. Requests often go on paper, and it is hard to see where an order is in the purchasing process.",
   "todaySystem": "An inventory or purchasing system holds central stock, but ward-level stock and the status of a request are often invisible to the people waiting.",
-  "withOspeli": "Each area has top-up levels and quick counts on a phone. Low stock raises a request; orders show each step from request to delivery. Stock-outs are logged with their cause.",
+  "withOspeli": "Each area has fill-to levels and quick counts on a phone. Low stock raises a request; orders show each step from request to delivery. Stock-outs are logged with their cause.",
   "people": [
    {
     "role": "Charge nurse",
     "does": "Counts ward stock on a phone, requests top-up, sees when it arrives."
    },
    {
-    "role": "Storekeeper",
+    "role": "Stores assistant",
     "does": "Issues requests, receives deliveries, scans or counts items in and out."
    },
    {
     "role": "Supply chain manager",
-    "does": "Sets top-up levels, tracks orders through purchasing, reviews stock-outs and slow stock."
+    "does": "Sets fill-to levels, tracks orders through purchasing, reviews stock-outs and slow stock."
    },
    {
     "role": "Operations manager",
@@ -1793,7 +1793,7 @@
   "screens": [
    {
     "name": "Ward stock count (phone)",
-    "shows": "Items for this area, current count against top-up level, one-tap request."
+    "shows": "Items for this area, current count against fill-to level, one-tap request."
    },
    {
     "name": "Requests and issues",
@@ -1818,13 +1818,13 @@
   ],
   "kpis": [
    {
-    "name": "Stock-out rate on tracer items",
-    "definition": "Item-days with nothing usable divided by item-days held, for tracer supplies items, in all and for each area (the core measure \"Stock-out rate\", KPI dictionary D-17). A day out counts when a person declared a stock-out or the balances show nothing usable; the two are joined, never counted twice.",
+    "name": "Stock-out rate on critical items",
+    "definition": "Item-days with nothing usable divided by item-days held, for critical supply items (the few that must never run out, often called tracer items), in all and for each area (the core measure \"Stock-out rate\", KPI dictionary D-17). A day out counts when a person declared a stock-out or the balances show nothing usable; the two are joined, never counted twice.",
     "kind": "ratio",
-    "numerator": "Item-days with nothing usable, for tracer items.",
-    "denominator": "Item-days tracer items were held, from each holding's first event (a level set or a movement).",
+    "numerator": "Item-days with nothing usable, for critical items.",
+    "denominator": "Item-days critical items were held, from each holding's first event (a level set or a movement).",
     "statistic": "Share (%), in all and for each area",
-    "exclusions": "Items that are not tracer items, and other modules' stock (medicines, vaccines).",
+    "exclusions": "Items that are not critical items, and other modules' stock (medicines, vaccines).",
     "source": "Editable default (no published standard found)"
    },
    {
@@ -1861,12 +1861,12 @@
    }
   ],
   "guide": [
-   "When an item's use runs ahead of its top-up level, suggests a new level, showing recent usage.",
+   "When an item's use runs ahead of its fill-to level, suggests a new level, showing recent usage.",
    "When an order has waited at one approval step longer than usual, suggests a reminder to the approving role.",
    "When one area holds far more than its level while another is short, suggests a transfer between areas."
   ],
   "playbooks": [
-   "Top-up level reset: review usage by area, output new levels.",
+   "Fill-to level reset: review usage by area, output new levels.",
    "Stock-out review: trace each stock-out's cause, output fixes per step."
   ],
   "methods": [],
@@ -3897,7 +3897,7 @@
   "withOspeli": "Every complaint and comment gets one record, an owner and response timers. Themes link to the services and processes involved, and actions are tracked until done.",
   "people": [
    {
-    "role": "Patient liaison officer",
+    "role": "Patient relations lead",
     "does": "Logs complaints from any channel, assigns owners and chases responses."
    },
    {
@@ -3985,7 +3985,7 @@
    }
   ],
   "guide": [
-   "When a complaint nears its response due date with no draft, alerts the owner role and the liaison officer.",
+   "When a complaint nears its response due date with no draft, alerts the owner role and the patient relations lead.",
    "When one theme rises above its usual range on the SPC chart, suggests a review with the service.",
    "Drafts a plain-language response summary from the record for the owner to edit and send."
   ],

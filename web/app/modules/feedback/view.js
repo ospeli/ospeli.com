@@ -475,13 +475,13 @@ async function queueScreen(box, ctx, { opt }) {
         : [
           q.suggestions.length ? h('ul', { class: 'fb-sugg', 'data-test': 'suggestions' }, q.suggestions.map((s) => h('li', { class: `fb-sg${s.overdue ? ' is-over' : ''}`, 'data-suggestion': s.id },
             h('a', { href: `#/feedback/record/${s.recordId}` }, s.title), h('span', {}, ` Owner: ${s.ownerText}. No reply recorded yet.`))))
-            : h('p', { class: 'meta' }, role === 'patient-liaison' ? `No reply is due within ${opt.settings.remindDaysBefore} days.` : `No reply owned by ${mineWho} is due within ${opt.settings.remindDaysBefore} days. Reminders go to the owner role and the Patient liaison officer.`),
+            : h('p', { class: 'meta' }, role === 'patient-liaison' ? `No reply is due within ${opt.settings.remindDaysBefore} days.` : `No reply owned by ${mineWho} is due within ${opt.settings.remindDaysBefore} days. Reminders go to the owner role and the Patient relations lead.`),
           h('p', { class: 'meta' }, `Rule: ${t.guide.rules[0].words} ${t.guide.rules[0].basis}`),
         ]);
     setKids(kpis, h('h2', { id: 'fb-kpi-h' }, 'Response measures, last 30 days'), kpiRow(t.kpis, 'Calculated from the same event log. Tap "How it is counted" under a number. Nothing here is a score of a person.'));
   }
   const ownerFirst = role === 'ward-nurse' || role === 'ops-manager';
-  // An owner role, and the liaison officer who runs the queue, work the list: the list and its
+  // An owner role, and the patient relations lead who runs the queue, work the list: the list and its
   // open and overdue counts first, the reminders and measures below it (ospeli/ospeli#112).
   const listFirst = ownerFirst || role === 'patient-liaison';
   const queue = h('section', { class: 'section', 'aria-labelledby': 'fb-q-h' }, h('h2', { id: 'fb-q-h' }, ownerFirst ? `Complaints owned by ${mineWho}` : 'Open complaints and concerns'), counts, chips, list);
@@ -592,7 +592,7 @@ async function recordScreen(box, ctx, { opt, recordId }) {
       h('section', { class: 'card', 'aria-labelledby': 'fb-next-h', 'data-test': 'next' }, h('h3', { id: 'fb-next-h' }, 'Next step'),
         ui.saved ? h('p', { class: `fb-saved ${ui.saved.ok ? 'fb-ok' : 'fb-bad'}`, role: 'status', tabindex: '-1', 'data-test': 'saved' }, ui.saved.text) : null,
         controls.length ? controls : h('p', { class: 'meta', 'data-test': 'no-steps' }, r.stage === 'closed' ? 'This record is closed.'
-          : `${roleLabel(role)} can see this record but not move it on. Acknowledging and replying are for the owner (${r.ownerText || 'not set'}) or the Patient liaison officer; changing the owner, clinical review and closing are for the Patient liaison officer and the Quality lead.`),
+          : `${roleLabel(role)} can see this record but not move it on. Acknowledging and replying are for the owner (${r.ownerText || 'not set'}) or the Patient relations lead; changing the owner, clinical review and closing are for the Patient relations lead and the Quality lead.`),
         timed ? h('p', { class: 'meta' }, 'Ospeli records that the site acknowledged or replied, and how. It sends nothing.') : null),
       timed ? h('section', { class: 'card', 'aria-labelledby': 'fb-act-h', 'data-test': 'actions' }, h('h3', { id: 'fb-act-h' }, 'Agreed actions'),
         actions.length ? h('ul', { class: 'fb-actions' }, actions) : h('p', { class: 'meta' }, 'No action agreed yet.'), agree) : null,

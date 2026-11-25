@@ -317,7 +317,7 @@ var PROFILE = {
   rad: { wait: [2, 4], access: [1, 2], kind: [1, 3] }
 };
 var THIS_MONTH_BOOST = { w4: { noise: 8 } }; // so the example has one rising theme
-var OWNERS = ['Department lead', 'Patient liaison officer', 'Service manager', 'Facilities lead'];
+var OWNERS = ['Department lead', 'Patient relations lead', 'Service manager', 'Facilities lead'];
 var CHANNELS = ['Email', 'Letter', 'Phone', 'In person', 'Online form', 'Feedback card'];
 var FACES = [[1, 'Very poor'], [2, 'Poor'], [3, 'OK'], [4, 'Good'], [5, 'Very good']];
 var QUICK = ['Waiting times', 'Noise at night', 'Food and drink', 'Being kept informed', 'Cleanliness'];
@@ -491,7 +491,7 @@ function suggest() {
   if (due.length) out.push({ id: 'remind', kind: 'time', title: due.length + ' complaint' + (due.length > 1 ? 's are' : ' is') + ' near or past the due date',
     list: due.slice(0, 4).map(function (c) { var t = timing(c); return c.ref + ' · ' + SVC[c.svc].short + ' · ' + t.due.what.toLowerCase() + ' ' + dstr(t.due.day) + ' (' + (t.over ? -t.left + ' days late' : t.left === 0 ? 'today' : 'in ' + days(t.left)) + ')' + (stage(c) === 'ack' ? ', no draft yet' : ''); }),
     why: 'Due dates come from the response deadlines in settings (example settings, not a standard). A complaint counts as near when it is within ' + state.settings.warnDays + ' days of its response date, or 1 day of its acknowledgement date.',
-    acts: [{ label: 'Propose reminders', primary: true, fn: function () { propose({ id: 'remind', kind: 'remind', refs: due.map(function (c) { return c.ref; }), text: 'Remind the owner role and the patient liaison officer about ' + due.map(function (c) { return c.ref; }).join(', ') + '.' }); } }] });
+    acts: [{ label: 'Propose reminders', primary: true, fn: function () { propose({ id: 'remind', kind: 'remind', refs: due.map(function (c) { return c.ref; }), text: 'Remind the owner role and the patient relations lead about ' + due.map(function (c) { return c.ref; }).join(', ') + '.' }); } }] });
   // 2. New comments that look like an existing theme
   var loose = state.items.filter(inScope(scope)).filter(function (i) { return i.text && !i.theme && matchTheme(i.text); }), groups = {};
   loose.forEach(function (i) { var k = i.svc + ':' + matchTheme(i.text); (groups[k] = groups[k] || []).push(i); });
@@ -555,7 +555,7 @@ function draftFromRecord(c) {
   var acts = state.actions.filter(function (a) { return a.from === c.ref; });
   return 'Reference ' + c.ref + '\n\nThank you for telling us about ' + TH[c.theme].name.toLowerCase() + ' in ' + SVC[c.svc].name + '. We are sorry it was not the experience you should have had.\n\n' +
     'What we looked at: [owner to write]\n\nWhat we are changing: ' + (acts.length ? acts.map(function (a) { return a.text; }).join('; ') + '.' : '[owner to write]') +
-    '\n\nIf you would like to talk this through, contact the patient liaison officer and quote your reference.';
+    '\n\nIf you would like to talk this through, contact the patient relations lead and quote your reference.';
 }
 function addAction(c, text) {
   text = tidy(text).slice(0, 120); if (!text) return;

@@ -649,7 +649,7 @@ const fmtPct = (v) => (v == null ? 'None yet' : `${Math.round(v)}%`);
 // Real elapsed time: "just now" under a minute, then minutes, then hours (the module's wait words).
 const sinceWords = (iso, now) => { const m = Math.floor((Date.parse(now) - Date.parse(iso)) / 60000); return m < 1 ? 'just now' : `${fmtWait(m)} ago`; };
 const forWords = (iso, now) => { const m = Math.floor((Date.parse(now) - Date.parse(iso)) / 60000); return m < 1 ? 'under a minute' : fmtWait(m); };
-const LEVELS_NOTE = 'Top-up levels are set by your support services supervisor. The ones here are example settings, not a standard.';
+const LEVELS_NOTE = 'Fill-to levels are set by your support services supervisor. The ones here are example settings, not a standard.';
 
 // A whole number: − and + (each 48 px), or typed with the number pad. A number the field marks wrong
 // is said beside it and never saved.
@@ -720,7 +720,7 @@ function linenScreen(ctx, { places, names }) {
     const ids = new Set(items.items.map((i) => i.id));
     const mine = (q) => q.lines.some((l) => ids.has(l.itemId));
     data = { items, levels, outs, meals, ov, waiting: waiting.requests.filter(mine), issued: issued.requests.filter(mine) };
-    // The areas that keep linen (with a top-up level), lowest first.
+    // The areas that keep linen (with a fill-to level), lowest first.
     const byArea = new Map();
     for (const r of levels.levels) {
       if (!isArea(r.placeId) || !r.level) continue;
@@ -825,7 +825,7 @@ function linenScreen(ctx, { places, names }) {
 
   function draw() {
     if (!data.items.stores.length && !data.areas.length) {
-      setKids(box, h('p', { class: 'card notice', 'data-test': 'linen-empty' }, 'No linen is kept on this device yet: the example hospital here has no store and no linen top-up levels. Meals can still be counted below.'), mealsCard());
+      setKids(box, h('p', { class: 'card notice', 'data-test': 'linen-empty' }, 'No linen is kept on this device yet: the example hospital here has no store and no linen fill-to levels. Meals can still be counted below.'), mealsCard());
       return;
     }
     // A redraw (after a save, another tab, the minute tick) keeps the field a person is in.
@@ -849,8 +849,8 @@ function linenScreen(ctx, { places, names }) {
       data.areas.map(([a]) => new Option(names.get(a), a, false, a === ui.area)));
     pick.addEventListener('change', () => { ui.area = pick.value || null; store.set('ospeli-support-linen-area', ui.area); ui.counts.clear(); ui.result = null; ui.askResult = null; if (wardIds.has(ui.area)) ui.meal.ward = ui.area; draw(); box.querySelector('#lin-area')?.focus(); });
     const head = [h('h2', { id: 'lin-count-h' }, 'Linen'), h('div', { class: 'field' }, h('label', { for: 'lin-area' }, 'Area'), pick)];
-    if (!data.areas.length) return h('section', { class: 'card sup-form', 'aria-labelledby': 'lin-count-h', 'data-test': 'linen-count' }, head, h('p', { class: 'meta', 'data-test': 'linen-no-levels' }, 'No area has a linen top-up level yet. The support services supervisor sets them.'));
-    if (!ui.area) return h('section', { class: 'card sup-form', 'aria-labelledby': 'lin-count-h', 'data-test': 'linen-count' }, head, h('p', { class: 'meta' }, 'Choose your area to see its linen against the top-up levels.'));
+    if (!data.areas.length) return h('section', { class: 'card sup-form', 'aria-labelledby': 'lin-count-h', 'data-test': 'linen-count' }, head, h('p', { class: 'meta', 'data-test': 'linen-no-levels' }, 'No area has a linen fill-to level yet. The support services supervisor sets them.'));
+    if (!ui.area) return h('section', { class: 'card sup-form', 'aria-labelledby': 'lin-count-h', 'data-test': 'linen-count' }, head, h('p', { class: 'meta' }, 'Choose your area to see its linen against the fill-to levels.'));
     const rows = data.areas.find(([a]) => a === ui.area)[1];
     const now = data.levels.asOf;
     const list = h('ul', { class: 'sup-linen-rows', 'data-test': 'linen-rows' }, rows.map((r) => {
@@ -875,10 +875,10 @@ function linenScreen(ctx, { places, names }) {
       ? h('div', { class: 'sup-ask-topup' }, h('p', { class: 'meta', 'data-test': 'will-ask' }, `Asks the store for: ${ask.map((l) => `${itemName(l.itemId).toLowerCase()} ${l.qty}`).join(', ')}.`),
         h('button', { class: 'btn btn-big sup-topup', type: 'button', 'data-cmd': 'ospeli_stock_request', 'data-test': 'linen-ask', disabled: ui.saving === 'ask', onclick: () => askTopUp(ui.area, ask) },
           ui.saving === 'ask' ? 'Asking…' : ask.length === 1 ? `Ask for a top-up (${ask[0].qty})` : `Ask for a top-up (${ask.length} items)`))
-      : h('p', { class: 'meta', 'data-test': 'no-ask' }, anyWaiting ? 'A top-up is already asked for everything under level.' : 'Nothing is under its top-up level.');
+      : h('p', { class: 'meta', 'data-test': 'no-ask' }, anyWaiting ? 'A top-up is already asked for everything under level.' : 'Nothing is under its fill-to level.');
     const res = ui.result ? h('div', { class: `card sup-result${ui.result.error ? ' is-below' : ''}`, role: 'status', 'data-test': 'linen-result' },
       h('p', {}, h('b', {}, ui.result.error || ui.result.ok)),
-      ui.result.under ? (ui.result.under.length ? ui.result.under.map((u) => h('p', { 'data-test': 'linen-under-line' }, u)) : h('p', {}, 'Nothing counted is under its top-up level.')) : null) : null;
+      ui.result.under ? (ui.result.under.length ? ui.result.under.map((u) => h('p', { 'data-test': 'linen-under-line' }, u)) : h('p', {}, 'Nothing counted is under its fill-to level.')) : null) : null;
     // Top-ups still waiting for this area, with a way to withdraw one (the shared cancel, one confirm: the reason).
     const mayCancel = can(ctx.role, 'ospeli_stock_request_cancel') && (may('request') || may('count') || may('issue'));
     const reasons = data.items.picks.requestCancelReasons.filter((x) => x !== 'Other');
@@ -963,7 +963,7 @@ function linenScreen(ctx, { places, names }) {
             h('details', { class: 'sup-def' }, h('summary', {}, 'Why this rule'), h('p', {}, s.basis)))))
             : h('p', { 'data-test': 'linen-no-suggestion' }, 'Nothing to suggest about linen or meals right now.'),
         ] : h('p', { 'data-test': 'linen-guide-off' }, 'The guide is off. Counts, top-ups and meals work the same.')),
-      h('section', { class: 'section', 'aria-labelledby': 'lin-under-h' }, h('h3', { id: 'lin-under-h' }, `Under the top-up level (${under.length} ${under.length === 1 ? 'area' : 'areas'})`),
+      h('section', { class: 'section', 'aria-labelledby': 'lin-under-h' }, h('h3', { id: 'lin-under-h' }, `Under the fill-to level (${under.length} ${under.length === 1 ? 'area' : 'areas'})`),
         under.length ? h('ul', { class: 'sup-areas-under', 'data-test': 'linen-under' }, under.map(([a, rows]) => {
           const ask = toAsk(a);
           const qs = [...new Set(rows.map((r) => waitingFor(a, r.itemId)).filter(Boolean))];
@@ -976,7 +976,7 @@ function linenScreen(ctx, { places, names }) {
             h('div', { class: 'sup-row-acts' },
               ask.length && may('request') ? h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_stock_request', 'data-test': 'manager-ask', onclick: () => askTopUp(a, ask, 'manager') }, `Ask for a top-up (${ask.length})`) : null,
               may('issue') ? qs.map((q) => h('button', { class: 'btn btn-small sup-done', type: 'button', 'data-cmd': 'ospeli_stock_issue', 'data-request': q.id, onclick: () => issue(q) }, `Issue ${q.id}`)) : null));
-        })) : h('p', { class: 'sup-empty', 'data-test': 'linen-all-at-level' }, 'Every area is at or over its linen top-up level.'),
+        })) : h('p', { class: 'sup-empty', 'data-test': 'linen-all-at-level' }, 'Every area is at or over its linen fill-to level.'),
         may('issue') || !waiting.length ? null : h('p', { class: 'meta' }, `Top-ups are issued from the store by ${roleNames(data.items.categories.find((c) => c.id === 'linen').roles.issue)}. Issued is not yet on the shelf: the area's next count shows it.`)),
       h('section', { class: 'section', 'aria-labelledby': 'lin-zero-h' }, h('h3', { id: 'lin-zero-h' }, `Linen at zero now (${atZero.length})`),
         atZero.length ? h('ul', { class: 'sup-list-plain', 'data-test': 'linen-zero' }, atZero.map((x) => h('li', { class: 'sup-row is-urgent', 'data-zero': `${x.itemId}@${x.placeId}` },

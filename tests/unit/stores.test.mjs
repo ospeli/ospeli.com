@@ -361,7 +361,7 @@ test('guide rules by hand: use ahead of a level, an order waiting longer than us
   // W2 used 28 (a count found 28 gone) in 28 days, 7 a week, under its level of 10. Ward A3 has too little history.
   const r1 = ruleLevelCheck(stock, { now: at(28), isArea });
   assert.deepEqual(r1.map((s) => [s.id, s.action.inputs[0].level, s.action.inputs[0].expectedLevel]), [[`level-check:${W1}:gloves-m`, 9, 5]]);
-  assert.match(r1[0].why, /Used in the last 28 days: 28 .* about 7 a week\. The top-up level is 5\./);
+  assert.match(r1[0].why, /Used in the last 28 days: 28 .* about 7 a week\. The fill-to level is 5\./);
   // Rule 3: W1 holds 20 (level 5, at least twice) and W2 holds 2 (level 10): move min(20 - 5, 10 - 2) = 8.
   const r3 = ruleTransfer(stock, { now: at(28), isArea, storeHas: () => 0 });
   assert.deepEqual(r3.map((s) => s.action.inputs[0]), [{ fromPlaceId: W1, toPlaceId: W2, lines: [{ itemId: 'gloves-m', qty: 8 }] }]);

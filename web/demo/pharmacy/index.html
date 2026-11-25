@@ -277,7 +277,7 @@ var LINES = [
   [115, 'oral liquid, 200 ml bottle', false, 9, 6, 0.8, 6, 0], [116, 'prefilled syringes, pack of 5', false, 8, 4, 0.5, 5, 0]
 ];
 var PACK = {}; LINES.forEach(function (l) { PACK[l[0]] = l[1]; });
-// Lines each ward holds as ward stock: [line, top-up level, on the shelf now]
+// Lines each ward holds as ward stock: [line, fill-to level, on the shelf now]
 var WARD_STOCK = {
   W1: [[101, 10, 7], [102, 6, 2], [104, 4, 3], [105, 4, 1], [110, 6, 5], [111, 4, 4]],
   W2: [[101, 12, 9], [103, 8, 3], [107, 4, 2], [108, 4, 4], [109, 3, 2], [105, 4, 3]],

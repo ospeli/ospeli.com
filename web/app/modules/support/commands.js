@@ -29,7 +29,7 @@ export const EVENT_PREFIX = 'support.';
 export const TASK_TEAMS = TEAMS;
 export const TASK_KINDS = KINDS;
 // Linen is the shared stock item: this pack adds its category and example items (logic.js) and
-// writes no stock command; counts, top-up levels, requests, issues and stock-outs are ospeli_stock_*.
+// writes no stock command; counts, fill-to levels, requests, issues and stock-outs are ospeli_stock_*.
 export { STOCK_CATEGORIES, STOCK_ITEMS };
 
 // Every number has a definition and a source. Targets are example settings unless a cited source sets one.
@@ -408,7 +408,7 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_support_guide_set',
-    summary: 'Switch the cleaning and transport guide on or off for this site. The guide is a set of fixed rules that suggest which cleans to do first, when a team is busier than usual, when an area should be audited again, when linen stays under its top-up level and when many meals come back uneaten; a person decides. With it off everything else works the same. People only.',
+    summary: 'Switch the cleaning and transport guide on or off for this site. The guide is a set of fixed rules that suggest which cleans to do first, when a team is busier than usual, when an area should be audited again, when linen stays under its fill-to level and when many meals come back uneaten; a person decides. With it off everything else works the same. People only.',
     kind: 'write', roles: ['support-supervisor', 'ops-manager', 'coo'], approval: true, agents: false,
     input: { type: 'object', additionalProperties: false, required: ['on'], properties: { on: { type: 'boolean', description: 'true: show the guide\'s suggestions. false: none.' } } },
     output: { type: 'object', required: ['status', 'on'], properties: { status: WRITE_STATUS, on: { type: 'boolean' }, events: EVENT_SEQS } },
@@ -454,10 +454,10 @@ export function seed({ r, startMs, endMs, entities }) {
   return [...audits, ...tasks, ...seedLinen(r, startMs, endMs, entities, offset), ...seedMeals(r, startMs, endMs, entities, offset, atLocal)];
 }
 
-// ---- linen: thirty days of counts against top-up levels, top-ups from the store, a few nights at zero ----
+// ---- linen: thirty days of counts against fill-to levels, top-ups from the store, a few nights at zero ----
 // Generic patterns only, entirely fictional. Four wards count their linen twice a day (before each
-// shift ends), now and then a count is missed; what is under the top-up level is asked for just
-// after the count (as the screen does: the count asks for nothing by itself) and the storekeeper
+// shift ends), now and then a count is missed; what is under the fill-to level is asked for just
+// after the count (as the screen does: the count asks for nothing by itself) and the stores assistant
 // issues it from the store within a few hours, in the day. Clean linen comes back to the store from the
 // laundry every morning. On a few nights a ward runs out of an item before the morning count, and
 // once a ward declares it. At the end: on one ward towels were under level on the last two counts
@@ -465,7 +465,7 @@ export function seed({ r, startMs, endMs, entities }) {
 // never issued and was cancelled after the last count, so the guide has a top-up to offer.
 // Request and stock-out ids start at 100001 so they never meet another module's seeded ids.
 const LINEN_WARDS = ['ward-a1', 'ward-a3', 'ward-b1', 'ward-c1'];
-const LINEN_LEVEL = { 'bed-sheet': 40, pillowcase: 30, blanket: 12, towel: 30, 'patient-gown': 24 }; // top-up levels, example settings
+const LINEN_LEVEL = { 'bed-sheet': 40, pillowcase: 30, blanket: 12, towel: 30, 'patient-gown': 24 }; // fill-to levels, example settings
 const LINEN_USE = { 'bed-sheet': 22, pillowcase: 14, blanket: 3, towel: 18, 'patient-gown': 10 }; // a day, on a ward of average use
 const LINEN_BUSY = [1, 0.9, 1.1, 1.2];
 function seedLinen(r, startMs, endMs, entities, offset) {
