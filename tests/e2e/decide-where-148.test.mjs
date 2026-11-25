@@ -38,7 +38,7 @@ for (const width of [390, 1280]) {
     assert.deepEqual(await fourProposals(page), ['proposed', 'proposed', 'proposed', 'proposed']);
     const card = page.locator('[data-test="decisions-waiting"]');
     await card.waitFor();
-    await page.waitForFunction(() => /\(4\)/.test(document.querySelector('[data-test="decisions-waiting"] h2')?.innerText || ''), null, { timeout: 10000 }).catch(() => {});
+    await waitUntil(page, () => /\(4\)/.test(document.querySelector('[data-test="decisions-waiting"] h2')?.innerText || ''), undefined, { timeout: 10000 });
     assert.equal((await card.locator('h2').innerText()).trim(), 'Waiting for your decision (4)');
     const links = await nowLinks(page);
     const hrefs = links.map(([href]) => href);

@@ -30,7 +30,14 @@ test('words an import file puts in a patient code event are never handed back by
   ]);
   const target = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(NOW) });
   // The import itself still takes the file: one rule for what an imported module event may hold is #138.
-  if ((await target.validateImport(data)).length) return;
+  // If the import refuses the file, that is the right answer only when it refuses it for the four
+  // events added above, so say which (issue #95, 23 Nov: a bare return here checked nothing).
+  const errs = await target.validateImport(data);
+  if (errs.length) {
+    const first = data.events.length - 3;
+    assert.ok(errs.every((e) => Number(/^event (\d+):/.exec(e)?.[1]) >= first), `refused, but not for the added events: ${errs.join(' | ')}`);
+    return;
+  }
   await target.importData(data, 'ops-manager');
   const person = { type: 'human', role: 'booking-clerk' };
   const list = await runCommand(target, 'ospeli_codes_list', { state: 'all' }, person);

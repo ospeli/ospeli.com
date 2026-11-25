@@ -461,6 +461,7 @@ test('an older example hospital with no outpatients department gets no clinic hi
   assert.deepEqual([q.clinic, q.patients.length, q.clinics.length], [null, 0, 0]);
   const s = await run('ospeli_clinics_day_summary', {}, 'outpatient-manager');
   assert.deepEqual([s.clinics.length, s.templates.length], [0, 0]);
+  assert.ok(s.kpis.length > 0, 'the summary still lists its measures');
   assert.ok(s.kpis.every((k) => k.value === null));
 });
 

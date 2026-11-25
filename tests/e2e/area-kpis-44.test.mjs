@@ -46,11 +46,14 @@ for (const width of [360, 390, 1280]) {
 }
 
 test('every area-page measure has the template filled in, and every area page shows it', async () => {
+  let checked = 0;
   for (const a of areas) for (const k of a.kpis) {
+    checked++;
     for (const f of ['numerator', 'denominator', 'statistic', 'exclusions', 'source']) assert.ok(String(k[f] || '').trim(), `${a.id} ${k.name}: ${f}`);
     if (k.kind === 'time') assert.ok(k.startEvent && k.endEvent, `${a.id} ${k.name}: start and end`);
     assert.notEqual(k.source.toLowerCase(), 'local definition', `${a.id} ${k.name}`);
     const html = readFileSync(new URL(`../../web/areas/${a.slug}/index.html`, import.meta.url), 'utf8');
     assert.ok(html.includes('How it is counted'), a.slug);
   }
+  assert.ok(checked > 0, 'there were area-page measures to check');
 });
