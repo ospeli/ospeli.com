@@ -47,7 +47,7 @@ export function ribbonModel(w) {
 // The same reading as the walk screen (modules/walk.js), from the times the command gave.
 export function shownSec(w, nowMs) {
   const since = (iso) => Math.max(0, (nowMs - Date.parse(iso)) / 1000);
-  return w.state === 'paused' ? since(w.since) : Math.max(0, since(w.presentSince || w.since) - (w.sinceNotSeenSec || 0));
+  return w.state === 'paused' ? since(w.since) : Math.max(0, since(w.presentSince || w.since) - (w.sinceNotSeenSec || 0) - (w.sinceStoodSec || 0));
 }
 
 export function installRibbon(ctx, { toast }) {

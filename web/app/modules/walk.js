@@ -50,7 +50,7 @@ export async function renderWalk(box, ctx, againOf = null) {
   const nowMs = () => Date.now() - offset;
   const secsSince = (iso) => Math.max(0, (nowMs() - Date.parse(iso)) / 1000);
   // The big timer: the present wait or step without any time not seen; while paused, the pause itself.
-  const shown = (w) => (w.state === 'paused' ? secsSince(w.since) : Math.max(0, secsSince(w.presentSince || w.since) - (w.sinceNotSeenSec || 0)));
+  const shown = (w) => (w.state === 'paused' ? secsSince(w.since) : Math.max(0, secsSince(w.presentSince || w.since) - (w.sinceNotSeenSec || 0) - (w.sinceStoodSec || 0)));
 
   async function load() {
     data = await ctx.run('ospeli_walks_get', ctx.department ? { department: ctx.department } : {});
@@ -299,7 +299,9 @@ export async function renderWalk(box, ctx, againOf = null) {
     const starts = async ({ fresh = false } = {}) => {
       const p = pending();
       // Carrying on: what was chosen names the interrupted step, so it is saved before the step runs again.
-      if (resume && !fresh && p) await savePending(p);
+      // Words refused for the name (they look like a person's name) stop the tap: the question shows in
+      // the sheet and the step carries on only once it is answered, never unnamed without a word (#177 item 7).
+      if (resume && !fresh && p && !(await savePending(p))) { draw(); return; }
       const out = await tap('ospeli_walks_step_start', resume && !fresh ? { resume: true } : {});
       if (!out) { draw(); return; }
       // A new step: the tap is stamped first, then what was chosen is saved for the step before it.
@@ -385,13 +387,27 @@ export async function renderWalk(box, ctx, againOf = null) {
           const title = box.querySelector('#wk-rename').value.trim();
           if (!title) { ui.rename = false; draw(); return; }
           const out = await tap('ospeli_walks_rename', { title });
-          if (out) { ui.rename = false; say(`Walk named ${title}.`); draw(); }
+          if (out) { ui.rename = false; ui.question = null; ui.renameText = undefined; say(`Walk named ${title}.`); }
+          draw(); // a refused name shows its question here, under the field (#177 item 7)
+          // The walk's bar is pinned to the foot of the screen: bring the field and its question up above it.
+          if (!out) box.querySelector('[data-test="walk-rename-form"]')?.scrollIntoView({ block: 'start' });
         } },
           h('label', { for: 'wk-rename' }, 'What are you walking?'),
-          h('input', { id: 'wk-rename', maxlength: '80', autocomplete: 'off', value: /^Walk \d+$/.test(w.title) ? '' : w.title, placeholder: `For example, ${(data.titles || [])[0] || 'Clinic visit'}` }),
+          h('input', { id: 'wk-rename', maxlength: '80', autocomplete: 'off', value: ui.renameText ?? (/^Walk \d+$/.test(w.title) ? '' : w.title), placeholder: `For example, ${(data.titles || [])[0] || 'Clinic visit'}`, oninput: (e) => { ui.renameText = e.target.value; } }),
+          ui.question && !ui.sheet ? h('div', { class: 'name-question', role: 'alert', 'data-test': 'name-question' },
+            h('p', {}, h('b', {}, `Is “${ui.question.looks}” a person's name?`)),
+            h('p', {}, 'Ospeli times steps, never people. Name what is followed instead, for example Outpatient CT.'),
+            h('div', { class: 'form-actions' },
+              h('button', { type: 'button', class: 'btn', onclick: () => { ui.question = null; draw(); box.querySelector('#wk-rename')?.focus(); } }, 'Change the wording'),
+              h('button', { type: 'button', class: 'btn btn-ghost', 'data-test': 'name-keep', onclick: async () => {
+                const title = box.querySelector('#wk-rename').value.trim(); ui.question = null;
+                const out = await tap('ospeli_walks_rename', { title, notAName: true });
+                if (out) { ui.rename = false; ui.renameText = undefined; say(`Walk named ${title}.`); }
+                draw();
+              } }, 'Not a name. Save it'))) : null,
           h('div', { class: 'form-actions' },
             h('button', { type: 'submit', class: 'btn', 'data-cmd': 'ospeli_walks_rename', 'data-test': 'walk-rename-save' }, 'Save name'),
-            h('button', { type: 'button', class: 'btn btn-ghost', onclick: () => { ui.rename = false; draw(); } }, 'Cancel')))
+            h('button', { type: 'button', class: 'btn btn-ghost', onclick: () => { ui.rename = false; ui.question = null; ui.renameText = undefined; draw(); } }, 'Cancel')))
         : h('p', { class: 'meta walk-foot' }, h('button', { type: 'button', class: 'linkish', 'data-test': 'walk-rename', onclick: () => { ui.rename = true; draw(); box.querySelector('#wk-rename')?.focus(); } }, 'Rename this walk')),
       h('p', { class: 'meta walk-foot' }, h('button', { type: 'button', class: 'linkish', 'data-test': 'walk-delete', 'data-cmd': 'ospeli_walks_discard',
         onclick: async () => { if (!window.confirm('Delete this walk? Its times are not kept.')) return; const out = await tap('ospeli_walks_discard'); if (out) { ctx.toast('Walk deleted.'); location.hash = '#/process'; } } }, 'Delete this walk')),

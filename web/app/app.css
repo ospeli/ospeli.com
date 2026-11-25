@@ -1032,3 +1032,5 @@ html[data-site="connect"] .layout { display: block; }
   .result h3 { font-size: 10pt; margin: 0 0 2px; }
   .result .meta { font-size: 8.5pt; }
 }
+/* #177 item 7: the rename field and its question are brought up under the top bar, clear of the walk's pinned bar. */
+.walk-rename { scroll-margin-top: 104px; }

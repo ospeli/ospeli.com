@@ -7260,6 +7260,11 @@
                 "minimum": 0,
                 "description": "Seconds of the present wait or step that were not seen (paused), so far."
               },
+              "sinceStoodSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds the running step stood still between an interruption and carrying on (waiting inside the step; paused time is left out, as it is already in sinceNotSeenSec). The hands-on clock is now − presentSince − sinceNotSeenSec − sinceStoodSec."
+              },
               "guidanceSeenAt": {
                 "type": [
                   "string",
@@ -7642,6 +7647,11 @@
                 "minimum": 0,
                 "description": "Seconds of the present wait or step that were not seen (paused), so far."
               },
+              "sinceStoodSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds the running step stood still between an interruption and carrying on (waiting inside the step; paused time is left out, as it is already in sinceNotSeenSec). The hands-on clock is now − presentSince − sinceNotSeenSec − sinceStoodSec."
+              },
               "guidanceSeenAt": {
                 "type": [
                   "string",
@@ -8021,6 +8031,11 @@
                 "type": "integer",
                 "minimum": 0,
                 "description": "Seconds of the present wait or step that were not seen (paused), so far."
+              },
+              "sinceStoodSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds the running step stood still between an interruption and carrying on (waiting inside the step; paused time is left out, as it is already in sinceNotSeenSec). The hands-on clock is now − presentSince − sinceNotSeenSec − sinceStoodSec."
               },
               "guidanceSeenAt": {
                 "type": [
@@ -8406,6 +8421,11 @@
                 "minimum": 0,
                 "description": "Seconds of the present wait or step that were not seen (paused), so far."
               },
+              "sinceStoodSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds the running step stood still between an interruption and carrying on (waiting inside the step; paused time is left out, as it is already in sinceNotSeenSec). The hands-on clock is now − presentSince − sinceNotSeenSec − sinceStoodSec."
+              },
               "guidanceSeenAt": {
                 "type": [
                   "string",
@@ -8787,6 +8807,11 @@
                 "type": "integer",
                 "minimum": 0,
                 "description": "Seconds of the present wait or step that were not seen (paused), so far."
+              },
+              "sinceStoodSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds the running step stood still between an interruption and carrying on (waiting inside the step; paused time is left out, as it is already in sinceNotSeenSec). The hands-on clock is now − presentSince − sinceNotSeenSec − sinceStoodSec."
               },
               "guidanceSeenAt": {
                 "type": [
@@ -9171,6 +9196,11 @@
                 "type": "integer",
                 "minimum": 0,
                 "description": "Seconds of the present wait or step that were not seen (paused), so far."
+              },
+              "sinceStoodSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds the running step stood still between an interruption and carrying on (waiting inside the step; paused time is left out, as it is already in sinceNotSeenSec). The hands-on clock is now − presentSince − sinceNotSeenSec − sinceStoodSec."
               },
               "guidanceSeenAt": {
                 "type": [
@@ -9588,6 +9618,11 @@
                 "minimum": 0,
                 "description": "Seconds of the present wait or step that were not seen (paused), so far."
               },
+              "sinceStoodSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds the running step stood still between an interruption and carrying on (waiting inside the step; paused time is left out, as it is already in sinceNotSeenSec). The hands-on clock is now − presentSince − sinceNotSeenSec − sinceStoodSec."
+              },
               "guidanceSeenAt": {
                 "type": [
                   "string",
@@ -9970,6 +10005,11 @@
                 "type": "integer",
                 "minimum": 0,
                 "description": "Seconds of the present wait or step that were not seen (paused), so far."
+              },
+              "sinceStoodSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds the running step stood still between an interruption and carrying on (waiting inside the step; paused time is left out, as it is already in sinceNotSeenSec). The hands-on clock is now − presentSince − sinceNotSeenSec − sinceStoodSec."
               },
               "guidanceSeenAt": {
                 "type": [
@@ -10363,6 +10403,11 @@
                 "minimum": 0,
                 "description": "Seconds of the present wait or step that were not seen (paused), so far."
               },
+              "sinceStoodSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds the running step stood still between an interruption and carrying on (waiting inside the step; paused time is left out, as it is already in sinceNotSeenSec). The hands-on clock is now − presentSince − sinceNotSeenSec − sinceStoodSec."
+              },
               "guidanceSeenAt": {
                 "type": [
                   "string",
@@ -10744,6 +10789,11 @@
                 "type": "integer",
                 "minimum": 0,
                 "description": "Seconds of the present wait or step that were not seen (paused), so far."
+              },
+              "sinceStoodSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds the running step stood still between an interruption and carrying on (waiting inside the step; paused time is left out, as it is already in sinceNotSeenSec). The hands-on clock is now − presentSince − sinceNotSeenSec − sinceStoodSec."
               },
               "guidanceSeenAt": {
                 "type": [
@@ -11131,6 +11181,11 @@
                 "type": "integer",
                 "minimum": 0,
                 "description": "Seconds of the present wait or step that were not seen (paused), so far."
+              },
+              "sinceStoodSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds the running step stood still between an interruption and carrying on (waiting inside the step; paused time is left out, as it is already in sinceNotSeenSec). The hands-on clock is now − presentSince − sinceNotSeenSec − sinceStoodSec."
               },
               "guidanceSeenAt": {
                 "type": [

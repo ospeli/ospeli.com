@@ -51,6 +51,8 @@ async function showWaiting(ctx) {
 // The role (job title) is set under Me (modules/me.js calls this). The same role chosen again
 // changes nothing: no event, and the page is not drawn again under the person's hands (issue #95).
 async function setRole(ctx, to, { why = null } = {}) {
+  // A role a person chose (not one a department gave) is theirs: a department chosen later keeps it (#177 item 6).
+  if (why !== 'department' && roleById(to)) ctx.roleChosen = true;
   if (!roleById(to) || to === ctx.role || ctx.site) return;
   const from = ctx.role;
   ctx.role = to;

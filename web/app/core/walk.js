@@ -137,6 +137,12 @@ export function pausedSec(walk, a, b, now = null) {
   return Math.max(0, Math.floor(ms / 1000));
 }
 // The same for a recorded wait or step, in the walk's whole seconds, so the parts add up.
+// Seconds the running step stood still between interruptions and carrying on, less any paused
+// time inside: waiting, not hands-on, so the step's clock leaves it out (#177 item 3).
+export function stoodSoFar(walk) {
+  return (walk.current?.gaps || []).reduce((n, g) => n + Math.max(0, secs(walk, g.startAt, g.endAt) - pausedWhole(walk, g.startAt, g.endAt)), 0);
+}
+
 function pausedWhole(walk, a, b) {
   const A = offSec(walk, a); const B = offSec(walk, b);
   let sec = 0;
@@ -221,9 +227,13 @@ export function stepDone(walk, at, { interrupted = false } = {}) {
 }
 
 // True when "Step done" at this time would end the running step under a second after it began.
+// A step that carried on after an interruption is measured from the moment it carried on (the end
+// of its last stop), so the second half of a double tap on "Step carries on" is caught too (#177 item 2).
 export function isDoubleTap(walk, at) {
   if (!walk.current) return false;
-  const ms = Date.parse(at) - Date.parse(walk.current.startAt);
+  const gaps = walk.current.gaps || [];
+  const from = gaps.length ? gaps[gaps.length - 1].endAt : walk.current.startAt;
+  const ms = Date.parse(at) - Date.parse(from);
   return ms >= 0 && ms < MIN_STEP_MS;
 }
 
@@ -259,7 +269,18 @@ export function clockMoved(walk) {
 
 // Name the step that just ended. nextStarted: the next step began the moment this one ended
 // (a hand-over with no wait), so it starts at this step's end time, not at the time of this tap.
+// While a step that carried on after an interruption is running, the name is for that step: the
+// "Step saved as ... · Change" line on screen is about it, and the step before is finished and named
+// (#177 item 1).
 export function nameLast(walk, { name, role, msg, nextStarted = false }) {
+  if (walk.current?.gaps?.length && !nextStarted) {
+    const c = walk.current;
+    if (walk.plan && c.planIndex != null && ((name != null && name !== walk.plan[c.planIndex].name) || (role != null && role !== walk.plan[c.planIndex].role))) delete c.planIndex;
+    if (name != null) c.name = name;
+    if (role != null) c.role = role;
+    if (msg != null) c.msg = !!msg;
+    return walk;
+  }
   const last = walk.steps[walk.steps.length - 1];
   if (!last) throw new Error('No step has ended yet.');
   // A step given its own words on a repeat walk is no longer the list step it was offered as.
@@ -298,7 +319,9 @@ export function undoLast(walk) {
   if (walk.current) { walk.current = null; return 'step-start'; }
   const last = walk.steps.pop();
   if (!last) throw new Error('There is nothing to undo.');
-  walk.current = { startAt: last.startAt, ...(last.planIndex != null ? { planIndex: last.planIndex } : {}), ...(last.gaps?.length ? { gaps: last.gaps } : {}) };
+  // A step that carried on was named at its interruption, before this "Step done": that name stays (#177 item 5).
+  const kept = last.gaps?.length ? { ...(last.name ? { name: last.name } : {}), ...(last.role ? { role: last.role } : {}), ...(last.msg ? { msg: true } : {}) } : {};
+  walk.current = { startAt: last.startAt, ...(last.planIndex != null ? { planIndex: last.planIndex } : {}), ...(last.gaps?.length ? { gaps: last.gaps } : {}), ...kept };
   return 'step-done';
 }
 

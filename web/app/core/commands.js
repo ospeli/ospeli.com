@@ -28,7 +28,7 @@ import {
   EXAMPLES as MAP_EXAMPLES, VERSIONS as MAP_VERSIONS, MAX_STEPS, MAX_MINUTES, newMap, analyse, suggest, applyChange, personalDetailIn, personNameIn, possibleNameIn, nameQuestion, NAME_ADVICE,
 } from './processmap.js';
 import {
-  MAX_WALK_STEPS, WALK_STEP_CHIPS, WALK_ROLE_CHIPS, newWalk, walkState, sinceAt, stepStart, stepDone, isDoubleTap, clockMoved, nameLast, undoLast, walkSteps, walkTotals,
+  MAX_WALK_STEPS, WALK_STEP_CHIPS, WALK_ROLE_CHIPS, newWalk, walkState, sinceAt, stepStart, stepDone, isDoubleTap, clockMoved, nameLast, undoLast, walkSteps, walkTotals, stoodSoFar,
   walkUnder, pausedSec, pauseWalk, resumeWalk, waitShareOf, WALK_BEFORE, PLANNED_WAIT_RULE,
   mapStepsFromWalk, stepsInSeconds, dropStaleSeconds, suggestWalk, longestWaits, MIN_LONGEST_WAIT_SEC,
   canResume, stepResume, suggestStep, walkChips, WALK_DEPARTMENTS, WALK_TITLES_GENERAL,
@@ -1377,6 +1377,7 @@ const WALK_VIEW = {
     state: { type: 'string', enum: ['waiting', 'step', 'paused'], description: 'waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up. paused: the person walking has stepped out and nothing is being counted.' },
     under: { type: 'string', enum: ['waiting', 'step'], description: 'What is under way behind a pause, and what carries on when the person is back.' },
     sinceNotSeenSec: { type: 'integer', minimum: 0, description: 'Seconds of the present wait or step that were not seen (paused), so far.' },
+    sinceStoodSec: { type: 'integer', minimum: 0, description: 'Seconds the running step stood still between an interruption and carrying on (waiting inside the step; paused time is left out, as it is already in sinceNotSeenSec). The hands-on clock is now − presentSince − sinceNotSeenSec − sinceStoodSec.' },
     guidanceSeenAt: { type: ['string', 'null'], description: 'When the person confirmed the before-you-walk points (ospeli_walks_get lists them), or null. Only a time is kept: no name, no device.' },
     startedAt: TIME, finishedAt: { type: ['string', 'null'] }, since: { ...TIME, description: 'When the present wait or step began; while paused, when the pause began.' },
     presentSince: { ...TIME, description: 'When the present wait or step began, whether or not the walk is paused.' },
@@ -1416,7 +1417,8 @@ function walkView(w, now) {
   // The present wait or step began at the last tap that was not a pause; paused time inside it is told apart.
   const presentFrom = w.current ? w.current.startAt : (w.steps.length ? w.steps[w.steps.length - 1].endAt : w.startedAt);
   return { id: w.id, title: w.title, status: w.status, state: walkState(w), under: walkUnder(w), startedAt: w.startedAt, finishedAt: w.finishedAt, since: sinceAt(w), presentSince: presentFrom,
-    sinceNotSeenSec: w.status === 'walking' ? pausedSec(w, presentFrom, now, now) : 0, guidanceSeenAt: w.guidanceSeenAt ?? null,
+    sinceNotSeenSec: w.status === 'walking' ? pausedSec(w, presentFrom, now, now) : 0,
+    sinceStoodSec: w.status === 'walking' ? stoodSoFar(w) : 0, guidanceSeenAt: w.guidanceSeenAt ?? null,
     mapId: w.mapId, clockMoved: clockMoved(w), ...(w.department ? { department: w.department } : {}), canResume: w.status === 'walking' && !openPauseOf(w) && canResume(w),
     // The offer is for a step that ended with no name yet.
     suggest: w.status === 'walking' && steps.length && !steps[steps.length - 1].named ? suggestStep(w) : null,
