@@ -2,6 +2,8 @@
 // same map, which then reads as a range: lowest to highest, whole minutes, no percentage.
 // The first-time-user test does the whole second walk at 360 px in a fixed number of taps, with
 // nothing named and nothing typed. Synthetic times only; the page's clock is moved by the test.
+// Since the one-screen result (crew night 3) a walked map opens on its Result tab; the step list,
+// the guide and Proposed are read on the Edit map tab.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startApp, openPage } from './helpers.mjs';
@@ -120,6 +122,9 @@ test('first-time user at 360 px: walk the same three steps again in 10 taps, not
   assert.equal(await page.locator('[data-test="bar-walk"]').count(), 2);
   assert.match(await text(page, '[data-test="walk-bars"]'), /Where the time went.*Walk 1 · Tue,? 17 Nov, 09:00 · 53 min.*Walk 2 · Thu,? 19 Nov, 14:30 · 53 min/s);
   assert.match(await text(page, '[data-test="read-this"] [data-test="walk-note"]'), /^Same step list, one bar per walk/, 'the note on the bars is in "How to read this"');
+  // The step list and the guide are on the Edit map tab.
+  await page.tap('[data-test="tab-edit"]');
+  await page.waitForSelector('[data-test="tab-edit"][aria-selected="true"]');
   const steps = (await page.locator('[data-test="step-list"]').innerText()).replace(/\s+/g, ' ');
   assert.match(steps, /Waits 1 to 2 min.*Reception · hands-on 3 to 4 min.*Waits 10 to 15 min.*Nurse · hands-on 4 to 5 min.*Waits 20 to 25 min · longest wait.*Doctor · hands-on 8 to 9 min/);
   // The guide says how the walks are compared and what that rests on; people decide.
@@ -182,6 +187,9 @@ test('a visit that differs from the list: "Did not happen" with Undo, "Change" t
   // Walk 2 stopped early: listed, said so, and left out of the totals, which rest on walk 1 alone.
   assert.match(answer, /53 min start to finish \(1 of 2 walks\)/);
   assert.match(answer, /Walk 2: Wed,? 18 Nov, 11:00 · stopped early, left out of the totals/);
+  // The step list is on the Edit map tab.
+  await page.tap('[data-test="tab-edit"]');
+  await page.waitForSelector('[data-test="tab-edit"][aria-selected="true"]');
   const steps = (await page.locator('[data-test="step-list"]').innerText()).replace(/\s+/g, ' ');
   // Reception was done twice on walk 2 (120 + 60 s): 3 min on both walks, and "done again" is said.
   assert.match(steps, /Reception · hands-on 3 min \(the same on both walks\) · done again on 1 walk/);
@@ -216,7 +224,9 @@ test('a reload in the middle of a repeat walk keeps the list and the place on it
   }
   await page.tap('[data-test="walk-finish"]'); await page.tap('[data-test="walk-finish-yes"]');
   await page.waitForSelector('[data-test="walk-range"]');
-  // Both walks began in the same hour of the day: the guide says so.
+  // Both walks began in the same hour of the day: the guide says so (on the Edit map tab).
+  await page.tap('[data-test="tab-edit"]');
+  await page.waitForSelector('[data-test="tab-edit"][aria-selected="true"]');
   assert.match(await text(page, '[data-test="guide"]'), /2 of 3 walks so far/);
   await page.tap('[data-test="v-proposed"]');
   await page.waitForFunction(() => /What-if, not measured/i.test(document.querySelector('[data-test="walk-badge"]')?.textContent || ''));
