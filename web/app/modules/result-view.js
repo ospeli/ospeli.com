@@ -4,7 +4,7 @@
 // own records; every typed name goes on screen as text, never as HTML.
 import { h } from './ui.js';
 import { minWords, atLeastWords, NO_LONG_WAIT } from './result-words.js';
-import { walkItems, longestPositions, resultTable, cellWords, extrasOf, columnsNote, csvOf, fileNameOf, summaryText } from './result-data.js';
+import { walkItems, longestPositions, resultTable, cellWords, extrasOf, columnsNote, csvOf, fileNameOf, summaryText, scaleTicks } from './result-data.js';
 
 export const PHONE_COLUMNS = 3;
 export const PRINT_COLUMNS = 6;
@@ -53,32 +53,68 @@ export function resultModel({ m, rg, records, list, oneWalkTop = null, day, cloc
 }
 
 // One bar per walk, on one shared scale (the longest walk is the full width). Inside a bar each
-// step is its wait (hatched) then its hands-on time (solid), in the order they happened, with a
+// step is its wait (striped) then its hands-on time (solid), in the order they happened, with a
 // thin gap between steps. The longest wait is outlined, and said in words under the bar.
+// Under each bar, each step's number on the list ("+" for a step not on it) at the start of its
+// segments; where two would touch, the later one is left out, never the longest wait's (#189 item 3).
+// Under the bars, a minutes scale from the start of the walk.
 export function barsCard(model) {
   const max = Math.max(1, ...model.walks.map((w) => w.elapsed));
   const any = (f) => model.walks.some((w) => w.items.some(f));
   const key = (cls, text) => h('span', { class: 'key' }, h('span', { class: `rsw ${cls}` }), text);
-  return h('section', { class: 'card bars result-bars', 'aria-labelledby': 'bars-h', 'data-test': 'walk-bars' },
+  const ticks = scaleTicks(max);
+  const scale = h('div', { class: 'rscale', 'data-test': 'bar-scale', role: 'img', 'aria-label': `Scale: minutes from the start of the walk, marks at ${ticks.map((t) => t.label).join(', ')}.` },
+    ticks.map((t) => h('span', { class: `rtick${(100 * t.sec) / max > 80 ? ' end' : ''}`, 'data-test': 'bar-tick', 'data-sec': String(t.sec), style: `left:${(100 * t.sec) / max}%` }, t.label)));
+  const card = h('section', { class: 'card bars result-bars', 'aria-labelledby': 'bars-h', 'data-test': 'walk-bars' },
     h('h3', { id: 'bars-h' }, 'Where the time went'),
     model.walks.map((w) => {
       const total = w.elapsed || 1;
-      const bar = h('div', { class: 'rbar', role: 'img', style: `width:${Math.max(8, (100 * w.elapsed) / max)}%`, 'data-test': 'bar-walk', 'data-sec': String(w.elapsed),
-        'aria-label': `Walk ${w.n}: ${minWords(w.wait)} waiting and ${minWords(w.work)} hands-on, over ${w.items.length} ${w.items.length === 1 ? 'step' : 'steps'}.${w.notSeen ? ` ${minWords(w.notSeen)} more was not seen.` : ''} ${w.longest}` });
+      const width = Math.max(8, (100 * w.elapsed) / max);
+      const bar = h('div', { class: 'rbar', role: 'img', style: `width:${width}%`, 'data-test': 'bar-walk', 'data-sec': String(w.elapsed),
+        'aria-label': `Walk ${w.n}: ${minWords(w.wait)} waiting and ${minWords(w.work)} hands-on, over ${w.items.length} ${w.items.length === 1 ? 'step' : 'steps'}.${w.notSeen ? ` ${minWords(w.notSeen)} more was not seen.` : ''} ${w.longest}. The numbers are the step numbers in the table.` });
+      const nums = h('div', { class: 'rnums', 'aria-hidden': 'true', style: `width:${width}%` });
+      let at = 0;
       w.items.forEach((x, k) => {
         const hot = w.pos.includes(x.p);
         const parts = [[x.planned ? 'p' : 'w', x.waitSec, hot], ['n', x.waitNotSeenSec], ['k', x.workSec], ['n', x.workNotSeenSec]].filter((s) => s[1] > 0);
+        nums.append(h('span', { class: `rnum${hot ? ' is-longest' : ''}`, 'data-test': 'bar-num', ...(hot ? { 'data-longest': 'true' } : {}), style: `left:${(100 * at) / total}%` }, x.num));
         // Only the first part of a step leaves the thin gap after the step before.
         parts.forEach(([cls, sec, isHot], j) => bar.append(h('i', { class: `${cls}${isHot ? ' is-longest' : ''}${k && !j ? ' gap' : ''}`, style: `width:${(100 * sec) / total}%`,
           'data-step': x.stepId || `off:${x.name}`, ...(isHot ? { 'data-longest': 'true' } : {}) })));
+        at += parts.reduce((n, p) => n + p[1], 0);
       });
       return h('div', { class: 'bar-row' },
-        h('span', { class: 'bar-label' }, `Walk ${w.n} · ${w.when} · ${minWords(w.elapsed)}${w.note}`), bar,
+        h('span', { class: 'bar-label' }, `Walk ${w.n} · ${w.when} · ${minWords(w.elapsed)}${w.note}`), bar, nums,
         h('p', { class: 'bar-longest', 'data-test': 'bar-longest' }, w.longest));
     }),
+    scale,
     h('p', { class: 'legend meta', 'data-test': 'bar-legend' },
       key('w', 'Waiting'), any((x) => x.planned && x.waitSec) ? key('p', 'Planned or required wait') : null, key('k', 'Hands-on'),
-      any((x) => x.waitNotSeenSec || x.workNotSeenSec) ? key('n', 'Not seen') : null, key('w is-longest', 'Longest wait')));
+      any((x) => x.waitNotSeenSec || x.workNotSeenSec) ? key('n', 'Not seen') : null, key('w is-longest', 'Longest wait'),
+      h('span', { class: 'key' }, h('span', { class: 'rnum-key', 'aria-hidden': 'true' }, '1'), 'Step number, + not on the list')));
+  // Leave out a number that would touch the one before it, keeping the longest wait's; again
+  // whenever the card's width changes (a turned phone, the print page).
+  const thin = () => {
+    for (const row of card.querySelectorAll('.rnums, .rscale')) {
+      const marks = [...row.children]; marks.forEach((m) => { m.hidden = false; });
+      const scaleRow = row.classList.contains('rscale');
+      const prio = (m) => (m.dataset.longest === 'true' ? 3 : scaleRow && (m === marks[0] || m === marks[marks.length - 1]) ? 2 : m === marks[0] ? 1 : 0);
+      const kept = [];
+      for (const m of marks) {
+        const r = m.getBoundingClientRect();
+        while (kept.length && r.left < kept[kept.length - 1].r.right + 4) {
+          const last = kept[kept.length - 1];
+          if (prio(m) <= prio(last.m)) { m.hidden = true; break; }
+          last.m.hidden = true; kept.pop();
+        }
+        if (!m.hidden) kept.push({ m, r });
+      }
+    }
+  };
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => thin()).observe(card);
+  const onPrint = () => { if (!card.isConnected) { window.removeEventListener('beforeprint', onPrint); return; } thin(); };
+  window.addEventListener('beforeprint', onPrint);
+  return card;
 }
 
 // The per-step table: a row per list step, a column per walk. A phone shows the newest three walks,
@@ -94,7 +130,7 @@ export function tableCard(model, after = null) {
     // A real table. On a phone its rows are laid out as blocks (the step above its cells), so the
     // table roles are also given in full: a screen reader still reads a table.
     h('table', { class: `rtable cols-${Math.min(count, PHONE_COLUMNS)}`, role: 'table' },
-      h('caption', {}, h('b', {}, 'Step by step'), h('span', {}, ' Each cell: wait before the step · hands-on, in whole minutes.')),
+      h('caption', {}, h('b', {}, 'Step by step'), h('span', {}, ' Each cell: wait · hands-on.')),
       h('thead', { role: 'rowgroup' }, h('tr', { role: 'row' }, h('th', { scope: 'col', role: 'columnheader', class: 'rt-stephead' }, 'Step'), model.walks.map((w, k) => h('th', { scope: 'col', role: 'columnheader', class: colCls(k) }, `Walk ${w.n}`)))),
       h('tbody', { role: 'rowgroup' }, model.rows.map((r) => h('tr', { role: 'row', class: r.kind === 'extra' ? 'is-extra' : null, 'data-row': r.kind === 'extra' ? 'extra' : r.stepId },
         h('th', { scope: 'row', role: 'rowheader' },

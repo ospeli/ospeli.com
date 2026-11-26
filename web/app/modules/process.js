@@ -17,7 +17,7 @@ import { minWords, waitAmount, rangeWords, fromCoreSpan, spanOf, totalSpan, long
 import { proposalsCard } from './proposals.js';
 import { departmentById } from './departments.js';
 import { recordsOf, resultModel, barsCard, tableCard, extrasCard, actionsRow, summaryOf } from './result-view.js';
-import { recordFromSteps } from './result-data.js';
+import { recordFromSteps, stepSpans } from './result-data.js';
 
 const ROLE_COLOURS = ['#0A9396', '#EE9B00', '#E0583E', '#0B2F4E', '#94D2BD', '#7A5C9E', '#3E7CB1', '#A0522D', '#5B8C5A', '#C2185B'];
 const SOURCE_TEXT = {
@@ -38,6 +38,10 @@ export async function render(el, ctx) {
   let hotIds = null; let walkedNow = false;
   // On a map with two or more walks, in its walks version: each step's range across the walks, by step id.
   let rangeOf = null; let rangeNow = null;
+  // The same, from the walks' own records (#182 item 22): counted on the walks where the step happened.
+  let spansOf = null;
+  // The step form when it opens inside the step list, at the step it changes.
+  let editorNow = null;
   const isHot = (a, s) => (hotIds ? hotIds.includes(s.id) : a.biggestWaitStepId === s.id);
   // What the first version is called: "Today", or "This walk" on a map made from one walk.
   let NOW = 'Today';
@@ -200,6 +204,7 @@ export async function render(el, ctx) {
     const seg = (id, label, on, onclick, extra = {}) => h('button', { type: 'button', class: 'chip-btn', 'aria-pressed': String(on), 'data-test': id, onclick, ...extra }, label);
     // The walks' own records, for the Result tab's bars, table, CSV and the "at" in the headline.
     const records = walked ? (multi ? await recordsOf(core, m) : null) || (multi ? null : [recordFromSteps(stepsInSeconds(m.today.steps), m.walk)]) : null;
+    spansOf = rangeView && records && records.length === rg.walks.length ? stepSpans(m.today.steps, records, rg.walks.map((w) => w.usable !== false)) : null;
     const dept = walked && m.walk.department ? departmentById(m.walk.department)?.name || null : null;
     // The header line of the Result tab: department, walks and dates, in the device's own format.
     const dates = (() => {
@@ -402,6 +407,9 @@ export async function render(el, ctx) {
           h('ol', { class: 'sugg', start: '2' }, items.slice(1)))];
     }
 
+    // The form works in minutes, on the stored steps. Changing a step in the list opens it at that step.
+    const editor = tab === 'result' ? null : stepEditor(m, v.steps);
+    editorNow = editor && ui.view !== 'map' && ui.editing && steps.some((x) => x.id === ui.editing) ? editor : null;
     const stepsBox = h('section', { class: 'section steps-box', 'aria-labelledby': 'steps-h' },
       h('div', { class: 'steps-head' },
         h('h3', { id: 'steps-h' }, `Steps (${steps.length})`),
@@ -434,11 +442,12 @@ export async function render(el, ctx) {
       body.replaceChildren(head, panel);
       return;
     }
-    const editor = stepEditor(m, v.steps); // the form works in minutes, on the stored steps
     // Edit map tab: the stats are the answer's, so on the walks' own version they live on Result.
     const editNote = walked && measuredView ? h('p', { class: 'meta', 'data-test': 'edit-note' }, 'The answer, Print and the table are on the Result tab. Changes here change the map for every walk.') : null;
-    const layout = h('div', { class: 'pm-layout', ...(walked ? { id: 'tab-edit-panel', role: 'tabpanel', 'aria-labelledby': 'tab-edit' } : {}) },
-      h('div', { class: 'pm-main' }, walked && measuredView ? editNote : stats, bars), h('div', { class: 'pm-guide' }, guide), h('div', { class: 'pm-steps' }, stepsBox, editor));
+    // A walked map's Edit map opens on the step list (#182 item 23); a map typed by hand keeps its order.
+    const layout = h('div', { class: `pm-layout${walked ? ' steps-first' : ''}`, ...(walked ? { id: 'tab-edit-panel', role: 'tabpanel', 'aria-labelledby': 'tab-edit' } : {}) },
+      ...(walked ? [h('div', { class: 'pm-steps' }, stepsBox, editorNow ? null : editor), h('div', { class: 'pm-main' }, measuredView ? editNote : stats, bars), h('div', { class: 'pm-guide' }, guide)]
+        : [h('div', { class: 'pm-main' }, stats, bars), h('div', { class: 'pm-guide' }, guide), h('div', { class: 'pm-steps' }, stepsBox, editorNow ? null : editor)]));
     // On a phone the guide switch sits in the Guide card of an open map, so the map starts at its
     // title and the answer is on the first screen (at the card's foot, clear of the short messages). It is the same button either way.
     if (phone()) guide.append(h('div', { class: 'guide-head in-card' }, guideBtn, h('span', { class: 'meta' }, 'People decide; Ospeli suggests.')));
@@ -495,10 +504,13 @@ export async function render(el, ctx) {
   // How a step's wait and hands-on time read: one time, or the range across the walks with the
   // number of walks it rests on when that is not all of them.
   const stepRange = (s) => (rangeOf ? rangeOf.get(s.id) || null : null);
-  // The wait is counted from the walks where the step happened ("4 min (on 1 of 2 walks)").
-  const waitOf = (s) => { const r = stepRange(s); return r ? rangeWords(fromCoreSpan(r.wait), { of: r.happened }) : T(s.wait); };
-  const workOf = (s) => { const r = stepRange(s); return r ? rangeWords(fromCoreSpan(r.work)) : T(s.work); };
-  const walksNote = (s) => { const r = stepRange(s); if (!r) return ''; return `${r.happened < r.of ? ` · on ${r.happened} of ${r.of} walks` : ''}${r.again ? ` · done again on ${r.again} ${r.again === 1 ? 'walk' : 'walks'}` : ''}`; };
+  // The wait and hands-on are read from the walks where the step happened, whatever came before it,
+  // as the Result tab reads them (#182 item 22); "on 1 of 2 walks" is said once, after the hands-on.
+  const spanAt = (s) => (spansOf ? spansOf.get(s.id) || null : null);
+  const waitOf = (s) => { const sp = spanAt(s); if (sp) return rangeWords(sp.wait); const r = stepRange(s); return r ? rangeWords(fromCoreSpan(r.wait), { of: r.happened }) : T(s.wait); };
+  const workOf = (s) => { const sp = spanAt(s); if (sp) return rangeWords(sp.work); const r = stepRange(s); return r ? rangeWords(fromCoreSpan(r.work)) : T(s.work); };
+  const walksNote = (s) => { const r = stepRange(s); if (!r) return ''; const sp = spanAt(s); const n = sp ? sp.happened : r.happened; const of = sp ? sp.of : r.of;
+    return `${n < of ? ` · on ${n} of ${of} walks` : ''}${r.again ? ` · done again on ${r.again} ${r.again === 1 ? 'walk' : 'walks'}` : ''}`; };
   // The wait before a step. On a walked map it opens one choice: mark the wait as planned or
   // required (ospeli_maps_step_update with plannedWait). Two taps; the rule is shown with the choice.
   function waitLine(s, hot, m) {
@@ -530,12 +542,15 @@ export async function render(el, ctx) {
         changedNote(s, m),
         h('div', { class: `row${changedNote(s, m) ? ' changed' : ''}` },
           h('span', { class: 'num' }, String(i + 1)),
-          h('div', { class: 'what' }, h('b', {}, s.name),
+          h('div', { class: 'what' }, h('div', { class: 'name-line' }, h('b', {}, s.name),
+            h('button', { type: 'button', class: 'step-change', 'data-test': 'step-change', 'aria-label': `Change step ${i + 1}`, 'aria-expanded': String(ui.editing === s.id), onclick: () => edit(s.id) }, '✎ Change')),
             h('span', {}, h('span', { class: 'role-dot', style: `background:${colour(s.role)}` }), `${s.role} · ${walkedNow ? 'hands-on' : 'work'} ${workOf(s)}${walksNote(s)}${s.msg ? ' · passes on information' : ''}${rangeOf ? '' : s.interrupted ? ' · interrupted' : s.interruptions ? ` · interrupted ${s.interruptions === 1 ? 'once' : `${s.interruptions} times`}, then carried on` : ''}${s.workNotSeenSec ? ` · ${T(s.workNotSeenSec)} more not seen` : ''}${s.edited ? ' · time changed by hand' : ''}${walkedNow && s.waitSec == null && s.workSec == null && !s.edited ? ' · added by hand' : ''}`)),
           h('div', { class: 'ctl' },
             h('button', { type: 'button', class: 'icon', 'data-cmd': 'ospeli_maps_step_move', 'aria-label': `Move step ${i + 1} up`, disabled: i === 0 ? true : null, onclick: mv('up') }, '↑'),
             h('button', { type: 'button', class: 'icon', 'data-cmd': 'ospeli_maps_step_move', 'aria-label': `Move step ${i + 1} down`, disabled: i === steps.length - 1 ? true : null, onclick: mv('down') }, '↓'),
-            h('button', { type: 'button', class: 'icon', 'aria-label': `Change step ${i + 1}`, onclick: () => edit(s.id) }, '✎'))));
+            )),
+        // The form opens at the step it changes (#182 item 23).
+        ui.editing === s.id && editorNow ? editorNow : null);
     }));
   }
   // In Proposed, say what differs from Today for a step (same step id), in plain words.

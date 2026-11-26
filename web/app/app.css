@@ -519,9 +519,9 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .flowbar { display: flex; height: 22px; border-radius: 6px; overflow: hidden; background: var(--sand); }
 .flowbar i { display: block; height: 100%; }
 /* Waiting is hatched, never colour alone (issue #124); planned waits and time not seen have their own patterns. */
-.flowbar i.w, .legend .sw.w { background: repeating-linear-gradient(135deg, var(--coral) 0 5px, #F3B3A6 5px 8px); }
+.flowbar i.w, .legend .sw.w { background: repeating-linear-gradient(135deg, var(--mango) 0 4px, #F8CB70 4px 8px); }
 .flowbar i.k, .legend .sw.k { background: var(--sea); }
-.flowbar i.p, .legend .sw.p { background: var(--sand); box-shadow: inset 0 0 0 1.5px #5B6B7A; outline: 0; background-image: repeating-linear-gradient(90deg, transparent 0 6px, rgba(91,107,122,.45) 6px 8px); }
+.flowbar i.p, .legend .sw.p { background-color: var(--sand); box-shadow: inset 0 0 0 1.5px #5B6B7A; outline: 0; background-image: repeating-linear-gradient(90deg, transparent 0 5px, var(--mango) 5px 8px); }
 .flowbar i.n, .legend .sw.n { background-color: #E3E6EA; background-image: radial-gradient(#5B6B7A 1.2px, transparent 1.4px); background-size: 6px 6px; }
 .legend { display: flex; align-items: center; gap: 4px 14px; flex-wrap: wrap; color: var(--ink); }
 .legend .key { display: inline-flex; align-items: center; gap: 6px; }
@@ -551,7 +551,7 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .pm-step.par { border-style: dashed; }
 .pm-step .n { font-size: .78rem; font-weight: 800; color: var(--ink-soft); }
 .pm-step .t { display: flex; gap: 8px; flex-wrap: wrap; font-size: .82rem; color: var(--ink-soft); }
-.pm-step .wt { color: #8A2412; font-weight: 700; }
+.pm-step .wt { color: #5C3B00; font-weight: 700; }
 .pm-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
 .pm-list .wait { font-size: .88rem; color: var(--ink-soft); padding: 2px 0 2px 40px; }
 .pm-list .wait.hot, .pm-list .wait.hot .wait-btn { color: var(--navy); font-weight: 800; }
@@ -591,6 +591,18 @@ a.card h3 .pill { flex: none; align-self: flex-start; }
 .changed-note { font-size: .88rem; font-weight: 700; color: #5C3B00; padding: 2px 0 2px 40px; }
 .pm-step.changed { background: #FFF6E5; }
 .pm-step .changed-note { padding: 0; }
+/* Edit map of a walked map opens on the step list (#182 item 23); each step's "Change" sits beside its name. */
+.pm-layout.steps-first { grid-template-areas: "steps guide" "main guide"; }
+@media (max-width: 900px) { .pm-layout.steps-first { grid-template-areas: "steps" "main" "guide"; } }
+.pm-list .what .name-line { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; }
+.pm-list .what .name-line b { min-width: 0; overflow-wrap: anywhere; }
+.pm-list .step-change { font: inherit; font-size: .9375rem; font-weight: 800; flex: none; min-height: 44px; min-width: 44px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface); color: var(--navy); cursor: pointer; }
+.pm-list .step-change:focus-visible { outline: 3px solid var(--sea); outline-offset: 2px; }
+.pm-list li > .step-form { margin: 6px 0 4px; }
+/* Phones: no text under 15 px on Edit map (#189 item 5). */
+@media (max-width: 640px) {
+  .pm-list .wait, .pm-list .what span, .sg .why, .changed-note, .lanename, .pm-stat span, .pm-step, .bar-label, .wait-choice p, .chip.walk-badge, .map-head .walk-when, .guide-head .meta { font-size: .9375rem; }
+}
 
 /* Agents screen (issues #25, #20). Text 15 px or more; every control at least 44 px tall. */
 .ag-intro, .ag-text, .ag-status, .ag-row span, .ag-hint, .ag-dial-btn span, .ag-details summary span { font-size: .95rem; }
@@ -929,16 +941,29 @@ html[data-site="connect"] .layout { display: block; }
 .rbar i.gap { box-shadow: inset 2px 0 0 var(--surface); }
 .rbar i.w, .rsw.w { background: repeating-linear-gradient(135deg, var(--mango) 0 4px, #F8CB70 4px 8px); }
 .rbar i.k, .rsw.k { background: var(--sea); }
-.rbar i.p, .rsw.p { background-color: var(--sand); background-image: repeating-linear-gradient(90deg, transparent 0 6px, rgba(91,107,122,.55) 6px 8px); }
+.rbar i.p, .rsw.p { background-color: var(--sand); background-image: repeating-linear-gradient(90deg, transparent 0 5px, var(--mango) 5px 8px); box-shadow: inset 0 0 0 1px #5B6B7A; }
 .rbar i.n, .rsw.n { background-color: #E3E6EA; background-image: radial-gradient(#5B6B7A 1.2px, transparent 1.4px); background-size: 6px 6px; }
 .rbar i.is-longest, .rsw.is-longest { outline: 3px solid var(--coral); outline-offset: -3px; }
 .result-bars .legend .key { font-size: .9375rem; }
 .rsw { display: inline-block; width: 18px; height: 14px; border-radius: 3px; flex: none; }
 .bar-longest { margin: 2px 0 0; font-size: .9375rem; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+/* Step numbers under each bar, at the start of each step's segments, and the minutes scale under the bars (#189 item 3). */
+.rnums, .rscale { position: relative; }
+/* The numbers sit on the bar itself, at the start of each step, on a white tab so they read over the stripes. */
+.result-bars .bar-row .rnums { height: 30px; margin-top: calc(-30px - 4px); pointer-events: none; }
+.rnum { position: absolute; top: 4px; font-size: .9375rem; line-height: 22px; min-width: 14px; text-align: center; font-weight: 800; color: var(--navy); white-space: nowrap; padding: 0 3px; margin-left: 3px; background: #fff; border-radius: 4px; }
+.rnum.is-longest { box-shadow: 0 0 0 2px var(--coral); }
+.rscale { height: 1.5rem; margin: 0 0 4px; border-top: 1.5px solid #5B6B7A; }
+.rtick { position: absolute; top: 0; font-size: .9375rem; line-height: 1.4rem; font-weight: 700; color: var(--ink-soft); white-space: nowrap; padding-left: 3px; border-left: 1.5px solid #5B6B7A; }
+.rtick.end { transform: translateX(-100%); border-left: 0; border-right: 1.5px solid #5B6B7A; padding: 0 3px 0 0; }
+.rnum-key { display: inline-block; font-weight: 800; color: var(--navy); padding: 0 4px; background: #fff; border: 1px solid #5B6B7A; border-radius: 4px; line-height: 1.2; }
+.result-bars .legend { gap: 4px 10px; }
+.result-bars .legend .rsw { width: 16px; }
+@media screen and (max-width: 640px) { .result-bars .bar-row { margin-bottom: 6px; } .result-bars .legend { margin-top: 4px; } }
 /* The step table: one column per walk; on a phone the newest three, on paper or a wide screen the newest six. */
 .result-table-card h3 { margin: 0 0 6px; }
 .rtable { width: 100%; table-layout: fixed; border-collapse: collapse; }
-.rtable caption { caption-side: top; text-align: left; font-size: .8125rem; color: var(--ink-soft); padding: 0 0 6px; }
+.rtable caption { caption-side: top; text-align: left; font-size: .9375rem; color: var(--ink-soft); padding: 0 0 6px; }
 .rtable caption b { font-size: 1.02rem; color: var(--ink); margin-right: 4px; }
 .rtable th, .rtable td { font-size: .9375rem; text-transform: none; letter-spacing: 0; text-align: left; vertical-align: top; padding: 6px 4px; border-top: 1px solid var(--line); overflow-wrap: anywhere; color: var(--ink); background: none; }
 .rtable thead th { font-weight: 800; border-top: 0; }
@@ -1021,6 +1046,12 @@ html[data-site="connect"] .layout { display: block; }
   .rbar { height: 16px; border: 1px solid #555; }
   .rbar i.w, .rsw.w { background: repeating-linear-gradient(135deg, #222 0 1.5px, #fff 1.5px 5px); }
   .rbar i.k, .rsw.k { background: #8a8a8a; }
+  .rbar i.p, .rsw.p { background: repeating-linear-gradient(90deg, #fff 0 3px, #222 3px 4.5px); }
+  .result-bars .bar-row .rnums { height: 13px; margin-top: calc(-13px - 1px); }
+  .rnum { top: 1px; font-size: 7.5pt; line-height: 11px; padding: 0 2px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .rnum.is-longest { box-shadow: 0 0 0 1.5px #000; }
+  .rscale { height: 11pt; margin: 0 0 2px; }
+  .rtick { font-size: 8pt; line-height: 11pt; }
   .rbar i.is-longest, .rsw.is-longest { outline: 2.5px solid #000; outline-offset: -2.5px; }
   .bar-label, .bar-longest, .result-bars .legend .key { font-size: 9pt; }
   .rtable caption { font-size: 8pt; padding-bottom: 2px; }

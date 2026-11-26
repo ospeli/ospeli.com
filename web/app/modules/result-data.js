@@ -2,7 +2,7 @@
 // walk records (core/walk.js recordFromWalk) and the map's saved step list. Nothing here changes a
 // number; it lays the records out by step, walk by walk, for the table, the bars, the CSV and the
 // plain-text summary. Steps and roles only: no person is named, timed or ranked.
-import { minWords, atLeastWords } from './result-words.js';
+import { minWords, atLeastWords, spanOf } from './result-words.js';
 
 // Why a wait happened, when a person recorded it ("waiting for a room"). The app does not record a
 // reason yet, so this is null for every step today; the walk screen can fill it later
@@ -34,10 +34,44 @@ export function walkItems(list, rec) {
     const on = s.stepId != null && byId.has(s.stepId);
     const st = on ? byId.get(s.stepId) : null;
     const times = (seen.get(s.stepId) || 0) + 1; if (on) seen.set(s.stepId, times);
-    return { p, stepId: on ? s.stepId : null, name: on ? st.name : s.name || `Step ${p + 1}`, role: on ? st.role : s.role || 'Not set', onList: on, again: on && times > 1,
+    return { p, stepId: on ? s.stepId : null, num: on ? String(st.i + 1) : '+', name: on ? st.name : s.name || `Step ${p + 1}`, role: on ? st.role : s.role || 'Not set', onList: on, again: on && times > 1,
       planned: !!(on && st.plannedWait), waitSec: s.waitSec || 0, workSec: s.workSec || 0, waitNotSeenSec: s.waitNotSeenSec || 0, workNotSeenSec: s.workNotSeenSec || 0,
       interruptions: interruptionsOf(s), stoppedSec: s.interruptedWaitSec || 0, reason: waitReasonOf(s), rec: s };
   });
+}
+
+// The marks of the minutes scale under the bars (#189 item 3): 0, then a round step in whole
+// minutes, at most four marks after 0, none past the longest walk. maxSec: the longest walk.
+const SCALE_STEPS = [1, 2, 5, 10, 15, 20, 30, 60, 120, 180, 240, 360, 480, 720, 1440, 2880];
+export function scaleTicks(maxSec) {
+  const maxMin = Math.max(0, maxSec) / 60;
+  const step = SCALE_STEPS.find((m) => Math.floor(maxMin / m) <= 4) || SCALE_STEPS[SCALE_STEPS.length - 1];
+  const out = [{ sec: 0, label: '0' }];
+  for (let m = step; m <= maxMin; m += step) out.push({ sec: m * 60, label: minWords(m * 60) });
+  return out;
+}
+
+// A list step's wait and hands-on time across the walks where it happened (#182 item 22), so
+// Result and Edit map say the same thing: the walks are counted where the step was timed, whatever
+// came before it. On a walk where it was done again, its longest single wait (the one a walk's
+// longest wait is named from) and all its hands-on time. A wait the walk was paused during is the
+// least it can have been. usable: per walk, false when its clock moved back (left out).
+// Returns Map stepId -> { stepId, wait, work (spans as result-words.js spanOf), happened, of }.
+export function stepSpans(list, records, usable = null) {
+  const ok = records.map((r, k) => (usable ? usable[k] !== false : !r.clockMoved));
+  const per = records.map((r, k) => (ok[k] ? walkItems(list, r) : null));
+  const of = ok.filter(Boolean).length;
+  return new Map(list.map((st) => {
+    const waits = []; const works = [];
+    per.forEach((items) => {
+      const at = items ? items.filter((x) => x.stepId === st.id) : [];
+      if (!at.length) return;
+      const top = at.reduce((a, x) => (x.waitSec > a.waitSec ? x : a), at[0]);
+      waits.push([top.waitSec, top.waitNotSeenSec > 0]);
+      works.push([at.reduce((n, x) => n + x.workSec, 0), at.some((x) => x.workNotSeenSec > 0)]);
+    });
+    return [st.id, { stepId: st.id, wait: spanOf(waits), work: spanOf(works), happened: waits.length, of }];
+  }));
 }
 
 // The positions (in walkItems) of a walk's longest wait or waits. longest: that walk's entries in

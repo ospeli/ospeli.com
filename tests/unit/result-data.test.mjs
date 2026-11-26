@@ -189,3 +189,47 @@ test('summaryText: header, headline, per-walk totals, the table as lines, how to
   assert.match(t, /How to read this: Times are whole minutes\.\nMeasured on 2 walks: examples, not a sample\.$/);
   assert.doesNotMatch(t, /<|>/);
 });
+
+// ---- #189 (module crew night 11): numbered bars on a minutes scale; one wording on both tabs ----
+import { scaleTicks, stepSpans } from '../../web/app/modules/result-data.js';
+
+test('scaleTicks: 0 and whole-minute marks at a round step, at most 5 marks, never past the longest walk', () => {
+  const words = (sec) => scaleTicks(sec).map((t) => t.label);
+  assert.deepEqual(words(47 * 60), ['0', '10 min', '20 min', '30 min', '40 min']);
+  assert.deepEqual(words(60 * 60), ['0', '15 min', '30 min', '45 min', '1 h']);
+  assert.deepEqual(words(109 * 60), ['0', '30 min', '1 h', '1 h 30 min']);
+  assert.deepEqual(words(5 * 3600 + 120), ['0', '2 h', '4 h']);
+  assert.deepEqual(words(170), ['0', '1 min', '2 min']);
+  assert.deepEqual(words(30), ['0']);
+  for (const max of [61, 600, 3000, 7000, 40000, 100000]) {
+    const t = scaleTicks(max);
+    assert.ok(t.length <= 5 && t.every((x, i) => x.sec <= max && (i === 0 || x.sec > t[i - 1].sec)), `${max}: ${JSON.stringify(t)}`);
+    assert.ok(t.length >= 3 || max < 180, `${max}: at least two marks after 0`);
+  }
+});
+
+test('walkItems gives each step its number on the list ("+" for a step not on the list)', () => {
+  assert.deepEqual(walkItems(list, W1).map((x) => x.num), ['1', '2', '3', '4']);
+  assert.deepEqual(walkItems(list, W2).map((x) => x.num), ['1', '2', '+', '3', '3', '4']);
+});
+
+test('stepSpans (#182 item 22): a step\'s wait across the walks where it happened, whatever came before it; its longest single wait on a walk done again', () => {
+  const s = stepSpans(list, [W1, W2]);
+  // Scan: 10 min on walk 1; on walk 2 an off-list step came before it (13 min, then 5 min done again).
+  assert.deepEqual(s.get('map-001-s3').wait, { n: 2, min: 600, max: 780 });
+  assert.deepEqual(s.get('map-001-s3').work, { n: 2, min: 900, max: 1240 }, 'hands-on adds up the times on a walk');
+  assert.equal(s.get('map-001-s3').happened, 2);
+  assert.equal(s.get('map-001-s3').of, 2);
+  // Registered stood still 2 min on walk 1: that is waiting, inside its wait.
+  assert.deepEqual(s.get('map-001-s2').wait, { n: 2, min: 180, max: 360 });
+  // A walk whose clock moved back is left out.
+  const moved = { ...W2, clockMoved: true };
+  assert.deepEqual(stepSpans(list, [W1, moved], [true, false]).get('map-001-s3'), { stepId: 'map-001-s3', wait: { n: 1, min: 600, max: 600 }, work: { n: 1, min: 900, max: 900 }, happened: 1, of: 1 });
+  // A step that did not happen on a walk counts only the walk where it did.
+  const skipped = walk([[30, 90], [180, 150], [45, 30]], { start: 86400, id: 'walk-003', skip: [2] });
+  const k = stepSpans(list, [W1, skipped]).get('map-001-s3');
+  assert.equal(k.happened, 1); assert.equal(k.of, 2); assert.equal(k.wait.n, 1);
+  // A paused wait is a floor on that walk: the at-least flag goes with the walk that gave it.
+  const paused = { ...W2, steps: W2.steps.map((x) => (x.stepId === 'map-001-s1' ? { ...x, waitNotSeenSec: 300 } : x)) };
+  assert.deepEqual(stepSpans(list, [W1, paused]).get('map-001-s1').wait, { n: 2, min: 30, max: 60, partly: true });
+});
