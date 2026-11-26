@@ -13,6 +13,7 @@ import { TITLES, screensFor, shownOn } from './screens.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
 const roleNames = (cmd) => (commandByName(cmd)?.roles || []).map((r) => roleById(r)?.name || r).join(', ');
+const HOLD_MS = 2e3; // a redraw waits at most this long for a press on the step button to lift
 const LOCK_MS = 3e3; // the next step's button cannot be tapped this long after a step (a second tap is not the next step)
 const ORDINAL = ['First', 'Second', 'Third', 'Fourth', 'Fifth', 'Sixth', 'Seventh', 'Eighth', 'Ninth', 'Tenth'];
 const fmtKpi = (k) => (k.value == null ? 'None yet' : k.unit === '%' ? `${Math.round(k.value)}%` : `${Math.round(k.value)} min`);
@@ -94,6 +95,8 @@ function jobsScreen(ctx) {
   let data = null;
   let lastStepAt = 0; // when this phone tapped a step, for the pause on the next one
   let timer = null;
+  let pressedAt = 0; // when a finger or pointer went down on the step button (0: none)
+  let heldDraw = false; // a redraw waits for it to lift, at most HOLD_MS
   const load = async () => {
     // With a vehicle picked, one small read (its jobs); the whole board only to pick a vehicle.
     let mine = store.get();
@@ -134,6 +137,9 @@ function jobsScreen(ctx) {
 
   function draw() {
     clearTimeout(timer);
+    const pressed = pressedAt ? Date.now() - pressedAt : HOLD_MS;
+    if (pressed < HOLD_MS && box.querySelector('[data-test="main-action"]')) { heldDraw = true; timer = setTimeout(draw, HOLD_MS - pressed + 10); return; }
+    heldDraw = false;
     if (!data.mine || !data.jobs) { setKids(box, pickScreen()); return; }
     const { jobs } = data;
     const b = { shift: jobs.shift };
@@ -162,7 +168,7 @@ function jobsScreen(ctx) {
           h('ol', { class: 'trf-steps', 'data-test': 'steps' }, next.steps.map((x) => h('li', { class: x.at ? 'is-done' : x.id === s?.id ? 'is-next' : null, 'data-step': x.id },
             h('span', {}, x.label), h('span', { class: 'trf-steptime' }, x.at ? x.clock.replace(/^today /, '') : x.id === s?.id ? 'next' : '')))),
           s ? h('button', { class: `btn btn-big trf-main ${STEP_CLASS[s.id]}`, type: 'button', 'data-test': 'main-action', 'data-cmd': 'ospeli_transfers_step', 'data-step': s.id, 'data-transfer': next.id,
-            disabled: locked, 'aria-disabled': String(locked),
+            disabled: locked, 'aria-disabled': String(locked), onpointerdown: () => { pressedAt = Date.now(); },
             onclick: (e) => { e.currentTarget.disabled = true; act('ospeli_transfers_step', { transferId: next.id, step: s.id, expectedState: next.state }, `${s.label}: ${next.id}`, { onDone: () => { lastStepAt = Date.now(); } }); } },
           stepText(s, since)) : null,
         ],
@@ -179,13 +185,22 @@ function jobsScreen(ctx) {
         h('ul', {}, after.map((t) => h('li', { class: 'trf-row', 'data-transfer': t.id }, h('div', { class: 'trf-row-text' }, facts(t)))))) : null);
   }
   const stepText = (s, since) => (since < LOCK_MS ? `${s.label} (wait ${Math.ceil((LOCK_MS - since) / 1000)} s)` : s.label);
-  return { el: box, load, stop: () => clearTimeout(timer) };
+  // A press on the step button holds the redraw until the finger lifts, then the screen is drawn
+  // just after the tap: a button taken away under a finger loses the tap (ospeli/ospeli#132).
+  function lift() {
+    if (!pressedAt) return;
+    pressedAt = 0;
+    if (heldDraw) { heldDraw = false; clearTimeout(timer); setTimeout(draw, 0); }
+  }
+  window.addEventListener('pointerup', lift, true);
+  window.addEventListener('pointercancel', lift, true);
+  return { el: box, load, stop: () => { clearTimeout(timer); window.removeEventListener('pointerup', lift, true); window.removeEventListener('pointercancel', lift, true); } };
 }
 
 // ---------------------------------------------------------------- Dispatch board
 function boardScreen(ctx) {
   const box = h('div', { class: 'trf-board' });
-  const ui = { filter: 'all', pickedVehicle: new Map(), status: new Map() }; // kept across redraws
+  const ui = { filter: 'all', pickedVehicle: new Map(), status: new Map(), ask: new Map() }; // kept across redraws
   let data = null;
   const props = proposalsCard(ctx, { match: (p) => shownOn(p).includes('board'), describe: (p) => describeProposal(p, data) });
   const load = async () => {
@@ -203,15 +218,22 @@ function boardScreen(ctx) {
     const sel = h('select', { 'aria-label': `Vehicle for ${t.id}`, 'data-test': 'assign-vehicle' }, h('option', { value: '' }, t.vehicleId ? 'Move to another vehicle' : 'Choose a vehicle'),
       usable.map((v) => h('option', { value: v.id }, `${v.name}: ${vehicleWords(v).toLowerCase()}, ${v.crewed ? 'crewed' : 'no crew yet'}${v.checkFailing ? ', FAILED CHECK' : ''}`)));
     sel.value = ui.pickedVehicle.get(t.id) || '';
-    sel.addEventListener('change', () => { ui.pickedVehicle.set(t.id, sel.value); ui.status.delete(t.id); });
     const status = h('p', { class: 'trf-status', role: 'status' }, ui.status.get(t.id) || '');
+    const give = (v) => act('ospeli_transfers_assign', { transferId: t.id, vehicleId: v.id, expectedState: t.state }, `${t.id} given to ${v.name}`, { onDone: () => { ui.pickedVehicle.delete(t.id); ui.ask.delete(t.id); } });
+    // A vehicle with no crew this shift: one plain check before it is given, and the person decides (ospeli/ospeli#132).
+    const asked = data.vehicles.find((x) => x.id === ui.ask.get(t.id) && x.id === sel.value && !x.crewed) || null;
+    const ask = asked ? h('div', { class: 'trf-ask', 'data-test': 'assign-no-crew' }, h('p', {}, h('b', {}, `${asked.name} has no crew yet this shift.`), ' No crew phone will see the job until a crew picks the vehicle.'),
+      h('div', { class: 'actions' }, h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_transfers_assign', 'data-test': 'assign-no-crew-yes', onclick: () => give(asked) }, `Give to ${asked.name} anyway`),
+        h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-test': 'assign-no-crew-no', onclick: () => { ui.ask.delete(t.id); draw(); } }, 'Choose another'))) : null;
+    sel.addEventListener('change', () => { ui.pickedVehicle.set(t.id, sel.value); ui.status.delete(t.id); if (ui.ask.has(t.id)) { ui.ask.delete(t.id); draw(); } });
     return h('div', { class: 'trf-assign' }, sel,
-      h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_transfers_assign', 'data-test': 'assign',
+      asked ? null : h('button', { class: 'btn btn-small', type: 'button', 'data-cmd': 'ospeli_transfers_assign', 'data-test': 'assign',
         onclick: () => {
           if (!sel.value) { ui.status.set(t.id, 'Choose a vehicle first.'); status.textContent = 'Choose a vehicle first.'; return; }
           const v = data.vehicles.find((x) => x.id === sel.value);
-          act('ospeli_transfers_assign', { transferId: t.id, vehicleId: sel.value, expectedState: t.state }, `${t.id} given to ${v.name}`, { onDone: () => ui.pickedVehicle.delete(t.id) });
-        } }, t.vehicleId ? 'Move' : 'Give to vehicle'), status);
+          if (!v.crewed) { ui.ask.set(t.id, v.id); draw(); box.querySelector(`[data-transfer="${t.id}"] [data-test="assign-no-crew-yes"]`)?.focus(); return; }
+          give(v);
+        } }, t.vehicleId ? 'Move' : 'Give to vehicle'), ask, status);
   }
   function row(t) {
     const departed = ['on-the-way', 'at-destination'].includes(t.state);

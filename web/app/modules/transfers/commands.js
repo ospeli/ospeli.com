@@ -194,6 +194,8 @@ const placesOut = (w) => ({
 });
 
 // ---- checks every write passes (for a person, and before an agent's proposal is queued) ----
+// Either side of now: a request stamped ahead by a clock set forward and then corrected blocks the
+// same request for two minutes at most, never for as long as the gap lasts (ospeli/ospeli#132).
 const DOUBLE_TAP = 2 * MIN;
 const sameList = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
 async function checkRequest(core, input, events) {
@@ -221,7 +223,7 @@ async function checkRequest(core, input, events) {
   if (input.again !== true) {
     const evs = events ?? await core.events();
     const now = Date.parse(core.now());
-    const recent = [...deriveTransfers(evs).values()].filter((t) => t.state !== 'cancelled' && now - Date.parse(t.requestedAt) < DOUBLE_TAP).find((t) =>
+    const recent = [...deriveTransfers(evs).values()].filter((t) => t.state !== 'cancelled' && Math.abs(now - Date.parse(t.requestedAt)) < DOUBLE_TAP).find((t) =>
       t.fromPlace === input.fromPlace && t.type === input.type && t.toSite === (input.toSite ?? null) && t.toOutside === (input.toSite ? null : input.toOutside)
       && t.needed === input.needed && (t.bookedFor || null) === (input.needed === 'booked' ? sameMoment(input.bookedFor) : null)
       && t.mobility === input.mobility && t.escort === input.escort && sameList(t.equipment, eq));

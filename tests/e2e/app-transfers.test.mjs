@@ -413,3 +413,64 @@ test('an open "Mark delayed" panel stays open, with its reasons, when another jo
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// ospeli/ospeli#132 point 4: a journey given to a vehicle with no crew yet asks one plain question
+// first; the coordinator decides, and nothing is saved until they do.
+test('giving a journey to a vehicle with no crew yet asks once on a 390 px phone; nothing is saved until the coordinator says so', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/transfers' });
+  await asRole(page, 'transport-coordinator', 'board');
+  const b0 = await board(page);
+  let bare = b0.vehicles.find((v) => v.state !== 'off-road' && !v.crewed);
+  if (!bare) {
+    bare = b0.vehicles.find((v) => v.state !== 'off-road');
+    assert.equal((await run(page, 'ospeli_transfers_vehicle_crew', { vehicleId: bare.id, crewed: false }, 'transport-coordinator')).status, 'done');
+    await page.waitForFunction((id) => [...document.querySelectorAll('[data-test="assign-vehicle"] option')].some((o) => o.value === id && /no crew yet/.test(o.textContent)), bare.id);
+  }
+  const first = page.locator('[data-test="queue"] > li').first();
+  const tid = await first.getAttribute('data-transfer');
+  const assigned = () => page.evaluate(async (t) => (await window.ospeli.core.events({ subject: t })).filter((e) => e.type === 'transfers.assigned').length, tid);
+  await first.locator('[data-test="assign-vehicle"]').selectOption(bare.id);
+  await first.locator('[data-test="assign"]').tap();
+  const ask = first.locator('[data-test="assign-no-crew"]');
+  await ask.waitFor();
+  assert.match(await ask.textContent(), new RegExp(`${bare.name} has no crew yet this shift`));
+  assert.equal(await assigned(), 0, 'nothing saved on the first tap');
+  assert.deepEqual(await phoneProblems(page), [], 'the question: phone rules');
+  assert.ok(await noSideways(page) <= 0, 'the question: no sideways scroll');
+  await first.locator('[data-test="assign-no-crew-no"]').tap();
+  await page.waitForFunction((t) => !document.querySelector(`[data-transfer="${t}"] [data-test="assign-no-crew"]`), tid);
+  assert.equal(await assigned(), 0, 'choose another: nothing saved');
+  await first.locator('[data-test="assign"]').tap();
+  await first.locator('[data-test="assign-no-crew-yes"]').tap();
+  await page.waitForFunction((t) => document.querySelector(`[data-test="open"] [data-transfer="${t}"]`), tid);
+  const ev = await page.evaluate(async (t) => (await window.ospeli.core.events({ subject: t })).at(-1), tid);
+  assert.deepEqual([ev.type, ev.actorRole, ev.data.vehicle], ['transfers.assigned', 'transport-coordinator', bare.id]);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+// ospeli/ospeli#132 point 9: a press on the driver's button that is still held when the screen is
+// drawn again (a change from another device, or the countdown after a step) still counts as a tap.
+test('a press on the driver\'s step button held across a redraw still takes the step', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, clock: CLOCK, path: '#/transfers' });
+  await asRole(page, 'driver', 'jobs');
+  await page.locator('[data-vehicle="asset-vehicle-2"]').click();
+  await page.waitForSelector('[data-test="next-job"][data-state="assigned"]');
+  const id = await page.locator('[data-test="next-job"]').getAttribute('data-transfer');
+  const main = page.locator('[data-test="main-action"]');
+  await page.waitForFunction(() => { const b = document.querySelector('[data-test="main-action"]'); return b && b.dataset.step === 'arrived-pickup' && !b.disabled; });
+  await main.scrollIntoViewIfNeeded();
+  const b = await main.boundingBox();
+  await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+  await page.mouse.down();
+  // A change from elsewhere redraws the screen while the finger is still down.
+  const mark = await page.evaluate(() => { const c = document.querySelector('[data-test="next-job"]'); c.dataset.old = 'yes'; return true; });
+  assert.ok(mark);
+  assert.equal((await run(page, 'ospeli_transfers_request', { type: 'between-sites', fromPlace: 'ward-a3', toSite: 'site-north', needed: 'asap', mobility: 'walks', escort: 'none', equipment: ['none'] }, 'ward-nurse')).status, 'done');
+  await page.waitForTimeout(1000); // the redraw after a change comes about 0.1 s after it
+  await page.mouse.up();
+  await until(async () => (await page.evaluate(async (t) => (await window.ospeli.core.events({ subject: t })).at(-1).type, id)) === 'transfers.arrived-pickup', 'the step to be saved');
+  await page.waitForFunction(() => { const c = document.querySelector('[data-test="next-job"]'); return c && !c.dataset.old && c.dataset.state === 'at-pickup'; });
+  assert.deepEqual(errors, []);
+  await context.close();
+});
