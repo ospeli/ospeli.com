@@ -68,7 +68,6 @@ export const IMAGING_PLANNED = 'Imaging list and scan slots: planned, not built 
 export const FAULT_NOTE = 'To report a fault, ask a facilities technician or the operations manager.';
 export const NOT_FOR = 'Operations only. Ospeli does not interpret results, hold result values or reference ranges, choose tests or set clinical priority: urgency is the requester\'s pick, recorded. A code on screen is not patient identification; labels are checked by the lab\'s own procedure. No patient names. Measures requests and steps, never a scientist, radiographer or clerk.';
 const WARD_FILTER_NOTE = 'The ward you pick is a filter on this device, not access control: anyone with this role can open any ward\'s list.';
-const OFFLINE = 'No connection: note the time on the request form and enter it when back in signal.';
 
 // ---- the site, read once per call ----
 const GONE = 'a place no longer on this site';
@@ -300,7 +299,7 @@ async function requestsList(core, input, wards) {
     requests: cut.items.map((r) => requestOut(r, info, now, { notArrived, short })), total: cut.total, truncated: cut.truncated, counts,
     ...(short ? {} : { picks: { sources: info.sources.filter((s) => !wards || wards.has(s.id)), testGroups: { ...TEST_GROUPS }, urgencies: { ...URGENCIES }, urgencyLabel: URGENCY_LABEL,
       cancelReasons: { ...CANCEL_REASONS }, collectedAgo: [...AGO_MINUTES], lateEntryMinutes: LATE_ENTRY_MINUTES, stages: { ...STAGES }, patients },
-    releasedDefinition: RELEASED_DEFINITION, filterNote: WARD_FILTER_NOTE, offlineNote: OFFLINE }),
+    releasedDefinition: RELEASED_DEFINITION, filterNote: WARD_FILTER_NOTE }),
     note: NOT_FOR,
   };
 }
@@ -512,7 +511,7 @@ export const COMMANDS = [
     output: { type: 'object', required: ['asOf', 'synthetic', 'requests', 'total', 'truncated', 'counts', 'note'], properties: {
       asOf: TIME, synthetic: SYNTHETIC, sourceId: NULLABLE('string'), sourceName: NULLABLE('string'), hours: { type: 'integer' }, requests: { type: 'array', items: REQUEST_OUT },
       total: TOTAL, truncated: TRUNCATED, counts: { type: 'object', description: 'Requests in the list by state, before the limit.' }, picks: { type: 'object' },
-      releasedDefinition: { type: 'string' }, filterNote: { type: 'string' }, offlineNote: { type: 'string' }, note: { type: 'string' } } },
+      releasedDefinition: { type: 'string' }, filterNote: { type: 'string' }, note: { type: 'string' } } },
     wardOf: (core, input) => input.sourceId ?? null,
     async run(core, input, { wards }) { return requestsList(core, input, wards); },
     example: { input: { sourceId: 'ward-a2', format: 'short', limit: 10 } },
