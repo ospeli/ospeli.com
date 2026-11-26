@@ -25,7 +25,8 @@ const MAX = 100000;
 const hoursText = (hrs) => (hrs == null ? '' : fmtWait(hrs * 60));
 // Hours since, in the linen screen's words: "just now", "25 min ago", "1 h 20 min ago" (#145; was "1 h" under 90 minutes).
 const agoWords = (hrs) => { const m = Math.floor(hrs * 60); return m < 1 ? 'just now' : `${fmtWait(m)} ago`; };
-const daysText = (d) => (d == null ? '' : d < 1 ? `${Math.max(1, Math.round(d * 24))} h` : `${Math.round(d * 10) / 10} days`);
+// Under a day in hours and minutes, as the linen screen says them: "under a minute", "25 min", "3 h 05 min" (#145; was "1 h" under 90 minutes).
+const daysText = (d) => { if (d == null) return ''; if (d >= 1) return `${Math.round(d * 10) / 10} days`; const m = Math.floor(d * 1440); return m < 1 ? 'under a minute' : fmtWait(m); };
 // Dates as day and month, times on the 24-hour clock, in the device's own time: "8 Nov, 19:19".
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 const day = (iso) => { const d = new Date(iso); return `${d.getDate()} ${MONTHS[d.getMonth()]}`; };
