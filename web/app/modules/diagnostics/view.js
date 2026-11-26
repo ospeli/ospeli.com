@@ -15,6 +15,7 @@ import { h, setKids, fmtWait, moduleStyle, redrawOnChange } from '../ui.js';
 import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
+import { laterBox } from '../soon.js';
 import { TEST_GROUPS, URGENCIES, URGENCY_LABEL, REJECT_REASONS, REJECT_HEADING, CANCEL_REASONS, AGO_MINUTES, agoText, EXPECTED_HOURS, EQUIPMENT_STATES, LATE_ENTRY_MINUTES } from './logic.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
@@ -443,8 +444,7 @@ export async function render(el, ctx) {
       role === 'radiographer' || manager ? savedCard() : null,
       list.length ? h('ul', { class: 'dx-list' }, list.map(eqCard)) : h('p', { class: 'dx-empty' }, 'No analyser or scanner on this site yet.'),
       h('p', { class: 'meta', 'data-test': 'fault-note' }, data.eq.faultNote),
-      anyRights ? null : h('p', { class: 'meta', 'data-test': 'eq-read-only' }, `Analysers are marked down and back by ${roleNames(['lab-scientist', 'diagnostics-manager'])}; scanners by ${roleNames(['radiographer', 'diagnostics-manager'])}.`),
-      h('p', { class: 'card meta notice', 'data-test': 'imaging-planned' }, data.eq.imaging));
+      anyRights ? null : h('p', { class: 'meta', 'data-test': 'eq-read-only' }, `Analysers are marked down and back by ${roleNames(['lab-scientist', 'diagnostics-manager'])}; scanners by ${roleNames(['radiographer', 'diagnostics-manager'])}.`));
   }
 
   // ---------------------------------------------------------------- the manager's pieces
@@ -511,8 +511,7 @@ export async function render(el, ctx) {
           h('p', { class: 'dx-kpi-value' }, pct(comp.value)),
           h('p', { class: 'meta' }, `${comp.numerator} of ${comp.denominator} finished requests have every step timed. Received with no collection time: ${comp.missing.noCollection}. Collections entered late: ${comp.missing.enteredLate}.`),
           comp.byArea.length ? h('ul', { class: 'dx-rows' }, comp.byArea.slice(0, 8).map((a) => h('li', { 'data-source': a.sourceId }, h('b', {}, a.name), `: ${pct(a.value)} (${a.numerator} of ${a.denominator}); no collection time ${a.noCollection}`))) : null,
-          h('details', { class: 'dx-def' }, h('summary', {}, 'How it is counted'), h('p', {}, comp.definition), h('p', {}, `Required steps: ${comp.requiredSteps.join('; ')}.`), h('p', {}, 'Source: local definition (KPI dictionary D-21).')))),
-      h('ul', { class: 'dx-planned' }, data.ov.planned.map((x) => h('li', { class: 'meta', 'data-kpi': x.id }, `${x.name}: ${x.note}`))));
+          h('details', { class: 'dx-def' }, h('summary', {}, 'How it is counted'), h('p', {}, comp.definition), h('p', {}, `Required steps: ${comp.requiredSteps.join('; ')}.`), h('p', {}, 'Source: local definition (KPI dictionary D-21).')))));
   }
   function dayAtHatch() {
     const log = data.log;
@@ -522,7 +521,13 @@ export async function render(el, ctx) {
       log.byHour?.length ? [h('p', { class: 'dx-sub' }, 'By hour'), h('ul', { class: 'dx-hours', 'data-test': 'by-hour' }, log.byHour.map((x) => h('li', {}, h('b', {}, `${String(x.hour).padStart(2, '0')}:00`), ` ${x.received} received${x.rejected ? `, ${x.rejected} rejected` : ''}`)))] : null,
       log.bySource?.length ? [h('p', { class: 'dx-sub' }, 'By source'), h('ul', { class: 'dx-rows', 'data-test': 'by-source' }, log.bySource.map((x) => h('li', {}, h('b', {}, x.sourceName), `: ${x.received} received${x.rejected ? `, ${x.rejected} rejected` : ''}`)))] : null);
   }
-  const footer = () => h('p', { class: 'meta dx-note' }, data.ov.note);
+  // The page's planned parts sit together, closed, under one "Coming later (n)" (design audit 25 Nov):
+  // the imaging list (every view shows equipment) and, where the measures show, the planned measures.
+  const comingLater = (withMeasures) => laterBox([
+    { text: data.eq.imaging, attrs: { 'data-test': 'imaging-planned' } },
+    ...(withMeasures ? data.ov.planned.map((x) => ({ text: `${x.name}: ${x.note.replace(/^Planned, not built yet:\s*/, 'planned, not built yet; ')}`, attrs: { 'data-kpi': x.id } })) : []),
+  ]);
+  const footer = (withMeasures = false) => [comingLater(withMeasures), h('p', { class: 'meta dx-note' }, data.ov.note)];
   const readOnlyLine = () => h('p', { class: 'card meta notice', 'data-test': 'read-only' }, `${roleById(role)?.name || role} can see this page. Requests are recorded by ${roleNames(['unit-clerk', 'ward-nurse', 'ae-nic'])}; specimens are received at the lab by ${roleNames(['lab-reception', 'lab-scientist'])}; equipment is marked down and back by ${roleNames(['lab-scientist', 'radiographer', 'diagnostics-manager'])}.`);
 
   // ---------------------------------------------------------------- the page
@@ -538,7 +543,7 @@ export async function render(el, ctx) {
       setKids(root, head(), props.el, equipment(), dayAtHatch(), footer());
     } else {
       const rights = mayGuide || can(role, 'ospeli_diagnostics_equipment_set') || mayCancel;
-      setKids(root, head(), props.el, summary(), guideCard(), equipment(), measures(), dayAtHatch(), rights ? null : readOnlyLine(), footer());
+      setKids(root, head(), props.el, summary(), guideCard(), equipment(), measures(), dayAtHatch(), rights ? null : readOnlyLine(), footer(true));
     }
     if (ui.justSaved) {
       ui.justSaved = false;

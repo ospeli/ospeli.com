@@ -11,6 +11,7 @@ import { h, setKids, fmtWait, moduleStyle, redrawOnChange } from '../ui.js';
 import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
+import { laterBox } from '../soon.js';
 import { CHECK_KINDS, RESULTS, RUN_MINUTES, LEVELS, GAS_BANDS, UTILITIES, CAUSES, AGO_MINUTES, LEVEL_PICKS, runText, agoText,
   LOADS, LOAD_WORDS, WASTE_STREAMS, WASTE_CONTAINERS, WASTE_OUTCOMES, WASTE_REASONS, containersText, containersPick, totalContainersText } from './logic.js';
 
@@ -28,6 +29,20 @@ const agoLater = (m) => (m < 60 ? `${m} min` : m === 60 ? '1 hour' : `${m / 60} 
 // Outage time as people say it, "15 min" or "1 h 30 min" (#140: "0.3 h + 0.3 h" under "0.5 h" did not add up).
 const hoursText = (mins) => (mins == null ? 'None' : fmtWait(mins));
 const pctText = (x) => (x == null ? 'Nothing due yet' : `${Math.round(x)}%`);
+
+// The page's planned parts sit together, closed, under one "Coming later (n)" (design audit 25 Nov).
+// The manager's view adds what its own cards would have said: the planned measures and the guide's
+// weather rule (shown only while the guide is on, as before). Rooms out of use is one line, with its reason.
+function comingLater(planned = [], { measures = false, guide = false, faults = true } = {}) {
+  const why = (id) => planned.find((x) => x.id === id)?.note.replace(/^Planned, not built yet:\s*/, '') || '';
+  return laterBox([
+    { text: 'Compliance calendar: planned, not built yet.' },
+    { text: `Rooms out of use: planned, not built yet${why('rooms-out-of-use') ? `; ${why('rooms-out-of-use')}` : '.'}`, attrs: { 'data-kpi': 'rooms-out-of-use' } },
+    ...(measures ? planned.filter((x) => x.id !== 'rooms-out-of-use').map((x) => ({ text: `${x.name}: planned, not built yet; ${why(x.id)}`, attrs: { 'data-kpi': x.id } })) : []),
+    faults ? { text: 'Room labels for fault reports: planned, not built yet.' } : null,
+    guide ? { text: 'Before severe weather (a guide rule): planned, not built yet.' } : null,
+  ]);
+}
 
 export async function render(el, ctx) {
   await moduleStyle('facilities');
@@ -326,7 +341,6 @@ export async function render(el, ctx) {
           h('p', {}, h('b', {}, s.text)), h('p', { class: 'meta' }, s.why),
           s.rule === 'repeat-faults' ? h('a', { href: '#/engineering', class: 'fac-a' }, 'See the work orders on the Engineering page') : null,
           h('details', { class: 'fac-def' }, h('summary', {}, 'Why this rule'), h('p', {}, s.basis))))) : h('p', { 'data-test': 'no-suggestion' }, 'Nothing to suggest right now.'),
-        h('p', { class: 'meta' }, 'Before severe weather: planned, not built yet.'),
       ] : h('p', { 'data-test': 'guide-off' }, 'The guide is off. The log, the checks and the measures work the same.'),
       mayGuide ? null : h('p', { class: 'meta' }, 'The facilities manager can switch the guide on or off.'));
   }
@@ -407,8 +421,7 @@ export async function render(el, ctx) {
           cont.byStream?.length ? h('ul', { class: 'fac-hours' }, cont.byStream.map((x) => h('li', { 'data-stream': x.id }, `${x.name}: ${x.containers}`))) : h('p', { class: 'meta' }, 'No collection recorded this month.'),
           def(cont)) : null),
       h('ul', { class: 'fac-planned' },
-        data.ov.readOnly.map((x) => h('li', { class: 'meta', 'data-kpi': x.id }, `${x.name}: ${x.note}`)),
-        data.ov.planned.map((x) => h('li', { class: 'meta', 'data-kpi': x.id }, `${x.name}: ${x.note}`))));
+        data.ov.readOnly.map((x) => h('li', { class: 'meta', 'data-kpi': x.id }, `${x.name}: ${x.note}`))));
   }
 
   function faultsCard() {
@@ -422,8 +435,7 @@ export async function render(el, ctx) {
         h('p', {}, h('b', {}, `${w.id.toUpperCase()}: ${w.title}`)),
         h('p', {}, [w.assetName, w.locationName].filter(Boolean).join(', ')),
         h('p', { class: 'meta' }, `${n.priorityName}. ${n.lateText}.`)) : h('p', { 'data-test': 'no-job' }, 'No job is waiting for the facilities team.'),
-      h('a', { class: 'btn btn-ghost fac-link', href: '#/engineering', 'data-test': 'open-engineering' }, mayFault ? 'Report or work a fault: Engineering page' : 'Open the Engineering page'),
-      h('p', { class: 'meta' }, 'Room labels for fault reports: planned, not built yet.'));
+      h('a', { class: 'btn btn-ghost fac-link', href: '#/engineering', 'data-test': 'open-engineering' }, mayFault ? 'Report or work a fault: Engineering page' : 'Open the Engineering page'));
   }
 
   function levelsCard() {
@@ -457,8 +469,8 @@ export async function render(el, ctx) {
         : h('p', { class: 'fac-empty', 'data-test': 'log-empty' }, 'Nothing has been logged on this device yet.'));
   }
 
-  const footer = () => [
-    h('p', { class: 'card meta notice', 'data-test': 'planned' }, 'Compliance calendar: planned, not built yet. Rooms out of use: planned, not built yet.'),
+  const footer = (opts) => [
+    comingLater(data.ov.planned, opts),
     h('p', { class: 'meta fac-note' }, data.ov.note),
   ];
 
@@ -489,7 +501,7 @@ export async function render(el, ctx) {
         levelsCard(),
         logSection(),
         recent(),
-        footer());
+        footer({ measures: true, guide: data.ov.guide?.on ?? false }));
     }
     if (ui.justSaved) {
       ui.justSaved = false;
@@ -693,7 +705,7 @@ async function renderWaste(el, ctx) {
       waiting(),
       byStream(),
       h('p', { class: 'meta fac-note' }, data.ov.waste.note),
-      h('p', { class: 'card meta notice', 'data-test': 'planned' }, 'Compliance calendar: planned, not built yet. Rooms out of use: planned, not built yet.'));
+      comingLater(data.ov.planned, { faults: false }));
     if (ui.justSaved) {
       ui.justSaved = false;
       const sv = root.querySelector('[data-test="saved"]');
