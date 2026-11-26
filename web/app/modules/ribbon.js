@@ -35,11 +35,17 @@ export function ribbonModel(w) {
   const segs = [...Array(done).fill('done'), w.state === 'paused' ? 'paused' : under === 'step' ? 'step' : 'wait', ...Array(later).fill('later')];
   // The next tap. A step done on a first walk (or off the list) still needs its name: the tap is
   // stamped here, then the walk opens with its naming sheet, as on the walk screen.
+  // `note`: the short message after the tap, in plain words (#182 item 12); `said`: what a screen reader hears.
+  const UNDO = 'Wrong tap? Open Walk to undo it.';
   let act;
-  if (w.state === 'paused') act = { cmd: 'ospeli_walks_resume', input: {}, label: 'I am back', said: 'You are back.' };
-  else if (under === 'step') act = { cmd: 'ospeli_walks_step_done', input: {}, label: `${name || 'Step'} done`, said: `${name || `Step ${n}`} done. Waiting.`, thenOpen: !(rp && rp.now) };
-  else if (resume) act = { cmd: 'ospeli_walks_step_start', input: { resume: true }, label: `${name || 'Step'} carries on`, said: 'The same step carries on. Hands-on.' };
-  else act = { cmd: 'ospeli_walks_step_start', input: {}, label: `${name || 'Step'} starts`, said: `${name || `Step ${n}`} started. Hands-on.`, unnamedBefore: !!last && !last.named ? last.n : null };
+  if (w.state === 'paused') act = { cmd: 'ospeli_walks_resume', input: {}, label: 'I am back', said: 'You are back.', note: 'You are back. The walk is timing again.' };
+  else if (under === 'step') act = { cmd: 'ospeli_walks_step_done', input: {}, label: `${name || 'Step'} done`, said: `${name || `Step ${n}`} done. Waiting.`, note: `${name || `Step ${n}`} done. ${UNDO}`, thenOpen: !(rp && rp.now) };
+  else if (resume) act = { cmd: 'ospeli_walks_step_start', input: { resume: true }, label: `${name || 'Step'} carries on`, said: 'The same step carries on. Hands-on.', note: `${name || `Step ${n}`} carries on. ${UNDO}` };
+  else {
+    const unnamedBefore = !!last && !last.named ? last.n : null;
+    act = { cmd: 'ospeli_walks_step_start', input: {}, label: `${name || 'Step'} starts`, said: `${name || `Step ${n}`} started. Hands-on.`, unnamedBefore,
+      note: `${name || `Step ${n}`} started. ${unnamedBefore ? `Step ${unnamedBefore} has no name yet: name it on the map.` : UNDO}` };
+  }
   return { title, n, of, words, segs, act, state: w.state };
 }
 
@@ -56,11 +62,15 @@ export function installRibbon(ctx, { toast }) {
   const title = h('span', { class: 'wr-title', 'data-test': 'ribbon-title' });
   const step = h('span', { class: 'wr-step', 'data-test': 'ribbon-step' });
   const words = h('span', { class: 'wr-words', 'data-test': 'ribbon-words' });
+  // On a short phone the band is one row (#182 item 11): the title line gives way and the step
+  // number goes in front of the words; on a taller screen this stays hidden and the title line shows.
+  const num = h('span', { class: 'wr-n', 'data-test': 'ribbon-n' });
+  const numBox = h('span', { class: 'wr-nbox' }, num, ' · ');
   const clock = h('span', { class: 'wr-clock', 'data-test': 'ribbon-clock', 'aria-hidden': 'true' });
   // The title line runs the whole width; the state and clock sit beside the button, as the link to the walk.
   const head = h('span', { class: 'wr-head', 'aria-hidden': 'true' }, title, step);
   const open = h('a', { class: 'wr-open', href: WALK_HREF, 'data-test': 'ribbon-open' },
-    h('span', { class: 'wr-now' }, words, h('span', { class: 'wr-dot', 'aria-hidden': 'true' }, ' · '), clock));
+    h('span', { class: 'wr-now' }, numBox, words, h('span', { class: 'wr-dot', 'aria-hidden': 'true' }, ' · '), clock));
   const act = h('button', { type: 'button', class: 'wr-act', 'data-test': 'ribbon-act' }, 'Next tap');
   // Spoken when the state changes, never for the ticking clock.
   const said = h('span', { class: 'sr-only', role: 'status', 'aria-live': 'polite', 'data-test': 'ribbon-status' });
@@ -89,6 +99,7 @@ export function installRibbon(ctx, { toast }) {
     segs.replaceChildren(...model.segs.map((s) => h('span', { class: `wr-seg is-${s}` })));
     title.textContent = model.title;
     step.textContent = ` · step ${model.n}${model.of ? ` of ${model.of}` : ''}`;
+    num.textContent = `Step ${model.n}${model.of ? ` of ${model.of}` : ''}`;
     words.textContent = model.words;
     open.setAttribute('aria-label', `Open the walk: ${model.title}, step ${model.n}${model.of ? ` of ${model.of}` : ''}, ${model.words}`);
     act.textContent = model.act.label;
@@ -121,7 +132,7 @@ export function installRibbon(ctx, { toast }) {
       walk = out.walk; draw();
       said.textContent = a.said;
       if (a.thenOpen) { location.hash = WALK_HREF; return; }
-      toast(a.unnamedBefore ? `Saved: ${a.label.toLowerCase()}. Step ${a.unnamedBefore} has no name yet; name it on the map.` : `Saved: ${a.label.toLowerCase()}. Undo is on the walk.`);
+      toast(a.note, 2400); // brief: the ribbon itself already shows the new state
     } catch (err) {
       toast(`Not saved. ${err.message}`);
     } finally { busy = false; act.disabled = false; refresh(); }

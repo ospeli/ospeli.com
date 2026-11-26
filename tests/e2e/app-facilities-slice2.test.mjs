@@ -186,7 +186,10 @@ test('the waste form cannot be saved until every pick is made, with no answer ch
   await tap(page, '[data-test="stream"] [data-value="chemical"]');
   assert.equal(await page.locator('[data-test="waste-save"]').textContent(), 'Pick what happened first');
   assert.match(await page.locator('.fac').textContent(), /does not check what is inside a container/);
-  assert.match(await page.locator('[data-test="planned"]').textContent(), /Compliance calendar: planned, not built yet\. Rooms out of use: planned, not built yet\./);
+  // The planned lines sit together under the page's one "Coming later (n)" (crew night 4, #187 item 4).
+  const later = await page.locator('[data-test="page-coming-later"]').textContent();
+  assert.match(later, /Compliance calendar: planned, not built yet\./);
+  assert.match(later, /Rooms out of use: planned, not built yet/);
   assert.deepEqual(errors, []);
   await context.close();
 });
@@ -326,7 +329,7 @@ test('manager: the facilities manager on a 390 px touch phone sees the missed wa
   const load = kpi(k1, 'generator-load-test-compliance');
   assert.equal(await page.locator('[data-kpi="generator-load-test-compliance"]').getAttribute('data-n'), `${load.numerator}/${load.denominator}`);
   assert.match(await page.locator('[data-kpi="generator-load-test-compliance"]').textContent(), /Generator on-load tests done by due date, since Tue 20 Oct/);
-  assert.match(await page.locator('[data-test="planned"]').textContent(), /Rooms out of use: planned, not built yet/);
+  assert.match(await page.locator('[data-test="page-coming-later"]').textContent(), /Rooms out of use: planned, not built yet/);
   assert.ok(Date.now() - t0 < 5 * 60e3, 'under five minutes');
   assert.deepEqual(errors, []);
   await context.close();

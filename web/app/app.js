@@ -18,12 +18,14 @@ let cleanup = null;
 let toastTimer = null;
 let routeToken = 0;
 
-export function toast(msg) {
+// A short message over the hospital row of the top bar. `ms`: how long it shows (a brief note after
+// a tap on the walk ribbon shows for less, #182 item 12).
+export function toast(msg, ms = 3200) {
   const t = $('#toast');
   t.textContent = msg;
   t.classList.add('show');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.remove('show'), 3200);
+  toastTimer = setTimeout(() => t.classList.remove('show'), ms);
 }
 
 // Issue #52, in navigation v2: the Journey page says where an agent's proposal is waiting for this
@@ -71,9 +73,12 @@ function showDepartment(ctx) {
   $('#dept-btn').setAttribute('aria-label', d ? `Department: ${d.name}. Change department` : 'Choose your department');
   if (d) document.documentElement.dataset.department = d.id; else delete document.documentElement.dataset.department;
 }
-async function setDepartment(ctx, id) {
+// `walk`: "Walk a visit now" on the first-open sheet (#187 item 1): the department is set and the
+// page drawn is Before you walk, the same place the homepage's "Try a walk" opens, in one tap.
+async function setDepartment(ctx, id, { walk = false } = {}) {
   const d = departmentById(id);
   if (!d) return;
+  if (walk && location.hash !== WALK_HASH) history.pushState(null, '', WALK_HASH);
   const from = ctx.department;
   const firstRole = !ctx.site && !ctx.roleChosen;
   if (id !== from) {
@@ -87,14 +92,29 @@ async function setDepartment(ctx, id) {
   ctx.roleChosen = true;
   if (firstRole && d.role !== ctx.role) { await setRole(ctx, d.role, { why: 'department' }); return; }
   if (firstRole) await ctx.core.setMeta('role', ctx.role);
-  if (id !== from) route(ctx);
+  if (id !== from || walk) route(ctx);
 }
+const WALK_HASH = '#/process/walk';
+// On a first open (no department yet) each department has a second way out beside it, "Walk a visit
+// now" (#187 item 1). Not when the page is already the walk (the homepage's "Try a walk"), where the
+// department alone goes there, and not when the department is changed later from the chip.
 function openDepartments(ctx) {
   const sheet = $('#dept-sheet');
-  $('#dept-list').replaceChildren(...DEPARTMENTS.map((d) => h('button', { type: 'button', class: `dept-opt${d.id === ctx.department ? ' is-on' : ''}`, 'data-dept': d.id,
-    'aria-pressed': String(d.id === ctx.department), onclick: () => { sheet.close(); setDepartment(ctx, d.id); } },
-  h('span', { class: 'dept-opt-name' }, d.name), h('span', { class: 'dept-opt-hint' }, d.hint),
-  d.id === ctx.department ? h('span', { class: 'dept-opt-on' }, 'Chosen') : null)));
+  const offerWalk = !ctx.department && parseRoute(location.hash).id !== 'process';
+  $('#dept-sheet').classList.toggle('has-walk', offerWalk);
+  $('#dept-why').textContent = offerWalk
+    ? 'Tap your department to see its pages. Or tap "Walk a visit now" beside it to time one patient\'s visit straight away. You can change the department at any time at the top of the screen.'
+    : 'Ospeli shows your department\'s pages and words first. You can change this at any time at the top of the screen.';
+  $('#dept-list').replaceChildren(...DEPARTMENTS.map((d) => {
+    const pick = h('button', { type: 'button', class: `dept-opt${d.id === ctx.department ? ' is-on' : ''}`, 'data-dept': d.id,
+      'aria-pressed': String(d.id === ctx.department), onclick: () => { sheet.close(); setDepartment(ctx, d.id); } },
+    h('span', { class: 'dept-opt-name' }, d.name), h('span', { class: 'dept-opt-hint' }, d.hint),
+    d.id === ctx.department ? h('span', { class: 'dept-opt-on' }, 'Chosen') : null);
+    if (!offerWalk) return pick;
+    return h('div', { class: 'dept-row' }, pick,
+      h('button', { type: 'button', class: 'dept-walk', 'data-dept-walk': d.id, 'aria-label': `Walk a visit now, in ${d.name}`,
+        onclick: () => { sheet.close(); setDepartment(ctx, d.id, { walk: true }); } }, 'Walk a visit now'));
+  }));
   if (!sheet.open) sheet.showModal();
 }
 function buildShell(ctx) {

@@ -100,7 +100,7 @@
 .mod-diagnostics .dx-kpi-name { font-weight: 800; }
 .mod-diagnostics .dx-kpi-value { font-size: 1.8rem; font-weight: 800; line-height: 1.15; }
 .mod-diagnostics .dx-kpi-value small { font-size: 1rem; font-weight: 700; color: var(--ink-soft); }
-.mod-diagnostics .dx-rows, .mod-diagnostics .dx-hours, .mod-diagnostics .dx-planned { margin: 4px 0; padding-left: 18px; }
+.mod-diagnostics .dx-rows, .mod-diagnostics .dx-hours { margin: 4px 0; padding-left: 18px; }
 .mod-diagnostics .dx-rows li, .mod-diagnostics .dx-hours li { margin: 2px 0; }
 .mod-diagnostics .dx-note { margin-top: 10px; }
 @media (min-width: 700px) {

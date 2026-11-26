@@ -27,6 +27,16 @@ const remembered = { get() { try { return localStorage.getItem(STORE_KEY) || nul
 const pct = (x) => (x == null ? 'None yet' : `${Math.round(x * 10) / 10}%`);
 const mins = (x) => (x == null ? 'None yet' : fmtWait(x));
 
+// One closed "Coming later (n)" for this page's planned parts (styled by the shell: .later-box).
+// Each text is set as text, never as HTML. Nothing planned: no box.
+function laterBox(items) {
+  const list = items.filter(Boolean);
+  if (!list.length) return null;
+  return h('details', { class: 'card later-box', 'data-test': 'page-coming-later' },
+    h('summary', {}, `Coming later (${list.length})`),
+    h('ul', { class: 'later-list' }, list.map(({ text, attrs }) => h('li', attrs || {}, text))));
+}
+
 export async function render(el, ctx) {
   await moduleStyle('diagnostics');
   const role = ctx.role;
@@ -443,8 +453,7 @@ export async function render(el, ctx) {
       role === 'radiographer' || manager ? savedCard() : null,
       list.length ? h('ul', { class: 'dx-list' }, list.map(eqCard)) : h('p', { class: 'dx-empty' }, 'No analyser or scanner on this site yet.'),
       h('p', { class: 'meta', 'data-test': 'fault-note' }, data.eq.faultNote),
-      anyRights ? null : h('p', { class: 'meta', 'data-test': 'eq-read-only' }, `Analysers are marked down and back by ${roleNames(['lab-scientist', 'diagnostics-manager'])}; scanners by ${roleNames(['radiographer', 'diagnostics-manager'])}.`),
-      h('p', { class: 'card meta notice', 'data-test': 'imaging-planned' }, data.eq.imaging));
+      anyRights ? null : h('p', { class: 'meta', 'data-test': 'eq-read-only' }, `Analysers are marked down and back by ${roleNames(['lab-scientist', 'diagnostics-manager'])}; scanners by ${roleNames(['radiographer', 'diagnostics-manager'])}.`));
   }
 
   // ---------------------------------------------------------------- the manager's pieces
@@ -511,8 +520,7 @@ export async function render(el, ctx) {
           h('p', { class: 'dx-kpi-value' }, pct(comp.value)),
           h('p', { class: 'meta' }, `${comp.numerator} of ${comp.denominator} finished requests have every step timed. Received with no collection time: ${comp.missing.noCollection}. Collections entered late: ${comp.missing.enteredLate}.`),
           comp.byArea.length ? h('ul', { class: 'dx-rows' }, comp.byArea.slice(0, 8).map((a) => h('li', { 'data-source': a.sourceId }, h('b', {}, a.name), `: ${pct(a.value)} (${a.numerator} of ${a.denominator}); no collection time ${a.noCollection}`))) : null,
-          h('details', { class: 'dx-def' }, h('summary', {}, 'How it is counted'), h('p', {}, comp.definition), h('p', {}, `Required steps: ${comp.requiredSteps.join('; ')}.`), h('p', {}, 'Source: local definition (KPI dictionary D-21).')))),
-      h('ul', { class: 'dx-planned' }, data.ov.planned.map((x) => h('li', { class: 'meta', 'data-kpi': x.id }, `${x.name}: ${x.note}`))));
+          h('details', { class: 'dx-def' }, h('summary', {}, 'How it is counted'), h('p', {}, comp.definition), h('p', {}, `Required steps: ${comp.requiredSteps.join('; ')}.`), h('p', {}, 'Source: local definition (KPI dictionary D-21).')))));
   }
   function dayAtHatch() {
     const log = data.log;
@@ -522,7 +530,13 @@ export async function render(el, ctx) {
       log.byHour?.length ? [h('p', { class: 'dx-sub' }, 'By hour'), h('ul', { class: 'dx-hours', 'data-test': 'by-hour' }, log.byHour.map((x) => h('li', {}, h('b', {}, `${String(x.hour).padStart(2, '0')}:00`), ` ${x.received} received${x.rejected ? `, ${x.rejected} rejected` : ''}`)))] : null,
       log.bySource?.length ? [h('p', { class: 'dx-sub' }, 'By source'), h('ul', { class: 'dx-rows', 'data-test': 'by-source' }, log.bySource.map((x) => h('li', {}, h('b', {}, x.sourceName), `: ${x.received} received${x.rejected ? `, ${x.rejected} rejected` : ''}`)))] : null);
   }
-  const footer = () => h('p', { class: 'meta dx-note' }, data.ov.note);
+  // The page's planned parts sit together, closed, under one "Coming later (n)" (design audit 25 Nov):
+  // the imaging list (every view shows equipment) and, where the measures show, the planned measures.
+  const comingLater = (withMeasures) => laterBox([
+    { text: data.eq.imaging, attrs: { 'data-test': 'imaging-planned' } },
+    ...(withMeasures ? data.ov.planned.map((x) => ({ text: `${x.name}: ${x.note.replace(/^Planned, not built yet:\s*/, 'planned, not built yet; ')}`, attrs: { 'data-kpi': x.id } })) : []),
+  ]);
+  const footer = (withMeasures = false) => [comingLater(withMeasures), h('p', { class: 'meta dx-note' }, data.ov.note)];
   const readOnlyLine = () => h('p', { class: 'card meta notice', 'data-test': 'read-only' }, `${roleById(role)?.name || role} can see this page. Requests are recorded by ${roleNames(['unit-clerk', 'ward-nurse', 'ae-nic'])}; specimens are received at the lab by ${roleNames(['lab-reception', 'lab-scientist'])}; equipment is marked down and back by ${roleNames(['lab-scientist', 'radiographer', 'diagnostics-manager'])}.`);
 
   // ---------------------------------------------------------------- the page
@@ -538,7 +552,7 @@ export async function render(el, ctx) {
       setKids(root, head(), props.el, equipment(), dayAtHatch(), footer());
     } else {
       const rights = mayGuide || can(role, 'ospeli_diagnostics_equipment_set') || mayCancel;
-      setKids(root, head(), props.el, summary(), guideCard(), equipment(), measures(), dayAtHatch(), rights ? null : readOnlyLine(), footer());
+      setKids(root, head(), props.el, summary(), guideCard(), equipment(), measures(), dayAtHatch(), rights ? null : readOnlyLine(), footer(true));
     }
     if (ui.justSaved) {
       ui.justSaved = false;
