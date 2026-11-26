@@ -256,6 +256,13 @@ test('the manager view at 1280 px: measures with their sources, the guide switch
   assert.match(await page.locator('[data-kpi="stores-fill-rate"]').textContent(), /request lines issued in full in the end \(after any part issues\)/);
   assert.match(await page.locator('[data-kpi="stores-request-wait"]').textContent(), /to issued from the store/);
   assert.match(await page.locator('[data-kpi="stores-tracer-stock-out-rate"]').textContent(), /KPI dictionary D-17/);
+  // #125: the stock-out tile says it is Ospeli's own definition, shows each place's usual count interval, and
+  // says once that places counting at different intervals are not directly comparable.
+  const so = page.locator('[data-kpi="stores-tracer-stock-out-rate"]');
+  assert.equal(await so.locator('[data-test="own-definition"]').textContent(), "Ospeli's definition");
+  assert.equal(await so.locator('[data-test="count-note"]').count(), 1);
+  assert.match(await so.locator('[data-test="count-note"]').textContent(), /different intervals are not directly comparable/);
+  assert.match(await so.textContent(), /Main store: .*\(.*item-days; (counted about every|fewer than two counts)/s);
   const guide = page.locator('[data-test="guide"]');
   assert.equal(await guide.getAttribute('data-on'), 'true');
   assert.deepEqual((await page.locator('[data-test="suggestion"]').evaluateAll((els) => [...new Set(els.map((e) => e.dataset.rule))])).sort(), ['level-check', 'order-waiting', 'transfer']);
