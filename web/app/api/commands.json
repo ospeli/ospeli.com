@@ -7088,6 +7088,25 @@
             "format": "date-time",
             "maxLength": 40
           },
+          "waitReasons": {
+            "type": "array",
+            "description": "The reasons a person can give for a wait or an interruption with one tap (ospeli_walks_reason). Example setting, not a standard. They say what was missing, never who.",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "text"
+              ],
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "text": {
+                  "type": "string"
+                }
+              }
+            }
+          },
           "before": {
             "type": "array",
             "items": {
@@ -7472,7 +7491,56 @@
                     "interruptions": {
                       "type": "integer",
                       "description": "How many times the work on this step stopped before it was finished."
+                    },
+                    "waitReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What the wait before this step was waiting for, as the person walking saw it (ospeli_walks_reason). Absent when none was given. One person's observation on one walk, not a cause."
+                    },
+                    "stopReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What stopped the work on this step the last time it was interrupted, as the person walking saw it. A step interrupted again loses the earlier answer. Absent when none was given."
+                    },
+                    "typed": {
+                      "type": "boolean",
+                      "description": "true when the step name was typed by the person, not chosen from the words offered."
                     }
+                  }
+                }
+              },
+              "askReason": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "A question the screen may put now, never one that must be answered: of \"wait\" when the wait that just ended was 120 seconds or more (a local definition) and has no reason yet; of \"stop\" when the step that ended last was interrupted and has no reason yet. Null otherwise. Answer with ospeli_walks_reason, or not at all.",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "enum": [
+                      "wait",
+                      "stop"
+                    ]
+                  },
+                  "waitSec": {
+                    "type": "integer"
                   }
                 }
               },
@@ -7859,7 +7927,56 @@
                     "interruptions": {
                       "type": "integer",
                       "description": "How many times the work on this step stopped before it was finished."
+                    },
+                    "waitReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What the wait before this step was waiting for, as the person walking saw it (ospeli_walks_reason). Absent when none was given. One person's observation on one walk, not a cause."
+                    },
+                    "stopReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What stopped the work on this step the last time it was interrupted, as the person walking saw it. A step interrupted again loses the earlier answer. Absent when none was given."
+                    },
+                    "typed": {
+                      "type": "boolean",
+                      "description": "true when the step name was typed by the person, not chosen from the words offered."
                     }
+                  }
+                }
+              },
+              "askReason": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "A question the screen may put now, never one that must be answered: of \"wait\" when the wait that just ended was 120 seconds or more (a local definition) and has no reason yet; of \"stop\" when the step that ended last was interrupted and has no reason yet. Null otherwise. Answer with ospeli_walks_reason, or not at all.",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "enum": [
+                      "wait",
+                      "stop"
+                    ]
+                  },
+                  "waitSec": {
+                    "type": "integer"
                   }
                 }
               },
@@ -8244,7 +8361,56 @@
                     "interruptions": {
                       "type": "integer",
                       "description": "How many times the work on this step stopped before it was finished."
+                    },
+                    "waitReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What the wait before this step was waiting for, as the person walking saw it (ospeli_walks_reason). Absent when none was given. One person's observation on one walk, not a cause."
+                    },
+                    "stopReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What stopped the work on this step the last time it was interrupted, as the person walking saw it. A step interrupted again loses the earlier answer. Absent when none was given."
+                    },
+                    "typed": {
+                      "type": "boolean",
+                      "description": "true when the step name was typed by the person, not chosen from the words offered."
                     }
+                  }
+                }
+              },
+              "askReason": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "A question the screen may put now, never one that must be answered: of \"wait\" when the wait that just ended was 120 seconds or more (a local definition) and has no reason yet; of \"stop\" when the step that ended last was interrupted and has no reason yet. Null otherwise. Answer with ospeli_walks_reason, or not at all.",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "enum": [
+                      "wait",
+                      "stop"
+                    ]
+                  },
+                  "waitSec": {
+                    "type": "integer"
                   }
                 }
               },
@@ -8633,7 +8799,56 @@
                     "interruptions": {
                       "type": "integer",
                       "description": "How many times the work on this step stopped before it was finished."
+                    },
+                    "waitReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What the wait before this step was waiting for, as the person walking saw it (ospeli_walks_reason). Absent when none was given. One person's observation on one walk, not a cause."
+                    },
+                    "stopReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What stopped the work on this step the last time it was interrupted, as the person walking saw it. A step interrupted again loses the earlier answer. Absent when none was given."
+                    },
+                    "typed": {
+                      "type": "boolean",
+                      "description": "true when the step name was typed by the person, not chosen from the words offered."
                     }
+                  }
+                }
+              },
+              "askReason": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "A question the screen may put now, never one that must be answered: of \"wait\" when the wait that just ended was 120 seconds or more (a local definition) and has no reason yet; of \"stop\" when the step that ended last was interrupted and has no reason yet. Null otherwise. Answer with ospeli_walks_reason, or not at all.",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "enum": [
+                      "wait",
+                      "stop"
+                    ]
+                  },
+                  "waitSec": {
+                    "type": "integer"
                   }
                 }
               },
@@ -9020,7 +9235,56 @@
                     "interruptions": {
                       "type": "integer",
                       "description": "How many times the work on this step stopped before it was finished."
+                    },
+                    "waitReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What the wait before this step was waiting for, as the person walking saw it (ospeli_walks_reason). Absent when none was given. One person's observation on one walk, not a cause."
+                    },
+                    "stopReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What stopped the work on this step the last time it was interrupted, as the person walking saw it. A step interrupted again loses the earlier answer. Absent when none was given."
+                    },
+                    "typed": {
+                      "type": "boolean",
+                      "description": "true when the step name was typed by the person, not chosen from the words offered."
                     }
+                  }
+                }
+              },
+              "askReason": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "A question the screen may put now, never one that must be answered: of \"wait\" when the wait that just ended was 120 seconds or more (a local definition) and has no reason yet; of \"stop\" when the step that ended last was interrupted and has no reason yet. Null otherwise. Answer with ospeli_walks_reason, or not at all.",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "enum": [
+                      "wait",
+                      "stop"
+                    ]
+                  },
+                  "waitSec": {
+                    "type": "integer"
                   }
                 }
               },
@@ -9409,7 +9673,56 @@
                     "interruptions": {
                       "type": "integer",
                       "description": "How many times the work on this step stopped before it was finished."
+                    },
+                    "waitReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What the wait before this step was waiting for, as the person walking saw it (ospeli_walks_reason). Absent when none was given. One person's observation on one walk, not a cause."
+                    },
+                    "stopReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What stopped the work on this step the last time it was interrupted, as the person walking saw it. A step interrupted again loses the earlier answer. Absent when none was given."
+                    },
+                    "typed": {
+                      "type": "boolean",
+                      "description": "true when the step name was typed by the person, not chosen from the words offered."
                     }
+                  }
+                }
+              },
+              "askReason": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "A question the screen may put now, never one that must be answered: of \"wait\" when the wait that just ended was 120 seconds or more (a local definition) and has no reason yet; of \"stop\" when the step that ended last was interrupted and has no reason yet. Null otherwise. Answer with ospeli_walks_reason, or not at all.",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "enum": [
+                      "wait",
+                      "stop"
+                    ]
+                  },
+                  "waitSec": {
+                    "type": "integer"
                   }
                 }
               },
@@ -9531,6 +9844,10 @@
           "msg": {
             "type": "boolean",
             "description": "The step only passed on information (a call, message or form)."
+          },
+          "typed": {
+            "type": "boolean",
+            "description": "true when name was typed by the person and not chosen from the words offered. Kept with the step and shown in the export."
           },
           "nextStarted": {
             "type": "boolean",
@@ -9830,7 +10147,56 @@
                     "interruptions": {
                       "type": "integer",
                       "description": "How many times the work on this step stopped before it was finished."
+                    },
+                    "waitReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What the wait before this step was waiting for, as the person walking saw it (ospeli_walks_reason). Absent when none was given. One person's observation on one walk, not a cause."
+                    },
+                    "stopReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What stopped the work on this step the last time it was interrupted, as the person walking saw it. A step interrupted again loses the earlier answer. Absent when none was given."
+                    },
+                    "typed": {
+                      "type": "boolean",
+                      "description": "true when the step name was typed by the person, not chosen from the words offered."
                     }
+                  }
+                }
+              },
+              "askReason": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "A question the screen may put now, never one that must be answered: of \"wait\" when the wait that just ended was 120 seconds or more (a local definition) and has no reason yet; of \"stop\" when the step that ended last was interrupted and has no reason yet. Null otherwise. Answer with ospeli_walks_reason, or not at all.",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "enum": [
+                      "wait",
+                      "stop"
+                    ]
+                  },
+                  "waitSec": {
+                    "type": "integer"
                   }
                 }
               },
@@ -9885,6 +10251,470 @@
           "role": "Reception"
         },
         "needs": "A walk in progress on this device: ospeli_walks_start starts one (ospeli_walks_get shows whether one is open). At least one step must have ended (ospeli_walks_step_start, then ospeli_walks_step_done)."
+      }
+    },
+    {
+      "name": "ospeli_walks_reason",
+      "summary": "Say, with one word from a fixed list, what a wait was waiting for or what stopped a step, as the person walking saw it. Never needed: a walk is the same without it. of \"wait\": the wait that ended when the running step began (or, when no step runs, the wait before the step that ended last). of \"stop\": the step that was just interrupted. reason null takes the answer away. The list (ospeli_walks_get waitReasons) says what was missing, never who. Example setting, not a standard. People only: a walk is a person's own observation on site, so this command is for people, not for agents.",
+      "kind": "write",
+      "roles": [
+        "ward-nurse",
+        "bed-manager",
+        "estates-tech",
+        "ae-nic",
+        "ops-manager",
+        "coo",
+        "patient-liaison",
+        "receptionist",
+        "quality-lead",
+        "porter",
+        "cleaner",
+        "support-supervisor",
+        "storekeeper",
+        "supply-manager",
+        "facilities-assistant",
+        "facilities-manager",
+        "driver",
+        "transport-coordinator",
+        "fleet-supervisor",
+        "clinic-receptionist",
+        "clinic-nurse",
+        "booking-clerk",
+        "outpatient-manager",
+        "lab-reception",
+        "unit-clerk",
+        "lab-scientist",
+        "radiographer",
+        "diagnostics-manager",
+        "pharmacy-technician",
+        "pharmacist",
+        "pharmacy-manager"
+      ],
+      "humanApproval": true,
+      "agentsMayCall": false,
+      "agentBehaviour": "refused: people only",
+      "input": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "of"
+        ],
+        "properties": {
+          "walkId": {
+            "type": "string",
+            "pattern": "^walk-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+          },
+          "of": {
+            "type": "string",
+            "enum": [
+              "wait",
+              "stop"
+            ],
+            "description": "Which answer: the wait before the step, or what stopped the step."
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "others-ahead",
+              "staff-busy",
+              "room-equipment",
+              "information",
+              "approval",
+              "transport",
+              "could-not-tell",
+              null
+            ],
+            "description": "A reason id from ospeli_walks_get waitReasons, or null to take the answer away."
+          }
+        }
+      },
+      "output": {
+        "type": "object",
+        "required": [
+          "status",
+          "walk"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "done"
+            ]
+          },
+          "walk": {
+            "type": "object",
+            "required": [
+              "id",
+              "title",
+              "status",
+              "state",
+              "startedAt",
+              "since",
+              "steps",
+              "totals"
+            ],
+            "description": "A walk. Times are whole seconds between taps, recomputed from the stored tap times.",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^walk-[0-9]{3,}$",
+                "maxLength": 16,
+                "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+              },
+              "title": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "walking",
+                  "finished",
+                  "discarded"
+                ]
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "step",
+                  "paused"
+                ],
+                "description": "waiting: no step is running, waiting time is adding up. step: a step is running, hands-on time is adding up. paused: the person walking has stepped out and nothing is being counted."
+              },
+              "under": {
+                "type": "string",
+                "enum": [
+                  "waiting",
+                  "step"
+                ],
+                "description": "What is under way behind a pause, and what carries on when the person is back."
+              },
+              "sinceNotSeenSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds of the present wait or step that were not seen (paused), so far."
+              },
+              "sinceStoodSec": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Seconds the running step stood still between an interruption and carrying on (waiting inside the step; paused time is left out, as it is already in sinceNotSeenSec). The hands-on clock is now − presentSince − sinceNotSeenSec − sinceStoodSec."
+              },
+              "guidanceSeenAt": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "When the person confirmed the before-you-walk points (ospeli_walks_get lists them), or null. Only a time is kept: no name, no device."
+              },
+              "startedAt": {
+                "type": "string",
+                "format": "date-time",
+                "maxLength": 40
+              },
+              "finishedAt": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "since": {
+                "type": "string",
+                "format": "date-time",
+                "maxLength": 40,
+                "description": "When the present wait or step began; while paused, when the pause began."
+              },
+              "presentSince": {
+                "type": "string",
+                "format": "date-time",
+                "maxLength": 40,
+                "description": "When the present wait or step began, whether or not the walk is paused."
+              },
+              "mapId": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The map this walk became, once finished."
+              },
+              "department": {
+                "type": "string",
+                "enum": [
+                  "imaging",
+                  "outpatients",
+                  "emergency",
+                  "pharmacy",
+                  "laboratory",
+                  "wards",
+                  "whole-hospital"
+                ],
+                "description": "The department chosen on the device when the walk began. It picks the step and role words offered; nothing else."
+              },
+              "canResume": {
+                "type": "boolean",
+                "description": "true when the step that ended last was interrupted: ospeli_walks_step_start with resume: true then carries the same step on."
+              },
+              "suggest": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "First walk in a department with a step list: the step offered, already chosen, as the name of the step that just ended (the next one in the department's usual order) and the role that usually does it. An example setting on the screen only: nothing is saved until a person says so. Null when there is none.",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "role": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              },
+              "clockMoved": {
+                "type": "boolean",
+                "description": "true when the device clock moved back during the walk: its times cannot be trusted."
+              },
+              "repeat": {
+                "type": "object",
+                "description": "Present on a repeat walk (ospeli_walks_start with mapId): the saved step list it follows. A step takes its name and role from the list when it is marked done.",
+                "required": [
+                  "mapId",
+                  "walkNo",
+                  "aim",
+                  "list"
+                ],
+                "properties": {
+                  "mapId": {
+                    "type": "string",
+                    "pattern": "^map-[0-9]{3,}$",
+                    "maxLength": 16,
+                    "description": "A map id from ospeli_maps_list, e.g. map-001."
+                  },
+                  "walkNo": {
+                    "type": "integer",
+                    "description": "Which walk of this map this is."
+                  },
+                  "aim": {
+                    "type": "integer"
+                  },
+                  "list": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "n": {
+                          "type": "integer"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "role": {
+                          "type": "string"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "timed",
+                            "running",
+                            "did-not-happen",
+                            "next",
+                            "later"
+                          ]
+                        }
+                      }
+                    }
+                  },
+                  "next": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "description": "The list step that comes next, or null when the list is used up (a further step is then named like a first walk's)."
+                  },
+                  "now": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "description": "The list step that is running, if the running step is on the list."
+                  },
+                  "left": {
+                    "type": "array",
+                    "description": "List steps not timed and not marked \"did not happen\".",
+                    "items": {
+                      "type": "object"
+                    }
+                  }
+                }
+              },
+              "steps": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "role",
+                    "waitSec",
+                    "workSec",
+                    "named"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "listStep": {
+                      "type": "integer",
+                      "description": "Repeat walk: the place on the saved list (from 1) this step was timed as. Absent for a step that is not on the list."
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    },
+                    "msg": {
+                      "type": "boolean"
+                    },
+                    "interrupted": {
+                      "type": "boolean"
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "Seconds from the end of the step before (or the start of the walk) to this step starting."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Seconds from \"step starts\" to \"step done\", less any time not seen."
+                    },
+                    "named": {
+                      "type": "boolean"
+                    },
+                    "waitNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds of the gap before this step that were not seen (paused). Not part of waitSec."
+                    },
+                    "workNotSeenSec": {
+                      "type": "integer",
+                      "description": "Seconds inside this step that were not seen (paused). Not part of workSec."
+                    },
+                    "interruptedWaitSec": {
+                      "type": "integer",
+                      "description": "Seconds the step stood still between \"Step interrupted\" and carrying on: waiting, inside the step. Part of waitSec, not of workSec."
+                    },
+                    "interruptions": {
+                      "type": "integer",
+                      "description": "How many times the work on this step stopped before it was finished."
+                    },
+                    "waitReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What the wait before this step was waiting for, as the person walking saw it (ospeli_walks_reason). Absent when none was given. One person's observation on one walk, not a cause."
+                    },
+                    "stopReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What stopped the work on this step the last time it was interrupted, as the person walking saw it. A step interrupted again loses the earlier answer. Absent when none was given."
+                    },
+                    "typed": {
+                      "type": "boolean",
+                      "description": "true when the step name was typed by the person, not chosen from the words offered."
+                    }
+                  }
+                }
+              },
+              "askReason": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "A question the screen may put now, never one that must be answered: of \"wait\" when the wait that just ended was 120 seconds or more (a local definition) and has no reason yet; of \"stop\" when the step that ended last was interrupted and has no reason yet. Null otherwise. Answer with ospeli_walks_reason, or not at all.",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "enum": [
+                      "wait",
+                      "stop"
+                    ]
+                  },
+                  "waitSec": {
+                    "type": "integer"
+                  }
+                }
+              },
+              "totals": {
+                "type": "object",
+                "required": [
+                  "steps",
+                  "workSec",
+                  "waitSec",
+                  "elapsedSec"
+                ],
+                "properties": {
+                  "steps": {
+                    "type": "integer"
+                  },
+                  "workSec": {
+                    "type": "integer"
+                  },
+                  "waitSec": {
+                    "type": "integer"
+                  },
+                  "interruptions": {
+                    "type": "integer",
+                    "description": "Interruptions on the walk so far. Absent when there were none."
+                  },
+                  "notSeenSec": {
+                    "type": "integer",
+                    "description": "Seconds not seen (paused) inside the steps and waits so far: neither waiting nor hands-on."
+                  },
+                  "elapsedSec": {
+                    "type": "integer",
+                    "description": "The whole walk, start to finish, with any time not seen inside it."
+                  }
+                }
+              }
+            }
+          },
+          "mapId": {
+            "type": "string",
+            "pattern": "^map-[0-9]{3,}$",
+            "maxLength": 16,
+            "description": "A map id from ospeli_maps_list, e.g. map-001."
+          },
+          "undone": {
+            "type": "string"
+          }
+        }
+      },
+      "example": {
+        "input": {
+          "of": "wait",
+          "reason": "room-equipment"
+        },
+        "needs": "A walk in progress on this device: ospeli_walks_start starts one (ospeli_walks_get shows whether one is open). For of \"wait\" a step must have started; for of \"stop\" the step that ended last must be interrupted. It must not be paused."
       }
     },
     {
@@ -10218,7 +11048,56 @@
                     "interruptions": {
                       "type": "integer",
                       "description": "How many times the work on this step stopped before it was finished."
+                    },
+                    "waitReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What the wait before this step was waiting for, as the person walking saw it (ospeli_walks_reason). Absent when none was given. One person's observation on one walk, not a cause."
+                    },
+                    "stopReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What stopped the work on this step the last time it was interrupted, as the person walking saw it. A step interrupted again loses the earlier answer. Absent when none was given."
+                    },
+                    "typed": {
+                      "type": "boolean",
+                      "description": "true when the step name was typed by the person, not chosen from the words offered."
                     }
+                  }
+                }
+              },
+              "askReason": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "A question the screen may put now, never one that must be answered: of \"wait\" when the wait that just ended was 120 seconds or more (a local definition) and has no reason yet; of \"stop\" when the step that ended last was interrupted and has no reason yet. Null otherwise. Answer with ospeli_walks_reason, or not at all.",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "enum": [
+                      "wait",
+                      "stop"
+                    ]
+                  },
+                  "waitSec": {
+                    "type": "integer"
                   }
                 }
               },
@@ -10615,7 +11494,56 @@
                     "interruptions": {
                       "type": "integer",
                       "description": "How many times the work on this step stopped before it was finished."
+                    },
+                    "waitReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What the wait before this step was waiting for, as the person walking saw it (ospeli_walks_reason). Absent when none was given. One person's observation on one walk, not a cause."
+                    },
+                    "stopReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What stopped the work on this step the last time it was interrupted, as the person walking saw it. A step interrupted again loses the earlier answer. Absent when none was given."
+                    },
+                    "typed": {
+                      "type": "boolean",
+                      "description": "true when the step name was typed by the person, not chosen from the words offered."
                     }
+                  }
+                }
+              },
+              "askReason": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "A question the screen may put now, never one that must be answered: of \"wait\" when the wait that just ended was 120 seconds or more (a local definition) and has no reason yet; of \"stop\" when the step that ended last was interrupted and has no reason yet. Null otherwise. Answer with ospeli_walks_reason, or not at all.",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "enum": [
+                      "wait",
+                      "stop"
+                    ]
+                  },
+                  "waitSec": {
+                    "type": "integer"
                   }
                 }
               },
@@ -11002,7 +11930,56 @@
                     "interruptions": {
                       "type": "integer",
                       "description": "How many times the work on this step stopped before it was finished."
+                    },
+                    "waitReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What the wait before this step was waiting for, as the person walking saw it (ospeli_walks_reason). Absent when none was given. One person's observation on one walk, not a cause."
+                    },
+                    "stopReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What stopped the work on this step the last time it was interrupted, as the person walking saw it. A step interrupted again loses the earlier answer. Absent when none was given."
+                    },
+                    "typed": {
+                      "type": "boolean",
+                      "description": "true when the step name was typed by the person, not chosen from the words offered."
                     }
+                  }
+                }
+              },
+              "askReason": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "A question the screen may put now, never one that must be answered: of \"wait\" when the wait that just ended was 120 seconds or more (a local definition) and has no reason yet; of \"stop\" when the step that ended last was interrupted and has no reason yet. Null otherwise. Answer with ospeli_walks_reason, or not at all.",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "enum": [
+                      "wait",
+                      "stop"
+                    ]
+                  },
+                  "waitSec": {
+                    "type": "integer"
                   }
                 }
               },
@@ -11394,7 +12371,56 @@
                     "interruptions": {
                       "type": "integer",
                       "description": "How many times the work on this step stopped before it was finished."
+                    },
+                    "waitReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What the wait before this step was waiting for, as the person walking saw it (ospeli_walks_reason). Absent when none was given. One person's observation on one walk, not a cause."
+                    },
+                    "stopReason": {
+                      "type": "string",
+                      "enum": [
+                        "others-ahead",
+                        "staff-busy",
+                        "room-equipment",
+                        "information",
+                        "approval",
+                        "transport",
+                        "could-not-tell"
+                      ],
+                      "description": "What stopped the work on this step the last time it was interrupted, as the person walking saw it. A step interrupted again loses the earlier answer. Absent when none was given."
+                    },
+                    "typed": {
+                      "type": "boolean",
+                      "description": "true when the step name was typed by the person, not chosen from the words offered."
                     }
+                  }
+                }
+              },
+              "askReason": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "A question the screen may put now, never one that must be answered: of \"wait\" when the wait that just ended was 120 seconds or more (a local definition) and has no reason yet; of \"stop\" when the step that ended last was interrupted and has no reason yet. Null otherwise. Answer with ospeli_walks_reason, or not at all.",
+                "properties": {
+                  "of": {
+                    "type": "string",
+                    "enum": [
+                      "wait",
+                      "stop"
+                    ]
+                  },
+                  "waitSec": {
+                    "type": "integer"
                   }
                 }
               },

@@ -165,7 +165,10 @@ test('360 px: Pause never moves, Undo has its own place, More options and a type
   await page.evaluate(() => window.scrollTo(0, 0));
   const leave = await page.locator('[data-test="walk-leave"]').boundingBox();
   assert.ok(leave.height >= 44 && leave.y >= 0, `the way out is a full-size target at the top (${leave.height} px high at ${leave.y})`);
-  assert.equal((await page.textContent('[data-test="walk-leave"]')).trim(), 'Leave walk running');
+  // #187 item 2 (26 Nov): a plain full-width button with these words, not a heading with a chevron.
+  assert.equal((await page.textContent('[data-test="walk-leave"]')).trim(), 'Hide walk (keeps timing)');
+  { const b = await page.locator('[data-test="walk-leave"]').boundingBox(); const vw = page.viewportSize().width; assert.ok(b.height >= 44 && b.width >= vw - 72, `the way out is a full-width button (${Math.round(b.width)} of ${vw})`);
+    assert.notEqual(await page.locator('[data-test="walk-leave"]').evaluate((e) => getComputedStyle(e).borderTopStyle), 'none'); }
   await page.tap('[data-test="walk-leave"]');
   await page.waitForFunction(() => document.documentElement.dataset.route === '#/home' && !document.documentElement.dataset.walkFull);
   assert.notEqual(await page.evaluate(() => getComputedStyle(document.querySelector('.dock')).display), 'none');

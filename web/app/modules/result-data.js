@@ -3,12 +3,14 @@
 // number; it lays the records out by step, walk by walk, for the table, the bars, the CSV and the
 // plain-text summary. Steps and roles only: no person is named, timed or ranked.
 import { minWords, atLeastWords, spanOf } from './result-words.js';
+import { waitReasonText } from '../core/walk.js';
 
-// Why a wait happened, when a person recorded it ("waiting for a room"). The app does not record a
-// reason yet, so this is null for every step today; the walk screen can fill it later
-// (record step field to be agreed with the walk Builder).
-export function waitReasonOf(recordStep) { // eslint-disable-line no-unused-vars
-  return null;
+// Why a wait happened, when the person walking recorded it with one tap (core/walk.js WAIT_REASONS;
+// record step field waitReason). Null when none was given. The words say where the reason came
+// from first: it is one person's observation on one walk, not a cause found by Ospeli.
+export function waitReasonOf(recordStep) {
+  const text = waitReasonText(recordStep?.waitReason);
+  return text ? `reason recorded on the walk: ${text.charAt(0).toLowerCase()}${text.slice(1)}` : null;
 }
 
 // The records a one-walk map shows: its own steps in seconds, so a time changed by hand on the map
@@ -19,7 +21,8 @@ export function recordFromSteps(list, walk) {
   return { id: walk?.id || 'walk-1', startedAt: walk?.startedAt, finishedAt: walk?.finishedAt, ...(walk?.clockMoved ? { clockMoved: true } : {}),
     steps: timed.map((s) => ({ stepId: s.id, waitSec: s.wait, workSec: s.work,
       ...(s.waitNotSeenSec ? { waitNotSeenSec: s.waitNotSeenSec } : {}), ...(s.workNotSeenSec ? { workNotSeenSec: s.workNotSeenSec } : {}),
-      ...(s.interrupted ? { interrupted: true } : {}), ...(s.interruptedWaitSec ? { interruptedWaitSec: s.interruptedWaitSec } : {}), ...(s.interruptions ? { interruptions: s.interruptions } : {}) })),
+      ...(s.interrupted ? { interrupted: true } : {}), ...(s.interruptedWaitSec ? { interruptedWaitSec: s.interruptedWaitSec } : {}), ...(s.interruptions ? { interruptions: s.interruptions } : {}),
+      ...(s.waitReason ? { waitReason: s.waitReason } : {}), ...(s.stopReason ? { stopReason: s.stopReason } : {}), ...(s.typed ? { typed: true } : {}) })),
     notTimed: list.filter((s) => !timed.includes(s)).map((s) => s.id) };
 }
 
@@ -176,7 +179,7 @@ export function csvCell(v) {
   if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return `"${s.replace(/"/g, '""')}"`;
 }
-export const CSV_HEAD = ['map', 'department', 'walk number', 'walk date', 'step order', 'step', 'role', 'on list', 'wait seconds', 'hands-on seconds', 'not-seen seconds', 'interrupted count', 'stopped seconds (inside wait)', 'done again', 'status'];
+export const CSV_HEAD = ['map', 'department', 'walk number', 'walk date', 'step order', 'step', 'role', 'on list', 'wait seconds', 'hands-on seconds', 'not-seen seconds', 'interrupted count', 'stopped seconds (inside wait)', 'done again', 'status', 'wait reason (recorded on the walk)', 'last stop reason (recorded on the walk)', 'step name typed'];
 // One row per walk per step, in the order the steps happened; then, for that walk, each list step
 // that did not happen or was not timed (no seconds). dateOf: the walk's date as YYYY-MM-DD.
 export function csvOf({ title, department, list, records, dateOf }) {
@@ -184,10 +187,10 @@ export function csvOf({ title, department, list, records, dateOf }) {
   records.forEach((r, w) => {
     const items = walkItems(list, r);
     const row = (o) => lines.push([title, department || '', w + 1, dateOf(r.startedAt), ...o].map(csvCell).join(','));
-    for (const x of items) row([x.p + 1, x.name, x.role, x.onList ? 'yes' : 'no', x.waitSec, x.workSec, x.waitNotSeenSec + x.workNotSeenSec, x.interruptions, x.stoppedSec, x.again ? 'yes' : 'no', 'timed']);
+    for (const x of items) row([x.p + 1, x.name, x.role, x.onList ? 'yes' : 'no', x.waitSec, x.workSec, x.waitNotSeenSec + x.workNotSeenSec, x.interruptions, x.stoppedSec, x.again ? 'yes' : 'no', 'timed', waitReasonText(x.rec.waitReason) || '', waitReasonText(x.rec.stopReason) || '', x.rec.typed || (list.find((st) => st.id === x.stepId)?.typed) ? 'yes' : 'no']);
     for (const st of list) {
       if (items.some((x) => x.stepId === st.id)) continue;
-      row(['', st.name, st.role, 'yes', '', '', '', '', '', 'no', (r.didNotHappen || []).includes(st.id) ? 'did not happen' : 'not timed']);
+      row(['', st.name, st.role, 'yes', '', '', '', '', '', 'no', (r.didNotHappen || []).includes(st.id) ? 'did not happen' : 'not timed', '', '', st.typed ? 'yes' : 'no']);
     }
   });
   return `${lines.join('\r\n')}\r\n`;

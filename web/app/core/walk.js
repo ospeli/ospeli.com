@@ -180,6 +180,62 @@ export function sinceAt(walk) {
 
 // True when the step that ended last was interrupted, so the next "Step starts" can be the same
 // step carrying on (the default on the walk screen) and not a new step.
+// Why a wait happened, as the person walking saw it (#180 point 1). One tap, never asked for, never
+// typed, so no name and no clinical word can be kept. The words say what was missing, never who.
+// An example setting, not a standard: the set follows the general idea of waiting as a waste in
+// Lean practice and is no published list. "Could not tell" is an answer; no answer stores nothing.
+export const WAIT_REASONS = [
+  { id: 'others-ahead', text: 'Others ahead in line' },
+  { id: 'staff-busy', text: 'Staff busy elsewhere' },
+  { id: 'room-equipment', text: 'Room or equipment' },
+  { id: 'information', text: 'Information or paperwork' },
+  { id: 'approval', text: 'An approval or answer' },
+  { id: 'transport', text: 'Transport or moving' },
+  { id: 'could-not-tell', text: 'Could not tell' },
+];
+export const WAIT_REASONS_BASIS = 'Example setting, not a standard.';
+// A wait shorter than this is not asked about (local definition; the walk-first brief's "2 min or more").
+export const WAIT_REASON_MIN_SEC = 120;
+export const waitReasonText = (id) => WAIT_REASONS.find((r) => r.id === id)?.text || null;
+// What a step keeps when it is interrupted, carried on, ended or brought back by an undo.
+const carried = (s) => ({ ...(s.waitReason ? { waitReason: s.waitReason } : {}), ...(s.stopReason ? { stopReason: s.stopReason, stopOf: s.stopOf || 0 } : {}), ...(s.typed ? { typed: true } : {}) });
+// A step keeps the reason for its last stop only: an answer given for an earlier stop does not
+// explain a later one, so it is not shown and the question can be put again (stopOf: which stop it was for).
+export const stopReasonOf = (s) => (s.stopReason && (s.stopOf || 0) === (s.gaps || []).length + (s.interrupted ? 1 : 0) - 1 ? s.stopReason : null);
+// Which reason could be given now, if any: 'wait' for the wait that ended when the running step
+// began (the running step, or the step that ended last while nothing runs), 'stop' for a step that
+// was interrupted and has not carried on. seenWaitSec: that wait without any time not seen.
+export function reasonTarget(walk, of) {
+  const last = walk.steps[walk.steps.length - 1] || null;
+  if (of === 'stop') return !walk.current && last?.interrupted ? last : null;
+  return walk.current || last;
+}
+export function waitBeforeSec(walk, step) {
+  const i = walk.steps.indexOf(step); const n = i < 0 ? walk.steps.length : i;
+  const from = n === 0 ? walk.startedAt : walk.steps[n - 1].endAt;
+  return Math.max(0, secs(walk, from, step.startAt) - Math.min(secs(walk, from, step.startAt), pausedWhole(walk, from, step.startAt)));
+}
+// Keep, change or (reason null) take away a reason. Never asked for: a walk works the same without one.
+export function setReason(walk, { of = 'wait', reason = null }) {
+  if (reason != null && !waitReasonText(reason)) throw new Error('That reason is not on the list.');
+  const step = reasonTarget(walk, of);
+  if (!step) throw new Error(of === 'stop' ? 'No step is interrupted right now.' : 'No step has started yet, so no wait has ended.');
+  const key = of === 'stop' ? 'stopReason' : 'waitReason';
+  if (reason == null) { delete step[key]; if (of === 'stop') delete step.stopOf; } else { step[key] = reason; if (of === 'stop') step.stopOf = (step.gaps || []).length; }
+  return step;
+}
+// The question the screen may put now, or null: a wait of two minutes or more that just ended and
+// has no reason yet, or a step interrupted with no reason yet.
+export function reasonAsk(walk) {
+  if (openPause(walk)) return null;
+  const stop = reasonTarget(walk, 'stop');
+  if (stop) return stopReasonOf(stop) ? null : { of: 'stop' };
+  const c = walk.current;
+  if (!c || c.gaps?.length || c.waitReason) return null;
+  const waitSec = waitBeforeSec(walk, c);
+  return waitSec >= WAIT_REASON_MIN_SEC ? { of: 'wait', waitSec } : null;
+}
+
 export const canResume = (walk) => !walk.current && !!walk.steps.length && !!walk.steps[walk.steps.length - 1].interrupted;
 
 // The interrupted step carries on: it runs again as the same step (the same place on a repeat
@@ -194,7 +250,7 @@ export function stepResume(walk, at) {
   const back = Date.parse(at) < Date.parse(last.endAt);
   if (back) walk.clockBack = true;
   walk.current = { startAt: last.startAt, gaps: [...(last.gaps || []), { startAt: last.endAt, endAt: back ? last.endAt : at }],
-    ...(last.planIndex != null ? { planIndex: last.planIndex } : {}), ...(last.name ? { name: last.name } : {}), ...(last.role ? { role: last.role } : {}), ...(last.msg ? { msg: true } : {}) };
+    ...(last.planIndex != null ? { planIndex: last.planIndex } : {}), ...(last.name ? { name: last.name } : {}), ...(last.role ? { role: last.role } : {}), ...(last.msg ? { msg: true } : {}), ...carried(last) };
   walk.last = 'start';
   return walk;
 }
@@ -220,7 +276,7 @@ export function stepDone(walk, at, { interrupted = false } = {}) {
   // A step that was interrupted and carried on keeps the name it was given at the interruption.
   const c = walk.current;
   walk.steps.push({ startAt: c.startAt, endAt: at, name: p ? p.name : c.name || null, role: p ? p.role : c.role || null, msg: p ? !!p.msg : !!c.msg,
-    ...(p ? { planIndex: c.planIndex } : {}), ...(interrupted ? { interrupted: true } : {}), ...(c.gaps?.length ? { gaps: c.gaps } : {}) });
+    ...(p ? { planIndex: c.planIndex } : {}), ...(interrupted ? { interrupted: true } : {}), ...(c.gaps?.length ? { gaps: c.gaps } : {}), ...carried(c) });
   walk.current = null;
   walk.last = 'done';
   return walk;
@@ -272,11 +328,11 @@ export function clockMoved(walk) {
 // While a step that carried on after an interruption is running, the name is for that step: the
 // "Step saved as ... · Change" line on screen is about it, and the step before is finished and named
 // (#177 item 1).
-export function nameLast(walk, { name, role, msg, nextStarted = false }) {
+export function nameLast(walk, { name, role, msg, typed, nextStarted = false }) {
   if (walk.current?.gaps?.length && !nextStarted) {
     const c = walk.current;
     if (walk.plan && c.planIndex != null && ((name != null && name !== walk.plan[c.planIndex].name) || (role != null && role !== walk.plan[c.planIndex].role))) delete c.planIndex;
-    if (name != null) c.name = name;
+    if (name != null) { c.name = name; if (typed) c.typed = true; else delete c.typed; }
     if (role != null) c.role = role;
     if (msg != null) c.msg = !!msg;
     return walk;
@@ -285,7 +341,7 @@ export function nameLast(walk, { name, role, msg, nextStarted = false }) {
   if (!last) throw new Error('No step has ended yet.');
   // A step given its own words on a repeat walk is no longer the list step it was offered as.
   if (walk.plan && last.planIndex != null && ((name != null && name !== last.name) || (role != null && role !== last.role))) delete last.planIndex;
-  if (name != null) last.name = name;
+  if (name != null) { last.name = name; if (typed) last.typed = true; else delete last.typed; }
   if (role != null) last.role = role;
   if (msg != null) last.msg = !!msg;
   if (nextStarted) {
@@ -309,7 +365,7 @@ export function undoLast(walk) {
   if (walk.current?.gaps?.length) {
     const c = walk.current; const gaps = c.gaps.slice(0, -1); const g = c.gaps[c.gaps.length - 1];
     walk.steps.push({ startAt: c.startAt, endAt: g.startAt, name: c.name || null, role: c.role || null, msg: !!c.msg,
-      ...(c.planIndex != null ? { planIndex: c.planIndex } : {}), interrupted: true, ...(gaps.length ? { gaps } : {}) });
+      ...(c.planIndex != null ? { planIndex: c.planIndex } : {}), interrupted: true, ...(gaps.length ? { gaps } : {}), ...carried(c) });
     // On a repeat walk the list step keeps its list name.
     const p = walk.plan && c.planIndex != null ? walk.plan[c.planIndex] : null;
     if (p) Object.assign(walk.steps[walk.steps.length - 1], { name: p.name, role: p.role, msg: !!p.msg });
@@ -321,7 +377,7 @@ export function undoLast(walk) {
   if (!last) throw new Error('There is nothing to undo.');
   // A step that carried on was named at its interruption, before this "Step done": that name stays (#177 item 5).
   const kept = last.gaps?.length ? { ...(last.name ? { name: last.name } : {}), ...(last.role ? { role: last.role } : {}), ...(last.msg ? { msg: true } : {}) } : {};
-  walk.current = { startAt: last.startAt, ...(last.planIndex != null ? { planIndex: last.planIndex } : {}), ...(last.gaps?.length ? { gaps: last.gaps } : {}), ...kept };
+  walk.current = { startAt: last.startAt, ...(last.planIndex != null ? { planIndex: last.planIndex } : {}), ...(last.gaps?.length ? { gaps: last.gaps } : {}), ...kept, ...carried(last) };
   return 'step-done';
 }
 
@@ -343,6 +399,7 @@ export function walkSteps(walk) {
       waitSec: secs(walk, from, s.startAt) - waitNotSeenSec + interruptedWaitSec, workSec: secs(walk, s.startAt, s.endAt) - workNotSeenSec - interruptedWaitSec,
       ...(waitNotSeenSec ? { waitNotSeenSec } : {}), ...(workNotSeenSec ? { workNotSeenSec } : {}),
       ...(interruptedWaitSec ? { interruptedWaitSec } : {}), ...(interruptions ? { interruptions } : {}),
+      ...(s.waitReason ? { waitReason: s.waitReason } : {}), ...(stopReasonOf(s) ? { stopReason: s.stopReason } : {}), ...(s.typed ? { typed: true } : {}),
     };
   });
 }
@@ -370,6 +427,7 @@ export function mapStepsFromWalk(walk, mapId) {
     waitSec: s.waitSec, workSec: s.workSec, msg: s.msg, par: false, ...(s.interrupted ? { interrupted: true } : {}),
     ...(s.waitNotSeenSec ? { waitNotSeenSec: s.waitNotSeenSec } : {}), ...(s.workNotSeenSec ? { workNotSeenSec: s.workNotSeenSec } : {}),
     ...(s.interruptedWaitSec ? { interruptedWaitSec: s.interruptedWaitSec } : {}), ...(s.interruptions ? { interruptions: s.interruptions } : {}),
+    ...(s.waitReason ? { waitReason: s.waitReason } : {}), ...(s.stopReason ? { stopReason: s.stopReason } : {}), ...(s.typed ? { typed: true } : {}),
   }));
 }
 
@@ -572,7 +630,8 @@ export function recordFromWalk(walk, { finishedAt, mapId = null, leftover = 'not
       stepId: walk.plan ? (s.planIndex != null ? ids[s.planIndex] : null) : `${mapId}-s${i + 1}`,
       ...(walk.plan && s.planIndex == null ? { name: s.name, role: s.role } : {}),
       waitSec: s.waitSec, workSec: s.workSec, ...(s.waitNotSeenSec ? { waitNotSeenSec: s.waitNotSeenSec } : {}), ...(s.workNotSeenSec ? { workNotSeenSec: s.workNotSeenSec } : {}),
-      ...(s.interrupted ? { interrupted: true } : {}), ...(s.interruptedWaitSec ? { interruptedWaitSec: s.interruptedWaitSec } : {}), ...(s.interruptions ? { interruptions: s.interruptions } : {}) })),
+      ...(s.interrupted ? { interrupted: true } : {}), ...(s.interruptedWaitSec ? { interruptedWaitSec: s.interruptedWaitSec } : {}), ...(s.interruptions ? { interruptions: s.interruptions } : {}),
+      ...(s.waitReason ? { waitReason: s.waitReason } : {}), ...(s.stopReason ? { stopReason: s.stopReason } : {}), ...(s.typed ? { typed: true } : {}) })),
     ...(walk.plan ? { didNotHappen: [...(walk.skipped || []).map((i) => ids[i]), ...(leftover === 'did-not-happen' ? left : [])] } : {}),
     // List steps left when the walk was finished and not said to be missing: the person stopped early.
     ...(walk.plan && left.length && leftover !== 'did-not-happen' ? { stoppedEarly: true, notTimed: left } : {}),

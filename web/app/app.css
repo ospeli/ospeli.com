@@ -792,7 +792,7 @@ html[data-site="connect"] .layout { display: block; }
 .walk-sheet .field label { font-weight: 800; }
 .walk-sheet input:not([type="checkbox"]) { font: inherit; min-height: 48px; padding: 8px 10px; border: 1.5px solid var(--line-strong); border-radius: 10px; width: 100%; min-width: 0; color: var(--ink); background: var(--surface); }
 .walk-sheet .check { display: flex; gap: 8px; align-items: center; min-height: 44px; }
-.walk-sheet .check input { width: 22px; height: 22px; accent-color: var(--navy); flex: none; }
+.walk-sheet .check input { width: 28px; height: 28px; accent-color: var(--navy); flex: none; }
 .walk-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .walk-chip { min-height: 48px; font-size: 1rem; padding: 6px 12px; overflow-wrap: anywhere; text-align: left; }
 .walk-chip[aria-pressed="true"] { background: var(--navy); color: #fff; border-color: var(--navy); }
@@ -861,7 +861,7 @@ html[data-site="connect"] .layout { display: block; }
 }
 .btn.walk-main.is-long { font-size: 1.2rem; line-height: 1.15; white-space: normal; padding-block: 8px; text-align: center; }
 .walk-top { display: grid; gap: 0; }
-.walk-leave { display: inline-flex; align-items: center; gap: 10px; min-height: 44px; justify-self: start; padding: 0 10px 0 2px; font-weight: 800; font-size: 1rem; color: var(--navy); text-decoration: none; }
+.walk-leave { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; width: 100%; justify-self: stretch; padding: 0 12px; font-weight: 800; font-size: 1rem; color: var(--navy); text-decoration: none; }
 .walk-leave-mark { width: 10px; height: 10px; border-right: 3px solid currentColor; border-bottom: 3px solid currentColor; transform: translateY(-3px) rotate(45deg); flex: none; }
 .walk-resume { margin: 0; text-align: center; font-weight: 800; font-size: 1rem; color: var(--navy); }
 .walk-keep { margin: 0; padding: 8px 10px; border-left: 5px solid #EE9B00; background: #FFF6E5; border-radius: 8px; font-size: 1rem; color: var(--ink); }
@@ -873,6 +873,18 @@ html[data-site="connect"] .layout { display: block; }
 .walk-chips.is-row .walk-chip { flex: none; min-height: 44px; white-space: nowrap; }
 .walk-row-word { flex: none; min-width: 36px; font-size: .9375rem; font-weight: 800; color: var(--ink); }
 .walk-sheet-foot { display: flex; gap: 6px; }
+/* "Waiting for what?" (#180): one row above the buttons. Its chips are sand with a mango edge, so they are not taken for step words. */
+.walk-bar > .walk-reason { flex: none; align-items: center; gap: 6px; }
+.walk-reason .walk-reason-word { flex: 1 0 100%; }
+.walk-reason .walk-chip { min-height: 44px; }
+/* A short phone has no room for three lines of reasons above the main button: one row that slides. */
+@media (max-height: 720px) { .walk-bar > .walk-reason { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; } .walk-reason .walk-reason-word { flex: none; } .walk-reason .walk-chip { flex: none; white-space: nowrap; } }
+/* The sheet's own buttons stay in sight while the sheet slides (Adoption lead, 26 Nov). */
+.walk-bar > .walk-sheet .walk-sheet-foot { position: sticky; bottom: -8px; background: var(--surface); padding-block: 4px; z-index: 1; }
+.walk-reason-word { font-weight: 800; white-space: nowrap; flex: none; font-size: .9375rem; }
+.walk-reason-chip { background: var(--sand, #F6F1E7); border-color: #EE9B00; color: #0B2F4E; }
+.walk-own { border-style: dashed; }
+.walk-sheet .walk-error { margin: 0; font-weight: 700; }
 .walk-sheet-foot .btn { flex: 1 1 0; min-width: 0; min-height: 44px; padding-inline: 6px; font-size: .9375rem; justify-content: center; text-align: center; line-height: 1.15; white-space: normal; }
 .walk-more-box { display: grid; gap: 8px; }
 .walk-pick .walk-chips { max-height: 40vh; overflow-y: auto; }

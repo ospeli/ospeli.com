@@ -31,11 +31,15 @@ function walk(steps, { start = 0, plan = true, id = 'walk-001', skip = [] } = {}
 const W1 = walk([[60, 120], [240, 180, { stop: [60, 120] }], [600, 900], [60, 30]], { plan: false });
 const W2 = walk([[30, 90], [180, 150], [120, 180, { off: ['Contrast check', 'Radiology nurse'] }], [780, 840], [300, 400, { again: 3 }], [45, 30]], { start: 86400, id: 'walk-002' });
 
-test('waitReasonOf: no reason is recorded by the app yet, so every step has none', () => {
+test('waitReasonOf: a step with no reason given has none', () => {
   for (const s of [...W1.steps, ...W2.steps]) assert.equal(waitReasonOf(s), null);
 });
-test('waitReasonOf returns the reason once the walk records one (for the walk Builder)', { todo: 'the walk screen does not record a reason for a wait yet; wire it in result-data.js waitReasonOf' }, () => {
-  assert.equal(waitReasonOf({ waitSec: 780, workSec: 840, reason: 'waiting for a room' }), 'waiting for a room');
+// The field agreed with the walk Builder (26 Nov, #180 point 1): record step `waitReason`, an id from
+// core/walk.js WAIT_REASONS. The words say where the reason came from before the reason itself.
+test('waitReasonOf returns the reason once the walk records one, and nothing for an id that is not on the list', () => {
+  assert.equal(waitReasonOf({ waitSec: 780, workSec: 840, waitReason: 'room-equipment' }), 'reason recorded on the walk: room or equipment');
+  assert.equal(waitReasonOf({ waitSec: 780, workSec: 840, waitReason: 'made-up' }), null);
+  assert.equal(waitReasonOf({ waitSec: 780, workSec: 840, reason: 'free text is never read' }), null);
 });
 
 test('walkItems: list steps named from the list, an off-list step with its own name and role, a step done again marked', () => {
