@@ -15,7 +15,7 @@ import * as pack from '../../web/app/modules/stores/commands.js';
 import { MODULE_PACKS } from '../../web/app/core/modules.js';
 import {
   CATALOGUE, deriveSupplies, deriveOrders, orderSteps, overUsual, tracerStockOutRate, requestWaitHours, orderCycleTime, fillRatePercent,
-  ruleLevelCheck, ruleOrderWaiting, ruleTransfer, guideOn, GUIDE_RULES, shortNow, SHORT_SHARE, REQUEST_USUAL_HOURS, percentText,
+  ruleLevelCheck, ruleOrderWaiting, ruleTransfer, guideOn, GUIDE_RULES, shortNow, SHORT_SHARE, REQUEST_USUAL_HOURS, percentText, countIntervals,
 } from '../../web/app/modules/stores/logic.js';
 
 const END = '2026-11-06T18:00:00.000Z';
@@ -320,6 +320,26 @@ test('KPIs from the event log, checked by hand: tracer stock-out rate (core D-17
   assert.deepEqual(orderSteps(orders.get('ord-00002'), at(10)).map((s) => [s.step, s.days]), [['requested', 1], ['approved', 5], ['ordered', null], ['delivered', null], ['received', null]]);
   // An empty log gives no value, never zero.
   assert.deepEqual([tracerStockOutRate(deriveSupplies([]), span).value, requestWaitHours(deriveSupplies([]), span).value, fillRatePercent(deriveSupplies([]), span).value, orderCycleTime(new Map(), span).value], [null, null, null, null]);
+});
+
+test('#125: each place\'s usual count interval, from the counts already stored (median days between counts of a tracer item)', async () => {
+  const stock = deriveSupplies(KPI_LOG);
+  const span = { since: at(0), until: at(10) };
+  // W1 counted gloves on day 0 and day 2: every 2 days. W2 counted once: no interval. The store never counted.
+  const every = countIntervals(KPI_LOG, stock, span);
+  assert.deepEqual([every.get(W1), every.get(W2) ?? null, every.get(S) ?? null], [2, null, null]);
+  // A count of a non-tracer item only does not count; neither does one outside the period.
+  const more = log([[0, 'stock.counted', W2, { lines: [{ itemId: 'gauze-swabs', qty: 1 }] }], [5, 'stock.counted', W2, { lines: [{ itemId: 'gauze-swabs', qty: 1 }] }], [11, 'stock.counted', W1, { lines: [{ itemId: 'gloves-m', qty: 1 }] }]]);
+  const again = countIntervals([...KPI_LOG, ...more], stock, span);
+  assert.deepEqual([again.get(W1), again.get(W2) ?? null], [2, null]);
+  // Through the overview: every area line carries its interval (null when it counted fewer than twice), and
+  // the definition says once that places counting at different intervals are not directly comparable.
+  const { run } = await site();
+  const ov = await run('ospeli_stores_overview', { days: 30 }, 'coo');
+  const so = ov.kpis.find((x) => x.id === 'stores-tracer-stock-out-rate');
+  assert.ok(so.byArea.length > 1 && so.byArea.every((a) => 'countEveryDays' in a));
+  assert.ok(so.byArea.some((a) => a.countEveryDays > 0), 'the demo wards count, so an interval shows');
+  assert.match(so.definition, /different intervals are not directly comparable/);
 });
 
 test('the overview gives the same numbers through the command as the pure functions over the same log', async () => {

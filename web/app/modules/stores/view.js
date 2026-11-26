@@ -708,15 +708,21 @@ function manageScreen(ctx, shared) {
       return `${k.numerator ?? 0} of ${k.denominator ?? 0} item-days with nothing usable. It sees zero only when a count or a movement records it.`;
     };
     const ids = storeIds();
+    // #125: each place's usual count interval beside its figure; the stock-out rate is Ospeli's own definition.
+    const everyText = (d) => (d == null ? 'fewer than two counts in the period' : `counted about every ${d === 1 ? '1 day' : daysText(d)}`);
+    const areaLine = (x) => `${x.placeName}: ${x.value == null ? 'none' : percentText(x.value, x.numerator, x.denominator)} (${x.numerator} of ${x.denominator} item-days; ${everyText(x.countEveryDays)})`;
+    const own = (k) => (k.id === 'stores-tracer-stock-out-rate' ? h('span', { class: 'chip sto-own', 'data-test': 'own-definition' }, "Ospeli's definition") : null);
+    const countNote = (k) => (k.byArea?.length > 1 ? h('p', { class: 'meta', 'data-test': 'count-note' }, 'Places that count at different intervals are not directly comparable.') : null);
     return h('section', { class: 'section', 'aria-labelledby': 'sto-kpi-h' },
       h('h2', { id: 'sto-kpi-h' }, `Measures, last ${ov.period.days} days`),
       h('p', { class: 'meta' }, 'Worked out from the record on this device. They count items, requests and orders, never a person.'),
       h('div', { class: 'sto-kpis' }, ov.kpis.map((k) => h('div', { class: 'card sto-kpi', 'data-kpi': k.id, 'data-n': k.n },
-        h('p', { class: 'sto-kpi-name' }, k.name), h('p', { class: 'sto-kpi-value' }, fmtKpi(k)),
+        h('p', { class: 'sto-kpi-name' }, k.name, own(k) ? ' ' : null, own(k)), h('p', { class: 'sto-kpi-value' }, fmtKpi(k)),
         h('p', { class: 'meta' }, sub(k)),
         extra(k) ? h('p', { class: 'meta' }, extra(k)) : null,
-        (k.byArea || []).filter((x) => ids.has(x.placeId)).map((x) => h('p', { class: 'meta', 'data-test': 'store-line' }, `${x.placeName}: ${x.value == null ? 'none' : percentText(x.value, x.numerator, x.denominator)} (${x.numerator} of ${x.denominator} item-days)`)),
-        k.byArea?.length ? keepOpen(ui.open, `area:${k.id}`, 'Each ward', h('ul', { class: 'sto-mini' }, k.byArea.filter((x) => !ids.has(x.placeId)).map((x) => h('li', {}, `${x.placeName}: ${x.value == null ? 'none' : percentText(x.value, x.numerator, x.denominator)} (${x.numerator} of ${x.denominator} item-days)`))), { class: 'sto-def' }) : null,
+        (k.byArea || []).filter((x) => ids.has(x.placeId)).map((x) => h('p', { class: 'meta', 'data-test': 'store-line' }, areaLine(x))),
+        countNote(k),
+        k.byArea?.length ? keepOpen(ui.open, `area:${k.id}`, 'Each ward', h('ul', { class: 'sto-mini' }, k.byArea.filter((x) => !ids.has(x.placeId)).map((x) => h('li', {}, areaLine(x)))), { class: 'sto-def' }) : null,
         keepOpen(ui.open, `def:${k.id}`, 'How it is counted', [h('p', {}, k.definition), h('p', {}, `Counts: ${k.counts}`), h('p', {}, `Leaves out: ${k.leavesOut}`), h('p', {}, `Source: ${k.source}`), h('p', {}, `Target: ${k.targetText}`)], { class: 'sto-def' })))));
   }
   function tools() {

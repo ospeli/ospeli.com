@@ -22525,7 +22525,7 @@
                 },
                 "byArea": {
                   "type": "array",
-                  "description": "For the stock-out rate: the value for each area."
+                  "description": "For the stock-out rate: the value for each area, with countEveryDays (the median days between its counts of a critical item in the period; null below two counts)."
                 },
                 "cancelled": {
                   "type": "integer"

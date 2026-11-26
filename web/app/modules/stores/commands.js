@@ -17,7 +17,7 @@ import { STOCK_PLACE_TYPES, MAX_QTY, ITEM_ID_PATTERN, balance, openStockOut, usa
 import {
   STOCK_CATEGORIES, STOCK_ITEMS, CATEGORY, deriveSupplies, isSupply, suppliesRequest, deriveOrders, nextOrderId, orderSteps, daysAtStep, overUsual, lastReminder, isOpenOrder,
   ORDER_STEPS, ORDER_STATES, RECORDED_STEPS, STEP_NAMES, STEP_ROLES, WAITING_FOR, USUAL_DAYS, REMIND_GAP_HOURS, ORDER_CANCEL_REASONS, ORDER_ID_PATTERN, MAX_ORDER_LINES, stepProblem,
-  guideOn, GUIDE_RULES, shortNow, SHORT_SHARE, REQUEST_USUAL_HOURS, tracerStockOutRate, requestWaitHours, orderCycleTime, fillRatePercent, ruleLevelCheck, ruleOrderWaiting, ruleTransfer,
+  guideOn, GUIDE_RULES, shortNow, SHORT_SHARE, REQUEST_USUAL_HOURS, tracerStockOutRate, countIntervals, requestWaitHours, orderCycleTime, fillRatePercent, ruleLevelCheck, ruleOrderWaiting, ruleTransfer,
 } from './logic.js';
 
 export { STOCK_CATEGORIES, STOCK_ITEMS };
@@ -29,7 +29,7 @@ export const EVENT_PREFIX = 'stores.';
 const NO_TARGET = 'No target set: track the trend. A site may set its own (an example setting, not a standard).';
 export const KPIS = [
   { id: 'stores-tracer-stock-out-rate', name: 'Stock-out rate on critical items', unit: '%',
-    definition: 'Item-days with nothing usable divided by item-days held, for critical supply items (the few that must never run out, often called tracer items), in all and for each area (the core measure "Stock-out rate", KPI dictionary D-17). A day out counts when a person declared a stock-out or the balances show nothing usable; the two are joined, never counted twice.',
+    definition: 'Item-days with nothing usable divided by item-days held, for critical supply items (the few that must never run out, often called tracer items), in all and for each area (the core measure "Stock-out rate", KPI dictionary D-17). A day out counts when a person declared a stock-out or the balances show nothing usable; the two are joined, never counted twice. Ospeli\'s definition. A zero balance is seen only when a count or a movement records it, so the figure depends on how often a place counts: each area shows its usual count interval, and places that count at different intervals are not directly comparable.',
     counts: 'Item-days with nothing usable, for critical items.', outOf: 'Item-days critical items were held, from each holding\'s first event (a level set or a movement).',
     leavesOut: 'Items that are not critical items, and other modules\' stock (medicines, vaccines).',
     source: 'local definition (the core measure "Stock-out rate", KPI dictionary D-17)', target: null, targetText: NO_TARGET },
@@ -86,11 +86,12 @@ async function overview(core, input, wards) {
     'stores-order-cycle': orderCycleTime(c.orders, span),
     'stores-fill-rate': fillRatePercent(stock, span),
   };
+  const every = countIntervals(c.events, stock, span);
   const kpis = KPIS.map((k) => {
     const v = values[k.id];
     const base = { id: k.id, name: k.name, unit: k.unit, value: v.value == null ? null : Math.round(v.value * 10) / 10, numerator: v.numerator, denominator: v.denominator, n: v.n,
       ...(v.open != null ? { open: v.open, longestOpen: v.longestOpen } : {}), target: k.target, targetText: k.targetText };
-    return input.format === 'short' ? base : { ...base, ...(v.byArea ? { byArea: v.byArea.map((a) => ({ ...a, placeName: c.placeName(a.placeId), value: a.value == null ? null : Math.round(a.value * 10) / 10 })) } : {}),
+    return input.format === 'short' ? base : { ...base, ...(v.byArea ? { byArea: v.byArea.map((a) => ({ ...a, placeName: c.placeName(a.placeId), value: a.value == null ? null : Math.round(a.value * 10) / 10, countEveryDays: every.get(a.placeId) ?? null })) } : {}),
       ...(v.cancelled != null ? { cancelled: v.cancelled } : {}), definition: k.definition, counts: k.counts, outOf: k.outOf, leavesOut: k.leavesOut, source: k.source };
   });
   const held = [...stock.holdings.values()].filter((h) => isSupply(stock.items.get(h.itemId)) && see(h.placeId));
@@ -213,7 +214,7 @@ const KPI_OUT = { type: 'object', required: ['id', 'name', 'unit', 'value'], pro
   id: { type: 'string' }, name: { type: 'string' }, unit: { type: 'string' }, value: { type: ['number', 'null'], description: 'null when nothing was counted in the period.' },
   numerator: { type: ['number', 'null'] }, denominator: { type: ['number', 'null'] }, n: { type: 'integer', description: 'How many holdings, requests or orders the value is from.' },
   open: { type: 'integer', description: 'Requests or orders not finished yet, shown beside the value and never dropped.' }, longestOpen: { type: ['number', 'null'], description: 'The longest of those so far, in the measure\'s own unit.' },
-  byArea: { type: 'array', description: 'For the stock-out rate: the value for each area.' }, cancelled: { type: 'integer' },
+  byArea: { type: 'array', description: 'For the stock-out rate: the value for each area, with countEveryDays (the median days between its counts of a critical item in the period; null below two counts).' }, cancelled: { type: 'integer' },
   target: { type: ['number', 'null'] }, targetText: { type: 'string' }, definition: { type: 'string' }, counts: { type: 'string' }, outOf: { type: 'string' }, leavesOut: { type: 'string' }, source: { type: 'string' } } };
 const SUGGESTION = { type: 'object', required: ['rule', 'id', 'text', 'why', 'basis'], properties: {
   rule: { type: 'string' }, id: { type: 'string' }, text: { type: 'string' }, why: { type: 'string' }, basis: { type: 'string' },

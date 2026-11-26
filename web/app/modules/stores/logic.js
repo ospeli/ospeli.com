@@ -200,6 +200,28 @@ export function tracerStockOutRate(stock, { since, until, see = all }) {
   });
   return { value: total.value, numerator: total.numerator, denominator: total.denominator, n: total.holdings, declaredDays: total.declaredDays, derivedDays: total.derivedDays, byArea };
 }
+// Each place's usual count interval (#125): the median days between its counts of a critical supplies
+// item in the period, from the counts already stored. A zero balance is seen only when a count or a
+// movement records it, so a place's figure depends on how often it counts. null below two counts.
+export function countIntervals(events, stock, { since, until, see = all }) {
+  const [from, to] = [Date.parse(since), Date.parse(until)];
+  const times = new Map();
+  for (const e of events) {
+    if (e.type !== 'stock.counted' || !see(e.subject)) continue;
+    const t = Date.parse(e.at);
+    if (!(t >= from && t < to)) continue;
+    if (!(Array.isArray(e.data?.lines) ? e.data.lines : []).some((l) => { const it = stock.items.get(l?.itemId); return isSupply(it) && it.tracer; })) continue;
+    if (!times.has(e.subject)) times.set(e.subject, []);
+    times.get(e.subject).push(t);
+  }
+  const out = new Map();
+  for (const [placeId, list] of times) {
+    list.sort((a, b) => a - b);
+    const m = median(list.slice(1).map((t, i) => (t - list[i]) / DAY));
+    out.set(placeId, m == null ? null : Math.round(m * 10) / 10);
+  }
+  return out;
+}
 // 2. Request wait: raised to issued in full, median hours (core requestWait). Open requests beside it.
 export function requestWaitHours(stock, { since, until, see = all }) {
   const supplies = suppliesRequest(stock);
