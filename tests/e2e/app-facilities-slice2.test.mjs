@@ -358,3 +358,30 @@ test('the technician records an on-load test on a 390 px touch phone and the on-
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #155 points 8, 9 and 12: a link near the top of the manager's phone page to this month's
+// figures (44 px or more), "20 or more counts as 20" said on the Waste this month card, and the
+// waste log's month rows read "N recorded, M of them missed" (a miss and its late collection are two).
+test('manager: a link near the top goes to this month\'s figures; the waste card says "20 or more" counts as 20; the month rows say how many were recorded and how many of them missed', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
+  await go(page, 'facilities-manager');
+  const link = page.locator('[data-test="to-figures"]');
+  const b = await link.boundingBox();
+  assert.ok(b && b.y + b.height <= 844, 'on the first screen');
+  assert.ok(b.height >= 44, `at least 44 px tall (${Math.round(b.height)})`);
+  assert.match(await link.textContent(), /figures/);
+  const card = page.locator('[data-test="waste-card"]');
+  assert.ok((await card.boundingBox()).y > 844, 'the figures start below the first screen');
+  await link.tap();
+  await waitUntil(page, () => { const r = document.querySelector('[data-test="waste-card"]').getBoundingClientRect(); return r.top >= 0 && r.top < innerHeight; });
+  assert.match(await card.textContent(), /A "20 or more" pick counts as 20\./);
+  assert.deepEqual(await phoneProblems(page), []);
+  await go(page, 'facilities-manager', '#/facilities/waste');
+  const rows = await page.locator('[data-test="waste-month"] li .meta').allTextContents();
+  assert.ok(rows.length, 'rows this month');
+  for (const r of rows) assert.match(r, /^\d+ recorded, (none missed|\d+ of them missed)\.$/);
+  assert.ok(rows.some((r) => /of them missed/.test(r)), 'the seed has a missed collection');
+  assert.match(await page.locator('[data-test="waste-month"]').textContent(), /A "20 or more" pick counts as 20\./);
+  assert.deepEqual(errors, []);
+  await context.close();
+});

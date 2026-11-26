@@ -532,6 +532,7 @@ function summaryScreen(ctx) {
     const kept = ui.closed.get(c.sessionId) || new Map();
     if (!c.ended || !(c.state === 'planned' || c.state === 'reduced') || (!c.open?.length && !kept.size)) return null;
     const openIds = new Set(c.open.map((a) => a.appointmentId));
+    const pastDay = !!(c.date && ui.today && c.date < ui.today);
     const rows = [...c.open, ...[...kept.values()].filter((a) => !openIds.has(a.appointmentId))].sort((x, y) => (x.slotTime < y.slotTime ? -1 : x.slotTime > y.slotTime ? 1 : x.appointmentId < y.appointmentId ? -1 : 1));
     const remember = (e, a, words) => { if (!ui.closed.has(c.sessionId)) ui.closed.set(c.sessionId, kept); kept.set(a.appointmentId, { ...a, closedWords: words, px: Math.round(e.currentTarget.closest('li')?.getBoundingClientRect().height || 0) }); };
     const step = (a, s, label, extra = {}) => h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'data-cmd': 'ospeli_slots_step', 'data-step': s, ...extra.attrs,
@@ -539,8 +540,12 @@ function summaryScreen(ctx) {
     // The hints read every row shown, closed here or not, so none vanishes and moves the list up.
     return h('section', { class: 'cl-close', 'data-test': 'close-out' },
       h('p', {}, h('b', {}, c.open.length ? `Still open (${c.open.length}): close each one, then mark the clinic held.` : 'All closed: the clinic can be marked held.')),
-      rows.some((a) => a.state === 'booked') ? h('p', { class: 'cl-hint', 'data-test': 'seen-not-arrived' }, 'Seen but never marked Arrived? Do not record a missed appointment: mark Arrived on the clinic queue, then come back here for "Seen, no times".') : null,
-      rows.some((a) => a.state === 'booked') ? h('p', {}, h('a', { class: 'btn btn-ghost btn-small', href: '#/clinics/queue', 'data-test': 'to-queue' }, 'Open the clinic queue')) : null,
+      // Issue #155: the queue link opens today's queue, and Arrived is marked on the clinic's own day,
+      // so a past day's close-out has no link and says what is true.
+      rows.some((a) => a.state === 'booked') ? h('p', { class: 'cl-hint', 'data-test': 'seen-not-arrived' }, pastDay
+        ? `Seen on ${shortDate(c.date)} but never marked Arrived? Do not record a missed appointment. Arrived is marked only on the clinic's own day, so this booking stays open: a way to close it on a later day is not built yet.`
+        : 'Seen but never marked Arrived? Do not record a missed appointment: mark Arrived on the clinic queue, then come back here for "Seen, no times".') : null,
+      rows.some((a) => a.state === 'booked') && !pastDay ? h('p', {}, h('a', { class: 'btn btn-ghost btn-small', href: '#/clinics/queue', 'data-test': 'to-queue' }, 'Open the clinic queue')) : null,
       rows.some((a) => a.state === 'called') ? h('p', { class: 'cl-hint', 'data-test': 'late-finish' }, 'A Finished tapped now is recorded at this time, after the clinic\'s end, so the overrun figure will include it.') : null,
       rows.some((a) => a.state === 'arrived' || a.state === 'called') ? h('p', { class: 'cl-hint', 'data-test': 'not-tapped' }, `Seen but not tapped through? "${data.picks.noTimesName}" closes the visit as attended with no call or finish time. The start, wait and overrun figures leave it out and say how many.`) : null,
       h('ul', { class: 'cl-moves' }, rows.map((a) => (!openIds.has(a.appointmentId) ? keepPx(h('li', { class: 'is-done', 'data-appointment': a.appointmentId, 'data-state': 'closed', 'data-test': 'closed-here' },
