@@ -552,7 +552,12 @@ export async function startServer({
       const carryOut = async () => ({ ok: true, command: commandByName(m[1])?.name || m[1], result: await runCommand(core, m[1], input, asDevice()) });
       // The app sends a key with each change and the same key when it sends that change again.
       const idem = req.headers['idempotency-key'];
-      if (idem === undefined) return send(res, 200, await carryOut());
+      // Only a change is remembered. A read is read again each time: a remembered read would be up
+      // to ten minutes old, and large read answers would sit in the server's memory (26 Nov).
+      if (idem === undefined || commandByName(m[1])?.kind === 'read') {
+        if (idem !== undefined && !IDEMPOTENCY_KEY.test(idem)) throw badBody('Idempotency-Key must be 8 to 128 letters, digits, dots, dashes, underscores or colons.');
+        return send(res, 200, await carryOut());
+      }
       if (!IDEMPOTENCY_KEY.test(idem)) throw badBody('Idempotency-Key must be 8 to 128 letters, digits, dots, dashes, underscores or colons.');
       const { answer, replayed } = await deviceChange(d, m[1], idem, input, carryOut);
       return send(res, 200, answer, replayed ? { 'Idempotent-Replay': 'true' } : {});
@@ -743,6 +748,18 @@ export async function startServer({
     return `The same. Entries 1 to ${seq} are the ones that were there when this mark was taken. ${since ? `${since} ${since === 1 ? 'entry has' : 'entries have'} been added since.` : 'Nothing has been added since.'} (This says nothing about the event log, and nothing about entries after ${seq}.)`;
   }
 
+  // The mark of the trail as a copy holds it (issue #73, hardening plan item 3). Read in the same
+  // turn as the copy is taken, so no entry can land between the two. A person who keeps the mark
+  // with the copy's label, off this computer, can later start Ospeli on that copy and see with
+  // `audit check` whether its trail is still the one that was saved. It is printed, never written
+  // into the copy: a mark stored beside the trail could be rewritten with it.
+  const copyMark = (log, check) => (!log.length ? null : check.ok ? markOf(log[log.length - 1]) : false);
+  const copyMarkLines = (mark, to) => (mark === null ? []
+    : mark === false ? ['Warning: the audit trail in this copy did not pass its self-check, so no mark is given for it. Type: audit']
+      : [`Mark for the audit trail in this copy: ${mark}`,
+        'Write the mark on the copy\'s label or keep it with the copy, off this computer; Ospeli keeps no record of it.',
+        `To see later that the copy's trail is still the one saved today: start Ospeli on the copy${to ? ` (--data ${to})` : ' (after open backup)'}, then type: audit check ${mark}`]);
+
   async function banner() {
     const access = await agentAccess(core);
     const now = Date.parse(core.now());
@@ -802,10 +819,12 @@ export async function startServer({
   }
   async function lockedBackup(to, passphrase) {
     const tmp = `${to}.${randomBytes(6).toString('hex')}.part`;
+    let mark = null;
     try {
       const bad = copyPlaceProblem(to);
       if (bad) return bad;
-      adapter.backupTo(tmp); ownerOnly(tmp);
+      const check = await core.auditCheck();
+      mark = copyMark(await core.auditLog(), check); adapter.backupTo(tmp); ownerOnly(tmp); // one turn: see copyMark
       if (statSync(tmp).size > MAX_COPY_BYTES) return 'The data file is too large for a locked copy in this version. Nothing was saved. Use backup FILE and keep that file on an encrypted disk.';
       saveLocked(readFileSync(tmp), to, passphrase);
       ownerOnly(to);
@@ -821,6 +840,7 @@ export async function startServer({
       'Without the passphrase nobody can open it: not you, and not Ospeli. There is no reset.',
       'Write the passphrase on paper now and keep it somewhere safe, apart from the file.',
       `To use the copy later, type: open backup ${to} NEWFILE`,
+      ...copyMarkLines(mark, null),
     ].join('\n');
   }
   async function openBackup(from, to, passphrase) {
@@ -1010,9 +1030,11 @@ export async function startServer({
         const bad = copyPlaceProblem(to);
         if (bad) return bad;
         // The reason is given in Ospeli's words, never the storage engine's own.
-        try { adapter.backupTo(to); ownerOnly(to); } catch (err) { return `The copy could not be saved to ${to} (${err.code === 'EEXIST' ? 'a file with that name is already there; give a new name' : err.code === 'EACCES' || err.code === 'EPERM' ? 'this account may not write there' : 'the file could not be written'}). Nothing was saved.`; }
+        let mark = null;
+        const check = await core.auditCheck();
+        try { mark = copyMark(await core.auditLog(), check); adapter.backupTo(to); ownerOnly(to); } catch (err) { return `The copy could not be saved to ${to} (${err.code === 'EEXIST' ? 'a file with that name is already there; give a new name' : err.code === 'EACCES' || err.code === 'EPERM' ? 'this account may not write there' : 'the file could not be written'}). Nothing was saved.`; }
         await core.recordAs(person(CONSOLE_ADMIN), 'data.backup', null, null);
-        return `Saved a copy of all data to ${to}. To use it later, start Ospeli with: --data ${to}\nThis copy is not locked: anyone who gets the file can read it. For a copy that needs a passphrase, type: locked backup FILE`;
+        return `Saved a copy of all data to ${to}. To use it later, start Ospeli with: --data ${to}\nThis copy is not locked: anyone who gets the file can read it. For a copy that needs a passphrase, type: locked backup FILE${mark === null ? '' : `\n${copyMarkLines(mark, to).join('\n')}`}`;
       }
       return `"${text.slice(0, 40)}" is not a word Ospeli knows. Type: help`;
     } catch (err) {
