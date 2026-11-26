@@ -133,6 +133,11 @@ export class SiteLink {
     return this.pull();
   }
   async _pull() {
+    // A change left unsure before this sync began is settled by it: once the copy is up to date
+    // the person can see whether that change was made, so the same change tapped after this is a
+    // new change with a new key, not a retry the server answers from memory (26 Nov, after #109).
+    // A change that failed while this sync was already on its way stays unsure.
+    const unsureBefore = this.unsure;
     for (let round = 0; round < 2; round += 1) {
       const st = await this.mirror.syncState();
       const q = st ? `?epoch=${encodeURIComponent(st.epoch)}&rev=${st.rev}&events=${st.events}&audit=${st.audit}` : '';
@@ -142,6 +147,7 @@ export class SiteLink {
       const changed = await this.mirror.apply(r.body, this.clock().toISOString());
       if (changed === 'again') continue;
       this.lastAt = this.clock().toISOString();
+      if (unsureBefore && this.unsure === unsureBefore) this.unsure = null;
       this._set(true);
       if (changed && this.core) await this.core.reloaded(changed);
       return true;

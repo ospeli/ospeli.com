@@ -173,10 +173,11 @@ export function columnsNote(count, max, { where = 'phone' } = {}) {
 
 // ---- CSV ----
 // Every field is quoted. A cell that a spreadsheet would read as a formula (it begins with =, +,
-// -, @, a tab or a carriage return) gets a ' in front, so it is shown as text and never run.
+// -, @, a tab or a carriage return, also after leading spaces of any kind, which some spreadsheets
+// drop first) gets a ' in front, so it is shown as text and never run.
 export function csvCell(v) {
   let s = v == null ? '' : String(v);
-  if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  if (/^[\s\u00a0\u3000\ufeff]*[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return `"${s.replace(/"/g, '""')}"`;
 }
 export const CSV_HEAD = ['map', 'department', 'walk number', 'walk date', 'step order', 'step', 'role', 'on list', 'wait seconds', 'hands-on seconds', 'not-seen seconds', 'interrupted count', 'stopped seconds (inside wait)', 'done again', 'status', 'wait reason (recorded on the walk)', 'last stop reason (recorded on the walk)', 'step name typed'];
