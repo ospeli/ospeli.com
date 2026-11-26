@@ -175,7 +175,11 @@ async function prepare(core, c) {
     }
     assert.match(c.example.needs, /ospeli_slots_/, `${name}: the needs line names the slot command that finds or makes what is needed`);
     const plan = cmd('ospeli_slots_session_plan');
-    const sessionId = (await as(plan.name, structuredClone(plan.example.input))).sessionId;
+    // Issue #192: Arrived is marked on the session's own day only, as the step examples' needs lines
+    // say, so for those the session is planned on the site's today.
+    const onToday = name === 'ospeli_slots_step' || name === 'ospeli_slots_step_correct';
+    const today = onToday ? (await as('ospeli_slots_sessions', { format: 'short', limit: 1 })).from : null;
+    const sessionId = (await as(plan.name, { ...structuredClone(plan.example.input), ...(onToday ? { date: today } : {}) })).sessionId;
     if (name === 'ospeli_slots_appointments' || name === 'ospeli_slots_session_change') return { sessionId };
     const book = cmd('ospeli_slots_book');
     const code = await openCode();

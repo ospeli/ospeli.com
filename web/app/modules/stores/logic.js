@@ -347,8 +347,16 @@ export function ruleTransfer(stock, { now, isArea, see = all, placeName = (id) =
 
 // A percent measure in words. A rate rounded to 0 for the answer is shown as "under 0.1%" while the
 // count under it is not zero, so a small rate never reads as none (#113). null: no value yet.
-export function percentText(value, numerator) {
+// At the top the same holds: while the count is not all of them (249 of 250 lines filled), the rate
+// is never rounded up to "100%"; it keeps one decimal, or reads "over 99.9%" (#192).
+export function percentText(value, numerator, denominator) {
   if (value == null) return null;
   if (value < 0.1 && numerator > 0) return 'under 0.1%';
-  return `${value < 10 ? Math.round(value * 10) / 10 : Math.round(value)}%`;
+  if (value < 10) return `${Math.round(value * 10) / 10}%`;
+  const notAll = value < 100 || (denominator != null && numerator != null && numerator < denominator);
+  if (Math.round(value) >= 100 && notAll) {
+    const one = Math.round(value * 10) / 10;
+    return one < 100 ? `${one}%` : 'over 99.9%';
+  }
+  return `${Math.round(value)}%`;
 }
