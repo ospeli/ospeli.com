@@ -17141,7 +17141,7 @@
     },
     {
       "name": "ospeli_slots_step",
-      "summary": "Mark one step of an appointment: arrived, then called, then finished, in that order; or no-show, with a reason, only for a patient who never arrived and only after the booked time plus the grace (an example setting, not a standard; for a booking made or moved into a time already past, the grace counts from that booking or move). \"seen-no-times\" closes a patient who arrived and was seen but was not tapped through, from their booked time on: attended and finished with no call or finish time, left out of the waiting, start and overrun figures, which say how many. Each step is written once with its time; the same step sent twice answers done and writes nothing. No clinical step and no outcome is recorded.",
+      "summary": "Mark one step of an appointment: arrived, then called, then finished, in that order (arrived and called on the session's own day only, the site's date; finished afterwards closes out a late visit); or no-show, with a reason, only for a patient who never arrived and only after the booked time plus the grace (an example setting, not a standard; for a booking made or moved into a time already past, the grace counts from that booking or move). \"seen-no-times\" closes a patient who arrived and was seen but was not tapped through, from their booked time on: attended and finished with no call or finish time, left out of the waiting, start and overrun figures, which say how many. Each step is written once with its time; the same step sent twice answers done and writes nothing. No clinical step and no outcome is recorded.",
       "kind": "write",
       "roles": [
         "clinic-receptionist",
@@ -17263,7 +17263,7 @@
           "appointmentId": "apt-00001",
           "step": "arrived"
         },
-        "needs": "A booked appointment. apt-00001 is an example id: ospeli_slots_appointments with a sessionId lists a session's appointments, and ospeli_slots_book makes one."
+        "needs": "A booked appointment. apt-00001 is an example id: ospeli_slots_appointments with a sessionId lists a session's appointments, and ospeli_slots_book makes one. For arrived, in a session on today's date (the site's own day)."
       }
     },
     {
@@ -17387,7 +17387,7 @@
           "appointmentId": "apt-00001",
           "undo": "arrived"
         },
-        "needs": "An appointment marked arrived by mistake and not yet called in. apt-00001 is an example id: ospeli_slots_appointments with a sessionId lists a session's appointments."
+        "needs": "An appointment marked arrived by mistake and not yet called in (Arrived is marked on the session's own day, so a session on today's date). apt-00001 is an example id: ospeli_slots_appointments with a sessionId lists a session's appointments."
       }
     },
     {

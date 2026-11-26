@@ -698,7 +698,7 @@ function manageScreen(ctx, shared) {
       reqs.length ? h('ul', { class: 'sto-plain' }, reqs.map((q) => h('li', { 'data-request': q.id }, h('b', {}, q.placeName), ` · ${reqName(q.id)} · waiting ${hoursText(q.waitHours)} · ${plural(q.lines.filter((l) => l.left > 0).length, 'item')}${q.canIssueInFull ? '' : ' · the store is short'}`))) : null,
       h('div', { class: 'sto-acts' }, h('a', { class: 'btn btn-ghost btn-small', href: '#/stores/orders' }, 'All orders'), h('a', { class: 'btn btn-ghost btn-small', href: '#/stores/requests' }, 'All requests')));
   }
-  const fmtKpi = (k) => (k.value == null ? 'None yet' : k.unit === '%' ? percentText(k.value, k.numerator) : k.unit === 'hours' ? hoursText(k.value) : daysText(k.value));
+  const fmtKpi = (k) => (k.value == null ? 'None yet' : k.unit === '%' ? percentText(k.value, k.numerator, k.denominator) : k.unit === 'hours' ? hoursText(k.value) : daysText(k.value));
   function kpiSection(ov) {
     const extra = (k) => (k.open != null ? `${plural(k.open, k.id === 'stores-order-cycle' ? 'order' : 'request')} not finished yet${k.longestOpen != null ? `, the longest ${k.unit === 'hours' ? hoursText(k.longestOpen) : daysText(k.longestOpen)} so far` : ''}.` : null);
     const sub = (k) => {
@@ -715,8 +715,8 @@ function manageScreen(ctx, shared) {
         h('p', { class: 'sto-kpi-name' }, k.name), h('p', { class: 'sto-kpi-value' }, fmtKpi(k)),
         h('p', { class: 'meta' }, sub(k)),
         extra(k) ? h('p', { class: 'meta' }, extra(k)) : null,
-        (k.byArea || []).filter((x) => ids.has(x.placeId)).map((x) => h('p', { class: 'meta', 'data-test': 'store-line' }, `${x.placeName}: ${x.value == null ? 'none' : percentText(x.value, x.numerator)} (${x.numerator} of ${x.denominator} item-days)`)),
-        k.byArea?.length ? keepOpen(ui.open, `area:${k.id}`, 'Each ward', h('ul', { class: 'sto-mini' }, k.byArea.filter((x) => !ids.has(x.placeId)).map((x) => h('li', {}, `${x.placeName}: ${x.value == null ? 'none' : percentText(x.value, x.numerator)} (${x.numerator} of ${x.denominator} item-days)`))), { class: 'sto-def' }) : null,
+        (k.byArea || []).filter((x) => ids.has(x.placeId)).map((x) => h('p', { class: 'meta', 'data-test': 'store-line' }, `${x.placeName}: ${x.value == null ? 'none' : percentText(x.value, x.numerator, x.denominator)} (${x.numerator} of ${x.denominator} item-days)`)),
+        k.byArea?.length ? keepOpen(ui.open, `area:${k.id}`, 'Each ward', h('ul', { class: 'sto-mini' }, k.byArea.filter((x) => !ids.has(x.placeId)).map((x) => h('li', {}, `${x.placeName}: ${x.value == null ? 'none' : percentText(x.value, x.numerator, x.denominator)} (${x.numerator} of ${x.denominator} item-days)`))), { class: 'sto-def' }) : null,
         keepOpen(ui.open, `def:${k.id}`, 'How it is counted', [h('p', {}, k.definition), h('p', {}, `Counts: ${k.counts}`), h('p', {}, `Leaves out: ${k.leavesOut}`), h('p', {}, `Source: ${k.source}`), h('p', {}, `Target: ${k.targetText}`)], { class: 'sto-def' })))));
   }
   function tools() {

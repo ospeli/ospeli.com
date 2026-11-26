@@ -212,7 +212,8 @@ function queueScreen(ctx) {
     return li;
   }
   // Issue #163: on a day with no clinic, a look at the next or the last clinic day. Read only: no
-  // Arrived, Call in, Finished, missed or undo, because those steps do not check the clinic's date.
+  // Arrived, Call in, Finished, missed or undo. Since #192 the shared step command also refuses
+  // Arrived and Call in off the session's own day; close-out after the day is on Clinic day.
   const lookBtn = (which, label, sessionId) => h('button', { class: 'btn btn-ghost', type: 'button', 'data-test': `look-${which}`,
     onclick: () => { ui.sessionId = sessionId; ui.find = ''; if (findInput) findInput.value = ''; ui.active.clear(); ui.stay.clear(); load(); } }, label);
   function drawLook(c) {
@@ -247,7 +248,7 @@ function queueScreen(ctx) {
         : h('div', { class: 'card notice', 'data-test': 'no-clinic' }, h('p', {}, `No clinic today (${shortDate(data.date)}).`),
           h('p', { class: 'cl-hint', 'data-test': 'next-clinic' }, data.nextClinic ? `Next clinic: ${when(data.nextClinic)}.` : 'No clinic is planned in the coming weeks.'),
           data.lastClinic ? h('p', { class: 'cl-hint', 'data-test': 'last-clinic' }, `Last clinic: ${when(data.lastClinic)}.`) : null,
-          // A look at another day's list, read only (the steps do not check the clinic's date).
+          // A look at another day's list, read only (Arrived and Call in are refused off the clinic's day, #192).
           data.nextClinic || data.lastClinic ? h('div', { class: 'cl-look-btns' },
             data.nextClinic ? lookBtn('next', `See the list for ${shortDate(data.nextClinic.date)}`, data.nextClinic.sessionId) : null,
             data.lastClinic ? lookBtn('last', `See the list for ${shortDate(data.lastClinic.date)}`, data.lastClinic.sessionId) : null) : null));

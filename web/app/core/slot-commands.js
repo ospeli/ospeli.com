@@ -393,6 +393,16 @@ export function slotCommands(packs = []) {
             : `The steps go in order: arrived, called, finished. This appointment is ${APPOINTMENT_STATES[a.state].name.toLowerCase()}.`;
         throw conflict(why, { state: a.state });
       }
+      // Issue #192: Arrived and Call in record a moment at the desk, so they are marked on the
+      // session's own day only. Closing out afterwards (Finished, Seen no times, a missed
+      // appointment) stays open until the session is marked held.
+      if (step === 'arrived' || step === 'called') {
+        const s = c.d.sessions.get(a.sessionId);
+        const today = localDate(c.now, c.offsetMinutes);
+        if (s && today !== s.date) {
+          throw conflict(`This ${type.word.toLowerCase()} is on ${s.date} and today is ${today}. ${step === 'arrived' ? 'Arrived' : 'Call in'} is marked on its own day only.`, { date: s.date, today });
+        }
+      }
       if (step === 'no-show') {
         const from = noShowFromMs(c.d, a);
         if (Date.parse(c.now) < from) {
@@ -680,11 +690,11 @@ export function slotCommands(packs = []) {
     }),
     write({
       verb: 'step', roles: union('stepRoles'), target: (input) => ({ id: input.appointmentId, word: 'appointment' }),
-      summary: `Mark one step of an appointment: arrived, then called, then finished, in that order; or no-show, with a reason, only for a patient who never arrived and only after the booked time plus the grace (an example setting, not a standard; for a booking made or moved into a time already past, the grace counts from that booking or move). "seen-no-times" closes a patient who arrived and was seen but was not tapped through, from their booked time on: attended and finished with no call or finish time, left out of the waiting, start and overrun figures, which say how many. Each step is written once with its time; the same step sent twice answers done and writes nothing. No clinical step and no outcome is recorded.`,
+      summary: `Mark one step of an appointment: arrived, then called, then finished, in that order (arrived and called on the session's own day only, the site's date; finished afterwards closes out a late visit); or no-show, with a reason, only for a patient who never arrived and only after the booked time plus the grace (an example setting, not a standard; for a booking made or moved into a time already past, the grace counts from that booking or move). "seen-no-times" closes a patient who arrived and was seen but was not tapped through, from their booked time on: attended and finished with no call or finish time, left out of the waiting, start and overrun figures, which say how many. Each step is written once with its time; the same step sent twice answers done and writes nothing. No clinical step and no outcome is recorded.`,
       required: ['appointmentId', 'step'],
       properties: { appointmentId: APPOINTMENT_ID, step: { type: 'string', enum: ['arrived', 'called', 'finished', 'no-show', 'seen-no-times'], description: `arrived: the patient is here. called: called in from the wait. finished: the visit is over, tapped at the time it ended. no-show: never arrived. seen-no-times: "${NO_TIMES_NAME}", for a patient who was seen but not tapped through.` },
         reason: { type: 'string', enum: reasons.noShow, description: `Only for no-show, and needed then: ${reasons.noShow.join(', ')}.` }, expectedState: EXPECTED(APPOINTMENT_STATE, 'appointment') },
-      example: { input: { appointmentId: 'apt-00001', step: 'arrived' }, needs: NEED_APPOINTMENT },
+      example: { input: { appointmentId: 'apt-00001', step: 'arrived' }, needs: `${NEED_APPOINTMENT} For arrived, in a session on today's date (the site's own day).` },
     }),
     write({
       verb: 'step_correct', roles: union('stepRoles'), people: true, target: (input) => ({ id: input.appointmentId, word: 'appointment' }),
@@ -692,7 +702,7 @@ export function slotCommands(packs = []) {
       required: ['appointmentId', 'undo'],
       properties: { appointmentId: APPOINTMENT_ID, undo: { type: 'string', enum: Object.keys(UNDO_STEPS), description: 'The step to undo, which must be the state the appointment is in now: arrived, called or no-show.' },
         reason: { type: 'string', enum: UNDO_REASONS, description: `Optional pick. Default: "${UNDO_REASON_DEFAULT}". "Patient arrived late" is for undoing a missed appointment only.` }, expectedState: EXPECTED(APPOINTMENT_STATE, 'appointment') },
-      example: { input: { appointmentId: 'apt-00001', undo: 'arrived' }, needs: 'An appointment marked arrived by mistake and not yet called in. apt-00001 is an example id: ospeli_slots_appointments with a sessionId lists a session\'s appointments.' },
+      example: { input: { appointmentId: 'apt-00001', undo: 'arrived' }, needs: 'An appointment marked arrived by mistake and not yet called in (Arrived is marked on the session\'s own day, so a session on today\'s date). apt-00001 is an example id: ospeli_slots_appointments with a sessionId lists a session\'s appointments.' },
     }),
     write({
       verb: 'reminder_record', roles: union('bookRoles'), target: (input) => ({ id: input.appointmentId, word: 'appointment' }),

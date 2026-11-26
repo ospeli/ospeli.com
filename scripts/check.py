@@ -243,7 +243,9 @@ CLAIMS = [(COVERS, 'claims a number of areas "covered"; say what is built and wh
           (re.compile(r"\brun(?:s|ning)?\s+full\b", re.I), 'promises an outcome ("run full")'),
           # Issue #184, decision record 20 Nov (patient codes): a site holds the key that links a code
           # to a person, so the code is pseudonymous, never "anonymous".
-          (re.compile(r"\banonymous\s+(?:patient\s+|record\s+)?codes?\b", re.I), 'calls a patient code "anonymous"; say "patient code" (it is pseudonymous: the site holds the key)')]
+          (re.compile(r"\banonymous\s+(?:patient\s+|record\s+)?codes?\b", re.I), 'calls a patient code "anonymous"; say "patient code" (it is pseudonymous: the site holds the key)'),
+          # Issue #192: the same holds for a patient timeline or record ("a patient timeline with no names").
+          (re.compile(r"\banonymous\s+(?:(?:patient|record)s?\b(?!\s+codes?\b)|timelines?\b)", re.I), 'calls patients, a record or a timeline "anonymous"; say "with no names" (the site holds the key)')]
 claim_files = [(p, p.relative_to(ROOT).as_posix()) for p in pages]
 claim_files += [(ROOT / n, n) for n in ("llms.txt", "agents.md", "areas/areas.json") if (ROOT / n).exists()]
 for f, rel in claim_files:
