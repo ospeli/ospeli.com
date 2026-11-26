@@ -416,7 +416,7 @@
     "denominator": "Inpatients",
     "statistic": "Share (%), per period",
     "exclusions": "None by default; a site adds its own",
-    "source": "7 days: the threshold of “more than six days” for a weekly review of long stays, in Guide to reducing long hospital stays (NHS Improvement, June 2018). 21 days: editable default (no published definition confirmed)."
+    "source": "7 days: the threshold of “more than six days” for a weekly review of long stays, in Guide to reducing long hospital stays (NHS Improvement, June 2018). 21 days: editable default. The same threshold, “long stays (21 days or more)”, is used by a national ambition to reduce long stays announced in June 2018, as described on the page \"Reducing length of stay\" (NHS England, england.nhs.uk, read 26 Nov 2026). Both are one health system's review conventions, not clinical standards; each site sets its own."
    }
   ],
   "guide": [
@@ -1825,7 +1825,7 @@
     "denominator": "Item-days critical items were held, from each holding's first event (a level set or a movement).",
     "statistic": "Share (%), in all and for each area",
     "exclusions": "Items that are not critical items, and other modules' stock (medicines, vaccines).",
-    "source": "Editable default (no published standard found)"
+    "source": "Editable default (no published standard found for item-days). Related, and counted differently: WHO harmonized PSM indicator 12, \"Percentage of treatment sites that had a stock-out of one or more required medicines during a defined period\" (WHO 2011, ISBN 978 92 4 150081 4), which counts sites, not item-days."
    },
    {
     "name": "Order cycle time",
@@ -1837,7 +1837,7 @@
     "endEvent": "Receipt that completes the order",
     "statistic": "Median",
     "exclusions": "Orders not received in full yet, part received included (shown beside the value: how many, and the longest so far) and cancelled orders.",
-    "source": "Editable default (no published standard found)"
+    "source": "Editable default (no published standard found for days from request to receipt). Related, and counted differently: WHO harmonized PSM indicators 6A, \"Percentage of orders delivered in full and on time (as stated in the procurement agreement) per supplier in a defined period\", and 8, \"Percentage of treatment sites that received all orders in full and on time during a defined period\" (WHO 2011, ISBN 978 92 4 150081 4), which count orders received in full and on time, not days."
    },
    {
     "name": "Fill rate",
