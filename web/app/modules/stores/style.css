@@ -129,7 +129,7 @@
    would land on Issue. A pick line moved to (keyboard, or the number field) stops clear of the bar (#113).
    It sits above the walk ribbon as well as the dock (#187). */
 .mod-stores .sto-issuebar { position: sticky; bottom: calc(var(--dock, 0px) + var(--ribbon, 0px)); z-index: 2; padding: 8px 0 10px; background: var(--surface); border-top: 1px solid var(--line); box-shadow: 0 -6px 8px -6px rgba(11, 47, 78, .25); }
-.mod-stores .sto-req.is-first .sto-pick li, .mod-stores .sto-req.is-first .sto-pick :is(input, button) { scroll-margin-bottom: calc(var(--dock, 0px) + var(--ribbon, 0px) + 100px); }
+.mod-stores .sto-req.is-first .sto-pick li, .mod-stores .sto-req.is-first .sto-pick input, .mod-stores .sto-req.is-first .sto-pick button { scroll-margin-bottom: calc(var(--dock, 0px) + var(--ribbon, 0px) + 100px); }
 .mod-stores .sto-pick > summary { font-size: .9375rem; }
 .mod-stores .sto-pick .sto-lines > li { padding: 6px 8px; }
 /* A save button that still waits for a pick looks disabled; a tap says what is missing. */
