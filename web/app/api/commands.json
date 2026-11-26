@@ -1724,7 +1724,7 @@
     },
     {
       "name": "ospeli_kpi_get",
-      "summary": "Calculate one KPI from the event log, with its definition beside the number.",
+      "summary": "Calculate one KPI from the event log, with its definition beside the number. The number is for the whole hospital, so an agent must be allowed on every ward of the site to read it.",
       "kind": "read",
       "roles": [
         "ward-nurse",
@@ -1885,7 +1885,7 @@
     },
     {
       "name": "ospeli_kpi_summary",
-      "summary": "Every KPI tile in one read: each number with its unit, the text the tile shows and whether it is on target. For \"how are we doing?\" use this instead of ospeli_kpi_list and one ospeli_kpi_get per KPI. Short by default; format detailed adds each definition. Read-only; it reports numbers and decides nothing.",
+      "summary": "Every KPI tile in one read: each number with its unit, the text the tile shows and whether it is on target. For \"how are we doing?\" use this instead of ospeli_kpi_list and one ospeli_kpi_get per KPI. Short by default; format detailed adds each definition. Read-only; it reports numbers and decides nothing. The numbers are for the whole hospital, so an agent must be allowed on every ward of the site to read them.",
       "kind": "read",
       "roles": [
         "ward-nurse",

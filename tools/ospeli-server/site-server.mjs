@@ -372,6 +372,7 @@ export async function startServer({
       case 'people-only': return 'Ask a person at the site to do it at the server console. Nothing was changed.';
       case 'dial-off': return 'Ask a person at the site to switch agent access on at the server console (they type: start agents). Nothing was changed.';
       case 'not-listed': case 'ended': return 'Ask a person at the site to add this agent again at the server console (they type: setup agent).';
+      case 'site-wide': return 'This key is for some units only, and this command gives numbers for the whole site. Ask a person at the site to give the key every unit, or read your own units (GET /api/v1/whoami lists them).';
       case 'ward-off': case 'ward-not-listed': return 'Use one of your own units (GET /api/v1/whoami lists them), or ask a person at the site to switch this unit on for agents.';
       case 'other-role': case 'role-cannot': return `This key works for ${who ? roleById(who.role)?.name : 'one role'}. GET /api/v1/commands shows the roles each command needs.`;
       case 'invalid-input': return cmd ? `Send a JSON body like ${JSON.stringify({ input: cmd.example?.input ?? {} })}.` : 'Send a JSON body like { "input": { } }.';
