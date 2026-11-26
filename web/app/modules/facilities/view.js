@@ -11,7 +11,6 @@ import { h, setKids, fmtWait, moduleStyle, redrawOnChange } from '../ui.js';
 import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
-import { laterBox } from '../soon.js';
 import { CHECK_KINDS, RESULTS, RUN_MINUTES, LEVELS, GAS_BANDS, UTILITIES, CAUSES, AGO_MINUTES, LEVEL_PICKS, runText, agoText,
   LOADS, LOAD_WORDS, WASTE_STREAMS, WASTE_CONTAINERS, WASTE_OUTCOMES, WASTE_REASONS, containersText, containersPick, totalContainersText } from './logic.js';
 
@@ -29,6 +28,16 @@ const agoLater = (m) => (m < 60 ? `${m} min` : m === 60 ? '1 hour' : `${m / 60} 
 // Outage time as people say it, "15 min" or "1 h 30 min" (#140: "0.3 h + 0.3 h" under "0.5 h" did not add up).
 const hoursText = (mins) => (mins == null ? 'None' : fmtWait(mins));
 const pctText = (x) => (x == null ? 'Nothing due yet' : `${Math.round(x)}%`);
+
+// One closed "Coming later (n)" for this page's planned parts (styled by the shell: .later-box).
+// Each text is set as text, never as HTML. Nothing planned: no box.
+function laterBox(items) {
+  const list = items.filter(Boolean);
+  if (!list.length) return null;
+  return h('details', { class: 'card later-box', 'data-test': 'page-coming-later' },
+    h('summary', {}, `Coming later (${list.length})`),
+    h('ul', { class: 'later-list' }, list.map(({ text, attrs }) => h('li', attrs || {}, text))));
+}
 
 // The page's planned parts sit together, closed, under one "Coming later (n)" (design audit 25 Nov).
 // The manager's view adds what its own cards would have said: the planned measures and the guide's

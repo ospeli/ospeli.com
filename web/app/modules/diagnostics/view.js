@@ -15,7 +15,6 @@ import { h, setKids, fmtWait, moduleStyle, redrawOnChange } from '../ui.js';
 import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
-import { laterBox } from '../soon.js';
 import { TEST_GROUPS, URGENCIES, URGENCY_LABEL, REJECT_REASONS, REJECT_HEADING, CANCEL_REASONS, AGO_MINUTES, agoText, EXPECTED_HOURS, EQUIPMENT_STATES, LATE_ENTRY_MINUTES } from './logic.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
@@ -27,6 +26,16 @@ const STORE_KEY = 'ospeli-diagnostics-ward';
 const remembered = { get() { try { return localStorage.getItem(STORE_KEY) || null; } catch { return null; } }, set(v) { try { if (v) localStorage.setItem(STORE_KEY, v); else localStorage.removeItem(STORE_KEY); } catch { /* still works for this visit */ } } };
 const pct = (x) => (x == null ? 'None yet' : `${Math.round(x * 10) / 10}%`);
 const mins = (x) => (x == null ? 'None yet' : fmtWait(x));
+
+// One closed "Coming later (n)" for this page's planned parts (styled by the shell: .later-box).
+// Each text is set as text, never as HTML. Nothing planned: no box.
+function laterBox(items) {
+  const list = items.filter(Boolean);
+  if (!list.length) return null;
+  return h('details', { class: 'card later-box', 'data-test': 'page-coming-later' },
+    h('summary', {}, `Coming later (${list.length})`),
+    h('ul', { class: 'later-list' }, list.map(({ text, attrs }) => h('li', attrs || {}, text))));
+}
 
 export async function render(el, ctx) {
   await moduleStyle('diagnostics');

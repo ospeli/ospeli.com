@@ -135,7 +135,7 @@ html { scroll-padding-bottom: calc(var(--dock) + var(--ribbon) + 8px); }
 .j-box .j-chips + .j-later { margin-top: 12px; }
 .j-later summary { min-height: 44px; display: flex; align-items: center; font-weight: 800; cursor: pointer; color: var(--navy); }
 .j-later .meta { margin: 0 0 8px; }
-/* A module page's own "Coming later (n)" (soon.js laterBox): its planned lines together, closed. */
+/* A module page's own "Coming later (n)" (laterBox in diagnostics and facilities views): its planned lines together, closed. */
 .later-box summary { min-height: 44px; display: flex; align-items: center; font-weight: 800; cursor: pointer; color: var(--navy); }
 .later-box[open] summary { margin-bottom: 4px; }
 .later-list { margin: 0; padding-left: 20px; }
