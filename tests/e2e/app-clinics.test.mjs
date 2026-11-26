@@ -591,3 +591,20 @@ test('#184: beside slot utilisation the page says a missed appointment counts as
     await context.close();
   }
 });
+
+test('#185: beside the waiting time in clinic the page shows the wait past booked time and says arrived to called is the headline (360, 390 and 1280 px)', async () => {
+  for (const width of [360, 390, 1280]) {
+    const { context, page, errors } = await openPage(env, { width, clock: CLOCK, path: '#/clinics' });
+    await asRole(page, 'outpatient-manager', 'summary');
+    const k = (await run(page, 'ospeli_clinics_day_summary', {}, 'outpatient-manager')).kpis.find((x) => x.id === 'clinic-wait');
+    assert.ok(k.pastBooked && k.pastBooked.n === k.n, 'the same patients as the headline');
+    assert.ok(k.pastBooked.medianMinutes <= k.value, 'never more than arrived to called');
+    const line = (await page.locator('[data-kpi="clinic-wait"] [data-test="past-booked"]').textContent()).replace(/\s+/g, ' ');
+    assert.match(line, /^Headline: arrived to called\. Beside it, wait past booked time: median \d+ (min|h)/);
+    const px = await page.locator('[data-kpi="clinic-wait"] [data-test="past-booked"]').evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    assert.ok(px >= 15, `text ${px} px`);
+    assert.equal(await noSideways(page), 0);
+    assert.deepEqual(errors, []);
+    await context.close();
+  }
+});

@@ -339,6 +339,13 @@ test('the overview gives the same numbers through the command as the pure functi
   assert.equal('value' in ov.planned[0], false, 'inventory turns has no value');
 });
 
+test('#185: fill rate is named on screen as filled in the end, and says the first-issue meaning is not shown', async () => {
+  const { run } = await site();
+  const k = (await run('ospeli_stores_overview', { days: 30 }, 'coo')).kpis.find((x) => x.id === 'stores-fill-rate');
+  assert.match(k.name, /filled in the end/);
+  assert.match(k.definition, /first issue/);
+});
+
 test('guide rules by hand: use ahead of a level, an order waiting longer than usual, a transfer; each cites its basis', () => {
   const rows = [
     [0, 'stock.level-set', W1, { itemId: 'gloves-m', level: 5 }], [0, 'stock.level-set', W2, { itemId: 'gloves-m', level: 10 }],

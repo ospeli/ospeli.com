@@ -9,7 +9,7 @@
 // or ranks a clinician. A patient is a code ("Patient P12"); two codes are never matched.
 
 import {
-  utilisation, noShowRate, waitInClinic, firstCalledVsStart, overrun, sessionFill, appointmentsOf, holdsPlace, slotTimes, placeTaken, dueMs, localInstant, localDate, addDays, weekdayOf,
+  utilisation, noShowRate, waitInClinic, waitPastBooked, firstCalledVsStart, overrun, sessionFill, appointmentsOf, holdsPlace, slotTimes, placeTaken, dueMs, localInstant, localDate, addDays, weekdayOf,
 } from '../../core/slots.js';
 import { stageToFirstAttended, codeLabel, waitingDays, attendanceOf } from '../../core/codes.js';
 
@@ -99,6 +99,8 @@ export function usedSlots(d, { since, until, service = null }) {
 export const referralToFirst = (codesD, index, { since, until, minGroup = MIN_GROUP }) => stageToFirstAttended(codesD, index, { stage: ACCEPTED, since, until, kind: CODE_KIND, minGroup });
 // 4. Waiting time in clinic: arrived to called, median minutes. Helper waitInClinic.
 export const clinicWait = (d, { since, until, service = null }) => waitInClinic(clinicView(d, service), { since, until, sessionType: SESSION_TYPE });
+//    Beside it (#185): called against the later of arrival and the booked time. Helper waitPastBooked.
+export const clinicWaitPastBooked = (d, { since, until, service = null }) => waitPastBooked(clinicView(d, service), { since, until, sessionType: SESSION_TYPE });
 // 5. Clinic start punctuality: clinic sessions held in the period whose first patient was called
 //    no later than ON_TIME_MINUTES after the planned start (early counts as on time), out of the
 //    sessions held in which anyone was called. Helper firstCalledVsStart for each session.
@@ -247,7 +249,7 @@ export function ruleMissedHigh(d, { now, serviceWords = {} }) {
     const word = sameService(serviceWords[service]);
     out.push({ rule: 'missed-high', id: `missed-high:${service}`, service,
       text: `Review how the ${word} books: ${pct(all.value)} of appointments were missed over the last ${MISSED_LOOKBACK_WEEKS} weeks.`,
-      why: `${all.numerator} of ${all.denominator} appointments due were missed (the usual level set here is ${pct(MISSED_ABOVE)}). Week by week, oldest first: ${weeks.map((x) => `${x.numerator} of ${x.denominator}`).join('; ')}.`,
+      why: `${all.numerator} of ${all.denominator} appointments due were missed (the usual level set here is ${pct(MISSED_ABOVE)}, an example setting). Week by week, oldest first: ${weeks.map((x) => `${x.numerator} of ${x.denominator}`).join('; ')}.`,
       basis: GUIDE_RULES[0].basis, weeks: weeks.map((x) => ({ until: x.until, missed: x.numerator, due: x.denominator })), action: null, actions: [] });
   }
   return out;

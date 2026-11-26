@@ -393,6 +393,16 @@ export function waitInClinic(d, { since, until, sessionType = null } = {}) {
   const leftOut = mine.filter((a) => a.noTimes && !a.calledAt && inPeriod(Date.parse(a.closedAt))).length;
   return { n: waits.length, medianMinutes: median(waits), leftOut };
 }
+// Called against the later of arrival and the booked time, for the same patients as waitInClinic:
+// { n, medianMinutes }. An early arrival's wait before the booked time is not counted, so this is the
+// wait the clinic caused. Shown beside waitInClinic, never instead of it. Local definition.
+export function waitPastBooked(d, { since, until, sessionType = null } = {}) {
+  const inPeriod = period({ since, until });
+  const waits = [...d.appointments.values()]
+    .filter((a) => (!sessionType || a.sessionType === sessionType) && a.calledAt && a.arrivedAt && inPeriod(Date.parse(a.calledAt)))
+    .map((a) => Math.max(0, Date.parse(a.calledAt) - Math.max(Date.parse(a.arrivedAt), dueMs(d, a) ?? -Infinity)) / MIN);
+  return { n: waits.length, medianMinutes: median(waits) };
+}
 // Start of a session, two ways (both local definitions; below zero: called early; null: nobody called yet):
 //   minutes                 first patient called, against the planned start: the delay patients feel. The headline.
 //   minutesFromFirstArrival first patient called, against the later of the planned start and the first arrival,
