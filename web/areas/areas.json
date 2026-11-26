@@ -93,7 +93,7 @@
    },
    {
     "name": "Waiting time in clinic",
-    "definition": "Minutes between \"Arrived\" and \"Called in\", median, in all and by clinic, for patients called in the period.",
+    "definition": "Minutes between \"Arrived\" and \"Called in\", median, in all and by clinic, for patients called in the period. This is the headline: the time patients spend in the clinic. Beside it, the wait past the booked time: minutes from the later of \"Arrived\" and the booked time to \"Called in\", median, for the same patients, so an early arrival does not count as the clinic running late.",
     "kind": "time",
     "numerator": "Clinic appointments called in the period that were marked arrived first.",
     "denominator": "None (a median).",

@@ -24912,6 +24912,25 @@
                   "type": "integer",
                   "description": "Waiting time in clinic only: patients closed as \"Seen, no times\" with no call time, left out of the median."
                 },
+                "pastBooked": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "medianMinutes"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "medianMinutes": {
+                      "type": [
+                        "number",
+                        "null"
+                      ]
+                    }
+                  },
+                  "description": "Waiting time in clinic only: the wait past the booked time (from the later of arrival and the booked time to called), median minutes, for the same patients. Shown beside the headline, never instead of it."
+                },
                 "nobodyCalled": {
                   "type": "integer",
                   "description": "Start punctuality only: sessions held in which nobody was called."

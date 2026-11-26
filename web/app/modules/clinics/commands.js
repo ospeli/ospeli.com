@@ -22,7 +22,7 @@ import {
 } from '../../core/slots.js';
 import { CODE_EVENT_TYPES, deriveCodes, appointmentsByCode, codeLabel } from '../../core/codes.js';
 import {
-  SESSION_TYPE, CODE_KIND, GUIDE_SUBJECT, ON_TIME_MINUTES, MIN_GROUP, GUIDE_RULES, guideOn, clinicView, missedRate, slotUtilisation, usedSlots, referralToFirst, clinicWait,
+  SESSION_TYPE, CODE_KIND, GUIDE_SUBJECT, ON_TIME_MINUTES, MIN_GROUP, GUIDE_RULES, guideOn, clinicView, missedRate, slotUtilisation, usedSlots, referralToFirst, clinicWait, clinicWaitPastBooked,
   startPunctuality, queueOf, dayOf, moveTargets, sessionsFromDerived, waitingReferrals, MOVE_NOTICE_HOURS, LATE_MINUTES, ruleMissedHigh, ruleEmptySoon, ruleArrivalsBunched,
 } from './logic.js';
 
@@ -76,7 +76,7 @@ export const KPIS = [
     leavesOut: `Referrals with no finished visit yet: they are counted as "still waiting" beside the median, never hidden. A service with fewer than ${MIN_GROUP} codes shows no median (small-number rule, an example setting).`,
     source: 'local definition (shared helpers firstAttendedAfter and stageToFirstAttended, core/codes.js)', target: null, targetText: NO_TARGET },
   { id: 'clinic-wait', name: 'Waiting time in clinic', unit: 'minutes',
-    definition: 'Minutes between "Arrived" and "Called in", median, in all and by clinic, for patients called in the period.',
+    definition: 'Minutes between "Arrived" and "Called in", median, in all and by clinic, for patients called in the period. This is the headline: the time patients spend in the clinic. Beside it, the wait past the booked time: minutes from the later of "Arrived" and the booked time to "Called in", median, for the same patients, so an early arrival does not count as the clinic running late.',
     counts: 'Clinic appointments called in the period that were marked arrived first.',
     outOf: 'None (a median).', leavesOut: `Patients not called yet (shown live on the queue), and patients closed as "Seen, no times" with no call time (their number is shown beside it). A clinic with fewer than ${MIN_GROUP} patients called shows no median (small-number rule, an example setting).`,
     source: 'local definition (shared helper waitInClinic, core/slots.js)', target: null, targetText: NO_TARGET },
@@ -125,6 +125,8 @@ const KPI_OUT = { type: 'object', required: ['id', 'name', 'unit', 'value'], pro
   numerator: NULLABLE('number'), denominator: NULLABLE('number'), n: NULLABLE('integer'), waiting: { type: ['integer', 'null'], description: 'Referral to first appointment only: open referrals with no finished visit yet, shown beside the median.' },
   byService: { type: 'array', description: 'The same figure for each clinic (service at a place). A clinic with too few cases shows null (small-number rule).' },
   leftOut: { type: 'integer', description: 'Waiting time in clinic only: patients closed as "Seen, no times" with no call time, left out of the median.' },
+  pastBooked: { type: 'object', required: ['n', 'medianMinutes'], properties: { n: { type: 'integer' }, medianMinutes: NULLABLE('number') },
+    description: 'Waiting time in clinic only: the wait past the booked time (from the later of arrival and the booked time to called), median minutes, for the same patients. Shown beside the headline, never instead of it.' },
   nobodyCalled: { type: 'integer', description: 'Start punctuality only: sessions held in which nobody was called.' },
   noCallTimes: { type: 'integer', description: 'Start punctuality only: sessions held whose patients were seen but closed with no call time ("Seen, no times"); left out.' },
   attended: { type: 'integer', description: 'Slot utilisation only: of the used slots, those whose patient arrived.' },
@@ -229,7 +231,7 @@ function kpisOut(st, { since, until }, short) {
     'referral-to-first-appointment': { value: ref.medianDays, n: ref.n, waiting: ref.waiting, numerator: null, denominator: null,
       byService: services.map((s) => ({ service: s, name: SERVICES[s], value: ref.byService[s]?.medianDays ?? null, n: ref.byService[s]?.n ?? 0,
         waiting: referralToFirst({ ...st.codesD, codes: new Map([...st.codesD.codes].filter(([, c]) => c.service === s)) }, st.index, { since, until }).waiting })) },
-    'clinic-wait': { value: wait.medianMinutes, n: wait.n, leftOut: wait.leftOut, numerator: null, denominator: null,
+    'clinic-wait': { value: wait.medianMinutes, n: wait.n, leftOut: wait.leftOut, pastBooked: clinicWaitPastBooked(st.d, { since, until }), numerator: null, denominator: null,
       byService: services.map((s) => { const w = clinicWait(st.d, { since, until, service: s }); return { service: s, name: SERVICES[s], value: w.n >= MIN_GROUP ? w.medianMinutes : null, n: w.n, tooFew: w.n < MIN_GROUP }; }) },
     'clinic-start-punctuality': (() => { const r = ratio((o) => startPunctuality(st.d, o)); const all = startPunctuality(st.d, { since, until }); return { ...r, nobodyCalled: all.nobodyCalled, noCallTimes: all.noCallTimes, lateMaybe: all.lateMaybe }; })(),
   };
@@ -238,7 +240,7 @@ function kpisOut(st, { since, until }, short) {
     const base = { id: k.id, name: k.name, unit: k.unit, value: v.value, numerator: v.numerator, denominator: v.denominator, n: v.n, waiting: v.waiting ?? null, targetText: k.targetText };
     if (short) return base;
     return { ...base, byService: v.byService, ...(v.nobodyCalled != null ? { nobodyCalled: v.nobodyCalled, noCallTimes: v.noCallTimes, lateMaybe: v.lateMaybe } : {}),
-      ...(v.leftOut != null ? { leftOut: v.leftOut } : {}), ...(v.attended != null ? { attended: v.attended, missed: v.missed } : {}), definition: k.definition, counts: k.counts, outOf: k.outOf, leavesOut: k.leavesOut, source: k.source };
+      ...(v.leftOut != null ? { leftOut: v.leftOut } : {}), ...(v.pastBooked ? { pastBooked: v.pastBooked } : {}), ...(v.attended != null ? { attended: v.attended, missed: v.missed } : {}), definition: k.definition, counts: k.counts, outOf: k.outOf, leavesOut: k.leavesOut, source: k.source };
   });
 }
 function templatesOut(st) {

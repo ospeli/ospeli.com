@@ -15,7 +15,7 @@ import { deriveSlots } from '../../web/app/core/slots.js';
 import { deriveCodes, appointmentsByCode } from '../../web/app/core/codes.js';
 import * as pack from '../../web/app/modules/clinics/commands.js';
 import {
-  missedRate, slotUtilisation, usedSlots, referralToFirst, clinicWait, startPunctuality, nextFreeSlots, sessionsFromDerived, waitingReferrals,
+  missedRate, slotUtilisation, usedSlots, referralToFirst, clinicWait, clinicWaitPastBooked, startPunctuality, nextFreeSlots, sessionsFromDerived, waitingReferrals,
   ruleMissedHigh, ruleEmptySoon, ruleArrivalsBunched, guideOn,
 } from '../../web/app/modules/clinics/logic.js';
 
@@ -126,6 +126,26 @@ test('the five measures, recomputed from a hand-built log through the shared hel
   assert.deepEqual(clinicWait(d, { ...p, service: 'diabetes' }), { n: 1, medianMinutes: 40, leftOut: 0 });
   // 5. Start punctuality: first call 5 min (on time), 30 min (late), 10 min (on time) -> 2 of 3 held.
   assert.deepEqual(startPunctuality(d, p), { value: 2 / 3, numerator: 2, denominator: 3, nobodyCalled: 0, noCallTimes: 0, lateMaybe: 0 });
+});
+
+test('#185: beside the waiting time in clinic, the wait past the booked time; arrived to called stays the headline', async () => {
+  const E = handLog();
+  const p = { since: SINCE, until: NOW };
+  // Called minus the later of arrival and booked slot: 09:05-09:00 = 5, 09:25-09:20 = 5, 13:30-13:00 = 30,
+  // 09:10-09:00 = 10, 13:10-13:00 = 10 -> median 10 (arrived to called is 15: the early arrivals raise it).
+  assert.deepEqual(clinicWaitPastBooked(derive(E), p), { n: 5, medianMinutes: 10 });
+  assert.deepEqual(clinicWaitPastBooked(derive(E), { ...p, service: 'diabetes' }), { n: 1, medianMinutes: 30 });
+  // A patient who arrives after the booked time is counted from arrival, never from a slot already gone.
+  const late = handLog(); const i = late.findIndex((e) => e.type === 'appointment.arrived' && e.subject === 'apt-00007');
+  late[i] = { ...late[i], at: at('2026-11-04', '09:06') };
+  assert.deepEqual(clinicWaitPastBooked(derive(late), { ...p, service: 'eye' }), { n: 1, medianMinutes: 4 }, 'arrived 09:06 for 09:00, called 09:10');
+  const { run } = await site(handLog());
+  const s = await run('ospeli_clinics_day_summary', { date: '2026-11-02' }, 'outpatient-manager');
+  out('ospeli_clinics_day_summary', s);
+  const k = s.kpis.find((x) => x.id === 'clinic-wait');
+  assert.deepEqual([k.value, k.pastBooked], [15, { n: 5, medianMinutes: 10 }], 'the headline stays arrived to called; the second figure sits beside it');
+  assert.match(k.definition, /headline/i);
+  assert.match(k.definition, /past the booked time/);
 });
 
 test('the day summary shows the same measures from the log, with definitions and sources, and each clinic\'s day', async () => {

@@ -254,6 +254,7 @@ test('the manager view at 1280 px: measures with their sources, the guide switch
   assert.equal(await page.locator('[data-test="planned"]').count(), 0, 'inventory turns is in the overview read, not on screen');
   assert.match(await page.locator('[data-kpi="stores-tracer-stock-out-rate"]').textContent(), /sees zero only when a count or a movement records it.*Main store: /s);
   assert.match(await page.locator('[data-kpi="stores-fill-rate"]').textContent(), /request lines issued in full in the end \(after any part issues\)/);
+  assert.equal(await page.locator('[data-kpi="stores-fill-rate"] .sto-kpi-name').textContent(), 'Fill rate (filled in the end)', '#185: named as filled in the end on screen');
   assert.match(await page.locator('[data-kpi="stores-request-wait"]').textContent(), /to issued from the store/);
   assert.match(await page.locator('[data-kpi="stores-tracer-stock-out-rate"]').textContent(), /KPI dictionary D-17/);
   const guide = page.locator('[data-test="guide"]');

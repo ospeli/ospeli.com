@@ -644,6 +644,7 @@ function kpiSection(d) {
       h('p', { class: 'cl-kpi-name' }, k.name), h('p', { class: 'cl-kpi-value' }, fmtKpi(k)),
       k.id === 'referral-to-first-appointment' ? h('p', { class: 'cl-kpi-waiting', 'data-test': 'still-waiting' }, `Still waiting: ${k.waiting}`) : null,
       h('p', { class: 'cl-hint' }, sub(k)),
+      k.id === 'clinic-wait' && k.pastBooked ? h('p', { class: 'cl-hint', 'data-test': 'past-booked' }, `Headline: arrived to called. Beside it, wait past booked time: ${k.pastBooked.medianMinutes == null ? 'none yet' : `median ${fmtWait(k.pastBooked.medianMinutes)}`}, from the later of arrival and the booked time, so an early arrival is not the clinic running late.`) : null,
       k.id === 'slot-utilisation' && k.attended != null ? h('p', { class: 'cl-hint', 'data-test': 'used-split' }, `A missed appointment counts as a used slot: of the ${k.numerator} used, ${k.attended} attended and ${k.missed} missed.`) : null,
       h('ul', { class: 'cl-breakdown' }, k.byService.map((b) => h('li', {}, `${b.name.replace(/ clinic$/, '')}: ${by(k, b)}`))),
       h('details', { class: 'cl-def' }, h('summary', {}, 'How it is counted'),
