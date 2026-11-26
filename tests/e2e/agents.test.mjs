@@ -214,7 +214,7 @@ test('issue #65: the audit table names what an agent read, proposed and was refu
     await runCommand(core, 'ospeli_agents_add', { name: 'flow-bot', role: 'bed-manager', wards: ['ward-a1'], days: 30 }, coo);
     const who = { agent: 'flow-bot', role: 'bed-manager' };
     await window.ospeli.run('ospeli_beds_board', { wardId: 'ward-a1', format: 'short' }, who);
-    await window.ospeli.run('ospeli_kpi_get', { id: 'occupancy' }, who);
+    await window.ospeli.run('ospeli_kpi_get', { id: 'occupancy' }, who).catch(() => {}); // hospital-wide, and flow-bot is on one ward (#20)
     await window.ospeli.run('ospeli_workorders_list', { overdue: true, format: 'short' }, who);
     await window.ospeli.run('ospeli_beds_board', { wardId: 'ward-b1' }, who).catch(() => {}); // a ward that is off for agents
     await window.ospeli.run('ospeli_agents_set_access', { allowed: true }, who).catch(() => {}); // people only
@@ -230,7 +230,9 @@ test('issue #65: the audit table names what an agent read, proposed and was refu
   const text = (action, rx) => rows.filter((r) => r.action === action).map((r) => r.text).find((t) => rx.test(t));
   const all = rows.map((r) => `${r.action}: ${r.text}`).join(' | ');
   assert.ok(text('agent.read', /^Read the bed board: Ward A1/), all);
-  assert.ok(text('agent.read', /^Read a KPI: Bed occupancy/), all);
+  // #20: a one-ward agent is refused a hospital-wide KPI; the read's own words ("Read a KPI: Bed
+  // occupancy") are checked in tests/unit/agents.test.mjs.
+  assert.ok(text('agent.refused', /^Refused: a KPI\. .*hospital-wide/), all);
   assert.ok(text('agent.read', /^Read the work-order queue: overdue only/), all);
   assert.ok(text('agent.refused', /^Refused: the bed board\. .*(ward|Ward)/), all);
   assert.ok(text('agent.refused', /^Refused: .*people/i), all);

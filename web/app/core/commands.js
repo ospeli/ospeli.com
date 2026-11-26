@@ -341,8 +341,8 @@ const COMMAND_LIST = [
   },
   {
     name: 'ospeli_kpi_get',
-    summary: 'Calculate one KPI from the event log, with its definition beside the number.',
-    kind: 'read', roles: ALL_ROLES, approval: false,
+    summary: 'Calculate one KPI from the event log, with its definition beside the number. The number is for the whole hospital, so an agent must be allowed on every ward of the site to read it.',
+    kind: 'read', roles: ALL_ROLES, approval: false, siteWide: true,
     input: { type: 'object', additionalProperties: false, required: ['id'], properties: { id: { type: 'string', enum: KPIS.map((k) => k.id), description: 'The KPI id, for example occupancy. ospeli_kpi_list gives every id with its name and definition.' }, days: { type: 'integer', minimum: 1, maximum: 90, description: 'How many days back to count, ending now. Whole days, 1 to 90. Default 7.' } } },
     output: { type: 'object', required: ['id', 'name', 'value', 'unit', 'display', 'onTarget', 'targetText', 'definition', 'since', 'until', 'synthetic'], properties: { id: { type: 'string' }, ...KPI_READING, numerator: { type: ['number', 'null'] }, denominator: { type: ['number', 'null'] }, p90: { type: ['number', 'null'], description: 'The 90th percentile, in the KPI\'s unit, for a time KPI shown as a median (decision-to-bed, bed-turnaround); null for the others.' }, since: TIME, until: TIME, synthetic: SYNTHETIC, definition: { type: 'object' } } },
     async run(core, input) {
@@ -355,8 +355,8 @@ const COMMAND_LIST = [
   },
   {
     name: 'ospeli_kpi_summary',
-    summary: 'Every KPI tile in one read: each number with its unit, the text the tile shows and whether it is on target. For "how are we doing?" use this instead of ospeli_kpi_list and one ospeli_kpi_get per KPI. Short by default; format detailed adds each definition. Read-only; it reports numbers and decides nothing.',
-    kind: 'read', roles: ALL_ROLES, approval: false,
+    summary: 'Every KPI tile in one read: each number with its unit, the text the tile shows and whether it is on target. For "how are we doing?" use this instead of ospeli_kpi_list and one ospeli_kpi_get per KPI. Short by default; format detailed adds each definition. Read-only; it reports numbers and decides nothing. The numbers are for the whole hospital, so an agent must be allowed on every ward of the site to read them.',
+    kind: 'read', roles: ALL_ROLES, approval: false, siteWide: true,
     input: { type: 'object', additionalProperties: false, properties: {
       days: { type: 'integer', minimum: 1, maximum: 90, description: 'How many days back to count, ending now. Whole days, 1 to 90. Default 7, as on the tiles.' },
       format: { type: 'string', enum: ['short', 'detailed'], description: 'short (default): id, name, value, unit, tile text and target. detailed: each KPI\'s full definition too (numerator, denominator, exclusions, source).' } } },
@@ -1929,6 +1929,7 @@ const REFUSAL_WHY = {
   'ward-off': 'Agent access is off for a ward the call named.',
   'ward-not-listed': 'The agent is not allowed on a ward the call named.',
   'outside-wards': 'The call named a place outside any ward, and the agent is not allowed on every ward.',
+  'site-wide': 'The command gives hospital-wide numbers, and the agent is not allowed on every ward.',
   'queue-full': 'The agent already has the most proposals one agent may have waiting.',
 };
 export async function auditRefusal(core, name, input, actor, err) {
@@ -2086,6 +2087,16 @@ async function runChecked(core, name, input, actor, opts = {}) {
     const siteWards = (await core.listEntities('ward')).map((w) => w.id);
     const everyWard = siteWards.length > 0 && siteWards.every((w) => access.wards[w] === true && listed.wards.includes(w));
     if (!everyWard) refuse('agents-off', 'Agent access is off for places outside a ward (departments, plant, elevators and other site-wide places). Only an agent allowed on every ward of this site may act on them.', null, 'outside-wards');
+  }
+  // A hospital-wide number (#20): KPIs are counted over the whole hospital and cannot yet be
+  // counted for one ward, so only an agent allowed on every ward (and switched on for each) reads
+  // them. Any other agent is told which wards it may see; the ids come from the site's own list.
+  if (cmd.siteWide) {
+    const siteWards = (await core.listEntities('ward')).map((w) => w.id);
+    const mine = siteWards.filter((w) => access.wards[w] === true && listed.wards.includes(w));
+    if (!siteWards.length || mine.length < siteWards.length) {
+      refuse('forbidden', `${name} gives numbers for the whole hospital, and agent ${listed.name} is allowed only on ${mine.length ? `ward${mine.length > 1 ? 's' : ''} ${mine.join(', ')}` : 'no ward'}. Only an agent allowed on every ward of this site may read them. Numbers for one ward are not built yet; ospeli_beds_board gives the agent's own wards.`, { allowedWards: mine }, 'site-wide');
+    }
   }
   const ward = wardsNamed[0] ?? null;
   const allowedWards = new Set(listed.wards.filter((id) => access.wards[id] === true));

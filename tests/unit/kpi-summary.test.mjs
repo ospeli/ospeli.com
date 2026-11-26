@@ -45,8 +45,10 @@ test('#105: ospeli_kpi_get returns the unit, the text on the tile and whether it
 
 test('#105 journey: a COO\'s agent reads all seven tiles in one call, short by default, definitions on request', async () => {
   const core = await setup();
-  await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: { 'ward-a1': true } }, human('ops-manager'));
-  await runCommand(core, 'ospeli_agents_add', { name: 'morning-helper', role: 'coo', wards: ['ward-a1'], days: 30 }, human('ops-manager'));
+  // The tiles are hospital-wide, so the COO's agent is allowed on every ward (#20: a one-ward agent is refused).
+  const wards = (await core.listEntities('ward')).map((w) => w.id);
+  await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: Object.fromEntries(wards.map((w) => [w, true])) }, human('ops-manager'));
+  await runCommand(core, 'ospeli_agents_add', { name: 'morning-helper', role: 'coo', wards, days: 30 }, human('ops-manager'));
   const calls = [];
   const agent = (cmd, input = {}) => { calls.push(cmd); return runCommand(core, cmd, input, { type: 'agent', agent: 'morning-helper', role: 'coo' }); };
   const out = await agent('ospeli_kpi_summary');
