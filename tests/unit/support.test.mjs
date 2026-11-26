@@ -4,7 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital, generateHospital } from '../../web/app/core/generator.js';
+import { generateHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand, CommandError, commandByName } from '../../web/app/core/commands.js';
 import { computeKpi } from '../../web/app/core/kpi.js';
 import { validate } from '../../web/app/core/schema.js';
@@ -26,7 +27,7 @@ const ALL_EL = AUDIT_ELEMENTS.map((e) => e.id);
 async function site({ load = true } = {}) {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  if (load) await loadSyntheticHospital(core, { end: END });
+  if (load) await loadHospital(core, { end: END });
   const run = (name, input, who) => runCommand(core, name, input, typeof who === 'string' ? human(who) : who);
   return { core, run, advance: (m) => { t += m * MIN; } };
 }

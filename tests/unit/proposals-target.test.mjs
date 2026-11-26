@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand, CommandError } from '../../web/app/core/commands.js';
 
 const END = '2026-11-06T18:00:00.000Z';
@@ -12,7 +12,7 @@ const human = (role) => ({ type: 'human', role });
 async function setup() {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  await loadSyntheticHospital(core, { end: END });
+  await loadHospital(core, { end: END });
   await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: {} }, human('coo'));
   await runCommand(core, 'ospeli_agents_add', { name: 'fix-bot', role: 'estates-tech', days: 30 }, human('coo'));
   await runCommand(core, 'ospeli_agents_add', { name: 'map-bot', role: 'ops-manager', days: 30 }, human('coo'));

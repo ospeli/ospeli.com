@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand } from '../../web/app/core/commands.js';
 
 const END = '2026-11-06T18:00:00.000Z';
@@ -14,7 +14,7 @@ const human = (role) => ({ type: 'human', role });
 test('the same action agreed twice in a row, at once, is one action', async () => {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  await loadSyntheticHospital(core, { end: END });
+  await loadHospital(core, { end: END });
   const run = (name, input, role) => runCommand(core, name, input, human(role));
   const made = await run('ospeli_experience_complaint_log', { kind: 'complaint', channel: 'letter', serviceId: 'dept-outpatients', theme: 'waiting' }, 'patient-liaison');
   const input = { op: 'agree', recordId: made.recordId, what: 'review', ownerRole: 'ward-nurse', dueInDays: 7 };

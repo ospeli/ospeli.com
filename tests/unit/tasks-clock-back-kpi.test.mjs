@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand } from '../../web/app/core/commands.js';
 
 const END = '2026-11-06T18:00:00.000Z';
@@ -14,7 +14,7 @@ const human = (role) => ({ type: 'human', role });
 test('a job finished after the device clock was set back never makes a measure negative', async () => {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  await loadSyntheticHospital(core, { end: END });
+  await loadHospital(core, { end: END });
   const run = (name, input, role) => runCommand(core, name, input, human(role));
   t += 3 * 864e5; // three quiet days later, so the one-day period below holds only this job
   const made = await run('ospeli_tasks_request', { kind: 'equipment-move', locationId: 'ward-a1', toLocationId: 'ward-b1', detail: 'Other equipment' }, 'ward-nurse');

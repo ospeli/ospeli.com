@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand, commandByName, describeCommand, CommandError } from '../../web/app/core/commands.js';
 import { validate } from '../../web/app/core/schema.js';
 import { computeKpi } from '../../web/app/core/kpi.js';
@@ -26,7 +26,7 @@ const ago = (hours) => new Date(Date.parse(NOW) - hours * 3600e3).toISOString();
 async function hospital() {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  await loadSyntheticHospital(core, { end: END });
+  await loadHospital(core, { end: END });
   const want = [['ward-a1', 'sink', 'Tap leaking', 'urgent'], ['ward-b1', 'sink', 'Tap leaking', 'high'], ['ward-a1', 'light', 'Tripped breaker', 'urgent'],
     ['ward-b1', 'door-closer', 'Door will not latch', 'high'], ['ward-a1', 'ac', 'AC not cooling', 'routine']];
   for (const [locationId, kind, fault, priority] of want) {

@@ -4,7 +4,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core, findIdentifierFields, findIdentifierValues } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital, generateHospital } from '../../web/app/core/generator.js';
+import { generateHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { CommandError } from '../../web/app/core/commands.js';
 import { validate } from '../../web/app/core/schema.js';
 import { ROLES, validateEntity } from '../../web/app/core/model.js';
@@ -57,7 +58,7 @@ async function site() {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
   // No module history: these tests bring their own items and check exact balances.
-  await loadSyntheticHospital(core, { end: END, modules: false });
+  await loadHospital(core, { end: END, modules: false });
   core.skip = (ms) => { t += ms; };
   return core;
 }

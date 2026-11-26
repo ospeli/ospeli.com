@@ -6,7 +6,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand, commandByName, canonicalName, listCommands, describeCommand, CommandError } from '../../web/app/core/commands.js';
 import { validate } from '../../web/app/core/schema.js';
 
@@ -18,7 +18,7 @@ const ok = (name, out) => assert.deepEqual(validate(commandByName(name).output, 
 async function setup({ wards = ['ward-a1'], role = 'bed-manager', name = 'flow-helper' } = {}) {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  await loadSyntheticHospital(core, { end: END });
+  await loadHospital(core, { end: END });
   await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: Object.fromEntries(wards.map((w) => [w, true])) }, human('ops-manager'));
   await runCommand(core, 'ospeli_agents_add', { name, role, wards, days: 30 }, human('ops-manager'));
   // The agent, counting its tool calls.

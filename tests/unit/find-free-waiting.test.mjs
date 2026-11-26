@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand, commandByName } from '../../web/app/core/commands.js';
 import { validate } from '../../web/app/core/schema.js';
 
@@ -16,7 +16,7 @@ const ok = (out) => assert.deepEqual(validate(commandByName('ospeli_beds_find_fr
 async function setup() {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  await loadSyntheticHospital(core, { end: END });
+  await loadHospital(core, { end: END });
   const find = (input) => runCommand(core, 'ospeli_beds_find_free', input, human('bed-manager'));
   const board = await runCommand(core, 'ospeli_beds_board', {}, human('bed-manager'));
   const queue = board.waiting.filter((x) => !x.allocatedBed).sort((a, b) => (a.decisionAt < b.decisionAt ? -1 : 1));
