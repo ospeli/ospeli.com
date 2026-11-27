@@ -985,7 +985,7 @@ html[data-site="connect"] .layout { display: block; }
 .rtable.cols-1 thead th:first-child { width: 50%; }
 .rt-role { color: var(--ink-soft); }
 .rt-only { display: block; font-weight: 800; color: #5C3B00; }
-.rtable tr.is-extra > * { background: var(--mango-tint); }
+.rtable tr.is-extra > *, .rtable tr.is-again > * { background: var(--mango-tint); }
 .rt-again { display: block; font-weight: 800; color: #5C3B00; }
 .rtable td[data-status="did-not-happen"], .rtable td[data-status="not-timed"], .rtable td[data-status="not-on-walk"] { color: var(--ink-soft); font-style: italic; }
 .rtable .old6 { display: none; }
@@ -1014,8 +1014,8 @@ html[data-site="connect"] .layout { display: block; }
   .rtable thead th.rt-stephead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .rtable thead tr { border-top: 0; }
   .rtable th[scope="row"] b { display: inline; }
-  .rtable tr.is-extra { background: var(--mango-tint); padding-inline: 6px; }
-  .rtable tr.is-extra > * { background: none; }
+  .rtable tr.is-extra, .rtable tr.is-again { background: var(--mango-tint); padding-inline: 6px; }
+  .rtable tr.is-extra > *, .rtable tr.is-again > * { background: none; }
   .result-actions .ra-row { display: flex; flex-wrap: wrap; gap: 6px; }
   .result-actions .ra-row .btn { flex: 1 1 auto; padding-inline: 6px; font-size: .9375rem; }
 }
@@ -1034,6 +1034,45 @@ html[data-site="connect"] .layout { display: block; }
 .ra-row { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
 .ra-row .btn { min-height: 44px; justify-content: center; text-align: center; font-size: 1rem; }
 .copy-buffer { position: fixed; left: -9999px; top: 0; }
+/* The foot of the Result tab: "How to read this" and "Mark a change", two folds side by side; an open one takes the whole row. */
+.result-foot { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 0 18px; border-top: 1px solid var(--line-strong); padding-top: 2px; }
+.result-foot > * { flex: 0 1 auto; min-width: 0; }
+.result-foot > [open], .result-foot > .result-read:has(details[open]) { flex-basis: 100%; }
+/* Before and after a change (#189 item 6): "Mark a change", the line between the bars, the Before · After · Difference table and its caveat. No colour says better or worse. */
+.result-change > summary { min-height: 44px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 800; color: var(--navy); font-size: 1rem; list-style: none; }
+.result-change > summary::-webkit-details-marker { display: none; }
+.result-change > summary::before { content: '▸'; color: var(--sea); font-size: 1.1rem; }
+.result-change[open] > summary::before { content: '▾'; }
+.result-change .rc-body { display: grid; gap: 8px; padding: 4px 0 8px; }
+.result-change .rc-body p, .result-change.is-marked p { margin: 0; font-size: .9375rem; color: var(--ink); }
+.result-change .rc-pick { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 700; }
+.result-change select { font: inherit; min-height: 44px; padding: 6px 10px; border: 1.5px solid var(--line-strong); border-radius: 10px; background: var(--surface); color: var(--ink); }
+.result-change .btn { min-height: 44px; justify-self: start; }
+.result-change .rc-body[hidden] { display: none; }
+.result-bars .rb-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 6px; }
+.result-bars .rb-foot > * { flex: 0 1 auto; min-width: 0; }
+.result-bars .rb-foot > .result-change.is-marked, .result-bars .rb-foot > .result-change:has(.rc-body:not([hidden])), .result-bars .rb-foot > .result-read:has(details[open]) { flex-basis: 100%; }
+.result-change .rc-open { min-height: 44px; padding-left: 12px; padding-right: 12px; }
+.rt-reason { display: block; font-style: italic; color: var(--ink); }
+.walk-answer .wa-reason { font-weight: 700; }
+.result-change.is-marked { display: grid; gap: 6px; padding: 10px 12px; border: 1.5px dashed #5B6B7A; border-radius: 12px; background: var(--surface); }
+/* Scrolled to, the line and the foot of the bars stop clear of the dock and ribbon with room to spare (review fix 6). */
+.result .bar-change, .result-bars .rb-foot { scroll-margin-bottom: 12px; }
+.bar-change { margin: 2px 0 8px; padding-top: 6px; border-top: 2px dashed var(--navy); font-size: .9375rem; font-weight: 800; color: var(--navy); }
+.rcompare .rc-diff { font-weight: 800; }
+.rcompare tr.is-total > * { border-top: 2px solid var(--line-strong); }
+.rcompare thead th:first-child { width: 28%; }
+/* Under about 600 px each step of the before-and-after table is a block (review fix 3): the step and role, then
+   "Before (2 walks): …", "After (1 walk): …", "Difference: …", each on its own line. Still a table to a screen reader. */
+@media screen and (max-width: 599px) {
+  .rtable.rcompare tr { display: block; padding: 6px 0; }
+  .rtable.rcompare thead tr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; padding: 0; border: 0; }
+  .rtable.rcompare th[scope="row"], .rtable.rcompare td { display: block; font-size: .9375rem; line-height: 1.4; padding: 1px 0; }
+  .rtable.rcompare td::before { content: attr(data-label) ": "; font-weight: 800; }
+  .rtable.rcompare tr.is-total > * { border-top: 0; }
+  .rtable.rcompare tr.is-total { border-top: 2px solid var(--line-strong); }
+}
+.rc-caveat { margin: 8px 0 0; font-size: .9375rem; font-weight: 700; color: var(--ink); }
 .result-read .read-this summary { min-height: 44px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 800; color: var(--navy); font-size: 1rem; list-style: none; }
 .result-read .read-this summary::-webkit-details-marker { display: none; }
 .result-read .read-this summary::before { content: '▸'; color: var(--sea); font-size: 1.1rem; }
@@ -1080,11 +1119,19 @@ html[data-site="connect"] .layout { display: block; }
   .print-only { display: block; font-size: 8.5pt; color: #333; }
   .rbar, .rbar i, .rsw { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .rtable th[scope="row"] b { display: inline; }
-  .rtable tr.is-extra > * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .rtable tr.is-extra > *, .rtable tr.is-again > * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .rt-only, .rt-again { display: inline; margin-left: 4px; }
   .result .result-read { break-inside: auto; }
   .walk-answer { gap: 0; }
   .result-head .walk-when { font-size: 9pt; }
+  .result-change { display: none !important; }
+  .result-foot, .result-bars .rb-foot { display: block; border: 0; padding: 0; margin-top: 2px; }
+  .rc-caveat, .bar-change { font-size: 8.5pt; margin: 1px 0; padding-top: 1px; }
+  .rcompare th, .rcompare td { font-size: 8pt; line-height: 1.15; padding: 1px 3px; }
+  .rcompare thead th:first-child { width: 27%; }
+  .rcompare thead th:nth-child(2) { width: 24%; }
+  .rcompare thead th:nth-child(3) { width: 19%; }
+  .walk-answer .wa-same { display: none; }
   .rbar { height: 13px; }
   .result-bars .bar-row { gap: 1px; margin-bottom: 2px; }
   .result-extras ul, .result-read .read-this ul { font-size: 8pt; line-height: 1.25; }

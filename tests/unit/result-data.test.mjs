@@ -61,9 +61,9 @@ test('resultTable: one row per list step in list order, the off-list step under 
   assert.deepEqual([scan.cells[0].waitSec, scan.cells[0].workSec, scan.cells[0].times], [600, 900, 1]);
   const extra = rows.find((r) => r.kind === 'extra');
   assert.deepEqual([extra.walk, extra.role, extra.cells[0].status, extra.cells[1].waitSec, extra.cells[1].workSec], [2, 'Radiology nurse', 'not-on-walk', 120, 180]);
-  // Every second of every record is in the table, once.
+  // Every second of every record is in the table, once (the time a step stood still is kept apart, #180 point 2).
   for (const [k, r] of [W1, W2].entries()) {
-    const sum = rows.reduce((n, row) => n + (row.cells[k].waitSec || 0) + (row.cells[k].workSec || 0), 0);
+    const sum = rows.reduce((n, row) => n + (row.cells[k].waitSec || 0) + (row.cells[k].stoppedSec || 0) + (row.cells[k].workSec || 0), 0);
     assert.equal(sum, r.steps.reduce((n, s) => n + s.waitSec + s.workSec, 0));
   }
 });
@@ -79,8 +79,10 @@ test('an off-list step that came first sits at the top; "did not happen" and "no
 
 test('cellWords: whole minutes, wait then hands-on, interruptions in the cell, "at least" only after a pause', () => {
   assert.equal(cellWords({ status: 'timed', times: 1, waitSec: 780, workSec: 240, waitNotSeenSec: 0, workNotSeenSec: 0, interruptions: 0, stoppedSec: 0 }), 'wait 13 min · 4 min');
-  assert.equal(cellWords({ status: 'timed', times: 1, waitSec: 360, workSec: 180, interruptions: 1, stoppedSec: 120 }), 'wait 6 min (2 min stopped, interrupted 1 time) · 3 min');
-  assert.equal(cellWords({ status: 'timed', times: 1, waitSec: 360, workSec: 180, interruptions: 2, stoppedSec: 0 }), 'wait 6 min (interrupted 2 times) · 3 min');
+  // #180 point 2 (crew night 5): waitSec is the wait before the step; the time it stood still once started is said apart.
+  assert.equal(cellWords({ status: 'timed', times: 1, waitSec: 360, workSec: 180, interruptions: 1, stoppedSec: 120 }), 'wait 6 min · 3 min · stood still 2 min, interrupted 1 time');
+  assert.equal(cellWords({ status: 'timed', times: 1, waitSec: 360, workSec: 180, interruptions: 2, stoppedSec: 0 }), 'wait 6 min · 3 min · interrupted 2 times');
+  assert.equal(cellWords({ status: 'timed', times: 1, waitSec: 360, workSec: 180, interruptions: 1, stoppedSec: 17 }), 'wait 6 min · 3 min · stood still 17 s, interrupted 1 time');
   assert.equal(cellWords({ status: 'timed', times: 2, waitSec: 1080, workSec: 1260, each: [{ waitSec: 780, workSec: 900 }, { waitSec: 300, workSec: 360 }] }), '1st: wait 13 min · 15 min; 2nd: wait 5 min · 6 min');
   assert.equal(cellWords({ status: 'timed', times: 1, waitSec: 600, workSec: 60, waitNotSeenSec: 300 }), 'wait at least 10 min · 1 min');
   assert.equal(cellWords({ status: 'did-not-happen' }), 'did not happen');
@@ -236,4 +238,83 @@ test('stepSpans (#182 item 22): a step\'s wait across the walks where it happene
   // A paused wait is a floor on that walk: the at-least flag goes with the walk that gave it.
   const paused = { ...W2, steps: W2.steps.map((x) => (x.stepId === 'map-001-s1' ? { ...x, waitNotSeenSec: 300 } : x)) };
   assert.deepEqual(stepSpans(list, [W1, paused]).get('map-001-s1').wait, { n: 2, min: 30, max: 60, partly: true });
+});
+
+// ---- #189 item 6: before and after a change ----
+import { diffWords, compareModel, CHANGE_CAVEAT } from '../../web/app/modules/result-data.js';
+
+test('diffWords: one walk a side gives whole minutes; more gives the gap between the ranges\' ends; overlapping ranges say so; never an average', () => {
+  const one = (sec) => ({ n: 1, min: sec, max: sec });
+  const span = (min, max, n = 2) => ({ n, min, max });
+  assert.deepEqual(diffWords(one(780), one(300)), { dir: 'shorter', text: 'shorter by 8 min (1 walk before, 1 walk after)' });
+  assert.deepEqual(diffWords(one(300), one(780)), { dir: 'longer', text: 'longer by 8 min (1 walk before, 1 walk after)' });
+  assert.deepEqual(diffWords(one(300), one(320)), { dir: 'same', text: 'the same in whole minutes (1 walk before, 1 walk after)' });
+  // Before 10 to 13 min, after 2 to 4 min: shorter by 6 (10 - 4) to 11 (13 - 2) min.
+  assert.deepEqual(diffWords(span(600, 780), span(120, 240)), { dir: 'shorter', text: 'shorter by 6 to 11 min' });
+  assert.deepEqual(diffWords(span(120, 240), span(600, 780)), { dir: 'longer', text: 'longer by 6 to 11 min' });
+  assert.deepEqual(diffWords(span(600, 780), span(700, 900)), { dir: 'overlap', text: 'ranges overlap: no clear difference' });
+  // Touching ends overlap.
+  assert.equal(diffWords(span(600, 780), span(300, 600)).dir, 'overlap');
+  // One walk on one side, a range on the other.
+  assert.deepEqual(diffWords(one(900), span(120, 240)), { dir: 'shorter', text: 'shorter by 11 to 13 min (1 walk before)' });
+  assert.deepEqual(diffWords(span(3000, 4000), one(600)), { dir: 'shorter', text: 'shorter by 40 to 57 min (1 walk after)' });
+  assert.deepEqual(diffWords(span(5000, 7000), one(600)), { dir: 'shorter', text: 'shorter by 1 h 13 min to 1 h 47 min (1 walk after)' });
+  // Shown as 10 to 12 min and 10 min: the shown ends touch (review fix 2).
+  assert.deepEqual(diffWords(span(620, 700), one(600)), { dir: 'overlap', text: 'ranges overlap: no clear difference' });
+  // A side with nothing timed, and a time partly not seen.
+  assert.deepEqual(diffWords({ n: 0 }, one(300)), { dir: 'none', text: 'not timed on both sides' });
+  assert.deepEqual(diffWords({ ...one(780), maxAtLeast: true }, one(300)), { dir: 'shorter', text: 'shorter by 8 min · partly not seen (1 walk before, 1 walk after)' });
+  for (const d of [diffWords(span(600, 780), span(120, 240)), diffWords(one(780), one(300))]) assert.doesNotMatch(d.text, /average|mean|better|worse|improv|worked/i);
+});
+
+test('compareModel: walks 1 to N before, the rest after; a row per list step, the step not on the list kept, totals; the caveat with the real count', () => {
+  const W3 = walk([[30, 100], [60, 150], [120, 600], [30, 30]], { start: 2 * 86400, id: 'walk-003' });
+  const records = [W1, W2, W3];
+  const rg = walkRanges(list, records);
+  const c = compareModel({ list, records, rg, afterWalk: 2 });
+  assert.equal(c.both, true);
+  assert.deepEqual([c.before.walks, c.after.walks], [[1, 2], [3]]);
+  assert.deepEqual(c.heads, ['Before (2 walks)', 'After (1 walk)', 'Difference in the wait']);
+  const scan = c.rows.find((r) => r.stepId === 'map-001-s3');
+  // The scan's first time on each walk; its second time on walk 2 is its own row (#189 night 5 item 2).
+  assert.equal(scan.beforeText, 'wait 10 to 13 min · 14 to 15 min');
+  assert.equal(c.rows.find((r) => r.kind === 'again' && r.stepId === 'map-001-s3').beforeText, 'on walk 2: wait 5 min · 7 min');
+  assert.equal(scan.afterText, 'wait 2 min · 10 min');
+  assert.deepEqual(scan.diff, { dir: 'shorter', text: 'shorter by 8 to 11 min (1 walk after)' });
+  assert.equal(scan.againText, 'Done again on walk 2', 'the step done again is said on its row');
+  const extra = c.rows.find((r) => r.kind === 'extra');
+  assert.equal(extra.name, 'Contrast check');
+  assert.equal(extra.beforeText, 'on walk 2: wait 2 min · 3 min');
+  assert.equal(extra.afterText, 'not on these walks');
+  assert.deepEqual(extra.diff, { dir: 'none', text: 'only before the change' });
+  assert.deepEqual(c.totals.map((t) => t.label), ['Start to finish', 'Waiting in all', 'Hands-on in all']);
+  assert.equal(c.totals[0].diff.dir, 'shorter');
+  assert.equal(c.caveat, 'Ospeli shows the difference. It does not say whether the change worked. 3 walks are examples, not a sample.');
+  assert.ok(CHANGE_CAVEAT(2).endsWith('2 walks are examples, not a sample.'));
+  // A step that did not happen on an "after" walk is counted on the walks where it happened.
+  const skipped = walk([[30, 90], [180, 150], [45, 30]], { start: 3 * 86400, id: 'walk-004', skip: [2] });
+  const c4 = compareModel({ list, records: [W1, W2, W3, skipped], rg: walkRanges(list, [W1, W2, W3, skipped]), afterWalk: 2 });
+  assert.equal(c4.rows.find((r) => r.stepId === 'map-001-s3').afterText, 'wait 2 min (on 1 of 2 walks) · 10 min');
+  // A mark with no walk after it yet: no table of sides, one line on what the next walk counts as.
+  const one = compareModel({ list, records, rg, afterWalk: 3 });
+  assert.equal(one.both, false);
+  assert.equal(one.line, 'Change marked after walk 3: walks 1 to 3 are before it. The next walk will be the first after the change.');
+  assert.equal(compareModel({ list, records: [W1], rg: walkRanges(list, [W1]), afterWalk: 1 }).line, 'Change marked after walk 1: walk 1 is before it. The next walk will be the first after the change.');
+});
+
+test('csvOf and summaryText carry the change: each walk row says before or after; the text has the same three columns and the caveat', () => {
+  const csv = csvOf({ title: 'Outpatient CT', department: 'Imaging', list, records: [W1, W2], dateOf: (iso) => iso.slice(0, 10), afterWalk: 1 });
+  const lines = csv.trimEnd().split('\r\n');
+  // The column sits before the walk Builder's three, which stay last (walk-reason-180); found by its head.
+  const col = CSV_HEAD.indexOf('before or after the change');
+  assert.ok(col > 0);
+  const cell = (l) => l.split(',')[col];
+  assert.ok(lines.slice(1).every((l) => /^"(before|after)"$/.test(cell(l))));
+  assert.ok(lines.slice(1).filter((l) => l.startsWith('"Outpatient CT","Imaging","1"')).every((l) => cell(l) === '"before"'));
+  assert.ok(lines.slice(1).filter((l) => l.startsWith('"Outpatient CT","Imaging","2"')).every((l) => cell(l) === '"after"'));
+  const none = csvOf({ title: 'Outpatient CT', department: 'Imaging', list, records: [W1, W2], dateOf: (iso) => iso.slice(0, 10) });
+  assert.ok(none.trimEnd().split('\r\n').slice(1).every((l) => cell(l) === '""'), 'no mark: the column is empty');
+  const t = summaryText({ head: ['Outpatient CT'], headline: 'Longest wait: x', totals: [], walks: [], columns: ['walk 1', 'walk 2'], rows: [], read: 'r', count: 2,
+    compare: ['Before and after (change marked after walk 1): Before (1 walk) | After (1 walk) | Difference in the wait', '3. Scan (Imaging staff): wait 10 min · 15 min | wait 13 min · 21 min | longer by 3 min', CHANGE_CAVEAT(2)] });
+  assert.match(t, /\n\nBefore and after \(change marked after walk 1\): Before \(1 walk\) \| After \(1 walk\) \| Difference in the wait\n3\. Scan .+\| longer by 3 min\nOspeli shows the difference\. It does not say whether the change worked\. 2 walks are examples, not a sample\.\n\nHow to read this/);
 });

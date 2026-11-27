@@ -49,7 +49,8 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     const table = flat(await page.innerText('[data-test="result-table"]'));
     assert.match(table, /\+ Contrast check · Radiology nurse Not on the list · Only on walk 2/);
     assert.match(table, /Done 2 times/);
-    assert.match(table, /wait 8 min \(3 min stopped, interrupted 1 time\) · 4 min/);
+    // The time the prep step stood still once started is said apart from the wait before it (#180 point 2).
+    assert.match(table, /wait 5 min · 4 min · stood still 3 min, interrupted 1 time/);
     assert.match(flat(await page.textContent('[data-test="result-extras"] summary')), /^Not as listed: 1 extra step, 1 step done again$/);
     // Phone rules: no sideways scroll, text 15 px (13 px captions), targets 44 px.
     const rules = await page.evaluate(() => {
@@ -73,19 +74,23 @@ test('table cells equal the walk records to the second (data-sec), shown in whol
   await twoWalkMap(page);
   await goMap(page);
   const recs = await records(page);
-  const cells = await page.evaluate(() => [...document.querySelectorAll('[data-test="result-table"] tbody tr')].map((tr) => ({ row: tr.dataset.row, cells: [...tr.querySelectorAll('td')].map((td) => [td.dataset.status, td.dataset.sec || null, td.textContent]) })));
+  // data-sec: the wait before the step and the hands-on; data-stood: the time the step stood still once started (#180 point 2).
+  const cells = await page.evaluate(() => [...document.querySelectorAll('[data-test="result-table"] tbody tr')].map((tr) => ({ row: tr.dataset.row, cells: [...tr.querySelectorAll('td')].map((td) => [td.dataset.status, td.dataset.sec || null, td.textContent, Number(td.dataset.stood || 0)]) })));
   const rowsOf = cells.filter((r) => r.row !== 'extra');
   assert.equal(rowsOf.length, 6);
-  rowsOf.forEach((r, i) => r.cells.forEach(([status, sec, text], w) => {
+  rowsOf.forEach((r, i) => r.cells.forEach(([status, sec, text, stood], w) => {
     const at = recs[w].steps.filter((s) => s.stepId === `map-001-s${i + 1}`);
     assert.equal(status, 'timed', `${IMAGING[i][0]} on walk ${w + 1}`);
-    assert.equal(sec, `${at.reduce((n, s) => n + s.waitSec, 0)},${at.reduce((n, s) => n + s.workSec, 0)}`, `${IMAGING[i][0]} on walk ${w + 1}`);
-    assert.match(text, /^(1st: )?wait (under 1 min|\d+ min)( \(\d+ min stopped, interrupted 1 time\))? · (under 1 min|\d+ min)/);
+    // The wait before the step and the time it stood still add up to the record's wait, to the second.
+    assert.equal(stood, at.reduce((n, s) => n + (s.interruptedWaitSec || 0), 0), `${IMAGING[i][0]} on walk ${w + 1}`);
+    assert.equal(sec, `${at.reduce((n, s) => n + s.waitSec, 0) - stood},${at.reduce((n, s) => n + s.workSec, 0)}`, `${IMAGING[i][0]} on walk ${w + 1}`);
+    assert.match(text, /^(1st: )?wait (under 1 min|\d+ min) · (under 1 min|\d+ min)( · stood still \d+ min, interrupted 1 time)?/);
     assert.doesNotMatch(text, /\d+ s\b/);
   }));
   // The seconds behind the cells are the seconds the walks were timed with.
   assert.equal(rowsOf[4].cells[1][1], `${WALK2[5].wait + WALK2[6].wait},${WALK2[5].work + WALK2[6].work}`, 'the scan done again adds its two times');
-  assert.equal(rowsOf[3].cells[0][1], `${WALK1[3].wait + WALK1[3].stood},${WALK1[3].work}`, 'the time the prep step stood still is waiting, inside it');
+  assert.equal(rowsOf[3].cells[0][1], `${WALK1[3].wait},${WALK1[3].work}`, 'the wait before the prep step leaves out the time it stood still');
+  assert.equal(rowsOf[3].cells[0][3], WALK1[3].stood, 'the time the prep step stood still is kept beside it, to the second');
   const extra = cells.find((r) => r.row === 'extra');
   assert.deepEqual(extra.cells.map((c) => [c[0], c[1]]), [['not-on-walk', null], ['timed', `${WALK2[4].wait},${WALK2[4].work}`]]);
   assert.deepEqual(errors, []);

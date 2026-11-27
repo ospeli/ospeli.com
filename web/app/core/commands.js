@@ -1011,9 +1011,11 @@ const NOT_A_NAME = { type: 'boolean', description: 'Send true only after the com
 
 // One shape for every map write: check, change the map inside the write queue, audit (ids only,
 // no free text), and bump the revision.
-function mapWrite({ name, summary, required = [], props, example, mutate, audit }) {
+// agents: false makes it people only; audit may be a function of the input, and auditDetail adds
+// ids or numbers (never typed text) to the audit entry.
+function mapWrite({ name, summary, required = [], props, example, mutate, audit, agents = true, auditDetail = null }) {
   return {
-    name, summary, kind: 'write', roles: ALL_ROLES, approval: true,
+    name, summary, kind: 'write', roles: ALL_ROLES, approval: true, ...(agents === false ? { agents: false } : {}),
     input: { type: 'object', additionalProperties: false, required: ['mapId', ...required], properties: { mapId: MAP_ID, ...props, expectedRevision: REVISION } },
     output: MAP_WRITE_OUTPUT,
     check: checkText,
@@ -1046,7 +1048,7 @@ function mapWrite({ name, summary, required = [], props, example, mutate, audit 
         out.revision = map.revision;
         return store;
       });
-      await core.recordAs(actor, audit, input.mapId, { ...(out.stepId ? { stepId: out.stepId } : {}), ...(input.version ? { version: input.version } : {}), ...(input.suggestionId ? { suggestion: input.suggestionId } : {}) });
+      await core.recordAs(actor, typeof audit === 'function' ? audit(input) : audit, input.mapId, { ...(out.stepId ? { stepId: out.stepId } : {}), ...(input.version ? { version: input.version } : {}), ...(input.suggestionId ? { suggestion: input.suggestionId } : {}), ...(auditDetail ? auditDetail(input) : {}) });
       return { status: 'done', mapId: input.mapId, ...out };
     },
     example: { input: { mapId: 'map-001', ...example } },
@@ -1106,8 +1108,9 @@ COMMAND_LIST.push(
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, required: ['mapId'], properties: {
       mapId: MAP_ID, format: { type: 'string', enum: ['short', 'detailed'], description: 'short: numbers only; detailed (default): steps too.' } } },
-    output: { type: 'object', required: ['id', 'title', 'revision', 'today', 'proposed', 'changed'], properties: {
+    output: { type: 'object', required: ['id', 'title', 'revision', 'today', 'proposed', 'changed', 'changeAfterWalk'], properties: {
       id: MAP_ID, title: { type: 'string' }, start: { type: 'string' }, revision: { type: 'integer' }, changed: { type: 'boolean', description: 'Proposed differs from Today.' },
+      changeAfterWalk: { type: ['integer', 'null'], minimum: 1, description: 'Set by a person (ospeli_maps_change_set): the way this process works was changed after this walk, so walks 1 to N are before and later walks after. null when no change is marked. A difference between before and after is shown, never judged: a few walks are examples, not a sample.' },
       tried: { type: 'array', items: { type: 'string' } },
       walk: { type: 'object', description: 'Present when the map was made from one walk (ospeli_walks_finish). One walk is one observation, not a measurement of the process.', required: ['id', 'startedAt', 'finishedAt'],
         properties: { id: { type: 'string' }, startedAt: TIME, finishedAt: TIME, clockMoved: { type: 'boolean', description: 'Present and true when a tap was stamped earlier than the tap before it: the device clock was set back during the walk, so its times cannot be relied on.' },
@@ -1148,6 +1151,7 @@ COMMAND_LIST.push(
       };
       return { id: map.id, title: map.title, start: map.start, revision: map.revision, ...(map.walk ? { walk: map.walk, range: { ...rangesOf(map), sameHour: sameHourOf(walkRecords(map)) } } : {}),
         changed: JSON.stringify(map.today) !== JSON.stringify(map.proposed), tried: [...map.tried],
+        changeAfterWalk: Number.isInteger(map.changeAfterWalk) && map.changeAfterWalk > 0 ? map.changeAfterWalk : null,
         today: part(map.today), proposed: part(map.proposed) };
     },
     example: { input: { mapId: 'map-001', format: 'short' } },
@@ -1349,6 +1353,25 @@ COMMAND_LIST.push(
     props: {},
     example: {},
     mutate(map) { map.proposed = JSON.parse(JSON.stringify(map.today)); map.tried = []; map.hidden = []; return {}; },
+  }),
+  // Before and after a change (#189 item 6): a person says "we changed how this works after walk N".
+  // Walks 1 to N are before, later walks after; N may be the walk count (the next walk is the first
+  // after). 0 clears it. Only the number is stored: no free text.
+  mapWrite({
+    name: 'ospeli_maps_change_set', audit: (input) => (input.afterWalk ? 'map.change-marked' : 'map.change-cleared'), agents: false,
+    auditDetail: (input) => (input.afterWalk ? { afterWalk: input.afterWalk } : {}),
+    summary: 'Mark that the way this process works was changed after walk N of a map made from walks, so its walks read as before (1 to N) and after (N + 1 on); 0 removes the mark. Only the walk number is stored. Ospeli shows the difference; it never says whether the change worked. People only.',
+    required: ['afterWalk'],
+    props: { afterWalk: { type: 'integer', minimum: 0, maximum: MAX_WALKS_PER_MAP, description: 'The last walk before the change, from 1 to the number of walks on the map (ospeli_maps_get range.count); the same number as the walk count means the next walk is the first after the change. 0 removes the mark.' } },
+    example: { afterWalk: 0 },
+    mutate(map, input) {
+      const walks = walkRecords(map).length;
+      if (input.afterWalk > walks) {
+        throw new CommandError('invalid-input', walks ? `This map has ${walks} ${walks === 1 ? 'walk' : 'walks'}: a change can be marked after walk 1 to ${walks}, or 0 to remove the mark.` : 'This map was not made from a walk, so there is no walk to mark a change after. Only 0 (no mark) is accepted.', { walks });
+      }
+      if (input.afterWalk) map.changeAfterWalk = input.afterWalk; else delete map.changeAfterWalk;
+      return {};
+    },
   }),
   {
     name: 'ospeli_maps_guide_set',
@@ -1789,6 +1812,7 @@ const EXAMPLE_NEEDS = {
   ospeli_maps_try_suggestion: NEED_SUGGESTION,
   ospeli_maps_hide_suggestion: NEED_SUGGESTION,
   ospeli_maps_reset_proposed: NEED_MAP,
+  ospeli_maps_change_set: `${NEED_MAP} The example (0) removes a mark. To mark a change after walk N (1 or more), the map must be made from walks: ospeli_walks_finish makes one, and ospeli_walks_start with its mapId adds a walk.`,
   ospeli_walks_step_start: `${NEED_WALK} No step may be running.`,
   ospeli_walks_rename: `${NEED_WALK} Not a repeat walk: that one carries its map's title.`,
   ospeli_walks_step_done: `${NEED_WALK} A step must be running: ospeli_walks_step_start starts it.`,

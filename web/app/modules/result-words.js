@@ -20,6 +20,22 @@ export function minWords(sec, { floor = false } = {}) {
   return r ? `${h} h ${r} min` : `${h} h`;
 }
 
+// The time a step stood still once started (#180 point 2), said apart from its wait: under a
+// minute in seconds ("17 s"), so a short stop is not read as nothing; otherwise whole minutes.
+export function stoodWords(sec) {
+  sec = Math.max(0, Math.round(+sec || 0));
+  return sec < 60 ? `${sec} s` : minWords(sec);
+}
+
+// A share worked out from the whole minutes shown beside it (#189 night 5 item 6), so "11 min
+// waiting" and "14 min start to finish" read as 79%, never a percent from the seconds behind them.
+// Null when the whole is under a minute.
+export function shareOfShown(partSec, wholeSec) {
+  const whole = Math.round(Math.max(0, +wholeSec || 0) / 60);
+  if (!whole) return null;
+  return Math.round((100 * Math.round(Math.max(0, +partSec || 0) / 60)) / whole);
+}
+
 // A seen time that was partly not seen (the walk was paused during it): the seen part is the least
 // it can have been. Never "at least under 1 min": a seen part under a minute says what was seen.
 export function atLeastWords(seenSec) {
@@ -101,19 +117,23 @@ export const NO_LONG_WAIT = (several) => `No wait of ${MIN_LONGEST_WAIT_SEC} sec
 // records (optional): the walks' own records, in walk order. The range does not carry the time a
 // step stood still, so "at" a step (the wait was inside an interrupted step, #169 item 5) is read
 // from them; without them every wait reads "before".
+const keyOfLongest = (l) => (l.stepId || `off:${l.name}`);
+// One named step's time across the walks where it was the longest: "10 to 13 min", "4 min".
+// rg: the range longestWalks reads; l: one of rg.longest.
+export function longestTimeOf(rg, l) {
+  const r = spanOf(l.walks.map((n) => { const v = rg.walks[n - 1]?.longest.find((x) => x.key === keyOfLongest(l)); return [v?.waitSec || 0, !!v?.atLeast]; }));
+  if (r.n > 1 && minWords(r.min) === minWords(r.max)) return `${r.maxAtLeast ? atLeastWords(r.max) : minWords(r.max)}${r.partly ? ' · partly not seen' : ''}`;
+  return rangeWords(r);
+}
 export function longestWalks(rg, records = null) {
   const lo = rg.longest || [];
   if (!lo.length) return null;
-  const keyOf = (l) => (l.stepId || `off:${l.name}`);
+  const keyOf = keyOfLongest;
   const valOf = (l, n) => rg.walks[n - 1]?.longest.find((x) => x.key === keyOf(l));
   const happened = (l) => (l.stepId ? rg.steps.find((s) => s.stepId === l.stepId)?.happened || l.walks.length : l.walks.length);
   const usable = rg.usable ?? rg.walks.filter((w) => w.usable).length;
   // The time alone: where it happened is said once, after it ("on 2 of 3 walks"), never twice.
-  const timeOf = (l) => {
-    const r = spanOf(l.walks.map((n) => { const v = valOf(l, n); return [v?.waitSec || 0, !!v?.atLeast]; }));
-    if (r.n > 1 && minWords(r.min) === minWords(r.max)) return `${r.maxAtLeast ? atLeastWords(r.max) : minWords(r.max)}${r.partly ? ' · partly not seen' : ''}`;
-    return rangeWords(r);
-  };
+  const timeOf = (l) => longestTimeOf(rg, l);
   const where = (l) => {
     const m = happened(l);
     if (!l.stepId && l.walks.length === 1) return `on walk ${l.walks[0]} only`;

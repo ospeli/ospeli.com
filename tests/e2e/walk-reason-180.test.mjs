@@ -89,9 +89,12 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     await page.locator('[data-test="walk-finish-yes"]').tap();
     await page.waitForFunction(() => /^#\/process\/map-/.test(location.hash));
     await page.waitForFunction(() => /Longest wait/.test(document.querySelector('main')?.textContent || ''));
-    // (The 12 min is the 9 min wait before the step and the 3 min it stood still: #180 point 2, the result page's.)
+    // #180 point 2 (crew night 5): the wait before the step is 9 min; the 3 min it stood still once started is
+    // not part of it and is said on the step's row. The reason is said after the wait, in the headline and under the bar.
     const text = await page.textContent('main');
-    assert.ok(text.includes('Longest wait: 12 min at “Step 2” · reason recorded on the walk: room or equipment'), text.slice(0, 700));
+    assert.ok(text.includes('Longest wait: 9 min before “Step 2”. Reason recorded on the walk: Room or equipment.'), text.slice(0, 700));
+    assert.equal((await page.textContent('[data-test="walk-longest"]')).replace(/\s+/g, ' ').trim(), 'Longest wait: 9 min before “Step 2”. Reason recorded on the walk: Room or equipment.');
+    assert.match((await page.textContent('[data-test="result-table"]')).replace(/\s+/g, ' '), /wait 9 min · 2 min · stood still 3 min, interrupted 1 time/);
     assert.deepEqual(errors, []);
     await context.close();
   });
