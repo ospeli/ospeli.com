@@ -608,3 +608,25 @@ test('#185: beside the waiting time in clinic the page shows the wait past booke
     await context.close();
   }
 });
+
+// Issue #155 point 2: the next day, yesterday's close-out sent the manager to "Open the clinic queue",
+// which opens today's queue (a past day's list is read only, and Arrived is marked on the clinic's own
+// day). A past day's close-out has no such link and says what is true instead.
+test('a past day\'s close-out has no link to today\'s queue and says Arrived is marked on the clinic\'s own day', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '' });
+  await page.clock.fastForward('24:00:00'); // Wednesday 10:00 at the site: Tuesday's clinics were left open
+  await openAs(page, 'outpatient-manager');
+  await page.evaluate(() => { location.hash = '#/clinics/summary'; });
+  await page.waitForSelector('[data-test="clinics"]');
+  await page.locator('[data-day="-1"]').tap();
+  await page.waitForFunction(() => document.querySelector('[data-day="-1"]')?.getAttribute('aria-pressed') === 'true' && document.querySelector('[data-test="close-out"]'));
+  const co = page.locator('[data-test="close-out"]');
+  assert.ok(await co.locator('li[data-state="booked"]').count(), 'yesterday still has a booked patient to close');
+  assert.equal(await page.locator('[data-test="to-queue"]').count(), 0, 'no link that opens today\'s queue');
+  const hint = await co.first().locator('[data-test="seen-not-arrived"]').textContent();
+  assert.match(hint, /^Seen on Tue 10 Nov but never marked Arrived\? Do not record a missed appointment\. Arrived is marked only on the clinic's own day/);
+  assert.doesNotMatch(hint, /clinic queue/);
+  assert.deepEqual(await phoneProblems(page), [], 'phone rules');
+  assert.deepEqual(errors, []);
+  await context.close();
+});

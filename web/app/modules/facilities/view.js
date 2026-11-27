@@ -110,7 +110,14 @@ export async function render(el, ctx) {
   const head = () => h('div', { class: 'page-head' }, h('div', {},
     h('p', { class: 'eyebrow' }, 'Facilities and utilities'),
     h('h1', {}, manager ? 'Facilities and utilities' : 'Utilities log')),
-  role === 'estates-tech' ? h('a', { class: 'btn btn-ghost fac-link', href: '#/engineering', 'data-test': 'to-engineering' }, 'Work orders: Engineering page') : null);
+  role === 'estates-tech' ? h('a', { class: 'btn btn-ghost fac-link', href: '#/engineering', 'data-test': 'to-engineering' }, 'Work orders: Engineering page') : null,
+  // Issue #155: the figures are far down a long phone page; one tap from the top goes there.
+  manager ? h('button', { class: 'btn btn-ghost fac-link', type: 'button', 'data-test': 'to-figures', onclick: () => {
+    const card = root.querySelector('[data-test="waste-card"]') || root.querySelector('[data-test="measures"]');
+    card?.scrollIntoView?.({ block: 'start' });
+    const hd = card?.querySelector('h2');
+    if (hd) { hd.tabIndex = -1; hd.focus({ preventScroll: true }); }
+  } }, "This month's figures") : null);
 
   function outageRow(o) {
     const mine = ui.ending === o.id;
@@ -388,7 +395,7 @@ export async function render(el, ctx) {
           `${x.name}: ${totalContainersText(x.containers)}${x.missed ? `; ${x.missed} of ${x.recorded} missed` : ''}`))),
       ] : h('p', { class: 'fac-empty', 'data-test': 'waste-empty' }, 'No waste collection recorded this month.'),
       h('a', { class: 'btn btn-ghost fac-link', href: '#/facilities/waste', 'data-test': 'open-waste' }, 'Open the waste log'),
-      h('p', { class: 'meta' }, 'Containers are counted, not weighed: sizes differ, so do not compare one stream with another.'));
+      h('p', { class: 'meta' }, 'Containers are counted, not weighed: sizes differ, so do not compare one stream with another. A "20 or more" pick counts as 20.'));
   }
 
   function measures() {
@@ -697,9 +704,10 @@ async function renderWaste(el, ctx) {
       h('h2', { id: 'wst-month-h' }, `This month's collections by stream (${w.month})`),
       rows.length ? h('ul', { class: 'fac-list' }, rows.map((x) => h('li', { 'data-stream': x.id },
         h('p', { class: 'fac-what' }, h('b', {}, x.name), h('span', { class: 'chip' }, totalContainersText(x.containers))),
-        h('p', { class: 'meta' }, `${x.collections} ${x.collections === 1 ? 'collection' : 'collections'}${x.missed ? `; ${x.missed} missed` : '; none missed'}.`))))
+        // A missed collection and its late collection are two records (issue #155).
+        h('p', { class: 'meta' }, `${x.recorded} recorded, ${x.missed ? `${x.missed} of them missed` : 'none missed'}.`))))
         : h('p', { class: 'fac-empty', 'data-test': 'waste-empty' }, 'No waste collection recorded yet this month.'),
-      h('p', { class: 'meta' }, 'Containers are counted, not weighed: sizes differ, so do not compare one stream with another.'));
+      h('p', { class: 'meta' }, 'Containers are counted, not weighed: sizes differ, so do not compare one stream with another. A "20 or more" pick counts as 20.'));
   }
 
   function draw() {
