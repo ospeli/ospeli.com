@@ -468,3 +468,13 @@ test('a percent measure never reads "0%" when the count under it is not zero (#1
   assert.equal(percentText(12.6, 30), '13%');
   assert.equal(percentText(100, 30), '100%');
 });
+
+test('#113: the stores reads say "example data only" and that an issued item counts as arrived until a ward can confirm arrival', async () => {
+  const { core } = await site();
+  for (const name of ['ospeli_stores_overview', 'ospeli_stores_orders']) {
+    const r = await runCommand(core, name, {}, human('coo'));
+    out(name, r);
+    assert.match(r.exampleNote, /^Example data only\. .*issue.*counted as arrived on the ward.*confirm.*not built yet/i, name);
+    assert.ok(commandByName(name).output.required.includes('exampleNote'), `${name}: the note is always in the answer`);
+  }
+});

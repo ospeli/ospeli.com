@@ -22424,6 +22424,7 @@
         "required": [
           "asOf",
           "synthetic",
+          "exampleNote",
           "period",
           "hasStore",
           "hasHistory",
@@ -22441,6 +22442,10 @@
           "synthetic": {
             "type": "boolean",
             "description": "True while the data on this device is synthetic."
+          },
+          "exampleNote": {
+            "type": "string",
+            "description": "Example data only: until a ward can confirm that a delivery arrived (not built yet), an item the store issues is counted as on the ward at once. Say so when you report ward stock."
           },
           "period": {
             "type": "object"
@@ -22708,6 +22713,7 @@
         "required": [
           "asOf",
           "synthetic",
+          "exampleNote",
           "orders",
           "steps",
           "total",
@@ -22722,6 +22728,10 @@
           "synthetic": {
             "type": "boolean",
             "description": "True while the data on this device is synthetic."
+          },
+          "exampleNote": {
+            "type": "string",
+            "description": "Example data only: until a ward can confirm that a delivery arrived (not built yet), an item the store issues is counted as on the ward at once. Say so when you report ward stock."
           },
           "total": {
             "type": "integer",

@@ -12,7 +12,7 @@ import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
 import { TITLES, screensFor } from './screens.js';
-import { STEP_ROLES, STEP_NAMES, UNITS, percentText } from './logic.js';
+import { STEP_ROLES, STEP_NAMES, UNITS, EXAMPLE_NOTE, percentText } from './logic.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
 // Role names in full on this page ("COO" spelled out).
@@ -50,7 +50,9 @@ export async function render(el, ctx) {
   const screens = screensFor(ctx.role);
   const screen = screens.includes(ctx.rest[0]) ? ctx.rest[0] : screens[0];
   const head = h('div', { class: 'page-head' }, h('div', {}, h('p', { class: 'eyebrow' }, 'Stores and supplies'), h('h1', {}, TITLES[screen])));
-  const wrap = h('div', { class: 'mod-stores sto', 'data-screen': screen, 'data-role': ctx.role }, head);
+  // Issued is not arrived yet (#113): said plainly on every screen until a ward can confirm arrival.
+  const note = h('p', { class: 'sto-example', 'data-test': 'example-note' }, EXAMPLE_NOTE);
+  const wrap = h('div', { class: 'mod-stores sto', 'data-screen': screen, 'data-role': ctx.role }, head, note);
   el.append(wrap);
   const items = await ctx.run('ospeli_stock_items', { category: 'supplies', limit: 500 });
   if (!items.stores.length) {
