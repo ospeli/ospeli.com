@@ -72,7 +72,7 @@ test('item 5: the wait before a step leaves out the time it stood still; the row
   const nurse = c.rows.find((r) => r.stepId === 'map-001-s3');
   assert.equal(nurse.walks[1].waitSec, 1500);
   assert.equal(nurse.walks[1].stoodSec, 240);
-  assert.match(nurse.beforeText, /^wait 25 to 40 min · 8 to 10 min · stood still 4 min, interrupted 1 time \(walk 1\)$/);
+  assert.match(nurse.beforeText, /^wait 25 to 40 min · 8 to 10 min · stood still 4 min, interrupted 1 time on walk 1$/);
   // The longest wait is picked by the wait before the step: walk 1's nurse step (25 min) not a
   // 29 min that holds 4 min stood still.
   const lo = walksLongest(list, [W1], walkRanges(list, [W1]));
@@ -90,7 +90,7 @@ test('item 1: once a change is marked, the headline names the longest wait after
   const hd = changeHeadline({ list, records: ALL, rg, afterWalk: 2 });
   assert.equal(hd.lead, 'Longest wait after the change: ');
   assert.equal(hd.text, '10 to 14 min before “Seen by a nurse”, on both walks');
-  assert.equal(hd.before, 'Before the change: 25 to 40 min before “Seen by a nurse”, 2 walks.');
+  assert.equal(hd.before, 'Before the change, the longest wait was 25 to 40 min before “Seen by a nurse” (2 walks).');
   assert.doesNotMatch(`${hd.text} ${hd.before}`, /average|mean|better|worse|improv|worked/i);
   // Nothing after the mark yet: no split headline.
   assert.equal(changeHeadline({ list, records: [W1, W2], rg: walkRanges(list, [W1, W2]), afterWalk: 2 }), null);

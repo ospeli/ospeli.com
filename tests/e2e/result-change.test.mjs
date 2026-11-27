@@ -53,7 +53,7 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     assert.deepEqual(heads.slice(-3), ['Before (2 walks)', 'After (1 walk)', 'Difference in the wait']);
     const scan = await page.evaluate(() => [...document.querySelectorAll('[data-test="result-table"] tr[data-row="map-001-s5"] td')].map((td) => [td.textContent.replace(/\s+/g, ' ').trim(), td.dataset.dir || null]));
     // The scan's first time on each walk; its second time on walk 2 is the row under it, never dropped (#189 night 5 item 2).
-    assert.deepEqual(scan, [['wait 10 to 13 min · 14 to 15 min', null], ['wait 3 min · 15 min', null], ['shorter by 7 to 10 min', 'shorter']]);
+    assert.deepEqual(scan, [['wait 10 to 13 min · 14 to 15 min', null], ['wait 3 min · 15 min', null], ['shorter by 7 to 10 min (1 walk after)', 'shorter']]);
     assert.match(flat(await page.textContent('[data-test="result-table"] tr[data-row="map-001-s5"] th')), /Done again on walk 2/);
     const redo = await page.evaluate(() => [...document.querySelectorAll('[data-test="result-table"] tr[data-row="again-map-001-s5"] td')].map((td) => td.textContent.replace(/\s+/g, ' ').trim()));
     assert.deepEqual(redo, ['on walk 2: wait 5 min · 7 min', 'not on these walks', 'only before the change']);
@@ -154,7 +154,7 @@ test('Copy as text and CSV carry before, after and the difference; typed names s
   await page.tap('[data-test="result-copy"]');
   const copied = await page.waitForFunction(() => window.__copied).then((h) => h.jsonValue());
   assert.match(copied, /\n\nBefore and after \(change marked after walk 2\): Before \(2 walks\) \| After \(1 walk\) \| Difference in the wait\n/);
-  assert.match(copied, /\n5\. Scan \(Imaging staff, done again on walk 2\): wait 10 to 13 min · 14 to 15 min \| wait 3 min · 15 min \| shorter by 7 to 10 min\n/);
+  assert.match(copied, /\n5\. Scan \(Imaging staff, done again on walk 2\): wait 10 to 13 min · 14 to 15 min \| wait 3 min · 15 min \| shorter by 7 to 10 min \(1 walk after\)\n/);
   assert.match(copied, /\n {2}5\. Scan, done again \(Imaging staff, its later times on the same walk\): on walk 2: wait 5 min · 7 min \| not on these walks \| only before the change\n/);
   assert.match(copied, new RegExp(`\\n${CAVEAT(3).replace(/\./g, '\\.')}\\n`));
   const [dl] = await Promise.all([page.waitForEvent('download'), page.tap('[data-test="result-csv"]')]);

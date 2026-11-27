@@ -51,7 +51,7 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     // Item 1: the headline is the longest wait after the change; the line under it says the same step before.
     const head = flat(await page.textContent('[data-test="walk-longest"]'));
     assert.equal(head, 'Longest wait after the change: 4 min before “Cannula or prep”, on 1 walk');
-    assert.equal(flat(await page.textContent('[data-test="walk-before-change"]')), 'Before the change: 4 to 5 min before “Cannula or prep”, 2 walks.');
+    assert.equal(flat(await page.textContent('[data-test="walk-before-change"]')), 'Before the change, the longest wait was 10 to 13 min before “Scan” (2 walks).');
     const answer = flat(await page.innerText('[data-test="walk-answer"]'));
     assert.match(answer, /45 min start to finish after the change \(1 walk\)/);
     assert.match(answer, /Before the change: 55 min to 1 h 6 min start to finish \(2 walks\)\./);
@@ -64,7 +64,7 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     // Item 4: the reason recorded on walk 3 for its scan wait is on the scan's row; item 5: the time the prep step stood still is apart.
     assert.equal(flat(await page.textContent('[data-test="result-table"] tr[data-row="map-001-s5"] [data-test="row-reason"]')), 'Reason recorded on walk 3: Room or equipment');
     const prep = await page.evaluate(() => [...document.querySelectorAll('[data-test="result-table"] tr[data-row="map-001-s4"] td')].map((td) => td.textContent.replace(/\s+/g, ' ').trim()));
-    assert.match(prep[0], /^wait 4 to 5 min · 4 to 5 min · stood still 3 min, interrupted 1 time \(walk 1\)$/);
+    assert.match(prep[0], /^wait 4 to 5 min · 4 to 5 min · stood still 3 min, interrupted 1 time on walk 1$/);
     assert.match(prep[1], /^wait 4 min · 4 min · stood still 3 min, interrupted 1 time$/);
     // Phone rules.
     const look = await page.evaluate(() => {

@@ -294,6 +294,8 @@ export async function render(el, ctx) {
         ...(split ? [
           split.none ? h('p', { class: 'wa-head', 'data-test': 'walk-longest', 'data-none': 'true' }, split.text) : headline(split, null, null, split.reason),
           split.before ? h('p', { class: 'wa-line wa-before', 'data-test': 'walk-before-change' }, split.before) : null,
+          // The sides name different steps: the after-side step's own wait before the change (review fix 1).
+          split.same ? h('p', { class: 'wa-line wa-same', 'data-test': 'walk-before-same' }, split.same) : null,
           sideTot(true).n ? h('p', { class: 'wa-big', 'data-test': 'walk-range', 'data-sec': `${sideTot(true).min}-${sideTot(true).max}` }, h('b', {}, rangeWords(sideTot(true))), ` start to finish after the change${sideCount(sideTot(true))}`) : null,
           sideTot(false).n ? h('p', { class: 'wa-line', 'data-test': 'walk-range-before' }, `Before the change: ${rangeWords(sideTot(false))} start to finish${sideCount(sideTot(false))}.`) : null,
         ] : [headline(lw, NO_LONG_WAIT(true), null, lo?.reason)]),
@@ -303,6 +305,23 @@ export async function render(el, ctx) {
         rg.totals.notSeen.n ? h('p', { class: 'wa-line', 'data-test': 'walk-not-seen' }, `Not seen (walk paused) on ${rg.totals.notSeen.n} ${rg.totals.notSeen.n === 1 ? 'walk' : 'walks'}: ${rangeWords(spanOf(rg.walks.filter((w) => w.complete && w.notSeenSec).map((w) => [w.notSeenSec, false])))}.`) : null,
         // Each walk's day and hour is on its bar below; a walk that is left out is also said here.
         rg.walks.some((w) => !w.complete) ? h('ul', { class: 'wa-walks', 'data-test': 'walk-list' }, rg.walks.filter((w) => !w.complete).map((w) => h('li', {}, walkWord(w)))) : null);
+      // The extra line is shown only while the whole answer still ends on the first screen, above
+      // the dock and the walk ribbon; otherwise the table says it (review fix 1).
+      const sameEl = rangeAnswer.querySelector('[data-test="walk-before-same"]');
+      if (sameEl && typeof ResizeObserver === 'function') {
+        let tall = 0;
+        const fit = () => {
+          if (!rangeAnswer.isConnected) { window.removeEventListener('resize', fit); return; }
+          const cs = getComputedStyle(document.documentElement);
+          const free = window.innerHeight - (parseFloat(cs.getPropertyValue('--dock')) || 0) - (parseFloat(cs.getPropertyValue('--ribbon')) || 0);
+          if (!sameEl.hidden) { const next = sameEl.nextElementSibling; const r = sameEl.getBoundingClientRect(); tall = (next ? next.getBoundingClientRect().top : r.bottom) - r.top; }
+          const bottom = rangeAnswer.getBoundingClientRect().bottom + window.scrollY + (sameEl.hidden ? tall : 0);
+          const hide = bottom > free;
+          if (sameEl.hidden !== hide) sameEl.hidden = hide;
+        };
+        new ResizeObserver(fit).observe(rangeAnswer);
+        window.addEventListener('resize', fit);
+      }
       readBox = readThis([
           h('li', { 'data-test': 'walk-count' }, rg.count < rg.aim
             ? `${rg.count} of ${rg.aim} walks: shortest to longest. These are examples, not an average. Walk the ${rg.count === 2 ? 'third' : 'next'} on another day or at another hour.`

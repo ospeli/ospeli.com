@@ -166,10 +166,11 @@ export function tableCard(model, after = null) {
 export function compareCard(model, after = null) {
   const c = model.compare;
   const sec = (sp) => (sp?.wait?.n ? `${sp.wait.min}-${sp.wait.max}` : null);
+  // data-label: on a phone each cell is its own line, the column's name before it (review fix 3).
   const tds = (r) => [
-    h('td', { role: 'cell', ...(sec(r.before) ? { 'data-sec': sec(r.before) } : {}) }, r.beforeText),
-    h('td', { role: 'cell', ...(sec(r.after) ? { 'data-sec': sec(r.after) } : {}) }, r.afterText),
-    h('td', { role: 'cell', class: 'rc-diff', 'data-dir': r.diff.dir }, r.diff.text)];
+    h('td', { role: 'cell', 'data-label': c.heads[0], ...(sec(r.before) ? { 'data-sec': sec(r.before) } : {}) }, r.beforeText),
+    h('td', { role: 'cell', 'data-label': c.heads[1], ...(sec(r.after) ? { 'data-sec': sec(r.after) } : {}) }, r.afterText),
+    h('td', { role: 'cell', class: 'rc-diff', 'data-label': 'Difference', 'data-dir': r.diff.dir }, r.diff.text)];
   return h('section', { class: 'card result-table-card', 'aria-label': 'Before and after', 'data-test': 'result-table' },
     h('table', { class: 'rtable cols-3 rcompare', role: 'table' },
       h('caption', {}, h('b', {}, 'Before and after'), h('span', {}, ` Changed after walk ${c.afterWalk}. Each cell: wait · hands-on, lowest to highest.`)),

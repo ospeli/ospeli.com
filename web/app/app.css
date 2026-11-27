@@ -1056,10 +1056,22 @@ html[data-site="connect"] .layout { display: block; }
 .rt-reason { display: block; font-style: italic; color: var(--ink); }
 .walk-answer .wa-reason { font-weight: 700; }
 .result-change.is-marked { display: grid; gap: 6px; padding: 10px 12px; border: 1.5px dashed #5B6B7A; border-radius: 12px; background: var(--surface); }
+/* Scrolled to, the line and the foot of the bars stop clear of the dock and ribbon with room to spare (review fix 6). */
+.result .bar-change, .result-bars .rb-foot { scroll-margin-bottom: 12px; }
 .bar-change { margin: 2px 0 8px; padding-top: 6px; border-top: 2px dashed var(--navy); font-size: .9375rem; font-weight: 800; color: var(--navy); }
 .rcompare .rc-diff { font-weight: 800; }
 .rcompare tr.is-total > * { border-top: 2px solid var(--line-strong); }
 .rcompare thead th:first-child { width: 28%; }
+/* Under about 600 px each step of the before-and-after table is a block (review fix 3): the step and role, then
+   "Before (2 walks): …", "After (1 walk): …", "Difference: …", each on its own line. Still a table to a screen reader. */
+@media screen and (max-width: 599px) {
+  .rtable.rcompare tr { display: block; padding: 6px 0; }
+  .rtable.rcompare thead tr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; padding: 0; border: 0; }
+  .rtable.rcompare th[scope="row"], .rtable.rcompare td { display: block; font-size: .9375rem; line-height: 1.4; padding: 1px 0; }
+  .rtable.rcompare td::before { content: attr(data-label) ": "; font-weight: 800; }
+  .rtable.rcompare tr.is-total > * { border-top: 0; }
+  .rtable.rcompare tr.is-total { border-top: 2px solid var(--line-strong); }
+}
 .rc-caveat { margin: 8px 0 0; font-size: .9375rem; font-weight: 700; color: var(--ink); }
 .result-read .read-this summary { min-height: 44px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 800; color: var(--navy); font-size: 1rem; list-style: none; }
 .result-read .read-this summary::-webkit-details-marker { display: none; }
@@ -1116,7 +1128,10 @@ html[data-site="connect"] .layout { display: block; }
   .result-foot, .result-bars .rb-foot { display: block; border: 0; padding: 0; margin-top: 2px; }
   .rc-caveat, .bar-change { font-size: 8.5pt; margin: 1px 0; padding-top: 1px; }
   .rcompare th, .rcompare td { font-size: 8pt; line-height: 1.15; padding: 1px 3px; }
-  .rcompare thead th:first-child { width: 30%; }
+  .rcompare thead th:first-child { width: 27%; }
+  .rcompare thead th:nth-child(2) { width: 24%; }
+  .rcompare thead th:nth-child(3) { width: 19%; }
+  .walk-answer .wa-same { display: none; }
   .rbar { height: 13px; }
   .result-bars .bar-row { gap: 1px; margin-bottom: 2px; }
   .result-extras ul, .result-read .read-this ul { font-size: 8pt; line-height: 1.25; }

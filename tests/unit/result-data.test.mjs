@@ -246,9 +246,9 @@ import { diffWords, compareModel, CHANGE_CAVEAT } from '../../web/app/modules/re
 test('diffWords: one walk a side gives whole minutes; more gives the gap between the ranges\' ends; overlapping ranges say so; never an average', () => {
   const one = (sec) => ({ n: 1, min: sec, max: sec });
   const span = (min, max, n = 2) => ({ n, min, max });
-  assert.deepEqual(diffWords(one(780), one(300)), { dir: 'shorter', text: 'shorter by 8 min' });
-  assert.deepEqual(diffWords(one(300), one(780)), { dir: 'longer', text: 'longer by 8 min' });
-  assert.deepEqual(diffWords(one(300), one(320)), { dir: 'same', text: 'the same in whole minutes' });
+  assert.deepEqual(diffWords(one(780), one(300)), { dir: 'shorter', text: 'shorter by 8 min (1 walk before, 1 walk after)' });
+  assert.deepEqual(diffWords(one(300), one(780)), { dir: 'longer', text: 'longer by 8 min (1 walk before, 1 walk after)' });
+  assert.deepEqual(diffWords(one(300), one(320)), { dir: 'same', text: 'the same in whole minutes (1 walk before, 1 walk after)' });
   // Before 10 to 13 min, after 2 to 4 min: shorter by 6 (10 - 4) to 11 (13 - 2) min.
   assert.deepEqual(diffWords(span(600, 780), span(120, 240)), { dir: 'shorter', text: 'shorter by 6 to 11 min' });
   assert.deepEqual(diffWords(span(120, 240), span(600, 780)), { dir: 'longer', text: 'longer by 6 to 11 min' });
@@ -256,13 +256,14 @@ test('diffWords: one walk a side gives whole minutes; more gives the gap between
   // Touching ends overlap.
   assert.equal(diffWords(span(600, 780), span(300, 600)).dir, 'overlap');
   // One walk on one side, a range on the other.
-  assert.deepEqual(diffWords(one(900), span(120, 240)), { dir: 'shorter', text: 'shorter by 11 to 13 min' });
-  assert.deepEqual(diffWords(span(3000, 4000), one(600)), { dir: 'shorter', text: 'shorter by 40 to 57 min' });
-  assert.deepEqual(diffWords(span(5000, 7000), one(600)), { dir: 'shorter', text: 'shorter by 1 h 13 min to 1 h 47 min' });
-  assert.deepEqual(diffWords(span(620, 700), one(600)), { dir: 'shorter', text: 'shorter by up to 2 min' });
+  assert.deepEqual(diffWords(one(900), span(120, 240)), { dir: 'shorter', text: 'shorter by 11 to 13 min (1 walk before)' });
+  assert.deepEqual(diffWords(span(3000, 4000), one(600)), { dir: 'shorter', text: 'shorter by 40 to 57 min (1 walk after)' });
+  assert.deepEqual(diffWords(span(5000, 7000), one(600)), { dir: 'shorter', text: 'shorter by 1 h 13 min to 1 h 47 min (1 walk after)' });
+  // Shown as 10 to 12 min and 10 min: the shown ends touch (review fix 2).
+  assert.deepEqual(diffWords(span(620, 700), one(600)), { dir: 'overlap', text: 'ranges overlap: no clear difference' });
   // A side with nothing timed, and a time partly not seen.
   assert.deepEqual(diffWords({ n: 0 }, one(300)), { dir: 'none', text: 'not timed on both sides' });
-  assert.deepEqual(diffWords({ ...one(780), maxAtLeast: true }, one(300)), { dir: 'shorter', text: 'shorter by 8 min · partly not seen' });
+  assert.deepEqual(diffWords({ ...one(780), maxAtLeast: true }, one(300)), { dir: 'shorter', text: 'shorter by 8 min · partly not seen (1 walk before, 1 walk after)' });
   for (const d of [diffWords(span(600, 780), span(120, 240)), diffWords(one(780), one(300))]) assert.doesNotMatch(d.text, /average|mean|better|worse|improv|worked/i);
 });
 
@@ -279,7 +280,7 @@ test('compareModel: walks 1 to N before, the rest after; a row per list step, th
   assert.equal(scan.beforeText, 'wait 10 to 13 min · 14 to 15 min');
   assert.equal(c.rows.find((r) => r.kind === 'again' && r.stepId === 'map-001-s3').beforeText, 'on walk 2: wait 5 min · 7 min');
   assert.equal(scan.afterText, 'wait 2 min · 10 min');
-  assert.deepEqual(scan.diff, { dir: 'shorter', text: 'shorter by 8 to 11 min' });
+  assert.deepEqual(scan.diff, { dir: 'shorter', text: 'shorter by 8 to 11 min (1 walk after)' });
   assert.equal(scan.againText, 'Done again on walk 2', 'the step done again is said on its row');
   const extra = c.rows.find((r) => r.kind === 'extra');
   assert.equal(extra.name, 'Contrast check');

@@ -2,7 +2,7 @@
 // walk records (core/walk.js recordFromWalk) and the map's saved step list. Nothing here changes a
 // number; it lays the records out by step, walk by walk, for the table, the bars, the CSV and the
 // plain-text summary. Steps and roles only: no person is named, timed or ranked.
-import { minWords, atLeastWords, spanOf, stoodWords, longestWalks } from './result-words.js';
+import { minWords, atLeastWords, spanOf, stoodWords, longestWalks, longestTimeOf } from './result-words.js';
 import { waitReasonText, MIN_LONGEST_WAIT_SEC } from '../core/walk.js';
 
 // Why a wait happened, when the person walking recorded it with one tap (core/walk.js WAIT_REASONS;
@@ -120,10 +120,13 @@ export function walksLongest(list, records, rg, only = null) {
   return { count: records.length, usable: used, walks, steps, longest, longestOf: walks.filter((w) => w.longest.length).length, reason };
 }
 
-// The headline once a change is marked and walks on both sides can be read (#189 night 5 item 1):
-// the longest wait after the change, and in one line the wait before that same step before it
-// (lowest to highest, its first time on each walk, as the before-and-after table). Never an
-// average and never a verdict. Null while one side has no walk.
+// The headline once a change is marked and walks on both sides can be read (#189 night 5 item 1,
+// review fix 1): each line names the longest wait of its own side, by the same rule as the page
+// (the wait before the step, stood-still time left out, a range across that side's walks; walks
+// that disagree are said in longestWalks's own words). When the sides name different steps, same:
+// one more line with the after-side step's own wait before the change (its first time on each
+// walk, as the before-and-after table). Never an average and never a verdict. Null while one side
+// has no walk.
 export function changeHeadline({ list, records, rg, afterWalk }) {
   const usable = records.map((r, k) => rg.walks[k]?.usable !== false && !r.clockMoved);
   const ak = records.map((_, k) => k + 1).filter((n) => usable[n - 1] && n > afterWalk);
@@ -131,18 +134,29 @@ export function changeHeadline({ list, records, rg, afterWalk }) {
   if (!ak.length || !bk.length) return null;
   const lo = walksLongest(list, records, rg, ak);
   const lw = longestWalks(lo);
-  const sides = `${bk.length} ${bk.length === 1 ? 'walk' : 'walks'}`;
-  if (!lw) return { lead: '', text: `No wait of ${MIN_LONGEST_WAIT_SEC} seconds or more on the ${ak.length === 1 ? 'walk' : 'walks'} after the change.`, none: true, before: null, reason: null };
+  const sides = countWalks(bk.length);
+  const loB = walksLongest(list, records, rg, bk);
+  const lwB = longestWalks(loB);
+  let before;
+  if (!lwB) before = `Before the change, no wait was ${MIN_LONGEST_WAIT_SEC} seconds or more (${sides}).`;
+  else if (loB.longest.length === 1) {
+    const l = loB.longest[0];
+    before = `Before the change, the longest wait was ${longestTimeOf(loB, l)} before “${l.name}” (${l.walks.length < bk.length ? `on ${l.walks.length} of ${sides}` : sides}).`;
+  } else before = lwB.lead.startsWith('Longest wait moved') ? `Before the change, the longest wait moved: ${lwB.text}.` : `Before the change, the longest wait was ${lwB.text}.`;
+  if (!lw) return { lead: '', text: `No wait of ${MIN_LONGEST_WAIT_SEC} seconds or more on the ${ak.length === 1 ? 'walk' : 'walks'} after the change.`, none: true, before, same: null, reason: null };
   const top = lo.longest[0];
-  const vals = [];
-  for (const n of bk) {
-    const at = records[n - 1].steps.find((s) => (s.stepId || `off:${s.name}`) === (top.stepId || `off:${top.name}`));
-    if (at) vals.push([waitBeforeOf(at), !!at.waitNotSeenSec]);
+  const keyOf = (l) => l.stepId || `off:${l.name}`;
+  let same = null;
+  if (!loB.longest.some((l) => keyOf(l) === keyOf(top))) {
+    const vals = [];
+    for (const n of bk) {
+      const at = records[n - 1].steps.find((s) => (s.stepId || `off:${s.name}`) === keyOf(top));
+      if (at) vals.push([waitBeforeOf(at), !!at.waitNotSeenSec]);
+    }
+    same = vals.length ? `“${top.name}” before the change: ${sideWords(spanOf(vals))} (${vals.length < bk.length ? `on ${vals.length} of ${sides}` : sides}).`
+      : `“${top.name}” was not on the ${sides} before the change.`;
   }
-  const sp = spanOf(vals);
-  const before = vals.length ? `Before the change: ${sideWords(sp)} before “${top.name}”, ${vals.length < bk.length ? `${vals.length} of ${sides}` : sides}.`
-    : `Before the change: “${top.name}” was not on the ${sides}.`;
-  return { lead: 'Longest wait after the change: ', text: lw.text, before, reason: lo.reason };
+  return { lead: 'Longest wait after the change: ', text: lw.text, before, same, reason: lo.reason };
 }
 
 // ---- before and after a change (#189 item 6) ----
@@ -152,29 +166,45 @@ export function changeHeadline({ list, records, rg, afterWalk }) {
 // shows the difference; it never says whether the change worked.
 export const CHANGE_CAVEAT = (n) => `Ospeli shows the difference. It does not say whether the change worked. ${n} ${n === 1 ? 'walk is an example' : 'walks are examples'}, not a sample.`;
 
-// "6 to 11 min", "8 min", "1 h 13 min to 1 h 47 min", "up to 2 min" (from under a minute).
+// The whole minutes a side's cell shows (sideWords): its low end and its high end ("at least"
+// rounds down; under a minute shows as 0).
+const shownMin = (sec, floor = false) => (sec < 60 ? 0 : floor ? Math.floor(sec / 60) : Math.round(sec / 60));
+// "6 to 11 min", "8 min", "1 h 13 min to 1 h 47 min", "up to 2 min" (from under a minute); whole minutes.
+function gapMinWords(lo, hi) {
+  const a = lo ? minWords(lo * 60) : 'under 1 min'; const b = minWords(hi * 60);
+  if (lo === hi) return a;
+  if (!lo) return `up to ${b}`;
+  return /^\d+ min$/.test(a) && /^\d+ min$/.test(b) ? `${a.replace(' min', '')} to ${b}` : `${a} to ${b}`;
+}
+// The difference between a "before" and an "after" span ({ n, min, max, maxAtLeast?, partly? }, seconds),
+// worked out from the whole minutes the two cells show (review fix 2), so the sum a reader checks
+// gives the same answer: range ends, smallest gap to largest gap; ranges that overlap or touch in
+// whole minutes: no clear difference. A side of one walk says so (review fix 4).
+// Returns { dir: shorter | longer | same | overlap | none, text }.
+export function diffWords(before, after) {
+  if (!before?.n || !after?.n) return { dir: 'none', text: 'not timed on both sides' };
+  const partly = [before, after].some((x) => x.maxAtLeast || x.partly) ? ' · partly not seen' : '';
+  const one = [before.n === 1 ? '1 walk before' : null, after.n === 1 ? '1 walk after' : null].filter(Boolean);
+  const from = one.length ? ` (${one.join(', ')})` : '';
+  const [bl, bh] = [shownMin(before.min), shownMin(before.max, before.maxAtLeast)];
+  const [al, ah] = [shownMin(after.min), shownMin(after.max, after.maxAtLeast)];
+  if (before.n === 1 && after.n === 1) {
+    const d = ah - bh;
+    if (d === 0) return { dir: 'same', text: `the same in whole minutes${partly}${from}` };
+    return { dir: d < 0 ? 'shorter' : 'longer', text: `${d < 0 ? 'shorter' : 'longer'} by ${gapMinWords(Math.abs(d), Math.abs(d))}${partly}${from}` };
+  }
+  if (ah < bl) return { dir: 'shorter', text: `shorter by ${gapMinWords(bl - ah, bh - al)}${partly}${from}` };
+  if (al > bh) return { dir: 'longer', text: `longer by ${gapMinWords(al - bh, ah - bl)}${partly}${from}` };
+  return { dir: 'overlap', text: `ranges overlap: no clear difference${partly}` };
+}
+
+// A span's ends in seconds: "6 to 11 min", "1 h 13 min to 1 h 47 min", "up to 2 min".
 function gapWords(lo, hi) {
   const a = minWords(lo); const b = minWords(hi);
   if (a === b) return a;
   if (a === 'under 1 min') return `up to ${b}`;
   return /^\d+ min$/.test(a) && /^\d+ min$/.test(b) ? `${a.replace(' min', '')} to ${b}` : `${a} to ${b}`;
 }
-// The difference between a "before" and an "after" span ({ n, min, max, maxAtLeast?, partly? }, seconds).
-// One walk a side: the difference in whole minutes. More: from the ranges' ends; overlapping
-// (or touching) ranges: no clear difference. Returns { dir: shorter | longer | same | overlap | none, text }.
-export function diffWords(before, after) {
-  if (!before?.n || !after?.n) return { dir: 'none', text: 'not timed on both sides' };
-  const partly = [before, after].some((x) => x.maxAtLeast || x.partly) ? ' · partly not seen' : '';
-  if (before.n === 1 && after.n === 1) {
-    const d = after.max - before.max;
-    if (Math.round(Math.abs(d) / 60) === 0) return { dir: 'same', text: `the same in whole minutes${partly}` };
-    return { dir: d < 0 ? 'shorter' : 'longer', text: `${d < 0 ? 'shorter' : 'longer'} by ${minWords(Math.abs(d))}${partly}` };
-  }
-  if (after.max < before.min) return { dir: 'shorter', text: `shorter by ${gapWords(before.min - after.max, before.max - after.min)}${partly}` };
-  if (after.min > before.max) return { dir: 'longer', text: `longer by ${gapWords(after.min - before.max, after.max - before.min)}${partly}` };
-  return { dir: 'overlap', text: `ranges overlap: no clear difference${partly}` };
-}
-
 // One side's span in a cell, kept short: "10 to 13 min", "3 min" (when every walk gives the same
 // whole minutes), "at least 8 min", "… · partly not seen", "(on 1 of 2 walks)".
 export function sideWords(sp, of = null) {
@@ -238,7 +268,7 @@ export function compareModel({ list, records, rg, afterWalk }) {
     return { walks: on, happened: on.length, wait: spanOf(v.map((o) => [o.waitSec, o.paused])), work: spanOf(v.map((o) => [o.workSec, o.workPaused])),
       stood: on.filter((n) => row.walks[n].interruptions).map((n) => [n, row.walks[n]]) };
   };
-  const stoodText = (sd, n) => (sd.stood.length ? ` · ${sd.stood.map(([w, o]) => `${o.stoodSec ? `stood still ${stoodWords(o.stoodSec)}, ` : ''}interrupted ${o.interruptions} ${o.interruptions === 1 ? 'time' : 'times'}${n > 1 ? ` (walk ${w})` : ''}`).join('; ')}` : '');
+  const stoodText = (sd, n) => (sd.stood.length ? ` · ${sd.stood.map(([w, o]) => `${o.stoodSec ? `stood still ${stoodWords(o.stoodSec)}, ` : ''}interrupted ${o.interruptions} ${o.interruptions === 1 ? 'time' : 'times'}${n > 1 ? ` on walk ${w}` : ''}`).join('; ')}` : '');
   const reasonsOf = (row) => {
     const said = Object.entries(row.walks).flatMap(([n, o]) => o.reasons.map((t) => [Number(n), t]));
     if (!said.length) return null;
