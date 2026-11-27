@@ -106,8 +106,9 @@ test('(e) Emergency shows one honest tile, waiting for a ward bed with its longe
   assert.equal(await t.locator('.flow-n').textContent(), String(board.waiting.length));
   assert.equal(await t.locator('.flow-unit').textContent(), board.waiting.length === 1 ? 'patient' : 'patients');
   if (board.waiting.length) assert.match(await t.locator('[data-test="flow-longest"]').textContent(), /^longest (\d+ min|\d+ h( \d+ min)?|under 1 min)$/);
-  assert.equal(await page.locator('[data-test="flow-wait-bar"]').count(), 0, 'one tile: no connector, no bar');
-  assert.match(await page.textContent('[data-test="flow-key"]'), /Arrive, Assess and Treat are planned, not built\./);
+  // Now review fix 3: the timed wait for a ward bed heads the strip, so the bar leads into the one tile (was: no bar).
+  assert.equal(await page.locator('[data-test="flow-wait-bar"]').count(), board.waiting.length ? 1 : 0, 'one tile: the bar leads into it when its wait heads the strip');
+  assert.match(await page.textContent('[data-test="flow-key"]'), /Not timed: arrival, assessment and treatment \(planned, not built\)\./);
   assert.doesNotMatch(await page.textContent('[data-test="now-flow"]'), /not counted yet/);
   const box = await t.boundingBox();
   assert.ok(box.height >= 44 && box.width > 300, 'one tile across the strip');
@@ -180,7 +181,7 @@ for (const [width, height] of [[360, 740], [390, 844]]) {
       laboratory: { received: /^In the lab \d+ requests?( oldest .+)?$/, done: /^Released \d+ requests?, last 24 h$/ },
       wards: { arrive: /^Waiting for a bed \d+ patients?$/, ready: /^Expected to leave \d+ beds?$/, leave: /^Awaiting vehicle \d+ journeys?$/ },
       imaging: { arrive: /^Arrive \d+ patients? being moved in$/, leave: /^Leave \d+ patients? waiting to leave$/ },
-      'whole-hospital': { test: /^Open in the lab \d+ requests?( oldest .+)?$/, stay: /^Occupied \d+ beds?$/ },
+      'whole-hospital': { test: /^Open in the lab \d+ requests?( oldest .+)?$/, stay: /^Occupied \d+ beds? \d+ patients? waiting for a bed$/ },
     };
     for (const [d, tiles] of Object.entries(want)) {
       await chooseDepartment(page, d);
@@ -217,9 +218,9 @@ for (const [width, height] of [[360, 740], [390, 844]]) {
     await chooseDepartment(page, 'whole-hospital');
     await page.waitForSelector('.flow-tile[data-stage="test"]');
     const head = (await page.textContent('[data-test="flow-wait"]')).replace(/^→/, '');
-    assert.match(head, /^Longest wait now: .+ (for a bed|to be seen since booked time or later arrival) \(1 patient\)$/);
+    assert.match(head, /^Longest timed wait: .+ (for a bed|to be seen since booked time or later arrival) \(1 patient\)$/);
     assert.doesNotMatch(head, /request|result/);
-    assert.match(await page.textContent('[data-test="flow-key"]'), /Requests are not ranked with patient waits/);
+    assert.match(await page.textContent('[data-test="flow-key"]'), /Requests are not ranked\./);
     assert.deepEqual(errors, []);
     await context.close();
   });

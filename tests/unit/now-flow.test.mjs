@@ -105,7 +105,7 @@ test('(e) Emergency: one honest tile, waiting for a ward bed, with its longest w
   assert.equal(flow.counts.leave.n, 2);
   assert.equal(flow.counts.leave.longest, 370);
   const line = flowHeadline(dept, flow);
-  assert.equal(line.leftOut, 'Arrive, Assess and Treat are planned, not built.');
+  assert.equal(line.leftOut, 'Not timed: arrival, assessment and treatment (planned, not built).');
 });
 
 test('(c) the strip carries the time its numbers were read: the earliest asOf of the reads used', async () => {

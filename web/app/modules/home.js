@@ -4,7 +4,7 @@
 // read commands; a stage with no honest count shows "–" and says "not counted yet".
 import { h, setKids } from './ui.js';
 import { shortcutsFor, moduleById, ROLE_MODULES } from './registry.js';
-import { departmentById, CHIP_NAMES } from './departments.js';
+import { departmentById, departmentShort, DEPARTMENTS, CHIP_NAMES } from './departments.js';
 import { roleById } from '../core/model.js';
 import { loadSyntheticHospital, currentHour } from '../core/generator.js';
 import { kpiContext, kpiTiles } from './kpi-tiles.js';
@@ -151,6 +151,8 @@ export async function flowCounts(run, dept) {
     }
     if (beds) {
       put('stay', wardBedCounts(beds.wards).occupied, 'every occupied bed, with or without a discharge date', 'occupied');
+      // Now review fix 2: the headline's bed wait points at this tile, so the tile counts who waits for a bed.
+      c.stay.also = `${plural(beds.waiting.length, 'patient')} waiting for a bed`;
       timed(['test', 'stay'], beds.waiting, (x) => (x.decisionAt ? minutesSince(x.decisionAt, beds.asOf) : null), 'for a bed', 'patient', 'waiting for a bed');
     }
     if (board) { put('leave', board.waiting.length, 'waiting for a vehicle'); timed(['stay', 'leave'], board.waiting, (j) => j.waitMinutes, 'for a vehicle', 'journey', 'waiting for a vehicle'); }
@@ -172,25 +174,46 @@ function mergeUntimed(list) {
   list.splice(0, list.length, ...out);
 }
 const andList = (xs) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
-// The headline over the strip, and what it leaves out, in words. "Longest wait now" only when every
-// stage is counted and every wait has a start time; otherwise "Longest timed wait" and what is left out.
+const nounOf = (s) => s.noun || s.name.toLowerCase();
+// What the whole hospital cannot time (Now review fix 1): every other department's stages where
+// people wait with no start time, from the stage data in departments.js. A department whose
+// untimed stages are all planned is named as a whole ("emergency department steps"), first; then
+// the stages of the others ("imaging prep and scan"). Empty for a department that is not `every`.
+export function untimedStages(dept) {
+  if (!dept?.every) return [];
+  const each = DEPARTMENTS.filter((d) => d !== dept && !d.every).map((d) => ({ d, us: d.stages.filter((s) => s.wait === 'untimed') })).filter((x) => x.us.length);
+  const whole = each.filter((x) => x.us.every((s) => s.planned));
+  return [...whole.map((x) => `${x.d.name.toLowerCase()} steps`),
+    ...each.filter((x) => !whole.includes(x)).map((x) => `${departmentShort(x.d).toLowerCase()} ${andList(x.us.map(nounOf))}`)];
+}
+// The headline over the strip, and what it leaves out, in words (Now review fixes 1, 3, 4, 5).
+// "Longest wait now" only when every stage is counted, no stage where people wait is untimed and
+// every wait has a start time; otherwise "Longest timed wait", or "Only timed wait" when there is
+// just one, and what is not timed is named.
 export function flowHeadline(dept, flow) {
   const notCounted = dept.stages.filter((s) => !s.planned && !flow.counts[s.id]).map((s) => s.name);
-  const planned = dept.stages.filter((s) => s.planned).map((s) => s.name);
+  const planned = dept.stages.filter((s) => s.planned);
   const left = [];
   if (notCounted.length) left.push(`${andList(notCounted)} ${notCounted.length === 1 ? 'is' : 'are'} not counted yet.`);
-  if (planned.length) left.push(`${andList(planned)} ${planned.length === 1 ? 'is' : 'are'} planned, not built.`);
-  if (flow.untimed.length) left.push(`Not timed: ${flow.untimed.map((u) => `${plural(u.n, u.unit)} ${u.words}`).join(', ')}.`);
+  const notTimed = [
+    planned.length ? `${andList(planned.map(nounOf))} (planned, not built)` : '',
+    andList(dept.stages.filter((s) => s.wait === 'untimed' && !s.planned && flow.counts[s.id]).map(nounOf)),
+    ...untimedStages(dept),
+    ...flow.untimed.map((u) => `${plural(u.n, u.unit)} ${u.words}`),
+  ].filter(Boolean);
+  if (notTimed.length) left.push(`Not timed: ${notTimed.join(', ')}.`);
   const w = flow.wait;
   const requests = flow.waits.some((x) => x.unit === 'request');
-  // Requests are never ranked with people's waits (night 5 item 2): their age stays on their tile.
-  const notRanked = w && requests ? (PEOPLE.has(w.unit) ? 'Requests are not ranked with patient waits; a request tile shows its oldest request\'s time in its step.' : 'Requests are not in this line; a request tile shows its oldest request\'s time in its step.') : '';
+  // Requests are never ranked with people's waits (night 5 item 2): their age stays on their tile ("oldest …").
+  const notRanked = w && requests ? 'Requests are not ranked.' : '';
   // Under a patient's wait, a longer vehicle wait is said, so it is not hidden either.
   const also = w && PEOPLE.has(w.unit) && flow.vehicle && flow.vehicle.minutes > w.minutes ? `A vehicle wait is longer: ${fmtWait(flow.vehicle.minutes)} (1 journey).` : '';
   // No timed patient or vehicle wait, only requests: say so; no request heads the strip.
-  const none = !w && requests ? 'No timed patient wait. Requests are not ranked: no expected time is set for them, so each tile shows its oldest request\'s time in its step.' : '';
+  const none = !w && requests ? 'No timed patient wait. Requests are not ranked; each tile shows its oldest.' : '';
   const subset = left.length || (w && !PEOPLE.has(w.unit) && requests);
-  return { text: w ? `${subset ? 'Longest timed wait' : 'Longest wait now'}: ${fmtWait(w.minutes)} ${w.forWords} (1 ${w.unit})` : null,
+  const timedN = flow.waits.filter((x) => x.unit !== 'request').length;
+  const lead = !subset ? 'Longest wait now' : timedN === 1 ? 'Only timed wait' : 'Longest timed wait';
+  return { text: w ? `${lead}: ${fmtWait(w.minutes)} ${w.forWords} (1 ${w.unit})` : null,
     also, none, leftOut: [...left, notRanked].filter(Boolean).join(' ') };
 }
 
@@ -293,11 +316,14 @@ function flowStrip(dept, flow) {
   const pick = h('div', { class: 'flow-pick', 'data-test': 'flow-pick', hidden: true });
   const shown = dept.stages.filter((s) => !s.planned);
   const line = flowHeadline(dept, flow);
-  const one = shown.length === 1; // a single tile carries its own longest wait; there is no connector
+  const one = shown.length === 1; // a single tile carries its own longest wait
+  // Now review fix 3: a single tile whose stages before it are planned (Emergency) still has its
+  // wait in the headline, and the bar leads into the tile, as it does between two tiles on Wards.
+  const led = one && !!flow.wait && flow.wait.between[1] === shown[0].id;
   const tiles = [];
   shown.forEach((s, i) => {
     const c = flow.counts[s.id];
-    if (i > 0) {
+    if (i > 0 || led) {
       const w = flow.wait && flow.wait.between[1] === s.id ? flow.wait : null;
       tiles.push(h('span', { class: `flow-conn${w ? ' is-wait' : ''}`, 'aria-hidden': 'true', 'data-test': w ? 'flow-wait-bar' : null }, w ? '›' : ''));
     }
@@ -313,6 +339,7 @@ function flowStrip(dept, flow) {
       h('span', { class: 'flow-what', 'data-test': 'flow-what' },
         h('span', { class: 'flow-unit', 'data-test': 'flow-unit' }, c ? (s.apart ? `${unitWord(s, c.n)}, last 24 h` : unitWord(s, c.n)) : 'not counted yet'), show),
       c && c.longest != null ? [' ', h('span', { class: 'flow-longest', 'data-test': 'flow-longest' }, `${c.oldest ? 'oldest' : 'longest'} ${fmtWait(c.longest)}`)] : null,
+      c && c.also ? [' ', h('span', { class: 'flow-also', 'data-test': 'flow-also' }, c.also)] : null,
       h('span', { class: 'sr-only' }, `${c && c.words && c.words !== (s.tile ? s.tile.toLowerCase() : c.show) ? ` (${c.words})` : ''}. ${opens}.`),
     ];
     const cls = `flow-tile${c ? '' : ' is-none'}${s.apart ? ' is-apart' : ''}`;
@@ -330,8 +357,8 @@ function flowStrip(dept, flow) {
   const note = keyNote(dept, flow);
   return h('section', { class: 'flow', 'aria-labelledby': 'flow-h', 'data-test': 'now-flow' },
     h('h2', { id: 'flow-h', class: 'sr-only' }, `${dept.name} flow now`),
-    h('div', { class: 'flow-strip', 'data-test': 'flow-strip', 'data-n': shown.length }, tiles),
-    line.text && !one ? h('p', { class: 'flow-wait', 'data-test': 'flow-wait' }, h('span', { class: 'flow-swatch', 'aria-hidden': 'true' }), h('span', { class: 'flow-arrow', 'aria-hidden': 'true' }, '→'),
+    h('div', { class: `flow-strip${led ? ' is-led' : ''}`, 'data-test': 'flow-strip', 'data-n': shown.length }, tiles),
+    line.text && (!one || led) ? h('p', { class: 'flow-wait', 'data-test': 'flow-wait' }, h('span', { class: 'flow-swatch', 'aria-hidden': 'true' }), h('span', { class: 'flow-arrow', 'aria-hidden': 'true' }, '→'),
       h('span', { class: 'flow-wait-text' }, line.text)) : null,
     line.none ? h('p', { class: 'flow-none', 'data-test': 'flow-none' }, line.none) : null,
     h('p', { class: 'flow-key', 'data-test': 'flow-key' },

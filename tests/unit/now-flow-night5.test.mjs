@@ -45,9 +45,9 @@ test('item 2: Whole hospital: a 5 h 10 min bed wait heads the strip above a 24 h
     ospeli_transfers_board: { asOf: AS_OF, waiting: [{ id: 'trf-1', pickup: { id: 'ward-a1' }, waitMinutes: 47 }] },
   }), dept);
   const line = flowHeadline(dept, flow);
-  assert.equal(line.text, 'Longest wait now: 5 h 10 min for a bed (1 patient)');
+  assert.equal(line.text, 'Longest timed wait: 5 h 10 min for a bed (1 patient)');
   assert.deepEqual(flow.wait.between, ['test', 'stay']);
-  assert.match(line.leftOut, /Requests are not ranked with patient waits/);
+  assert.match(line.leftOut, /Requests are not ranked\./);
   assert.equal(flow.counts.test.longest, 1440, 'the request\'s age is on Test and treat');
   assert.equal(line.none, '');
 });

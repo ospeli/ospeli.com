@@ -178,11 +178,12 @@ html { scroll-padding-bottom: calc(var(--dock) + var(--ribbon) + 8px); }
 .flow-pick ul { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .flow-pick a { display: inline-flex; align-items: center; min-height: 44px; padding: 6px 14px; border: 1.5px solid var(--line-strong); border-radius: 999px; text-decoration: none; color: var(--navy); }
 .flow-strip[data-n="1"] { grid-template-columns: minmax(0, 1fr); }
-@media (max-width: 380px) { .flow-strip { grid-template-columns: minmax(0, 1fr) 10px minmax(0, 1fr) 10px minmax(0, 1fr) 10px minmax(0, 1fr); } .flow-tile { padding: 4px 2px; } }
+.flow-strip[data-n="1"].is-led { grid-template-columns: 16px minmax(0, 1fr); }
+@media (max-width: 380px) { .flow-strip { grid-template-columns: minmax(0, 1fr) 10px minmax(0, 1fr) 10px minmax(0, 1fr) 10px minmax(0, 1fr); } .flow-strip[data-n="1"].is-led { grid-template-columns: 10px minmax(0, 1fr); } .flow-tile { padding: 4px 2px; } }
 .flow-unit { font-size: .9375rem; font-weight: 600; line-height: 1.15; color: var(--ink-soft); }
 /* What the number counts, on screen (night 5 item 1): the unit and its words in one run of text. */
 .flow-what { font-size: .9375rem; font-weight: 600; line-height: 1.15; color: var(--ink-soft); overflow-wrap: break-word; hyphens: manual; max-width: 100%; }
-.flow-longest { font-size: .9375rem; font-weight: 800; line-height: 1.15; }
+.flow-longest, .flow-also { font-size: .9375rem; font-weight: 800; line-height: 1.15; }
 .flow-none { margin: 6px 0 0; font-size: .9375rem; line-height: 1.3; font-weight: 700; }
 .flow-tile.is-apart { border-style: dashed; background: var(--sand); }
 .flow-asof { font-weight: 800; color: var(--ink); }
