@@ -79,9 +79,12 @@ export async function render(el, ctx) {
     await props.load();
   }
 
+  // The last "Saved" or "Not saved" card goes as soon as the next action starts (#161).
+  const fresh = () => { ui.saved = null; ui.msg = null; };
   async function act(cmd, input, words, after) {
     if (ui.busy) return null;
     ui.busy = true;
+    fresh(); // a new action clears the last "Saved" card; this one's words are set after it (#161)
     try {
       const out = await ctx.run(cmd, input);
       if (words) ctx.toast(words);
@@ -122,7 +125,7 @@ export async function render(el, ctx) {
   }
   const q = (text, id) => h('p', { class: 'dx-q', id }, text);
   const code = (r) => h('p', { class: 'dx-code', 'data-test': 'code' }, r.codeLead, h('b', {}, r.codeDigits));
-  const urgencyChip = (r) => h('span', { class: `chip dx-urg is-${r.urgency}`, title: URGENCY_LABEL }, r.urgency === 'urgent' ? 'Urgent' : 'Routine');
+  const urgencyChip = (r) => h('span', { class: `chip dx-urg is-${r.urgency}`, title: URGENCY_LABEL }, r.urgency === 'urgent' ? 'Urgent (requester)' : 'Routine'); // the requester's pick, said on the chip (#161)
   const head = () => h('div', { class: 'page-head' }, h('div', {},
     h('p', { class: 'eyebrow' }, 'Diagnostics'),
     h('h1', {}, role === 'lab-reception' ? 'Specimens on the way' : role === 'lab-scientist' ? 'Laboratory' : wardRole ? 'Lab requests' : role === 'radiographer' ? 'Equipment status' : 'Diagnostics')));
@@ -166,12 +169,12 @@ export async function render(el, ctx) {
       actions = mayResult ? h('div', { class: 'dx-row-actions' },
         h('button', { class: 'btn btn-big dx-main', type: 'button', 'data-cmd': 'ospeli_diagnostics_result_record', 'data-test': 'release',
           onclick: () => act('ospeli_diagnostics_result_record', { requestId: r.id }, `Saved: result released for ${r.code}`, (out) => { ghost(r, 'released', null, out.clock); ui.ghosts.get(r.id).note = `${fmtWait(out.turnaroundMinutes)} after receipt.`; }) }, 'Result released'),
-        h('button', { class: 'btn btn-ghost dx-reject', type: 'button', 'data-test': 'reject', 'aria-expanded': String(opened), onclick: () => { ui.open = opened ? null : `reject:${r.id}`; ui.openPicks = {}; draw(); } }, 'Reject')) : null;
+        h('button', { class: 'btn btn-ghost dx-reject', type: 'button', 'data-test': 'reject', 'aria-expanded': String(opened), onclick: () => { ui.open = opened ? null : `reject:${r.id}`; ui.openPicks = {}; fresh(); draw(); } }, 'Reject')) : null;
     } else if (mayReceive) {
       actions = h('div', { class: 'dx-row-actions' },
         h('button', { class: 'btn btn-big dx-main', type: 'button', 'data-cmd': 'ospeli_diagnostics_specimen_receive', 'data-test': 'receive',
           onclick: () => receive(r) }, 'Received'),
-        h('button', { class: 'btn btn-ghost dx-reject', type: 'button', 'data-test': 'reject', 'aria-expanded': String(opened), onclick: () => { ui.open = opened ? null : `reject:${r.id}`; ui.openPicks = {}; draw(); } }, 'Reject'));
+        h('button', { class: 'btn btn-ghost dx-reject', type: 'button', 'data-test': 'reject', 'aria-expanded': String(opened), onclick: () => { ui.open = opened ? null : `reject:${r.id}`; ui.openPicks = {}; fresh(); draw(); } }, 'Reject'));
     }
     return h('li', { class: `dx-row${r.notArrived ? ' is-late' : ''}${r.urgency === 'urgent' ? ' is-urgent' : ''}${opened ? ' is-open' : ''}`, 'data-request': r.id, 'data-test': 'hatch-row' },
       h('div', { class: 'dx-row-main' }, code(r), facts), actions, opened ? rejectPanel(r) : null);
@@ -270,7 +273,7 @@ export async function render(el, ctx) {
   }
   function labRequest() {
     if (ui.form !== 'request') {
-      return h('button', { class: 'btn btn-ghost dx-link', type: 'button', 'data-test': 'not-on-list', onclick: () => { ui.form = 'request'; ui.picks = {}; load(); } }, 'A specimen not on the list? Record its request');
+      return h('button', { class: 'btn btn-ghost dx-link', type: 'button', 'data-test': 'not-on-list', onclick: () => { ui.form = 'request'; ui.picks = {}; fresh(); load(); } }, 'A specimen not on the list? Record its request');
     }
     return data.reqs ? requestForm() : null;
   }
@@ -303,9 +306,10 @@ export async function render(el, ctx) {
       h('div', { class: 'dx-form-head' }, h('h2', {}, p.recollectionOf ? 'Recollection request' : 'New request'),
         h('button', { class: 'btn btn-ghost', type: 'button', 'data-test': 'form-back', onclick: () => { ui.form = null; ui.picks = {}; draw(); } }, 'Back')),
       sel ? [q('From which ward or area?', 'rq-src'), sel] : null,
-      patients.length ? [q('Patient', 'rq-pt'), choices('patient', [['', 'No patient code'], ...patients.map((x) => [x.encounter, x.label, x.bed])], p.encounter === undefined ? '\u0000' : (p.encounter || ''), (v) => { p.encounter = v || null; draw(); }, 'rq-pt')] : null,
+      // Test group and urgency first: the patient list is long (#161).
       q('Test group', 'rq-tg'), choices('test-group', Object.entries(TEST_GROUPS), p.testGroup, (v) => { p.testGroup = v; draw(); }, 'rq-tg'),
       q(URGENCY_LABEL, 'rq-urg'), choices('urgency', Object.entries(URGENCIES), p.urgency, (v) => { p.urgency = v; draw(); }, 'rq-urg'),
+      patients.length ? [q('Patient', 'rq-pt'), choices('patient', [['', 'No patient code'], ...patients.map((x) => [x.encounter, x.label, x.bed])], p.encounter === undefined ? '\u0000' : (p.encounter || ''), (v) => { p.encounter = v || null; draw(); }, 'rq-pt')] : null,
       h('button', { class: 'btn btn-big dx-save', type: 'submit', 'data-cmd': 'ospeli_diagnostics_request_record', 'data-test': 'request-save', disabled: !!need, 'aria-disabled': String(!!need) }, need ? `Pick ${need} first` : 'Save request'),
       h('p', { class: 'meta' }, 'Picks only; nothing is typed. The log keeps your role, never your name.'));
     f.addEventListener('submit', (e) => {
@@ -325,11 +329,11 @@ export async function render(el, ctx) {
     let actions = null;
     if (r.state === 'requested' && mayCollect && !opened) {
       actions = h('div', { class: 'dx-row-actions' },
-        h('button', { class: 'btn btn-big dx-main', type: 'button', 'data-test': 'collect', onclick: () => { ui.open = `collect:${r.id}`; ui.openPicks = { ago: null }; draw(); } }, 'Collected'),
-        mayCancel ? h('button', { class: 'btn btn-ghost dx-reject', type: 'button', 'data-test': 'cancel', onclick: () => { ui.open = `cancel:${r.id}`; ui.openPicks = {}; draw(); } }, 'Cancel') : null);
+        h('button', { class: 'btn btn-big dx-main', type: 'button', 'data-test': 'collect', onclick: () => { ui.open = `collect:${r.id}`; ui.openPicks = { ago: null }; fresh(); draw(); } }, 'Collected'),
+        mayCancel ? h('button', { class: 'btn btn-ghost dx-reject', type: 'button', 'data-test': 'cancel', onclick: () => { ui.open = `cancel:${r.id}`; ui.openPicks = {}; fresh(); draw(); } }, 'Cancel') : null);
     } else if (r.state === 'rejected' && !r.recollectedBy && mayRequest && !opened) {
       actions = h('div', { class: 'dx-row-actions' }, h('button', { class: 'btn btn-ghost dx-wide', type: 'button', 'data-test': 'recollect',
-        onclick: () => { ui.form = 'request'; ui.picks = { testGroup: r.testGroup, urgency: r.urgency, encounter: r.encounter || null, recollectionOf: r.id }; draw(); root.querySelector('[data-test="request-form"]')?.scrollIntoView?.({ block: 'nearest' }); } }, 'Ask for a recollection'));
+        onclick: () => { ui.form = 'request'; ui.picks = { testGroup: r.testGroup, urgency: r.urgency, encounter: r.encounter || null, recollectionOf: r.id }; fresh(); draw(); root.querySelector('[data-test="request-form"]')?.scrollIntoView?.({ block: 'nearest' }); } }, 'Ask for a recollection'));
     }
     let panel = null;
     if (opened === 'collect') {

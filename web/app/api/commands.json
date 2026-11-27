@@ -26483,9 +26483,6 @@
           "filterNote": {
             "type": "string"
           },
-          "offlineNote": {
-            "type": "string"
-          },
           "note": {
             "type": "string"
           }

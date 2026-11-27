@@ -393,3 +393,12 @@ test('the tracker: a finished request shows when its step happened, with the day
   const today = list.find((r) => r.state === 'released' && r.releasedAt >= '2026-11-19T04:00:00.000Z');
   if (today) assert.match(today.stepAt, /^\d\d:\d\d$/, 'today: the time only');
 });
+
+test('offline-first: the request list carries no "note the time and enter it when back in signal" line (#161)', async () => {
+  const { run } = await site();
+  const list = await run('ospeli_diagnostics_requests_list', { sourceId: 'ward-a2' }, 'unit-clerk');
+  out('ospeli_diagnostics_requests_list', list);
+  assert.equal('offlineNote' in list, false, 'no offlineNote: the page works with no connection and saves on the device');
+  assert.doesNotMatch(JSON.stringify(list), /back in signal|No connection: note the time/);
+  assert.equal('offlineNote' in commandByName('ospeli_diagnostics_requests_list').output.properties, false, 'and none in the answer schema');
+});

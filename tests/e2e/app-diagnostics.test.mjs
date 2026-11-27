@@ -355,3 +355,49 @@ test('the laboratory scientist undoes a "Result released" tapped by mistake', as
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+test('words and order (#161): the urgent chip says who set it; the request form asks test group and urgency before the patient; a "Saved" card clears on the next action', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/diagnostics' });
+  await asRole(page, 'unit-clerk');
+  await page.selectOption('[data-test="ward"]', 'ward-a2');
+  await page.waitForSelector('[data-test="new-request"]');
+  await tap(page, '[data-test="new-request"]');
+  // Test group and urgency first; the long patient list after them.
+  const order = await page.evaluate(() => ['test-group', 'urgency', 'patient'].map((t) => {
+    const el = document.querySelector(`[data-test="request-form"] [data-test="${t}"]`);
+    return el ? [...document.querySelectorAll('[data-test="request-form"] .dx-choices')].indexOf(el) : -1;
+  }));
+  assert.deepEqual(order, [0, 1, 2], 'test group, then urgency, then the patient');
+  await tap(page, '[data-test="test-group"] [data-value="chemistry"]');
+  await tap(page, '[data-test="urgency"] [data-value="urgent"]');
+  await tap(page, '[data-test="patient"] [data-value=""]');
+  await tap(page, '[data-test="request-save"]');
+  await waitSaved(page, /Saved: Request \d+, Blood chemistry/);
+  // On the tracker the chip says the urgency is the requester's.
+  const urgent = page.locator('[data-test="request-row"] .chip.dx-urg.is-urgent').first();
+  assert.equal(await urgent.textContent(), 'Urgent (requester)');
+  // The next action clears the stale card.
+  await page.locator('[data-test="request-row"][data-state="requested"] [data-test="collect"]').first().tap();
+  await page.waitForSelector('[data-test="collect-panel"]');
+  assert.equal(await page.locator('[data-test="saved"]').count(), 0, 'the old "Saved" card is gone once a new action starts');
+  assert.deepEqual(await phoneProblems(page), []);
+  // At the hatch too.
+  await asRole(page, 'lab-reception');
+  assert.equal(await page.locator('[data-test="hatch-row"] .chip.dx-urg.is-urgent').first().textContent(), 'Urgent (requester)');
+  assert.ok(await noSideways(page) <= 0);
+  // The manager: a save, then the guide switch; the old card does not stay (and is not scrolled to).
+  await asRole(page, 'diagnostics-manager');
+  await page.locator('[data-test="equipment"][data-asset="asset-analyser-1"] [data-test="mark-down"]').tap();
+  await tap(page, '[data-test="eq-state"] [data-value="down"]');
+  await tap(page, '[data-test="eq-reason"] [data-value="qc-failed"]');
+  await tap(page, '[data-test="eq-backup"] [data-value="partner-lab"]');
+  const wo = page.locator('[data-test="eq-wo"] [data-value=""]');
+  if (await wo.count()) await tap(page, '[data-test="eq-wo"] [data-value=""]');
+  await tap(page, '[data-test="eq-save"]');
+  await waitSaved(page, /Saved: Chemistry analyser 1 marked down/);
+  await tap(page, '[data-test="guide-switch"]');
+  await page.waitForSelector('[data-test="guide-off"]');
+  assert.equal(await page.locator('[data-test="saved"]').count(), 0, 'switching the guide clears the old "Saved" card');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
