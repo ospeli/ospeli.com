@@ -88,6 +88,8 @@ export const OFF_ROAD_REASONS = [
   { id: 'service', name: 'Planned service' },
   { id: 'other', name: 'Other' },
 ];
+// The reasons for bringing a vehicle back that say the fault is dealt with, so a failed check is cleared.
+export const CLEARS_CHECK = ['repaired', 'service-done', 'checked-safe'];
 export const BACK_REASONS = [
   { id: 'repaired', name: 'Repaired' },
   { id: 'service-done', name: 'Service done' },
@@ -238,13 +240,16 @@ export function jobsOf(transfers, vehicleId) {
 // ---- vehicles: out of service, checks and crewing, from the events ----
 // vehicles: [{ id, name, parentId }] (assets of kind vehicle). Returns Map(id -> vehicle state).
 export function deriveFleet(events, vehicles, { now, shift }) {
-  const out = new Map(vehicles.map((v) => [v.id, { id: v.id, name: v.name, siteId: v.parentId, offRoad: null, offRoadSpans: [], lastCheck: null, lastStatusAt: null, crewSpans: [], crewed: false }]));
+  const out = new Map(vehicles.map((v) => [v.id, { id: v.id, name: v.name, siteId: v.parentId, offRoad: null, offRoadSpans: [], lastCheck: null, lastStatusAt: null, checkClearedAt: null, crewSpans: [], crewed: false }]));
   for (const e of events) {
     const v = out.get(e.subject);
     if (!v || !e.type.startsWith('transfers.vehicle-')) continue;
     const d = e.data || {};
     if (e.type === 'transfers.vehicle-off-road' && !v.offRoad && OFF_ROAD_NAME[d.reason]) { v.offRoad = { since: e.at, reason: d.reason }; v.lastStatusAt = e.at; }
-    else if (e.type === 'transfers.vehicle-back' && v.offRoad) { v.offRoadSpans.push([v.offRoad.since, e.at, v.offRoad.reason]); v.offRoad = null; v.lastStatusAt = e.at; }
+    else if (e.type === 'transfers.vehicle-back' && v.offRoad) {
+      v.offRoadSpans.push([v.offRoad.since, e.at, v.offRoad.reason]); v.offRoad = null; v.lastStatusAt = e.at;
+      if (CLEARS_CHECK.includes(d.reason)) v.checkClearedAt = e.at;
+    }
     else if (e.type === 'transfers.vehicle-checked') {
       const pick = (l) => [...new Set((Array.isArray(l) ? l : []).filter((x) => CHECK_NAME[x]))];
       const failed = pick(d.failed); const passed = pick(d.passed).filter((x) => !failed.includes(x));
@@ -268,8 +273,10 @@ export function vehicleState(v, transfers) {
   const current = jobs.find((t) => UNDER_WAY.includes(t.state)) || null;
   return { state: v.offRoad ? 'off-road' : current ? 'on-job' : 'free', current, assigned: jobs.filter((t) => t.state === 'assigned'), jobs };
 }
-// A failed check stands until the vehicle is next taken out of service or brought back.
-export const checkFailing = (v) => !!v.lastCheck?.failed.length && (!v.lastStatusAt || v.lastStatusAt < v.lastCheck.at);
+// A failed check stands until a new check, or until the vehicle is brought back in service as
+// repaired, service done, or checked and safe. Taking it out of service does not clear it, and nor
+// does bringing it back for "other": the failed check is still its last check (ospeli/ospeli#132).
+export const checkFailing = (v) => !!v.lastCheck?.failed.length && (!v.checkClearedAt || v.checkClearedAt < v.lastCheck.at);
 
 // ---- KPIs: each (transfers or events, { since, until, ... }) -> { value, numerator, denominator, n, ... } ----
 const inPeriod = (at, since, until) => !!at && at < until && (since == null || at >= since);
@@ -404,6 +411,9 @@ export function ruleCheckFailed({ fleet, openFaults = new Map() }) {
     const actions = [];
     if (!v.offRoad) actions.push({ label: 'Take out of service', command: 'ospeli_transfers_vehicle_status', input: { vehicleId: v.id, status: 'off-road', reason: 'failed-check' } });
     if (!open.includes(fault)) actions.push({ label: 'Report a fault', command: 'ospeli_workorders_report_fault', input: { assetId: v.id, fault }, needs: 'priority' });
+    // Out of service with the fault reported: nothing is left to do, so the suggestion goes. Out of
+    // service with no report yet: "Report a fault" stays (ospeli/ospeli#132).
+    if (v.offRoad && !actions.length) continue;
     out.push({
       rule: 'check-failed', id: `check-failed:${v.id}:${v.lastCheck.at}`, vehicleId: v.id,
       text: `${v.name} failed its daily check: ${items.join('; ')}.${v.offRoad ? '' : ' Take it out of service until it is fixed.'}`,
