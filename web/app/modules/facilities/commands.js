@@ -19,7 +19,7 @@ import {
   CHECK_KINDS, RESULTS, RUN_MINUTES, LEVELS, GAS_BANDS, UTILITIES, CAUSES, AGO_MINUTES, LEVEL_PICKS, PLACE_TYPES, SCHEDULE, SCHEDULE_NOTE,
   GUIDE_RULES, DEFAULT_LEVELS, deriveChecks, deriveOutages, openOutage, nextCheckId, nextOutageId, levelsNow, guideOn, scheduleTargets,
   plannedChecksDone, outageHours, checkStatus, latestReadings, ruleLowLevel, ruleRepeatFaults, ruleRepeatFailedTests, problemChecks, checkProblem, runText, agoText, everyText,
-  whenText, dueDayText, dayText, monthBounds, slotIndex,
+  whenText, dueDayText, dayText, monthBounds, slotIndex, slotBounds,
   LOADS, LOAD_WORDS, LOAD_NOT_RECORDED, scheduleChecks, scheduleKindName, loadTestsDone, LOAD_TEST_DAYS,
   WASTE_STREAMS, WASTE_CONTAINERS, WASTE_OUTCOMES, WASTE_REASONS, deriveWaste, nextWasteId, wasteWords, wasteMissedWaiting, wasteMissedShare, wasteContainers, containersText,
 } from './logic.js';
@@ -48,7 +48,7 @@ export const KPIS = [
     leavesOut: 'Planned shutdowns (shown apart).', source: 'local definition', target: null, targetText: 'No target set: track the trend.' },
   // Slice 2 (20 Nov): appended after the first two, which keep their places.
   { id: 'generator-load-test-compliance', name: 'Generator on-load tests done by due date', unit: '%',
-    definition: `The same shared measure as generator tests carried out on time ("planned checks done by due date", KPI dictionary D-13), for the on-load row of the schedule: on-load periods (every 4 weeks for each generator) with a generator test recorded on load inside them, divided by on-load periods settled in the last ${LOAD_TEST_DAYS} days (three periods). A failed on-load test counts as done; failures are counted beside it. The period starts no earlier than the first check in this device's log, so weeks from before the log began are not counted as missed.`,
+    definition: `The same shared measure as generator tests carried out on time ("planned checks done by due date", KPI dictionary D-13), for the on-load row of the schedule: on-load periods (every 4 weeks for each generator) with a generator test recorded on load inside them, divided by on-load periods settled in the last ${LOAD_TEST_DAYS} days (three periods for each generator). A failed on-load test counts as done; failures are counted beside it. The window starts at the first check in this device's log when that is less than ${LOAD_TEST_DAYS} days ago, so weeks from before the log began are not counted as missed and a new log covers fewer periods.`,
     counts: 'On-load periods with a generator test recorded on load inside them.', outOf: 'On-load periods settled in the period: done, or ended with no on-load test.',
     leavesOut: 'The current period while it is still open; off-load runs; tests with the load not recorded (all tests recorded before the load was asked).',
     source: 'local definition (KPI dictionary D-13). The 4-week interval is an example setting, not a standard: each site sets its own.',
@@ -74,7 +74,7 @@ const PLANNED = [
 export const NOT_FOR = 'Not a building management or control system: Ospeli never switches plant, reads no sensor and raises no alarm. A check records what a person saw; it does not say a room or a supply is safe for patients. It does not score staff.';
 export const GAS_FIRST = 'Follow your site\'s medical gas procedure first. This records the check; it does not say a supply is safe for patients.';
 export const LOAD_NOT_FOR = 'The load pick records what you saw. It does not say the load was enough or that the generator is fit for use.';
-export const WASTE_NOT_FOR = 'Not a waste consignment, tracking or billing record, and nothing is reported outside the site. It does not check what is inside a container or how waste was sorted, and names no contractor. The streams are an example list, not a standard: your site\'s waste policy names its own.';
+export const WASTE_NOT_FOR = 'Not a waste consignment, tracking or billing record, and nothing is reported outside the site. It does not check what is inside a container or how waste was sorted, and names no contractor. The kinds of waste are an example list, not a standard: your site\'s waste policy names its own.';
 
 // ---- places and assets ----
 const GONE_PLACE = 'a place no longer on this site';
@@ -197,6 +197,16 @@ async function checkWaste(core, input, events, info) {
   if (recent) throw new CommandError('conflict', `Already saved: ${recent.id} with the same picks was saved a few minutes ago. No second record was saved.`, { existing: recent.id });
 }
 
+// The places a waste pick offers as big tiles (issue #155 point 10): every place when there are 4 or
+// fewer; otherwise up to 4 with the most waste records in the last 28 days, most first. Read from the
+// log; nothing new is stored. Any other place stays in the full list.
+function wasteOften(waste, places, t) {
+  if (places.length <= 4) return places.map((p) => p.id);
+  const n = new Map();
+  for (const w of waste) if (Date.parse(w.at) > t - 28 * DAY && Date.parse(w.at) <= t) n.set(w.placeId, (n.get(w.placeId) || 0) + 1);
+  return places.filter((p) => n.has(p.id)).sort((a, b) => n.get(b.id) - n.get(a.id) || (a.name < b.name ? -1 : 1)).slice(0, 4).map((p) => p.id);
+}
+
 // The pick lists a screen needs: the plant assets of each kind, the places of each place check
 // (the scheduled ones, or every building when none is scheduled), and the places an outage can be at.
 function choices(info) {
@@ -211,6 +221,17 @@ function choices(info) {
     }
   }
   return out;
+}
+
+// The on-load row's 4-week block (its own fixed period, issue #155 point 6): its dates, and the block
+// the last on-load test counted in. Words only; how the periods are measured is unchanged.
+function loadBlockText(s, off) {
+  const span = (k) => { const b = slotBounds(k, s.everyDays, off); return `${dayText(b.start, off)} to ${dueDayText(b.due, off)}`; };
+  const cur = slotIndex(Date.parse(s.periodStart), s.everyDays, off);
+  const words = `This ${s.everyDays / 7}-week block: ${span(cur)}.`;
+  if (!s.last) return `${words} No on-load test recorded yet.`;
+  const k = slotIndex(Date.parse(s.last.at), s.everyDays, off);
+  return `${words} The last on-load test counted in ${k === cur ? 'this block' : `the block ${span(k)}`}.`;
 }
 
 // ---- the overview: due and missed checks, open outages, measures and the guide in one read ----
@@ -232,6 +253,7 @@ async function overview(core, input, wards = null) {
     status: s.status, dueBy: s.dueBy, dueText: `Due by the end of ${dueDayText(Date.parse(s.dueBy), off)}`,
     overdueSince: s.overdueSince, overdueText: s.overdueSince ? `Missed: no check since ${s.last ? dayText(Date.parse(s.last.at), off) : 'the start'}; due by the end of ${dueDayText(Date.parse(s.overdueSince), off)}` : null,
     missedPeriods: s.missedPeriods, last: lastOut(s.last), lastFailed: s.last?.result === 'fail', problem: checkProblem(s.last),
+    ...(s.checkKind === 'generator-load-test' ? { blockText: loadBlockText(s, off) } : {}),
   }));
   const problems = problemChecks(checks).map(({ check: c, problem }) => ({
     checkKind: c.checkKind, checkName: CHECK_KINDS[c.checkKind].name, targetId: c.targetId, targetName: info.nameOf(c.targetId), problem,
@@ -251,6 +273,8 @@ async function overview(core, input, wards = null) {
   const loadSince = new Date(Math.max(t - LOAD_TEST_DAYS * DAY, firstCheck)).toISOString();
   const loadKpi = loadTestsDone(checks, { since: loadSince, until: now, targets: info.targets, offsetMinutes: off });
   const waste = deriveWaste(events);
+  const ch = choices(info);
+  ch.wasteOften = wasteOften(waste, ch.wastePlaces, t);
   const monthSince = new Date(month.start).toISOString();
   const share = wasteMissedShare(waste, { since: monthSince, until: now });
   const cont = wasteContainers(waste, { since: monthSince, until: now });
@@ -302,7 +326,7 @@ async function overview(core, input, wards = null) {
     checks: rows, readings, kpis, readOnly: READ_ONLY.map((x) => ({ ...x })), planned: PLANNED.map((x) => ({ ...x })),
     levels: { fuelPct: levels.fuelPct, waterPct: levels.waterPct, setAt: levels.setAt, text: `Fuel ${levels.fuelPct} %, stored water ${levels.waterPct} % (example setting, not a standard; set by this site)` },
     schedule: { note: SCHEDULE_NOTE, items: SCHEDULE.map((s) => ({ ...s })) },
-    choices: choices(info),
+    choices: ch,
     waste: { month: month.name, recorded: share.denominator, missed: share.numerator, containers: cont.value, byStream: streamRows, missedWaiting: waiting,
       streams: { ...WASTE_STREAMS }, containerPicks: [...WASTE_CONTAINERS], reasons: { ...WASTE_REASONS }, note: WASTE_NOT_FOR },
     loadNote: LOAD_NOT_FOR,

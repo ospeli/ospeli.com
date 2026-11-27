@@ -98,3 +98,7 @@
 .mod-facilities .fac-wtile.is-missed { border-left: 8px solid var(--coral); }
 .mod-facilities .fac-waste-card { margin: 14px 0; max-width: 720px; display: grid; gap: 6px; }
 .mod-facilities .fac-waste-card p { margin: 0; }
+/* Issue #155 point 10: the waste places as big tiles, one under another on a phone. */
+.mod-facilities .fac-choices[data-test="waste-place-tile"] { grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+.mod-facilities .fac-choices[data-test="waste-place-tile"] .fac-choice { min-height: 56px; border-left: 6px solid var(--sea); }
+.mod-facilities [data-test="waste-place"] { margin-top: 4px; }
