@@ -31,7 +31,7 @@ import {
   MAX_WALK_STEPS, WALK_STEP_CHIPS, WALK_ROLE_CHIPS, newWalk, walkState, sinceAt, stepStart, stepDone, isDoubleTap, clockMoved, nameLast, undoLast, walkSteps, walkTotals, stoodSoFar,
   walkUnder, pausedSec, pauseWalk, resumeWalk, waitShareOf, WALK_BEFORE, PLANNED_WAIT_RULE,
   mapStepsFromWalk, stepsInSeconds, dropStaleSeconds, suggestWalk, longestWaits, MIN_LONGEST_WAIT_SEC,
-  canResume, stepResume, suggestStep, walkChips, WALK_DEPARTMENTS, WALK_TITLES_GENERAL,
+  canResume, stepResume, suggestStep, walkList, nextListIndex, NAME_SOURCES, walkChips, WALK_DEPARTMENTS, WALK_TITLES_GENERAL,
   WALKS_AIM, MAX_WALKS_PER_MAP, nextPlanIndex, skipNext, assignLast, planLeft, recordFromWalk, walkRecords, walkRanges, suggestWalks,
   WAIT_REASONS, WAIT_REASONS_BASIS, WAIT_REASON_MIN_SEC, setReason, reasonAsk,
 } from './walk.js';
@@ -935,6 +935,9 @@ const MAP_STEP = {
     workNotSeenSec: { type: 'integer', minimum: 1, description: 'On a map made from a walk: seconds inside this step that were not seen (the walk was paused). Not part of workSec.' },
     interruptedWaitSec: { type: 'integer', minimum: 1, description: 'On a map made from a walk: seconds this step stood still between "Step interrupted" and carrying on. It is waiting, inside the step: part of waitSec, not of workSec. Local definition, not a standard.' },
     interruptions: { type: 'integer', minimum: 1, description: 'On a map made from a walk: how many times the work on this step stopped before it was finished.' },
+    nameFrom: { type: 'string', enum: ['chosen', 'list', 'typed'], description: 'On a map made from a walk: where the step name came from. list means it was the step an example list offered next and the person walking did not change it: NOT confirmed by the observer. Absent: not recorded.' },
+    roleFrom: { type: 'string', enum: ['chosen', 'list', 'typed'], description: 'On a map made from a walk: where the role came from. list means it only came with the list step: do not use it to say who does what. Absent: not recorded.' },
+    again: { type: 'boolean', description: 'On a map made from a walk: the step was done again on that visit (its own taps). Nothing is recorded about why.' },
   },
 };
 const MAP_STATS = {
@@ -1399,6 +1402,9 @@ const WALK_ID = { type: 'string', pattern: '^walk-[0-9]{3,}$', maxLength: 16, de
 const REASON_IDS = WAIT_REASONS.map((r) => r.id);
 const REASON_ID_WAIT = { type: 'string', enum: REASON_IDS, description: 'What the wait before this step was waiting for, as the person walking saw it (ospeli_walks_reason). Absent when none was given. One person\'s observation on one walk, not a cause.' };
 const REASON_ID_STOP = { type: 'string', enum: REASON_IDS, description: 'What stopped the work on this step the last time it was interrupted, as the person walking saw it. A step interrupted again loses the earlier answer. Absent when none was given.' };
+const NAME_FROM = { type: 'string', enum: NAME_SOURCES, description: 'Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person\'s own words. Absent: not recorded.' };
+const ROLE_FROM = { type: 'string', enum: NAME_SOURCES, description: 'Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person\'s own answer. Absent: not recorded.' };
+const STEP_AGAIN = { type: 'boolean', description: 'true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why.' };
 const WALK_VIEW = {
   type: 'object', required: ['id', 'title', 'status', 'state', 'startedAt', 'since', 'steps', 'totals'],
   description: 'A walk. Times are whole seconds between taps, recomputed from the stored tap times.',
@@ -1431,13 +1437,31 @@ const WALK_VIEW = {
       interruptedWaitSec: { type: 'integer', description: 'Seconds the step stood still between "Step interrupted" and carrying on: waiting, inside the step. Part of waitSec, not of workSec.' },
       interruptions: { type: 'integer', description: 'How many times the work on this step stopped before it was finished.' },
       waitReason: REASON_ID_WAIT, stopReason: REASON_ID_STOP,
-      typed: { type: 'boolean', description: 'true when the step name was typed by the person, not chosen from the words offered.' } } } },
+      typed: { type: 'boolean', description: 'true when the step name was typed by the person, not chosen from the words offered.' },
+      nameFrom: NAME_FROM, roleFrom: ROLE_FROM, again: STEP_AGAIN } } },
+    list: { type: 'array', description: 'First walk in a department with a step list: that list, in its usual order, with what has happened to each step on this walk. An example list a site can change, not a standard, and it never forces an order: ospeli_walks_step_start with listStep starts any of them. Absent on a repeat walk (see repeat.list) and where the department has no list.', items: { type: 'object', required: ['n', 'name', 'state'], properties: {
+      n: { type: 'integer' }, name: { type: 'string' }, role: { type: ['string', 'null'], description: 'The role the list gives this step: an example, kept as roleFrom "list" until a person chooses a role.' },
+      state: { type: 'string', enum: ['timed', 'running', 'next', 'later'], description: 'timed: timed at least once on this walk. running: being timed now. next: the step offered next. later: not timed yet.' },
+      times: { type: 'integer', description: 'How many times the step was timed on this walk (2 or more: done again).' }, waitSec: { type: 'integer', description: 'The wait before the step, the first time it was timed.' }, workSec: { type: 'integer', description: 'Hands-on seconds, every time it was timed, added up.' },
+      afterVisit: { type: 'boolean', description: 'The step usually happens after the patient or item has left, so it is never offered as next.' } } } },
     askReason: { type: ['object', 'null'], description: `A question the screen may put now, never one that must be answered: of "wait" when the wait that just ended was ${WAIT_REASON_MIN_SEC} seconds or more (a local definition) and has no reason yet; of "stop" when the step that ended last was interrupted and has no reason yet. Null otherwise. Answer with ospeli_walks_reason, or not at all.`, properties: { of: { type: 'string', enum: ['wait', 'stop'] }, waitSec: { type: 'integer' } } },
     totals: { type: 'object', required: ['steps', 'workSec', 'waitSec', 'elapsedSec'], properties: { steps: { type: 'integer' }, workSec: { type: 'integer' }, waitSec: { type: 'integer' }, interruptions: { type: 'integer', description: 'Interruptions on the walk so far. Absent when there were none.' },
       notSeenSec: { type: 'integer', description: 'Seconds not seen (paused) inside the steps and waits so far: neither waiting nor hands-on.' }, elapsedSec: { type: 'integer', description: 'The whole walk, start to finish, with any time not seen inside it.' } } },
   },
 };
 const WALK_WRITE_OUTPUT = { type: 'object', required: ['status', 'walk'], properties: { status: { type: 'string', enum: ['done'] }, walk: WALK_VIEW, mapId: MAP_ID, undone: { type: 'string' } } };
+// A first walk's department list with what has happened to each step so far (the tap-through sheet).
+function listView(w, steps) {
+  const list = walkList(w);
+  if (!list) return null;
+  const next = nextListIndex(w);
+  return list.map((p, i) => {
+    const at = steps.filter((s) => s.name === p.name);
+    const running = !!w.current && w.current.name === p.name;
+    return { n: p.n, name: p.name, role: p.role, state: running ? 'running' : at.length ? 'timed' : i === next ? 'next' : 'later',
+      ...(at.length ? { times: at.length, waitSec: at[0].waitSec, workSec: at.reduce((n, s) => n + s.workSec, 0) } : {}), ...(p.later ? { afterVisit: true } : {}) };
+  });
+}
 function walkView(w, now) {
   const steps = walkSteps(w).map(({ planIndex, ...s }, i) => ({ n: i + 1, ...s, ...(planIndex != null ? { listStep: planIndex + 1 } : {}), named: !!(w.steps[i].name && w.steps[i].role) }));
   let repeat = null;
@@ -1456,7 +1480,10 @@ function walkView(w, now) {
     // The offer is for a step that ended with no name yet.
     suggest: w.status === 'walking' && steps.length && !steps[steps.length - 1].named ? suggestStep(w) : null,
     askReason: w.status === 'walking' ? reasonAsk(w) : null,
-    ...(repeat ? { repeat } : {}), steps, totals: walkTotals(w, now) };
+    ...(repeat ? { repeat } : {}), ...(w.status === 'walking' && listView(w, steps) ? { list: listView(w, steps) } : {}),
+    // The step being timed now, when it was named as it started (a list step).
+    ...(w.current?.name || w.current?.planIndex != null ? { running: { name: w.current.name || w.plan?.[w.current.planIndex]?.name || null, ...(w.current.again ? { again: true } : {}) } } : {}),
+    steps, totals: walkTotals(w, now) };
 }
 const openPauseOf = (w) => walkState(w) === 'paused';
 const PAUSED_FIRST = 'The walk is paused. Say you are back first (ospeli_walks_resume).';
@@ -1594,7 +1621,9 @@ COMMAND_LIST.push(
   walkWrite({
     name: 'ospeli_walks_step_start', audit: 'walk.step-started',
     summary: 'A step starts now: someone begins doing something to or for the patient or item being followed. The wait before it ends at this moment. With resume: true the step that was just interrupted carries on as the same step: it is not saved twice, the time it stood still counts as waiting inside it, and the interruption is counted.',
-    props: { resume: { type: 'boolean', description: 'true: the step that ended last was interrupted (walk.canResume) and this is the same step carrying on. Leave out for a new step.' } },
+    props: { resume: { type: 'boolean', description: 'true: the step that ended last was interrupted (walk.canResume) and this is the same step carrying on. Leave out for a new step.' },
+      listStep: { type: 'integer', minimum: 1, maximum: MAX_WALK_STEPS, description: 'The step that starts is this one of the list (its place, from 1): walk.list on a first walk in a department with a step list, walk.repeat.list on a repeat walk. Any step can start at any time; the list never forces an order. It takes the list\'s name (and, on a first walk, the list\'s role, kept as roleFrom "list"). A list step already timed on this walk starts as done again. Leave out for a step that is not on the list, named afterwards.' },
+      picked: { type: 'boolean', description: 'With listStep on a first walk: true when the person chose that step themselves (nameFrom "chosen"); false or left out when it was the step offered next (nameFrom "list").' } },
     example: { resume: false },
     mutate: (w, input, now) => {
       if (walkState(w) === 'paused') throw new CommandError('conflict', PAUSED_FIRST, { state: 'paused' });
@@ -1605,7 +1634,13 @@ COMMAND_LIST.push(
         return { audit: { resumed: true } };
       }
       if (w.steps.length >= MAX_WALK_STEPS) throw new CommandError('conflict', `A walk holds at most ${MAX_WALK_STEPS} steps. Finish this walk and start another.`);
-      stepStart(w, now);
+      if (input.listStep != null) {
+        const n = w.plan ? w.plan.length : (walkList(w) || []).length;
+        if (!n) throw new CommandError('conflict', 'This walk has no step list. Leave out listStep and name the step afterwards (ospeli_walks_step_name).');
+        if (input.listStep > n) throw new CommandError('conflict', `The list has ${n} steps.`);
+      }
+      stepStart(w, now, input.listStep != null ? { listStep: input.listStep, picked: input.picked === true } : {});
+      return { audit: input.listStep != null ? { listStep: input.listStep, ...(input.picked ? { picked: true } : {}) } : {} };
     },
   }),
   walkWrite({
@@ -1640,6 +1675,9 @@ COMMAND_LIST.push(
       name: { ...STEP_TEXT, description: 'What happened, e.g. "Checked in at reception".' }, role: { ...STEP_TEXT, maxLength: 60, description: 'Which role did it, e.g. "Reception".' },
       msg: { type: 'boolean', description: 'The step only passed on information (a call, message or form).' },
       typed: { type: 'boolean', description: 'true when name was typed by the person and not chosen from the words offered. Kept with the step and shown in the export.' },
+      nameFrom: { ...NAME_FROM, enum: ['chosen', 'list'], description: 'With name: chosen when the person picked that word themselves, list when it was the step offered next and they kept it (not confirmed by the observer). typed: true says the words are the person\'s own. Left out: nothing is recorded about where the name came from.' },
+      roleFrom: { ...ROLE_FROM, enum: ['chosen', 'list', 'typed'], description: 'With role: chosen or typed when the person gave the role themselves, list when it only came with the offered step. Left out: nothing is recorded.' },
+      again: { type: 'boolean', description: 'true: this step was done again on this visit. false takes the mark away (for example after a list step was tapped a second time by mistake).' },
       nextStarted: { type: 'boolean', description: 'The next step started the moment this one ended.' },
       listStep: { type: 'integer', minimum: 1, maximum: MAX_WALK_STEPS, description: 'Repeat walk only: the step that just ended was this step of the saved list (its place, from 1) and not the one offered: a step done again, or one out of order. It takes that step\'s name and role.' },
       offList: { type: 'boolean', description: 'Repeat walk only: the step that just ended is not on the saved list. Name it with name and role, now or in a second call.' }, notAName: NOT_A_NAME },
@@ -1655,7 +1693,7 @@ COMMAND_LIST.push(
       if (input.nextStarted && walkState(w) === 'paused') throw new CommandError('conflict', PAUSED_FIRST, { state: 'paused' });
       if (input.nextStarted && w.current) throw new CommandError('conflict', 'The next step is already running.', { state: 'step' });
       if (input.nextStarted && w.steps.length >= MAX_WALK_STEPS) throw new CommandError('conflict', `A walk holds at most ${MAX_WALK_STEPS} steps.`);
-      nameLast(w, { name: input.name, role: input.role, typed: input.typed === true, msg: typeof input.msg === 'boolean' ? input.msg : undefined, nextStarted: input.nextStarted === true });
+      nameLast(w, { name: input.name, role: input.role, typed: input.typed === true, nameFrom: input.nameFrom || null, roleFrom: input.roleFrom || null, again: typeof input.again === 'boolean' ? input.again : null, msg: typeof input.msg === 'boolean' ? input.msg : undefined, nextStarted: input.nextStarted === true });
       return { audit: { ...(input.nextStarted ? { nextStarted: true } : {}), ...(input.listStep != null ? { listStep: input.listStep } : {}), ...(input.offList ? { offList: true } : {}) } };
     },
     example: { name: 'Checked in at reception', role: 'Reception' },

@@ -12,17 +12,28 @@ const state = (page, want) => page.waitForFunction((w) => document.querySelector
 const stored = (page) => page.evaluate(async () => (await window.ospeli.core.getMeta('process-walks'))?.walks || []);
 
 
+// Since the tap-through walk sheet (27 Nov 2026) the department's list is the page: the main button
+// starts the list's next step by name, and words are typed only for a step started with
+// "+ Another step" (not on the list). So the walk times n - 1 list steps, then one step off the list,
+// whose naming sheet is where #188's checks apply.
+async function otherStep(page) {
+  await page.clock.fastForward(60000);
+  await page.locator('[data-test="walk-other"]').tap(); await state(page, 'step');
+  await page.clock.fastForward(60000);
+  await page.locator('[data-test="walk-main"]').tap(); await state(page, 'waiting');
+  await page.waitForSelector('[data-test="walk-sheet"]');
+}
 async function toStep(page, n) {
   await page.locator('.dock [data-dock="walk"]').tap();
   await page.locator('[data-test="walk-before-ok"]').tap();
   await page.waitForSelector('[data-test="walk"]');
-  for (let i = 0; i < n; i += 1) {
+  for (let i = 0; i < n - 1; i += 1) {
     await page.clock.fastForward(60000);
     await page.locator('[data-test="walk-main"]').tap(); await state(page, 'step');
     await page.clock.fastForward(60000);
     await page.locator('[data-test="walk-main"]').tap(); await state(page, 'waiting');
   }
-  await page.waitForSelector('[data-test="walk-sheet"]');
+  await otherStep(page);
 }
 const pressed = (page) => page.locator('[data-chip][aria-pressed="true"]').allTextContents();
 
@@ -30,15 +41,18 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
   test(`${width} px: a typed step is saved under the typed words, with the role the person tapped and never the one only offered`, async () => {
     const { context, page, errors } = await openPage(env, { width, height, touch: true, department: 'outpatients', clock: '2026-11-19T09:00:00' });
     await toStep(page, 2);
-    // Step 2 is offered as "Seen by a nurse" with the role Nurse, both already chosen.
-    assert.deepEqual(await pressed(page), ['Seen by a nurse', 'Nurse']);
+    // Was: step 2 offered as "Seen by a nurse" with the role Nurse, both already chosen. That offer is
+    // retired (#170): for a step not on the list nothing is chosen for the person, and nothing is saved yet.
+    assert.deepEqual(await pressed(page), []);
+    assert.equal(await page.textContent('[data-test="walk-sheet-hint"]'), 'Name this step. The clock keeps running.');
+    assert.deepEqual((await stored(page))[0].steps.map((s) => [s.name, s.role]).at(-1), [null, null]);
     // The step row ends with the way to a step that is not among the words offered.
     assert.equal(await page.locator('[data-test="walk-row-name"] button').last().textContent(), '+ Add your own');
     await page.locator('[data-test="walk-own"]').tap();
     await page.waitForSelector('#wk-name');
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'wk-name', 'the field is ready to type in');
     await page.locator('#wk-name').pressSequentially('Left the clinic');
-    // Typing takes the place of the offered step, and the role that was offered with it goes too.
+    // Typing leaves no chip pressed: no step word and no role stands in for the person's own answer.
     assert.deepEqual(await pressed(page), []);
     assert.equal(await page.evaluate(() => document.activeElement?.id), 'wk-name', 'typing does not redraw the sheet');
     // Save with no role: refused inside the sheet, beside Save, and nothing is saved.
@@ -63,6 +77,10 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     assert.deepEqual([last.name, last.role, last.typed], ['Left the clinic', 'Reception', true]);
     assert.equal(await page.textContent('[data-test="walk-flash"]'), 'Step 2 saved as Left the clinic · ReceptionChange');
     assert.equal((await stored(page))[0].steps[0].typed, undefined, 'a step chosen from the words offered is not marked as typed');
+    // Step 1 came from the list by the main button: its name and role say so, and the typed step's do not.
+    const first = (await stored(page))[0].steps[0];
+    assert.deepEqual([first.name, first.role, first.nameFrom, first.roleFrom], ['Checked in at reception', 'Reception', 'list', 'list']);
+    assert.deepEqual([last.nameFrom, last.roleFrom], ['typed', 'chosen'], 'the typed words and the tapped role are the person\'s own');
     assert.deepEqual(errors, []);
     await context.close();
   });
@@ -81,6 +99,9 @@ test('typed words and the main button: the step is saved with the typed name and
   // A step chip tapped after typing is the later answer: it takes the place of the typed words, and says so on screen.
   await page.clock.fastForward(30000);
   await page.locator('[data-test="walk-main"]').tap(); await state(page, 'waiting');
+  // The step the main button started was the list's own: no sheet. Another step off the list brings the sheet.
+  assert.equal(await page.locator('[data-test="walk-sheet"]').count(), 0);
+  await otherStep(page);
   await page.locator('[data-test="walk-own"]').tap();
   await page.locator('#wk-name').pressSequentially('Something else');
   await page.locator('[data-chip="name"]', { hasText: /^Medicines collected$/ }).tap();

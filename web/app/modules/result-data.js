@@ -27,7 +27,9 @@ export function recordFromSteps(list, walk) {
     steps: timed.map((s) => ({ stepId: s.id, waitSec: s.wait, workSec: s.work,
       ...(s.waitNotSeenSec ? { waitNotSeenSec: s.waitNotSeenSec } : {}), ...(s.workNotSeenSec ? { workNotSeenSec: s.workNotSeenSec } : {}),
       ...(s.interrupted ? { interrupted: true } : {}), ...(s.interruptedWaitSec ? { interruptedWaitSec: s.interruptedWaitSec } : {}), ...(s.interruptions ? { interruptions: s.interruptions } : {}),
-      ...(s.waitReason ? { waitReason: s.waitReason } : {}), ...(s.stopReason ? { stopReason: s.stopReason } : {}), ...(s.typed ? { typed: true } : {}) })),
+      ...(s.waitReason ? { waitReason: s.waitReason } : {}), ...(s.stopReason ? { stopReason: s.stopReason } : {}), ...(s.typed ? { typed: true } : {}),
+      // From the walk (Builder, 27 Nov): the step was done again on that visit; where its name and role came from (#170).
+      ...(s.again ? { again: true } : {}), ...(s.nameFrom ? { nameFrom: s.nameFrom } : {}), ...(s.roleFrom ? { roleFrom: s.roleFrom } : {}) })),
     notTimed: list.filter((s) => !timed.includes(s)).map((s) => s.id) };
 }
 
@@ -43,6 +45,8 @@ export function walkItems(list, rec) {
     const st = on ? byId.get(s.stepId) : null;
     const times = (seen.get(s.stepId) || 0) + 1; if (on) seen.set(s.stepId, times);
     return { p, stepId: on ? s.stepId : null, num: on ? String(st.i + 1) : '+', name: on ? st.name : s.name || `Step ${p + 1}`, role: on ? st.role : s.role || 'Not set', onList: on, again: on && times > 1,
+      // Marked on the walk as done again (#189 item 2): a step with its own taps. On a first walk it is its own list step.
+      marked: !!s.again,
       planned: !!(on && st.plannedWait), waitSec: s.waitSec || 0, workSec: s.workSec || 0, waitNotSeenSec: s.waitNotSeenSec || 0, workNotSeenSec: s.workNotSeenSec || 0,
       interruptions: interruptionsOf(s), stoppedSec: s.interruptedWaitSec || 0, waitBeforeSec: waitBeforeOf(s), reason: waitReasonOf(s), rec: s };
   });
@@ -337,7 +341,7 @@ export function resultTable(list, records) {
   });
   rows.push(...(extrasAfter.get('') || []));
   list.forEach((st, i) => {
-    rows.push({ kind: 'step', order: i + 1, stepId: st.id, name: st.name, role: st.role,
+    rows.push({ kind: 'step', order: i + 1, stepId: st.id, name: st.name, role: st.role, ...(st.again ? { marked: true } : {}),
       cells: records.map((r, k) => cellOf(perWalk[k].filter((x) => x.stepId === st.id), r, st.id)) });
     rows.push(...(extrasAfter.get(st.id) || []));
   });
@@ -380,17 +384,21 @@ export function cellWords(c) {
 
 // The steps not on the list and the list steps done again, walk by walk, never dropped.
 export function extrasOf(list, records) {
-  const extra = []; const again = [];
+  const extra = []; const again = []; const marked = []; let againSec = 0; let againTimes = 0;
   records.forEach((r, w) => {
     const items = walkItems(list, r);
     for (const x of items) if (!x.onList) extra.push({ walk: w + 1, name: x.name, role: x.role, waitSec: x.waitSec, workSec: x.workSec, after: items.slice(0, x.p).reverse().find((y) => y.onList)?.name || null });
     const counts = new Map();
     for (const x of items) if (x.onList) counts.set(x.stepId, (counts.get(x.stepId) || 0) + 1);
     for (const [id, n] of counts) if (n > 1) again.push({ walk: w + 1, stepId: id, name: list.find((s) => s.id === id)?.name, times: n });
+    // Marked on the walk as done again and not already counted above (a first walk keeps it as its own list step).
+    for (const x of items) if (x.marked && !x.again) marked.push({ walk: w + 1, name: x.name, role: x.role, waitSec: x.waitSec, workSec: x.workSec });
+    for (const x of items) if (x.marked || x.again) { againSec += x.workSec; againTimes += 1; }
   });
   const steps = (n) => `${n} ${n === 1 ? 'step' : 'steps'}`;
-  const words = [extra.length ? `${extra.length} extra ${extra.length === 1 ? 'step' : 'steps'}` : null, again.length ? `${steps(again.length)} done again` : null].filter(Boolean).join(', ');
-  return { extra, again, words };
+  const words = [extra.length ? `${extra.length} extra ${extra.length === 1 ? 'step' : 'steps'}` : null, again.length + marked.length ? `${steps(again.length + marked.length)} done again` : null].filter(Boolean).join(', ');
+  // againSec: the hands-on time of every step time that was a second or later time, or marked so on the walk.
+  return { extra, again, marked, againSec, againTimes, words };
 }
 
 // Which walks show as table columns: the newest `max`, oldest first. Returns walk indexes (from 0).
@@ -428,7 +436,7 @@ export function csvOf({ title, department, list, records, dateOf, afterWalk = nu
     const items = walkItems(list, r);
     const side = afterWalk ? (w + 1 <= afterWalk ? 'before' : 'after') : '';
     const row = (o, tail) => lines.push([title, department || '', w + 1, dateOf(r.startedAt), ...o, walkUsableWord(r), side, ...tail].map(csvCell).join(','));
-    for (const x of items) row([x.p + 1, x.name, x.role, x.onList ? 'yes' : 'no', x.waitSec, x.workSec, x.waitNotSeenSec + x.workNotSeenSec, x.interruptions, x.stoppedSec, x.again ? 'yes' : 'no', 'timed'], [waitReasonText(x.rec.waitReason) || '', waitReasonText(x.rec.stopReason) || '', x.rec.typed || (list.find((st) => st.id === x.stepId)?.typed) ? 'yes' : 'no']);
+    for (const x of items) row([x.p + 1, x.name, x.role, x.onList ? 'yes' : 'no', x.waitSec, x.workSec, x.waitNotSeenSec + x.workNotSeenSec, x.interruptions, x.stoppedSec, x.again || x.marked ? 'yes' : 'no', 'timed'], [waitReasonText(x.rec.waitReason) || '', waitReasonText(x.rec.stopReason) || '', x.rec.typed || (list.find((st) => st.id === x.stepId)?.typed) ? 'yes' : 'no']);
     for (const st of list) {
       if (items.some((x) => x.stepId === st.id)) continue;
       row(['', st.name, st.role, 'yes', '', '', '', '', '', 'no', (r.didNotHappen || []).includes(st.id) ? 'did not happen' : 'not timed'], ['', '', st.typed ? 'yes' : 'no']);

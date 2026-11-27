@@ -149,7 +149,7 @@ export function tableCard(model, after = null) {
       h('thead', { role: 'rowgroup' }, h('tr', { role: 'row' }, h('th', { scope: 'col', role: 'columnheader', class: 'rt-stephead' }, 'Step'), model.walks.map((w, k) => h('th', { scope: 'col', role: 'columnheader', class: colCls(k) }, `Walk ${w.n}`)))),
       h('tbody', { role: 'rowgroup' }, model.rows.map((r) => h('tr', { role: 'row', class: r.kind === 'extra' ? 'is-extra' : null, 'data-row': r.kind === 'extra' ? 'extra' : r.stepId },
         h('th', { scope: 'row', role: 'rowheader' },
-          h('b', {}, r.kind === 'extra' ? `+ ${r.name}` : `${r.order}. ${r.name}`),
+          h('b', r.marked ? { 'data-test': 'row-again' } : {}, r.kind === 'extra' ? `+ ${r.name}` : `${r.order}. ${r.name}${r.marked ? ', done again' : ''}`),
           h('span', { class: 'rt-role' }, ` · ${r.role}`),
           r.kind === 'extra' ? h('span', { class: 'rt-only', 'data-test': 'only-on' }, `Not on the list · Only on walk ${r.walk}`) : null),
         r.cells.map((c, k) => h('td', { role: 'cell', class: colCls(k), 'data-status': c.status, ...(c.status === 'timed' ? { 'data-sec': `${c.waitSec},${c.workSec}`, ...(c.stoppedSec ? { 'data-stood': String(c.stoppedSec) } : {}) } : {}) },
@@ -215,14 +215,17 @@ export function changeBox({ count, afterWalk, set }) {
 
 // Extra steps and steps done again, listed in words; never dropped.
 export function extrasCard(model) {
-  const { extra, again, words } = model.extras;
-  if (!extra.length && !again.length) return null;
+  const { extra, again, marked = [], againSec = 0, againTimes = 0, words } = model.extras;
+  if (!extra.length && !again.length && !marked.length) return null;
   // One folded line on screen (the table already marks each one); opened on paper.
   return h('details', { class: 'result-extras', 'data-test': 'result-extras' },
     h('summary', {}, h('b', {}, `Not as listed: ${words}`)),
     h('ul', {},
       extra.map((x) => h('li', {}, h('b', {}, `“${x.name}”`), ` (${x.role}): only on walk ${x.walk}${x.after ? `, after “${x.after}”` : ', before the first list step'}. Wait ${minWords(x.waitSec)} · ${minWords(x.workSec)} hands-on.`)),
-      again.map((x) => h('li', {}, h('b', {}, `“${x.name}”`), `: done ${x.times} times on walk ${x.walk}. The table shows each time on its own.`))),
+      again.map((x) => h('li', {}, h('b', {}, `“${x.name}”`), `: done ${x.times} times on walk ${x.walk}. The table shows each time on its own.`)),
+      marked.map((x) => h('li', { 'data-test': 'marked-again' }, h('b', {}, `“${x.name}”, done again`), ` (${x.role}): marked on walk ${x.walk}. Wait ${minWords(x.waitSec)} · ${minWords(x.workSec)} hands-on.`))),
+    // Its own total (#189 item 2): the hands-on time of the times a step was done again. It is inside hands-on, and nothing says why.
+    againTimes ? h('p', { class: 'result-again-total', 'data-test': 'again-total' }, h('b', {}, `Done again: ${minWords(againSec)} hands-on`), ` (${againTimes} ${againTimes === 1 ? 'time' : 'times'}). It is part of the hands-on time above. Ask what happened; the walk does not say why.`) : null,
     h('p', { class: 'meta' }, 'A step not on the list stays on its own walk; the saved list is not changed.'));
 }
 

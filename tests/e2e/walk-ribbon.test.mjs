@@ -18,7 +18,10 @@ const walkNow = (page) => page.evaluate(async () => {
 });
 const ribbonShown = (page) => page.evaluate(() => { const r = document.querySelector('#walk-ribbon'); return !!r && !r.hidden && r.getBoundingClientRect().height > 0; });
 
-// Start a walk, time one step and name it with two taps, then leave it running.
+// Start a walk and time one step, then leave it running. Since the tap-through walk sheet (27 Nov
+// 2026) the main button names the step it starts from the department's list ("Arrived"), so the
+// step is named with no extra tap and one line says what it was saved as (before: a naming sheet
+// and two chip taps).
 async function walkOneStep(page) {
   await go(page, '#/process');
   await page.waitForSelector('[data-test="walk-start"]');
@@ -27,9 +30,11 @@ async function walkOneStep(page) {
   await page.clock.fastForward(60000);
   await page.tap('[data-test="walk-main"]'); await page.waitForSelector('[data-test="walk"][data-state="step"]');
   await page.clock.fastForward(90000);
-  await page.tap('[data-test="walk-main"]'); await page.waitForSelector('[data-test="walk-sheet"]');
-  await page.locator('[data-chip="name"]').first().tap(); await page.locator('[data-chip="role"]').first().tap();
-  await page.waitForFunction(() => !document.querySelector('[data-test="walk-sheet"]'));
+  await page.tap('[data-test="walk-main"]'); await page.waitForSelector('[data-test="walk"][data-state="waiting"]');
+  await page.waitForSelector('[data-test="walk-flash"]');
+  assert.equal(await page.locator('[data-test="walk-sheet"]').count(), 0, 'a list step needs no naming sheet');
+  const named = (await page.evaluate(async () => (await window.ospeli.core.getMeta('process-walks'))?.walks || []))[0].steps[0];
+  assert.deepEqual([named.name, named.role], ['Arrived', 'Patient'], 'the step is named, as it was after the two chip taps');
   assert.equal(await ribbonShown(page), false, 'no ribbon on the walk itself');
   await page.tap('[data-test="walk-leave"]');
   await route(page, '#/home');

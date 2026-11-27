@@ -5151,6 +5151,28 @@
                       "type": "integer",
                       "minimum": 1,
                       "description": "On a map made from a walk: how many times the work on this step stopped before it was finished."
+                    },
+                    "nameFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "On a map made from a walk: where the step name came from. list means it was the step an example list offered next and the person walking did not change it: NOT confirmed by the observer. Absent: not recorded."
+                    },
+                    "roleFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "On a map made from a walk: where the role came from. list means it only came with the list step: do not use it to say who does what. Absent: not recorded."
+                    },
+                    "again": {
+                      "type": "boolean",
+                      "description": "On a map made from a walk: the step was done again on that visit (its own taps). Nothing is recorded about why."
                     }
                   }
                 }
@@ -5308,6 +5330,28 @@
                       "type": "integer",
                       "minimum": 1,
                       "description": "On a map made from a walk: how many times the work on this step stopped before it was finished."
+                    },
+                    "nameFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "On a map made from a walk: where the step name came from. list means it was the step an example list offered next and the person walking did not change it: NOT confirmed by the observer. Absent: not recorded."
+                    },
+                    "roleFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "On a map made from a walk: where the role came from. list means it only came with the list step: do not use it to say who does what. Absent: not recorded."
+                    },
+                    "again": {
+                      "type": "boolean",
+                      "description": "On a map made from a walk: the step was done again on that visit (its own taps). Nothing is recorded about why."
                     }
                   }
                 }
@@ -7640,6 +7684,81 @@
                     "typed": {
                       "type": "boolean",
                       "description": "true when the step name was typed by the person, not chosen from the words offered."
+                    },
+                    "nameFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                    },
+                    "roleFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                    },
+                    "again": {
+                      "type": "boolean",
+                      "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    }
+                  }
+                }
+              },
+              "list": {
+                "type": "array",
+                "description": "First walk in a department with a step list: that list, in its usual order, with what has happened to each step on this walk. An example list a site can change, not a standard, and it never forces an order: ospeli_walks_step_start with listStep starts any of them. Absent on a repeat walk (see repeat.list) and where the department has no list.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "state"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The role the list gives this step: an example, kept as roleFrom \"list\" until a person chooses a role."
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "timed",
+                        "running",
+                        "next",
+                        "later"
+                      ],
+                      "description": "timed: timed at least once on this walk. running: being timed now. next: the step offered next. later: not timed yet."
+                    },
+                    "times": {
+                      "type": "integer",
+                      "description": "How many times the step was timed on this walk (2 or more: done again)."
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "The wait before the step, the first time it was timed."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Hands-on seconds, every time it was timed, added up."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step usually happens after the patient or item has left, so it is never offered as next."
                     }
                   }
                 }
@@ -8076,6 +8195,81 @@
                     "typed": {
                       "type": "boolean",
                       "description": "true when the step name was typed by the person, not chosen from the words offered."
+                    },
+                    "nameFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                    },
+                    "roleFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                    },
+                    "again": {
+                      "type": "boolean",
+                      "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    }
+                  }
+                }
+              },
+              "list": {
+                "type": "array",
+                "description": "First walk in a department with a step list: that list, in its usual order, with what has happened to each step on this walk. An example list a site can change, not a standard, and it never forces an order: ospeli_walks_step_start with listStep starts any of them. Absent on a repeat walk (see repeat.list) and where the department has no list.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "state"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The role the list gives this step: an example, kept as roleFrom \"list\" until a person chooses a role."
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "timed",
+                        "running",
+                        "next",
+                        "later"
+                      ],
+                      "description": "timed: timed at least once on this walk. running: being timed now. next: the step offered next. later: not timed yet."
+                    },
+                    "times": {
+                      "type": "integer",
+                      "description": "How many times the step was timed on this walk (2 or more: done again)."
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "The wait before the step, the first time it was timed."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Hands-on seconds, every time it was timed, added up."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step usually happens after the patient or item has left, so it is never offered as next."
                     }
                   }
                 }
@@ -8510,6 +8704,81 @@
                     "typed": {
                       "type": "boolean",
                       "description": "true when the step name was typed by the person, not chosen from the words offered."
+                    },
+                    "nameFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                    },
+                    "roleFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                    },
+                    "again": {
+                      "type": "boolean",
+                      "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    }
+                  }
+                }
+              },
+              "list": {
+                "type": "array",
+                "description": "First walk in a department with a step list: that list, in its usual order, with what has happened to each step on this walk. An example list a site can change, not a standard, and it never forces an order: ospeli_walks_step_start with listStep starts any of them. Absent on a repeat walk (see repeat.list) and where the department has no list.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "state"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The role the list gives this step: an example, kept as roleFrom \"list\" until a person chooses a role."
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "timed",
+                        "running",
+                        "next",
+                        "later"
+                      ],
+                      "description": "timed: timed at least once on this walk. running: being timed now. next: the step offered next. later: not timed yet."
+                    },
+                    "times": {
+                      "type": "integer",
+                      "description": "How many times the step was timed on this walk (2 or more: done again)."
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "The wait before the step, the first time it was timed."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Hands-on seconds, every time it was timed, added up."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step usually happens after the patient or item has left, so it is never offered as next."
                     }
                   }
                 }
@@ -8637,6 +8906,16 @@
           "resume": {
             "type": "boolean",
             "description": "true: the step that ended last was interrupted (walk.canResume) and this is the same step carrying on. Leave out for a new step."
+          },
+          "listStep": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60,
+            "description": "The step that starts is this one of the list (its place, from 1): walk.list on a first walk in a department with a step list, walk.repeat.list on a repeat walk. Any step can start at any time; the list never forces an order. It takes the list's name (and, on a first walk, the list's role, kept as roleFrom \"list\"). A list step already timed on this walk starts as done again. Leave out for a step that is not on the list, named afterwards."
+          },
+          "picked": {
+            "type": "boolean",
+            "description": "With listStep on a first walk: true when the person chose that step themselves (nameFrom \"chosen\"); false or left out when it was the step offered next (nameFrom \"list\")."
           }
         }
       },
@@ -8948,6 +9227,81 @@
                     "typed": {
                       "type": "boolean",
                       "description": "true when the step name was typed by the person, not chosen from the words offered."
+                    },
+                    "nameFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                    },
+                    "roleFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                    },
+                    "again": {
+                      "type": "boolean",
+                      "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    }
+                  }
+                }
+              },
+              "list": {
+                "type": "array",
+                "description": "First walk in a department with a step list: that list, in its usual order, with what has happened to each step on this walk. An example list a site can change, not a standard, and it never forces an order: ospeli_walks_step_start with listStep starts any of them. Absent on a repeat walk (see repeat.list) and where the department has no list.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "state"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The role the list gives this step: an example, kept as roleFrom \"list\" until a person chooses a role."
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "timed",
+                        "running",
+                        "next",
+                        "later"
+                      ],
+                      "description": "timed: timed at least once on this walk. running: being timed now. next: the step offered next. later: not timed yet."
+                    },
+                    "times": {
+                      "type": "integer",
+                      "description": "How many times the step was timed on this walk (2 or more: done again)."
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "The wait before the step, the first time it was timed."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Hands-on seconds, every time it was timed, added up."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step usually happens after the patient or item has left, so it is never offered as next."
                     }
                   }
                 }
@@ -9384,6 +9738,81 @@
                     "typed": {
                       "type": "boolean",
                       "description": "true when the step name was typed by the person, not chosen from the words offered."
+                    },
+                    "nameFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                    },
+                    "roleFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                    },
+                    "again": {
+                      "type": "boolean",
+                      "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    }
+                  }
+                }
+              },
+              "list": {
+                "type": "array",
+                "description": "First walk in a department with a step list: that list, in its usual order, with what has happened to each step on this walk. An example list a site can change, not a standard, and it never forces an order: ospeli_walks_step_start with listStep starts any of them. Absent on a repeat walk (see repeat.list) and where the department has no list.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "state"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The role the list gives this step: an example, kept as roleFrom \"list\" until a person chooses a role."
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "timed",
+                        "running",
+                        "next",
+                        "later"
+                      ],
+                      "description": "timed: timed at least once on this walk. running: being timed now. next: the step offered next. later: not timed yet."
+                    },
+                    "times": {
+                      "type": "integer",
+                      "description": "How many times the step was timed on this walk (2 or more: done again)."
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "The wait before the step, the first time it was timed."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Hands-on seconds, every time it was timed, added up."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step usually happens after the patient or item has left, so it is never offered as next."
                     }
                   }
                 }
@@ -9822,6 +10251,81 @@
                     "typed": {
                       "type": "boolean",
                       "description": "true when the step name was typed by the person, not chosen from the words offered."
+                    },
+                    "nameFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                    },
+                    "roleFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                    },
+                    "again": {
+                      "type": "boolean",
+                      "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    }
+                  }
+                }
+              },
+              "list": {
+                "type": "array",
+                "description": "First walk in a department with a step list: that list, in its usual order, with what has happened to each step on this walk. An example list a site can change, not a standard, and it never forces an order: ospeli_walks_step_start with listStep starts any of them. Absent on a repeat walk (see repeat.list) and where the department has no list.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "state"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The role the list gives this step: an example, kept as roleFrom \"list\" until a person chooses a role."
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "timed",
+                        "running",
+                        "next",
+                        "later"
+                      ],
+                      "description": "timed: timed at least once on this walk. running: being timed now. next: the step offered next. later: not timed yet."
+                    },
+                    "times": {
+                      "type": "integer",
+                      "description": "How many times the step was timed on this walk (2 or more: done again)."
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "The wait before the step, the first time it was timed."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Hands-on seconds, every time it was timed, added up."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step usually happens after the patient or item has left, so it is never offered as next."
                     }
                   }
                 }
@@ -9967,6 +10471,27 @@
           "typed": {
             "type": "boolean",
             "description": "true when name was typed by the person and not chosen from the words offered. Kept with the step and shown in the export."
+          },
+          "nameFrom": {
+            "type": "string",
+            "enum": [
+              "chosen",
+              "list"
+            ],
+            "description": "With name: chosen when the person picked that word themselves, list when it was the step offered next and they kept it (not confirmed by the observer). typed: true says the words are the person's own. Left out: nothing is recorded about where the name came from."
+          },
+          "roleFrom": {
+            "type": "string",
+            "enum": [
+              "chosen",
+              "list",
+              "typed"
+            ],
+            "description": "With role: chosen or typed when the person gave the role themselves, list when it only came with the offered step. Left out: nothing is recorded."
+          },
+          "again": {
+            "type": "boolean",
+            "description": "true: this step was done again on this visit. false takes the mark away (for example after a list step was tapped a second time by mistake)."
           },
           "nextStarted": {
             "type": "boolean",
@@ -10296,6 +10821,81 @@
                     "typed": {
                       "type": "boolean",
                       "description": "true when the step name was typed by the person, not chosen from the words offered."
+                    },
+                    "nameFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                    },
+                    "roleFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                    },
+                    "again": {
+                      "type": "boolean",
+                      "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    }
+                  }
+                }
+              },
+              "list": {
+                "type": "array",
+                "description": "First walk in a department with a step list: that list, in its usual order, with what has happened to each step on this walk. An example list a site can change, not a standard, and it never forces an order: ospeli_walks_step_start with listStep starts any of them. Absent on a repeat walk (see repeat.list) and where the department has no list.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "state"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The role the list gives this step: an example, kept as roleFrom \"list\" until a person chooses a role."
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "timed",
+                        "running",
+                        "next",
+                        "later"
+                      ],
+                      "description": "timed: timed at least once on this walk. running: being timed now. next: the step offered next. later: not timed yet."
+                    },
+                    "times": {
+                      "type": "integer",
+                      "description": "How many times the step was timed on this walk (2 or more: done again)."
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "The wait before the step, the first time it was timed."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Hands-on seconds, every time it was timed, added up."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step usually happens after the patient or item has left, so it is never offered as next."
                     }
                   }
                 }
@@ -10760,6 +11360,81 @@
                     "typed": {
                       "type": "boolean",
                       "description": "true when the step name was typed by the person, not chosen from the words offered."
+                    },
+                    "nameFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                    },
+                    "roleFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                    },
+                    "again": {
+                      "type": "boolean",
+                      "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    }
+                  }
+                }
+              },
+              "list": {
+                "type": "array",
+                "description": "First walk in a department with a step list: that list, in its usual order, with what has happened to each step on this walk. An example list a site can change, not a standard, and it never forces an order: ospeli_walks_step_start with listStep starts any of them. Absent on a repeat walk (see repeat.list) and where the department has no list.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "state"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The role the list gives this step: an example, kept as roleFrom \"list\" until a person chooses a role."
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "timed",
+                        "running",
+                        "next",
+                        "later"
+                      ],
+                      "description": "timed: timed at least once on this walk. running: being timed now. next: the step offered next. later: not timed yet."
+                    },
+                    "times": {
+                      "type": "integer",
+                      "description": "How many times the step was timed on this walk (2 or more: done again)."
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "The wait before the step, the first time it was timed."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Hands-on seconds, every time it was timed, added up."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step usually happens after the patient or item has left, so it is never offered as next."
                     }
                   }
                 }
@@ -11197,6 +11872,81 @@
                     "typed": {
                       "type": "boolean",
                       "description": "true when the step name was typed by the person, not chosen from the words offered."
+                    },
+                    "nameFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                    },
+                    "roleFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                    },
+                    "again": {
+                      "type": "boolean",
+                      "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    }
+                  }
+                }
+              },
+              "list": {
+                "type": "array",
+                "description": "First walk in a department with a step list: that list, in its usual order, with what has happened to each step on this walk. An example list a site can change, not a standard, and it never forces an order: ospeli_walks_step_start with listStep starts any of them. Absent on a repeat walk (see repeat.list) and where the department has no list.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "state"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The role the list gives this step: an example, kept as roleFrom \"list\" until a person chooses a role."
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "timed",
+                        "running",
+                        "next",
+                        "later"
+                      ],
+                      "description": "timed: timed at least once on this walk. running: being timed now. next: the step offered next. later: not timed yet."
+                    },
+                    "times": {
+                      "type": "integer",
+                      "description": "How many times the step was timed on this walk (2 or more: done again)."
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "The wait before the step, the first time it was timed."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Hands-on seconds, every time it was timed, added up."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step usually happens after the patient or item has left, so it is never offered as next."
                     }
                   }
                 }
@@ -11643,6 +12393,81 @@
                     "typed": {
                       "type": "boolean",
                       "description": "true when the step name was typed by the person, not chosen from the words offered."
+                    },
+                    "nameFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                    },
+                    "roleFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                    },
+                    "again": {
+                      "type": "boolean",
+                      "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    }
+                  }
+                }
+              },
+              "list": {
+                "type": "array",
+                "description": "First walk in a department with a step list: that list, in its usual order, with what has happened to each step on this walk. An example list a site can change, not a standard, and it never forces an order: ospeli_walks_step_start with listStep starts any of them. Absent on a repeat walk (see repeat.list) and where the department has no list.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "state"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The role the list gives this step: an example, kept as roleFrom \"list\" until a person chooses a role."
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "timed",
+                        "running",
+                        "next",
+                        "later"
+                      ],
+                      "description": "timed: timed at least once on this walk. running: being timed now. next: the step offered next. later: not timed yet."
+                    },
+                    "times": {
+                      "type": "integer",
+                      "description": "How many times the step was timed on this walk (2 or more: done again)."
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "The wait before the step, the first time it was timed."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Hands-on seconds, every time it was timed, added up."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step usually happens after the patient or item has left, so it is never offered as next."
                     }
                   }
                 }
@@ -12079,6 +12904,81 @@
                     "typed": {
                       "type": "boolean",
                       "description": "true when the step name was typed by the person, not chosen from the words offered."
+                    },
+                    "nameFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                    },
+                    "roleFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                    },
+                    "again": {
+                      "type": "boolean",
+                      "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    }
+                  }
+                }
+              },
+              "list": {
+                "type": "array",
+                "description": "First walk in a department with a step list: that list, in its usual order, with what has happened to each step on this walk. An example list a site can change, not a standard, and it never forces an order: ospeli_walks_step_start with listStep starts any of them. Absent on a repeat walk (see repeat.list) and where the department has no list.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "state"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The role the list gives this step: an example, kept as roleFrom \"list\" until a person chooses a role."
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "timed",
+                        "running",
+                        "next",
+                        "later"
+                      ],
+                      "description": "timed: timed at least once on this walk. running: being timed now. next: the step offered next. later: not timed yet."
+                    },
+                    "times": {
+                      "type": "integer",
+                      "description": "How many times the step was timed on this walk (2 or more: done again)."
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "The wait before the step, the first time it was timed."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Hands-on seconds, every time it was timed, added up."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step usually happens after the patient or item has left, so it is never offered as next."
                     }
                   }
                 }
@@ -12520,6 +13420,81 @@
                     "typed": {
                       "type": "boolean",
                       "description": "true when the step name was typed by the person, not chosen from the words offered."
+                    },
+                    "nameFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                    },
+                    "roleFrom": {
+                      "type": "string",
+                      "enum": [
+                        "chosen",
+                        "list",
+                        "typed"
+                      ],
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                    },
+                    "again": {
+                      "type": "boolean",
+                      "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    }
+                  }
+                }
+              },
+              "list": {
+                "type": "array",
+                "description": "First walk in a department with a step list: that list, in its usual order, with what has happened to each step on this walk. An example list a site can change, not a standard, and it never forces an order: ospeli_walks_step_start with listStep starts any of them. Absent on a repeat walk (see repeat.list) and where the department has no list.",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "n",
+                    "name",
+                    "state"
+                  ],
+                  "properties": {
+                    "n": {
+                      "type": "integer"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "The role the list gives this step: an example, kept as roleFrom \"list\" until a person chooses a role."
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": [
+                        "timed",
+                        "running",
+                        "next",
+                        "later"
+                      ],
+                      "description": "timed: timed at least once on this walk. running: being timed now. next: the step offered next. later: not timed yet."
+                    },
+                    "times": {
+                      "type": "integer",
+                      "description": "How many times the step was timed on this walk (2 or more: done again)."
+                    },
+                    "waitSec": {
+                      "type": "integer",
+                      "description": "The wait before the step, the first time it was timed."
+                    },
+                    "workSec": {
+                      "type": "integer",
+                      "description": "Hands-on seconds, every time it was timed, added up."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step usually happens after the patient or item has left, so it is never offered as next."
                     }
                   }
                 }

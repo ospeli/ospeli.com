@@ -189,7 +189,8 @@ export function analyse(list) {
   const timed = list.map((s, i) => {
     const base = s.par && i > 0 ? prevStart : prevEnd;
     const start = base + (+s.wait || 0); const end = start + (+s.work || 0);
-    if (i > 0 && s.role !== list[i - 1].role) handoffs++;
+    // A step whose role nobody has said yet (a walk's "Not set") is not a change of role: nothing is known about it.
+    if (i > 0 && s.role !== list[i - 1].role && s.role !== 'Not set' && list[i - 1].role !== 'Not set') handoffs++;
     if (s.msg) msgs++;
     work += +s.work || 0; wait += +s.wait || 0;
     prevStart = start; prevEnd = Math.max(end, s.par ? prevEnd : end);

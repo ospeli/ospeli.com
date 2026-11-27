@@ -46,7 +46,11 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     assert.equal(f.mainH, before.mainH, 'the main button keeps its size');
     assert.deepEqual(f.side, before.side, 'Pause, Undo and the third place do not move sideways');
     assert.ok(f.sideways <= 0 && f.chips.every((h) => h >= 44), `44 px targets, no sideways scroll of the page (${f.chips})`);
-    assert.equal(await page.locator('[data-test="walk-flash"]').count(), 1, 'the line that says what was saved is still there');
+    // With the step list on the page (27 Nov) the saved line gives way when the next step starts, so the bar stays short
+    // (Adoption lead); what was saved for the step before is still on the screen's record: its row is timed, with its times.
+    assert.equal(await page.locator('[data-test="walk-flash"]').count(), 0);
+    assert.match(await page.locator('[data-test="walk-list-row"][data-n="1"]').textContent(), /waited .* · .* (hands-on|patient step)/, 'what was saved for the step before is still said, on its row');
+    assert.equal(await page.locator('[data-test="walk-list-row"][data-n="1"]').getAttribute('data-state'), 'timed');
     assert.equal((await stored(page))[0].current.waitReason, undefined, 'nothing is kept until a person taps');
     // One tap keeps it; one line says so, with a way back.
     await page.locator('[data-reason="room-equipment"]').tap();
@@ -60,12 +64,12 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     await page.locator('[data-reason="room-equipment"]').tap();
     await page.waitForSelector('[data-test="walk-reason-line"]');
     f = await fits(page); assert.ok(f.mainOn && f.onTop);
-    // The step is interrupted: the naming sheet comes first; the question waits for it.
+    // The step is interrupted. Since the tap-through sheet (27 Nov) a list step was named as it started,
+    // so there is no naming sheet and the question shows at once. (The sheet-first rule is checked on
+    // step 3 below, a step not on the list.)
     await page.clock.fastForward(60 * 1000);
     await page.locator('[data-test="walk-stopped"]').tap(); await state(page, 'waiting');
-    await page.waitForSelector('[data-test="walk-sheet"]');
-    assert.equal(await page.locator('[data-test="walk-reason"]').count(), 0, 'never beside the naming sheet');
-    await page.locator('[data-test="walk-later"]').tap();
+    assert.equal(await page.locator('[data-test="walk-sheet"]').count(), 0, 'a step named from the list is not asked for a name');
     await page.waitForSelector('[data-test="walk-reason"][data-of="stop"]');
     assert.equal(await page.locator('.walk-reason-word').textContent(), 'What stopped it?');
     f = await fits(page); assert.ok(f.mainOn && f.onTop && f.rowAbove, JSON.stringify(f));
@@ -76,24 +80,35 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     const st = (await stored(page))[0].steps[1];
     assert.deepEqual([st.waitReason, st.stopReason], ['room-equipment', undefined]);
     // Left alone again: the row goes with the next tap on the main button and nothing is kept.
-    await page.locator('[data-test="walk-later"]').tap();
-    await page.clock.fastForward(4 * 60 * 1000); await main(page); await state(page, 'step');
+    // Step 3 is a step not on the list ("+ Another step"), so it ends with no name.
+    assert.equal(await page.locator('[data-test="walk-sheet"]').count(), 0);
+    await page.clock.fastForward(4 * 60 * 1000); await page.locator('[data-test="walk-other"]').tap(); await state(page, 'step');
     await page.waitForSelector('[data-test="walk-reason"]');
     // On a phone of ordinary height every answer is in sight, none slid off the side (a short phone has one row that slides).
     if (height > 720) assert.ok(await page.evaluate(() => [...document.querySelectorAll('[data-reason]')].every((e) => { const b = e.getBoundingClientRect(); return b.left >= 0 && b.right <= window.innerWidth && b.top >= 0; })), 'all seven reasons are on the screen');
-    await page.clock.fastForward(60 * 1000); await main(page); await state(page, 'waiting');
+    // It is interrupted with no name yet: the naming sheet comes first; the question waits for it.
+    await page.clock.fastForward(30 * 1000);
+    await page.locator('[data-test="walk-stopped"]').tap(); await state(page, 'waiting');
+    await page.waitForSelector('[data-test="walk-sheet"]');
+    assert.equal(await page.locator('[data-test="walk-reason"]').count(), 0, 'never beside the naming sheet');
+    await page.locator('[data-test="walk-later"]').tap();
+    await page.waitForSelector('[data-test="walk-reason"][data-of="stop"]');
+    f = await fits(page); assert.ok(f.mainOn && f.onTop && f.rowAbove, JSON.stringify(f));
+    await page.clock.fastForward(20 * 1000); await main(page); await state(page, 'step');
+    await page.clock.fastForward(10 * 1000); await main(page); await state(page, 'waiting');
     assert.equal(await page.locator('[data-test="walk-reason"], [data-test="walk-reason-line"]').count(), 0);
-    assert.equal((await stored(page))[0].steps[2].waitReason, undefined);
+    assert.deepEqual([(await stored(page))[0].steps[2].waitReason, (await stored(page))[0].steps[2].stopReason], [undefined, undefined]);
     // Finish: the first line of the result names the longest wait and the reason recorded on the walk.
     await page.locator('[data-test="walk-finish"]').tap();
     await page.locator('[data-test="walk-finish-yes"]').tap();
     await page.waitForFunction(() => /^#\/process\/map-/.test(location.hash));
     await page.waitForFunction(() => /Longest wait/.test(document.querySelector('main')?.textContent || ''));
+    // Step 2 took its name from the list as it started (was “Step 2”, left for later, before the tap-through sheet).
     // #180 point 2 (crew night 5): the wait before the step is 9 min; the 3 min it stood still once started is
     // not part of it and is said on the step's row. The reason is said after the wait, in the headline and under the bar.
     const text = await page.textContent('main');
-    assert.ok(text.includes('Longest wait: 9 min before “Step 2”. Reason recorded on the walk: Room or equipment.'), text.slice(0, 700));
-    assert.equal((await page.textContent('[data-test="walk-longest"]')).replace(/\s+/g, ' ').trim(), 'Longest wait: 9 min before “Step 2”. Reason recorded on the walk: Room or equipment.');
+    assert.ok(text.includes('Longest wait: 9 min before “Seen by a nurse”. Reason recorded on the walk: Room or equipment.'), text.slice(0, 700));
+    assert.equal((await page.textContent('[data-test="walk-longest"]')).replace(/\s+/g, ' ').trim(), 'Longest wait: 9 min before “Seen by a nurse”. Reason recorded on the walk: Room or equipment.');
     assert.match((await page.textContent('[data-test="result-table"]')).replace(/\s+/g, ' '), /wait 9 min · 2 min · stood still 3 min, interrupted 1 time/);
     assert.deepEqual(errors, []);
     await context.close();

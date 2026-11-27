@@ -902,6 +902,39 @@ html[data-site="connect"] .layout { display: block; }
 .walk-sheet .walk-error { margin: 0; font-weight: 700; }
 .walk-sheet-foot .btn { flex: 1 1 0; min-width: 0; min-height: 44px; padding-inline: 6px; font-size: .9375rem; justify-content: center; text-align: center; line-height: 1.15; white-space: normal; }
 .walk-more-box { display: grid; gap: 8px; }
+/* The tap-through walk sheet (27 Nov 2026): the department's step list as large rows in the page,
+   above the pinned bar. A row's state is said in words and by its edge, never by colour alone. */
+.walk-list { display: grid; gap: 6px; min-width: 0; }
+.walk-list h2 { margin: 0; font-size: 1rem; color: var(--ink); font-weight: 800; }
+.walk-list-hint { margin: 0; font-size: 1rem; color: var(--ink); }
+.walk-rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.walk-rowbtn { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; width: 100%; min-height: 60px; padding: 8px 12px 8px 8px; text-align: left; font: inherit; color: var(--navy);
+  background: var(--surface); border: 2px solid var(--line-strong); border-radius: 14px; cursor: pointer; }
+.walk-rowbtn:focus-visible { outline: 3px solid var(--mango); outline-offset: 2px; }
+.walk-rowbtn:disabled { cursor: default; color: var(--ink); border-color: var(--line); background: transparent; }
+.walk-rowbtn .wl-n { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; border: 2px solid currentColor; font-weight: 800; font-size: 1rem; }
+.walk-rowbtn .wl-what { display: grid; min-width: 0; }
+.walk-rowbtn .wl-what b { font-size: 1.1rem; line-height: 1.2; overflow-wrap: anywhere; }
+.walk-rowbtn .wl-role { font-size: .9375rem; color: var(--ink); overflow-wrap: anywhere; }
+.walk-rowbtn .wl-state { font-size: .9375rem; font-weight: 800; color: var(--ink); text-align: right; max-width: 132px; }
+.walk-rowbtn.is-next { border-color: #EE9B00; border-left-width: 8px; background: #FFF6E5; }
+.walk-rowbtn.is-running, .walk-rowbtn.is-running:disabled { border-color: #0A9396; border-left-width: 8px; background: #0B2F4E; color: #fff; }
+.walk-rowbtn.is-running .wl-role, .walk-rowbtn.is-running .wl-state { color: #fff; }
+.walk-rowbtn.is-timed .wl-n { background: var(--navy); color: #fff; border-color: var(--navy); }
+.walk-rowbtn.is-other { border-style: dashed; }
+.btn.walk-other { min-height: 44px; width: 100%; justify-content: center; background: var(--surface); border-style: dashed; font-size: 1rem; }
+.walk-from { color: var(--ink); font-size: .9375rem; }
+.walk-flash.is-short { flex-wrap: nowrap; padding-block: 2px; }
+.walk-flash.is-short span { flex: 1 1 auto; }
+.walk-flash.is-short .walk-change { flex: none; padding-inline: 10px; }
+.walk.has-list.has-flash .walk-meta { display: none; }
+/* With the list on the page the bar is short: the state word and the clock share one line. */
+.walk.has-list .walk-now { grid-template-columns: auto auto; justify-content: center; align-items: baseline; column-gap: 10px; padding: 0; }
+.walk.has-list .walk-state { font-size: 1.25rem; }
+.walk.has-list .walk-timer { font-size: 2.25rem; line-height: 1.1; }
+.walk.has-list .walk-meta { grid-column: 1 / -1; font-size: .9375rem; }
+.walk.has-list .walk-end { margin-top: 6px; }
+@media (max-height: 720px) { .walk.has-list .walk-sub { display: none; } .walk.has-list { gap: 8px; padding-top: 8px; } .walk.has-list .btn.walk-main { min-height: 72px; } .walk.has-list .walk-bar { gap: 5px; padding-top: 6px; } .walk.has-list .btn.walk-other { min-height: 44px; } }
 .walk-pick .walk-chips { max-height: 40vh; overflow-y: auto; }
 .walk-saved.walk-flash { background: var(--surface); }
 .walk-title { display: grid; gap: 4px; min-width: 0; }

@@ -57,22 +57,38 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     await tap('[data-test="walk-before-ok"]');
     await page.waitForSelector('[data-test="walk"]');
     await mainOnScreen(page, 'walk started');
+    // The tap-through walk sheet (27 Nov 2026): the step offered next is no longer pre-chosen in a naming
+    // sheet (#170: that offer goes). It is named on the main button and highlighted as a row; the tap
+    // starts it by that name, and the record says the name and role are the list's, not confirmed.
+    const rowInSight = (n) => page.evaluate((k) => {
+      const r = document.querySelector(`[data-test="walk-list-row"][data-n="${k}"]`)?.getBoundingClientRect(); const bar = document.querySelector('[data-test="walk-bar"]').getBoundingClientRect();
+      const head = document.querySelector('.topbar')?.getBoundingClientRect();
+      return r ? { top: r.top, bottom: r.bottom, barTop: bar.top, headBottom: head && /fixed|sticky/.test(getComputedStyle(document.querySelector('.topbar')).position) ? head.bottom : 0 } : null;
+    }, n);
     for (const [i, [name, role]] of IMAGING.entries()) {
+      // The offer is on the main button and its row; nothing is saved until the tap.
+      assert.equal(await page.textContent('[data-test="walk-main"]'), `${name} starts`);
+      assert.equal(await page.getAttribute(`[data-test="walk-list-row"][data-n="${i + 1}"]`, 'data-state'), 'next');
+      assert.equal((await stored(page))[0].steps.length, i, 'an offer is not saved until the tap');
+      assert.equal((await stored(page))[0].current, null);
       await page.clock.fastForward(60 * 1000);
       await tap('[data-test="walk-main"]'); await state(page, 'step');
       let l = await mainOnScreen(page, `step ${i + 1} running`);
-      assert.equal(l.mainText, 'Step done');
-      // The step before was saved by that tap, with the words that were offered, and one line says so.
-      if (i > 0) assert.match(await page.textContent('[data-test="walk-flash"]'), new RegExp(`^Step ${i} saved as ${IMAGING[i - 1][0]} · ${IMAGING[i - 1][1]}Change$`));
+      assert.equal(l.mainText, `${name} done`);
+      assert.equal(await page.getAttribute(`[data-test="walk-list-row"][data-n="${i + 1}"]`, 'data-state'), 'running');
       await page.clock.fastForward(120 * 1000);
       await tap('[data-test="walk-main"]'); await state(page, 'waiting');
-      await page.waitForSelector('[data-test="walk-sheet"]');
-      l = await mainOnScreen(page, `step ${i + 1} done, naming sheet open`);
-      // The usual next step and its usual role are offered, already chosen and first in their rows.
-      assert.equal(await page.locator('[data-test="walk-row-name"] [data-chip]').first().textContent(), name);
-      assert.deepEqual(await page.locator('[data-chip][aria-pressed="true"]').allTextContents(), [name, role]);
-      assert.match(await page.textContent('[data-test="walk-sheet-hint"]'), /^Next on the list\. Tap another if not\.$/);
-      assert.equal((await stored(page))[0].steps[i].name, null, 'an offer is not saved until the next tap');
+      l = await mainOnScreen(page, `step ${i + 1} done`);
+      // No naming sheet: the step was saved by that tap with the list's words, and one line says so and whose words they are.
+      assert.equal(await page.locator('[data-test="walk-sheet"]').count(), 0);
+      assert.match(await page.textContent('[data-test="walk-flash"]'), new RegExp(`^${name} saved · from the listChange$`));
+      const st = (await stored(page))[0].steps[i];
+      assert.deepEqual([st.name, st.role, st.nameFrom, st.roleFrom], [name, role, 'list', 'list']);
+      // The row that comes next is whole and in sight above the bar after every tap.
+      const r = await rowInSight(i + 2);
+      assert.equal(await page.getAttribute(`[data-test="walk-list-row"][data-n="${i + 2}"]`, 'data-state'), 'next');
+      assert.ok(r.top >= r.headBottom && r.bottom <= r.barTop, `after step ${i + 1} the next row is in sight (${Math.round(r.top)} to ${Math.round(r.bottom)}; top bar ${Math.round(r.headBottom)}, walk bar ${Math.round(r.barTop)})`);
+      assert.equal(await page.locator('[data-chip][aria-pressed="true"]').count(), 0, 'nothing is offered already chosen');
       assert.ok(await noSideways(page) <= 0);
     }
     // Finish is on the screen beside Pause and Undo, with nothing to scroll, and keeps what is chosen for the last step.
@@ -89,6 +105,7 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     assert.equal(taps, 15, 'start 1, six steps of 2 taps, finish 2');
     const w = (await stored(page))[0];
     assert.deepEqual(w.steps.map((s) => [s.name, s.role]), IMAGING);
+    assert.deepEqual(w.steps.map((s) => `${s.nameFrom}/${s.roleFrom}`), IMAGING.map(() => 'list/list'), 'every name and role is marked as the list\'s, not confirmed');
     assert.equal(w.department, 'imaging');
     await page.tap('[data-test="tab-edit"]');
     await page.waitForSelector('[data-test="tab-edit"][aria-selected="true"]');
@@ -115,7 +132,10 @@ test('360 px: Pause never moves, Undo has its own place, More options and a type
   await note('waiting, no undo');
   assert.equal(await page.locator('[data-test="walk-undo"]').count(), 0);
   await page.clock.fastForward(30 * 1000);
-  await page.tap('[data-test="walk-main"]'); await state(page, 'step');
+  // A step that is not on the list: its button is in the bar, in sight, and the step is named after it ends.
+  { const o = await page.locator('[data-test="walk-other"]').boundingBox(); assert.ok(o.y >= 0 && o.y + o.height <= 640 && o.height >= 44, `"+ Another step" is on the screen (${o.y} to ${o.y + o.height})`); }
+  await page.tap('[data-test="walk-other"]'); await state(page, 'step');
+  assert.equal(await page.textContent('[data-test="walk-main"]'), 'Step done');
   assert.equal(await page.locator('[data-test="walk-undo"]').count(), 1);
   await note('step, undo offered');
   await page.clock.runFor(11000);
@@ -124,6 +144,9 @@ test('360 px: Pause never moves, Undo has its own place, More options and a type
   await page.clock.fastForward(30 * 1000);
   await page.tap('[data-test="walk-main"]'); await page.waitForSelector('[data-test="walk-sheet"]');
   await note('naming, undo offered');
+  // Nothing is offered already chosen for a step the person said is not on the list (#170).
+  assert.equal(await page.locator('[data-chip][aria-pressed="true"]').count(), 0);
+  assert.equal(await page.textContent('[data-test="walk-sheet-hint"]'), 'Name this step. The clock keeps running.');
   // Typing is behind "More options". With it open the sheet scrolls inside itself; the button stays.
   await openMore(page);
   await note('more options open');
@@ -131,25 +154,31 @@ test('360 px: Pause never moves, Undo has its own place, More options and a type
   await page.locator('[data-chip="role"]:text-is("Reception")').tap();
   await page.waitForFunction(() => !document.querySelector('[data-test="walk-sheet"]'));
   assert.deepEqual((await stored(page))[0].steps.map((s) => [s.name, s.role]), [['Sent to the other desk', 'Reception']]);
-  // The next step: a name typed once is offered straight away, and the offer is still the list's first step.
+  assert.equal((await stored(page))[0].steps[0].nameFrom, 'typed');
+  // The next step, again not from the list: a name typed once is offered straight away, first in the row, then the
+  // list's words from its first step. (Before the tap-through sheet the list's first step came first, already chosen;
+  // nothing is pre-chosen now.)
   await page.clock.fastForward(30 * 1000);
-  await page.tap('[data-test="walk-main"]'); await state(page, 'step');
+  await page.tap('[data-test="walk-other"]'); await state(page, 'step');
   await page.clock.fastForward(30 * 1000);
   await page.tap('[data-test="walk-main"]'); await page.waitForSelector('[data-test="walk-sheet"]');
-  assert.deepEqual((await page.locator('[data-test="walk-row-name"] [data-chip]').allTextContents()).slice(0, 3), ['Arrived', 'Sent to the other desk', 'Registered']);
-  // Another step than the one offered: one tap on it brings its usual role, and the main button saves both.
+  assert.deepEqual((await page.locator('[data-test="walk-row-name"] [data-chip]').allTextContents()).slice(0, 3), ['Sent to the other desk', 'Arrived', 'Registered']);
+  assert.equal(await page.locator('[data-chip][aria-pressed="true"]').count(), 0);
+  // One tap on a step word brings its usual role, and the main button saves both: the name as chosen, the role as the list's.
   await page.locator('[data-chip="name"]:text-is("Registered")').tap();
   assert.deepEqual(await page.locator('[data-chip][aria-pressed="true"]').allTextContents(), ['Registered', 'Reception']);
   assert.equal((await stored(page))[0].steps[1].name, null);
   await page.clock.fastForward(30 * 1000);
   await page.tap('[data-test="walk-main"]'); await state(page, 'step');
   assert.deepEqual((await stored(page))[0].steps.map((s) => [s.name, s.role]), [['Sent to the other desk', 'Reception'], ['Registered', 'Reception']]);
+  assert.deepEqual([(await stored(page))[0].steps[1].nameFrom, (await stored(page))[0].steps[1].roleFrom], ['chosen', 'list']);
   // "Change" on the line that says what was saved opens the sheet again for that step, while the next one runs.
   await page.tap('[data-test="walk-flash-change"]'); await page.waitForSelector('[data-test="walk-sheet"]');
   await note('changing a saved name during a step');
   await page.locator('[data-chip="role"]:text-is("Imaging staff")').tap();
   await page.waitForFunction(() => !document.querySelector('[data-test="walk-sheet"]'));
   assert.deepEqual((await stored(page))[0].steps[1].role, 'Imaging staff');
+  assert.equal((await stored(page))[0].steps[1].roleFrom, 'chosen', 'a role the person tapped is theirs');
   // Pause: the same place holds nothing while paused, and Pause is where it was when back.
   await page.tap('[data-test="walk-pause"]'); await state(page, 'paused');
   await mainOnScreen(page, 'paused');
@@ -196,9 +225,11 @@ test('390 px: after "Step interrupted" the main button carries the same step on 
       await page.waitForSelector('[data-test="walk-resume"]');
       // The default is the same step: the big button says so, and "No, new step" is beside it.
       assert.equal(await page.textContent('[data-test="walk-resume"]'), 'Step 4 was interrupted. Same step again?');
-      // The step offered for it is named on the button, and the sheet asks for the interrupted step's name.
+      // The interrupted step is named on the button. It was named when it started (the tap-through sheet), so no
+      // sheet asks for its name and nothing is offered: the record already holds it, marked as the list's.
       assert.equal(await page.textContent('[data-test="walk-main"]'), 'Changed into gown carries on');
-      assert.equal(await page.textContent('[data-test="walk-sheet-hint"]'), 'Next on the list. Tap another if not.');
+      assert.equal(await page.locator('[data-test="walk-sheet"]').count(), 0);
+      { const st = (await stored(page))[0].steps[3]; assert.deepEqual([st.name, st.nameFrom, st.interrupted], ['Changed into gown', 'list', true]); }
       assert.equal(await page.textContent('[data-test="walk-new-step"]'), 'No, new step');
       await mainOnScreen(page, 'interrupted');
       await page.clock.fastForward(300 * 1000);
@@ -283,12 +314,20 @@ test('390 px: "No, new step" after an interruption starts a new step, and a name
   await page.tap('[data-test="walk-main"]'); await state(page, 'step');
   await page.clock.fastForward(30 * 1000);
   await page.tap('[data-test="walk-stopped"]'); await state(page, 'waiting');
-  assert.deepEqual(await page.locator('[data-chip][aria-pressed="true"]').allTextContents(), ['Checked in at reception', 'Reception']);
+  // The interrupted step was named as it started (the list's first step, kept as the list's); no sheet offers a name.
+  assert.equal(await page.locator('[data-test="walk-sheet"]').count(), 0);
+  { const st = (await stored(page))[0].steps[0]; assert.deepEqual([st.name, st.role, st.nameFrom], ['Checked in at reception', 'Reception', 'list']); }
   await page.clock.fastForward(30 * 1000);
   await page.tap('[data-test="walk-new-step"]'); await state(page, 'step');
   let w = (await stored(page))[0];
   assert.deepEqual([w.steps.length, w.steps[0].interrupted, w.steps[0].name, !!w.current, w.current.gaps], [1, true, 'Checked in at reception', true, undefined]);
-  // A typed name that names a person: the tap that ends the next step is still stamped, and the sheet says why.
+  assert.equal(w.current.name, 'Seen by a nurse', 'the new step is the one the list offers next');
+  // A typed name that names a person: the tap that starts the next step is still stamped, and the sheet says why.
+  // Typing belongs to a step that is not on the list, so the new step ends and such a step is timed first.
+  await page.clock.fastForward(30 * 1000);
+  await page.tap('[data-test="walk-main"]'); await state(page, 'waiting');
+  await page.clock.fastForward(30 * 1000);
+  await page.tap('[data-test="walk-other"]'); await state(page, 'step');
   await page.clock.fastForward(30 * 1000);
   await page.tap('[data-test="walk-main"]'); await page.waitForSelector('[data-test="walk-sheet"]');
   await openMore(page);
@@ -298,7 +337,7 @@ test('390 px: "No, new step" after an interruption starts a new step, and a name
   await page.waitForSelector('[data-test="walk-error"]');
   await mainOnScreen(page, 'a refused name, the next step running');
   w = (await stored(page))[0];
-  assert.deepEqual([w.steps.length, w.steps[1].name, !!w.current], [2, null, true], 'the step started; the refused words were not saved');
+  assert.deepEqual([w.steps.length, w.steps[2].name, !!w.current], [3, null, true], 'the step started; the refused words were not saved');
   assert.equal(await page.inputValue('#wk-name'), 'Seen by Dr Sarah Jones', 'what was typed is still there to change');
   assert.deepEqual(errors.filter((e) => !/invalid-input|400/.test(e)), []);
   await context.close();

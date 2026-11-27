@@ -12,6 +12,14 @@
 // Naming is a short sheet above the button: one row of step words and one of roles, from the
 // department chosen on the device (ctx.department); typing and the two tick boxes are behind
 // "More options". Tapping the main button while naming saves what is chosen.
+//
+// The tap-through walk sheet (brief, Builder nights 4 to 6; 27 Nov 2026): on a first walk in a
+// department with a step list, the list is the page, as large rows. The main button is named for
+// the step offered next and starts it by that name; a tapped row starts that step instead (any
+// step, any order: the list never forces one); the running row ends its step. "+ Another step"
+// starts a step that is not on the list, named afterwards. Nothing is typed during the walk. The
+// record keeps where each name and role came from (#170): a tapped row is "chosen", the main
+// button's step is "from the list", and the list's role is "from the list" until a person picks one.
 import { h } from './ui.js';
 import { fmtClock, fmtSeconds } from '../core/walk.js';
 
@@ -21,7 +29,7 @@ const UNDO_MS = 10000;
 // againOf: the map whose saved step list is walked again (a repeat walk), or null for a first walk.
 export async function renderWalk(box, ctx, againOf = null) {
   // picked: which of the two answers the person chose by hand (the other may be the offer, already chosen).
-  const ui = { busy: false, sheet: false, more: false, name: '', role: '', picked: { name: false, role: false }, msg: false, next: false, confirm: false, undoUntil: 0, question: null, error: '', flash: null, kept: null, rename: false, title: '', startError: null, typed: false };
+  const ui = { busy: false, sheet: false, more: false, name: '', role: '', picked: { name: false, role: false }, msg: false, next: false, confirm: false, undoUntil: 0, question: null, error: '', flash: null, kept: null, rename: false, title: '', startError: null, typed: false, from: { name: null, role: null }, follow: false };
   const root = document.documentElement;
   root.dataset.walkFull = '1';
   let data = null; let again = null; let offset = 0; let timer = null; let undoTimer = null; let lock = null; let stopped = false;
@@ -78,14 +86,18 @@ export async function renderWalk(box, ctx, againOf = null) {
     } finally { ui.busy = false; }
   }
   const showUndo = () => { ui.undoUntil = Date.now() + UNDO_MS; clearTimeout(undoTimer); undoTimer = setTimeout(() => { if (!stopped) draw(); }, UNDO_MS + 50); };
-  const resetSheet = () => { box.querySelectorAll('#wk-name, #wk-role').forEach((i) => { i.value = ''; }); ui.sheet = false; ui.more = false; ui.name = ''; ui.role = ''; ui.picked = { name: false, role: false }; ui.typed = false; ui.msg = false; ui.next = false; ui.question = null; ui.error = ''; };
+  const resetSheet = () => { box.querySelectorAll('#wk-name, #wk-role').forEach((i) => { i.value = ''; }); ui.sheet = false; ui.more = false; ui.name = ''; ui.role = ''; ui.picked = { name: false, role: false }; ui.from = { name: null, role: null }; ui.typed = false; ui.again = null; ui.msg = false; ui.next = false; ui.question = null; ui.error = ''; };
   // Open the naming sheet for the step that just ended. In a department with a step list the
   // usual next step and its usual role are offered already chosen (an example setting): one tap
   // on another chip changes either, and nothing is saved until the person's next tap.
   function openSheet(w) {
     resetSheet(); ui.sheet = true; ui.flash = null;
-    if (w.suggest) { ui.name = w.suggest.name; ui.role = w.suggest.role || ''; }
+    // With the list on the page, a step that ends unnamed was started as "not on the list": nothing is offered for it.
+    if (w.suggest && !w.list) { ui.name = w.suggest.name; ui.role = w.suggest.role || ''; ui.from = { name: 'list', role: w.suggest.role ? 'list' : null }; }
   }
+  // Where the words in the sheet came from (#170): sent with them, so the record can tell a name the
+  // person chose from one that was only offered.
+  const sources = (name, role) => ({ ...(name && ui.from.name && ui.from.name !== 'typed' ? { nameFrom: ui.from.name } : {}), ...(role && ui.from.role ? { roleFrom: ui.from.role } : {}) });
   // The step and role words can change with every name saved (a name typed once is offered at once).
   async function refreshChips() { try { const d = await ctx.run('ospeli_walks_get', {}); data = { ...data, stepChips: d.stepChips, roleChips: d.roleChips, usualRoles: d.usualRoles }; } catch { /* the words on screen stay */ } }
   // Scroll an element up so it ends above the walk's bar when that bar is pinned (phones).
@@ -104,16 +116,16 @@ export async function renderWalk(box, ctx, againOf = null) {
   function typing(kind, value) {
     const text = value.trim();
     if (kind === 'name') {
-      ui.name = text; ui.typed = !!text; ui.picked.name = !!text;
-      if (text && !ui.picked.role) { ui.role = ''; for (const c of box.querySelectorAll('[data-chip="role"]')) c.setAttribute('aria-pressed', 'false'); }
-    } else { ui.role = text; ui.picked.role = !!text; }
+      ui.name = text; ui.typed = !!text; ui.picked.name = !!text; ui.from.name = text ? 'typed' : null;
+      if (text && !ui.picked.role) { ui.from.role = null; ui.role = ''; for (const c of box.querySelectorAll('[data-chip="role"]')) c.setAttribute('aria-pressed', 'false'); }
+    } else { ui.role = text; ui.picked.role = !!text; ui.from.role = text ? 'typed' : null; }
     for (const c of box.querySelectorAll(`[data-chip="${kind}"]`)) c.setAttribute('aria-pressed', 'false');
     if (ui.error) { ui.error = ''; box.querySelector('[data-test="walk-error"]')?.remove(); }
   }
   // What is chosen or typed in the sheet and not yet saved.
   function pending() {
     const name = box.querySelector('#wk-name')?.value.trim() || ui.name; const role = box.querySelector('#wk-role')?.value.trim() || ui.role;
-    return ui.sheet === true && (name || role) ? { ...(name ? { name, ...(typedNow(name) ? { typed: true } : {}) } : {}), ...(role ? { role } : {}), msg: ui.msg } : null;
+    return ui.sheet === true && (name || role) ? { ...(name ? { name, ...(typedNow(name) ? { typed: true } : {}) } : {}), ...(role ? { role } : {}), ...sources(name, role), msg: ui.msg } : null;
   }
   // Save it for the step that ended last. The sheet closes and one line says what was saved; when
   // the words are refused (they look like a person's name) the sheet stays open with the reason.
@@ -122,10 +134,13 @@ export async function renderWalk(box, ctx, againOf = null) {
     const out = await tap('ospeli_walks_step_name', p);
     if (!out) return false;
     const st = out.walk.steps[n - 1];
-    resetSheet(); ui.flash = st ? { n: st.n, name: p.name || null, role: p.role || null } : null;
+    resetSheet(); ui.flash = st ? flashOf(st) : null;
     await refreshChips();
     return true;
   }
+
+  // The line that says what a step was saved as, from the saved step itself.
+  const flashOf = (st) => ({ n: st.n, name: st.named || !/^Step \d+$/.test(st.name) ? st.name : null, role: st.role && st.role !== 'Not set' ? st.role : null, nameFrom: st.nameFrom || null, roleFrom: st.roleFrom || null, again: !!st.again });
 
   async function saveName() {
     const typedName = box.querySelector('#wk-name')?.value.trim() || ''; const typedRole = box.querySelector('#wk-role')?.value.trim() || '';
@@ -134,9 +149,9 @@ export async function renderWalk(box, ctx, againOf = null) {
     if (!name || !role) { ui.name = name; ui.role = role; ui.error = !name ? 'Choose or type a step, or tap “Name it later”.' : 'Choose or type a role, or tap “Name it later”.'; draw(); return; }
     const typed = typedNow(name); const n = data.walk.steps.length;
     ui.name = name; ui.role = role; ui.error = '';
-    const out = await tap('ospeli_walks_step_name', { name, role, msg: ui.msg, ...(typed ? { typed: true } : {}), ...(ui.next && data.walk.state === 'waiting' ? { nextStarted: true } : {}) });
+    const out = await tap('ospeli_walks_step_name', { name, role, msg: ui.msg, ...(typed ? { typed: true } : {}), ...sources(name, role), ...(ui.again != null ? { again: ui.again } : {}), ...(ui.next && data.walk.state === 'waiting' ? { nextStarted: true } : {}) });
     // One line says what was saved, in the person's own words, with a way to change it.
-    if (out) { const st = out.walk.steps[n - 1]; await afterNamed(); if (st) { ui.flash = { n: st.n, name, role }; say(`Step ${st.n} saved as ${name}, ${role}.`); draw(); } } else draw();
+    if (out) { const st = out.walk.steps[n - 1]; await afterNamed(); if (st) { ui.flash = flashOf(st); say(`Step ${st.n} saved as ${name}, ${role}.`); draw(); } } else draw();
   }
 
   function tick() {
@@ -155,9 +170,9 @@ export async function renderWalk(box, ctx, againOf = null) {
         const typed = { name: box.querySelector('#wk-name'), role: box.querySelector('#wk-role') };
         ui.name = typed.name?.value.trim() || ui.name; ui.role = typed.role?.value.trim() || ui.role;
         const other = kind === 'name' ? 'role' : 'name';
-        ui[kind] = text; ui.picked[kind] = true; if (typed[kind]) typed[kind].value = ''; if (kind === 'name') ui.typed = false; ui.error = '';
+        ui[kind] = text; ui.picked[kind] = true; ui.from[kind] = 'chosen'; if (typed[kind]) typed[kind].value = ''; if (kind === 'name') ui.typed = false; ui.error = '';
         // A step from the department's list brings the role that usually does it, unless the person chose one.
-        if (kind === 'name' && !ui.picked.role && data.usualRoles?.[text]) ui.role = data.usualRoles[text];
+        if (kind === 'name' && !ui.picked.role && data.usualRoles?.[text]) { ui.role = data.usualRoles[text]; ui.from.role = 'list'; }
         // The second of the person's two answers saves the step: no extra tap. An answer that was
         // only offered is not the person's, so it waits for the main button or "Save step".
         if (ui.name && ui.role && (ui.picked[other] || typed[other]?.value.trim())) saveName(); else draw();
@@ -184,6 +199,7 @@ export async function renderWalk(box, ctx, againOf = null) {
           h('label', { for: 'wk-role' }, 'Which role did it? (a role, never a name)'),
           h('input', { id: 'wk-role', maxlength: '60', placeholder: 'Say which role', value: data.roleChips.includes(ui.role) ? '' : ui.role, autocomplete: 'off', oninput: (e) => typing('role', e.target.value) })),
         h('label', { class: 'check' }, h('input', { type: 'checkbox', id: 'wk-msg', checked: ui.msg ? true : null, onchange: (e) => { ui.msg = e.target.checked; } }), 'It only passed on information (a call, message or form)'),
+        h('label', { class: 'check' }, h('input', { type: 'checkbox', id: 'wk-again', 'data-test': 'walk-again-tick', checked: (ui.again ?? !!last.again) ? true : null, onchange: (e) => { ui.again = e.target.checked; } }), 'This step was done again on this visit'),
         w.state === 'waiting' ? h('label', { class: 'check' }, h('input', { type: 'checkbox', id: 'wk-next', checked: ui.next ? true : null, onchange: (e) => { ui.next = e.target.checked; } }), 'The next step has already started') : null) : null,
       ui.question ? h('div', { class: 'name-question', role: 'alert', 'data-test': 'name-question' },
         h('p', {}, h('b', {}, `Is “${ui.question.looks}” a person's name?`)),
@@ -248,6 +264,48 @@ export async function renderWalk(box, ctx, againOf = null) {
       h('b', { class: 'walk-next-name' }, item.name));
   }
 
+  // The tap-through sheet: the department's step list as rows. While waiting, a row starts its step
+  // now; while a step runs, its own row ends it and the others wait. Every row says what happened to
+  // its step on this walk in words (never by colour alone): the wait before it and its hands-on time.
+  const min = (sec) => (sec < 60 ? 'under 1 min' : `${Math.round(sec / 60)} min`);
+  function listBox(w, { starts, done }) {
+    const step = w.state === 'step';
+    const row = (p) => {
+      const running = p.state === 'running';
+      const word = running ? 'Timing now' : p.state === 'next' && !step ? 'Next' : p.afterVisit && p.state !== 'timed' ? 'After the visit' : '';
+      // A timed row says what the taps gave, to check against what was just seen: the wait before it, then its hands-on time.
+      const timed = p.state === 'timed' ? `waited ${min(p.waitSec)} · ${min(p.workSec)} ${p.role === 'Patient' ? 'patient step' : 'hands-on'}${p.times > 1 ? ` · done ${p.times} times` : ''}` : null;
+      return h('li', {}, h('button', { type: 'button', class: `walk-rowbtn is-${p.state}`, 'data-test': 'walk-list-row', 'data-n': String(p.n), 'data-state': p.state, 'data-cmd': running ? 'ospeli_walks_step_done' : 'ospeli_walks_step_start',
+        disabled: step && !running ? true : null, ...(running ? { 'aria-current': 'step' } : {}),
+        onclick: () => (running ? done() : starts({ fresh: true, list: { listStep: p.n, picked: true } })) },
+        h('span', { class: 'wl-n', 'aria-hidden': 'true' }, p.state === 'timed' ? '✓' : String(p.n)),
+        h('span', { class: 'wl-what' }, h('b', {}, p.name), p.role || timed ? h('span', { class: 'wl-role' }, [p.role, timed].filter(Boolean).join(' · ')) : null),
+        word ? h('span', { class: 'wl-state' }, word) : null));
+    };
+    return h('section', { class: 'walk-list', 'data-test': 'walk-list', 'aria-labelledby': 'wk-list-h' },
+      h('h2', { id: 'wk-list-h' }, 'Example steps. Yours may differ.'),
+      h('p', { class: 'walk-list-hint', 'data-test': 'walk-list-hint' }, step ? 'Tap it again when it ends.' : 'Tap a step when it starts. Any order.'),
+      h('ol', { class: 'walk-rows' }, w.list.map(row),
+        h('li', {}, h('button', { type: 'button', class: 'walk-rowbtn is-other', 'data-test': 'walk-list-other', 'data-cmd': 'ospeli_walks_step_start', disabled: step ? true : null,
+          onclick: () => starts({ fresh: true, list: {} }) }, h('span', { class: 'wl-n', 'aria-hidden': 'true' }, '+'), h('span', { class: 'wl-what' }, h('b', {}, 'Another step'), h('span', { class: 'wl-role' }, 'Not on this list. Name it after.')),
+          // A step that is not on the list is running: its row says so, and no list row reads as next.
+          step && !w.running?.name ? h('span', { class: 'wl-state', 'data-test': 'walk-other-now' }, 'Timing now') : null)))); 
+  }
+  // After a tap the list follows: the row before the present one sits at the top, so the step done
+  // last, the present step and the next one are the three in sight above the bar.
+  function followList() {
+    const rows = [...box.querySelectorAll('[data-test="walk-list-row"]')];
+    const i = rows.findIndex((r) => r.dataset.state === 'running' || r.dataset.state === 'next');
+    if (i < 0) return;
+    const head = document.querySelector('.topbar'); const fixed = head && /fixed|sticky/.test(getComputedStyle(head).position) ? head.getBoundingClientRect().bottom : 0;
+    // Room between the top bar and the walk's bar: the row before stays in sight when all three fit.
+    const bar = box.querySelector('[data-test="walk-bar"]'); const pinned = bar && /fixed/.test(getComputedStyle(bar).position);
+    const room = (pinned ? bar.getBoundingClientRect().top : window.innerHeight) - fixed - 16;
+    const from = rows[Math.max(0, i - 1)]; const to = rows[Math.min(rows.length - 1, i + 1)];
+    const first = i > 0 && to.getBoundingClientRect().bottom - from.getBoundingClientRect().top <= room ? from : rows[i];
+    window.scrollBy(0, first.getBoundingClientRect().top - fixed - 8);
+  }
+
   function draw() {
     if (stopped) return;
     const key = focusKey();
@@ -260,6 +318,7 @@ export async function renderWalk(box, ctx, againOf = null) {
     // The pinned bar covers the bottom of the page: the page keeps that much room under the walk.
     const bar = box.querySelector('.walk-bar');
     box.style.setProperty('--walk-bar', bar ? `${Math.ceil(bar.getBoundingClientRect().height)}px` : '0px');
+    if (ui.follow) { ui.follow = false; followList(); }
     refocus(key);
   }
 
@@ -343,25 +402,28 @@ export async function renderWalk(box, ctx, againOf = null) {
     const canUndo = Date.now() < ui.undoUntil && (step || w.steps.length > 0 || w.sinceNotSeenSec > 0 || (rp && rp.list.some((p) => p.state === 'did-not-happen')));
     // The main button says which step it is for, where that is known: the step on a repeat walk's list,
     // or the interrupted step by its name.
-    const stepName = step ? rp?.now?.name : resume ? (last.named ? last.name : (ui.sheet === true && ui.name) || null) : rp?.next?.name;
+    // First walk with a list: the step offered next (the main button starts it by that name).
+    const nextRow = !rp && w.list ? w.list.find((p) => p.state === 'next') || null : null;
+    const stepName = step ? (rp?.now?.name || w.running?.name) : resume ? (last.named ? last.name : (ui.sheet === true && ui.name) || null) : rp?.next?.name || nextRow?.name;
     const mainText = step ? `${stepName || 'Step'} done` : resume ? `${stepName || 'Step'} carries on` : `${stepName || 'Step'} starts`;
-    const starts = async ({ fresh = false } = {}) => {
+    const starts = async ({ fresh = false, list = null } = {}) => {
       const p = pending();
+      // Which step starts: the row that was tapped, or the step offered next (kept as "from the list").
+      const which = list || (nextRow ? { listStep: nextRow.n } : {});
       // Carrying on: what was chosen names the interrupted step, so it is saved before the step runs again.
       // Words refused for the name (they look like a person's name) stop the tap: the question shows in
       // the sheet and the step carries on only once it is answered, never unnamed without a word (#177 item 7).
       if (resume && !fresh && p && !(await savePending(p))) { draw(); return; }
-      const out = await tap('ospeli_walks_step_start', resume && !fresh ? { resume: true } : {});
+      const out = await tap('ospeli_walks_step_start', resume && !fresh ? { resume: true } : which);
       if (!out) { draw(); return; }
+      ui.follow = true; if (list || which.listStep) ui.flash = null;
       // A new step: the tap is stamped first, then what was chosen is saved for the step before it.
       if ((!resume || fresh) && p) await savePending(p);
       else if (resume && !fresh) { resetSheet(); }
       say(resume && !fresh ? 'The same step carries on. Hands-on.' : 'Step started. Hands-on.');
       ui.confirm = false; showUndo(); draw();
     };
-    const main = h('button', { type: 'button', class: `btn walk-main${mainText.length > 18 ? ' is-long' : ''}`, 'data-test': 'walk-main', 'data-cmd': step ? 'ospeli_walks_step_done' : 'ospeli_walks_step_start',
-      onclick: async () => {
-        if (!step) { await starts(); return; }
+    const doneNow = async () => {
         // A half-answered sheet belongs to the step before: keep what was chosen before moving on.
         const p = pending();
         if (p) await tap('ospeli_walks_step_name', p);
@@ -370,10 +432,12 @@ export async function renderWalk(box, ctx, againOf = null) {
         const done = out.walk.steps[out.walk.steps.length - 1];
         // On a repeat walk a list step is already named, and so is a step named when it was interrupted:
         // one line says so. Anything else is named in the sheet.
-        if (done.listStep) { resetSheet(); ui.sheet = 'saved'; ui.flash = null; } else if (done.named) { resetSheet(); ui.flash = { n: done.n, name: done.name, role: done.role }; } else openSheet(out.walk);
-        say(done.named ? `Step done. Saved as ${done.name}. Waiting.` : 'Step done. Waiting. Name the step, or carry on.');
-        ui.confirm = false; showUndo(); draw();
-      } }, mainText);
+        if (done.listStep) { resetSheet(); ui.sheet = 'saved'; ui.flash = null; } else if (done.named) { resetSheet(); ui.flash = flashOf(done); } else openSheet(out.walk);
+        say(done.named ? `Step done. Saved as ${done.name}${done.again ? ', done again' : ''}. Waiting.` : 'Step done. Waiting. Name the step, or carry on.');
+        ui.confirm = false; ui.follow = true; showUndo(); draw();
+    };
+    const main = h('button', { type: 'button', class: `btn walk-main${mainText.length > 18 ? ' is-long' : ''}`, 'data-test': 'walk-main', 'data-cmd': step ? 'ospeli_walks_step_done' : 'ospeli_walks_step_start',
+      onclick: async () => { if (!step) await starts(); else await doneNow(); } }, mainText);
     const third = step ? h('button', { type: 'button', class: 'btn btn-ghost walk-stop', 'data-test': 'walk-stopped', 'data-cmd': 'ospeli_walks_step_done',
         onclick: async () => { const p = pending(); if (p) await tap('ospeli_walks_step_name', p); const out = await tap('ospeli_walks_step_done', { interrupted: true }); if (!out) return; const done = out.walk.steps[out.walk.steps.length - 1]; if (done.named) { resetSheet(); ui.flash = null; } else openSheet(out.walk); say('Step marked as interrupted. Waiting.'); showUndo(); draw(); } }, 'Step interrupted')
       : resume ? h('button', { type: 'button', class: 'btn btn-ghost walk-new', 'data-test': 'walk-new-step', 'data-cmd': 'ospeli_walks_step_start', onclick: () => starts({ fresh: true }) }, 'No, new step')
@@ -414,9 +478,13 @@ export async function renderWalk(box, ctx, againOf = null) {
                 h('button', { type: 'button', class: 'btn', 'data-test': 'walk-finish-yes', 'data-cmd': 'ospeli_walks_finish', onclick: () => finish() }, 'Yes, finish'),
                 h('button', { type: 'button', class: 'btn btn-ghost', onclick: () => { ui.confirm = false; draw(); } }, 'Keep walking')),
             ]));
-    box.replaceChildren(h('section', { class: `walk ${step ? 'is-step' : 'is-waiting'}${rp ? ' is-repeat' : ''}${showSheet || ui.confirm ? ' has-sheet' : ''}`, 'data-test': 'walk', 'data-state': w.state, 'aria-labelledby': 'wk-h' },
+    const listed = !rp && !!w.list;
+    const fromList = !!ui.flash && !!ui.flash.name && (ui.flash.nameFrom === 'list' || ui.flash.roleFrom === 'list');
+    box.replaceChildren(h('section', { class: `walk ${step ? 'is-step' : 'is-waiting'}${rp ? ' is-repeat' : ''}${listed ? ' has-list' : ''}${listed && ui.flash ? ' has-flash' : ''}${showSheet || ui.confirm ? ' has-sheet' : ''}`, 'data-test': 'walk', 'data-state': w.state, 'aria-labelledby': 'wk-h' },
       top(sub),
       rp ? nextLine(w) : null,
+      // The step list is the page (the tap-through sheet); what the two states mean comes under it.
+      listed ? listBox(w, { starts, done: doneNow }) : null,
       w.clockMoved ? h('p', { class: 'walk-clock', role: 'alert', 'data-test': 'walk-clock' }, h('b', {}, 'The phone\'s clock changed during this walk.'), ' Its times may be wrong. You can finish it, but walk it again to get times you can use.') : null,
       // One honest line when the phone has not agreed to keep the app's data, until the first step is saved.
       ui.kept === false && !w.steps.length ? h('p', { class: 'walk-keep', 'data-test': 'walk-keep' }, 'This phone may clear saved walks. Finish, then print or save the map today.') : null,
@@ -466,12 +534,22 @@ export async function renderWalk(box, ctx, againOf = null) {
       // then Pause, Undo and the one other choice, then the main button. It never scrolls away.
       h('div', { class: 'walk-bar', 'data-test': 'walk-bar' },
         ui.confirm ? confirmBox() : showSheet ? (ui.sheet === true || !rp || !last.listStep ? sheet(w) : savedLine(w))
-          : ui.flash ? h('p', { class: 'walk-saved walk-flash', 'data-test': 'walk-flash' },
-            h('span', {}, `Step ${ui.flash.n} saved as `, h('b', {}, ui.flash.name || 'no name yet'), ui.flash.role ? ` · ${ui.flash.role}` : ''),
+          : ui.flash ? h('p', { class: `walk-saved walk-flash${fromList ? ' is-short' : ''}`, 'data-test': 'walk-flash' },
+            // A list step: one short line (Adoption lead, 27 Nov), which says at the moment of saving what
+            // was the list's and not the person's (#170). Any other step keeps the full line.
+            fromList ? h('span', {}, h('b', {}, ui.flash.name), ' saved', h('span', { class: 'walk-from', 'data-test': 'walk-from' }, ui.flash.nameFrom === 'list' ? ' · from the list' : ' · role from the list'),
+              ui.flash.again ? h('b', { class: 'walk-again-mark', 'data-test': 'walk-again-mark' }, ' · done again') : null)
+            : h('span', {}, `Step ${ui.flash.n} saved as `, h('b', {}, ui.flash.name || 'no name yet'), ui.flash.role ? ` · ${ui.flash.role}` : '',
+              ui.flash.again ? h('b', { class: 'walk-again-mark', 'data-test': 'walk-again-mark' }, ' · done again') : null),
+            // A second tap on a timed step may be a slip, or an ordinary second time: one tap takes the mark away.
+            ui.flash.again ? h('button', { type: 'button', class: 'btn btn-ghost walk-change', 'data-test': 'walk-not-again', 'data-cmd': 'ospeli_walks_step_name',
+              onclick: async () => { const out = await tap('ospeli_walks_step_name', { again: false }); if (out) { ui.flash = { ...ui.flash, again: false }; say('Not marked as done again.'); } draw(); } }, 'Not again') : null,
             h('button', { type: 'button', class: 'btn btn-ghost walk-change', 'data-test': 'walk-flash-change',
-              onclick: () => { const f = ui.flash; resetSheet(); ui.sheet = true; ui.name = f.name || ''; ui.role = f.role || ''; ui.picked = { name: true, role: true }; ui.typed = !!f.name && !data.stepChips.includes(f.name); ui.flash = null; draw(); } }, 'Change')) : null,
+              onclick: () => { const f = ui.flash; resetSheet(); ui.sheet = true; ui.name = f.name || ''; ui.role = f.role || ''; ui.picked = { name: true, role: true }; ui.from = { name: f.nameFrom || null, role: f.roleFrom || null }; ui.typed = !!f.name && !data.stepChips.includes(f.name); ui.flash = null; draw(); } }, 'Change')) : null,
         // Never beside the naming sheet or the finish question: those come first.
         !ui.confirm && !showSheet ? (w.askReason ? reasonRow(w) : reasonLine(w)) : null,
+        // Never out of sight (Adoption lead): the way to a step that is not on the list, while waiting.
+        listed && !step && !ui.confirm && !showSheet && !w.askReason ? h('button', { type: 'button', class: 'btn btn-ghost walk-other', 'data-test': 'walk-other', 'data-cmd': 'ospeli_walks_step_start', onclick: () => starts({ fresh: true, list: {} }) }, '+ Another step, not on the list') : null,
         now(step ? 'Hands-on' : 'Waiting', w),
         resume ? h('p', { class: 'walk-resume', 'data-test': 'walk-resume' }, `Step ${last.n} was interrupted. Same step again?`) : null,
         side(pauseBtn, undo, third || (finishInBar && !ui.confirm ? finishBtn : null)),
