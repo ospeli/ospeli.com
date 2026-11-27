@@ -43,7 +43,7 @@ export const KPIS = [
   { id: 'handover-time', name: 'Handover time at destination', unit: 'minutes',
     definition: 'Minutes from the vehicle arriving at the destination to the handover being done: the median and the 90th percentile (nearest rank).',
     counts: 'Journeys handed over in the period.', outOf: 'None (a median).', leavesOut: 'Journeys not handed over yet.',
-    source: 'local definition (published definitions of handover delay vary widely: Fouche PF et al., Emerg Med J 2026, PMID 42242732)',
+    source: 'local definition (for emergency ambulance offload at emergency departments, published definitions range from 15 to 60 minutes or more: Fouche PF et al., Emerg Med J 2026, PMID 42242732, a review of four studies; no published definition for planned transfers was found)',
     target: null, targetText: 'No target set: track the trend.' },
   { id: 'fleet-availability', name: 'Fleet availability', unit: '%',
     definition: `In-service vehicle-hours divided by scheduled vehicle-hours in the period, in all and by site. Out-of-service time runs between the vehicle being taken out of service and being back in service. Scheduled hours: ${String(SCHEDULED.startHour).padStart(2, '0')}:00 to ${SCHEDULED.endHour}:00 site time every day for each vehicle (an example setting, not a standard).`,
@@ -52,7 +52,7 @@ export const KPIS = [
     source: 'local definition (the shared availability measure, applied to vehicles)', target: null, targetText: 'No target set: track the trend.' },
 ];
 const PLANNED = [{ id: 'servicing-plan', name: 'Servicing plan', status: 'planned', note: 'Planned, not built yet.' }];
-const NOT_FOR = 'Not for emergency calls or emergency dispatch: those stay in the dispatch system. Does not set urgency, mobility or escort level (the ward does; Ospeli records the pick). Holds no clinical notes, patient names, addresses or contact details. Does not track where people are, and does not time, score or rank drivers or crews. Not route planning or billing.';
+const NOT_FOR = 'Not for emergency calls or emergency dispatch: those stay in the dispatch system. Does not set urgency, mobility or escort level (the ward does; Ospeli records the pick). Holds no clinical notes, patient names, addresses or contact details. Does not track where people are, and does not time, score or rank drivers or crews. Not route planning or billing. Not for critical care transfers, which follow their own clinical procedure.';
 
 // ---- the site: places, vehicles, site time ----
 async function world(core) {

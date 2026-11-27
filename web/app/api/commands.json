@@ -23099,7 +23099,7 @@
             "type": "integer",
             "minimum": 7,
             "maximum": 90,
-            "description": "The period for generator test compliance: the last this many days. Default 30. Outage hours are always for the current month."
+            "description": "The period for generator tests carried out on time: the last this many days. Default 30. Outage hours are always for the current month."
           },
           "format": {
             "type": "string",

@@ -12,7 +12,7 @@ import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
 import { CHECK_KINDS, RESULTS, RUN_MINUTES, LEVELS, GAS_BANDS, UTILITIES, CAUSES, AGO_MINUTES, LEVEL_PICKS, runText, agoText,
-  LOADS, LOAD_WORDS, WASTE_STREAMS, WASTE_CONTAINERS, WASTE_OUTCOMES, WASTE_REASONS, containersText, containersPick, totalContainersText } from './logic.js';
+  LOADS, LOAD_WORDS, WASTE_STREAMS, WASTE_CONTAINERS, WASTE_OUTCOMES, WASTE_REASONS, containersText, containersPick, totalContainersText, GAS_LOW_BANDS } from './logic.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
 const roleNames = (ids) => ids.map((r) => roleById(r)?.name || r).join(', ');
@@ -284,7 +284,8 @@ export async function render(el, ctx) {
     const target = data.names.get(p.target);
     await act('ospeli_facilities_check_record', input, `Saved: ${k.name.toLowerCase()}`, Object.assign((out) => {
       ui.form = null; ui.picks = {};
-      ui.saved = { text: `Saved: ${k.name}, ${target}: ${out.words}.`, failed: input.result === 'fail', id: out.checkId };
+      ui.saved = { text: `Saved: ${k.name}, ${target}: ${out.words}.`, failed: input.result === 'fail', id: out.checkId,
+        gasLow: input.checkKind === 'gas-check' && GAS_LOW_BANDS.includes(input.levelBand) };
       ui.fault = out.reportFault ? { ...out.reportFault.input, assetName: target, priority: null, done: null } : null;
     }, { onError: (err) => { ui.msg = err.code === 'conflict' && err.detail?.existing ? `Already saved: the same ${k.name.toLowerCase()} was saved a few minutes ago. Nothing new was saved.` : `Not saved. ${err.message}`; } }));
   }
@@ -295,7 +296,9 @@ export async function render(el, ctx) {
       ui.saved ? h('p', {}, h('b', {}, ui.saved.text)) : null,
       ui.msg ? h('p', { 'data-test': 'msg' }, ui.msg) : null,
       ui.fault ? faultPanel() : null,
-      ui.saved?.failed && !ui.fault ? h('p', { class: 'meta' }, 'A failed check opens no work order by itself.') : null);
+      ui.saved?.failed && !ui.fault ? h('p', { class: 'meta' }, 'A failed check opens no work order by itself.') : null,
+      // What Ospeli did with a low or reserve gas reading (#152): it is listed for the manager; nobody is called.
+      ui.saved?.gasLow ? h('p', { class: 'meta', 'data-test': 'gas-told' }, 'Shown to the facilities manager under Needs attention in Ospeli. Nobody has been called.') : null);
   }
   function faultPanel() {
     const f = ui.fault;

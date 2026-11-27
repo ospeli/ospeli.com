@@ -1548,7 +1548,7 @@
     "source": "Editable default (no published standard found)"
    },
    {
-    "name": "Generator test compliance",
+    "name": "Generator tests carried out on time",
     "definition": "The core measure \"planned checks done by due date\" (KPI dictionary D-13) for check type generator-test: scheduled generator tests recorded (pass or fail) by their due date, divided by generator tests due in the period. Each generator is due once in each period of its schedule. A failed test counts as done for this measure (the test was carried out); failed tests are counted beside it, and the generator stays in Needs attention until a later test passes. A test recorded late counts for the period it was recorded in and does not fill the period it missed.",
     "kind": "ratio",
     "numerator": "Generator test periods with a test recorded inside them, settled in the period.",
@@ -1987,7 +1987,7 @@
     "endEvent": "Handover done",
     "statistic": "Median and 90th percentile (nearest rank)",
     "exclusions": "Journeys not handed over yet.",
-    "source": "Editable default (published definitions of handover delay vary widely: Fouche PF et al., Emerg Med J 2026, PMID 42242732)"
+    "source": "Editable default (for emergency ambulance offload at emergency departments, published definitions range from 15 to 60 minutes or more: Fouche PF et al., Emerg Med J 2026, PMID 42242732, a review of four studies; no published definition for planned transfers was found)"
    },
    {
     "name": "Fleet availability",

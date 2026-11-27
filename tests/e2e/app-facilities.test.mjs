@@ -143,6 +143,8 @@ test('a form cannot be saved until every pick is made; a failed generator test o
   await tap(page, '[data-test="band"] [data-value="reserve"]');
   await tap(page, '[data-test="save"]');
   await waitSaved(page, /Saved: Medical gas check/);
+  // #152 (facilities point 4): the saved card says what Ospeli did with a low or reserve reading.
+  assert.match(await page.locator('[data-test="saved"] [data-test="gas-told"]').textContent(), /^Shown to the facilities manager under Needs attention in Ospeli\. Nobody has been called\.$/);
   // The manager sees both in Needs attention; the generator's check reads "Done: failed" in coral.
   await asRole(page, 'facilities-manager');
   const att = page.locator('[data-test="attention"]');

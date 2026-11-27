@@ -403,7 +403,7 @@ export function ruleRepeatFailedTests(checks, { now, nameOf, offsetMinutes = 0 }
 
 
 // ---- KPI: generator on-load tests done by due date (slice 2) ----
-// The same shared measure as generator test compliance ("planned checks done by due date", D-13),
+// The same shared measure as generator tests carried out on time ("planned checks done by due date", D-13),
 // for the schedule row generator-load-test: an on-load period is done when a generator test recorded
 // on load falls inside it. Off-load runs and tests with no load recorded never fill one. A failed
 // on-load test counts as done, with the failures counted beside it.

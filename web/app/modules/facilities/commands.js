@@ -36,7 +36,7 @@ const DOUBLE_TAP = 10 * MIN; // the same check with the same picks within this t
 
 // Every number has a definition and a source. Targets are example settings unless a cited source sets one.
 export const KPIS = [
-  { id: 'generator-test-compliance', name: 'Generator test compliance', unit: '%',
+  { id: 'generator-test-compliance', name: 'Generator tests carried out on time', unit: '%',
     definition: 'The core measure "planned checks done by due date" (KPI dictionary D-13) for check type generator-test: scheduled generator tests recorded (pass or fail) by their due date, divided by generator tests due in the period. Each generator is due once in each period of its schedule. A failed test counts as done for this measure (the test was carried out); failed tests are counted beside it, and the generator stays in Needs attention until a later test passes. A test recorded late counts for the period it was recorded in and does not fill the period it missed.',
     counts: 'Generator test periods with a test recorded inside them, settled in the period.', outOf: 'Generator test periods settled in the period: done, or ended with no test.',
     leavesOut: 'The current period while it is still open and no test has been recorded.',
@@ -48,7 +48,7 @@ export const KPIS = [
     leavesOut: 'Planned shutdowns (shown apart).', source: 'local definition', target: null, targetText: 'No target set: track the trend.' },
   // Slice 2 (20 Nov): appended after the first two, which keep their places.
   { id: 'generator-load-test-compliance', name: 'Generator on-load tests done by due date', unit: '%',
-    definition: `The same shared measure as generator test compliance ("planned checks done by due date", KPI dictionary D-13), for the on-load row of the schedule: on-load periods (every 4 weeks for each generator) with a generator test recorded on load inside them, divided by on-load periods settled in the last ${LOAD_TEST_DAYS} days (three periods). A failed on-load test counts as done; failures are counted beside it. The period starts no earlier than the first check in this device's log, so weeks from before the log began are not counted as missed.`,
+    definition: `The same shared measure as generator tests carried out on time ("planned checks done by due date", KPI dictionary D-13), for the on-load row of the schedule: on-load periods (every 4 weeks for each generator) with a generator test recorded on load inside them, divided by on-load periods settled in the last ${LOAD_TEST_DAYS} days (three periods). A failed on-load test counts as done; failures are counted beside it. The period starts no earlier than the first check in this device's log, so weeks from before the log began are not counted as missed.`,
     counts: 'On-load periods with a generator test recorded on load inside them.', outOf: 'On-load periods settled in the period: done, or ended with no on-load test.',
     leavesOut: 'The current period while it is still open; off-load runs; tests with the load not recorded (all tests recorded before the load was asked).',
     source: 'local definition (KPI dictionary D-13). The 4-week interval is an example setting, not a standard: each site sets its own.',
@@ -330,7 +330,7 @@ export const COMMANDS = [
     summary: 'Utilities at a glance, in one call: what needs attention first (scheduled checks missed with no check since; the newest check failed, or a medical gas supply level picked as low or on reserve, until a later check is normal; open outages with how long), every scheduled check with its status (done, due, overdue) and due day, the newest fuel and water readings against the site\'s levels, outage hours this month by utility, the waste log this month (containers by stream, missed collections still waiting), the measures with their definitions and sources, and the guide\'s suggestions with their reasons (empty while the guide is off). Building and plant faults are Engineering\'s work orders: use ospeli_workorders_next with team estates. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, properties: {
-      days: { type: 'integer', minimum: 7, maximum: 90, description: 'The period for generator test compliance: the last this many days. Default 30. Outage hours are always for the current month.' },
+      days: { type: 'integer', minimum: 7, maximum: 90, description: 'The period for generator tests carried out on time: the last this many days. Default 30. Outage hours are always for the current month.' },
       format: FORMAT('the values without their definitions', 'each value with its definition, source and breakdown') } },
     output: { type: 'object', required: ['asOf', 'synthetic', 'attention', 'checks', 'readings', 'kpis', 'readOnly', 'planned', 'levels', 'guide', 'note'], properties: {
       asOf: TIME, synthetic: SYNTHETIC, offsetMinutes: { type: 'integer', description: 'The site\'s offset from UTC, used for due days and months.' },
