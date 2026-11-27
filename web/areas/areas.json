@@ -1819,7 +1819,7 @@
   "kpis": [
    {
     "name": "Stock-out rate on critical items",
-    "definition": "Item-days with nothing usable divided by item-days held, for critical supply items (the few that must never run out, often called tracer items), in all and for each area (the core measure \"Stock-out rate\", KPI dictionary D-17). A day out counts when a person declared a stock-out or the balances show nothing usable; the two are joined, never counted twice.",
+    "definition": "Item-days with nothing usable divided by item-days held, for critical supply items (the few that must never run out, often called tracer items), in all and for each area (the core measure \"Stock-out rate\", KPI dictionary D-17). A day out counts when a person declared a stock-out or the balances show nothing usable; the two are joined, never counted twice. Ospeli's definition. A zero balance is seen only when a count or a movement records it, so the figure depends on how often a place counts: each area shows its usual count interval, and places that count at different intervals are not directly comparable.",
     "kind": "ratio",
     "numerator": "Item-days with nothing usable, for critical items.",
     "denominator": "Item-days critical items were held, from each holding's first event (a level set or a movement).",
