@@ -11,7 +11,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand } from '../../web/app/core/commands.js';
 import { faultsFor } from '../../web/app/core/workorders.js';
 
@@ -22,7 +22,7 @@ const bot = { type: 'agent', role: 'estates-tech', agent: 'fault-helper' };
 async function setup(wards = ['ward-a1']) {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  await loadSyntheticHospital(core, { end: END });
+  await loadHospital(core, { end: END });
   if (wards === 'all') wards = (await core.listEntities('ward')).map((w) => w.id);
   await runCommand(core, 'ospeli_agents_add', { name: 'fault-helper', role: 'estates-tech', wards, days: 30 }, coo);
   await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: Object.fromEntries(wards.map((w) => [w, true])) }, coo);

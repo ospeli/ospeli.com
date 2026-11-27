@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand } from '../../web/app/core/commands.js';
 import { queueMarks } from '../../web/app/modules/support/logic.js';
 
@@ -15,7 +15,7 @@ const human = (role) => ({ type: 'human', role });
 test('a bed clean moved to the front and then done leaves no "do-next" mark on the next clean of the same bed', async () => {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  await loadSyntheticHospital(core, { end: END });
+  await loadHospital(core, { end: END });
   const run = (name, input, role) => runCommand(core, name, input, human(role));
   const board = await run('ospeli_beds_board', {}, 'bed-manager');
   const bed = board.beds.find((b) => b.state === 'occupied');

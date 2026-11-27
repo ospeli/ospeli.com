@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand, commandByName, CommandError } from '../../web/app/core/commands.js';
 
 const TUE = '2026-11-10T14:00:00.000Z';
@@ -17,7 +17,7 @@ test('ospeli_slots_cancel names its appointment as the proposal target, like mov
 test('an agent cannot queue two different cancel proposals for the same appointment', async () => {
   let t = Date.parse(TUE);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date((t += 1000)) });
-  await loadSyntheticHospital(core, { end: TUE, modules: true });
+  await loadHospital(core, { end: TUE, modules: true });
   const human = (role) => ({ type: 'human', role });
   const wards = (await core.listEntities('ward')).map((w) => w.id);
   await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: Object.fromEntries(wards.map((w) => [w, true])) }, human('coo'));

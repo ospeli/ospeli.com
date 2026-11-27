@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand } from '../../web/app/core/commands.js';
 
 const END = '2026-11-06T18:00:00.000Z';
@@ -15,7 +15,7 @@ const WARD = 'unit-z9';
 async function site() {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  await loadSyntheticHospital(core, { end: END });
+  await loadHospital(core, { end: END });
   await core.putEntity({ id: WARD, type: 'ward', name: 'Unit Z9 (example)', parentId: 'dept-medicine', beds: 0 }, 'ops-manager');
   for (const i of [1, 2]) await core.putEntity({ id: `asset-z9-sink-${i}`, type: 'asset', name: `Sink ${i}`, parentId: WARD, kind: 'sink' }, 'ops-manager');
   const run = (name, input, who) => runCommand(core, name, input, typeof who === 'string' ? { type: 'human', role: who } : who);

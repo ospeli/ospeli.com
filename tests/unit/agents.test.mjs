@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand, commandByName, CommandError, MAX_AGENT_DAYS } from '../../web/app/core/commands.js';
 import { validate } from '../../web/app/core/schema.js';
 
@@ -19,7 +19,7 @@ const ok = (name, out) => assert.deepEqual(validate(commandByName(name).output, 
 async function setup() {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  await loadSyntheticHospital(core, { end: END });
+  await loadHospital(core, { end: END });
   return { core, skip: (ms) => { t += ms; } };
 }
 const refusals = async (core) => (await core.auditLog()).filter((e) => e.action === 'agent.refused');
@@ -186,7 +186,7 @@ test('reset then a fresh copy leaves agents off, the list empty, and one entry i
   const { core } = await setup();
   await agentsOn(core);
   await core.reset('ward-nurse');
-  await loadSyntheticHospital(core, { end: END });
+  await loadHospital(core, { end: END });
   await assert.rejects(runCommand(core, 'ospeli_beds_board', { wardId: 'ward-a1' }, agent('bed-manager', 'flow-helper')), code('agents-off'));
   const view = await runCommand(core, 'ospeli_agents_list', {}, human('ops-manager'));
   ok('ospeli_agents_list', view);

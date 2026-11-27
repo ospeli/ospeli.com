@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand, listCommands, CommandError, ACTION_COMMANDS } from '../../web/app/core/commands.js';
 import { MODULE_PACKS } from '../../web/app/core/modules.js';
 
@@ -17,7 +17,7 @@ const human = (role) => ({ type: 'human', role });
 async function freshSite(role) {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  await loadSyntheticHospital(core, { end: END });
+  await loadHospital(core, { end: END });
   const wards = (await core.listEntities('ward')).map((w) => w.id);
   await runCommand(core, 'ospeli_agents_set_access', { allowed: true, wards: Object.fromEntries(wards.map((id) => [id, true])) }, human('coo'));
   await runCommand(core, 'ospeli_agents_add', { name: 'example-runner', role, wards, days: 30 }, human('coo'));

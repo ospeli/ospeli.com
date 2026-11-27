@@ -1,13 +1,13 @@
 // Shared set-up for the review proofs: the example hospital (synthetic), no module history, a clock the test moves.
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand } from '../../web/app/core/commands.js';
 export const END = '2026-11-06T18:00:00.000Z';
 export async function site() {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  await loadSyntheticHospital(core, { end: END, modules: false });
+  await loadHospital(core, { end: END, modules: false });
   const run = (name, input, who) => runCommand(core, name, input, typeof who === 'string' ? { type: 'human', role: who } : who);
   return { core, run, skip: (ms) => { t += ms; } };
 }

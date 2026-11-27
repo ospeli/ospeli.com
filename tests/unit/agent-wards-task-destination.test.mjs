@@ -5,7 +5,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand } from '../../web/app/core/commands.js';
 
 const END = '2026-11-06T18:00:00.000Z';
@@ -14,7 +14,7 @@ const human = (role) => ({ type: 'human', role });
 test('an agent given ward A1 only cannot propose a job that goes into ward B2 (not on its list, agents off there)', async () => {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  await loadSyntheticHospital(core, { end: END });
+  await loadHospital(core, { end: END });
   const run = (name, input, who) => runCommand(core, name, input, typeof who === 'string' ? human(who) : who);
   await run('ospeli_agents_set_access', { allowed: true, wards: { 'ward-a1': true, 'ward-b2': false } }, 'coo');
   await run('ospeli_agents_add', { name: 'ward-bot', role: 'ward-nurse', wards: ['ward-a1'], days: 30 }, 'coo');
@@ -32,7 +32,7 @@ test('an agent given ward A1 only cannot propose a job that goes into ward B2 (n
 test('an agent given no ward at all, which the task list shows nothing, cannot queue a write on a job in a department', { todo: 'places outside a ward need their own grant: ospeli/ospeli#126' }, async () => {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  await loadSyntheticHospital(core, { end: END });
+  await loadHospital(core, { end: END });
   const run = (name, input, who) => runCommand(core, name, input, typeof who === 'string' ? human(who) : who);
   await run('ospeli_agents_set_access', { allowed: true }, 'coo');
   await run('ospeli_agents_add', { name: 'no-ward-bot', role: 'porter', wards: [], days: 30 }, 'coo');

@@ -6,7 +6,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital, generateHospital } from '../../web/app/core/generator.js';
+import { generateHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand, CommandError, commandByName, listCommands } from '../../web/app/core/commands.js';
 import { validate } from '../../web/app/core/schema.js';
 import { ROLES } from '../../web/app/core/model.js';
@@ -35,7 +36,7 @@ async function site({ withHistory = true, noStore = false } = {}) {
     await core.putEntities(entities.filter((e) => e.type !== 'store'), 'system', 'an older example hospital with no store');
   } else {
     // The example hospital carries the module's history (its seed); modules: false leaves it out.
-    await loadSyntheticHospital(core, { end: END, modules: withHistory });
+    await loadHospital(core, { end: END, modules: withHistory });
   }
   const run = (name, input, who) => runCommand(core, name, input, typeof who === 'string' ? human(who) : who);
   return { core, run, skip: (m) => { t += m * MIN; } };

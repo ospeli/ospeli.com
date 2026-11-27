@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { Core } from '../../web/app/core/core.js';
 import { MemoryAdapter } from '../../web/app/core/db.js';
-import { loadSyntheticHospital } from '../../web/app/core/generator.js';
+import { loadHospital } from './hospital-clock.mjs';
 import { runCommand } from '../../web/app/core/commands.js';
 
 const END = '2026-11-06T18:00:00.000Z'; // 14:00 at the example hospital (UTC-4)
@@ -12,7 +12,7 @@ const human = (role) => ({ type: 'human', role });
 async function site() {
   let t = Date.parse(END);
   const core = await Core.open({ adapter: new MemoryAdapter(), clock: () => new Date(t += 1000) });
-  await loadSyntheticHospital(core, { end: END });
+  await loadHospital(core, { end: END });
   const run = (name, input, who) => runCommand(core, name, input, typeof who === 'string' ? human(who) : who);
   return { core, run, advance: (m) => { t += m * MIN; } };
 }
