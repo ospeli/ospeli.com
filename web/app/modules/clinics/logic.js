@@ -31,7 +31,21 @@ export const EMPTY_WITHIN_HOURS = 48;    // guide rule 2: empty slots within two
 export const OFFER_AT_MOST = 3;          // guide rule 2: at most this many prefilled bookings per clinic
 export const MOVE_NOTICE_HOURS = 24;       // a booking moved off a cancelled clinic goes no sooner than this (example setting, not a standard)
 export const LATE_MINUTES = 15;           // queue: a patient waiting this long past the booked time is shown as late
-export const EARLY_MINUTES = 30;         // guide rule 3: arrived this long or more before the booked slot
+// Issue #193: minutes past the booked time, as the queue shows it (0 before it). Not arrived: from the booked
+// time to now. Arrived: from the later of arrival and the booked time to now, the same rule as the 28-day measure
+// (waitPastBooked, core/slots.js), so neither an early nor a late arrival reads as the clinic running late.
+// The Now page (modules/home.js waitPastBooked) gets the same figure today; it could call this helper later.
+export function pastBookedMinutes(nowMs, bookedMs, arrivedMs = null) {
+  if (bookedMs == null || !Number.isFinite(nowMs)) return null;
+  const from = Number.isFinite(arrivedMs) ? Math.max(arrivedMs, bookedMs) : bookedMs;
+  return Math.max(0, Math.round((nowMs - from) / MIN));
+}
+// Minutes the patient arrived after the booked time (0 when early or on time); null before arrival.
+export function arrivedAfterBookedMinutes(bookedMs, arrivedMs) {
+  if (bookedMs == null || !Number.isFinite(arrivedMs)) return null;
+  return Math.max(0, Math.round((arrivedMs - bookedMs) / MIN));
+}
+export const EARLY_MINUTES = 30;        // guide rule 3: arrived this long or more before the booked slot
 export const BUNCHED_SHARE = 0.5;        // guide rule 3: share of arrivals that early
 export const BUNCHED_MIN_ARRIVED = 20;   // guide rule 3: at least this many arrivals over the weeks
 

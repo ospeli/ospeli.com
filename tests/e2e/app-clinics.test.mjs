@@ -630,3 +630,46 @@ test('a past day\'s close-out has no link to today\'s queue and says Arrived is 
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #193: a patient who arrives late has waited 0 minutes past the booked time. The row says the
+// late arrival in words, as the patient's arrival, and the Waiting tile does not change because of it.
+test('#193: a late arrival is said as "arrived N min after the booked time" and does not change the Waiting tile (360, 390 and 1280 px)', async () => {
+  for (const width of [360, 390, 1280]) {
+    const { context, page, errors } = await openPage(env, { width, touch: width < 500, clock: CLOCK, path: '#/clinics' });
+    await asRole(page, 'clinic-receptionist', 'queue');
+    await page.waitForSelector('[data-test="queue"]');
+    // The next patient still to come; move the clock to 20 minutes past their booked time.
+    const first = await run(page, 'ospeli_clinics_queue', {}, 'clinic-receptionist');
+    const next = first.patients.find((p) => p.state === 'booked' && p.missedFrom);
+    await page.clock.setSystemTime(new Date(Date.parse(next.missedFrom) + 5 * 60e3));
+    await asRole(page, 'clinic-receptionist', 'summary');
+    await asRole(page, 'clinic-receptionist', 'queue');
+    await page.waitForSelector(`[data-appointment="${next.appointmentId}"] [data-step="arrived"]`);
+    const before = await run(page, 'ospeli_clinics_queue', { sessionId: first.sessionId }, 'clinic-receptionist');
+    const late = before.patients.find((p) => p.appointmentId === next.appointmentId);
+    assert.deepEqual([late.state, late.late], ['booked', true], 'not arrived, 20 min past the booked time: now minus the booked time');
+    assert.match(await page.locator(`[data-appointment="${late.appointmentId}"] .cl-st`).first().textContent(), /^Not arrived, 20 min past the booked time$/);
+    const tile = async () => (await page.locator('[data-count="waiting"]').textContent()).replace(/\s+/g, ' ');
+    const tileBefore = await page.locator('[data-count="waiting"] [data-test="waiting-sub"]').textContent();
+    const alertBefore = await page.locator('[data-count="waiting"]').evaluate((el) => el.classList.contains('is-alert'));
+    const arrive = page.locator(`[data-appointment="${late.appointmentId}"] [data-step="arrived"]`);
+    await (width < 500 ? arrive.tap() : arrive.click());
+    await page.waitForSelector(`[data-appointment="${late.appointmentId}"][data-state="arrived"]`);
+    const after = await run(page, 'ospeli_clinics_queue', { sessionId: before.sessionId }, 'clinic-receptionist');
+    const me = after.patients.find((p) => p.appointmentId === late.appointmentId);
+    assert.deepEqual([me.pastBookedMinutes, me.late], [0, false], 'arrived just now: 0 min past the later of arrival and the booked time');
+    assert.ok(me.arrivedAfterBookedMinutes >= late.pastBookedMinutes, 'it arrived that long after the booked time');
+    assert.equal(after.clinic.counts.longestPastBookedMinutes, before.clinic.counts.longestPastBookedMinutes, 'the clinic figure does not change because of a late arrival');
+    const line = (await page.locator(`[data-appointment="${late.appointmentId}"] [data-test="wait"]`).textContent()).replace(/\s+/g, ' ');
+    assert.match(line, /^Waiting 0 min · booked \d\d:\d\d, arrived \d\d:\d\d · arrived \d+ (min|h)[^·]* after the booked time$/);
+    assert.doesNotMatch(line, /past booked time/);
+    assert.ok(!(await page.locator(`[data-appointment="${late.appointmentId}"] [data-test="wait"]`).evaluate((el) => el.classList.contains('st-late'))), 'not in the alert colour');
+    assert.equal(await page.locator('[data-count="waiting"] [data-test="waiting-sub"]').textContent(), tileBefore, `the Waiting tile's line does not change (${await tile()})`);
+    assert.equal(await page.locator('[data-count="waiting"]').evaluate((el) => el.classList.contains('is-alert')), alertBefore, 'nor its colour');
+    const px = await page.locator(`[data-appointment="${late.appointmentId}"] [data-test="arrived-after"]`).evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    assert.ok(px >= 15, `text ${px} px`);
+    assert.equal(await noSideways(page), 0);
+    assert.deepEqual(errors, []);
+    await context.close();
+  }
+});

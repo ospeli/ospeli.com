@@ -162,10 +162,12 @@ function queueScreen(ctx) {
   }
   function stateLine(p) {
     if (p.state === 'booked') return p.late ? h('span', { class: 'cl-st st-late' }, `Not arrived, ${fmtWait(p.pastBookedMinutes)} past the booked time`) : h('span', { class: 'cl-st' }, 'Not arrived yet');
-    // The wait runs from arrival; the colour follows the time past the booked slot, so an early
-    // arrival's long wait is not shown as the clinic running late.
+    // The wait runs from arrival; the colour follows the time past the later of arrival and the booked
+    // slot (#193), so neither an early arrival's long wait nor a late arrival reads as the clinic running late.
+    // A late arrival is said in words, as the patient's arrival, not the clinic's lateness.
     if (p.state === 'arrived') {
       return h('span', { class: `cl-st ${p.late ? 'st-late' : 'st-wait'}`, 'data-test': 'wait' }, `Waiting ${fmtWait(p.waitMinutes ?? 0)} · booked ${p.slotTime}, arrived ${p.clocks.arrived}`,
+        p.arrivedAfterBookedMinutes ? h('span', { class: 'cl-arr-late', 'data-test': 'arrived-after' }, ` · arrived ${fmtWait(p.arrivedAfterBookedMinutes)} after the booked time`) : null,
         p.pastBookedMinutes ? h('span', { class: 'cl-past', 'data-test': 'past-booked' }, ` · past booked time: ${fmtWait(p.pastBookedMinutes)}`) : null);
     }
     if (p.state === 'called') return h('span', { class: 'cl-st st-in' }, `With the clinician since ${p.clocks.called} (waited ${fmtWait(p.waitMinutes ?? 0)})`);

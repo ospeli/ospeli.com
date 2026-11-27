@@ -690,3 +690,32 @@ test('#144 start punctuality: a clinic counted late on its first recorded call, 
   // Held with a call: S1 (5 min), S2 (30), S3 (10), ses-00009 (40, maybe on time) -> 2 of 4 on time, 1 late-maybe.
   assert.deepEqual(startPunctuality(d, { since: SINCE, until: NOW }), { value: 0.5, numerator: 2, denominator: 4, nobodyCalled: 0, noCallTimes: 0, lateMaybe: 1 });
 });
+
+test('#193: an arrived patient\'s time past the booked time counts from the later of arrival and the booked time; a late arrival does not make the clinic read as running late', async () => {
+  // Today (Fri 6 Nov) at 14:00: a general medicine clinic from 13:20, slots 13:20, 13:40, 14:00.
+  //   pc-00011 booked 13:40, arrived 13:35 (early): 20 min past the booked time at 14:00.
+  //   pc-00012 booked 13:20, not arrived: 40 min past the booked time; then arrives at 14:00.
+  const E = [
+    ev('session.planned', 'ses-00006', '2026-10-20T12:00:00.000Z', { sessionType: 'clinic', service: 'general-medicine', placeId: 'dept-outpatients', date: '2026-11-06', start: '13:20', minutes: 60, slotMinutes: 20, slotTypes: ['new', 'follow-up'], runByRole: 'clinic-nurse', released: true }, 'outpatient-manager'),
+    ev('appointment.booked', 'apt-00011', '2026-10-31T12:00:00.000Z', { sessionId: 'ses-00006', sessionType: 'clinic', slotTime: '13:40', code: 'pc-00011', slotType: 'new', bookedFrom: 'referral' }),
+    ev('appointment.booked', 'apt-00012', '2026-10-31T12:00:00.000Z', { sessionId: 'ses-00006', sessionType: 'clinic', slotTime: '13:20', code: 'pc-00012', slotType: 'new', bookedFrom: 'referral' }),
+    ev('appointment.arrived', 'apt-00011', at('2026-11-06', '13:35'), null, 'clinic-receptionist'),
+  ];
+  const { run } = await site(E);
+  const q = await run('ospeli_clinics_queue', { sessionId: 'ses-00006' }, 'clinic-receptionist');
+  out('ospeli_clinics_queue', q);
+  const row = (qq, id) => qq.patients.find((p) => p.appointmentId === id);
+  assert.deepEqual([row(q, 'apt-00012').state, row(q, 'apt-00012').pastBookedMinutes, row(q, 'apt-00012').late], ['booked', 40, true], 'not arrived: now minus the booked time');
+  assert.deepEqual([row(q, 'apt-00011').pastBookedMinutes, row(q, 'apt-00011').arrivedAfterBookedMinutes], [20, 0], 'an early arrival counts from the booked time');
+  assert.equal(q.clinic.counts.longestPastBookedMinutes, 20);
+  await run('ospeli_slots_step', { appointmentId: 'apt-00012', step: 'arrived', expectedState: 'booked' }, 'clinic-receptionist');
+  const q2 = await run('ospeli_clinics_queue', { sessionId: 'ses-00006' }, 'clinic-receptionist');
+  out('ospeli_clinics_queue', q2);
+  const me = row(q2, 'apt-00012');
+  assert.deepEqual([me.state, me.waitMinutes, me.pastBookedMinutes, me.late, me.arrivedAfterBookedMinutes], ['arrived', 0, 0, false, 40],
+    'booked 13:20, arrived 14:00, now 14:00: 0 min past the booked time, not late; it arrived 40 min after the booked time');
+  assert.equal(q2.clinic.counts.longestPastBookedMinutes, 20, 'the Waiting tile does not change because of a late arrival');
+  assert.equal(q2.clinic.counts.waiting, q.clinic.counts.waiting + 1);
+  const schema = commandByName('ospeli_clinics_queue').output;
+  assert.match(JSON.stringify(schema), /later of arrival and the booked time/, 'the schema says which of the two the field is');
+});
