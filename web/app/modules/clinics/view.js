@@ -72,7 +72,40 @@ function runner(ctx, reload) {
   };
 }
 const offlineNote = (text) => (offline() ? h('p', { class: 'card notice cl-offline', role: 'status', 'data-test': 'offline' }, text) : null);
-const proposals = (ctx, screen) => proposalsCard(ctx, { match: (p) => shownOn(p).includes(screen), describe: describeProposal });
+// Issue #194: a step proposal names the patient as the desk sees them (label, booked time, clinic),
+// looked up at display time from today's clinics; nothing new is stored. Unknown: the id, as before.
+const apptWords = new Map(); // appointmentId -> 'Patient P12, booked 09:10, General medicine clinic'
+async function lookUpAppointments(ctx, ids) {
+  const found = new Map();
+  try {
+    const { clinics } = await ctx.run('ospeli_clinics_queue', { limit: 1 });
+    for (const c of clinics) {
+      if (found.size === ids.size) break;
+      const { appointments } = await ctx.run('ospeli_slots_appointments', { sessionId: c.sessionId, limit: 500 });
+      for (const a of appointments) {
+        if (!ids.has(a.id)) continue;
+        const when = a.slotTime ? `, booked ${a.slotTime}` : '';
+        found.set(a.id, `Patient ${String(a.code).replace(/^pc-0*/, 'P')}${when}, ${c.serviceWord}`);
+      }
+    }
+  } catch { /* the card falls back to the id */ }
+  return found;
+}
+function proposals(ctx, screen) {
+  const steps = new Set();
+  const card = proposalsCard(ctx, { describe: (p) => describeProposal(p, apptWords),
+    match: (p) => { const on = shownOn(p).includes(screen); if (on && p.command === 'ospeli_slots_step' && p.input?.appointmentId) steps.add(p.input.appointmentId); return on; } });
+  const load = async () => {
+    steps.clear();
+    await card.load();
+    if (!steps.size) return;
+    const fresh = await lookUpAppointments(ctx, new Set(steps));
+    const changed = [...fresh].some(([id, w]) => apptWords.get(id) !== w);
+    for (const [id, w] of fresh) apptWords.set(id, w);
+    if (changed) await card.load();
+  };
+  return { el: card.el, load };
+}
 
 // ---------------------------------------------------------------- Clinic queue (phone)
 function queueScreen(ctx) {
@@ -678,8 +711,10 @@ function templatesScreen(ctx) {
   return { el: box, load, draw };
 }
 
-function describeProposal(p) {
+const STEP_WORDS = { arrived: 'mark arrived', called: 'call in', finished: 'mark finished', 'no-show': 'mark missed appointment', 'seen-no-times': 'mark seen, no times' };
+function describeProposal(p, words = new Map()) {
   const i = p.input || {};
+  if (p.command === 'ospeli_slots_step' && words.has(i.appointmentId)) return `${words.get(i.appointmentId)}: ${STEP_WORDS[i.step] || i.step}`;
   switch (p.command) {
     case 'ospeli_slots_book': return `Book Patient ${String(i.code || '').replace(/^pc-0*/, 'P')} at ${i.slotTime || ''}`;
     case 'ospeli_slots_move': return `Move appointment ${i.appointmentId} to ${i.slotTime || 'another slot'}`;
