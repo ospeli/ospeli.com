@@ -4,7 +4,8 @@
 // own records; every typed name goes on screen as text, never as HTML.
 import { h } from './ui.js';
 import { minWords, atLeastWords, NO_LONG_WAIT } from './result-words.js';
-import { walkItems, longestPositions, resultTable, cellWords, extrasOf, columnsNote, csvOf, fileNameOf, summaryText, scaleTicks } from './result-data.js';
+import { walkItems, longestPositions, resultTable, cellWords, extrasOf, columnsNote, csvOf, fileNameOf, summaryText, scaleTicks, compareModel, changeLine, walksLongest } from './result-data.js';
+import { waitReasonText } from '../core/walk.js';
 
 export const PHONE_COLUMNS = 3;
 export const PRINT_COLUMNS = 6;
@@ -21,16 +22,17 @@ export async function recordsOf(core, m) {
   } catch { return null; }
 }
 
-const waitWord = (x) => (x.waitNotSeenSec > 0 ? atLeastWords(x.waitSec) : minWords(x.waitSec));
-const placeOf = (x) => `${x.stoppedSec > 0 ? 'at' : 'before'} “${x.name}”`;
+// The wait before the step: the time the step stood still once started is not part of it (#180 point 2).
+const waitWord = (x) => (x.waitNotSeenSec > 0 ? atLeastWords(x.waitBeforeSec) : minWords(x.waitBeforeSec));
+const placeOf = (x) => `before “${x.name}”`;
 
 // The words under a walk's bar for its longest wait.
 export function longestLine(items, pos, { usable = true } = {}) {
   if (!usable) return 'The phone\'s clock changed on this walk: no longest wait is named.';
   const at = pos.map((p) => items[p]);
   if (!at.length) return NO_LONG_WAIT(false);
-  const reason = at.length === 1 && at[0].reason ? ` · ${at[0].reason}` : '';
-  if (at.length === 1) return `Longest wait: ${waitWord(at[0])} ${placeOf(at[0])}${reason}`;
+  const said = at.length === 1 ? waitReasonText(at[0].rec?.waitReason) : null;
+  if (at.length === 1) return `Longest wait: ${waitWord(at[0])} ${placeOf(at[0])}${said ? `. Reason recorded on the walk: ${said}.` : ''}`;
   return `Longest waits, tied: ${at.map((x) => `${waitWord(x)} ${placeOf(x)}`).join(' and ')}`;
 }
 
@@ -38,18 +40,23 @@ export function longestLine(items, pos, { usable = true } = {}) {
 // list: the saved step list (map.today.steps); oneWalkTop: the step ids of the longest wait on a
 // one-walk map (the same rule as the headline); day, clock: the device's own date and time format.
 export function resultModel({ m, rg, records, list, oneWalkTop = null, day, clock }) {
+  // Each walk's longest wait by the wait before the step (#180 point 2), for the outline under the bars.
+  const lo = records.length && rg?.walks ? walksLongest(list, records, rg) : null;
+  // A change a person marked (ospeli_maps_change_set): walks 1 to N before, later walks after.
+  const afterWalk = Number.isInteger(m.changeAfterWalk) && m.changeAfterWalk > 0 && records.length ? Math.min(m.changeAfterWalk, records.length) : null;
   const walks = records.map((r, i) => {
     const items = walkItems(list, r);
     const info = rg.walks[i] || {};
     const usable = !r.clockMoved && info.usable !== false;
-    const pos = !usable ? [] : oneWalkTop ? items.filter((x) => x.onList && oneWalkTop.includes(x.stepId)).map((x) => x.p) : longestPositions(items, info.longest);
+    const pos = !usable ? [] : oneWalkTop ? items.filter((x) => x.onList && oneWalkTop.includes(x.stepId)).map((x) => x.p) : longestPositions(items, lo ? lo.walks[i].longest : info.longest);
     const sum = (k) => items.reduce((n, x) => n + x[k], 0);
     const elapsed = sum('waitSec') + sum('workSec') + sum('waitNotSeenSec') + sum('workNotSeenSec');
     return { n: i + 1, rec: r, items, pos, usable, elapsed, wait: sum('waitSec'), work: sum('workSec'), notSeen: sum('waitNotSeenSec') + sum('workNotSeenSec'),
       when: r.startedAt ? `${day(r.startedAt)}, ${clock(r.startedAt)}` : '', note: r.clockMoved ? ' (may be wrong)' : r.stoppedEarly ? ' (stopped early)' : '',
       longest: longestLine(items, pos, { usable }) };
   });
-  return { walks, rows: resultTable(list, records), extras: extrasOf(list, records), title: m.title };
+  const compare = afterWalk ? compareModel({ list, records, rg, afterWalk }) : null;
+  return { walks, rows: resultTable(list, records), extras: extrasOf(list, records), title: m.title, afterWalk, compare };
 }
 
 // One bar per walk, on one shared scale (the longest walk is the full width). Inside a bar each
@@ -58,7 +65,7 @@ export function resultModel({ m, rg, records, list, oneWalkTop = null, day, cloc
 // Under each bar, each step's number on the list ("+" for a step not on it) at the start of its
 // segments; where two would touch, the later one is left out, never the longest wait's (#189 item 3).
 // Under the bars, a minutes scale from the start of the walk.
-export function barsCard(model) {
+export function barsCard(model, change = null, read = null) {
   const max = Math.max(1, ...model.walks.map((w) => w.elapsed));
   const any = (f) => model.walks.some((w) => w.items.some(f));
   const key = (cls, text) => h('span', { class: 'key' }, h('span', { class: `rsw ${cls}` }), text);
@@ -71,27 +78,35 @@ export function barsCard(model) {
       const total = w.elapsed || 1;
       const width = Math.max(8, (100 * w.elapsed) / max);
       const bar = h('div', { class: 'rbar', role: 'img', style: `width:${width}%`, 'data-test': 'bar-walk', 'data-sec': String(w.elapsed),
-        'aria-label': `Walk ${w.n}: ${minWords(w.wait)} waiting and ${minWords(w.work)} hands-on, over ${w.items.length} ${w.items.length === 1 ? 'step' : 'steps'}.${w.notSeen ? ` ${minWords(w.notSeen)} more was not seen.` : ''} ${w.longest}. The numbers are the step numbers in the table.` });
+        'aria-label': `Walk ${w.n}${model.compare?.both ? (w.n > model.afterWalk ? ', after the change' : ', before the change') : ''}: ${minWords(w.wait)} waiting and ${minWords(w.work)} hands-on, over ${w.items.length} ${w.items.length === 1 ? 'step' : 'steps'}.${w.notSeen ? ` ${minWords(w.notSeen)} more was not seen.` : ''} ${w.longest}. The numbers are the step numbers in the table.` });
       const nums = h('div', { class: 'rnums', 'aria-hidden': 'true', style: `width:${width}%` });
       let at = 0;
       w.items.forEach((x, k) => {
         const hot = w.pos.includes(x.p);
-        const parts = [[x.planned ? 'p' : 'w', x.waitSec, hot], ['n', x.waitNotSeenSec], ['k', x.workSec], ['n', x.workNotSeenSec]].filter((s) => s[1] > 0);
+        // The wait before the step (outlined when it is the longest), then hands-on; the time the step
+        // stood still once started is waiting too, so it is striped, after the hands-on (#180 point 2).
+        const parts = [[x.planned ? 'p' : 'w', x.waitBeforeSec, hot], ['n', x.waitNotSeenSec], ['k', x.workSec], ['w', x.stoppedSec], ['n', x.workNotSeenSec]].filter((s) => s[1] > 0);
         nums.append(h('span', { class: `rnum${hot ? ' is-longest' : ''}`, 'data-test': 'bar-num', ...(hot ? { 'data-longest': 'true' } : {}), style: `left:${(100 * at) / total}%` }, x.num));
         // Only the first part of a step leaves the thin gap after the step before.
         parts.forEach(([cls, sec, isHot], j) => bar.append(h('i', { class: `${cls}${isHot ? ' is-longest' : ''}${k && !j ? ' gap' : ''}`, style: `width:${(100 * sec) / total}%`,
           'data-step': x.stepId || `off:${x.name}`, ...(isHot ? { 'data-longest': 'true' } : {}) })));
         at += parts.reduce((n, p) => n + p[1], 0);
       });
-      return h('div', { class: 'bar-row' },
+      const row = h('div', { class: 'bar-row' },
         h('span', { class: 'bar-label' }, `Walk ${w.n} · ${w.when} · ${minWords(w.elapsed)}${w.note}`), bar, nums,
         h('p', { class: 'bar-longest', 'data-test': 'bar-longest' }, w.longest));
+      // Where a person marked the change: one line in words between the last "before" bar and the first "after" bar.
+      return model.compare?.both && w.n === model.afterWalk + 1
+        ? [h('p', { class: 'bar-change', 'data-test': 'bar-change' }, `Change made after walk ${model.afterWalk}: walks above it are before, below it after.`), row] : row;
     }),
     scale,
     h('p', { class: 'legend meta', 'data-test': 'bar-legend' },
       key('w', 'Waiting'), any((x) => x.planned && x.waitSec) ? key('p', 'Planned or required wait') : null, key('k', 'Hands-on'),
       any((x) => x.waitNotSeenSec || x.workNotSeenSec) ? key('n', 'Not seen') : null, key('w is-longest', 'Longest wait'),
-      h('span', { class: 'key' }, h('span', { class: 'rnum-key', 'aria-hidden': 'true' }, '1'), 'Step number, + not on the list')));
+      h('span', { class: 'key' }, h('span', { class: 'rnum-key', 'aria-hidden': 'true' }, '1'), 'Step number, + not on the list')),
+    // "Mark a change" (or the mark already made, with "Remove the mark") at the foot of the bars it
+    // splits (#189 night 5 item 3), in one row with "How to read this".
+    change || read ? h('div', { class: 'rb-foot' }, change, read) : null);
   // Leave out a number that would touch the one before it, keeping the longest wait's; again
   // whenever the card's width changes (a turned phone, the print page).
   const thin = () => {
@@ -137,10 +152,64 @@ export function tableCard(model, after = null) {
           h('b', {}, r.kind === 'extra' ? `+ ${r.name}` : `${r.order}. ${r.name}`),
           h('span', { class: 'rt-role' }, ` · ${r.role}`),
           r.kind === 'extra' ? h('span', { class: 'rt-only', 'data-test': 'only-on' }, `Not on the list · Only on walk ${r.walk}`) : null),
-        r.cells.map((c, k) => h('td', { role: 'cell', class: colCls(k), 'data-status': c.status, ...(c.status === 'timed' ? { 'data-sec': `${c.waitSec},${c.workSec}` } : {}) },
+        r.cells.map((c, k) => h('td', { role: 'cell', class: colCls(k), 'data-status': c.status, ...(c.status === 'timed' ? { 'data-sec': `${c.waitSec},${c.workSec}`, ...(c.stoppedSec ? { 'data-stood': String(c.stoppedSec) } : {}) } : {}) },
           c.status === 'not-on-walk' ? [h('span', { 'aria-hidden': 'true' }, '–'), h('span', { class: 'sr-only' }, 'not on this walk')] : cellWords(c),
-          c.times > 1 ? h('span', { class: 'rt-again', 'data-test': 'done-again' }, `Done ${c.times} times`) : null)))))),
+          c.times > 1 ? h('span', { class: 'rt-again', 'data-test': 'done-again' }, `Done ${c.times} times`) : null,
+          c.reason ? h('span', { class: 'rt-reason', 'data-test': 'cell-reason' }, c.reason) : null,
+          c.stopReason ? h('span', { class: 'rt-reason', 'data-test': 'cell-stop-reason' }, c.stopReason) : null)))))),
     after);
+}
+
+// Before and after a change (#189 item 6): a row per list step (and per step not on the list),
+// Before · After · Difference in the wait, with the walk counts in the heads; then the totals and one
+// line: Ospeli shows the difference and does not say whether the change worked.
+export function compareCard(model, after = null) {
+  const c = model.compare;
+  const sec = (sp) => (sp?.wait?.n ? `${sp.wait.min}-${sp.wait.max}` : null);
+  const tds = (r) => [
+    h('td', { role: 'cell', ...(sec(r.before) ? { 'data-sec': sec(r.before) } : {}) }, r.beforeText),
+    h('td', { role: 'cell', ...(sec(r.after) ? { 'data-sec': sec(r.after) } : {}) }, r.afterText),
+    h('td', { role: 'cell', class: 'rc-diff', 'data-dir': r.diff.dir }, r.diff.text)];
+  return h('section', { class: 'card result-table-card', 'aria-label': 'Before and after', 'data-test': 'result-table' },
+    h('table', { class: 'rtable cols-3 rcompare', role: 'table' },
+      h('caption', {}, h('b', {}, 'Before and after'), h('span', {}, ` Changed after walk ${c.afterWalk}. Each cell: wait · hands-on, lowest to highest.`)),
+      h('thead', { role: 'rowgroup' }, h('tr', { role: 'row' }, h('th', { scope: 'col', role: 'columnheader', class: 'rt-stephead' }, 'Step'), c.heads.map((t) => h('th', { scope: 'col', role: 'columnheader' }, t)))),
+      h('tbody', { role: 'rowgroup' },
+        c.rows.map((r) => h('tr', { role: 'row', class: r.kind === 'step' ? null : r.kind === 'again' ? 'is-again' : 'is-extra', 'data-row': r.kind === 'step' ? r.stepId : r.kind === 'again' ? `again-${r.stepId}` : 'extra' },
+          h('th', { scope: 'row', role: 'rowheader' },
+            h('b', {}, r.kind === 'extra' ? `+ ${r.name}` : r.kind === 'again' ? `${r.order}. ${r.name}, done again` : `${r.order}. ${r.name}`), h('span', { class: 'rt-role' }, ` · ${r.role}`),
+            r.kind === 'extra' ? h('span', { class: 'rt-only' }, 'Not on the list') : null,
+            r.kind === 'again' ? h('span', { class: 'rt-only', 'data-test': 'again-row' }, 'Its later times on the same walk') : null,
+            r.againText ? h('span', { class: 'rt-again', 'data-test': 'done-again' }, r.againText) : null,
+            r.reasonText ? h('span', { class: 'rt-reason', 'data-test': 'row-reason' }, r.reasonText) : null),
+          tds(r))),
+        c.totals.map((t) => h('tr', { role: 'row', class: 'is-total', 'data-row': 'total' }, h('th', { scope: 'row', role: 'rowheader' }, h('b', {}, t.label)), tds(t))))),
+    h('p', { class: 'rc-caveat', 'data-test': 'change-caveat' }, c.caveat),
+    after);
+}
+
+// "Mark a change": a person says after which walk the way this works was changed
+// (ospeli_maps_change_set, people only). set(n) saves it; 0 removes it. No typed text is kept.
+export function changeBox({ count, afterWalk, set }) {
+  if (afterWalk) {
+    return h('section', { class: 'result-change is-marked', 'aria-label': 'Before and after a change', 'data-test': 'change-box' },
+      h('p', { 'data-test': 'change-line' }, changeLine(afterWalk, count)),
+      h('button', { type: 'button', class: 'btn btn-ghost', 'data-test': 'change-remove', 'data-cmd': 'ospeli_maps_change_set', onclick: () => set(0) }, 'Remove the mark'));
+  }
+  // A plain button beside the bars (#189 night 5 item 3). Its choice gives a table when one is
+  // possible: with 2 or more walks, after the walk before the newest; with one walk, the next walk
+  // will be the first "after" walk.
+  const def = count >= 2 ? count - 1 : 1;
+  const pick = h('select', { id: 'change-after', 'data-test': 'change-after' },
+    Array.from({ length: count }, (_, i) => h('option', { value: String(i + 1), ...(i + 1 === def ? { selected: true } : {}) }, `walk ${i + 1}`)));
+  const body = h('div', { class: 'rc-body', id: 'change-body', hidden: true },
+    h('p', { 'data-test': 'change-help' }, count >= 2 ? 'For a before and after. Walks up to the one you choose count as before the change; later walks count as after.'
+      : 'For a before and after. This walk counts as before the change; the next walk will be the first “after” walk.'),
+    h('div', { class: 'rc-pick' }, h('label', { for: 'change-after' }, 'We changed something after'), pick),
+    h('button', { type: 'button', class: 'btn', 'data-test': 'change-save', 'data-cmd': 'ospeli_maps_change_set', onclick: () => set(Number(pick.value)) }, 'Save the mark'));
+  const open = h('button', { type: 'button', class: 'btn btn-ghost rc-open', 'data-test': 'change-open', 'aria-expanded': 'false', 'aria-controls': 'change-body',
+    onclick: () => { body.hidden = !body.hidden; open.setAttribute('aria-expanded', String(!body.hidden)); if (!body.hidden) pick.focus(); } }, 'Mark a change');
+  return h('section', { class: 'result-change', 'aria-label': 'Before and after a change', 'data-test': 'change-box' }, open, body);
 }
 
 // Extra steps and steps done again, listed in words; never dropped.
@@ -173,7 +242,7 @@ export function actionsRow({ ctx, model, list, records, department, again, text 
     } catch { ctx.toast('Could not copy here. Use Print or Download CSV instead.'); }
   };
   const csv = () => {
-    const body = csvOf({ title: model.title, department, list, records, dateOf: localDate });
+    const body = csvOf({ title: model.title, department, list, records, dateOf: localDate, afterWalk: model.afterWalk });
     const url = URL.createObjectURL(new Blob(['﻿', body], { type: 'text/csv;charset=utf-8' }));
     const a = h('a', { href: url, download: fileNameOf(model.title), hidden: true });
     document.body.append(a); a.click(); a.remove();
@@ -197,9 +266,21 @@ export function actionsRow({ ctx, model, list, records, department, again, text 
 export function summaryOf({ model, headLines, headline, totals, read }) {
   return summaryText({
     head: headLines, headline, totals, count: model.walks.length,
-    walks: model.walks.map((w) => `Walk ${w.n}, ${w.when}: ${minWords(w.elapsed)} start to finish${w.note} · waiting ${minWords(w.wait)} · hands-on ${minWords(w.work)}${w.notSeen ? ` · ${minWords(w.notSeen)} not seen` : ''}. ${w.longest}`),
+    walks: model.walks.map((w) => `Walk ${w.n}${model.compare?.both ? (w.n > model.afterWalk ? ' (after the change)' : ' (before the change)') : ''}, ${w.when}: ${minWords(w.elapsed)} start to finish${w.note} · waiting ${minWords(w.wait)} · hands-on ${minWords(w.work)}${w.notSeen ? ` · ${minWords(w.notSeen)} not seen` : ''}. ${w.longest}`),
     columns: model.walks.map((w) => `walk ${w.n}`),
     rows: model.rows.map((r) => ({ extra: r.kind === 'extra', name: r.kind === 'extra' ? `${r.name} (${r.role}, not on the list)` : `${r.order}. ${r.name} (${r.role})`, cells: r.cells.map(cellWords) })),
     read,
+    compare: compareLines(model),
   });
+}
+// The before-and-after table as lines of text, the same columns as on screen.
+function compareLines(model) {
+  const c = model.compare;
+  if (!c) return null;
+  if (!c.both) return [c.line];
+  const line = (name, r) => `${name}: ${r.beforeText} | ${r.afterText} | ${r.diff.text}`;
+  return [`Before and after (change marked after walk ${c.afterWalk}): ${c.heads.join(' | ')}`,
+    ...c.rows.map((r) => line(r.kind === 'extra' ? `  + ${r.name} (${r.role}, not on the list)` : r.kind === 'again' ? `  ${r.order}. ${r.name}, done again (${r.role}, its later times on the same walk)`
+      : `${r.order}. ${r.name} (${r.role}${r.againText ? `, ${r.againText.toLowerCase()}` : ''})`, r)),
+    ...c.totals.map((t) => line(t.label, t)), c.caveat];
 }

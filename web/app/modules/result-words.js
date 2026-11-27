@@ -20,6 +20,22 @@ export function minWords(sec, { floor = false } = {}) {
   return r ? `${h} h ${r} min` : `${h} h`;
 }
 
+// The time a step stood still once started (#180 point 2), said apart from its wait: under a
+// minute in seconds ("17 s"), so a short stop is not read as nothing; otherwise whole minutes.
+export function stoodWords(sec) {
+  sec = Math.max(0, Math.round(+sec || 0));
+  return sec < 60 ? `${sec} s` : minWords(sec);
+}
+
+// A share worked out from the whole minutes shown beside it (#189 night 5 item 6), so "11 min
+// waiting" and "14 min start to finish" read as 79%, never a percent from the seconds behind them.
+// Null when the whole is under a minute.
+export function shareOfShown(partSec, wholeSec) {
+  const whole = Math.round(Math.max(0, +wholeSec || 0) / 60);
+  if (!whole) return null;
+  return Math.round((100 * Math.round(Math.max(0, +partSec || 0) / 60)) / whole);
+}
+
 // A seen time that was partly not seen (the walk was paused during it): the seen part is the least
 // it can have been. Never "at least under 1 min": a seen part under a minute says what was seen.
 export function atLeastWords(seenSec) {

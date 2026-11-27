@@ -13,11 +13,11 @@ import { h } from './ui.js';
 import { fmtMinutes, EXAMPLES } from '../core/processmap.js';
 import { stepsInSeconds, longestWaits, PLANNED_WAIT_RULE, NOT_ALWAYS_WASTE, WALK_BASIS, RANGE_BASIS } from '../core/walk.js';
 import { renderWalk } from './walk.js';
-import { minWords, waitAmount, rangeWords, fromCoreSpan, spanOf, totalSpan, longestOneWalk, longestWalks, NO_LONG_WAIT, SAME_RULE, guideTitle, rangeBasisWords, hotWords } from './result-words.js';
+import { minWords, waitAmount, rangeWords, fromCoreSpan, spanOf, totalSpan, longestOneWalk, longestWalks, NO_LONG_WAIT, SAME_RULE, guideTitle, rangeBasisWords, hotWords, shareOfShown } from './result-words.js';
 import { proposalsCard } from './proposals.js';
 import { departmentById } from './departments.js';
-import { recordsOf, resultModel, barsCard, tableCard, extrasCard, actionsRow, summaryOf } from './result-view.js';
-import { recordFromSteps, stepSpans } from './result-data.js';
+import { recordsOf, resultModel, barsCard, tableCard, extrasCard, actionsRow, summaryOf, compareCard, changeBox } from './result-view.js';
+import { recordFromSteps, stepSpans, walksLongest, changeHeadline, waitBeforeOf } from './result-data.js';
 
 const ROLE_COLOURS = ['#0A9396', '#EE9B00', '#E0583E', '#0B2F4E', '#94D2BD', '#7A5C9E', '#3E7CB1', '#A0522D', '#5B8C5A', '#C2185B'];
 const SOURCE_TEXT = {
@@ -240,7 +240,10 @@ export async function render(el, ctx) {
     const stat = (val, label, was, better) => h('div', { class: 'pm-stat' }, h('b', {}, val), h('span', {}, label),
       isP && was != null && was !== val ? h('span', { class: `was${better ? ' better' : ''}` }, `${NOW.toLowerCase()}: ${was}`) : null);
     // Waiting share (local definition): waiting time divided by start to finish, as a whole percent.
-    const waitShare = (x) => (x.elapsed ? Math.round((100 * x.wait) / x.elapsed) : null);
+    // Worked out from the whole minutes shown beside it (#189 night 5 item 6): the wait shown, over start
+    // to finish shown (less the time not seen shown, when the walk was paused).
+    const waitShare = (x) => (extra.notSeen ? (() => { const seen = Math.round((x.elapsed + extra.notSeen) / 60) - Math.round(extra.notSeen / 60); return seen > 0 ? Math.round((100 * Math.round(x.wait / 60)) / seen) : null; })()
+      : shareOfShown(x.wait, x.elapsed + extra.notSeen));
     // On a walked map: waiting a person marked planned or required (still waiting), and time not seen (paused).
     const extrasOf = (list) => ({ planned: list.reduce((n, x) => n + (x.plannedWait ? x.wait || 0 : 0), 0), notSeen: list.reduce((n, x) => n + (x.waitNotSeenSec || 0) + (x.workNotSeenSec || 0), 0) });
     const extra = walked ? extrasOf(steps) : { planned: 0, notSeen: 0 };
@@ -250,7 +253,9 @@ export async function render(el, ctx) {
     // seconds stay in data-sec.
     const walkWord = (w) => `Walk ${w.n}: ${day(w.startedAt)}, ${clock(w.startedAt)}${w.clockMoved ? ' · the phone\'s clock changed, left out' : w.stoppedEarly ? ' · stopped early, left out of the totals' : ''}`;
     const partOf = (r) => (r.n < rg.count ? ` (${r.n} of ${rg.count} walks)` : '');
-    const headline = (w, none, sec = null) => h('p', { class: 'wa-head', 'data-test': 'walk-longest', ...(w ? {} : { 'data-none': 'true' }), ...(w && sec != null ? { 'data-sec': String(sec) } : {}) }, w ? [h('b', {}, w.lead), w.text] : none);
+    // The reason a person recorded on the walk for that wait follows it, in its own words (#189 night 5 item 4).
+    const headline = (w, none, sec = null, reason = null) => h('p', { class: 'wa-head', 'data-test': 'walk-longest', ...(w ? {} : { 'data-none': 'true' }), ...(w && sec != null ? { 'data-sec': String(sec) } : {}) },
+      w ? [h('b', {}, w.lead), w.text, reason ? ['. ', h('span', { class: 'wa-reason', 'data-test': 'walk-reason-said' }, reason)] : null] : none);
     // What the map says about its own steps (rule of 21 Nov: unnamed, interrupted and hand-edited steps are said).
     const stepFacts = (list) => {
       const unnamed = list.filter((x) => x.role === 'Not set' || /^Step \d+$/.test(x.name)).length;
@@ -276,13 +281,25 @@ export async function render(el, ctx) {
     const tableWords = 'The table shows each step walk by walk, in whole minutes: the wait before the step, then the hands-on time. A step not on the list stays on its own walk; a step done again shows each time on its own. Time a step stood still is part of its wait.';
     if (rangeView) {
       const tot = { elapsed: totalSpan(rg, 'elapsed'), wait: totalSpan(rg, 'wait'), work: totalSpan(rg, 'work') };
-      const lw = longestWalks(rg, records);
+      // Each walk's longest wait by the wait before the step (#180 point 2), from the walks' records.
+      const lo = records && records.length === rg.walks.length ? walksLongest(m.today.steps, records, rg) : null;
+      const lw = lo ? longestWalks(lo) : longestWalks(rg, records);
+      // Once a change is marked with walks on both sides, the answer never mixes them (#189 night 5 item 1).
+      const mark = Number.isInteger(m.changeAfterWalk) && m.changeAfterWalk > 0 ? Math.min(m.changeAfterWalk, rg.count) : 0;
+      const split = mark && lo ? changeHeadline({ list: m.today.steps, records, rg, afterWalk: mark }) : null;
+      const sideTot = (after) => spanOf(rg.walks.filter((w) => w.complete && (w.n > mark) === after).map((w) => [w.elapsedSec, false]));
+      const sideCount = (sp) => (sp.n ? ` (${sp.n} ${sp.n === 1 ? 'walk' : 'walks'})` : '');
       const partly = anyPartly(tot.wait) || anyPartly(tot.work) || rg.steps.some((x) => x.wait.maxAtLeast || x.work.maxAtLeast);
       rangeAnswer = h('section', { class: 'card walk-answer', 'data-test': 'walk-answer', 'aria-label': 'What these walks showed' },
-        headline(lw, NO_LONG_WAIT(true)),
-        tot.elapsed.n ? h('p', { class: 'wa-big', 'data-test': 'walk-range', 'data-sec': `${tot.elapsed.min}-${tot.elapsed.max}` }, h('b', {}, rangeWords(tot.elapsed)), ` start to finish${partOf(tot.elapsed)}`)
+        ...(split ? [
+          split.none ? h('p', { class: 'wa-head', 'data-test': 'walk-longest', 'data-none': 'true' }, split.text) : headline(split, null, null, split.reason),
+          split.before ? h('p', { class: 'wa-line wa-before', 'data-test': 'walk-before-change' }, split.before) : null,
+          sideTot(true).n ? h('p', { class: 'wa-big', 'data-test': 'walk-range', 'data-sec': `${sideTot(true).min}-${sideTot(true).max}` }, h('b', {}, rangeWords(sideTot(true))), ` start to finish after the change${sideCount(sideTot(true))}`) : null,
+          sideTot(false).n ? h('p', { class: 'wa-line', 'data-test': 'walk-range-before' }, `Before the change: ${rangeWords(sideTot(false))} start to finish${sideCount(sideTot(false))}.`) : null,
+        ] : [headline(lw, NO_LONG_WAIT(true), null, lo?.reason)]),
+        split ? null : tot.elapsed.n ? h('p', { class: 'wa-big', 'data-test': 'walk-range', 'data-sec': `${tot.elapsed.min}-${tot.elapsed.max}` }, h('b', {}, rangeWords(tot.elapsed)), ` start to finish${partOf(tot.elapsed)}`)
           : h('p', { class: 'wa-line', 'data-test': 'walk-range' }, 'No walk has been walked to the end of the list yet, so there is no start-to-finish time.'),
-        tot.elapsed.n ? h('p', { class: 'wa-line', 'data-test': 'walk-range-parts' }, h('b', {}, `Waiting ${rangeWords(tot.wait)}`), ` · hands-on ${rangeWords(tot.work)}`) : null,
+        !split && tot.elapsed.n ? h('p', { class: 'wa-line', 'data-test': 'walk-range-parts' }, h('b', {}, `Waiting ${rangeWords(tot.wait)}`), ` · hands-on ${rangeWords(tot.work)}`) : null,
         rg.totals.notSeen.n ? h('p', { class: 'wa-line', 'data-test': 'walk-not-seen' }, `Not seen (walk paused) on ${rg.totals.notSeen.n} ${rg.totals.notSeen.n === 1 ? 'walk' : 'walks'}: ${rangeWords(spanOf(rg.walks.filter((w) => w.complete && w.notSeenSec).map((w) => [w.notSeenSec, false])))}.`) : null,
         // Each walk's day and hour is on its bar below; a walk that is left out is also said here.
         rg.walks.some((w) => !w.complete) ? h('ul', { class: 'wa-walks', 'data-test': 'walk-list' }, rg.walks.filter((w) => !w.complete).map((w) => h('li', {}, walkWord(w)))) : null);
@@ -301,10 +318,13 @@ export async function render(el, ctx) {
           stepFacts(m.today.steps),
         ]);
     }
-    const lw1 = measuredView && !rangeView && !moved ? longestOneWalk(top) : null;
+    // One walk: the longest wait by the wait before the step (#180 point 2); the time a step stood still is on its row.
+    const topBefore = walked && !moved ? longestWaits(steps.map((x) => ({ ...x, wait: waitBeforeOf({ waitSec: x.wait, interruptedWaitSec: x.interruptedWaitSec }), interruptedWaitSec: 0 }))) : [];
+    const lw1 = measuredView && !rangeView && !moved ? longestOneWalk(topBefore) : null;
+    const reason1 = lw1 && topBefore.length === 1 && records?.length === 1 && rg?.walks ? walksLongest(m.today.steps, records, rg).reason : null;
     const answer = rangeView ? rangeAnswer : measuredView ? h('section', { class: `card walk-answer${moved ? ' is-warn' : ''}`, 'data-test': 'walk-answer', 'aria-label': 'What this walk showed' },
       moved ? h('p', { class: 'walk-clock', role: 'alert', 'data-test': 'walk-clock' }, h('b', {}, 'The phone\'s clock changed during this walk.'), ' The times on this map may be wrong. Walk the next patient to get times you can use.') : null,
-      moved ? null : headline(lw1, NO_LONG_WAIT(false), top[0]?.wait),
+      moved ? null : headline(lw1, NO_LONG_WAIT(false), topBefore[0]?.wait, reason1),
       h('p', { class: 'wa-big', 'data-sec': String(a.elapsed + extra.notSeen) }, h('b', {}, T(a.elapsed + extra.notSeen)), moved ? ' (may be wrong) start to finish on this walk' : ' start to finish on this walk'),
       h('p', { class: 'wa-line' }, h('b', {}, `${T(a.wait)} waiting`), waitShare(a) == null ? '' : ` (${waitShare(a)}% of ${extra.notSeen ? 'the time seen on this walk' : 'this walk'})`, ` · ${T(a.work)} hands-on`),
       extra.planned ? h('p', { class: 'wa-line', 'data-test': 'walk-planned' }, `Of the waiting, ${T(extra.planned)} was marked planned or required.`) : null,
@@ -422,9 +442,9 @@ export async function render(el, ctx) {
     if (tab === 'result') {
       // The Result tab: the header and the answer, the bars, then the actions, the table, the extra
       // and redone steps, and "How to read this". Nothing on it changes the map.
-      const model = resultModel({ m, rg, records: records || [], list: m.today.steps, oneWalkTop: multi ? null : moved ? [] : top.map((x) => x.id), day, clock });
+      const model = resultModel({ m, rg, records: records || [], list: m.today.steps, oneWalkTop: multi ? null : moved ? [] : topBefore.map((x) => x.id), day, clock });
       const panel = h('div', { class: 'result', id: 'tab-result-panel', role: 'tabpanel', 'aria-labelledby': 'tab-result', 'data-test': 'result-panel' });
-      const read = readBox ? h('section', { class: 'card result-read', 'aria-label': 'How to read this' }, readBox) : null;
+      const read = readBox ? h('div', { class: 'result-read' }, readBox) : null;
       const textOf = (sel) => (panel.querySelector(sel)?.innerText || panel.querySelector(sel)?.textContent || '').replace(/\s+/g, ' ').trim();
       const summary = () => summaryOf({ model,
         headLines: [m.title, `${multi ? `${rg.count} walks` : 'Measured on one walk'}${dept ? ` · ${dept}` : ''} · ${dates}`],
@@ -434,10 +454,19 @@ export async function render(el, ctx) {
       const synthetic = (await core.getMeta('synthetic', null)) === true;
       // After one walk the next thing to do is walk the next patient, so on a phone's first screen the
       // button comes before the bar (#179 item 4). With two or more walks the bars come first.
-      panel.append(...[stats, multi ? null : againBtn, barsCard(model),
+      // Before and after a change (#189 item 6): a person marks after which walk the way this works
+      // changed (ospeli_maps_change_set, people only). With walks on both sides the table compares them.
+      const setChange = async (n) => {
+        if (await run('ospeli_maps_change_set', { mapId: m.id, afterWalk: n, expectedRevision: m.revision })) {
+          ctx.toast(n ? `Change marked after walk ${n}.` : 'Mark removed. The table is walk by walk again.'); await drawMap();
+        }
+      };
+      const change = records && model.walks.length ? changeBox({ count: model.walks.length, afterWalk: model.afterWalk, set: setChange }) : null;
+      // "Mark a change" is a plain button at the foot of the bars it splits (#189 night 5 item 3).
+      panel.append(...[stats, multi ? null : againBtn, barsCard(model, change, read),
         actionsRow({ ctx, model, list: m.today.steps, records: records || [], department: dept, again: multi ? againBtn : null, text: summary }),
-        records ? tableCard(model, extrasCard(model)) : h('p', { class: 'card meta', 'data-test': 'result-table' }, 'The walks\' step times could not be read on this device.'),
-        read,
+        !records ? h('p', { class: 'card meta', 'data-test': 'result-table' }, 'The walks\' step times could not be read on this device.')
+          : model.compare?.both ? compareCard(model, extrasCard(model)) : tableCard(model, extrasCard(model)),
         h('p', { class: 'print-only print-foot', 'data-test': 'print-foot' }, `${synthetic ? 'Synthetic demo data · no real patients or sites · ' : ''}Printed `, h('span', { class: 'print-date' }, new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })))].filter(Boolean));
       body.replaceChildren(head, panel);
       return;
