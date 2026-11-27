@@ -56,6 +56,7 @@ export const CODE_KINDS = [
 // Every number has a definition and a source. No target is set: where a window or a level is
 // used, it is an example setting, not a standard.
 const NO_TARGET = 'No target set: track the trend.';
+const RUNNING_NOW = 'Running now'; // #195: shown in place of "Planned" while the clinic is on and someone has arrived
 export const KPIS = [
   { id: 'missed-appointment-rate', name: 'Missed appointment rate', unit: '%',
     definition: 'Clinic appointments marked "Missed appointment", divided by clinic appointments due in the period. Clinic sessions only: a home visit or outreach day is never counted here. The follow-up after a missed appointment is measured elsewhere.',
@@ -162,7 +163,9 @@ function clinicOut(st, s) {
   const nowMs = Date.parse(st.now);
   const past = (s.appointments || []).map((id) => st.d.appointments.get(id)).filter((a) => a?.state === 'arrived').map((a) => pastBooked(st, a));
   return { sessionId: s.id, service: s.service, serviceWord: SERVICES[s.service] || s.service, name: clinicName(st, s), placeId: s.placeId, date: s.date, start: s.start,
-    end: hhmmAt(s.endMs, st.offsetMinutes), state: s.state, stateName: SESSION_STATES[s.state].name, reason: s.reason,
+    // #195: a planned clinic between its start and end with anyone arrived reads what is happening, not the booking state.
+    end: hhmmAt(s.endMs, st.offsetMinutes), state: s.state, reason: s.reason,
+    stateName: s.state === 'planned' && nowMs >= s.startMs && nowMs < s.endMs && day.attended > 0 ? RUNNING_NOW : SESSION_STATES[s.state].name,
     runningNow: s.state !== 'cancelled' && nowMs >= s.startMs - 30 * MIN && nowMs <= s.endMs + 60 * MIN,
     counts: { toCome: day.toCome, waiting: day.waitingNow, withClinician: day.withClinician, finished: day.finished, missed: day.missed, empty: day.empty, longestWaitMinutes: day.longestWaitMinutes,
       longestPastBookedMinutes: past.length ? Math.max(...past) : null } };

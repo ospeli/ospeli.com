@@ -535,3 +535,15 @@ test('section labels: 15 px and one line on phones (320, 360, 390 px); desktop s
     await context.close();
   }
 });
+
+// Issue #195 point 6: the roadmap's "now" line says what MODULE-STATUS says (eleven in the app, eight of
+// them first versions), and the December line no longer calls repeat walks "in development" (shipped 21 Nov).
+test('roadmap: "In the app: eleven modules, eight of them first versions"; repeat walks are not "in development" (issue #195)', async () => {
+  const { context, page } = await open(1280);
+  const road = await page.evaluate(() => [...document.querySelectorAll('#roadmap .timeline.road li')].map((li) => ({ wk: li.querySelector('.wk').textContent, short: li.querySelector('.short').textContent, text: li.textContent })));
+  assert.equal(road.find((r) => /now/i.test(r.wk)).short, 'In the app: eleven modules, eight of them first versions');
+  const dec = road.find((r) => /December 2026/.test(r.wk)).text;
+  assert.doesNotMatch(dec, /in development:? repeat walks/i);
+  assert.match(dec, /repeat walks/i);
+  await context.close();
+});

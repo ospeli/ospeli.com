@@ -104,3 +104,13 @@ test('the footer links land on sections that exist on the overview page', async 
   }
   await context.close();
 });
+
+// Issue #195 point 1: the "READ MORE" label above the five rows is 15 px on a phone, the text floor.
+for (const width of [360, 390]) {
+  test(`phone ${width} px: the READ MORE label is at least 15 px (issue #195)`, async () => {
+    const { context, page } = await open(width, 780, true);
+    const px = await page.evaluate(() => parseFloat(getComputedStyle(document.getElementById('more-h')).fontSize));
+    assert.ok(px >= 15, `READ MORE is ${px} px`);
+    await context.close();
+  });
+}

@@ -690,3 +690,25 @@ test('#144 start punctuality: a clinic counted late on its first recorded call, 
   // Held with a call: S1 (5 min), S2 (30), S3 (10), ses-00009 (40, maybe on time) -> 2 of 4 on time, 1 late-maybe.
   assert.deepEqual(startPunctuality(d, { since: SINCE, until: NOW }), { value: 0.5, numerator: 2, denominator: 4, nobodyCalled: 0, noCallTimes: 0, lateMaybe: 1 });
 });
+
+test('#195: Clinic day reads "Running now" between the start and the end once anyone has arrived; "Planned" before the start or with nobody arrived', async () => {
+  // S5 antenatal, Fri 6 Nov 13:00 to 14:00; pc-00008 arrived 12:55, called 13:10. The log is cut at the moment looked at.
+  const upTo = (iso) => handLog().filter((e) => Date.parse(e.at) <= Date.parse(iso));
+  const antenatal = async (iso) => {
+    const { run } = await site(upTo(iso), { end: iso });
+    const s = await run('ospeli_clinics_day_summary', { date: '2026-11-06' }, 'outpatient-manager');
+    out('ospeli_clinics_day_summary', s);
+    return s.clinics.find((c) => c.sessionId === 'ses-00005');
+  };
+  const before = await antenatal(at('2026-11-06', '12:58'));
+  assert.deepEqual([before.state, before.stateName], ['planned', 'Planned'], 'before the start it is the booking state, even with someone arrived early');
+  const running = await antenatal(at('2026-11-06', '13:40'));
+  assert.deepEqual([running.state, running.stateName], ['planned', 'Running now'], 'between the start and the end with a patient arrived');
+  const after = await antenatal(at('2026-11-06', '14:10'));
+  assert.equal(after.stateName, 'Planned', 'after the end it waits to be marked held');
+  // Nobody arrived: a clinic between its start and end still reads Planned.
+  const empty = handLog().filter((e) => !(e.subject === 'apt-00008' && /arrived|called/.test(e.type)));
+  const { run } = await site(empty.filter((e) => Date.parse(e.at) <= Date.parse(at('2026-11-06', '13:40'))), { end: at('2026-11-06', '13:40') });
+  const c = (await run('ospeli_clinics_day_summary', { date: '2026-11-06' }, 'outpatient-manager')).clinics.find((x) => x.sessionId === 'ses-00005');
+  assert.equal(c.stateName, 'Planned', 'nobody arrived yet');
+});
