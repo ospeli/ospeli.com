@@ -248,7 +248,7 @@ export function suggest(list) {
   if (a.handoffs >= 4) {
     out.push({ id: 'handoffs', kind: 'ask', title: `${a.handoffs} handoffs between roles`,
       text: 'Each handoff is a place where work can sit in someone else’s queue. Look at neighbouring steps done by different people: could one person do both, or could the next person be told before the step ends?',
-      why: 'Counted where the role changes from one step to the next.', basis: 'Example setting, not a standard: shown at 4 handoffs or more.' });
+      why: 'Counted where the role changes from one step to the next. A step with no role set yet is not counted.', basis: 'Example setting, not a standard: shown at 4 handoffs or more.' });
   }
   for (let i = 1; i < list.length; i++) {
     const s = list[i]; const p = list[i - 1];

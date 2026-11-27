@@ -72,7 +72,10 @@ test('a walk of three steps becomes a map; every time is recomputed from the tap
   assert.equal(k.elapsed, 357, 'total elapsed time: walk start to last step done');
   assert.equal(k.work, 117); assert.equal(k.wait, 240);
   assert.equal(k.workShare, Math.round((100 * 117) / 357), 'share of the time that is hands-on work');
-  assert.equal(k.handoffs, 2, 'the role changes twice');
+  // Was 2 until 27 Nov 2026: the last step has no role yet ("Not set"), and the change to it was counted as a
+  // handover. Domain lead's ruling (local definition): a step whose role nobody has said is not a change of role.
+  assert.deepEqual(map.today.steps.map((s) => s.role), ['Reception', 'Nurse', 'Not set']);
+  assert.equal(k.handoffs, 1, 'the role changes once that is known: Reception to Nurse');
   assert.equal(k.biggestWaitStepId, `${done.mapId}-s3`);
   assert.deepEqual(analyse(stepsInSeconds(map.today.steps)).elapsed, k.elapsed);
   assert.equal(map.changed, false, 'Proposed starts as a copy');

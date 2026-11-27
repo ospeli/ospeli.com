@@ -945,7 +945,7 @@ const MAP_STATS = {
   properties: {
     steps: { type: 'integer' }, elapsed: { type: 'integer', description: 'Minutes from start to finish (steps that run alongside overlap).' },
     work: { type: 'integer', description: 'Hands-on minutes, summed.' }, wait: { type: 'integer', description: 'Waiting minutes, summed.' },
-    handoffs: { type: 'integer', description: 'Times the role changes from one step to the next.' }, infoSteps: { type: 'integer' },
+    handoffs: { type: 'integer', description: 'Times the role changes from one step to the next. A step whose role is not set yet (a walk step named later) is not counted on either side: local definition.' }, infoSteps: { type: 'integer' },
     workShare: { type: ['integer', 'null'], description: 'Hands-on time as a % of start to finish.' },
     biggestWaitStepId: { type: ['string', 'null'] }, roles: { type: 'array', items: { type: 'string' } },
   },

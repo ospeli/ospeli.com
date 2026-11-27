@@ -5032,7 +5032,7 @@
                   },
                   "handoffs": {
                     "type": "integer",
-                    "description": "Times the role changes from one step to the next."
+                    "description": "Times the role changes from one step to the next. A step whose role is not set yet (a walk step named later) is not counted on either side: local definition."
                   },
                   "infoSteps": {
                     "type": "integer"
@@ -5212,7 +5212,7 @@
                   },
                   "handoffs": {
                     "type": "integer",
-                    "description": "Times the role changes from one step to the next."
+                    "description": "Times the role changes from one step to the next. A step whose role is not set yet (a walk step named later) is not counted on either side: local definition."
                   },
                   "infoSteps": {
                     "type": "integer"
@@ -5500,7 +5500,7 @@
               },
               "handoffs": {
                 "type": "integer",
-                "description": "Times the role changes from one step to the next."
+                "description": "Times the role changes from one step to the next. A step whose role is not set yet (a walk step named later) is not counted on either side: local definition."
               },
               "infoSteps": {
                 "type": "integer"
@@ -5587,7 +5587,7 @@
               },
               "handoffs": {
                 "type": "integer",
-                "description": "Times the role changes from one step to the next."
+                "description": "Times the role changes from one step to the next. A step whose role is not set yet (a walk step named later) is not counted on either side: local definition."
               },
               "infoSteps": {
                 "type": "integer"
