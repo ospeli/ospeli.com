@@ -459,7 +459,7 @@
  {
   "id": "A4",
   "slug": "theatres-and-procedures",
-  "name": "Theatres and procedure lists",
+  "name": "Operating rooms (theatres) and procedure lists",
   "group": "Patient flow and clinical services",
   "month": "Jan 2027",
   "oneLine": "Shows late starts, gaps and on-the-day cancellations, session by session.",
