@@ -125,9 +125,10 @@ test('From your walks: nothing before a walk; after a finished walk, its longest
     await page.clock.fastForward(wait * 1000);
     await page.tap('[data-test="walk-main"]'); await page.waitForSelector('[data-test="walk"][data-state="step"]');
     await page.clock.fastForward(work * 1000);
-    await page.tap('[data-test="walk-main"]'); await page.waitForSelector('[data-test="walk-sheet"]');
-    await page.locator('[data-chip="name"]').first().tap(); await page.locator('[data-chip="role"]').first().tap();
-    await page.waitForFunction(() => !document.querySelector('[data-test="walk-sheet"]'));
+    // Since the step list is on the walk screen (27 Nov) a list step is named as it starts: no naming sheet, one saved line.
+    await page.tap('[data-test="walk-main"]'); await page.waitForSelector('[data-test="walk"][data-state="waiting"]');
+    await page.waitForSelector('[data-test="walk-flash"]');
+    assert.equal(await page.locator('[data-test="walk-sheet"]').count(), 0);
   }
   const second = await page.evaluate(async () => { const { runCommand } = await import('./core/commands.js'); return (await runCommand(window.ospeli.core, 'ospeli_walks_get', {}, { type: 'human', role: 'radiographer' })).walk.steps[1].name; });
   await page.tap('[data-test="walk-finish"]'); await page.tap('[data-test="walk-finish-yes"]');
