@@ -15,6 +15,7 @@ const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
 const roleNames = (cmd) => (commandByName(cmd)?.roles || []).map((r) => roleById(r)?.name || r).join(', ');
 const offline = () => document.documentElement.dataset.site === 'offline';
 const LOCK_MS = 3e3; // after a step, the same request's next button waits this long
+const CHIP_ITEMS = 6; // item counts with a chip of their own; More opens the rest up to MAX_ITEMS
 const WARD_KEY = 'ospeli-pharmacy-ward'; // a convenience on this device only, never access control
 const minText = (v) => (v == null ? 'None yet' : fmtWait(v));
 const items = (n) => `${n} item${n === 1 ? '' : 's'}`;
@@ -272,11 +273,18 @@ function dischargeScreen(ctx) {
   };
   const act = runner(ctx, load);
   const pickWard = (id) => { ui.ward = id; ui.form = { bedId: null, planned: null, items: null, urgent: false }; try { if (id) localStorage.setItem(WARD_KEY, id); else localStorage.removeItem(WARD_KEY); } catch { /* a private window: the pick lasts this visit */ } load(); };
+  // Chips for 1 to 6 (one tap), and More for 7 up to the cap (#161).
   const itemsSelect = (state, test) => {
-    const s = h('select', { class: 'ph-select', 'data-test': test, 'aria-label': 'How many items' },
-      h('option', { value: '' }, 'Pick a number'), Array.from({ length: MAX_ITEMS }, (_, i) => h('option', { value: String(i + 1), selected: state.items === i + 1 }, String(i + 1))));
+    const more = state.more || (state.items || 0) > CHIP_ITEMS;
+    const chip = (v, label, pressed, onclick) => h('button', { class: 'chip-btn', type: 'button', 'aria-pressed': String(pressed), 'data-items': v, onclick }, label);
+    const chips = h('div', { class: 'ph-choices', role: 'group', 'aria-label': 'How many items', 'data-test': test },
+      Array.from({ length: CHIP_ITEMS }, (_, i) => chip(String(i + 1), String(i + 1), !more && state.items === i + 1, () => { state.items = i + 1; state.more = false; draw(); })),
+      chip('more', 'More', more, () => { state.more = true; if ((state.items || 0) <= CHIP_ITEMS) state.items = null; draw(); }));
+    if (!more) return chips;
+    const s = h('select', { class: 'ph-select', 'data-test': `${test}-more`, 'aria-label': 'How many items (more)' },
+      h('option', { value: '' }, 'Pick a number'), Array.from({ length: MAX_ITEMS - CHIP_ITEMS }, (_, i) => i + CHIP_ITEMS + 1).map((n) => h('option', { value: String(n), selected: state.items === n }, String(n))));
     s.addEventListener('change', () => { state.items = s.value ? Number(s.value) : null; draw(); });
-    return s;
+    return [chips, s];
   };
   const urgentToggle = (state) => h('button', { class: 'chip-btn ph-urgent-toggle', type: 'button', 'aria-pressed': String(state.urgent), 'data-test': 'urgent-toggle',
     onclick: () => { state.urgent = !state.urgent; draw(); } }, state.urgent ? 'Urgent (ward\'s call): yes' : 'Urgent (ward\'s call)? Tap if so');
@@ -295,7 +303,7 @@ function dischargeScreen(ctx) {
       h('p', { class: 'ph-label' }, 'When do they go home?'),
       h('div', { class: 'ph-choices', role: 'group', 'aria-label': 'When do they go home', 'data-test': 'planned-picks' }, Object.entries(PLANNED).map(([k, v]) => h('button', {
         class: 'chip-btn', type: 'button', 'aria-pressed': String(f.planned === k), 'data-planned': k, onclick: () => { f.planned = k; draw(); } }, v))),
-      h('label', { class: 'ph-label ph-items' }, 'How many items?', itemsSelect(f, 'items')),
+      h('p', { class: 'ph-label ph-items' }, 'How many items?'), itemsSelect(f, 'items'),
       h('p', { class: 'ph-hint' }, `A count only, 1 to ${MAX_ITEMS} (a cap for the form, example setting, not a standard). Never what they are.`),
       urgentToggle(f),
       h('button', { class: 'btn ph-send', type: 'button', 'data-cmd': 'ospeli_pharmacy_request_raise', 'data-test': 'send', disabled: Boolean(missing) || offline(),
@@ -309,17 +317,17 @@ function dischargeScreen(ctx) {
   function otherForm() {
     const o = ui.other;
     const missing = !o.kind ? 'Pick what kind first' : !o.items ? 'Pick how many items' : null;
-    return detailsBox('Something else for the ward', 'other-form', 'other-form',
+    return detailsBox('Other medicines request', 'other-form', 'other-form',
       h('div', { class: 'ph-choices', role: 'group', 'aria-label': 'What kind' }, ['ward-request', 'other'].map((k) => h('button', {
         class: 'chip-btn', type: 'button', 'aria-pressed': String(o.kind === k), 'data-kind': k, onclick: () => { o.kind = k; draw(); } }, KINDS[k]))),
-      h('label', { class: 'ph-label ph-items' }, 'How many items?', itemsSelect(o, 'other-items')),
+      h('p', { class: 'ph-label ph-items' }, 'How many items?'), itemsSelect(o, 'other-items'),
       urgentToggle(o),
       h('button', { class: 'btn ph-send', type: 'button', 'data-cmd': 'ospeli_pharmacy_request_raise', 'data-test': 'send-other', disabled: Boolean(missing) || offline(),
         onclick: (e) => { e.currentTarget.disabled = true; act('ospeli_pharmacy_request_raise', { wardId: ui.ward, kind: o.kind, priority: o.urgent ? 'urgent' : 'routine', items: o.items }, `Asked: ${KINDS[o.kind].toLowerCase()}`, { onDone: () => { ui.other = { kind: null, items: null, urgent: false }; openPanels.delete('other-form'); } }); } },
       missing || 'Ask the pharmacy'));
   }
   function estimateLine(r) {
-    if (r.state === 'ready') return h('p', { class: 'ph-ready-now', 'data-test': 'ready-now' }, 'Ready for collection');
+    if (r.state === 'ready') return h('p', { class: 'ph-ready-now', 'data-test': 'ready-now' }, `Ready for collection since ${r.clocks.ready}`);
     if (r.state === 'collected' || r.state === 'cancelled') return null;
     const e = r.estimate;
     if (!e || e.minutes == null) return h('p', { class: 'ph-hint', 'data-test': 'estimate' }, 'No estimate yet: too few recent requests of this kind on this ward.');
@@ -359,7 +367,7 @@ function dischargeScreen(ctx) {
       h('div', { class: 'ph-row-text' },
         h('p', { class: 'ph-who' }, h('b', {}, name(r)), r.bedName ? h('span', {}, r.kindName) : null),
         h('p', { class: 'ph-chips' }, chipsFor({ ...r, kindName: null }).filter((x) => x && x.textContent)),
-        h('p', { class: `ph-st st-${r.state}`, 'data-test': 'stage' }, r.held ? `On hold: ${r.holdReasonName}` : r.state === 'cancelled' && r.cancelReasonName ? `${stageClock(r)}: ${r.cancelReasonName.toLowerCase()}` : stageClock(r)),
+        r.state === 'ready' && !r.held ? null : h('p', { class: `ph-st st-${r.state}`, 'data-test': 'stage' }, r.held ? `On hold: ${r.holdReasonName}` : r.state === 'cancelled' && r.cancelReasonName ? `${stageClock(r)}: ${r.cancelReasonName.toLowerCase()}` : stageClock(r)),
         h('p', { class: 'ph-line' }, r.state === 'raised' ? items(r.items) : `${items(r.items)} · raised ${r.clocks.raised}`),
         estimateLine(r)),
       rowActions(r));
@@ -409,6 +417,15 @@ function summaryScreen(ctx) {
   const load = async () => { data = await ctx.run('ospeli_pharmacy_overview', {}); draw(); await props.load(); };
   const act = runner(ctx, load);
   const kpi = (id) => data.kpis.find((k) => k.id === id);
+  // The queue's 3 s wait for the manager's own buttons too (#161): a second tap on the same spot
+  // never flips Move to the front, or the guide, straight back.
+  const lockUntil = new Map(); let lockTimer = null;
+  const locked = (key) => {
+    const left = (lockUntil.get(key) || 0) - Date.now();
+    if (left > 0) { clearTimeout(lockTimer); lockTimer = setTimeout(draw, Math.min(left + 20, 500)); }
+    return left > 0;
+  };
+  const lock = (key) => lockUntil.set(key, Date.now() + LOCK_MS);
 
   function stagesCard() {
     const k = kpi('stage-times');
@@ -427,8 +444,8 @@ function summaryScreen(ctx) {
     const g = data.guide;
     return h('section', { class: 'card ph-guide', 'data-test': 'guide', 'data-on': String(g.on), 'aria-labelledby': 'ph-guide-h' },
       h('div', { class: 'ph-guide-head' }, h('h2', { id: 'ph-guide-h' }, 'Guide'),
-        manager ? h('button', { class: 'btn btn-ghost btn-small ph-switch', type: 'button', 'aria-pressed': String(g.on), 'data-cmd': 'ospeli_pharmacy_guide_set', 'data-test': 'guide-switch', disabled: offline(),
-          onclick: (e) => { e.currentTarget.disabled = true; act('ospeli_pharmacy_guide_set', { on: !g.on }, `Guide ${g.on ? 'off' : 'on'}`); } }, g.on ? 'Guide on: switch off' : 'Guide off: switch on') : null),
+        manager ? h('button', { class: 'btn btn-ghost btn-small ph-switch', type: 'button', 'aria-pressed': String(g.on), 'data-cmd': 'ospeli_pharmacy_guide_set', 'data-test': 'guide-switch', disabled: offline() || locked('guide'),
+          onclick: (e) => { e.currentTarget.disabled = true; lock('guide'); act('ospeli_pharmacy_guide_set', { on: !g.on }, `Guide ${g.on ? 'off' : 'on'}`); } }, g.on ? 'Guide on: switch off' : 'Guide off: switch on') : null),
       g.on ? [
         h('p', { class: 'ph-hint' }, 'Fixed rules, not AI. They suggest; people decide. They point at requests and wards, never at a person.'),
         g.suggestions.length ? h('ul', { class: 'ph-sugg' }, g.suggestions.map((s) => h('li', { 'data-rule': s.rule, 'data-test': 'suggestion' },
@@ -445,8 +462,8 @@ function summaryScreen(ctx) {
       data.oldest.length ? h('ol', { class: 'ph-rows', 'data-test': 'oldest' }, data.oldest.map((r) => h('li', { class: `ph-row st-${r.state}`, 'data-request': r.id, 'data-state': r.state },
         h('div', { class: 'ph-row-text' }, h('p', { class: 'ph-who' }, h('b', {}, r.label)), h('p', { class: 'ph-chips' }, chipsFor(r)),
           h('p', { class: 'ph-line' }, `${items(r.items)} · waiting ${fmtWait(r.waitMinutes)} · ${r.held ? `on hold: ${r.holdReasonName}` : r.stateName.toLowerCase()}`)),
-        mayFront && !r.held ? h('div', { class: 'ph-row-act' }, h('button', { class: `btn ${r.front ? 'btn-ghost' : ''} btn-small ph-front-btn`, type: 'button', 'data-cmd': 'ospeli_pharmacy_request_step', 'data-step': r.front ? 'back' : 'front', 'data-test': r.front ? 'back' : 'front', disabled: offline(),
-          onclick: (e) => { e.currentTarget.disabled = true; act('ospeli_pharmacy_request_step', { requestId: r.id, step: r.front ? 'back' : 'front', expectedState: r.state }, `${r.label}: ${r.front ? 'back in the usual order' : 'moved to the front'}`); } },
+        mayFront && !r.held ? h('div', { class: 'ph-row-act' }, h('button', { class: `btn ${r.front ? 'btn-ghost' : ''} btn-small ph-front-btn`, type: 'button', 'data-cmd': 'ospeli_pharmacy_request_step', 'data-step': r.front ? 'back' : 'front', 'data-test': r.front ? 'back' : 'front', disabled: offline() || locked(r.id),
+          onclick: (e) => { e.currentTarget.disabled = true; lock(r.id); act('ospeli_pharmacy_request_step', { requestId: r.id, step: r.front ? 'back' : 'front', expectedState: r.state }, `${r.label}: ${r.front ? 'back in the usual order' : 'moved to the front'}`); } },
         r.front ? 'Back to the usual order' : 'Move to the front')) : null)))
         : h('p', { class: 'ph-empty' }, 'Nothing open.'),
       mayFront ? h('p', { class: 'ph-hint' }, 'A request moved to the front shows "Moved to the front by the manager" on the queue, so nobody thinks the order is broken.') : null);

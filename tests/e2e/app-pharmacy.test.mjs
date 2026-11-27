@@ -225,7 +225,7 @@ test('the ward nurse asks for discharge medicines in a few taps, nothing is chos
   assert.equal(await send.textContent(), 'Pick when they go home');
   await tap(page, '[data-test="planned-picks"] [data-planned="this-afternoon"]');
   assert.equal(await send.isDisabled(), true);
-  await page.locator('[data-test="items"]').selectOption('4');
+  await tap(page, '[data-test="items"] [data-items="4"]'); // a chip since #161 (was a 1 to 30 dropdown)
   assert.equal(await send.textContent(), 'Ask the pharmacy');
   const before = (await cmd(page, 'ospeli_pharmacy_queue_list', {}, 'coo')).counts.raised;
   await send.tap();
@@ -372,3 +372,90 @@ for (const [what, list, reason] of [['hold', 'hold-reasons', 'waiting-for-supply
     await context.close();
   });
 }
+
+// ---- #161 leftovers (screen only) ----
+test('#161 the ward phone says each step\'s time once: no second "raised" line on a raised row, one "Ready" line on a ready row', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/pharmacy' });
+  await asRole(page, 'ward-nurse', 'discharge');
+  await page.evaluate(() => { for (const el of document.querySelectorAll('[data-test="ward-requests"] li')) el.dataset.stale = 'true'; });
+  await page.locator('[data-test="wards"]').selectOption('');
+  await page.waitForFunction(() => !document.querySelector('[data-test="ward-requests"] li[data-stale]'));
+  const rows = await page.locator('[data-test="ward-requests"] li').evaluateAll((xs) => xs.map((li) => ({ state: li.dataset.state, lines: [...li.querySelectorAll('.ph-row-text p')].map((p) => p.textContent.trim()) })));
+  assert.ok(rows.some((r) => r.state === 'raised') && rows.some((r) => r.state === 'ready'), 'the example has raised and ready rows');
+  for (const r of rows) {
+    const raised = r.lines.filter((l) => /raised \d\d:\d\d/i.test(l));
+    assert.ok(raised.length <= 1, `one "raised" time on a ${r.state} row: ${JSON.stringify(r.lines)}`);
+    const ready = r.lines.filter((l) => /^Ready/.test(l));
+    assert.ok(ready.length <= 1, `one "Ready" line on a ${r.state} row: ${JSON.stringify(r.lines)}`);
+    if (r.state === 'ready') assert.match(ready[0] || '', /^Ready for collection since \d\d:\d\d/, 'the ready line keeps its time');
+  }
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('#161 the manager\'s "Move to the front" and the guide switch wait 3 s: a second tap on the same spot 1.6 s later records nothing more', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/pharmacy' });
+  await asRole(page, 'pharmacy-manager', 'summary');
+  const front = page.locator('[data-test="oldest"] li').filter({ has: page.locator('[data-test="front"]') }).first().locator('[data-test="front"]');
+  await front.scrollIntoViewIfNeeded();
+  const id = await front.evaluate((b) => b.closest('li').dataset.request);
+  let b = await front.boundingBox();
+  const before = await pharmacyEvents(page);
+  await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+  await page.waitForSelector(`[data-test="oldest"] [data-request="${id}"] [data-test="back"]`);
+  await page.waitForTimeout(1600);
+  await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+  await page.waitForTimeout(1500);
+  assert.deepEqual((await pharmacyEvents(page)).slice(before.length), [`${id} pharmacy.priority-set`], 'moved to the front once, not back again');
+  // The guide switch.
+  const sw = page.locator('[data-test="guide-switch"]');
+  await sw.scrollIntoViewIfNeeded();
+  b = await sw.boundingBox();
+  await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+  await page.waitForSelector('[data-test="guide-off"]');
+  await page.waitForTimeout(1600);
+  await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+  await page.waitForTimeout(1500);
+  assert.equal((await overview(page)).guide.on, false, 'the guide stays off');
+  assert.equal(await page.locator('[data-test="guide-off"]').count(), 1);
+  // After the wait the switch works again.
+  await page.waitForFunction(() => !document.querySelector('[data-test="guide-switch"]').disabled);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('#161 the ward\'s second form is called "Other medicines request"', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/pharmacy' });
+  await asRole(page, 'ward-nurse', 'discharge');
+  await page.locator('[data-test="wards"]').selectOption('ward-a2');
+  await page.waitForSelector('[data-test="other-form"]');
+  assert.equal((await page.locator('[data-test="other-form"] summary').textContent()).trim(), 'Other medicines request');
+  assert.equal(await page.getByText('Something else for the ward').count(), 0);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('#161 the item count is chips 1 to 6 with "More" for 7 to the cap: one tap for a usual count', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/pharmacy' });
+  await asRole(page, 'ward-nurse', 'discharge');
+  await page.locator('[data-test="wards"]').selectOption('ward-a2');
+  await page.waitForSelector('[data-test="ask-form"]');
+  const chips = await page.locator('[data-test="items"] button').evaluateAll((xs) => xs.map((x) => x.textContent.trim()));
+  assert.deepEqual(chips, ['1', '2', '3', '4', '5', '6', 'More'], 'chips 1 to 6 and More');
+  assert.equal(await page.locator('[data-test="items"] [aria-pressed="true"]').count(), 0, 'no count chosen in advance');
+  await tap(page, '[data-test="items"] [data-items="3"]');
+  assert.equal(await page.locator('[data-test="items"] [data-items="3"]').getAttribute('aria-pressed'), 'true');
+  await tap(page, '[data-test="items"] [data-items="more"]');
+  const more = page.locator('[data-test="items-more"]');
+  await more.selectOption('12');
+  assert.equal(await page.locator('[data-test="items"] [data-items="more"]').getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.locator('[data-test="items-more"]').inputValue(), '12');
+  const opts = await page.locator('[data-test="items-more"] option').evaluateAll((xs) => xs.map((x) => x.value).filter(Boolean));
+  assert.equal(opts[0], '7', 'More starts at 7');
+  // The other form has the same chips.
+  await tap(page, '[data-test="other-form"] summary');
+  assert.equal(await page.locator('[data-test="other-items"] [data-items="6"]').count(), 1);
+  assert.deepEqual(await phoneProblems(page), []);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
