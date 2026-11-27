@@ -894,7 +894,7 @@ function linenScreen(ctx, { places, names }) {
     const askRes = ui.askResult?.where === 'area' && ui.askResult.placeId === ui.area ? h('p', { class: 'sup-status', role: 'status', 'data-test': 'linen-ask-result' }, ui.askResult.error || ui.askResult.ok) : null;
     return h('section', { class: 'card sup-form', 'aria-labelledby': 'lin-count-h', 'data-test': 'linen-count' }, head,
       h('p', { class: 'meta', 'data-test': 'levels-note' }, LEVELS_NOTE),
-      mayCount ? h('p', { class: 'sup-hint' }, 'Count what is on the shelf, then save. Each box starts at the number on record: tap − or +, or type. Saving asks for nothing: then you choose to ask for a top-up. Leave an item alone if you did not count it.')
+      mayCount ? h('p', { class: 'sup-hint' }, 'Count what is on the shelf, then save. Each box starts at the number on record: tap − or +, or type. Saving asks for nothing: then you choose to ask for a top-up. Leave an item alone if you did not count it: untouched boxes are not saved.')
         : h('p', { class: 'meta', 'data-test': 'read-only' }, `${roleById(ctx.role).name} can see the linen. It is counted by ${roleNames(data.items.categories.find((c) => c.id === 'linen').roles.count)}.`),
       list, mayCount ? save : null, res, askBox, askRes, waitingBox);
   }
@@ -911,6 +911,11 @@ function linenScreen(ctx, { places, names }) {
     const date = m.day === 'today' ? data?.meals.today : prevDay(data?.meals.today);
     const saved = m.ward && m.meal ? data?.meals.records.find((x) => x.wardId === m.ward && x.date === date && x.meal === m.meal) : null;
     const nums = [['ordered', 'Ordered'], ['delivered', 'Delivered'], ['returned', 'Returned uneaten']];
+    // Correcting a saved count starts from the saved numbers (#145). Numbers filled in for another
+    // ward, day or meal and left as they were are cleared when the choice changes.
+    const at = `${m.ward}|${date}|${m.meal}`;
+    if (m.prefill && m.prefill.at !== at && nums.every(([k]) => m[k] === m.prefill[k])) { for (const [k] of nums) m[k] = null; m.prefill = null; }
+    if (saved && nums.every(([k]) => m[k] == null)) { m.prefill = { at }; for (const [k] of nums) { m[k] = saved[k]; m.prefill[k] = saved[k]; } }
     const saving = ui.saving === 'meal';
     const save = h('button', { class: 'btn btn-big', type: 'button', 'data-cmd': 'ospeli_support_meals_record', 'data-test': 'meal-save', disabled: saving, 'aria-disabled': String(saving), onclick: () => saveMeal() }, saving ? 'Saving…' : saved ? 'Save the correction' : 'Save meal count');
     return h('section', { class: 'card sup-form', 'aria-labelledby': 'meal-h', 'data-test': 'meals' },
@@ -920,7 +925,7 @@ function linenScreen(ctx, { places, names }) {
         h('div', { class: 'field' }, h('label', { for: 'meal-ward' }, 'Ward'), ward),
         h('div', { class: 'field' }, h('span', { class: 'label' }, 'Day'), chips(Object.entries(MEAL_DAY), 'day', 'meal-day')),
         h('div', { class: 'field' }, h('span', { class: 'label' }, 'Meal'), chips(Object.entries(MEAL_NAMES), 'meal', 'meal-pick')),
-        saved ? h('p', { class: 'sup-fact', 'data-test': 'meal-saved' }, `Saved already: ${saved.ordered} ordered, ${saved.delivered} delivered, ${saved.returned} returned uneaten. Record again to correct it.`) : null,
+        saved ? h('p', { class: 'sup-fact', 'data-test': 'meal-saved' }, `Saved already: ${saved.ordered} ordered, ${saved.delivered} delivered, ${saved.returned} returned uneaten. The boxes start from these: change what was wrong and save the correction.`) : null,
         h('div', { class: 'sup-meal-nums' }, nums.map(([key, label]) => h('div', { class: 'field sup-meal-n' }, h('span', { class: 'label' }, label),
           stepper({ get: () => m[key], set: (v) => { m[key] = v === undefined ? NaN : v; }, label: `${label}, meals`, test: `meal-${key}` })))),
         save,
