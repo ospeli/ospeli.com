@@ -510,7 +510,7 @@ function ordersScreen(ctx, shared) {
         data.open.length ? h('ul', { class: 'sto-order-list', 'data-test': 'orders' }, data.open.map((o) => orderCard(ctx, shared, o, { ui, act, remind: remind.get(o.id), guideOn: data.ov.guide.on })))
           : h('p', { class: 'card sto-empty', 'data-test': 'orders-empty' }, 'No order is open. An order starts when a stores assistant or the supply chain manager requests one.')),
       data.closed.length ? h('section', { class: 'section', 'aria-labelledby': 'ord-done-h' }, h('h2', { id: 'ord-done-h' }, 'Recently closed'),
-        h('ul', { class: 'sto-plain' }, data.closed.map((o) => h('li', { 'data-order': o.id }, h('b', {}, ordName(o.id)), ` ${o.stateName.toLowerCase()}${o.cycleDays != null ? ` ${daysText(o.cycleDays)} after it was requested` : ''} · ${o.lines.slice(0, 3).map((l) => `${l.itemName} ${l.received}/${l.qty}`).join(', ')}${o.lines.length > 3 ? ` and ${o.lines.length - 3} more` : ''}`)))) : null);
+        h('ul', { class: 'sto-plain' }, data.closed.map((o) => h('li', { 'data-order': o.id }, h('b', {}, ordName(o.id)), ` ${o.stateName.toLowerCase()}${o.receivedBeforeApproval ? ' (received before approval)' : ''}${o.cycleDays != null ? ` ${daysText(o.cycleDays)} after it was requested` : ''} · ${o.lines.slice(0, 3).map((l) => `${l.itemName} ${l.received}/${l.qty}`).join(', ')}${o.lines.length > 3 ? ` and ${o.lines.length - 3} more` : ''}`)))) : null);
   }
   return { el: box, load };
 }
@@ -531,6 +531,7 @@ function orderCard(ctx, shared, o, { ui, act, remind, guideOn, compact = false }
       h('p', {}, h('span', { class: 'meta' }, `${ordName(o.id)} `), h('span', { class: `chip sto-state is-${o.state}` }, o.stateName), guideOn && o.overUsual ? h('span', { class: 'chip sto-late', 'data-test': 'over-usual' }, 'Longer than usual') : null),
       h('p', { class: 'sto-wait' }, `${o.waitingFor} · ${daysText(o.daysAtStep)}`),
       toCome.length ? h('p', { class: 'meta', 'data-test': 'to-come' }, `Still to come: ${toCome.map((l) => `${l.itemName} ${l.toCome} of ${l.qty}`).join(', ')}`) : null,
+      o.receivedBeforeApproval ? h('p', { class: 'sto-fact', 'data-test': 'received-before-approval' }, `Received before approval: ${roleName(o.receivedBeforeApproval.byRole)} received goods against this order on ${day(o.receivedBeforeApproval.at)}${o.state === 'requested' ? ', before anyone approved it. It stays open until it is approved or cancelled' : ', before it was approved'}.`) : null,
       o.overReceived ? h('p', { class: 'sto-fact', 'data-test': 'over-received' }, `More received than ordered: ${o.lines.filter((l) => l.over).map((l) => `${l.itemName} ${l.received} of ${l.qty}`).join(', ')}. Check the delivery note.`) : null),
     compact ? null : h('ol', { class: 'sto-steps', 'aria-label': `Steps of ${ordName(o.id)}` }, o.steps.map((s) => h('li', { class: s.at ? (s.current ? 'is-now' : 'is-done') : null, 'data-step': s.step },
       h('b', {}, s.name), ' ', s.at ? `${day(s.at)}${s.days != null ? ` · ${daysText(s.days)}${s.current ? ' so far' : ''}` : ''}` : (o.state === 'received' && s.step !== 'received' ? 'not recorded' : '')))),
@@ -689,11 +690,12 @@ function manageScreen(ctx, shared) {
       sh.lines.length > 10 ? h('button', { class: 'btn btn-ghost btn-small', type: 'button', 'aria-expanded': String(ui.showAll), onclick: () => { ui.showAll = !ui.showAll; draw(); } }, ui.showAll ? 'Show the first 10' : `See all ${sh.lines.length}`) : null);
   }
   function stuckList() {
-    const orders = data.orders.slice(0, 5);
+    // An order received before anyone approved it comes first, so the manager sees it (#128).
+    const orders = [...data.orders.filter((o) => o.receivedBeforeApproval), ...data.orders.filter((o) => !o.receivedBeforeApproval)].slice(0, 5);
     const reqs = data.reqs.slice(0, 3);
     return h('section', { class: 'section', 'aria-labelledby': 'sto-stuck-h', 'data-test': 'stuck' },
       h('h2', { id: 'sto-stuck-h' }, 'What is stuck'),
-      h('p', { class: 'meta' }, 'Open orders, the longest at one step first, and the requests that have waited longest.'),
+      h('p', { class: 'meta' }, 'Open orders (any received before approval first, then the longest at one step), and the requests that have waited longest.'),
       orders.length ? h('ul', { class: 'sto-order-list' }, orders.map((o) => orderCard(ctx, shared, o, { ui, act, remind: data.ov.guide.suggestions.find((s) => s.rule === 'order-waiting' && s.action?.inputs[0].orderId === o.id), guideOn: data.ov.guide.on, compact: true })))
         : h('p', { class: 'meta' }, 'No order is open.'),
       reqs.length ? h('ul', { class: 'sto-plain' }, reqs.map((q) => h('li', { 'data-request': q.id }, h('b', {}, q.placeName), ` · ${reqName(q.id)} · waiting ${hoursText(q.waitHours)} · ${plural(q.lines.filter((l) => l.left > 0).length, 'item')}${q.canIssueInFull ? '' : ' · the store is short'}`))) : null,

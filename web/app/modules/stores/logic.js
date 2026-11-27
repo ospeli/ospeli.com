@@ -123,13 +123,19 @@ export function deriveOrders(events) {
           .filter((l) => typeof l?.itemId === 'string' && Number.isInteger(l.qty) && l.qty > 0 && l.qty <= MAX_QTY);
         if (o || !ORDER_ID.test(e.subject) || !lines.length) { problems += 1; continue; }
         orders.set(e.subject, { id: e.subject, placeId: typeof d.placeId === 'string' ? d.placeId : null, lines: lines.map((l) => ({ itemId: l.itemId, qty: l.qty, received: 0 })),
-          state: 'requested', steps: { requested: { at: e.at, byRole: e.actorRole } }, reminders: [], receipts: 0, cancelReason: null, lastSeq: e.seq ?? 0 });
+          state: 'requested', steps: { requested: { at: e.at, byRole: e.actorRole } }, reminders: [], receipts: 0, cancelReason: null, lastSeq: e.seq ?? 0,
+          receivedBeforeApproval: null, fullBeforeApproval: null });
         continue;
       }
       if (!RECORDED_STEPS.includes(d.step) || stepProblem(o, d.step)) { problems += 1; continue; }
       o.steps[d.step] = { at: e.at, byRole: e.actorRole };
       o.state = d.step;
       if (d.step === 'cancelled') o.cancelReason = ORDER_CANCEL_REASONS.includes(d.reason) ? d.reason : 'Other';
+      // Goods already received before the approval: once approved, they complete the order (or part of it).
+      if (d.step === 'approved' && o.receivedBeforeApproval) {
+        if (o.fullBeforeApproval) { o.steps.received = o.fullBeforeApproval; o.state = 'received'; }
+        else { o.steps['part-received'] = o.receivedBeforeApproval; o.state = 'part-received'; }
+      }
       if (e.seq > o.lastSeq) o.lastSeq = e.seq;
     } else if (e.type === 'stores.order-reminded') {
       const o = orders.get(e.subject);
@@ -144,6 +150,15 @@ export function deriveOrders(events) {
         if (want && Number.isInteger(l.qty) && l.qty > 0) want.received += l.qty;
       }
       o.receipts += 1;
+      // Received before anyone approved the order (#128): counted into stock, never refused (some sites
+      // receive urgent items before the paperwork), but the order does not move on. It stays waiting
+      // for approval, open and marked "received before approval" where the manager sees it.
+      if (!o.steps.approved) {
+        o.receivedBeforeApproval ??= { at: e.at, byRole: e.actorRole };
+        if (!o.fullBeforeApproval && o.lines.every((l) => l.received >= l.qty)) o.fullBeforeApproval = { at: e.at, byRole: e.actorRole };
+        if (e.seq > o.lastSeq) o.lastSeq = e.seq;
+        continue;
+      }
       // Received in full only when every line has come: the last receipt that completes it. Until
       // then the order is part received and stays open. More than ordered is flagged, never refused.
       if (o.lines.every((l) => l.received >= l.qty)) { o.steps.received = { at: e.at, byRole: e.actorRole }; o.state = 'received'; }
@@ -170,7 +185,8 @@ export function orderSteps(o, now) {
     const at = o.steps[s]?.at ?? null;
     if (!at) return { step: s, name: STEP_NAMES[s], at: null, byRole: null, days: null };
     const later = reached.slice(reached.indexOf(s) + 1).map((x) => o.steps[x].at)[0] ?? end ?? null;
-    return { step: s, name: STEP_NAMES[s], at, byRole: o.steps[s].byRole, days: s === 'received' ? null : days(at, later ? Date.parse(later) : t), current: s === o.state };
+    // Goods received before approval: the receipt is earlier than the approval, so no negative days.
+    return { step: s, name: STEP_NAMES[s], at, byRole: o.steps[s].byRole, days: s === 'received' ? null : Math.max(0, days(at, later ? Date.parse(later) : t)), current: s === o.state };
   };
   return ORDER_STEPS.map((s) => (s === 'received' && !o.steps.received && o.steps['part-received'] ? row('part-received') : row(s)));
 }
