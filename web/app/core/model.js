@@ -76,6 +76,8 @@ const WORD_CHANGES = [
   [/\bBed lift\b/g, 'Bed elevator'],
   [/\bLift out of service\b/g, 'Elevator out of service'],
   [/\bEmergency department nurse in charge\b/g, 'Emergency department charge nurse'],
+  // Issue #56: the operating room department's name; its id 'dept-theatres' stays.
+  [/\bTheatres\b(?!-)/g, 'Operating rooms'],
 ];
 export const currentWords = (text) => (typeof text === 'string' ? WORD_CHANGES.reduce((s, [old, now]) => s.replace(old, now), text) : text);
 

@@ -361,7 +361,9 @@ OLD_WORDS = [(re.compile(r"\bbed managers?\b", re.I), "Bed manager", "Patient fl
              (re.compile(r"\bwalking, phoning and paper\b", re.I), "walking, phoning and paper", "walking, phoning, paper and spreadsheets"),
              (re.compile(r"\btight budgets?\b", re.I), "tight budgets", "hardware you already have"),
              (re.compile(r"\ba mini PC and a UPS\b", re.I), "a mini PC and a UPS", "the tablets, phones and PCs you already have"),
-             # Issue #56: three terms from one health system's vocabulary ("theatres" waits: see the issue).
+             # Issue #56: three terms from one health system's vocabulary. "Theatres" is not guarded yet: the titles,
+             # headings, front page link and app service lists say "operating rooms" (tests/unit/neutral-words-56),
+             # but the body text and role names (about 200 uses) wait for the vocabulary pack (A0); see the issue.
              (re.compile(r"\bdid[- ]not[- ]attend\b", re.I), "did not attend / did-not-attend", "no-show / missed appointment"),
              (re.compile(r"\bout-of-area\b", re.I), "out-of-area", "away from the home area"),
              (re.compile(r"\bdistrict (?:managers?|view)\b", re.I), "district manager / district view", "area manager / area view"),

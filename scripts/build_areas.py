@@ -92,7 +92,7 @@ LIVE = {
     "B4": ("Open the app (stores and supplies)", "../../app/#/stores"),
     "X2": ("Open the daily operations report preview", "../../demo/daily-report/"),
     "D4": ("Open the daily operations report preview", "../../demo/daily-report/"),
-    "A4": ("Open the theatres preview", "../../demo/theatres/"),
+    "A4": ("Open the operating rooms preview", "../../demo/theatres/"),
     "A1": ("Open the app (outpatient clinics)", "../../app/#/clinics"),
     "B2": ("Open the app (facilities and utilities)", "../../app/#/facilities"),
     "C1": ("Open the staffing preview", "../../demo/staffing/"),
@@ -334,7 +334,7 @@ def index_page(areas):
 <p class="lead">Built today: the bed board, engineering work orders, process maps, first versions of cleaning and transport, stores and supplies, patient feedback, the facilities utilities log, transfers and vehicles, outpatient clinics, diagnostics and pharmacy operations, and the KPI library, on one core. Designed on the same core: {more} more areas, each with a preview. Each area page shows who uses it, what it records, how it is measured and what it deliberately does not do.</p>
 <p class="legend">{legend}</p>
 <div class="groups">{''.join(groups)}</div>"""
-    return page("Every area · Ospeli", "What is built today and what is in preview across hospital operations, from beds and theatres to facilities, stores, staffing, quality and preparedness.", 1, body)
+    return page("Every area · Ospeli", "What is built today and what is in preview across hospital operations, from beds and operating rooms to facilities, stores, staffing, quality and preparedness.", 1, body)
 
 
 def main():
