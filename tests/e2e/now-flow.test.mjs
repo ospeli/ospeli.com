@@ -23,15 +23,19 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
   test(`${width} px: Imaging's flow strip has its four stages in order, 44 px tiles, no sideways scroll, and Leave opens Transfers`, async () => {
     const { page, context, errors } = await openPage(env, { width, height, touch: true, department: 'imaging', clock: CLOCK });
     await page.waitForSelector('[data-test="now-flow"]');
-    const tiles = await page.locator('.flow-tile').evaluateAll((els) => els.map((e) => ({ stage: e.dataset.stage, name: e.querySelector('.flow-name').textContent, n: e.querySelector('.flow-n').textContent, h: e.getBoundingClientRect().height, w: e.getBoundingClientRect().width, top: e.getBoundingClientRect().top, label: e.getAttribute('aria-label') })));
+    // #183: a tile's accessible name is its own text (no aria-label), so read the text.
+    const tiles = await page.locator('.flow-tile').evaluateAll((els) => els.map((e) => ({ stage: e.dataset.stage, name: e.querySelector('.flow-name').textContent, n: e.querySelector('.flow-n').textContent, h: e.getBoundingClientRect().height, w: e.getBoundingClientRect().width, top: e.getBoundingClientRect().top, label: e.textContent.replace(/\s+/g, ' ').trim(), aria: e.getAttribute('aria-label') })));
     assert.deepEqual(tiles.map((t) => t.name), ['Arrive', 'Prep', 'Scan', 'Leave']);
     for (const t of tiles) { assert.ok(t.h >= 44 && t.w >= 44, `${t.name}: a ${t.w} by ${t.h} px tile`); assert.equal(t.top, tiles[0].top, `${t.name} is on the same row`); }
     // Honest counts: Prep and Scan have no source, so a dash and the words "not counted yet", never a number.
     assert.equal(tiles[1].n, '–'); assert.equal(tiles[2].n, '–');
-    assert.match(tiles[1].label, /^Prep: not counted yet/);
-    assert.match(await page.textContent('[data-test="flow-key"]'), /Prep, Scan: not counted yet/);
+    assert.match(tiles[1].label, /^Prep – not counted yet\. /);
+    for (const t of tiles) assert.equal(t.aria, null, `${t.name}: named by its own text`);
+    assert.match(await page.textContent('[data-test="flow-key"]'), /Prep and Scan are not counted yet\./);
     assert.match(tiles[0].n, /^\d+$/); assert.match(tiles[3].n, /^\d+$/);
-    assert.equal(await page.textContent('.flow-caption'), 'Example setting, a site can edit these stages.');
+    // #183 item 4: the stages cannot be edited on screen, so nothing says they can.
+    assert.equal(await page.locator('.flow-caption').count(), 0);
+    assert.doesNotMatch(await page.textContent('[data-test="now-flow"]'), /can edit/);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'no sideways scroll');
     // Imaging does not lead with ward and emergency numbers (#166 item 1); its pages and the footer stay.
     assert.equal(await page.locator('#kpi-h').count(), 0);
@@ -55,14 +59,17 @@ test('every department has a strip of four stages, numbers only where the data h
     const { chooseDepartment } = await import('./helpers.mjs');
     await chooseDepartment(page, d.id);
     // The page is drawn again for the department: wait for its own stages, then check them.
-    await page.waitForFunction((want) => JSON.stringify([...document.querySelectorAll('.flow-tile .flow-name')].map((e) => e.textContent)) === want, JSON.stringify(d.stages.map((s) => s.name)), { timeout: 10000 }).catch(() => {});
+    // Stages counted by a planned module have no tile (#183 item 4); a tile may carry its own words.
+    const want = d.stages.filter((s) => !s.planned).map((s) => s.tile || s.name);
+    await page.waitForFunction((w) => JSON.stringify([...document.querySelectorAll('.flow-tile .flow-name')].map((e) => e.textContent)) === w, JSON.stringify(want), { timeout: 10000 }).catch(() => {});
     assert.equal(await page.textContent('#main h1'), d.name, `${d.id}: Now is drawn for the department`);
     const names = await page.locator('.flow-tile .flow-name').allTextContents();
-    assert.deepEqual(names, d.stages.map((s) => s.name), d.id);
+    assert.deepEqual(names, want, d.id);
     const bars = await page.locator('[data-test="flow-wait-bar"]').count();
     const line = await page.locator('[data-test="flow-wait"]').count();
     assert.ok(bars <= 1 && bars === line, `${d.id}: one mango bar with its words, or none`);
-    if (line) assert.match(await page.textContent('[data-test="flow-wait"]'), /^→Longest wait now: (\d+ min|\d+ h( \d+)?|under 1 min) before .+$/);
+    // #183 item 1: the wait is named with what it is for and its unit; "Longest wait now" only over every stage.
+    if (line) assert.match(await page.textContent('[data-test="flow-wait"]'), /^→(Longest wait now|Longest timed wait|Only timed wait): (\d+ min|\d+ h( \d+ min)?) (for|to) [a-z ]+ \(1 (patient|journey|request)\)$/);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `${d.id}: no sideways scroll`);
     assert.equal(await page.locator('#kpi-h').count(), ['wards', 'emergency', 'whole-hospital'].includes(d.id) ? 1 : 0, `${d.id}: Key numbers`);
   }
@@ -73,6 +80,10 @@ test('every department has a strip of four stages, numbers only where the data h
   const n = (id) => page.textContent(`.flow-tile[data-stage="${id}"] .flow-n`);
   assert.equal(await n('stay'), String(board.wards.reduce((s, w) => s + w.counts.occupied, 0)));
   assert.equal(await n('ready'), String(board.wards.reduce((s, w) => s + w.counts['expected-discharge'], 0)));
+  // #183 item 3: Stay + Expected to leave is every occupied bed, and the key says that total.
+  const occupied = board.wards.reduce((s, w) => s + w.counts.occupied + w.counts['expected-discharge'], 0);
+  assert.equal(Number(await n('stay')) + Number(await n('ready')), occupied);
+  assert.match(await page.textContent('[data-test="flow-key"]'), new RegExp(`${occupied} occupied beds;`));
   assert.equal(await n('arrive'), String(board.waiting.length));
   assert.deepEqual(errors, []);
   await context.close();

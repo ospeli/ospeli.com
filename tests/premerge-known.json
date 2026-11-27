@@ -1,12 +1,6 @@
 {
  "note": "Faults in the app when the pre-merge checklist was added (25 Nov 2026). Lines are only ever deleted. See tests/e2e/premerge.test.mjs.",
  "pages": {
-  "#/": {
-   "axe": [
-    "label-content-name-mismatch: a.flow-tile",
-    "label-content-name-mismatch: button.flow-tile"
-   ]
-  },
   "#/beds": {
    "axe": [
     "label-content-name-mismatch: button.bed.st-available",
