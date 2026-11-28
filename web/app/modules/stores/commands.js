@@ -17,7 +17,7 @@ import { STOCK_PLACE_TYPES, MAX_QTY, ITEM_ID_PATTERN, balance, openStockOut, usa
 import {
   STOCK_CATEGORIES, STOCK_ITEMS, CATEGORY, deriveSupplies, isSupply, suppliesRequest, deriveOrders, nextOrderId, orderSteps, daysAtStep, overUsual, lastReminder, isOpenOrder,
   ORDER_STEPS, ORDER_STATES, RECORDED_STEPS, STEP_NAMES, STEP_ROLES, WAITING_FOR, USUAL_DAYS, REMIND_GAP_HOURS, ORDER_CANCEL_REASONS, ORDER_ID_PATTERN, MAX_ORDER_LINES, stepProblem,
-  guideOn, GUIDE_RULES, shortNow, SHORT_SHARE, REQUEST_USUAL_HOURS, tracerStockOutRate, countIntervals, requestWaitHours, orderCycleTime, fillRatePercent, ruleLevelCheck, ruleOrderWaiting, ruleTransfer,
+  guideOn, GUIDE_RULES, EXAMPLE_NOTE, shortNow, SHORT_SHARE, REQUEST_USUAL_HOURS, tracerStockOutRate, countIntervals, requestWaitHours, orderCycleTime, fillRatePercent, ruleLevelCheck, ruleOrderWaiting, ruleTransfer,
 } from './logic.js';
 
 export { STOCK_CATEGORIES, STOCK_ITEMS };
@@ -108,7 +108,7 @@ async function overview(core, input, wards) {
     ...ruleTransfer(stock, { now, isArea: c.isArea, see, placeName: c.placeName, storeHas: (itemId) => (c.stores[0] ? usableOf(stock, itemId, c.stores[0].id, now) : null) }),
   ].map(({ rule, id: sid, text, why, basis, action }) => ({ rule, id: sid, text, why, basis, action })) : [];
   return {
-    asOf: now, synthetic: await isSynthetic(core), period: { since, until: now, days },
+    asOf: now, synthetic: await isSynthetic(core), exampleNote: EXAMPLE_NOTE, period: { since, until: now, days },
     hasStore: c.stores.length > 0, hasHistory: held.length > 0, stores: c.stores.map((s) => ({ id: s.id, name: currentWords(s.name) })),
     counts: {
       underLevel: under.length, areasShort: new Set(under.map((h) => h.placeId)).size,
@@ -227,6 +227,9 @@ const STEP_LINE = { type: 'object', additionalProperties: false, required: ['ite
 const WRITE_OUT = (props) => ({ type: 'object', required: ['status'], properties: { status: WRITE_STATUS, events: EVENT_SEQS, proposal: PROPOSAL_OUT, ...props } });
 const STEP_WRITERS = [...new Set(Object.values(STEP_ROLES).flat())];
 
+// The same words as the screens (#113): example data only, and issued counts as arrived for now.
+const EXAMPLE_NOTE_OUT = { type: 'string', description: 'Example data only: until a ward can confirm that a delivery arrived (not built yet), an item the store issues is counted as on the ward at once. Say so when you report ward stock.' };
+
 export const COMMANDS = [
   {
     name: 'ospeli_stores_overview',
@@ -235,8 +238,8 @@ export const COMMANDS = [
     input: { type: 'object', additionalProperties: false, properties: {
       days: { type: 'integer', minimum: 1, maximum: 90, description: 'The period for the measures: the last this many days. Default 30.' },
       format: FORMAT('the values without their definitions', 'each value with its definition, source and the value for each area') } },
-    output: { type: 'object', required: ['asOf', 'synthetic', 'period', 'hasStore', 'hasHistory', 'counts', 'kpis', 'planned', 'guide'], properties: {
-      asOf: TIME, synthetic: SYNTHETIC, period: { type: 'object' },
+    output: { type: 'object', required: ['asOf', 'synthetic', 'exampleNote', 'period', 'hasStore', 'hasHistory', 'counts', 'kpis', 'planned', 'guide'], properties: {
+      asOf: TIME, synthetic: SYNTHETIC, exampleNote: EXAMPLE_NOTE_OUT, period: { type: 'object' },
       hasStore: { type: 'boolean', description: 'False on a device whose hospital has no store set up: nothing can be issued or received.' },
       hasHistory: { type: 'boolean', description: 'False when no supplies are held anywhere yet (no level set, no movement).' },
       stores: { type: 'array', description: 'The stores, with ids.' },
@@ -256,8 +259,8 @@ export const COMMANDS = [
     input: { type: 'object', additionalProperties: false, properties: {
       state: { type: 'string', enum: ['open', 'received', 'cancelled', 'all'], description: 'open (default): not received in full or cancelled yet (part received is open). received, cancelled or all: newest first.' },
       format: FORMAT('each order without its steps', 'each order with its steps, its last reminder and the steps that can be recorded next'), limit: LIMIT(50, 200, 'orders') } },
-    output: { type: 'object', required: ['asOf', 'synthetic', 'orders', 'steps', 'total', 'truncated'], properties: {
-      asOf: TIME, synthetic: SYNTHETIC, total: TOTAL, truncated: TRUNCATED,
+    output: { type: 'object', required: ['asOf', 'synthetic', 'exampleNote', 'orders', 'steps', 'total', 'truncated'], properties: {
+      asOf: TIME, synthetic: SYNTHETIC, exampleNote: EXAMPLE_NOTE_OUT, total: TOTAL, truncated: TRUNCATED,
       steps: { type: 'array', description: 'The steps in order, who records each, and the usual longest wait at each (example settings, not standards).' },
       orders: { type: 'array', items: { type: 'object', required: ['id', 'state', 'stateName', 'requestedAt', 'lines', 'daysAtStep'] } },
       cancelReasons: { type: 'array', description: 'The reasons to pick from when an order is cancelled.' } } },
@@ -268,7 +271,7 @@ export const COMMANDS = [
       list = state === 'open' ? list.sort((a, b) => daysAtStep(b, c.now) - daysAtStep(a, c.now) || (a.id < b.id ? -1 : 1)) : list.sort((a, b) => (a.id < b.id ? 1 : -1));
       const cut = page(list, input.limit, 50);
       return {
-        asOf: c.now, synthetic: await isSynthetic(core), total: cut.total, truncated: cut.truncated,
+        asOf: c.now, synthetic: await isSynthetic(core), exampleNote: EXAMPLE_NOTE, total: cut.total, truncated: cut.truncated,
         steps: ORDER_STEPS.map((s) => ({ step: s, name: STEP_NAMES[s], roles: s === 'received' ? [...STOCK_CATEGORIES[CATEGORY].roles.receive] : [...STEP_ROLES[s]],
           usualDays: USUAL_DAYS[s] ?? null, note: s === 'received' ? 'Recorded by receiving the delivery into stock (ospeli_stock_receive with orderRef).' : null })),
         orders: cut.items.map((o) => orderRow(c, o, input.format)), cancelReasons: [...ORDER_CANCEL_REASONS],

@@ -50,6 +50,10 @@ export const STOCK_ITEMS = [
   { id: 'suction-cath', name: 'Suction catheter', unit: 'box of 50', category: 'supplies' },
   { id: 'electrodes', name: 'Monitoring electrodes', unit: 'pack of 50', category: 'supplies' },
 ];
+// Issued is not arrived (ospeli/ospeli#113, point 1): until a ward can confirm that a delivery
+// arrived, the shared stock item puts an issued item on the ward's balance at once. The screens and
+// the module's reads say so in the same words, as the review asked, until that is built.
+export const EXAMPLE_NOTE = 'Example data only. An item the store issues is counted as arrived on the ward until the ward confirms arrival, which is not built yet.';
 export const CATEGORY = 'supplies';
 // Units an item a site adds may be counted in: a pick list, so nothing is typed but the name.
 export const UNITS = ['each', 'pair', 'pack', 'pack of 10', 'pack of 25', 'pack of 50', 'pack of 100', 'box', 'box of 10', 'box of 50', 'box of 100', 'box of 200', 'roll', 'bottle', 'bag', 'case'];
