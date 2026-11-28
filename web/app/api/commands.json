@@ -26811,6 +26811,24 @@
           "note"
         ],
         "properties": {
+          "scope": {
+            "type": "object",
+            "description": "Agents only, and only when something is left out (#196): wardsOnly, leftOut (the places whose requests are not in this answer) and a note in words. A person's answer has no scope.",
+            "properties": {
+              "wardsOnly": {
+                "type": "boolean"
+              },
+              "leftOut": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "note": {
+                "type": "string"
+              }
+            }
+          },
           "asOf": {
             "type": "string",
             "format": "date-time",
@@ -27070,6 +27088,24 @@
           "note"
         ],
         "properties": {
+          "scope": {
+            "type": "object",
+            "description": "Agents only, and only when something is left out (#196): wardsOnly, leftOut (the places whose requests are not in this answer) and a note in words. A person's answer has no scope.",
+            "properties": {
+              "wardsOnly": {
+                "type": "boolean"
+              },
+              "leftOut": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "note": {
+                "type": "string"
+              }
+            }
+          },
           "asOf": {
             "type": "string",
             "format": "date-time",
@@ -28421,6 +28457,24 @@
           "note"
         ],
         "properties": {
+          "scope": {
+            "type": "object",
+            "description": "Agents only, and only when something is left out (#196): wardsOnly, leftOut (the places whose requests are not in this answer) and a note in words. A person's answer has no scope.",
+            "properties": {
+              "wardsOnly": {
+                "type": "boolean"
+              },
+              "leftOut": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "note": {
+                "type": "string"
+              }
+            }
+          },
           "asOf": {
             "type": "string",
             "format": "date-time",

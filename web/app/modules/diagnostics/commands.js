@@ -97,6 +97,17 @@ const backupText = (kind, b) => (EQUIPMENT_KINDS[kind] && isPick(EQUIPMENT_KINDS
 // What an agent may be told about: a request from a ward it may see. A department cannot be given
 // to an agent yet, so an agent is never told about a department's requests.
 const visibleTo = (wards) => (r) => !wards || wards.has(r.sourceId);
+// Issue #196: an agent's figures leave out requests from a department (and from wards it was not
+// given), so a read says so in words instead of giving a different number under the same name. Only
+// the places that have requests in what was asked for are named; a person (no ward list) gets nothing.
+const SCOPE_NOTE = 'Figures and lists cover requests from the wards you were given; requests from these places are not included, so they can differ from what a person sees';
+function scopeFor(reqs, wards, info, keep = () => true) {
+  if (!wards) return {};
+  const names = [...new Set([...reqs.values()].filter((r) => keep(r) && !wards.has(r.sourceId)).map((r) => info.nameOf(r.sourceId)))].sort();
+  return names.length ? { scope: { wardsOnly: true, leftOut: names, note: `${SCOPE_NOTE}: ${names.join(', ')}.` } } : {};
+}
+const SCOPE_OUT = { type: 'object', description: 'Agents only, and only when something is left out (#196): wardsOnly, leftOut (the places whose requests are not in this answer) and a note in words. A person\'s answer has no scope.',
+  properties: { wardsOnly: { type: 'boolean' }, leftOut: { type: 'array', items: { type: 'string' } }, note: { type: 'string' } } };
 
 function requestOut(r, info, now, { notArrived = new Set(), short = false } = {}) {
   const p = codeParts(r);
@@ -300,6 +311,7 @@ async function requestsList(core, input, wards) {
     ...(short ? {} : { picks: { sources: info.sources.filter((s) => !wards || wards.has(s.id)), testGroups: { ...TEST_GROUPS }, urgencies: { ...URGENCIES }, urgencyLabel: URGENCY_LABEL,
       cancelReasons: { ...CANCEL_REASONS }, collectedAgo: [...AGO_MINUTES], lateEntryMinutes: LATE_ENTRY_MINUTES, stages: { ...STAGES }, patients },
     releasedDefinition: RELEASED_DEFINITION, filterNote: WARD_FILTER_NOTE }),
+    ...scopeFor(reqs, wards, info, (r) => !input.sourceId || r.sourceId === input.sourceId),
     note: NOT_FOR,
   };
 }
@@ -360,7 +372,7 @@ async function specimenLog(core, input, wards) {
       picks: { rejectReasons: { ...REJECT_REASONS }, rejectHeading: REJECT_HEADING, undoReasons: { ...UNDO_REASONS }, undoMinutes: UNDO_MINUTES, urgencyLabel: URGENCY_LABEL, notArrivedMinutes: { ...NOT_ARRIVED_MINUTES } },
       releasedDefinition: RELEASED_DEFINITION,
     }),
-    guideOn: on, note: NOT_FOR,
+    ...scopeFor(reqs, wards, info), guideOn: on, note: NOT_FOR,
   };
 }
 function equipmentRows(info, events, woEvents, now) {
@@ -430,9 +442,10 @@ async function overview(core, input, wards) {
     'specimen-rejection-rate': { ...ar(rej), byReason, byArea, other: byReason.find((x) => x.reason === 'other')?.count || 0 },
     'equipment-availability': { value: avail.length ? Math.round((avail.reduce((n, x) => n + x.numerator, 0) / Math.max(1, avail.reduce((n, x) => n + x.denominator, 0))) * 1000) / 10 : null, numerator: null, denominator: null, n: avail.length, byAsset: avail },
   };
+  const scope = scopeFor(reqs, wards, info);
   const kpis = KPIS.map((k) => {
     const v = values[k.id];
-    const base = { id: k.id, name: k.name, unit: k.unit, value: v.value, numerator: v.numerator, denominator: v.denominator, n: v.n, period, targetText: k.targetText,
+    const base = { id: k.id, name: scope.scope ? `${k.name} (wards only)` : k.name, unit: k.unit, value: v.value, numerator: v.numerator, denominator: v.denominator, n: v.n, period, targetText: k.targetText,
       ...(k.id === 'lab-turnaround' ? { median: v.median, p90: v.p90 } : {}) };
     if (short) return base;
     const extra = k.id === 'lab-turnaround' ? { byGroup: v.byGroup, blended: v.blended } : k.id === 'specimen-rejection-rate' ? { byReason: v.byReason, byArea: v.byArea, other: v.other } : { byAsset: v.byAsset };
@@ -457,6 +470,7 @@ async function overview(core, input, wards) {
       definition: 'Data completeness (KPI dictionary D-21): requests finished in the period (result released, or rejected) with every required step timed, divided by requests finished in the period, per source area.' },
     equipment: eqRows, equipmentPicks: equipmentPicks(), expectedBackHours: [...EXPECTED_HOURS], imaging: IMAGING_PLANNED, faultNote: FAULT_NOTE }),
     guide: { on, rules: GUIDE_RULES.map((r) => ({ ...r })), suggestions },
+    ...scope,
     note: NOT_FOR,
   };
 }
@@ -508,7 +522,7 @@ export const COMMANDS = [
       hours: { type: 'integer', minimum: 1, maximum: 168, description: 'Finished requests are kept in the list this many hours. Default 24.' },
       format: FORMAT('id, code, place, test group, urgency, stage and minutes only', 'with every step\'s time and role, the pick lists and the patients on the ward'),
       limit: LIMIT(50, 500, 'requests') } },
-    output: { type: 'object', required: ['asOf', 'synthetic', 'requests', 'total', 'truncated', 'counts', 'note'], properties: {
+    output: { type: 'object', required: ['asOf', 'synthetic', 'requests', 'total', 'truncated', 'counts', 'note'], properties: { scope: SCOPE_OUT,
       asOf: TIME, synthetic: SYNTHETIC, sourceId: NULLABLE('string'), sourceName: NULLABLE('string'), hours: { type: 'integer' }, requests: { type: 'array', items: REQUEST_OUT },
       total: TOTAL, truncated: TRUNCATED, counts: { type: 'object', description: 'Requests in the list by state, before the limit.' }, picks: { type: 'object' },
       releasedDefinition: { type: 'string' }, filterNote: { type: 'string' }, note: { type: 'string' } } },
@@ -523,7 +537,7 @@ export const COMMANDS = [
     input: { type: 'object', additionalProperties: false, properties: {
       format: FORMAT('the counts, not arrived and on the way only', 'also not collected, recent, waiting for a result, by hour and by source, and the pick lists'),
       limit: LIMIT(100, 500, 'specimens in each block') } },
-    output: { type: 'object', required: ['asOf', 'synthetic', 'counts', 'notArrived', 'onTheWay', 'total', 'truncated', 'note'], properties: {
+    output: { type: 'object', required: ['asOf', 'synthetic', 'counts', 'notArrived', 'onTheWay', 'total', 'truncated', 'note'], properties: { scope: SCOPE_OUT,
       asOf: TIME, synthetic: SYNTHETIC, today: { type: 'object', description: 'Since 00:00 on the site\'s own clock: a night shift crosses it.' },
       counts: { type: 'object', required: ['onTheWay', 'noCollectionToday'], properties: { noCollectionToday: { type: 'integer', description: 'Specimens that reached the lab today with no collection time recorded.' } } },
       notArrived: { type: 'array', items: REQUEST_OUT }, onTheWay: { type: 'array', description: 'Blocks by source area: { sourceId, sourceName, count, items }.' },
@@ -741,7 +755,7 @@ export const COMMANDS = [
     input: { type: 'object', additionalProperties: false, properties: {
       days: { type: 'integer', minimum: 1, maximum: 30, description: 'The period: the last this many days. Default 7.' },
       format: FORMAT('the values without definitions, breakdowns or equipment', 'each value with its definition, source and breakdown, completeness and equipment') } },
-    output: { type: 'object', required: ['asOf', 'synthetic', 'period', 'counts', 'kpis', 'planned', 'guide', 'note'], properties: {
+    output: { type: 'object', required: ['asOf', 'synthetic', 'period', 'counts', 'kpis', 'planned', 'guide', 'note'], properties: { scope: SCOPE_OUT,
       asOf: TIME, synthetic: SYNTHETIC, period: { type: 'object' }, counts: { type: 'object' }, kpis: { type: 'array', items: KPI_OUT }, planned: { type: 'array' },
       completeness: { type: 'object' }, equipment: { type: 'array' }, imaging: { type: 'string' }, faultNote: { type: 'string' },
       guide: { type: 'object', required: ['on', 'rules', 'suggestions'], properties: { on: { type: 'boolean' }, rules: { type: 'array' }, suggestions: { type: 'array', items: SUGGESTION } } },
