@@ -281,9 +281,11 @@ export async function render(el, ctx) {
     const readThis = (items) => h('details', { class: 'read-this', 'data-test': 'read-this' },
       h('summary', {}, 'How to read this'),
       h('ul', {}, items.filter(Boolean).map((x) => (typeof x === 'string' ? h('li', {}, x) : x))));
+    // Steps after the visit are timed, on their own clock: the note says so where the map has one (Domain lead, 28 Nov).
+    const lastWords = (m.today?.steps || []).some((x) => x.afterVisit) ? 'Steps after the visit are timed apart and are not in the totals. Nothing after them is recorded.' : 'Time after the last step is not recorded.';
     const walkNoteText = rangeView
-      ? `Same step list, one bar per walk. This is what happened on ${rg.count} visits, not how the process usually runs. Time after the last step is not recorded.${rg.walks.some((w) => w.guidanceSeen === false) ? ' The before-you-walk points were not confirmed for every walk.' : ''}`
-      : walked ? `Times from ${multi ? 'walk 1' : 'one walk'} on ${day(m.walk.startedAt)}, started ${clock(m.walk.startedAt)}. This is what happened once, not how the process usually runs. Time after the last step is not recorded.${byHand ? ' Some times or steps were changed by hand after the walk.' : ''}${m.walk.guidanceSeen === false ? ' The before-you-walk points were not confirmed for this walk.' : ''}` : '';
+      ? `Same step list, one bar per walk. This is what happened on ${rg.count} visits, not how the process usually runs. ${lastWords}${rg.walks.some((w) => w.guidanceSeen === false) ? ' The before-you-walk points were not confirmed for every walk.' : ''}`
+      : walked ? `Times from ${multi ? 'walk 1' : 'one walk'} on ${day(m.walk.startedAt)}, started ${clock(m.walk.startedAt)}. This is what happened once, not how the process usually runs. ${lastWords}${byHand ? ' Some times or steps were changed by hand after the walk.' : ''}${m.walk.guidanceSeen === false ? ' The before-you-walk points were not confirmed for this walk.' : ''}` : '';
     const walkNote = (inside) => h(inside ? 'li' : 'p', { class: inside ? 'walk-note' : 'meta notice walk-note', 'data-test': 'walk-note' }, walkNoteText);
     let rangeAnswer = null;
     // "How to read this": on the Result tab, after the table; it holds every caveat and definition.

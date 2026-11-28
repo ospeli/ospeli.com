@@ -304,15 +304,15 @@ export async function renderWalk(box, ctx, againOf = null) {
   // person's name, and no time is changed here.
   function checkNames(w, { finish }) {
     const fl = w.fromList || { names: 0, roles: 0 };
-    const markOf = (s) => (s.nameFrom === 'list' && s.roleFrom === 'list' ? 'Name and role from the list' : s.nameFrom === 'list' ? 'Name from the list' : s.roleFrom === 'list' ? 'Role from the list' : null);
-    const set = async (s, input, said) => { const out = await tap('ospeli_walks_step_name', { step: s.n, ...input }); if (out) say(said); draw(); };
+    const markOf = (s) => (s.nameFrom === 'list' && s.roleFrom === 'list' ? 'From the example list' : s.nameFrom === 'list' ? 'Name from the example list' : s.roleFrom === 'list' ? 'Role from the example list' : null);
+    const set = async (s, input, said) => { const out = await tap('ospeli_walks_step_name', { step: s.n, ...input }); if (out) { say(said); ui.checkEdit = null; } draw(); };
     const chips = (s, kind, label, list) => h('div', { class: 'walk-chips wc-chips', role: 'group', 'aria-label': `${label} Step ${s.n}` },
       h('span', { class: 'walk-row-word', 'aria-hidden': 'true' }, kind === 'name' ? 'Step' : 'Role'),
       list.map((c) => h('button', { type: 'button', class: 'chip-btn walk-chip', 'data-test': `walk-check-${kind}`, 'data-cmd': 'ospeli_walks_step_name', 'aria-pressed': String(s[kind] === c && s[`${kind}From`] !== 'list'),
         onclick: () => set(s, kind === 'name' ? { name: c, nameFrom: 'chosen' } : { role: c, roleFrom: 'chosen' }, `Step ${s.n}: ${kind === 'name' ? 'name' : 'role'} is ${c}. Your choice.`) }, c)));
     const row = (s) => {
       const mark = markOf(s); const open = ui.checkEdit === s.n;
-      const times = s.afterVisit ? `After the visit · started ${min(s.waitSec)} after it · took ${min(s.workSec)}` : `waited ${min(s.waitSec)} · ${min(s.workSec)} ${s.role === 'Patient' ? 'patient step' : 'hands-on'}`;
+      const times = s.afterVisit ? `After the visit · started ${min(s.waitSec)} after it ended · took ${min(s.workSec)}` : `waited ${min(s.waitSec)} · ${min(s.workSec)} ${s.role === 'Patient' ? 'patient step' : 'hands-on'}`;
       return h('li', { class: `wc-row${mark ? ' is-marked' : ''}${open ? ' is-open' : ''}`, 'data-test': 'walk-check-row', 'data-n': String(s.n) },
         h('div', { class: 'wc-what' }, h('b', {}, `${s.n}. ${s.name}`), h('span', { class: 'wc-role' }, ` · ${s.role}`),
           h('span', { class: 'wc-times' }, times),
@@ -320,19 +320,19 @@ export async function renderWalk(box, ctx, againOf = null) {
         h('button', { type: 'button', class: 'btn btn-ghost walk-change wc-change', 'data-test': 'walk-check-change', 'aria-expanded': String(open), 'aria-label': `${open ? 'Close' : 'Change'} step ${s.n}, ${s.name}`,
           onclick: () => { ui.checkEdit = open ? null : s.n; draw(); } }, open ? 'Close' : 'Change'),
         open ? h('div', { class: 'wc-edit', 'data-test': 'walk-check-edit' },
-          chips(s, 'name', 'What happened?', data.stepChips), chips(s, 'role', 'Which role did it? A role, never a name.', data.roleChips),
+          chips(s, 'role', 'Which role did it? A role, never a name.', data.roleChips), chips(s, 'name', 'What happened?', data.stepChips),
           h('p', { class: 'meta' }, 'Your own words? Finish, then use Edit map.')) : null);
     };
     const left = fl.names + fl.roles;
     return h('section', { class: 'walk walk-check has-sheet', 'data-test': 'walk-check', 'data-state': w.state, 'aria-labelledby': 'wk-check-h' },
       h('h1', { id: 'wk-check-h', tabindex: '-1' }, 'Check the names'),
       h('p', { class: 'wc-lead', 'data-test': 'walk-check-lead' }, 'Step names and job roles only. Marked ones came from the example list.'),
+      h('p', { class: 'wc-lead wc-foot' }, 'Times are not changed here. People decide; Ospeli suggests.'),
       h('ol', { class: 'wc-rows' }, w.steps.map(row)),
-      h('p', { class: 'meta walk-foot' }, 'Times are not changed here. People decide; Ospeli suggests.'),
       h('div', { class: 'walk-bar', 'data-test': 'walk-bar' },
         h('div', { class: 'walk-confirm wc-actions', role: 'group', 'aria-label': 'Finish the walk' },
-          h('p', { 'data-test': 'walk-check-count' }, left ? h('b', {}, 'Do the marked names and roles match what you saw?') : h('b', {}, 'No name or role is from the list now.')),
-          h('div', { class: 'form-actions' },
+          h('p', { 'data-test': 'walk-check-count' }, left ? h('b', {}, 'Names and roles right?') : h('b', {}, 'No name or role is from the list now.')),
+          h('div', { class: 'form-actions wc-answers' },
             left ? h('button', { type: 'button', class: 'btn', 'data-test': 'walk-check-ok', 'data-cmd': 'ospeli_walks_finish', onclick: () => finish({ namesConfirmed: true }) }, 'Yes, all correct')
               : h('button', { type: 'button', class: 'btn', 'data-test': 'walk-finish-yes', 'data-cmd': 'ospeli_walks_finish', onclick: () => finish() }, 'Finish'),
             h('button', { type: 'button', class: 'btn btn-ghost', 'data-test': 'walk-check-back', onclick: () => { ui.check = false; ui.checkEdit = null; ui.follow = true; draw(); } }, 'Keep walking'),

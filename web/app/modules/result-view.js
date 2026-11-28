@@ -66,7 +66,7 @@ export function resultModel({ m, rg, records, list, oneWalkTop = null, day, cloc
     return { n: i + 1, rec: r, items, pos, usable, elapsed, wait: sum('waitSec'), work: sum('workSec'), notSeen: sum('waitNotSeenSec') + sum('workNotSeenSec'),
       when: r.startedAt ? `${day(r.startedAt)}, ${clock(r.startedAt)}` : '', note: r.clockMoved ? ' (may be wrong)' : r.stoppedEarly ? ' (stopped early)' : '',
       longest: longestLine(items, pos, { usable }), again: againLines(list, [r]),
-      after: later.length ? `After the visit: ${later.map((x) => `${x.name} started ${minWords(x.waitSec)} after it and took ${minWords(x.workSec)}`).join('; ')}. Not in the bar or the totals.` : '' };
+      after: later.length ? `After the visit: ${later.map((x) => `${x.name} started ${minWords(x.waitSec)} after the visit ended and took ${minWords(x.workSec)}`).join('; ')}. Not in the bar or the totals.` : '' };
   });
   const compare = afterWalk ? compareModel({ list, records, rg, afterWalk }) : null;
   const deptId = m.walk?.department || null;
@@ -184,11 +184,11 @@ export function tableCard(model, after = null) {
         h('th', { scope: 'row', role: 'rowheader' },
           h('b', r.marked ? { 'data-test': 'row-again' } : {}, r.kind === 'extra' ? `+ ${r.name}` : `${r.order}. ${r.name}${r.marked ? ', done again' : ''}`),
           h('span', { class: 'rt-role' }, ` · ${r.role}`),
-          r.afterVisit && r.kind !== 'extra' ? h('span', { class: 'rt-only', 'data-test': 'after-visit-row' }, 'After the visit: time since the visit ended, then hands-on. Not in the totals.') : null,
+          r.afterVisit && r.kind !== 'extra' ? h('span', { class: 'rt-only', 'data-test': 'after-visit-row' }, 'After the visit. Not in the totals.') : null,
           r.kind === 'extra' ? h('span', { class: 'rt-only', 'data-test': 'only-on' }, `Not on the list · Only on walk ${r.walk}`) : null,
           nameLink(model, r)),
         r.cells.map((c, k) => h('td', { role: 'cell', class: colCls(k), 'data-status': c.status, ...(c.status === 'timed' ? { 'data-sec': `${c.waitSec},${c.workSec}`, ...(c.stoppedSec ? { 'data-stood': String(c.stoppedSec) } : {}) } : {}) },
-          c.status === 'not-on-walk' ? [h('span', { 'aria-hidden': 'true' }, '–'), h('span', { class: 'sr-only' }, 'not on this walk')] : cellWords(c),
+          c.status === 'not-on-walk' ? [h('span', { 'aria-hidden': 'true' }, '–'), h('span', { class: 'sr-only' }, 'not on this walk')] : cellOfRow(r, c),
           c.times > 1 ? h('span', { class: 'rt-again', 'data-test': 'done-again' }, `Done ${c.times} times`) : null,
           c.reason ? h('span', { class: 'rt-reason', 'data-test': 'cell-reason' }, c.reason) : null,
           c.stopReason ? h('span', { class: 'rt-reason', 'data-test': 'cell-stop-reason' }, c.stopReason) : null)))))),
@@ -217,7 +217,7 @@ export function compareCard(model, after = null) {
             h('b', {}, r.kind === 'extra' ? `+ ${r.name}` : r.kind === 'again' ? `${r.order}. ${r.name}, done again` : `${r.order}. ${r.name}`), h('span', { class: 'rt-role' }, ` · ${r.role}`),
             r.kind === 'extra' ? h('span', { class: 'rt-only' }, 'Not on the list') : null,
             // A step after the patient or item has left (Builder, 28 Nov): on its own clock, in none of the totals.
-            r.afterVisit && r.kind !== 'extra' ? h('span', { class: 'rt-only', 'data-test': 'after-visit-row' }, 'After the visit: time since the visit ended, then hands-on. Not in the totals.') : null,
+            r.afterVisit && r.kind !== 'extra' ? h('span', { class: 'rt-only', 'data-test': 'after-visit-row' }, 'After the visit. Not in the totals.') : null,
             r.kind === 'again' ? h('span', { class: 'rt-only', 'data-test': 'again-row' }, 'Its later times on the same walk') : null,
             r.againText ? h('span', { class: 'rt-again', 'data-test': 'done-again' }, r.againText) : null,
             r.reasonText ? h('span', { class: 'rt-reason', 'data-test': 'row-reason' }, r.reasonText) : null,
@@ -280,6 +280,9 @@ export function extrasCard(model) {
 
 const localDate = (iso) => { const d = new Date(iso); const two = (n) => String(n).padStart(2, '0'); return Number.isNaN(+d) ? '' : `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`; };
 
+// A step after the visit is not a wait before a step: its cell says how long after the visit it
+// started and what it took, never "wait" (Domain lead, 28 Nov). Done more than once: the usual words.
+const cellOfRow = (r, c) => (r.afterVisit && r.kind !== 'extra' && c.status === 'timed' && !(c.times > 1) ? `${minWords(c.waitSec)} after the visit · took ${minWords(c.workSec)}` : cellWords(c));
 // The actions row: "Walk the next patient" first, then Print, Copy as text, Download CSV, and
 // Share where the browser has it. text(): the plain-text summary, made when it is asked for.
 export function actionsRow({ ctx, model, list, records, department, again, text }) {
@@ -321,7 +324,7 @@ export function summaryOf({ model, headLines, headline, totals, read }) {
     head: headLines, headline, totals, count: model.walks.length,
     walks: model.walks.map((w) => `Walk ${w.n}${model.compare?.both ? (w.n > model.afterWalk ? ' (after the change)' : ' (before the change)') : ''}, ${w.when}: ${minWords(w.elapsed)} start to finish${w.note} · waiting ${minWords(w.wait)} · hands-on ${minWords(w.work)}${w.notSeen ? ` · ${minWords(w.notSeen)} not seen` : ''}. ${w.longest}${w.after ? `. ${w.after}` : ''}`),
     columns: model.walks.map((w) => `walk ${w.n}`),
-    rows: model.rows.map((r) => ({ extra: r.kind === 'extra', name: r.kind === 'extra' ? `${r.name} (${r.role}, not on the list)` : `${r.order}. ${r.name} (${r.role}${r.afterVisit ? ', after the visit' : ''})`, cells: r.cells.map(cellWords) })),
+    rows: model.rows.map((r) => ({ extra: r.kind === 'extra', name: r.kind === 'extra' ? `${r.name} (${r.role}, not on the list)` : `${r.order}. ${r.name} (${r.role}${r.afterVisit ? ', after the visit, not in the totals' : ''})`, cells: r.cells.map((c) => cellOfRow(r, c)) })),
     read,
     notes: [model.againAll, model.namesFrom],
     compare: compareLines(model),

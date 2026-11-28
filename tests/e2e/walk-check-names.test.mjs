@@ -56,7 +56,7 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     assert.equal((await page.textContent('[data-test="walk-check-lead"]')).trim(), 'Step names and job roles only. Marked ones came from the example list.');
     const rows = await page.locator('[data-test="walk-check-row"]').allTextContents();
     assert.equal(rows.length, 6);
-    rows.forEach((t, i) => { assert.match(t, new RegExp(`^${i + 1}\\. ${IMAGING[i]} · `)); assert.match(t, /waited 1 min · 2 min (hands-on|patient step)/); assert.match(t, /Name and role from the list/); });
+    rows.forEach((t, i) => { assert.match(t, new RegExp(`^${i + 1}\\. ${IMAGING[i]} · `)); assert.match(t, /waited 1 min · 2 min (hands-on|patient step)/); assert.match(t, /From the example list/); });
     const l = await look(page);
     assert.ok(l.buttons.every(([, h, w]) => h >= 44 && w >= 44), `every button is 44 px or more (${JSON.stringify(l.buttons.filter(([, h, w]) => h < 44 || w < 44))})`);
     assert.deepEqual(l.small, [], 'no text under 15 px');
@@ -110,8 +110,10 @@ test('360x640: one step is changed on the check screen with one tap from the wor
   assert.ok(chips.length >= 10 && chips.every((h) => h >= 44), `every word offered is 44 px high or more (${chips})`);
   assert.ok(await noSideways(page) <= 0, 'no sideways scroll with the words open');
   await page.locator('[data-test="walk-check-role"]', { hasText: 'Imaging staff' }).tap();
-  await page.waitForFunction(() => /Name from the list/.test(document.querySelector('[data-test="walk-check-row"][data-n="2"] [data-test="walk-check-mark"]')?.textContent || ''));
+  await page.waitForFunction(() => /Name from the example list/.test(document.querySelector('[data-test="walk-check-row"][data-n="2"] [data-test="walk-check-mark"]')?.textContent || ''));
   assert.match(await second.textContent(), /2\. Registered · Imaging staff/);
+  // One pick closes the words again (Adoption lead): the answers are back in reach.
+  assert.equal(await page.locator('[data-test="walk-check-edit"]').count(), 0);
   let w = (await stored(page))[0];
   assert.deepEqual([w.steps[1].role, w.steps[1].roleFrom, w.steps[1].nameFrom], ['Imaging staff', 'chosen', 'list']);
   assert.deepEqual([w.steps[0].role, w.steps[0].roleFrom], ['Patient', 'list'], 'the other step is untouched');
@@ -148,7 +150,7 @@ test('390x844: "Report signed" is under "After the visit", is timed after the pa
   await page.tap('[data-test="walk-main"]'); await state(page, 'waiting');
   assert.match(await page.textContent(row(9)), /Radiologist · started 40 min after the visit · took 2 min/);
   await page.tap('[data-test="walk-finish"]'); await page.waitForSelector('[data-test="walk-check"]');
-  assert.match(await page.locator('[data-test="walk-check-row"][data-n="9"]').textContent(), /After the visit · started 40 min after it · took 2 min/);
+  assert.match(await page.locator('[data-test="walk-check-row"][data-n="9"]').textContent(), /After the visit · started 40 min after it ended · took 2 min/);
   await page.tap('[data-test="walk-check-ok"]');
   await page.waitForSelector('[data-test="pm-stats"]');
   // Start to finish is the visit: 7 x 1 min + 15 min waiting and 8 x 2 min hands-on = 38 min.
@@ -156,12 +158,16 @@ test('390x844: "Report signed" is under "After the visit", is timed after the pa
   assert.match(stats, /Longest wait: 15 min before “Scan”/);
   assert.match(stats, /38 min start to finish on this walk/);
   assert.doesNotMatch(stats, /Report signed|1 h/);
-  assert.equal((await page.textContent('[data-test="bar-after"]')).trim(), 'After the visit: Report signed started 40 min after it and took 2 min. Not in the bar or the totals.');
+  assert.equal((await page.textContent('[data-test="bar-after"]')).trim(), 'After the visit: Report signed started 40 min after the visit ended and took 2 min. Not in the bar or the totals.');
   // (real taps can add a second or two)
   const barSec = +(await page.getAttribute('[data-test="bar-walk"]', 'data-sec'));
   assert.ok(barSec >= 38 * 60 && barSec <= 38 * 60 + 3, `the bar is the visit: ${barSec} s`);
   assert.equal(await page.locator('[data-test="bar-walk"] [data-step$="-s9"]').count(), 0, 'the report is not a segment of the visit\'s bar');
-  assert.match(await page.textContent('[data-test="after-visit-row"]'), /After the visit/);
+  assert.match(await page.textContent('[data-test="after-visit-row"]'), /After the visit\. Not in the totals\./);
+  // The report's cell never says "wait": a reader of the column must not see a 40 min wait beside "Longest wait: 15 min".
+  assert.equal((await page.textContent('[data-row$="-s9"] td')).trim(), '40 min after the visit · took 2 min');
+  await page.evaluate(() => { for (const d of document.querySelectorAll('details')) d.open = true; });
+  assert.match(await page.locator('[data-test="walk-note"]').first().textContent(), /Steps after the visit are timed apart and are not in the totals\. Nothing after them is recorded\./);
   const m = (await maps(page))[0];
   assert.equal(m.today[8].afterVisit, true);
   const visitMs = Date.parse(m.walk.finishedAt) - Date.parse(m.walk.startedAt);
