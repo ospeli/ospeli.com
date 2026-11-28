@@ -2,7 +2,7 @@
 // walk records (core/walk.js recordFromWalk) and the map's saved step list. Nothing here changes a
 // number; it lays the records out by step, walk by walk, for the table, the bars, the CSV and the
 // plain-text summary. Steps and roles only: no person is named, timed or ranked.
-import { minWords, atLeastWords, spanOf, stoodWords, longestWalks, longestTimeOf } from './result-words.js';
+import { minWords, atLeastWords, spanOf, stoodWords, longestWalks, longestTimeOf, waitWords, atLeastWait } from './result-words.js';
 import { waitReasonText, MIN_LONGEST_WAIT_SEC, walkVocab } from '../core/walk.js';
 
 // Why a wait happened, when the person walking recorded it with one tap (core/walk.js WAIT_REASONS;
@@ -367,8 +367,9 @@ function cellOf(at, rec, stepId) {
 // A step done more than once on a walk says each time on its own, so no wait reads longer than
 // the walk's longest wait: "1st: wait 13 min · 15 min; 2nd: wait 5 min · 6 min".
 const ORDINAL = ['1st', '2nd', '3rd'];
+// longest: this time is its walk's longest wait, said with its seconds under 5 minutes as the headline says it.
 function onceWords(c) {
-  const wait = c.waitNotSeenSec > 0 ? atLeastWords(c.waitSec) : minWords(c.waitSec);
+  const wait = c.waitNotSeenSec > 0 ? (c.longest ? atLeastWait : atLeastWords)(c.waitSec) : (c.longest ? waitWords : minWords)(c.waitSec);
   const work = c.workNotSeenSec > 0 ? atLeastWords(c.workSec) : minWords(c.workSec);
   const times = c.interruptions ? `interrupted ${c.interruptions} ${c.interruptions === 1 ? 'time' : 'times'}` : '';
   const stood = c.interruptions ? ` · ${c.stoppedSec ? `stood still ${stoodWords(c.stoppedSec)}, ` : ''}${times}` : '';

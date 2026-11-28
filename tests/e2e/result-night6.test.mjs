@@ -31,6 +31,9 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     // Item 3: seconds under 5 minutes in the headline and under the bar.
     assert.equal(flat(await page.textContent('[data-test="walk-longest"]')), 'Longest wait: 2 min 30 s before “Scan”');
     assert.equal(flat(await page.textContent('[data-test="bar-longest"]')), 'Longest wait: 2 min 30 s before “Scan”');
+    // The table says the same time on the longest wait's own cell (review, Domain lead); other cells stay in whole minutes.
+    assert.equal(flat(await page.textContent('[data-test="result-table"] tr[data-row="map-001-s7"] td')), 'wait 2 min 30 s · 10 min');
+    assert.equal(flat(await page.textContent('[data-test="result-table"] tr[data-row="map-001-s6"] td')), 'wait 2 min · 6 min');
     // Item 1: its own line on the first result, not inside "Not as listed".
     const again = await page.evaluate(() => { const e = document.querySelector('[data-test="result-again"]'); return e && { text: e.textContent.replace(/\s+/g, ' ').trim(), inAnswer: !!e.closest('[data-test="walk-answer"]'), folded: !!e.closest('details') }; });
     assert.deepEqual(again, { text: AGAIN, inAnswer: true, folded: false });
@@ -50,6 +53,9 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     assert.equal(bar.sw, bar.bg, 'the legend shows the same pattern');
     // The bar's own words name it too.
     assert.match(await page.getAttribute('[data-test="bar-walk"]', 'aria-label'), /Done again: Cannula or prep/);
+    // What a redo's time is and what "from the list" means, in "How to read this".
+    assert.match(flat(await page.textContent('[data-test="read-again"]')), /part of the hands-on above/);
+    assert.match(flat(await page.textContent('[data-test="read-names"]')), /^“From the list”: the step the department's example list offered next/);
     // Item 2: said once, on the step table.
     assert.equal(await page.locator('[data-test="names-from"]').count(), 1);
     assert.equal(flat(await page.textContent('[data-test="names-from"]')), NAMES);
@@ -62,6 +68,7 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     assert.ok(copied.includes(`\n${NAMES}\n`), 'the names line in the copy');
     assert.equal(copied.split(NAMES).length, 2, 'said once');
     assert.match(copied, /Walk 1, .*Longest wait: 2 min 30 s before “Scan”/);
+    assert.match(copied, /\n7\. Scan \(Imaging staff\): wait 2 min 30 s · 10 min\n/);
     // Phone rules on the whole panel.
     const look = await page.evaluate(() => {
       const panel = document.querySelector('[data-test="result-panel"]'); const px = (e) => parseFloat(getComputedStyle(e).fontSize);

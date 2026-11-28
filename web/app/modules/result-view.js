@@ -66,7 +66,17 @@ export function resultModel({ m, rg, records, list, oneWalkTop = null, day, cloc
   });
   const compare = afterWalk ? compareModel({ list, records, rg, afterWalk }) : null;
   const deptId = m.walk?.department || null;
-  return { walks, rows: resultTable(list, records), extras: extrasOf(list, records), title: m.title, afterWalk, compare, mapId: m.id, deptId,
+  const rows = resultTable(list, records);
+  // The longest wait's own cell says its time as the headline does (seconds under 5 minutes).
+  walks.forEach((w, k) => {
+    for (const x of w.pos.map((p) => w.items[p])) {
+      const row = rows.find((r) => (x.onList ? r.kind === 'step' && r.stepId === x.stepId : r.kind === 'extra' && r.walk === k + 1 && r.name === x.name));
+      const c = row?.cells[k];
+      if (!c || c.status !== 'timed') continue;
+      if (c.times > 1 && c.each) { const e = c.each.find((y) => y.waitSec === x.waitBeforeSec); if (e) e.longest = true; } else c.longest = true;
+    }
+  });
+  return { walks, rows, extras: extrasOf(list, records), title: m.title, afterWalk, compare, mapId: m.id, deptId,
     // Where the step names and roles came from (#170 point 2), said once.
     namesFrom: records.length ? sourceLine(list, records, deptId) : null,
     // Two or more walks: the steps done again, walk by walk, said under the bars.

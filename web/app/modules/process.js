@@ -17,7 +17,7 @@ import { minWords, waitAmount, longestAmount, rangeWords, fromCoreSpan, spanOf, 
 import { proposalsCard } from './proposals.js';
 import { departmentById } from './departments.js';
 import { recordsOf, resultModel, barsCard, tableCard, extrasCard, actionsRow, summaryOf, compareCard, changeBox } from './result-view.js';
-import { recordFromSteps, stepSpans, walksLongest, changeHeadline, waitBeforeOf, againLines } from './result-data.js';
+import { recordFromSteps, stepSpans, walksLongest, changeHeadline, waitBeforeOf, againLines, sourceLine } from './result-data.js';
 
 const ROLE_COLOURS = ['#0A9396', '#EE9B00', '#E0583E', '#0B2F4E', '#94D2BD', '#7A5C9E', '#3E7CB1', '#A0522D', '#5B8C5A', '#C2185B'];
 const SOURCE_TEXT = {
@@ -209,6 +209,12 @@ export async function render(el, ctx) {
     // A step done again, on its own line on the first result of one walk (night 6 item 1). With two or
     // more walks the line is under the bars (result-view.js), so the first bar stays on the first screen.
     const againLine = records && !multi ? againLines(m.today.steps, records) : null;
+    // Said in "How to read this" when it applies (night 6 review): what a redo's time is, and what "from the list" means.
+    const againAny = !!(records && againLines(m.today.steps, records));
+    const namesAny = !!(records && sourceLine(m.today.steps, records, m.walk?.department || null));
+    const night6Notes = () => [
+      againAny ? h('li', { 'data-test': 'read-again' }, 'Done again: a step timed a second time on the same visit. Its hands-on time after the first time is part of the hands-on above. The walk does not say why; ask the people who did it.') : null,
+      namesAny ? h('li', { 'data-test': 'read-names' }, '“From the list”: the step the department\'s example list offered next, kept without the person walking choosing it. The role comes with the list step in the same way. Check those names and roles in Edit map.') : null];
     const againEl = () => (againLine ? h('p', { class: 'wa-line', 'data-test': 'result-again' }, againLine) : null);
     spansOf = rangeView && records && records.length === rg.walks.length ? stepSpans(m.today.steps, records, rg.walks.map((w) => w.usable !== false)) : null;
     const dept = walked && m.walk.department ? departmentById(m.walk.department)?.name || null : null;
@@ -338,6 +344,7 @@ export async function render(el, ctx) {
           `The longest wait is each walk's own longest wait. ${WALK_BASIS.longestWait}`,
           partly || rg.totals.notSeen.n ? '“Not seen”: the walk was paused (the person walking stepped out). That time is inside start to finish, and in neither waiting nor hands-on. “At least” is said only of a walk that was paused during that time; “partly not seen” means another walk was paused during it, so its time may have been longer.' : null,
           tableWords,
+          ...night6Notes(),
           limits,
           `${rangeBasisWords(RANGE_BASIS.range, rg)} ${RANGE_BASIS.compare}`,
           stepFacts(m.today.steps),
@@ -368,6 +375,7 @@ export async function render(el, ctx) {
         extra.notSeen ? `${WALK_BASIS.notSeen} “At least” is said only of a wait the walk was paused during.` : null,
         `A handover is a step done by a different role from the step before. Local definition.`,
         tableWords,
+        ...night6Notes(),
         limits,
         stepFacts(m.today.steps),
       ]);
