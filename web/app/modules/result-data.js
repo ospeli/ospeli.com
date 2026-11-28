@@ -3,7 +3,7 @@
 // number; it lays the records out by step, walk by walk, for the table, the bars, the CSV and the
 // plain-text summary. Steps and roles only: no person is named, timed or ranked.
 import { minWords, atLeastWords, spanOf, stoodWords, longestWalks, longestTimeOf } from './result-words.js';
-import { waitReasonText, MIN_LONGEST_WAIT_SEC } from '../core/walk.js';
+import { waitReasonText, MIN_LONGEST_WAIT_SEC, walkVocab } from '../core/walk.js';
 
 // Why a wait happened, when the person walking recorded it with one tap (core/walk.js WAIT_REASONS;
 // record step field waitReason). Null when none was given. The words say where the reason came
@@ -401,6 +401,69 @@ export function extrasOf(list, records) {
   return { extra, again, marked, againSec, againTimes, words };
 }
 
+// A step done again, on its own line on the first result (#182, Builder's note of 27 Nov, item 1):
+// "Done again: Cannula or prep, 2 times, 6 min hands-on after the first time." Per walk, each step
+// that was done again (a list step timed twice, or a step marked done again on the walk): the times
+// it was done on that walk, and the hands-on of the times after the first (extrasOf's againSec).
+// With two or more walks the walk is named. Null when no step was done again.
+export function againLines(list, records) {
+  const bits = [];
+  records.forEach((r, w) => {
+    const groups = new Map();
+    for (const x of walkItems(list, r)) {
+      const key = x.name;
+      const g = groups.get(key) || groups.set(key, { name: x.name, times: 0, againSec: 0, again: 0 }).get(key);
+      g.times += 1;
+      if (x.marked || x.again) { g.again += 1; g.againSec += x.workSec; }
+    }
+    for (const g of groups.values()) {
+      if (!g.again) continue;
+      const times = Math.max(g.times, g.again + 1);
+      bits.push(`${g.name}${records.length > 1 ? ` on walk ${w + 1}` : ''}, ${times} times, ${minWords(g.againSec)} hands-on after the first time`);
+    }
+  });
+  return bits.length ? `Done again: ${bits.join('; ')}.` : null;
+}
+
+// Where a step's name and role came from (#170 point 2), as recorded on the walk: chosen, list
+// (the step the list offered next, kept without the person choosing it) or typed. Null when the
+// walk did not record it (a walk from before the fields existed, or a repeat walk, whose names are
+// the map's own list). A name or role changed on the map after the walk is no longer the list's
+// words: Edit map does not clear the field (reported to the Builder), so a "list" name that is not
+// on the department's list, or a "list" role that is none of its roles, is not said to be the list's.
+export function sourceOf(x, department) {
+  const v = walkVocab(deptIdOf(department));
+  const s = x.rec || {};
+  const names = v ? [...v.steps, ...v.later].map((y) => y[0]) : null;
+  const roles = v ? [...v.steps, ...v.later].map((y) => y[1]).filter(Boolean) : null;
+  const name = s.nameFrom === 'list' && names && !names.includes(x.name) ? null : s.nameFrom || null;
+  const role = s.roleFrom === 'list' && roles && !roles.includes(x.role) ? null : s.roleFrom || null;
+  return { name, role };
+}
+// The one line that says how many step names (and roles) came from the list without the person
+// walking choosing them: "5 of 8 step names came from the list and were not confirmed on the walk."
+// Only the walks that recorded where names came from are counted; with two or more walks they are
+// named. Null when no name and no role came from the list, or no walk recorded it.
+export function sourceLine(list, records, department) {
+  const used = []; let steps = 0; let names = 0; let roles = 0;
+  records.forEach((r, w) => {
+    if (!r.steps.some((s) => s.nameFrom || s.roleFrom)) return;
+    used.push(w + 1);
+    for (const x of walkItems(list, r)) {
+      const src = sourceOf(x, department);
+      steps += 1; if (src.name === 'list') names += 1; if (src.role === 'list') roles += 1;
+    }
+  });
+  if (!names && !roles) return null;
+  const lead = records.length > 1 ? `On ${walkNos(used)}, ` : '';
+  const nameBit = names ? `${names} of ${steps} step names came from the list and were not confirmed on the walk.` : null;
+  const roleBit = roles ? `${roles} of ${steps} ${steps === 1 ? 'role' : 'roles'} came with the list step and ${roles === 1 ? 'was' : 'were'} not chosen on the walk.` : null;
+  const out = [nameBit, roleBit].filter(Boolean).join(' ');
+  return `${lead}${out}`;
+}
+// A department's id from its id or its name ("Imaging" -> "imaging"), for the list check above.
+const deptIdOf = (d) => (walkVocab(d) ? d : walkVocab(String(d || '').toLowerCase()) ? String(d).toLowerCase() : null);
+
 // Which walks show as table columns: the newest `max`, oldest first. Returns walk indexes (from 0).
 export function newestWalks(count, max) {
   const from = Math.max(0, count - max);
@@ -423,23 +486,25 @@ export function csvCell(v) {
   if (/^[\s\u00a0\u3000\ufeff]*[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return `"${s.replace(/"/g, '""')}"`;
 }
-export const CSV_HEAD = ['map', 'department', 'walk number', 'walk date', 'step order', 'step', 'role', 'on list', 'wait seconds', 'hands-on seconds', 'not-seen seconds', 'interrupted count', 'stopped seconds (inside wait)', 'done again', 'status', 'walk usable', 'before or after the change', 'wait reason (recorded on the walk)', 'last stop reason (recorded on the walk)', 'step name typed'];
+export const CSV_HEAD = ['map', 'department', 'walk number', 'walk date', 'step order', 'step', 'role', 'on list', 'wait seconds', 'hands-on seconds', 'not-seen seconds', 'interrupted count', 'stopped seconds (inside wait)', 'done again', 'status', 'walk usable', 'before or after the change', 'name from', 'role from', 'wait reason (recorded on the walk)', 'last stop reason (recorded on the walk)', 'step name typed'];
 // Whether a walk's times can be used (#191 point 3), as the Result tab says it: a walk whose clock
 // moved back is left out of every range, a walk stopped early out of the totals.
 export const walkUsableWord = (r) => (r.clockMoved ? 'clock moved back' : r.stoppedEarly ? 'stopped early' : 'yes');
 // One row per walk per step, in the order the steps happened; then, for that walk, each list step
 // that did not happen or was not timed (no seconds). dateOf: the walk's date as YYYY-MM-DD.
 // afterWalk: the change a person marked (ospeli_maps_change_set); each row says before or after it.
-export function csvOf({ title, department, list, records, dateOf, afterWalk = null }) {
+// name from, role from (#170 point 2): chosen, list or typed, as sourceOf says it; empty when not recorded.
+// deptId: the department's id, for the list the names are checked against (department is its name).
+export function csvOf({ title, department, list, records, dateOf, afterWalk = null, deptId = null }) {
   const lines = [CSV_HEAD.map(csvCell).join(',')];
   records.forEach((r, w) => {
     const items = walkItems(list, r);
     const side = afterWalk ? (w + 1 <= afterWalk ? 'before' : 'after') : '';
     const row = (o, tail) => lines.push([title, department || '', w + 1, dateOf(r.startedAt), ...o, walkUsableWord(r), side, ...tail].map(csvCell).join(','));
-    for (const x of items) row([x.p + 1, x.name, x.role, x.onList ? 'yes' : 'no', x.waitSec, x.workSec, x.waitNotSeenSec + x.workNotSeenSec, x.interruptions, x.stoppedSec, x.again || x.marked ? 'yes' : 'no', 'timed'], [waitReasonText(x.rec.waitReason) || '', waitReasonText(x.rec.stopReason) || '', x.rec.typed || (list.find((st) => st.id === x.stepId)?.typed) ? 'yes' : 'no']);
+    for (const x of items) row([x.p + 1, x.name, x.role, x.onList ? 'yes' : 'no', x.waitSec, x.workSec, x.waitNotSeenSec + x.workNotSeenSec, x.interruptions, x.stoppedSec, x.again || x.marked ? 'yes' : 'no', 'timed'], [...(({ name, role }) => [name || '', role || ''])(sourceOf(x, deptId || department)), waitReasonText(x.rec.waitReason) || '', waitReasonText(x.rec.stopReason) || '', x.rec.typed || (list.find((st) => st.id === x.stepId)?.typed) ? 'yes' : 'no']);
     for (const st of list) {
       if (items.some((x) => x.stepId === st.id)) continue;
-      row(['', st.name, st.role, 'yes', '', '', '', '', '', 'no', (r.didNotHappen || []).includes(st.id) ? 'did not happen' : 'not timed'], ['', '', st.typed ? 'yes' : 'no']);
+      row(['', st.name, st.role, 'yes', '', '', '', '', '', 'no', (r.didNotHappen || []).includes(st.id) ? 'did not happen' : 'not timed'], ['', '', '', '', st.typed ? 'yes' : 'no']);
     }
   });
   return `${lines.join('\r\n')}\r\n`;

@@ -3,7 +3,7 @@
 // patient, Print, Copy as text, Download CSV, Share). Built from ospeli_maps_get and the walks'
 // own records; every typed name goes on screen as text, never as HTML.
 import { h } from './ui.js';
-import { minWords, atLeastWords, NO_LONG_WAIT } from './result-words.js';
+import { minWords, NO_LONG_WAIT, waitWords, atLeastWait } from './result-words.js';
 import { walkItems, longestPositions, resultTable, cellWords, extrasOf, columnsNote, csvOf, fileNameOf, summaryText, scaleTicks, compareModel, changeLine, walksLongest } from './result-data.js';
 import { waitReasonText } from '../core/walk.js';
 
@@ -23,7 +23,8 @@ export async function recordsOf(core, m) {
 }
 
 // The wait before the step: the time the step stood still once started is not part of it (#180 point 2).
-const waitWord = (x) => (x.waitNotSeenSec > 0 ? atLeastWords(x.waitBeforeSec) : minWords(x.waitBeforeSec));
+// A longest wait under 5 minutes keeps its seconds ("2 min 30 s"), as the headline says it.
+const waitWord = (x) => (x.waitNotSeenSec > 0 ? atLeastWait(x.waitBeforeSec) : waitWords(x.waitBeforeSec));
 const placeOf = (x) => `before “${x.name}”`;
 
 // The words under a walk's bar for its longest wait.
