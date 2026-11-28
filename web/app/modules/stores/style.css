@@ -136,5 +136,3 @@
 .mod-stores .btn.is-waiting { background: #E4E4E4; border-color: #B8B8B8; color: #4A5968; border-style: dashed; }
 .mod-stores .chip.sto-kind { background: var(--mango-tint); color: #5C3B00; }
 .mod-stores .chip.sto-own { background: var(--sand); color: #0B2F4E; font-weight: 600; white-space: nowrap; }
-/* Example data only, and issued counts as arrived (#113): plain, small enough to keep the main action on the first phone screen. */
-.mod-stores .sto-example { margin: 0 0 8px; font-size: 15px; line-height: 1.35; color: #5C3B00; background: var(--mango-tint); border-radius: 8px; padding: 6px 10px; }

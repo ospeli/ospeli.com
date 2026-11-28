@@ -397,27 +397,3 @@ for (const width of [360, 390, 1280]) {
     await context.close();
   });
 }
-test('until a ward can confirm arrival, every stores screen says "example data only" and that issued counts as arrived, at 15 px or more, with the main action still on the first screen at 360 and 390 px (#113)', async () => {
-  const MAIN = { requests: '[data-test="first-request"] [data-cmd="ospeli_stock_issue"]', manage: '[data-test="stats"]', count: '[data-test="count-save"]' };
-  for (const [width, height] of [[390, 844], [360, 640]]) {
-    const { context, page, errors } = await openPage(env, { width, height, touch: true, clock: CLOCK, path: '#/stores' });
-    await page.evaluate(() => { try { localStorage.setItem('ospeli-stores-ward', 'ward-a1'); } catch { /* none */ } });
-    for (const [role, screen] of SCREENS) {
-      await asRole(page, role, screen);
-      const note = page.locator('[data-test="example-note"]');
-      assert.equal(await note.count(), 1, `${role} ${screen}: the note shows once`);
-      assert.match(await note.textContent(), /^Example data only\. .*issue.*counted as arrived on the ward.*confirm.*not built yet/i, `${role} ${screen}: plain words`);
-      const nb = await note.boundingBox();
-      assert.ok(nb && nb.y + nb.height <= height, `${role} ${screen} at ${width} px: the note is on the first screen`);
-      assert.ok(parseFloat(await note.evaluate((el) => getComputedStyle(el).fontSize)) >= 15, 'at least 15 px');
-      if (MAIN[screen] && !(role === 'estates-tech')) {
-        await page.waitForSelector(MAIN[screen]);
-        const b = await page.locator(MAIN[screen]).first().boundingBox();
-        assert.ok(b.y + Math.min(b.height, 56) <= height, `${role} ${screen} at ${width} px: the main action starts on the first screen (top ${Math.round(b.y)} px)`);
-      }
-    }
-    assert.deepEqual(await phoneProblems(page), []);
-    assert.deepEqual(errors, []);
-    await context.close();
-  }
-});
