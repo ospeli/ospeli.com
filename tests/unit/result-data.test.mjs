@@ -107,12 +107,16 @@ test('longestPositions and the headline: the outlined segment is the walk\'s own
   assert.match(longestWalks(rg, [W1, W2]).text, /^10 to 13 min before “Scan”, on both walks$/);
 });
 
-test('#169 item 5: the headline says "at" a step when that walk\'s longest wait was inside the interrupted step', () => {
+// Until 28 Nov the core ranked the 15 min "Registered" stood still as the longest wait and the headline
+// said "at". By #180 point 2 time a step stood still is not a wait before a step: the 2 min before Scan is named.
+test('#180 point 2 (was #169 item 5): time a step stood still is never named as the longest wait; the wait before a step is', () => {
   const a = walk([[30, 60], [60, 300, { stop: [60, 900] }], [120, 60], [30, 30]], { plan: false });
   const b = walk([[30, 60], [60, 300, { stop: [60, 840] }], [120, 60], [30, 30]], { start: 86400, id: 'walk-002' });
   const rg = walkRanges(list, [a, b]);
-  assert.match(longestWalks(rg).text, /before “Registered”/, 'without the records the range cannot tell');
-  assert.match(longestWalks(rg, [a, b]).text, /^15 to 16 min at “Registered”, on both walks$/);
+  assert.deepEqual(rg.walks.map((w) => w.longest.map((l) => [l.name, l.waitSec])), [[['Scan', 120]], [['Scan', 120]]]);
+  assert.equal(longestWalks(rg, [a, b]).text, '2 min before “Scan”, on both walks');
+  assert.doesNotMatch(longestWalks(rg, [a, b]).text, /Registered|at “/);
+  assert.equal(rg.steps[1].wait.max, 60, 'the wait before Registered is the minute before it, without the 15 min it stood still');
 });
 
 test('the headline says where once: never "on both walks …, on 2 of 3 walks"', () => {

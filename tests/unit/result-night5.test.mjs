@@ -83,7 +83,7 @@ test('item 5: the wait before a step leaves out the time it stood still; the row
   const W5 = walk([[60, 120], [400, 180, { stop: [60, 300] }], [500, 60], [10, 30]], { plan: false, id: 'walk-005' });
   const lo5 = walksLongest(list, [W5], walkRanges(list, [W5]));
   assert.deepEqual(lo5.walks[0].longest.map((l) => l.key), ['map-001-s3']);
-  assert.equal(walkRanges(list, [W5]).walks[0].longest[0].key, 'map-001-s2', '(the core still picks the step that stood still: reported to the Builder)');
+  assert.equal(walkRanges(list, [W5]).walks[0].longest[0].key, 'map-001-s3', 'the core picks the same step (#180 point 2, 28 Nov)');
 });
 
 test('item 1: once a change is marked, the headline names the longest wait after it and says in one line what it was before', () => {

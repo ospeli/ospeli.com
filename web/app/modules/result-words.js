@@ -2,7 +2,7 @@
 // only where that walk was paused during that time, "the same" only within 10%, and the walk
 // counts said as "1 of 2 walks", never "all 1 walks". Pure functions over the numbers the core
 // gives (core/walk.js); nothing here changes a number, it only says it.
-import { MIN_LONGEST_WAIT_SEC, waitPlace } from '../core/walk.js';
+import { MIN_LONGEST_WAIT_SEC, waitPlace, longestWaits } from '../core/walk.js';
 
 // Local definition, an example setting and not a standard: two walks' times are called "the same"
 // only when the shorter is within 10% of the longer.
@@ -197,9 +197,9 @@ export function guideTitle(sg, steps, rg = null, records = null) {
   if (sg.id === 'walks-longest' && rg) return longestTitle(rg, records) || sg.title;
   if (rg) return sg.title;
   if (sg.id.startsWith('walk-wait-')) {
-    const top = steps.filter((x) => !x.plannedWait);
-    const max = Math.max(0, ...top.map((x) => x.wait || 0));
-    const tied = top.filter((x) => x.wait === max);
+    // The core's own pick (the wait before a step; time a step stood still is not ranked: #180 point 2).
+    const tied = longestWaits(steps);
+    const max = tied[0]?.wait || 0;
     const w = longestOneWalk(tied);
     if (!w) return sg.title;
     return tied.length === 1 ? `Longest wait on this walk: ${w.text}` : `Longest wait on this walk, tied: ${waitWords(max)} each, ${tied.map((x) => waitPlace(x)).join(' and ')}${tied.some((x) => x.waitNotSeenSec > 0) ? ' · partly not seen' : ''}`;

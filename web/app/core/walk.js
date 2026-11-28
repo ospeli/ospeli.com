@@ -556,8 +556,13 @@ export const notSeenWords = (x) => (x.waitNotSeenSec ? ` (${fmtSeconds(x.waitNot
 // A wait that includes time the step itself stood still (interrupted, then carried on): where it was, and how much.
 export const waitPlace = (x) => (x.interruptedWaitSec ? `at “${x.name}”` : `before “${x.name}”`);
 export const interruptedWords = (x) => (x.interruptedWaitSec ? ` (${fmtSeconds(x.interruptedWaitSec)} of it while the step was interrupted)` : '');
+// The wait before a step, without the time the step itself stood still after an interruption. That
+// time is still waiting, and stays in the step's and the walk's waiting totals; it is only never
+// ranked or named as "the wait before" the step (#180 point 2). x.wait or x.waitSec, in seconds.
+export const waitBeforeOf = (x) => Math.max(0, (x.wait ?? x.waitSec ?? 0) - (x.interruptedWaitSec || 0));
+// Each step returned is a copy whose wait is the wait before it; stoodSec is what it stood still.
 export function longestWaits(stepsSec) {
-  const open = stepsSec.filter(waitCanBeNamed);
+  const open = stepsSec.filter(waitCanBeNamed).map((x) => (x.interruptedWaitSec ? { ...x, wait: waitBeforeOf(x), stoodSec: x.interruptedWaitSec, interruptedWaitSec: 0 } : x));
   const max = Math.max(0, ...open.map((x) => x.wait || 0));
   return max >= MIN_LONGEST_WAIT_SEC ? open.filter((x) => x.wait === max) : [];
 }
@@ -570,7 +575,7 @@ export const WALK_BASIS = {
   limits: 'Method: a process walk in the manner of lean value stream mapping (Rother and Shook, Learning to See). One walk is one observation.',
   clock: 'Local definition: a tap stamped earlier than the tap before it (a step tap, Pause or I am back) means the device clock was set back.',
   planned: 'Local definition: a planned or required wait is one a person marked as needed by the process itself. It counts as waiting and is left out of the longest wait. Ospeli keeps no list of such waits.',
-  interrupted: 'Local definition, in the manner of value stream mapping practice (not a standard): a step that was interrupted and carried on is one step. The time it stood still counts as waiting, inside that step, and the step says how many times it was interrupted.',
+  interrupted: 'Local definition, in the manner of value stream mapping practice (not a standard): a step that was interrupted and carried on is one step. The time it stood still counts as waiting, inside that step, and the step says how many times it was interrupted. It is not part of the wait before the step, so it is never named as the longest wait.',
   notSeen: 'Local definition: time between Pause and I am back is not seen. It is neither waiting nor hands-on. A wait that was partly not seen is compared by the part that was seen and named as "at least" that long.',
 };
 export function suggestWalk(list, { clockMoved: moved = false } = {}) {
@@ -578,6 +583,7 @@ export function suggestWalk(list, { clockMoved: moved = false } = {}) {
   const inSec = stepsInSeconds(list);
   const top = longestWaits(inSec);
   const left = inSec.some((x) => !waitCanBeNamed(x));
+  const stoodAny = inSec.some((x) => x.interruptedWaitSec);
   if (moved) {
     // Times from a clock that was set back cannot be ranked: name no longest wait.
     out.push({ id: 'walk-clock', kind: 'ask', title: 'The phone\'s clock changed during this walk',
@@ -586,10 +592,10 @@ export function suggestWalk(list, { clockMoved: moved = false } = {}) {
   } else if (top.length) {
     const t = fmtSeconds(top[0].wait);
     out.push({ id: `walk-wait-${top[0].id}`, kind: 'ask', stepId: top[0].id,
-      title: top.length === 1 ? `Longest wait on this walk: ${waitWords(top[0])} ${waitPlace(top[0])}${notSeenWords(top[0])}${interruptedWords(top[0])}`
+      title: top.length === 1 ? `Longest wait on this walk: ${waitWords(top[0])} ${waitPlace(top[0])}${notSeenWords(top[0])}`
         : `Longest wait on this walk, tied: ${t} each${top.some((x) => x.waitNotSeenSec) ? ' or more' : ''}, ${top.map((x) => waitPlace(x)).join(' and ')}`,
       text: 'Ask what it was waiting for: a person, information, a room, equipment or supplies, transport, a decision, or a queue. A wait belongs to the process, not to the role that comes next. Then walk it again on another day or at another time before changing anything.',
-      why: `Calculated from the tap times of this one walk.${left ? ' Waits marked planned or required are left out.' : ''}${top.some((x) => x.waitNotSeenSec) ? ' Part of this wait was not seen, so it was at least this long.' : ''}`, basis: WALK_BASIS.longestWait });
+      why: `Calculated from the tap times of this one walk.${left ? ' Waits marked planned or required are left out.' : ''}${stoodAny ? ' Time a step stood still after an interruption is not part of the wait before it.' : ''}${top.some((x) => x.waitNotSeenSec) ? ' Part of this wait was not seen, so it was at least this long.' : ''}`, basis: WALK_BASIS.longestWait });
   }
   const planned = inSec.filter((x) => x.plannedWait);
   if (planned.length) {
@@ -765,8 +771,9 @@ export function walkRanges(list, records) {
     const usable = !r.clockMoved; const complete = usable && !r.stoppedEarly;
     // This walk's own longest wait: by the seen part, 30 s or more, planned waits left out, ties all named.
     const open = r.steps.map((s, p) => ({ ...s, p })).filter((s) => !(s.stepId && planned.has(s.stepId)) && (!s.stepId || order.includes(s.stepId)));
-    const max = Math.max(0, ...open.map((s) => s.waitSec));
-    const longest = usable && max >= MIN_LONGEST_WAIT_SEC ? open.filter((s) => s.waitSec === max).map((s) => ({ key: s.stepId || `off:${s.name}`, name: s.stepId ? nameOf(s.stepId) : s.name, waitSec: s.waitSec, ...(s.waitNotSeenSec ? { atLeast: true } : {}) })) : [];
+    // The wait before the step: time it stood still after an interruption is not ranked (#180 point 2).
+    const max = Math.max(0, ...open.map(waitBeforeOf));
+    const longest = usable && max >= MIN_LONGEST_WAIT_SEC ? open.filter((s) => waitBeforeOf(s) === max).map((s) => ({ key: s.stepId || `off:${s.name}`, name: s.stepId ? nameOf(s.stepId) : s.name, waitSec: waitBeforeOf(s), ...(s.waitNotSeenSec ? { atLeast: true } : {}) })) : [];
     return { n: i + 1, id: r.id, startedAt: r.startedAt, finishedAt: r.finishedAt, usable, complete, ...(r.clockMoved ? { clockMoved: true } : {}), ...(r.stoppedEarly ? { stoppedEarly: true } : {}),
       guidanceSeen: r.guidanceSeen, elapsedSec: waitSec + workSec + notSeenSec, waitSec, workSec, notSeenSec, waitNotSeenSec: sum('waitNotSeenSec'), workNotSeenSec: sum('workNotSeenSec'),
       plannedWaitSec: r.steps.reduce((n, s) => n + (s.stepId && planned.has(s.stepId) ? s.waitSec : 0), 0),
@@ -782,7 +789,7 @@ export function walkRanges(list, records) {
       happened += 1; if (at.length > 1) again += 1;
       work.push([at.reduce((n, s) => n + s.workSec, 0), at.some((s) => s.workNotSeenSec)]);
       const first = at[0]; const before = first.p > 0 ? r.steps[first.p - 1].stepId : null;
-      if (li === 0 ? first.p === 0 : before === order[li - 1]) wait.push([first.waitSec, !!first.waitNotSeenSec]);
+      if (li === 0 ? first.p === 0 : before === order[li - 1]) wait.push([waitBeforeOf(first), !!first.waitNotSeenSec]);
     }
     return { stepId: st.id, happened, of: used.length, didNotHappen: didNot, again, work: span(work), wait: span(wait) };
   });
@@ -802,7 +809,7 @@ export function walkRanges(list, records) {
 // What the guide says about a map with two or more walks: it reads the range, never a middle value.
 export const RANGE_BASIS = {
   range: `Local definition, not a standard: a range is the lowest to the highest value across the walks. No average is given: ${WALKS_AIM} walks are examples, not a sample. The aim of ${WALKS_AIM} walks is an example setting.`,
-  compare: 'Local definition: the wait before a step is compared only on walks where the step happened and the step timed just before it was the step before it on the list. A step\'s hands-on time on a walk is the sum of the times it was done on that walk. A walk that stopped early or whose clock moved back is left out.',
+  compare: 'Local definition: the wait before a step is compared only on walks where the step happened and the step timed just before it was the step before it on the list; time the step stood still after an interruption is not in it. A step\'s hands-on time on a walk is the sum of the times it was done on that walk. A walk that stopped early or whose clock moved back is left out.',
   when: 'Practice, no published source: walks at one hour of one day show that hour, not the service.',
 };
 export function suggestWalks(list, ranges, { sameHour = false } = {}) {

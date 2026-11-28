@@ -84,9 +84,11 @@ test('core/walk.js fmtRange: "at least" on an unpaused walk\'s time and "at leas
   assert.doesNotMatch(fmtRange(rg.steps[1].wait, { count: false }), /at least under/);
 });
 
-test('one walk: the headline names the place, the interrupted part and the part not seen, in whole minutes', () => {
+test('one walk: the headline names the wait before a step, never the time a step stood still (#180 point 2), and the part not seen, in whole minutes', () => {
+  // Scan waited 1 min before it and stood still 5 min inside it: the 2 min before Registered is the longest wait before a step.
   const steps = [{ id: 'a', name: 'Registered', wait: 120 }, { id: 'b', name: 'Scan', wait: 362, interruptedWaitSec: 302 }];
-  assert.deepEqual(longestOneWalk(longestWaits(steps)), { lead: 'Longest wait: ', text: '6 min at “Scan” (5 min of it while the step was interrupted)' });
+  assert.deepEqual(longestOneWalk(longestWaits(steps)), { lead: 'Longest wait: ', text: '2 min before “Registered”' });
+  assert.deepEqual(longestWaits([steps[1]]).map((x) => [x.wait, x.stoodSec]), [[60, 302]], 'the stood-still time is kept beside the wait, not inside it');
   const paused = [{ id: 'a', name: 'Seen by a nurse', wait: 240 }, { id: 'b', name: 'Seen by a doctor', wait: 660, waitNotSeenSec: 300 }];
   assert.equal(longestOneWalk(longestWaits(paused)).text, 'at least 11 min before “Seen by a doctor” (5 min more of it not seen)');
   const plain = [{ id: 'a', name: 'Seen by a nurse', wait: 400 }, { id: 'b', name: 'Seen by a doctor', wait: 120 }];

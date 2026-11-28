@@ -265,7 +265,11 @@ test('390 px: after "Step interrupted" the main button carries the same step on 
   await page.tap('[data-test="tab-edit"]');
   await page.waitForSelector('[data-test="tab-edit"][aria-selected="true"]');
   const guide = await page.textContent('[data-test="guide"]');
-  assert.match(guide, /Longest wait on this walk: 6 min( [1-3] s)? at “Changed into gown” \(5 min( [1-3] s)? of it while the step was interrupted\)/);
+  // Every step waited 1 min before it. The 5 min the fourth stood still is not a wait before a step
+  // (#180 point 2, 28 Nov): it is not named as the longest wait, and has its own line below.
+  // (real taps can add a second or two to one wait, so it is one step's or a tie).
+  assert.match(guide, /Longest wait on this walk(, tied)?: 1 min( [1-3] s)?( each,)? before “/);
+  assert.doesNotMatch(guide, /Longest wait on this walk: 6 min|at “Changed into gown”/);
   assert.match(guide, /1 interruption on this walk: 5 min( [1-3] s)? stood still/);
 
   // Walk 2 of the same map: the button names each list step, and each tap is filed under it.
