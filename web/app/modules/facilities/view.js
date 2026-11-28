@@ -12,7 +12,7 @@ import { roleById } from '../../core/model.js';
 import { commandByName } from '../../core/commands.js';
 import { proposalsCard } from '../proposals.js';
 import { CHECK_KINDS, RESULTS, RUN_MINUTES, LEVELS, GAS_BANDS, UTILITIES, CAUSES, AGO_MINUTES, LEVEL_PICKS, runText, agoText,
-  LOADS, LOAD_WORDS, WASTE_STREAMS, WASTE_CONTAINERS, WASTE_OUTCOMES, WASTE_REASONS, containersText, containersPick, totalContainersText, GAS_LOW_BANDS } from './logic.js';
+  LOADS, LOAD_WORDS, LOAD_TEST_DAYS, WASTE_STREAMS, WASTE_CONTAINERS, WASTE_OUTCOMES, WASTE_REASONS, containersText, containersPick, totalContainersText, GAS_LOW_BANDS } from './logic.js';
 
 const can = (role, cmd) => !!commandByName(cmd)?.roles.includes(role);
 const roleNames = (ids) => ids.map((r) => roleById(r)?.name || r).join(', ');
@@ -373,7 +373,8 @@ export async function render(el, ctx) {
           ? h('span', { class: 'chip fac-hot', 'data-test': 'done-problem' }, c.problem.id === 'failed' ? 'Done: failed' : 'Done: supply low')
           : h('span', { class: `chip fac-st-${c.status}` }, STATUS_WORDS[c.status])),
         h('p', { class: 'meta' }, c.status === 'overdue' ? c.overdueText : c.status === 'done' ? `Done this period. ${c.everyText}.` : `${c.dueText}. ${c.everyText}.`),
-        c.last ? h('p', { class: 'meta' }, `Last: ${c.last.atText}, ${c.last.words}${c.lastFailed ? ' (failed)' : ''}.`) : h('p', { class: 'meta' }, 'No check recorded yet.'))))
+        c.last ? h('p', { class: 'meta' }, `Last: ${c.last.atText}, ${c.last.words}${c.lastFailed ? ' (failed)' : ''}.`) : h('p', { class: 'meta' }, 'No check recorded yet.'),
+        c.blockText ? h('p', { class: 'meta', 'data-test': 'load-block' }, c.blockText) : null)))
         : h('p', { class: 'fac-empty', 'data-test': 'checks-empty' }, 'No scheduled check on this site yet.'),
       h('p', { class: 'meta' }, data.ov.schedule.note));
   }
@@ -398,7 +399,7 @@ export async function render(el, ctx) {
           `${x.name}: ${totalContainersText(x.containers)}${x.missed ? `; ${x.missed} of ${x.recorded} missed` : ''}`))),
       ] : h('p', { class: 'fac-empty', 'data-test': 'waste-empty' }, 'No waste collection recorded this month.'),
       h('a', { class: 'btn btn-ghost fac-link', href: '#/facilities/waste', 'data-test': 'open-waste' }, 'Open the waste log'),
-      h('p', { class: 'meta' }, 'Containers are counted, not weighed: sizes differ, so do not compare one stream with another. A "20 or more" pick counts as 20.'));
+      h('p', { class: 'meta' }, 'Containers are counted, not weighed: sizes differ, so do not compare one kind of waste with another. A "20 or more" pick counts as 20.'));
   }
 
   function measures() {
@@ -426,6 +427,9 @@ export async function render(el, ctx) {
           h('p', { class: 'fac-kpi-name' }, `${load.name}, since ${load.period.startsText}`),
           h('p', { class: 'fac-kpi-value' }, pctText(load.value)),
           h('p', { class: 'meta' }, `${load.numerator} of ${load.denominator} on-load periods done by their due date${load.failed ? `; ${load.failed} of them failed` : ''}.`),
+          h('p', { class: 'meta', 'data-test': 'load-window' }, load.period.days < LOAD_TEST_DAYS
+            ? `Counted from ${load.period.startsText}, the first check in this device's log. Once the log is ${LOAD_TEST_DAYS} days old: the last ${LOAD_TEST_DAYS} days, three 4-week periods for each generator.`
+            : `The last ${LOAD_TEST_DAYS} days: three 4-week periods for each generator.`),
           load.missed?.length ? h('p', { class: 'meta' }, `Missed: ${load.missed.map((m) => `${m.targetName}, 4 weeks to ${m.dueText}`).join('; ')}.`) : null,
           def(load)) : null,
         missedShare ? h('div', { class: 'card fac-kpi', 'data-kpi': missedShare.id, 'data-value': missedShare.value == null ? '' : String(Math.round(missedShare.value * 10) / 10), 'data-n': `${missedShare.numerator}/${missedShare.denominator}` },
@@ -553,7 +557,7 @@ function describeProposal(p, data) {
     }
     case 'ospeli_facilities_outage_start': return `Record an outage: ${UTILITIES[i.utility] || 'a utility'}, ${names.get(i.placeId) || 'a place'}, ${CAUSES[i.cause] || ''}`;
     case 'ospeli_facilities_outage_end': return `End outage ${String(i.outageId || '').toUpperCase()}${i.cause ? ` (cause: ${CAUSES[i.cause]})` : ''}`;
-    case 'ospeli_facilities_waste_record': return `Record waste: ${WASTE_STREAMS[i.stream] || 'a stream'}, ${names.get(i.placeId) || 'a place'}, ${i.outcome === 'collected' ? `${containersText(i.containers)} collected` : `collection missed${WASTE_REASONS[i.reason] ? ` (${WASTE_REASONS[i.reason]})` : ''}`}`;
+    case 'ospeli_facilities_waste_record': return `Record waste: ${WASTE_STREAMS[i.stream] || 'a kind of waste'}, ${names.get(i.placeId) || 'a place'}, ${i.outcome === 'collected' ? `${containersText(i.containers)} collected` : `collection missed${WASTE_REASONS[i.reason] ? ` (${WASTE_REASONS[i.reason]})` : ''}`}`;
     default: return p.command;
   }
 }
@@ -634,7 +638,7 @@ async function renderWaste(el, ctx) {
   function missing() {
     const p = ui.picks;
     if (!p.placeId) return 'the place';
-    if (!p.stream) return 'the stream';
+    if (!p.stream) return 'which waste';
     if (ui.form === 'collected' && p.containers == null) return 'how many containers';
     if (ui.form === 'missed' && !p.reason) return 'what happened';
     return null;
@@ -658,18 +662,26 @@ async function renderWaste(el, ctx) {
     const set = (k, num = false) => (v) => { p[k] = num ? Number(v) : v; draw(); };
     const need = missing();
     const places = data.ov.choices.wastePlaces || [];
-    const sel = h('select', { 'data-test': 'waste-place', 'aria-labelledby': 'wq-place', onchange: (e) => { p.placeId = e.target.value || null; draw(); } },
-      h('option', { value: '' }, 'Choose the place'),
+    // Big tiles for the places waste is collected from (all of them when there are 4 or fewer), and
+    // the full list for any other place (issue #155 point 10).
+    const often = (data.ov.choices.wasteOften || []).map((id) => places.find((x) => x.id === id)).filter(Boolean);
+    const rest = often.length === places.length ? [] : places;
+    const sel = rest.length ? h('select', { 'data-test': 'waste-place', 'aria-labelledby': often.length ? 'wq-other' : 'wq-place', onchange: (e) => { p.placeId = e.target.value || null; draw(); } },
+      h('option', { value: '' }, often.length ? 'Choose another place' : 'Choose the place'),
       [['site', 'Sites'], ['building', 'Buildings'], ['department', 'Departments']].map(([t, label]) => {
-        const list = places.filter((x) => x.type === t);
-        return list.length ? h('optgroup', { label }, list.map((x) => new Option(x.name, x.id, false, x.id === p.placeId))) : null;
-      }));
+        const list = rest.filter((x) => x.type === t);
+        return list.length ? h('optgroup', { label }, list.map((x) => new Option(x.name, x.id, false, x.id === p.placeId && !often.some((o) => o.id === x.id)))) : null;
+      })) : null;
+    const where = [
+      often.length ? h('div', { 'data-test': 'waste-place-tiles' }, pickRow(root, 'waste-place-tile', often.map((x) => [x.id, x.name]), p.placeId, set('placeId'), 'wq-place')) : null,
+      sel && often.length ? h('p', { class: 'fac-q', id: 'wq-other' }, 'Somewhere else?') : null,
+      sel];
     const f = h('form', { class: 'card fac-form', 'data-test': 'waste-form', 'data-form': ui.form, 'aria-labelledby': 'wst-form-h' },
       h('div', { class: 'fac-form-head' }, h('h2', { id: 'wst-form-h' }, WASTE_OUTCOMES[ui.form]),
         h('button', { class: 'btn btn-ghost fac-back', type: 'button', 'data-test': 'back', onclick: () => { ui.form = null; ui.picks = {}; draw(); } }, 'Back')),
       places.length ? [
-        field('Where from?', 'wq-place', sel),
-        field('Which stream?', 'wq-stream', pickRow(root, 'stream', Object.entries(WASTE_STREAMS), p.stream, set('stream'), 'wq-stream')),
+        field('Where from?', 'wq-place', ...where),
+        field('Which waste?', 'wq-stream', pickRow(root, 'stream', Object.entries(WASTE_STREAMS), p.stream, set('stream'), 'wq-stream')),
         ui.form === 'collected'
           ? field('How many containers?', 'wq-cont', pickRow(root, 'containers', WASTE_CONTAINERS.map((n) => [n, containersPick(n)]), p.containers, set('containers', true), 'wq-cont'))
           : field('What happened?', 'wq-reason', pickRow(root, 'reason', Object.entries(WASTE_REASONS), p.reason, set('reason'), 'wq-reason')),
@@ -704,13 +716,13 @@ async function renderWaste(el, ctx) {
     const w = data.ov.waste;
     const rows = w.byStream.filter((x) => x.recorded);
     return h('section', { class: 'section fac-sec', 'aria-labelledby': 'wst-month-h', 'data-test': 'waste-month' },
-      h('h2', { id: 'wst-month-h' }, `This month's collections by stream (${w.month})`),
+      h('h2', { id: 'wst-month-h' }, `This month's collections by kind of waste (${w.month})`),
       rows.length ? h('ul', { class: 'fac-list' }, rows.map((x) => h('li', { 'data-stream': x.id },
         h('p', { class: 'fac-what' }, h('b', {}, x.name), h('span', { class: 'chip' }, totalContainersText(x.containers))),
         // A missed collection and its late collection are two records (issue #155).
         h('p', { class: 'meta' }, `${x.recorded} recorded, ${x.missed ? `${x.missed} of them missed` : 'none missed'}.`))))
         : h('p', { class: 'fac-empty', 'data-test': 'waste-empty' }, 'No waste collection recorded yet this month.'),
-      h('p', { class: 'meta' }, 'Containers are counted, not weighed: sizes differ, so do not compare one stream with another. A "20 or more" pick counts as 20.'));
+      h('p', { class: 'meta' }, 'Containers are counted, not weighed: sizes differ, so do not compare one kind of waste with another. A "20 or more" pick counts as 20.'));
   }
 
   function draw() {

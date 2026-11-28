@@ -158,7 +158,7 @@ test('the waste form cannot be saved until every pick is made, with no answer ch
   assert.equal(await page.locator('[data-test="waste-place"]').inputValue(), '');
   assert.equal(await save.textContent(), 'Pick the place first');
   await page.locator('[data-test="waste-place"]').selectOption('bld-main-b');
-  assert.equal(await save.textContent(), 'Pick the stream first');
+  assert.equal(await save.textContent(), 'Pick which waste first');
   await tap(page, '[data-test="stream"] [data-value="sharps"]');
   assert.equal(await save.textContent(), 'Pick how many containers first');
   assert.equal(await save.isDisabled(), true);
@@ -382,6 +382,52 @@ test('manager: a link near the top goes to this month\'s figures; the waste card
   for (const r of rows) assert.match(r, /^\d+ recorded, (none missed|\d+ of them missed)\.$/);
   assert.ok(rows.some((r) => /of them missed/.test(r)), 'the seed has a missed collection');
   assert.match(await page.locator('[data-test="waste-month"]').textContent(), /A "20 or more" pick counts as 20\./);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+// Issue #155 points 6, 7 and 10. 6: each on-load row says the dates of its 4-week block, and which
+// block the last on-load test counted in (how it is measured is unchanged). 7: the on-load figure says
+// "three periods for each generator" and that its window starts at the first check on this device.
+// 10: the waste log asks "Which waste?" (no "stream" on the screen), and the place is picked from big
+// tiles (44 px or more) for the places waste is collected from, with the full list for any other place.
+test('the on-load rows show their 4-week block\'s dates; the on-load figure says three periods for each generator and where its window starts; the waste log asks "Which waste?" and offers the place as big tiles', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/facilities' });
+  await go(page, 'facilities-manager');
+  const block = page.locator('[data-check="generator-load-test:asset-generator-2"] [data-test="load-block"]');
+  assert.match(await block.textContent(), /^This 4-week block: Mon 9 Nov to Sun 6 Dec\./);
+  assert.match(await block.textContent(), /The last on-load test counted in the block \w{3} \d{1,2} \w{3} to \w{3} \d{1,2} \w{3}\.$/);
+  assert.match(await page.locator('[data-check="generator-load-test:asset-generator-1"] [data-test="load-block"]').textContent(),
+    /^This 4-week block: Mon 9 Nov to Sun 6 Dec\. The last on-load test counted in this block\.$/);
+  assert.equal(await page.locator('[data-check="generator-test:asset-generator-1"] [data-test="load-block"]').count(), 0, 'not on the weekly row');
+  const card = page.locator('[data-kpi="generator-load-test-compliance"]');
+  assert.match(await card.locator('[data-test="load-window"]').textContent(),
+    /^Counted from Tue 20 Oct, the first check in this device's log\. Once the log is 84 days old: the last 84 days, three 4-week periods for each generator\.$/);
+  const ov = await overview(page);
+  assert.match(kpi(ov, 'generator-load-test-compliance').definition, /three periods for each generator/);
+  assert.match(kpi(ov, 'generator-load-test-compliance').definition, /starts at the first check in this device's log/);
+  assert.deepEqual(await phoneProblems(page), []);
+
+  await go(page, 'facilities-assistant', '#/facilities/waste');
+  await tap(page, '[data-tile="waste-collected"]');
+  assert.doesNotMatch(await page.locator('.fac').innerText(), /stream/i, 'no "stream" on the waste log');
+  assert.match(await page.locator('[data-test="waste-form"]').textContent(), /Which waste\?/);
+  const tiles = page.locator('[data-test="waste-place-tiles"] [data-value]');
+  const n = await tiles.count();
+  assert.ok(n >= 3 && n <= 4, `3 or 4 place tiles (${n})`);
+  assert.deepEqual((await tiles.evaluateAll((xs) => xs.map((x) => x.dataset.value))).sort(), ['bld-main-a', 'bld-main-b', 'bld-north-1']);
+  for (const b of await tiles.all()) assert.ok((await b.boundingBox()).height >= 44);
+  assert.equal(await page.locator('[data-test="waste-place-tiles"] [aria-pressed="true"]').count(), 0, 'no place chosen in advance');
+  assert.equal(await page.locator('[data-test="waste-place"]').inputValue(), '', 'any other place from the full list');
+  await tap(page, '[data-test="waste-place-tiles"] [data-value="bld-main-b"]');
+  assert.equal(await page.locator('[data-test="waste-place-tiles"] [data-value="bld-main-b"]').getAttribute('aria-pressed'), 'true');
+  assert.equal(await page.locator('[data-test="waste-save"]').textContent(), 'Pick which waste first');
+  await tap(page, '[data-test="stream"] [data-value="sharps"]');
+  await tap(page, '[data-test="containers"] [data-value="2"]');
+  await tap(page, '[data-test="waste-save"]');
+  await waitSaved(page, /Saved: Sharps, Building B.*2 containers collected/);
+  assert.deepEqual(await phoneProblems(page), []);
+  assert.doesNotMatch(await page.locator('.fac').innerText(), /stream/i, 'no "stream" after saving');
   assert.deepEqual(errors, []);
   await context.close();
 });
