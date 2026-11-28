@@ -21,9 +21,11 @@ async function clearStorage(context, page, types) {
   await cdp.detach();
   await page.goto(`${env.appUrl}#/engineering`);
   await page.waitForSelector('html[data-ready="true"]');
-  // The department went with the rest of the device's data, so the department sheet asks again
-  // (navigation v2); the person answers it before anything else on the page can be tapped.
-  assert.equal(await page.locator('#dept-sheet[open]').count(), 1, 'the cleared device asks for the department again');
+  // The department went with the rest of the device's data, so the department is asked again
+  // (navigation v2). Since crew night 6 (#166 item 8) the "browser cleared" notice is read first and
+  // the sheet waits for its OK (was: the sheet opened over the notice); here it is chosen from the chip.
+  await page.waitForSelector('[data-test="data-lost"]');
+  assert.equal(await page.locator('#dept-sheet[open]').count(), 0, 'the sheet does not open over the notice');
   await chooseDepartment(page, 'wards');
 }
 const startAJob = async (page) => {

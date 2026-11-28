@@ -1,5 +1,6 @@
-// Agents (issues #25, #20; spec A9, first step): a person sets the dial. Off by default.
-// Advise: agents on this site's list may read and suggest; a person accepts or declines.
+// AI helpers, also called agents (issues #25, #20; spec A9, first step): a person chooses Off or
+// Advise. Off by default. Advise: agents on this site's list may read and suggest only; a person
+// accepts or declines. Words in plain English (#166 item 6): no "dial"; "Advise" always says "suggest only".
 // Everything here calls a command (ospeli_agents_list, ospeli_agents_set_access, ospeli_agents_add, ospeli_agents_remove,
 // ospeli_agents_stop_all); the same commands are in api/commands.json. Agents cannot run any of them.
 import { h } from './ui.js';
@@ -91,8 +92,8 @@ export async function render(el, ctx) {
         if (view.dial === id) return;
         if (!can) return;
         if (id === 'advise') {
-          if (!confirm('Turn agents on to Advise?\n\nAgents on your list can read and suggest. Nothing changes until a person accepts.')) return;
-          act('ospeli_agents_set_access', { allowed: true }, 'Agents are on: Advise. Next, choose where they can work and add an agent.');
+          if (!confirm('Turn AI helpers on to Advise (suggest only)?\n\nAgents on your list can read and suggest. Nothing changes until a person accepts.')) return;
+          act('ospeli_agents_set_access', { allowed: true }, 'Agents are on: Advise, suggest only. Next, choose where they can work and add an agent.');
         } else {
           act('ospeli_agents_set_access', { allowed: false }, 'Agents are off. Nothing was changed.');
         }
@@ -134,13 +135,13 @@ export async function render(el, ctx) {
       view.cleared ? h('p', { class: 'ag-banner', 'data-test': 'agents-cleared' }, `Agents were switched off when this device's data was ${view.cleared.by === 'import' ? 'replaced by an import' : 'reset'}, ${ago(view.cleared.at, now)}. The ${ADMIN_NAMES} can switch them on again here.`) : null,
       view.stopped ? h('p', { class: 'ag-banner', 'data-test': 'agents-stopped' }, `All agents stopped by ${view.stopped.byRoleName}, ${ago(view.stopped.at, now)}.`) : null,
       h('section', { class: 'card ag-card', 'aria-labelledby': 'ag-dial-h' },
-        h('h2', { id: 'ag-dial-h' }, 'Agents for this site'),
+        h('h2', { id: 'ag-dial-h' }, 'AI helpers on this site: off or on'),
         can ? null : stop,
         h('div', { class: 'ag-dial', role: 'group', 'aria-labelledby': 'ag-dial-h', 'data-test': 'agents-dial', 'data-dial-now': view.dial },
-          dialBtn('off', 'Off', 'Agents cannot read or suggest anything. Ospeli works fully without them.'),
-          dialBtn('advise', 'Advise', 'Agents you allow can read and suggest. A person accepts or declines each one.')),
+          dialBtn('off', 'Off', 'The off switch. Agents cannot read or suggest anything. Ospeli works fully without them.'),
+          dialBtn('advise', 'Advise: suggest only', 'Agents you allow can read and suggest. A person accepts or declines each one.')),
         can ? stop : null,
-        h('p', { class: 'ag-text' }, 'Today the dial stops at Advise. No agent can act by itself.'),
+        h('p', { class: 'ag-text' }, 'There is no setting above Advise: no agent can change anything by itself.'),
         can ? null : h('p', { class: 'ag-text', 'data-test': 'agents-readonly' }, `Only the ${ADMIN_NAMES} can change these settings.${on ? ' Anyone can stop all agents.' : ''}`)),
       on ? wardBox : null,
       on || view.agents.length ? h('section', { class: 'card ag-card', 'aria-labelledby': 'ag-list-h' },
@@ -162,9 +163,9 @@ export async function render(el, ctx) {
   el.append(
     h('div', { class: 'page-head' },
       h('div', {},
-        h('p', { class: 'eyebrow' }, 'You set the dial'),
-        h('h1', {}, 'Agents'),
-        h('p', { class: 'ag-intro' }, 'Agents are AI helpers: programs that can look at beds, work orders and process maps and suggest changes. They are off until you turn them on, and nothing changes until a person accepts.'))),
+        h('p', { class: 'eyebrow' }, 'Me'),
+        h('h1', {}, 'AI helpers'),
+        h('p', { class: 'ag-intro' }, 'Agents are AI helpers: computer programs that can look at beds, work orders and process maps and suggest changes. They are off until you turn them on, and nothing changes until a person accepts.'))),
     status, body, dialog);
   await draw();
   return () => { if (dialog.open) dialog.close(); };

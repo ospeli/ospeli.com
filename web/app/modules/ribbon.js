@@ -4,7 +4,8 @@
 // walked, which step, the state in words and a clock, and the next tap as a button.
 //
 // It reads the walk only through ospeli_walks_get and taps only through the walk's own commands
-// (ospeli_walks_step_start, ospeli_walks_step_done, ospeli_walks_resume), so the double-tap guard
+// (ospeli_walks_step_start, with listStep for the step a first walk's list offers next,
+// ospeli_walks_step_done, ospeli_walks_resume), so the double-tap guard
 // and every rule of the walk apply exactly as on the walk screen. It is drawn again when the walk
 // changes (core.onChange) and on every change of page; the only timer is the 1 s clock.
 // Text people typed (the walk's title, step names) is only ever set as text, never as HTML.
@@ -23,13 +24,16 @@ export function ribbonModel(w) {
   const resume = under === 'waiting' && !!w.canResume;
   // The step this moment belongs to: the one running, the interrupted one carrying on, or the next.
   const item = rp ? (under === 'step' ? rp.now : resume ? null : rp.next) : null;
+  // A first walk with a step list (#182 item 3): as on the walk screen's main button, the wait offers
+  // the list step marked "next" by name and the tap starts that step; a step running has its name.
+  const nextRow = !rp && w.list && under !== 'step' && !resume ? w.list.find((p) => p.state === 'next') || null : null;
   const n = item ? item.n : resume ? last.n : done + 1;
-  const name = item ? item.name : resume && last.named ? last.name : null;
+  const name = item ? item.name : resume && last.named ? last.name : under === 'step' ? w.running?.name || null : nextRow ? nextRow.name : null;
   const of = rp && item ? rp.list.length : null;
   const title = isUnnamedTitle(w.title) && rp ? `Walk ${rp.walkNo}` : w.title;
   const words = w.state === 'paused' ? 'Paused'
     : under === 'step' ? `Hands-on: ${name || `step ${n}`}`
-      : resume ? `Step ${n} interrupted` : name ? `Waiting before ${name}` : 'Waiting';
+      : resume ? `Step ${n} interrupted` : name && !nextRow ? `Waiting before ${name}` : 'Waiting';
   // Segments: steps done, the present wait or step, then the list steps still to come (repeat walk only).
   const later = rp ? rp.list.filter((p) => (p.state === 'next' || p.state === 'later') && !(item && p.n === item.n)).length : 0;
   const segs = [...Array(done).fill('done'), w.state === 'paused' ? 'paused' : under === 'step' ? 'step' : 'wait', ...Array(later).fill('later')];
@@ -39,11 +43,11 @@ export function ribbonModel(w) {
   const UNDO = 'Wrong tap? Open Walk to undo it.';
   let act;
   if (w.state === 'paused') act = { cmd: 'ospeli_walks_resume', input: {}, label: 'I am back', said: 'You are back.', note: 'You are back. The walk is timing again.' };
-  else if (under === 'step') act = { cmd: 'ospeli_walks_step_done', input: {}, label: `${name || 'Step'} done`, said: `${name || `Step ${n}`} done. Waiting.`, note: `${name || `Step ${n}`} done. ${UNDO}`, thenOpen: !(rp && rp.now) };
+  else if (under === 'step') act = { cmd: 'ospeli_walks_step_done', input: {}, label: `${name || 'Step'} done`, said: `${name || `Step ${n}`} done. Waiting.`, note: `${name || `Step ${n}`} done. ${UNDO}`, thenOpen: !(rp && rp.now) && !w.running?.name };
   else if (resume) act = { cmd: 'ospeli_walks_step_start', input: { resume: true }, label: `${name || 'Step'} carries on`, said: 'The same step carries on. Hands-on.', note: `${name || `Step ${n}`} carries on. ${UNDO}` };
   else {
     const unnamedBefore = !!last && !last.named ? last.n : null;
-    act = { cmd: 'ospeli_walks_step_start', input: {}, label: `${name || 'Step'} starts`, said: `${name || `Step ${n}`} started. Hands-on.`, unnamedBefore,
+    act = { cmd: 'ospeli_walks_step_start', input: nextRow ? { listStep: nextRow.n } : {}, label: `${name || 'Step'} starts`, said: `${name || `Step ${n}`} started. Hands-on.`, unnamedBefore,
       note: `${name || `Step ${n}`} started. ${unnamedBefore ? `Step ${unnamedBefore} has no name yet: name it on the map.` : UNDO}` };
   }
   return { title, n, of, words, segs, act, state: w.state };

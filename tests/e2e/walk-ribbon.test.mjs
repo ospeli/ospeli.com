@@ -98,27 +98,31 @@ test('390 px: a tap on the band opens the walk; the button does the next tap thr
   await page.waitForSelector('[data-test="walk"]');
   assert.equal(await ribbonShown(page), false, 'hidden on the walk page');
   await page.tap('[data-test="walk-leave"]'); await route(page, '#/home');
-  // "Step starts" from the ribbon starts the step: hands-on, step 2.
+  // The ribbon starts the step the walk's list offers next, by name, as the walk screen's main
+  // button does (crew night 6 item 1; was "Step starts" and "Hands-on: step 2"): hands-on, step 2.
   await page.clock.fastForward(30000);
-  assert.equal((await page.textContent('[data-test="ribbon-act"]')).trim(), 'Step starts');
+  assert.equal((await page.textContent('[data-test="ribbon-act"]')).trim(), 'Registered starts');
   await page.locator('[data-test="ribbon-act"]').tap();
-  await page.waitForFunction(() => document.querySelector('[data-test="ribbon-words"]')?.textContent === 'Hands-on: step 2');
+  await page.waitForFunction(() => document.querySelector('[data-test="ribbon-words"]')?.textContent === 'Hands-on: Registered');
   let w = await walkNow(page);
   assert.equal(w.state, 'step');
   assert.equal(w.steps.length, 1);
-  assert.match(await page.textContent('[data-test="ribbon-status"]'), /Step 2 started/);
+  assert.match(await page.textContent('[data-test="ribbon-status"]'), /Registered started/);
   const segs = await page.locator('#walk-ribbon .wr-seg').evaluateAll((s) => s.map((x) => x.className));
   assert.deepEqual(segs, ['wr-seg is-done', 'wr-seg is-step']);
-  // "Step done" on a first walk: the tap is stamped, then the walk opens with its naming sheet.
+  // "Registered done": the list step is named already, so the tap is stamped and the page stays, as
+  // on the walk screen (crew night 6 item 1; was "Step done", then the walk opened with its naming
+  // sheet: that path, for a walk with no list, is in shell-n6.test.mjs). Then the walk is opened.
   await page.clock.fastForward(45000);
-  assert.equal((await page.textContent('[data-test="ribbon-act"]')).trim(), 'Step done');
+  assert.equal((await page.textContent('[data-test="ribbon-act"]')).trim(), 'Registered done');
   await page.locator('[data-test="ribbon-act"]').tap();
+  await page.waitForFunction(() => document.querySelector('[data-test="ribbon-words"]')?.textContent === 'Waiting');
+  await page.locator('[data-test="ribbon-open"]').tap();
   await route(page, '#/process/walk');
-  await page.waitForSelector('[data-test="walk-sheet"]');
+  await page.waitForSelector('[data-test="walk"]');
   w = await walkNow(page);
   assert.equal(w.state, 'waiting'); assert.equal(w.steps.length, 2); assert.equal(w.steps[1].workSec, 45);
   // Paused: "I am back" from the ribbon.
-  await page.tap('[data-test="walk-later"]');
   await page.tap('[data-test="walk-pause"]'); await page.waitForSelector('[data-test="walk"][data-state="paused"]');
   await page.tap('[data-test="walk-leave"]'); await route(page, '#/home');
   assert.equal(await page.textContent('[data-test="ribbon-words"]'), 'Paused');

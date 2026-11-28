@@ -38,8 +38,9 @@ test('every role can be chosen; the choice persists and is audited', async () =>
   await page.click('#dock [data-dock="me"]');
   await page.waitForSelector('#main #role-select');
   const options = await page.locator('#role-select option').allTextContents();
-  // The first six keep their place; roles a module adds follow them (tests/unit/module-packs.test.mjs).
-  assert.deepEqual(options.slice(0, 6), ['Ward nurse', 'Patient flow coordinator', 'Facilities technician', 'Emergency department charge nurse', 'Operations manager', 'COO']);
+  // Crew night 6 (#166 item 3): the list is grouped by department, the chosen one (Wards) first, then
+  // the departments in their order (was: the first six roles in build order).
+  assert.deepEqual(options.slice(0, 6), ['Ward nurse', 'Patient flow coordinator', 'Ward or unit clerk', 'Imaging staff', 'Diagnostics manager', 'Clinic receptionist']);
   await page.selectOption('#role-select', 'estates-tech');
   // The person stays on Me, which is drawn again for the new role, and the toast says so.
   await page.waitForFunction(() => document.querySelector('main h1')?.textContent === 'Facilities technician');
