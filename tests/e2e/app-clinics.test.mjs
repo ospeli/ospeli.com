@@ -349,6 +349,26 @@ test('an agent\'s booking waits for a person on the waiting list, and is booked 
   await context.close();
 });
 
+test('an agent\'s arrived proposal shows the patient\'s label, booked time and clinic on the card, not the appointment id (#194)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, touch: true, clock: CLOCK, path: '#/clinics' });
+  const wards = await page.evaluate(async () => (await window.ospeli.core.listEntities('ward')).map((w) => w.id));
+  await run(page, 'ospeli_agents_set_access', { allowed: true, wards: Object.fromEntries(wards.map((w) => [w, true])) }, 'coo');
+  await run(page, 'ospeli_agents_add', { name: 'clinic-bot', role: 'clinic-receptionist', wards, days: 30 }, 'coo');
+  const bot = { type: 'agent', role: 'clinic-receptionist', agent: 'clinic-bot' };
+  const q = await run(page, 'ospeli_clinics_queue', {}, null, bot);
+  const pt = q.patients.find((x) => x.state === 'booked');
+  const p = await run(page, 'ospeli_slots_step', { appointmentId: pt.appointmentId, step: 'arrived' }, null, bot);
+  assert.equal(p.status, 'proposed');
+  await asRole(page, 'clinic-receptionist', 'queue');
+  const item = page.locator(`[data-test="proposals"] .proposal-item[data-proposal="${p.proposal.id}"]`);
+  await item.waitFor();
+  const line = (await item.locator('b').first().textContent()).trim();
+  assert.equal(line, `${pt.label}, booked ${pt.slotTime}, ${q.clinic.serviceWord}: mark arrived`);
+  assert.doesNotMatch(await item.textContent(), /apt-\d/, 'no internal id on the card');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
 test('typed or hostile text cannot reach the screen as HTML: the find box keeps digits only and the command refuses anything else', async () => {
   const { context, page, errors } = await openPage(env, { width: 390, touch: true, clock: CLOCK, path: '#/clinics' });
   await asRole(page, 'clinic-receptionist', 'queue');
