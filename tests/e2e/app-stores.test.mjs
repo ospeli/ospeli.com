@@ -377,3 +377,23 @@ test('a short line offers its next step in one tap: the open request or a stock-
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+for (const width of [360, 390, 1280]) {
+  test(`an order received before anyone approved it stays open and marked on the order tracker and the manager view at ${width}px (#128)`, async () => {
+    const { context, page, errors } = await openPage(env, { width, touch: width < 500, clock: CLOCK, path: '#/stores' });
+    const o = await cmd(page, 'ospeli_stores_order_step', { step: 'requested', lines: [{ itemId: 'aprons', qty: 5 }] }, 'storekeeper');
+    await cmd(page, 'ospeli_stock_receive', { placeId: 'store-main', lines: [{ itemId: 'aprons', qty: 5 }], source: 'Purchase', orderRef: o.orderId }, 'storekeeper');
+    await asRole(page, 'supply-manager', 'manage');
+    const card = page.locator(`.sto-order[data-order="${o.orderId}"]`);
+    assert.equal(await card.count(), 1, 'the order is on the manager view');
+    assert.equal(await card.getAttribute('data-state'), 'requested');
+    assert.match(await card.locator('[data-test="received-before-approval"]').textContent(), /^Received before approval: .+ before anyone approved it\./);
+    await asRole(page, 'ops-manager', 'orders');
+    const row = page.locator(`[data-test="orders"] .sto-order[data-order="${o.orderId}"]`);
+    assert.equal(await row.locator('[data-test="received-before-approval"]').count(), 1, 'marked on the order tracker');
+    assert.equal(await row.locator('.sto-approve').count(), 1, 'the approver can still decide');
+    assert.ok(await noSideways(page) <= 0);
+    assert.deepEqual(errors, []);
+    await context.close();
+  });
+}

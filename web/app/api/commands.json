@@ -23117,7 +23117,7 @@
     },
     {
       "name": "ospeli_stores_orders",
-      "summary": "The order tracker: each order with its items and quantities (and what is still to come; a delivery above the order is flagged), its steps (requested, approved, ordered, delivered, part received, received) with the date and the days spent at each, what it is waiting for and which roles hold that step, and what has been received against it. Open orders come first, the longest at one step first. No prices or suppliers are kept. Read-only.",
+      "summary": "The order tracker: each order with its items and quantities (and what is still to come; a delivery above the order is flagged), its steps (requested, approved, ordered, delivered, part received, received) with the date and the days spent at each, what it is waiting for and which roles hold that step, and what has been received against it. A delivery received against an order nobody approved yet is not refused: the order stays open, waiting for approval, with receivedBeforeApproval { at, byRole } set (null otherwise), and the mark stays after approval. Open orders come first, the longest at one step first. No prices or suppliers are kept. Read-only.",
       "kind": "read",
       "roles": [
         "ward-nurse",

@@ -137,6 +137,8 @@ const orderRow = (c, o, format) => {
     cycleDays: o.steps.received ? Math.round(((Date.parse(o.steps.received.at) - Date.parse(o.steps.requested.at)) / DAY) * 10) / 10 : null,
     lines: o.lines.map((l) => ({ itemId: l.itemId, itemName: c.itemName(l.itemId), unit: c.stock.items.get(l.itemId)?.unit ?? null, qty: l.qty, received: l.received, toCome: Math.max(0, l.qty - l.received), over: l.received > l.qty })),
     overReceived: o.lines.some((l) => l.received > l.qty),
+    // Goods received against the order before anyone approved it: never refused, always shown.
+    receivedBeforeApproval: o.receivedBeforeApproval ? { at: o.receivedBeforeApproval.at, byRole: o.receivedBeforeApproval.byRole } : null,
   };
   if (format === 'short') return base;
   const r = lastReminder(o);
@@ -249,7 +251,7 @@ export const COMMANDS = [
   },
   {
     name: 'ospeli_stores_orders',
-    summary: 'The order tracker: each order with its items and quantities (and what is still to come; a delivery above the order is flagged), its steps (requested, approved, ordered, delivered, part received, received) with the date and the days spent at each, what it is waiting for and which roles hold that step, and what has been received against it. Open orders come first, the longest at one step first. No prices or suppliers are kept. Read-only.',
+    summary: 'The order tracker: each order with its items and quantities (and what is still to come; a delivery above the order is flagged), its steps (requested, approved, ordered, delivered, part received, received) with the date and the days spent at each, what it is waiting for and which roles hold that step, and what has been received against it. A delivery received against an order nobody approved yet is not refused: the order stays open, waiting for approval, with receivedBeforeApproval { at, byRole } set (null otherwise), and the mark stays after approval. Open orders come first, the longest at one step first. No prices or suppliers are kept. Read-only.',
     kind: 'read', roles: ALL_ROLES, approval: false,
     input: { type: 'object', additionalProperties: false, properties: {
       state: { type: 'string', enum: ['open', 'received', 'cancelled', 'all'], description: 'open (default): not received in full or cancelled yet (part received is open). received, cancelled or all: newest first.' },
