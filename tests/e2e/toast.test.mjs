@@ -33,13 +33,14 @@ for (const width of [360, 390, 1280]) {
   test(`a message never covers a control at ${width}px, and none shows on first open (issue #37)`, async () => {
     for (const route of ROUTES) {
       // A real first open: the department sheet is open and no message shows. The person's answer
-      // gets a message ("Department: Wards"), which must not cover a control either.
+      // gets a message ("Wards. Role set to Ward nurse; change it under Me": one message since crew
+      // night 6, #166 item 4; was "Department: Wards"), which must not cover a control either.
       const { context, page, errors } = await openPage(env, { width, height: phone ? 800 : 860, path: route, clock: '2026-11-10T10:00:00Z', touch: phone, department: null });
       await page.waitForTimeout(300);
       assert.equal(await covered(page), null, `${route}: no message on first open`);
       await chooseDepartment(page, 'wards');
       await page.waitForSelector('#toast.show');
-      assert.equal(await page.textContent('#toast'), 'Department: Wards');
+      assert.equal(await page.textContent('#toast'), 'Wards. Role set to Ward nurse; change it under Me');
       assert.deepEqual(await covered(page), [], `${route}: the department message covers a control`);
       // Opened again with the department kept: still no message.
       await page.reload();
