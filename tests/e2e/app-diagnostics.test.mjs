@@ -401,3 +401,23 @@ test('words and order (#161): the urgent chip says who set it; the request form 
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+test('#161 "Entered late" is ward data quality: it shows at the hatch, not on the laboratory scientist\'s waiting list', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, height: 844, touch: true, clock: CLOCK, path: '#/diagnostics' });
+  // One request collected 30 minutes back (recorded late), then received at the hatch.
+  const list = await cmd(page, 'ospeli_diagnostics_requests_list', { stage: 'requested', limit: 500 }, 'diagnostics-manager');
+  const r = list.requests.find((x) => x.state === 'requested');
+  await cmd(page, 'ospeli_diagnostics_specimen_collect', { requestId: r.id, minutesAgo: 30 }, 'ward-nurse');
+  await asRole(page, 'lab-reception');
+  await page.waitForSelector(`[data-test="hatch-row"][data-request="${r.id}"] [data-test="entered-late"]`);
+  await cmd(page, 'ospeli_diagnostics_specimen_receive', { requestId: r.id, outcome: 'received' }, 'lab-reception');
+  const after = (await cmd(page, 'ospeli_diagnostics_requests_list', { stage: 'received', limit: 500 }, 'diagnostics-manager')).requests.find((x) => x.id === r.id);
+  assert.equal(after.enteredLate, true, 'the request is still marked entered late');
+  await asRole(page, 'lab-scientist');
+  const row = page.locator(`[data-test="waiting-result"] [data-test="hatch-row"][data-request="${r.id}"]`);
+  await row.waitFor();
+  assert.equal(await row.locator('[data-test="entered-late"]').count(), 0, 'no "Entered late" on the scientist\'s row');
+  assert.equal(await page.locator('[data-test="waiting-result"] [data-test="entered-late"]').count(), 0, 'none on the scientist\'s list');
+  assert.deepEqual(errors, []);
+  await context.close();
+});

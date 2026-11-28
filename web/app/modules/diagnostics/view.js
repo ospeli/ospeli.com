@@ -161,7 +161,8 @@ export async function render(el, ctx) {
     const facts = [
       h('p', { class: 'dx-facts' }, h('b', {}, r.testGroupName), ` · ${r.sourceName}`),
       h('p', { class: 'dx-facts' }, urgencyChip(r), ' ', r.state === 'collected' ? `Collected ${fmtWait(r.minutesSinceCollection)} ago` : r.state === 'received' ? `Received ${r.clocks.received}, ${fmtWait(r.minutesInStep)} ago` : `Asked for ${fmtWait(r.minutesInStep)} ago, not marked collected`,
-        r.enteredLate ? h('span', { class: 'chip dx-late', 'data-test': 'entered-late' }, 'Entered late') : null,
+        // Ward data quality: at the hatch and on the tracker, not on the scientist's list (#161).
+        r.enteredLate && !afterReceipt ? h('span', { class: 'chip dx-late', 'data-test': 'entered-late' }, 'Entered late') : null,
         r.notArrived ? h('span', { class: 'chip dx-hot' }, 'Not arrived') : null),
     ];
     let actions = null;
