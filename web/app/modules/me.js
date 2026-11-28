@@ -14,8 +14,9 @@ export async function render(el, ctx) {
   const planned = MODULES.filter((m) => !m.load).length;
   const home = moduleById(role.home);
   // The AI helpers' setting now, in words, beside the way to it (#166 item 6). Ospeli works with it off.
-  let aiOn = false;
-  try { aiOn = (await ctx.run('ospeli_agents_list', {})).dial === 'advise'; } catch { aiOn = false; }
+  // null: the setting could not be read for this role, so the row does not claim one.
+  let aiOn = null;
+  try { aiOn = (await ctx.run('ospeli_agents_list', {})).dial === 'advise'; } catch { aiOn = null; }
   let roleBox;
   if (ctx.site) {
     // On a site's own server the role was chosen for this device there; nothing to pick here.
@@ -42,7 +43,7 @@ export async function render(el, ctx) {
       h('h2', { id: 'me-look-h' }, 'Appearance'),
       h('p', {}, 'Light. Ospeli stays light when a phone is set to dark.'),
       h('p', { class: 'meta' }, 'A dark theme is planned, not built yet.')),
-    row('#/agents', 'AI helpers', `Now: ${aiOn ? 'on, suggest only' : 'off'}. AI helpers (agents) can read and suggest; a person decides each time. Off until you turn it on. Open it: the off switch is first on the page.`, 'me-agents'),
+    row('#/agents', 'AI helpers', `${aiOn == null ? '' : `Now: ${aiOn ? 'on, suggest only' : 'off'}. `}AI helpers (agents) can read and suggest; a person decides each time. Off until you turn it on. Open it: the off switch is first on the page.`, 'me-agents'),
     row('#/data', 'Data and audit', 'Export, import, reset and the audit trail.', 'me-data'),
     row('#/journey', `Coming later (${planned})`, 'Pages that are planned and not built yet. They are listed at the end of the Journey page.', 'me-later'),
     h('section', { class: 'card', 'aria-labelledby': 'me-dev-h' },
