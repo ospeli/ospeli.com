@@ -6,7 +6,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startApp, openPage } from './helpers.mjs';
-import { ME, redoWalk } from './result-seed.mjs';
+import { ME, redoWalk, twoWalkMap } from './result-seed.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -113,6 +113,27 @@ test('a walk with every name typed on the walk and no step done again: no names 
   await page.goto(`${env.appUrl}#/process/map-001`); await page.waitForSelector('[data-test="result-table"]');
   assert.deepEqual(await page.evaluate(() => ['names-from', 'result-again', 'name-step'].map((t) => [t, document.querySelectorAll(`[data-test="${t}"]`).length, document.querySelector(`[data-test="${t}"]`)?.textContent || ''])), [['names-from', 0, ''], ['result-again', 0, ''], ['name-step', 0, '']]);
   assert.equal(flat(await page.textContent('[data-test="walk-longest"]')), 'Longest wait: 3 min 20 s before “Came in”');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test('two walks at 360 px: the scan done again on walk 2 has its own pattern and the legend says so; the line with its total is in Copy as text; the first bar stays on the first screen', async () => {
+  const { context, page, errors } = await open({ width: 360, height: 640 });
+  await twoWalkMap(page);
+  await page.goto(`${env.appUrl}#/process/map-001`); await page.waitForSelector('[data-test="result-table"]');
+  const look = await page.evaluate(() => ({
+    segs: [...document.querySelectorAll('[data-test="bar-walk"]')].map((b) => b.querySelectorAll('i[data-again="true"]').length),
+    key: [...document.querySelectorAll('[data-test="bar-legend"] .key')].some((k) => k.textContent.trim() === 'Done again'),
+    bar: Math.round(document.querySelector('[data-test="bar-walk"]').getBoundingClientRect().bottom) }));
+  assert.deepEqual(look.segs, [0, 1], 'walk 2\'s second scan only');
+  assert.ok(look.key);
+  assert.ok(look.bar <= 640 - 96, `the first bar ends at ${look.bar}`);
+  // Seeded walks do not record where names came from: nothing is said.
+  assert.equal(await page.locator('[data-test="names-from"]').count(), 0);
+  await page.evaluate(() => { window.__copied = null; navigator.clipboard.writeText = async (t) => { window.__copied = t; }; });
+  await page.tap('[data-test="result-copy"]');
+  const copied = await page.waitForFunction(() => window.__copied).then((x) => x.jsonValue());
+  assert.ok(copied.includes('\nDone again: Scan on walk 2, 2 times, 7 min hands-on after the first time.\n'));
   assert.deepEqual(errors, []);
   await context.close();
 });

@@ -68,7 +68,9 @@ export function resultModel({ m, rg, records, list, oneWalkTop = null, day, cloc
   const deptId = m.walk?.department || null;
   return { walks, rows: resultTable(list, records), extras: extrasOf(list, records), title: m.title, afterWalk, compare, mapId: m.id, deptId,
     // Where the step names and roles came from (#170 point 2), said once.
-    namesFrom: records.length ? sourceLine(list, records, deptId) : null };
+    namesFrom: records.length ? sourceLine(list, records, deptId) : null,
+    // Two or more walks: the steps done again, walk by walk, said under the bars.
+    againAll: records.length > 1 ? againLines(list, records) : null };
 }
 
 // One bar per walk, on one shared scale (the longest walk is the full width). Inside a bar each
@@ -303,7 +305,7 @@ export function summaryOf({ model, headLines, headline, totals, read }) {
     columns: model.walks.map((w) => `walk ${w.n}`),
     rows: model.rows.map((r) => ({ extra: r.kind === 'extra', name: r.kind === 'extra' ? `${r.name} (${r.role}, not on the list)` : `${r.order}. ${r.name} (${r.role})`, cells: r.cells.map(cellWords) })),
     read,
-    notes: [model.namesFrom],
+    notes: [model.againAll, model.namesFrom],
     compare: compareLines(model),
   });
 }

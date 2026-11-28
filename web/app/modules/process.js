@@ -13,7 +13,7 @@ import { h } from './ui.js';
 import { fmtMinutes, EXAMPLES } from '../core/processmap.js';
 import { stepsInSeconds, longestWaits, PLANNED_WAIT_RULE, NOT_ALWAYS_WASTE, WALK_BASIS, RANGE_BASIS } from '../core/walk.js';
 import { renderWalk } from './walk.js';
-import { minWords, waitAmount, rangeWords, fromCoreSpan, spanOf, totalSpan, longestOneWalk, longestWalks, NO_LONG_WAIT, SAME_RULE, guideTitle, rangeBasisWords, hotWords, shareOfShown } from './result-words.js';
+import { minWords, waitAmount, longestAmount, rangeWords, fromCoreSpan, spanOf, totalSpan, longestOneWalk, longestWalks, NO_LONG_WAIT, SAME_RULE, guideTitle, rangeBasisWords, hotWords, shareOfShown } from './result-words.js';
 import { proposalsCard } from './proposals.js';
 import { departmentById } from './departments.js';
 import { recordsOf, resultModel, barsCard, tableCard, extrasCard, actionsRow, summaryOf, compareCard, changeBox } from './result-view.js';
@@ -206,8 +206,9 @@ export async function render(el, ctx) {
     const seg = (id, label, on, onclick, extra = {}) => h('button', { type: 'button', class: 'chip-btn', 'aria-pressed': String(on), 'data-test': id, onclick, ...extra }, label);
     // The walks' own records, for the Result tab's bars, table, CSV and the "at" in the headline.
     const records = walked ? (multi ? await recordsOf(core, m) : null) || (multi ? null : [recordFromSteps(stepsInSeconds(m.today.steps), m.walk)]) : null;
-    // A step done again, on its own line on the first result (night 6 item 1).
-    const againLine = records ? againLines(m.today.steps, records) : null;
+    // A step done again, on its own line on the first result of one walk (night 6 item 1). With two or
+    // more walks the line is under the bars (result-view.js), so the first bar stays on the first screen.
+    const againLine = records && !multi ? againLines(m.today.steps, records) : null;
     const againEl = () => (againLine ? h('p', { class: 'wa-line', 'data-test': 'result-again' }, againLine) : null);
     spansOf = rangeView && records && records.length === rg.walks.length ? stepSpans(m.today.steps, records, rg.walks.map((w) => w.usable !== false)) : null;
     const dept = walked && m.walk.department ? departmentById(m.walk.department)?.name || null : null;
@@ -307,7 +308,6 @@ export async function render(el, ctx) {
         split ? null : tot.elapsed.n ? h('p', { class: 'wa-big', 'data-test': 'walk-range', 'data-sec': `${tot.elapsed.min}-${tot.elapsed.max}` }, h('b', {}, rangeWords(tot.elapsed)), ` start to finish${partOf(tot.elapsed)}`)
           : h('p', { class: 'wa-line', 'data-test': 'walk-range' }, 'No walk has been walked to the end of the list yet, so there is no start-to-finish time.'),
         !split && tot.elapsed.n ? h('p', { class: 'wa-line', 'data-test': 'walk-range-parts' }, h('b', {}, `Waiting ${rangeWords(tot.wait)}`), ` · hands-on ${rangeWords(tot.work)}`) : null,
-        againEl(),
         rg.totals.notSeen.n ? h('p', { class: 'wa-line', 'data-test': 'walk-not-seen' }, `Not seen (walk paused) on ${rg.totals.notSeen.n} ${rg.totals.notSeen.n === 1 ? 'walk' : 'walks'}: ${rangeWords(spanOf(rg.walks.filter((w) => w.complete && w.notSeenSec).map((w) => [w.notSeenSec, false])))}.`) : null,
         // Each walk's day and hour is on its bar below; a walk that is left out is also said here.
         rg.walks.some((w) => !w.complete) ? h('ul', { class: 'wa-walks', 'data-test': 'walk-list' }, rg.walks.filter((w) => !w.complete).map((w) => h('li', {}, walkWord(w)))) : null);
@@ -573,7 +573,7 @@ export async function render(el, ctx) {
     const r = stepRange(s);
     if (!r && !(s.wait || s.par || s.waitNotSeenSec || s.plannedWait)) return null;
     const text = r ? `Waits ${waitOf(s)}${s.plannedWait ? ' · planned or required' : ''}${hot ? ` · ${hotWords(rangeNow, s.id) || 'longest wait'}` : ''}` : s.par ? `Starts alongside the step before${s.wait ? `, after ${T(s.wait)}` : ''}`
-      : `Waits ${walkedNow ? waitAmount(s) : T(s.wait)}${seen}${s.plannedWait ? ' · planned or required' : ''}${hot ? (walkedNow ? ' · the longest wait on this walk' : ' · the biggest wait') : ''}`;
+      : `Waits ${walkedNow ? (hot ? longestAmount(s) : waitAmount(s)) : T(s.wait)}${seen}${s.plannedWait ? ' · planned or required' : ''}${hot ? (walkedNow ? ' · the longest wait on this walk' : ' · the biggest wait') : ''}`;
     const cls = `wait${hot ? ' hot' : ''}${s.plannedWait ? ' planned' : ''}`;
     if (!walkedNow || s.par) return h('div', { class: cls }, text);
     const open = ui.waitOpen === s.id;
