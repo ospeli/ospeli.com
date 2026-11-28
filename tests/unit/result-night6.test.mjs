@@ -44,7 +44,7 @@ test('item 2: how many step names and roles came from the list, said once; nothi
   const { list, rec } = await imagingWalk();
   // 8 steps: 6 started as the step offered next (list), 1 picked (chosen), 1 typed.
   assert.equal(sourceLine(list, [rec], 'imaging'),
-    '6 of 8 step names came from the list and were not confirmed on the walk. 7 of 8 roles came with the list step and were not chosen on the walk.');
+    '6 of 8 step names and 7 of 8 roles came from the list and were not confirmed on the walk.');
   // A walk recorded before the fields existed: nothing is said.
   const old = { ...rec, steps: rec.steps.map(({ nameFrom, roleFrom, ...s }) => s) };
   assert.equal(sourceLine(list, [old], 'imaging'), null);
@@ -56,7 +56,7 @@ test('item 2: how many step names and roles came from the list, said once; nothi
   assert.match(sourceLine(renamed, [rec], 'imaging'), /^5 of 8 step names/);
   // Two walks: only the walk with the fields is counted, and it is named.
   assert.equal(sourceLine(list, [rec, old], 'imaging'),
-    'On walk 1, 6 of 8 step names came from the list and were not confirmed on the walk. 7 of 8 roles came with the list step and were not chosen on the walk.');
+    'On walk 1, 6 of 8 step names and 7 of 8 roles came from the list and were not confirmed on the walk.');
 });
 
 test('item 2: the CSV has "name from" and "role from" columns, before the walk Builder\'s last three', async () => {

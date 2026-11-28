@@ -456,9 +456,11 @@ export function sourceLine(list, records, department) {
   });
   if (!names && !roles) return null;
   const lead = records.length > 1 ? `On ${walkNos(used)}, ` : '';
-  const nameBit = names ? `${names} of ${steps} step names came from the list and were not confirmed on the walk.` : null;
-  const roleBit = roles ? `${roles} of ${steps} ${steps === 1 ? 'role' : 'roles'} came with the list step and ${roles === 1 ? 'was' : 'were'} not chosen on the walk.` : null;
-  const out = [nameBit, roleBit].filter(Boolean).join(' ');
+  // One sentence, kept short for a phone: names and roles together when both came from the list.
+  const of = (n, what) => `${n} of ${steps} ${what}`;
+  const out = names && roles ? `${of(names, 'step names')} and ${of(roles, 'roles')} came from the list and were not confirmed on the walk.`
+    : names ? `${of(names, 'step names')} came from the list and ${names === 1 ? 'was' : 'were'} not confirmed on the walk.`
+      : `${of(roles, steps === 1 ? 'role' : 'roles')} came with the list step and ${roles === 1 ? 'was' : 'were'} not chosen on the walk.`;
   return `${lead}${out}`;
 }
 // A department's id from its id or its name ("Imaging" -> "imaging"), for the list check above.
@@ -519,9 +521,11 @@ export function fileNameOf(title, ext = 'csv') {
 // head: [title, header line]; headline, totals: lines; walks: lines, one per walk;
 // rows: { name, cells: [words per walk], extra }; read: the "How to read this" line.
 // compare: the before-and-after lines when a change is marked (heads, rows, totals, caveat).
-export function summaryText({ head, headline, totals, walks, rows, columns, read, count, compare = null }) {
+// notes: lines said once under the steps (where the names came from, #170 point 2).
+export function summaryText({ head, headline, totals, walks, rows, columns, read, count, compare = null, notes = [] }) {
   const out = [...head.filter(Boolean), '', headline, ...totals.filter(Boolean), '', ...walks, '', `Steps (wait before the step · hands-on), ${columns.join(', ')}:`];
   for (const r of rows) out.push(`${r.extra ? '  + ' : ''}${r.name}: ${r.cells.join(' | ')}`);
+  if (notes.filter(Boolean).length) out.push(...notes.filter(Boolean));
   if (compare?.length) out.push('', ...compare);
   out.push('', `How to read this: ${read}`, `Measured on ${count} ${count === 1 ? 'walk' : 'walks'}: examples, not a sample.`);
   return out.join('\n');

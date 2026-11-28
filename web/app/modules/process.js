@@ -17,7 +17,7 @@ import { minWords, waitAmount, rangeWords, fromCoreSpan, spanOf, totalSpan, long
 import { proposalsCard } from './proposals.js';
 import { departmentById } from './departments.js';
 import { recordsOf, resultModel, barsCard, tableCard, extrasCard, actionsRow, summaryOf, compareCard, changeBox } from './result-view.js';
-import { recordFromSteps, stepSpans, walksLongest, changeHeadline, waitBeforeOf } from './result-data.js';
+import { recordFromSteps, stepSpans, walksLongest, changeHeadline, waitBeforeOf, againLines } from './result-data.js';
 
 const ROLE_COLOURS = ['#0A9396', '#EE9B00', '#E0583E', '#0B2F4E', '#94D2BD', '#7A5C9E', '#3E7CB1', '#A0522D', '#5B8C5A', '#C2185B'];
 const SOURCE_TEXT = {
@@ -29,7 +29,9 @@ const phone = () => window.matchMedia('(max-width: 640px)').matches;
 
 export async function render(el, ctx) {
   const { core } = ctx;
-  const ui = { mapId: ctx.rest[0] || null, version: 'today', view: phone() ? 'list' : 'map', editing: null, busy: false, waitOpen: null, tab: ctx.rest[1] === 'edit' ? 'edit' : 'result' };
+  // #/process/<mapId>/edit/<stepId>: Edit map opened at that step ("Name this step" on the Result tab).
+  const atStep = ctx.rest[1] === 'edit' && /^[A-Za-z0-9-]{1,80}$/.test(ctx.rest[2] || '') ? ctx.rest[2] : null;
+  const ui = { mapId: ctx.rest[0] || null, version: 'today', view: phone() ? 'list' : 'map', editing: atStep, busy: false, waitOpen: null, tab: ctx.rest[1] === 'edit' ? 'edit' : 'result' };
   const body = h('div', { 'data-test': 'process-body' });
   // T: how a time reads on the map in view (minutes, or seconds for a map made from a walk).
   let T = fmtMinutes; let todayView = []; let walkOff = null; let walkNow = null;
@@ -204,6 +206,9 @@ export async function render(el, ctx) {
     const seg = (id, label, on, onclick, extra = {}) => h('button', { type: 'button', class: 'chip-btn', 'aria-pressed': String(on), 'data-test': id, onclick, ...extra }, label);
     // The walks' own records, for the Result tab's bars, table, CSV and the "at" in the headline.
     const records = walked ? (multi ? await recordsOf(core, m) : null) || (multi ? null : [recordFromSteps(stepsInSeconds(m.today.steps), m.walk)]) : null;
+    // A step done again, on its own line on the first result (night 6 item 1).
+    const againLine = records ? againLines(m.today.steps, records) : null;
+    const againEl = () => (againLine ? h('p', { class: 'wa-line', 'data-test': 'result-again' }, againLine) : null);
     spansOf = rangeView && records && records.length === rg.walks.length ? stepSpans(m.today.steps, records, rg.walks.map((w) => w.usable !== false)) : null;
     const dept = walked && m.walk.department ? departmentById(m.walk.department)?.name || null : null;
     // The header line of the Result tab: department, walks and dates, in the device's own format.
@@ -302,6 +307,7 @@ export async function render(el, ctx) {
         split ? null : tot.elapsed.n ? h('p', { class: 'wa-big', 'data-test': 'walk-range', 'data-sec': `${tot.elapsed.min}-${tot.elapsed.max}` }, h('b', {}, rangeWords(tot.elapsed)), ` start to finish${partOf(tot.elapsed)}`)
           : h('p', { class: 'wa-line', 'data-test': 'walk-range' }, 'No walk has been walked to the end of the list yet, so there is no start-to-finish time.'),
         !split && tot.elapsed.n ? h('p', { class: 'wa-line', 'data-test': 'walk-range-parts' }, h('b', {}, `Waiting ${rangeWords(tot.wait)}`), ` · hands-on ${rangeWords(tot.work)}`) : null,
+        againEl(),
         rg.totals.notSeen.n ? h('p', { class: 'wa-line', 'data-test': 'walk-not-seen' }, `Not seen (walk paused) on ${rg.totals.notSeen.n} ${rg.totals.notSeen.n === 1 ? 'walk' : 'walks'}: ${rangeWords(spanOf(rg.walks.filter((w) => w.complete && w.notSeenSec).map((w) => [w.notSeenSec, false])))}.`) : null,
         // Each walk's day and hour is on its bar below; a walk that is left out is also said here.
         rg.walks.some((w) => !w.complete) ? h('ul', { class: 'wa-walks', 'data-test': 'walk-list' }, rg.walks.filter((w) => !w.complete).map((w) => h('li', {}, walkWord(w)))) : null);
@@ -348,6 +354,7 @@ export async function render(el, ctx) {
       h('p', { class: 'wa-line' }, h('b', {}, `${T(a.wait)} waiting`), waitShare(a) == null ? '' : ` (${waitShare(a)}% of ${extra.notSeen ? 'the time seen on this walk' : 'this walk'})`, ` · ${T(a.work)} hands-on`),
       extra.planned ? h('p', { class: 'wa-line', 'data-test': 'walk-planned' }, `Of the waiting, ${T(extra.planned)} was marked planned or required.`) : null,
       extra.notSeen ? h('p', { class: 'wa-line', 'data-test': 'walk-not-seen' }, `${T(extra.notSeen)} not seen (walk paused): not counted as waiting or hands-on.`) : null,
+      moved ? null : againEl(),
       h('p', { class: 'wa-line', 'data-test': 'walk-handoffs' }, `${a.handoffs} ${a.handoffs === 1 ? 'handover' : 'handovers'} between roles`)) : null;
     if (measuredView && !rangeView) {
       readBox = readThis([
@@ -683,6 +690,9 @@ export async function render(el, ctx) {
   window.addEventListener('beforeprint', beforePrint); window.addEventListener('afterprint', afterPrint);
 
   await Promise.all([draw(), props.load()]);
+  // Opened at a step: the form is at that step, its name field ready.
+  // After the app has put the page on screen (it moves the focus to the page first).
+  if (atStep) setTimeout(() => { const f = document.getElementById('st-name'); if (f && ui.editing === atStep) { f.focus(); f.scrollIntoView({ block: 'center' }); } }, 0);
   let t = null;
   const off = core.onChange(({ kind, detail }) => {
     // Our own writes redraw themselves. Redraw for another tab's change, a reset, or an

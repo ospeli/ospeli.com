@@ -4,11 +4,19 @@
 // own records; every typed name goes on screen as text, never as HTML.
 import { h } from './ui.js';
 import { minWords, NO_LONG_WAIT, waitWords, atLeastWait } from './result-words.js';
-import { walkItems, longestPositions, resultTable, cellWords, extrasOf, columnsNote, csvOf, fileNameOf, summaryText, scaleTicks, compareModel, changeLine, walksLongest } from './result-data.js';
+import { walkItems, longestPositions, resultTable, cellWords, extrasOf, columnsNote, csvOf, fileNameOf, summaryText, scaleTicks, compareModel, changeLine, walksLongest, againLines, sourceLine } from './result-data.js';
 import { waitReasonText } from '../core/walk.js';
 
 export const PHONE_COLUMNS = 3;
 export const PRINT_COLUMNS = 6;
+
+// The hands-on time of a step done again (#182, Builder's note of 27 Nov, item 1): its own pattern,
+// a sea crosshatch, never colour alone; the legend shows the same pattern with its words. Set on the
+// element itself, so the print page keeps it.
+export const AGAIN_STYLE = 'background-color:var(--sea);background-image:repeating-linear-gradient(45deg,transparent 0 3px,rgba(255,255,255,.85) 3px 5px),repeating-linear-gradient(-45deg,transparent 0 3px,rgba(255,255,255,.85) 3px 5px)';
+// A step with no name or role yet: one 44 px link to Edit map at that step (night 6 item 4).
+const NAME_LINK_STYLE = 'display:inline-flex;align-items:center;min-height:44px;margin-left:8px;vertical-align:middle;font-size:1rem;font-weight:700;text-decoration:underline';
+export const unnamedStep = (r) => r.kind === 'step' && (r.role === 'Not set' || /^Step \d+$/.test(r.name));
 
 // The walks' records. ospeli_maps_get does not return them yet (reported to the walk Builder), so
 // they are read from the map store on this device, read only. A record list from the command is
@@ -54,10 +62,13 @@ export function resultModel({ m, rg, records, list, oneWalkTop = null, day, cloc
     const elapsed = sum('waitSec') + sum('workSec') + sum('waitNotSeenSec') + sum('workNotSeenSec');
     return { n: i + 1, rec: r, items, pos, usable, elapsed, wait: sum('waitSec'), work: sum('workSec'), notSeen: sum('waitNotSeenSec') + sum('workNotSeenSec'),
       when: r.startedAt ? `${day(r.startedAt)}, ${clock(r.startedAt)}` : '', note: r.clockMoved ? ' (may be wrong)' : r.stoppedEarly ? ' (stopped early)' : '',
-      longest: longestLine(items, pos, { usable }) };
+      longest: longestLine(items, pos, { usable }), again: againLines(list, [r]) };
   });
   const compare = afterWalk ? compareModel({ list, records, rg, afterWalk }) : null;
-  return { walks, rows: resultTable(list, records), extras: extrasOf(list, records), title: m.title, afterWalk, compare };
+  const deptId = m.walk?.department || null;
+  return { walks, rows: resultTable(list, records), extras: extrasOf(list, records), title: m.title, afterWalk, compare, mapId: m.id, deptId,
+    // Where the step names and roles came from (#170 point 2), said once.
+    namesFrom: records.length ? sourceLine(list, records, deptId) : null };
 }
 
 // One bar per walk, on one shared scale (the longest walk is the full width). Inside a bar each
@@ -79,18 +90,20 @@ export function barsCard(model, change = null, read = null) {
       const total = w.elapsed || 1;
       const width = Math.max(8, (100 * w.elapsed) / max);
       const bar = h('div', { class: 'rbar', role: 'img', style: `width:${width}%`, 'data-test': 'bar-walk', 'data-sec': String(w.elapsed),
-        'aria-label': `Walk ${w.n}${model.compare?.both ? (w.n > model.afterWalk ? ', after the change' : ', before the change') : ''}: ${minWords(w.wait)} waiting and ${minWords(w.work)} hands-on, over ${w.items.length} ${w.items.length === 1 ? 'step' : 'steps'}.${w.notSeen ? ` ${minWords(w.notSeen)} more was not seen.` : ''} ${w.longest}. The numbers are the step numbers in the table.` });
+        'aria-label': `Walk ${w.n}${model.compare?.both ? (w.n > model.afterWalk ? ', after the change' : ', before the change') : ''}: ${minWords(w.wait)} waiting and ${minWords(w.work)} hands-on, over ${w.items.length} ${w.items.length === 1 ? 'step' : 'steps'}.${w.notSeen ? ` ${minWords(w.notSeen)} more was not seen.` : ''} ${w.longest}.${w.again ? ` ${w.again}` : ''} The numbers are the step numbers in the table.` });
       const nums = h('div', { class: 'rnums', 'aria-hidden': 'true', style: `width:${width}%` });
       let at = 0;
       w.items.forEach((x, k) => {
         const hot = w.pos.includes(x.p);
         // The wait before the step (outlined when it is the longest), then hands-on; the time the step
         // stood still once started is waiting too, so it is striped, after the hands-on (#180 point 2).
-        const parts = [[x.planned ? 'p' : 'w', x.waitBeforeSec, hot], ['n', x.waitNotSeenSec], ['k', x.workSec], ['w', x.stoppedSec], ['n', x.workNotSeenSec]].filter((s) => s[1] > 0);
+        // A step done again: its hands-on has its own pattern (AGAIN_STYLE) and data-again.
+        const redo = x.marked || x.again;
+        const parts = [[x.planned ? 'p' : 'w', x.waitBeforeSec, hot], ['n', x.waitNotSeenSec], ['k', x.workSec, false, redo], ['w', x.stoppedSec], ['n', x.workNotSeenSec]].filter((s) => s[1] > 0);
         nums.append(h('span', { class: `rnum${hot ? ' is-longest' : ''}`, 'data-test': 'bar-num', ...(hot ? { 'data-longest': 'true' } : {}), style: `left:${(100 * at) / total}%` }, x.num));
         // Only the first part of a step leaves the thin gap after the step before.
-        parts.forEach(([cls, sec, isHot], j) => bar.append(h('i', { class: `${cls}${isHot ? ' is-longest' : ''}${k && !j ? ' gap' : ''}`, style: `width:${(100 * sec) / total}%`,
-          'data-step': x.stepId || `off:${x.name}`, ...(isHot ? { 'data-longest': 'true' } : {}) })));
+        parts.forEach(([cls, sec, isHot, isAgain], j) => bar.append(h('i', { class: `${cls}${isHot ? ' is-longest' : ''}${k && !j ? ' gap' : ''}`, style: `width:${(100 * sec) / total}%${isAgain ? `;${AGAIN_STYLE}` : ''}`,
+          'data-step': x.stepId || `off:${x.name}`, ...(isHot ? { 'data-longest': 'true' } : {}), ...(isAgain ? { 'data-again': 'true' } : {}) })));
         at += parts.reduce((n, p) => n + p[1], 0);
       });
       const row = h('div', { class: 'bar-row' },
@@ -103,6 +116,7 @@ export function barsCard(model, change = null, read = null) {
     scale,
     h('p', { class: 'legend meta', 'data-test': 'bar-legend' },
       key('w', 'Waiting'), any((x) => x.planned && x.waitSec) ? key('p', 'Planned or required wait') : null, key('k', 'Hands-on'),
+      any((x) => (x.marked || x.again) && x.workSec) ? h('span', { class: 'key' }, h('span', { class: 'rsw', style: AGAIN_STYLE }), 'Done again') : null,
       any((x) => x.waitNotSeenSec || x.workNotSeenSec) ? key('n', 'Not seen') : null, key('w is-longest', 'Longest wait'),
       h('span', { class: 'key' }, h('span', { class: 'rnum-key', 'aria-hidden': 'true' }, '1'), 'Step number, + not on the list')),
     // "Mark a change" (or the mark already made, with "Remove the mark") at the foot of the bars it
@@ -143,6 +157,7 @@ export function tableCard(model, after = null) {
   return h('section', { class: 'card result-table-card', 'aria-label': 'Step by step', 'data-test': 'result-table' },
     phoneNote ? h('p', { class: 'meta note-phone', 'data-test': 'columns-note' }, phoneNote) : null,
     wideNote ? h('p', { class: 'meta note-wide', 'data-test': 'columns-note-wide' }, wideNote) : null,
+    namesLine(model),
     // A real table. On a phone its rows are laid out as blocks (the step above its cells), so the
     // table roles are also given in full: a screen reader still reads a table.
     h('table', { class: `rtable cols-${Math.min(count, PHONE_COLUMNS)}`, role: 'table' },
@@ -152,7 +167,8 @@ export function tableCard(model, after = null) {
         h('th', { scope: 'row', role: 'rowheader' },
           h('b', r.marked ? { 'data-test': 'row-again' } : {}, r.kind === 'extra' ? `+ ${r.name}` : `${r.order}. ${r.name}${r.marked ? ', done again' : ''}`),
           h('span', { class: 'rt-role' }, ` · ${r.role}`),
-          r.kind === 'extra' ? h('span', { class: 'rt-only', 'data-test': 'only-on' }, `Not on the list · Only on walk ${r.walk}`) : null),
+          r.kind === 'extra' ? h('span', { class: 'rt-only', 'data-test': 'only-on' }, `Not on the list · Only on walk ${r.walk}`) : null,
+          nameLink(model, r)),
         r.cells.map((c, k) => h('td', { role: 'cell', class: colCls(k), 'data-status': c.status, ...(c.status === 'timed' ? { 'data-sec': `${c.waitSec},${c.workSec}`, ...(c.stoppedSec ? { 'data-stood': String(c.stoppedSec) } : {}) } : {}) },
           c.status === 'not-on-walk' ? [h('span', { 'aria-hidden': 'true' }, '–'), h('span', { class: 'sr-only' }, 'not on this walk')] : cellWords(c),
           c.times > 1 ? h('span', { class: 'rt-again', 'data-test': 'done-again' }, `Done ${c.times} times`) : null,
@@ -173,6 +189,7 @@ export function compareCard(model, after = null) {
     h('td', { role: 'cell', 'data-label': c.heads[1], ...(sec(r.after) ? { 'data-sec': sec(r.after) } : {}) }, r.afterText),
     h('td', { role: 'cell', class: 'rc-diff', 'data-label': 'Difference', 'data-dir': r.diff.dir }, r.diff.text)];
   return h('section', { class: 'card result-table-card', 'aria-label': 'Before and after', 'data-test': 'result-table' },
+    namesLine(model),
     h('table', { class: 'rtable cols-3 rcompare', role: 'table' },
       h('caption', {}, h('b', {}, 'Before and after'), h('span', {}, ` Changed after walk ${c.afterWalk}. Each cell: wait · hands-on, lowest to highest.`)),
       h('thead', { role: 'rowgroup' }, h('tr', { role: 'row' }, h('th', { scope: 'col', role: 'columnheader', class: 'rt-stephead' }, 'Step'), c.heads.map((t) => h('th', { scope: 'col', role: 'columnheader' }, t)))),
@@ -183,11 +200,23 @@ export function compareCard(model, after = null) {
             r.kind === 'extra' ? h('span', { class: 'rt-only' }, 'Not on the list') : null,
             r.kind === 'again' ? h('span', { class: 'rt-only', 'data-test': 'again-row' }, 'Its later times on the same walk') : null,
             r.againText ? h('span', { class: 'rt-again', 'data-test': 'done-again' }, r.againText) : null,
-            r.reasonText ? h('span', { class: 'rt-reason', 'data-test': 'row-reason' }, r.reasonText) : null),
+            r.reasonText ? h('span', { class: 'rt-reason', 'data-test': 'row-reason' }, r.reasonText) : null,
+            nameLink(model, r)),
           tds(r))),
         c.totals.map((t) => h('tr', { role: 'row', class: 'is-total', 'data-row': 'total' }, h('th', { scope: 'row', role: 'rowheader' }, h('b', {}, t.label)), tds(t))))),
     h('p', { class: 'rc-caveat', 'data-test': 'change-caveat' }, c.caveat),
     after);
+}
+
+// Where the names and roles came from, once, above the table (and so on the print page).
+function namesLine(model) {
+  return model.namesFrom ? h('p', { class: 'rt-from', 'data-test': 'names-from', style: 'margin:0 0 8px' }, model.namesFrom) : null;
+}
+// "Name this step": Edit map, opened at that step.
+function nameLink(model, r) {
+  if (!unnamedStep(r) || !model.mapId) return null;
+  return h('a', { href: `#/process/${encodeURIComponent(model.mapId)}/edit/${encodeURIComponent(r.stepId)}`, class: 'rt-name', 'data-test': 'name-step', style: NAME_LINK_STYLE,
+    'aria-label': `Name step ${r.order} in Edit map` }, 'Name this step');
 }
 
 // "Mark a change": a person says after which walk the way this works was changed
@@ -216,7 +245,7 @@ export function changeBox({ count, afterWalk, set }) {
 
 // Extra steps and steps done again, listed in words; never dropped.
 export function extrasCard(model) {
-  const { extra, again, marked = [], againSec = 0, againTimes = 0, words } = model.extras;
+  const { extra, again, marked = [], words } = model.extras;
   if (!extra.length && !again.length && !marked.length) return null;
   // One folded line on screen (the table already marks each one); opened on paper.
   return h('details', { class: 'result-extras', 'data-test': 'result-extras' },
@@ -225,8 +254,7 @@ export function extrasCard(model) {
       extra.map((x) => h('li', {}, h('b', {}, `“${x.name}”`), ` (${x.role}): only on walk ${x.walk}${x.after ? `, after “${x.after}”` : ', before the first list step'}. Wait ${minWords(x.waitSec)} · ${minWords(x.workSec)} hands-on.`)),
       again.map((x) => h('li', {}, h('b', {}, `“${x.name}”`), `: done ${x.times} times on walk ${x.walk}. The table shows each time on its own.`)),
       marked.map((x) => h('li', { 'data-test': 'marked-again' }, h('b', {}, `“${x.name}”, done again`), ` (${x.role}): marked on walk ${x.walk}. Wait ${minWords(x.waitSec)} · ${minWords(x.workSec)} hands-on.`))),
-    // Its own total (#189 item 2): the hands-on time of the times a step was done again. It is inside hands-on, and nothing says why.
-    againTimes ? h('p', { class: 'result-again-total', 'data-test': 'again-total' }, h('b', {}, `Done again: ${minWords(againSec)} hands-on`), ` (${againTimes} ${againTimes === 1 ? 'time' : 'times'}). It is part of the hands-on time above. Ask what happened; the walk does not say why.`) : null,
+    // Its own total is on the first result now (night 6 item 1, walk-again), not folded in here.
     h('p', { class: 'meta' }, 'A step not on the list stays on its own walk; the saved list is not changed.'));
 }
 
@@ -247,7 +275,7 @@ export function actionsRow({ ctx, model, list, records, department, again, text 
     } catch { ctx.toast('Could not copy here. Use Print or Download CSV instead.'); }
   };
   const csv = () => {
-    const body = csvOf({ title: model.title, department, list, records, dateOf: localDate, afterWalk: model.afterWalk });
+    const body = csvOf({ title: model.title, department, deptId: model.deptId, list, records, dateOf: localDate, afterWalk: model.afterWalk });
     const url = URL.createObjectURL(new Blob(['﻿', body], { type: 'text/csv;charset=utf-8' }));
     const a = h('a', { href: url, download: fileNameOf(model.title), hidden: true });
     document.body.append(a); a.click(); a.remove();
@@ -275,6 +303,7 @@ export function summaryOf({ model, headLines, headline, totals, read }) {
     columns: model.walks.map((w) => `walk ${w.n}`),
     rows: model.rows.map((r) => ({ extra: r.kind === 'extra', name: r.kind === 'extra' ? `${r.name} (${r.role}, not on the list)` : `${r.order}. ${r.name} (${r.role})`, cells: r.cells.map(cellWords) })),
     read,
+    notes: [model.namesFrom],
     compare: compareLines(model),
   });
 }
