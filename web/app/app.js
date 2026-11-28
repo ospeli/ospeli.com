@@ -52,7 +52,7 @@ async function showWaiting(ctx) {
 
 // The role (job title) is set under Me (modules/me.js calls this). The same role chosen again
 // changes nothing: no event, and the page is not drawn again under the person's hands (issue #95).
-async function setRole(ctx, to, { why = null } = {}) {
+async function setRole(ctx, to, { why = null, say = null } = {}) {
   // A role a person chose (not one a department gave) is theirs: a department chosen later keeps it (#177 item 6).
   if (why !== 'department' && roleById(to)) ctx.roleChosen = true;
   if (!roleById(to) || to === ctx.role || ctx.site) return;
@@ -61,7 +61,7 @@ async function setRole(ctx, to, { why = null } = {}) {
   document.documentElement.dataset.role = to;
   await ctx.core.setMeta('role', to);
   await ctx.core.record(to, 'role.changed', null, why ? { from, to, why } : { from, to });
-  toast(`Role: ${roleById(to).name}`);
+  toast(say || `Role: ${roleById(to).name}`);
   route(ctx);
 }
 
@@ -81,16 +81,18 @@ async function setDepartment(ctx, id, { walk = false } = {}) {
   if (walk && location.hash !== WALK_HASH) history.pushState(null, '', WALK_HASH);
   const from = ctx.department;
   const firstRole = !ctx.site && !ctx.roleChosen;
+  // On a first open one message says what happened, the role included (#166 item 4).
+  const said = firstRole && roleById(d.role) ? `${departmentShort(d)}. Role set to ${roleById(d.role).name}; change it under Me` : `Department: ${departmentShort(d)}`;
   if (id !== from) {
     ctx.department = id;
     showDepartment(ctx);
     await ctx.saveDepartment(id, from);
-    toast(`Department: ${departmentShort(d)}`);
+    toast(said);
   }
   // A device where nobody has chosen a role yet starts with the department's usual one, so an
   // imaging department does not open as a ward nurse (UX review 22 Nov, finding 1). It is changed under Me.
   ctx.roleChosen = true;
-  if (firstRole && d.role !== ctx.role) { await setRole(ctx, d.role, { why: 'department' }); return; }
+  if (firstRole && d.role !== ctx.role) { await setRole(ctx, d.role, { why: 'department', say: said }); return; }
   if (firstRole) await ctx.core.setMeta('role', ctx.role);
   if (id !== from || walk) route(ctx);
 }
@@ -365,14 +367,18 @@ async function writeMarker(lastSeen) {
   try { await (await caches.open(MARKER_KEY)).put(MARKER_URL, new Response(body, { headers: { 'Content-Type': 'application/json' } })); } catch { /* no Cache Storage here */ }
 }
 const dayAndTime = (iso) => new Date(iso).toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-// The notice sits in the top bar, in the page (not a toast), until a person closes it.
-async function showDataLost(core) {
+// The notice sits in the top bar, in the page (not a toast), until a person closes it. It is read
+// first (#166 item 8): it takes the focus, and what would open over it (the department sheet on a
+// device that lost its department too) waits until it is closed: `then` runs on its OK.
+// Answers whether the notice is showing.
+async function showDataLost(core, { then = null } = {}) {
   const lost = await core.getMeta('data-lost', null);
-  if (!lost || document.querySelector('[data-test="data-lost"]')) return;
+  if (!lost || document.querySelector('[data-test="data-lost"]')) return !!lost;
   const bar = document.createElement('div');
   bar.className = 'site-bar device-notice';
   bar.setAttribute('role', 'alert');
   bar.dataset.test = 'data-lost';
+  bar.tabIndex = -1;
   const text = document.createElement('span');
   text.textContent = `The browser cleared the data saved on this device. It was last here on ${dayAndTime(lost.lastSeen)}. A fresh example copy was loaded; anything entered on this device before is gone.`;
   const ok = document.createElement('button');
@@ -383,10 +389,12 @@ async function showDataLost(core) {
     bar.remove();
     document.documentElement.style.removeProperty('--top');
     main.focus();
+    if (then) then();
   });
   bar.append(text, ok);
   $('.topbar').append(bar);
   top();
+  return true;
 }
 
 // Marks for the speed report (ospeli/ospeli#153): where a load's time goes. Only names and times;
@@ -476,7 +484,7 @@ async function boot() {
   const storageText = adapter.kind !== 'indexeddb' ? 'Not saved: this browser blocks storage'
     : kept ? 'Saved on this device' : 'Saved on this device. The browser may clear it: export a backup.';
   ctx.storageText = () => storageText;
-  await showDataLost(core);
+  const lostShown = await showDataLost(core, { then: () => { if (!ctx.department) openDepartments(ctx); } });
   buildShell(ctx);
   window.addEventListener('hashchange', () => route(ctx));
   mark('shell-drawn');
@@ -484,7 +492,9 @@ async function boot() {
   document.documentElement.dataset.ready = 'true';
   mark('ready');
   // Navigation v2: a first open asks where the person works, not their job title.
-  if (!ctx.department) openDepartments(ctx);
+  // A device whose browser cleared its data: the notice is read first, the sheet opens after it.
+  if (lostShown) document.querySelector('[data-test="data-lost"]')?.focus();
+  else if (!ctx.department) openDepartments(ctx);
 
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
     navigator.serviceWorker.register('sw.js').catch(() => { /* the app still works online */ });

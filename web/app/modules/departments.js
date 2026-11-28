@@ -93,6 +93,36 @@ const ROLE_DEPARTMENT = {
 };
 export const departmentForRole = (roleId) => ROLE_DEPARTMENT[roleId] || 'whole-hospital';
 
+// The role list under Me, by department (#166 item 3): headings and order only. A role sits in
+// every department where it works (Diagnostics manager: Imaging and Laboratory) and is listed once,
+// in the first group shown, the chosen department's first. Roles of no one department (transport,
+// cleaning, stores, facilities, engineering) are under "Support services". Role ids do not change.
+export const ROLE_GROUPS = {
+  imaging: ['radiographer', 'diagnostics-manager'],
+  outpatients: ['clinic-receptionist', 'clinic-nurse', 'booking-clerk', 'outpatient-manager'],
+  emergency: ['ae-nic'],
+  pharmacy: ['pharmacy-technician', 'pharmacist', 'pharmacy-manager'],
+  laboratory: ['lab-reception', 'lab-scientist', 'diagnostics-manager'],
+  wards: ['ward-nurse', 'bed-manager', 'unit-clerk'],
+  'whole-hospital': ['ops-manager', 'coo', 'quality-lead', 'patient-liaison', 'receptionist'],
+};
+export const SUPPORT_GROUP = 'Support services';
+// [{ label, ids }]: the chosen department's group first, then the departments in their order, then
+// support services; every role id given exactly once; a role in no group goes under support services.
+export function roleGroups(roleIds, chosen) {
+  const order = [...DEPARTMENTS.filter((d) => d.id === chosen), ...DEPARTMENTS.filter((d) => d.id !== chosen)];
+  const left = new Set(roleIds);
+  const groups = [];
+  for (const d of order) {
+    const ids = (ROLE_GROUPS[d.id] || []).filter((id) => left.has(id));
+    ids.forEach((id) => left.delete(id));
+    if (ids.length) groups.push({ label: departmentShort(d), ids });
+  }
+  const rest = roleIds.filter((id) => left.has(id));
+  if (rest.length) groups.push({ label: SUPPORT_GROUP, ids: rest });
+  return groups;
+}
+
 // The Journey page: the patient's journey as a spine of stages, each with the modules that serve
 // it, then the two boxes. Module ids are from modules/registry.js; planned modules are never
 // listed here: they appear only under "Coming later".

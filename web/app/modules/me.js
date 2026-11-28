@@ -4,7 +4,7 @@
 import { h } from './ui.js';
 import { MODULES, moduleById } from './registry.js';
 import { ROLES, roleById } from '../core/model.js';
-import { departmentById } from './departments.js';
+import { departmentById, roleGroups } from './departments.js';
 
 const row = (href, title, text, test) => h('a', { class: 'card me-row', href, 'data-test': test }, h('h2', {}, title), h('p', { class: 'meta' }, text));
 
@@ -13,12 +13,17 @@ export async function render(el, ctx) {
   const dept = departmentById(ctx.department);
   const planned = MODULES.filter((m) => !m.load).length;
   const home = moduleById(role.home);
+  // The AI helpers' setting now, in words, beside the way to it (#166 item 6). Ospeli works with it off.
+  let aiOn = false;
+  try { aiOn = (await ctx.run('ospeli_agents_list', {})).dial === 'advise'; } catch { aiOn = false; }
   let roleBox;
   if (ctx.site) {
     // On a site's own server the role was chosen for this device there; nothing to pick here.
     roleBox = h('p', { class: 'me-role-fixed' }, role.name, h('span', { class: 'meta' }, ' · set for this device at your site\'s server'));
   } else {
-    const sel = h('select', { id: 'role-select', 'aria-label': 'Your role' }, ROLES.map((r) => h('option', { value: r.id }, r.name)));
+    // Grouped by department, the chosen one first, each group with its heading (#166 item 3).
+    const sel = h('select', { id: 'role-select', 'aria-label': 'Your role' }, roleGroups(ROLES.map((r) => r.id), ctx.department)
+      .map((g) => h('optgroup', { label: g.label }, g.ids.map((id) => h('option', { value: id }, roleById(id).name)))));
     sel.value = ctx.role;
     sel.addEventListener('change', () => ctx.setRole(sel.value));
     roleBox = h('div', { class: 'field' }, h('label', { for: 'role-select' }, 'Your role (job title)'), sel);
@@ -37,7 +42,7 @@ export async function render(el, ctx) {
       h('h2', { id: 'me-look-h' }, 'Appearance'),
       h('p', {}, 'Light. Ospeli stays light when a phone is set to dark.'),
       h('p', { class: 'meta' }, 'A dark theme is planned, not built yet.')),
-    row('#/agents', 'AI helpers', 'Choose whether AI helpers may read and suggest. Off until you turn it on. People decide; a helper only suggests.', 'me-agents'),
+    row('#/agents', 'AI helpers', `Now: ${aiOn ? 'on, suggest only' : 'off'}. AI helpers (agents) can read and suggest; a person decides each time. Off until you turn it on. Open it: the off switch is first on the page.`, 'me-agents'),
     row('#/data', 'Data and audit', 'Export, import, reset and the audit trail.', 'me-data'),
     row('#/journey', `Coming later (${planned})`, 'Pages that are planned and not built yet. They are listed at the end of the Journey page.', 'me-later'),
     h('section', { class: 'card', 'aria-labelledby': 'me-dev-h' },

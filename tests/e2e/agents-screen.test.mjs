@@ -107,7 +107,7 @@ test('first-time user at 360 px: an operations manager turns agents on in 2 taps
   assert.deepEqual(small, []);
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth), true);
   const tiny = await page.evaluate(() => [...document.querySelectorAll('main *')].filter((n) => n.offsetParent !== null && [...n.childNodes].some((k) => k.nodeType === 3 && k.textContent.trim()))
-    .map((n) => ({ t: n.textContent.trim().slice(0, 30), px: parseFloat(getComputedStyle(n).fontSize) })).filter((n) => n.px < 15 && !/^(You set the dial|Now|Ended)$/.test(n.t)));
+    .map((n) => ({ t: n.textContent.trim().slice(0, 30), px: parseFloat(getComputedStyle(n).fontSize) })).filter((n) => n.px < 15 && !/^(Me|Now|Ended)$/.test(n.t)));
   assert.deepEqual(tiny, []);
 
   // Any other member of staff: stop everything in one tap.
