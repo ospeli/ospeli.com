@@ -67,7 +67,26 @@ function runner(ctx, reload) {
     }
   };
 }
-const proposals = (ctx, screen) => proposalsCard(ctx, { match: (p) => shownOn(p).includes(screen), describe: describeProposal });
+// Issue #194: a proposal names the request as the queue row does (ward and bed, kind, urgent),
+// looked up when the card is drawn; nothing new is stored. Unknown: the id, as before.
+const reqWords = new Map(); // requestId -> 'Ward A1 (acute medicine) · Ward request · Urgent'
+function proposals(ctx, screen) {
+  const want = new Set();
+  const card = proposalsCard(ctx, { describe: describeProposal,
+    match: (p) => { const on = shownOn(p).includes(screen); if (on && p.input?.requestId && !reqWords.has(p.input.requestId)) want.add(p.input.requestId); return on; } });
+  const load = async () => {
+    want.clear();
+    await card.load();
+    if (!want.size) return;
+    try {
+      const { requests } = await ctx.run('ospeli_pharmacy_queue_list', { limit: 500 });
+      let found = false;
+      for (const r of requests) if (want.has(r.id)) { reqWords.set(r.id, `${r.label} · ${r.kindName}${r.urgent ? ' · Urgent' : ''}`); found = true; }
+      if (found) await card.load();
+    } catch { /* the card keeps the id */ }
+  };
+  return { el: card.el, load };
+}
 const offlineNote = () => (offline() ? h('p', { class: 'card notice ph-offline', role: 'status', 'data-test': 'offline' }, 'Not connected: the list is as last seen, and steps cannot be saved until the connection is back.') : null);
 const plannedLine = (list) => h('p', { class: 'card notice ph-planned', 'data-test': 'planned' }, (list || []).map((x) => x.text).join(' · ') || 'Stock levels and expiry: planned');
 // A row tapped on this visit keeps the tallest height it has had (an open More panel included) on
@@ -519,11 +538,12 @@ function summaryScreen(ctx) {
 
 function describeProposal(p) {
   const i = p.input || {};
+  const who = reqWords.get(i.requestId) || `Request ${i.requestId}`;
   switch (p.command) {
     case 'ospeli_pharmacy_request_raise': return `Ask the pharmacy: ${(KINDS[i.kind] || 'a request').toLowerCase()} for ${i.bedId || i.wardId || 'a ward'}, ${i.items} items`;
-    case 'ospeli_pharmacy_request_step': return `Request ${i.requestId}: ${({ start: 'start', ready: 'ready', hold: 'put on hold', resume: 'resume', cancel: 'cancel', front: 'move to the front', back: 'back to the usual order', undo: 'undo the last step' })[i.step] || 'a step'}`;
-    case 'ospeli_pharmacy_request_check': return `Request ${i.requestId}: ${i.undo ? 'undo Checked' : 'record Checked'}`;
-    case 'ospeli_pharmacy_request_collect': return `Request ${i.requestId}: collected`;
+    case 'ospeli_pharmacy_request_step': return `${who}: ${({ start: 'start', ready: 'ready', hold: 'put on hold', resume: 'resume', cancel: 'cancel', front: 'move to the front', back: 'back to the usual order', undo: 'undo the last step' })[i.step] || 'a step'}`;
+    case 'ospeli_pharmacy_request_check': return `${who}: ${i.undo ? 'undo Checked' : 'record Checked'}`;
+    case 'ospeli_pharmacy_request_collect': return `${who}: collected`;
     default: return p.command.replace(/^ospeli_/, '').replace(/_/g, ' ');
   }
 }

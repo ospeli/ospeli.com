@@ -421,3 +421,29 @@ test('#161 "Entered late" is ward data quality: it shows at the hatch, not on th
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #194 (Critic, 28 Nov): a decision sent to a person names the request in the words of the row
+// under it (patient code, test group, where it came from), never the internal id.
+test('an agent\'s "received at lab" proposal names the patient code, test group and place on the card, not the request id (#194)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, touch: true, clock: CLOCK, path: '#/diagnostics' });
+  const wards = await page.evaluate(async () => (await window.ospeli.core.listEntities('ward')).map((w) => w.id));
+  await cmd(page, 'ospeli_agents_set_access', { allowed: true, wards: Object.fromEntries(wards.map((w) => [w, true])) }, 'coo');
+  await cmd(page, 'ospeli_agents_add', { name: 'lab-bot', role: 'lab-reception', wards, days: 30 }, 'coo');
+  const list = await cmd(page, 'ospeli_diagnostics_requests_list', { stage: 'collected', format: 'detailed' }, 'lab-reception');
+  const r = list.requests[0];
+  assert.ok(r, 'the example has a collected request on the way');
+  const p = await page.evaluate(async ([id, st]) => {
+    const { runCommand } = await import('/app/core/commands.js');
+    return runCommand(window.ospeli.core, 'ospeli_diagnostics_specimen_receive', { requestId: id, outcome: 'received' }, { type: 'agent', role: 'lab-reception', agent: 'lab-bot' });
+  }, [r.id, r.state]);
+  assert.equal(p.status, 'proposed');
+  await asRole(page, 'lab-reception');
+  const item = page.locator(`.proposal-item[data-proposal="${p.proposal.id}"]`);
+  await item.waitFor();
+  await waitUntil(page, (id) => !/DX-\d/i.test(document.querySelector(`.proposal-item[data-proposal="${id}"] b`)?.textContent || 'DX-0'), p.proposal.id, { timeout: 5000 }).catch(() => {});
+  const line = (await item.locator('b').first().textContent()).trim();
+  assert.equal(line, `${r.code} · ${r.testGroupName} · ${r.sourceName}: mark received at lab`);
+  assert.doesNotMatch(await item.textContent(), /dx-\d/i, 'no internal id on the card');
+  assert.deepEqual(errors, []);
+  await context.close();
+});

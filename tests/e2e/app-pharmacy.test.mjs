@@ -459,3 +459,29 @@ test('#161 the item count is chips 1 to 6 with "More" for 7 to the cap: one tap 
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+// Issue #194 (Critic, 28 Nov): a decision sent to a person names the request in the words of the
+// queue row (ward and bed, kind), never the internal id the screen does not show.
+test('an agent\'s step proposal names the ward and the kind of request on the card, not the request id (#194)', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390, touch: true, clock: CLOCK, path: '#/pharmacy' });
+  const wards = await page.evaluate(async () => (await window.ospeli.core.listEntities('ward')).map((w) => w.id));
+  await cmd(page, 'ospeli_agents_set_access', { allowed: true, wards: Object.fromEntries(wards.map((w) => [w, true])) }, 'coo');
+  await cmd(page, 'ospeli_agents_add', { name: 'rx-bot', role: 'pharmacy-technician', wards, days: 30 }, 'coo');
+  const q = await cmd(page, 'ospeli_pharmacy_queue_list', { limit: 300 }, 'pharmacy-technician');
+  const r = q.requests.find((x) => x.section === 'working' && x.state === 'raised');
+  assert.ok(r, 'the example has a raised request waiting');
+  const p = await page.evaluate(async ([id, st]) => {
+    const { runCommand } = await import('/app/core/commands.js');
+    return runCommand(window.ospeli.core, 'ospeli_pharmacy_request_step', { requestId: id, step: 'start', expectedState: st }, { type: 'agent', role: 'pharmacy-technician', agent: 'rx-bot' });
+  }, [r.id, r.state]);
+  assert.equal(p.status, 'proposed');
+  await asRole(page, 'pharmacy-technician', 'queue');
+  const item = page.locator(`.proposal-item[data-proposal="${p.proposal.id}"]`);
+  await item.waitFor();
+  await waitUntil(page, (id) => !/rx-\d/.test(document.querySelector(`.proposal-item[data-proposal="${id}"] b`)?.textContent || 'rx-0'), p.proposal.id, { timeout: 5000 }).catch(() => {});
+  const line = (await item.locator('b').first().textContent()).trim();
+  assert.equal(line, `${r.label} · ${r.kindName}${r.urgent ? ' · Urgent' : ''}: start`);
+  assert.doesNotMatch(await item.textContent(), /rx-\d/, 'no internal id on the card');
+  assert.deepEqual(errors, []);
+  await context.close();
+});

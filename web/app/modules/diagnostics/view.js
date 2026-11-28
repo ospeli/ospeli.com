@@ -57,7 +57,23 @@ export async function render(el, ctx) {
   // What this person opened or picked survives a redraw (after a save, or another tab's change).
   const ui = { ward: remembered.get(), form: null, picks: {}, open: null, openPicks: {}, eq: null, eqPicks: {}, ghosts: new Map(), done: new Map(), pinned: new Map(), saved: null, msg: null, busy: false, justSaved: false };
   let data = null;
-  const props = proposalsCard(ctx, { match: (p) => p.command.startsWith('ospeli_diagnostics_'), describe: (p) => describeProposal(p) });
+  // Issue #194: a proposal names the request as the row under it does (patient code, test group,
+  // where it came from), looked up when the card is drawn; nothing new is stored. Unknown: the id, as before.
+  const reqWords = new Map(); // requestId -> 'Patient 365 · Blood count · Ward B1'
+  const wantWords = new Set();
+  const card = proposalsCard(ctx, { describe: (p) => describeProposal(p),
+    match: (p) => { const on = p.command.startsWith('ospeli_diagnostics_'); if (on && p.input?.requestId && !reqWords.has(p.input.requestId)) wantWords.add(p.input.requestId); return on; } });
+  const props = { el: card.el, async load() {
+    wantWords.clear();
+    await card.load();
+    if (!wantWords.size) return;
+    try {
+      const { requests } = await ctx.run('ospeli_diagnostics_requests_list', { limit: 500 });
+      let found = false;
+      for (const r of requests) if (wantWords.has(r.id)) { reqWords.set(r.id, `${r.code} · ${r.testGroupName} · ${r.sourceName}`); found = true; }
+      if (found) await card.load();
+    } catch { /* the card keeps the id */ }
+  } };
 
   // A read that finishes after a newer one was shown is dropped, so stale lists never replace fresh ones.
   let ticket = 0; let shown = 0;
@@ -105,6 +121,16 @@ export async function render(el, ctx) {
 
   function describeProposal(p) {
     const i = p.input || {};
+    const who = reqWords.get(i.requestId);
+    if (who) {
+      const act = {
+        ospeli_diagnostics_specimen_collect: () => 'mark collected',
+        ospeli_diagnostics_specimen_receive: () => (i.outcome === 'rejected' ? `reject: ${REJECT_REASONS[i.reason] || ''}` : 'mark received at lab'),
+        ospeli_diagnostics_result_record: () => 'record result released',
+        ospeli_diagnostics_request_cancel: () => `cancel: ${CANCEL_REASONS[i.reason] || ''}`,
+      }[p.command];
+      if (act) return `${who}: ${act()}`;
+    }
     const what = {
       ospeli_diagnostics_request_record: () => `Record a ${TEST_GROUPS[i.testGroup]?.toLowerCase() || 'lab'} request (${URGENCIES[i.urgency]?.toLowerCase() || ''})`,
       ospeli_diagnostics_specimen_collect: () => `Mark ${i.requestId?.toUpperCase()} collected`,
