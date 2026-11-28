@@ -68,3 +68,16 @@ export async function threeWalkNine(page) {
     ...NINE.slice(6).map((_, i) => ({ wait: 70 + 10 * i, work: 80 + 10 * i }))], { mapId: 'map-001' });
   return 'map-001';
 }
+
+// A first imaging walk on the department's list: steps 1 to 5 as offered next, "Cannula or prep"
+// done again (picked from the list), the scan after a 2 min 30 s wait, then one step left unnamed.
+export async function redoWalk(page) {
+  const tick = (s) => page.clock.fastForward(s * 1000);
+  await run(page, 'ospeli_walks_start', { title: 'Outpatient CT', guidanceSeen: true, department: 'imaging' });
+  for (const n of [1, 2, 3, 4, 5]) { await tick(60); await run(page, 'ospeli_walks_step_start', { listStep: n }); await tick(120); await run(page, 'ospeli_walks_step_done'); }
+  await tick(90); await run(page, 'ospeli_walks_step_start', { listStep: 5, picked: true }); await tick(360); await run(page, 'ospeli_walks_step_done');
+  await tick(150); await run(page, 'ospeli_walks_step_start', { listStep: 6 }); await tick(600); await run(page, 'ospeli_walks_step_done');
+  await tick(40); await run(page, 'ospeli_walks_step_start'); await tick(60); await run(page, 'ospeli_walks_step_done');
+  await tick(5);
+  return run(page, 'ospeli_walks_finish');
+}

@@ -101,14 +101,14 @@ test('two walks: where the longest wait fell, counted from the walks where the s
   const quiet = { ...W2, steps: [{ stepId: 'm-s1', waitSec: 5, workSec: 60 }, { stepId: 'm-s2', waitSec: 10, workSec: 60 }] };
   const rg = walkRanges(LIST, [W1, quiet]);
   const w = longestWalks(rg);
-  assert.equal(w.text, 'under 1 min seen before “Scan”, on 1 of 2 walks');
+  assert.equal(w.text, 'at least 40 s before “Scan”, on 1 of 2 walks');
   assert.doesNotMatch(longestTitle(rg), /all 1 walks/);
-  assert.equal(longestTitle(rg), 'The longest wait was under 1 min seen before “Scan”, on 1 of 2 walks');
+  assert.equal(longestTitle(rg), 'The longest wait was at least 40 s before “Scan”, on 1 of 2 walks');
   // Both walks at one step: one time range and "on both walks", "at least" only on the paused walk's end.
   const both = walkRanges(LIST, [{ ...W1, steps: [W1.steps[0], { ...W1.steps[1], waitSec: 400 }] }, W2]);
-  assert.equal(longestWalks(both).text, '3 to at least 6 min before “Scan”, on both walks', 'at least rounds down: 6 min 40 s seen');
+  assert.equal(longestWalks(both).text, '2 min 30 s to at least 6 min before “Scan”, on both walks', 'at least rounds down: 6 min 40 s seen');
   // It moved.
   const moved = walkRanges(LIST, [{ ...W2, steps: [{ stepId: 'm-s1', waitSec: 300, workSec: 60 }, { stepId: 'm-s2', waitSec: 60, workSec: 60 }] }, W2]);
-  assert.deepEqual(longestWalks(moved), { lead: 'Longest wait moved: ', text: 'walk 1, 5 min before “Checked in”; walk 2, 3 min before “Scan”' });
+  assert.deepEqual(longestWalks(moved), { lead: 'Longest wait moved: ', text: 'walk 1, 5 min before “Checked in”; walk 2, 2 min 30 s before “Scan”' });
   assert.equal(longestTitle(moved), 'The longest wait moved on each walk');
 });

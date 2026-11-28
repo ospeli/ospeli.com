@@ -20,6 +20,23 @@ export function minWords(sec, { floor = false } = {}) {
   return r ? `${h} h ${r} min` : `${h} h`;
 }
 
+// A longest wait (Domain lead, 27 Nov): under 5 minutes it keeps its seconds, so 2 min 30 s is not
+// read as 3 min ("45 s", "2 min 30 s", "4 min"); from 5 minutes up, whole minutes as minWords.
+// floor: round down, for a time that is the least it can have been.
+export const SECONDS_UNDER = 300;
+export function waitWords(sec, { floor = false } = {}) {
+  sec = Math.max(0, +sec || 0);
+  if (sec >= SECONDS_UNDER) return minWords(sec, { floor });
+  const s = floor ? Math.floor(sec) : Math.round(sec);
+  if (s < 60) return `${s} s`;
+  const m = Math.floor(s / 60); const r = s % 60;
+  return r ? `${m} min ${r} s` : `${m} min`;
+}
+// A longest wait the walk was paused during: the seen part is the least it can have been.
+export const atLeastWait = (seenSec) => `at least ${waitWords(seenSec, { floor: true })}`;
+// The longest wait before a step on one walk, with its seconds under 5 minutes.
+export const longestAmount = (x) => (x.waitNotSeenSec > 0 ? atLeastWait(x.wait) : waitWords(x.wait));
+
 // The time a step stood still once started (#180 point 2), said apart from its wait: under a
 // minute in seconds ("17 s"), so a short stop is not read as nothing; otherwise whole minutes.
 export function stoodWords(sec) {
@@ -41,6 +58,7 @@ export function shareOfShown(partSec, wholeSec) {
 export function atLeastWords(seenSec) {
   return seenSec < 60 ? 'under 1 min seen' : `at least ${minWords(seenSec, { floor: true })}`;
 }
+const minWordsOf = minWords; const atLeastOf = atLeastWords;
 
 // The wait before a step on one walk: "27 min", or "at least 27 min" when the walk was paused during it.
 export const waitAmount = (x) => (x.waitNotSeenSec > 0 ? atLeastWords(x.wait) : minWords(x.wait));
@@ -78,8 +96,10 @@ export function spanOf(vals) {
 //   "about 2 min on both walks" (the same whole minutes, but more than 10% apart),
 //   "41 to at least 58 min" (the walk that gave 58 was paused during it),
 //   "… · partly not seen" (another walk was paused during it). of: the walks it could have been timed on.
-export function rangeWords(r, { of = null } = {}) {
+// fine: a longest wait, with its seconds under 5 minutes (waitWords).
+export function rangeWords(r, { of = null, fine = false } = {}) {
   if (!r || !r.n) return 'not timed';
+  const minWords = fine ? waitWords : minWordsOf; const atLeastWords = fine ? atLeastWait : atLeastOf;
   const count = of && r.n < of ? ` (${walksWords(r.n, of)})` : '';
   let partly = !!r.partly;
   const end = (sec, atLeast) => { if (atLeast && sec < 60) { partly = true; return minWords(sec); } return atLeast ? atLeastWords(sec) : minWords(sec); };
@@ -104,11 +124,11 @@ export function rangeWords(r, { of = null } = {}) {
 // One walk: top is core/walk.js longestWaits(steps in seconds). Null when no wait reaches the floor.
 export function longestOneWalk(top) {
   if (!top.length) return null;
-  const whole = (x) => `${waitAmount(x)} ${waitPlace(x)}${interruptedPart(x)}${notSeenPart(x)}`;
+  const whole = (x) => `${longestAmount(x)} ${waitPlace(x)}${interruptedPart(x)}${notSeenPart(x)}`;
   if (top.length === 1) return { lead: 'Longest wait: ', text: whole(top[0]) };
   // Tied: one time when none of them was paused or interrupted, otherwise each said in full.
   const plain = top.every((x) => !(x.waitNotSeenSec > 0) && !(x.interruptedWaitSec > 0));
-  return { lead: 'Longest waits, tied: ', text: plain ? `${minWords(top[0].wait)} before ${top.map((x) => `“${x.name}”`).join(' and ')}` : top.map(whole).join(' and ') };
+  return { lead: 'Longest waits, tied: ', text: plain ? `${waitWords(top[0].wait)} before ${top.map((x) => `“${x.name}”`).join(' and ')}` : top.map(whole).join(' and ') };
 }
 export const NO_LONG_WAIT = (several) => `No wait of ${MIN_LONGEST_WAIT_SEC} seconds or more on ${several ? 'these walks' : 'this walk'}.`;
 
@@ -122,8 +142,8 @@ const keyOfLongest = (l) => (l.stepId || `off:${l.name}`);
 // rg: the range longestWalks reads; l: one of rg.longest.
 export function longestTimeOf(rg, l) {
   const r = spanOf(l.walks.map((n) => { const v = rg.walks[n - 1]?.longest.find((x) => x.key === keyOfLongest(l)); return [v?.waitSec || 0, !!v?.atLeast]; }));
-  if (r.n > 1 && minWords(r.min) === minWords(r.max)) return `${r.maxAtLeast ? atLeastWords(r.max) : minWords(r.max)}${r.partly ? ' · partly not seen' : ''}`;
-  return rangeWords(r);
+  if (r.n > 1 && waitWords(r.min) === waitWords(r.max)) return `${r.maxAtLeast ? atLeastWait(r.max) : waitWords(r.max)}${r.partly ? ' · partly not seen' : ''}`;
+  return rangeWords(r, { fine: true });
 }
 export function longestWalks(rg, records = null) {
   const lo = rg.longest || [];
@@ -182,7 +202,7 @@ export function guideTitle(sg, steps, rg = null, records = null) {
     const tied = top.filter((x) => x.wait === max);
     const w = longestOneWalk(tied);
     if (!w) return sg.title;
-    return tied.length === 1 ? `Longest wait on this walk: ${w.text}` : `Longest wait on this walk, tied: ${minWords(max)} each, ${tied.map((x) => waitPlace(x)).join(' and ')}${tied.some((x) => x.waitNotSeenSec > 0) ? ' · partly not seen' : ''}`;
+    return tied.length === 1 ? `Longest wait on this walk: ${w.text}` : `Longest wait on this walk, tied: ${waitWords(max)} each, ${tied.map((x) => waitPlace(x)).join(' and ')}${tied.some((x) => x.waitNotSeenSec > 0) ? ' · partly not seen' : ''}`;
   }
   if (sg.id === 'walk-planned') {
     const p = steps.filter((x) => x.plannedWait);
