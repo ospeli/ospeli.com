@@ -133,7 +133,7 @@ test('390 px: a tap on the band opens the walk; the button does the next tap thr
   // Finish the walk on the walk page: the ribbon and the running mark are gone.
   await page.locator('[data-test="ribbon-open"]').tap(); await route(page, '#/process/walk');
   await page.waitForSelector('[data-test="walk"]');
-  await page.tap('[data-test="walk-finish"]'); await page.tap('[data-test="walk-finish-yes"]');
+  await page.tap('[data-test="walk-finish"]'); await page.tap('[data-test="walk-finish-yes"], [data-test="walk-check-later"]');
   await page.waitForSelector('[data-test="walk-answer"]');
   assert.equal(await ribbonShown(page), false, 'no ribbon once the walk is finished');
   assert.equal(await page.getAttribute('#dock .dock-walk', 'aria-label'), null);
@@ -149,7 +149,7 @@ for (const [width, height] of [[360, 640], [390, 844]]) test(`${width}x${height}
   await walkOneStep(page);
   await page.locator('[data-test="ribbon-open"]').tap(); await route(page, '#/process/walk');
   await page.waitForSelector('[data-test="walk"]');
-  await page.tap('[data-test="walk-finish"]'); await page.tap('[data-test="walk-finish-yes"]');
+  await page.tap('[data-test="walk-finish"]'); await page.tap('[data-test="walk-finish-yes"], [data-test="walk-check-later"]');
   await page.waitForSelector('[data-test="walk-again"]');
   const r = await page.evaluate(() => {
     const b = document.querySelector('[data-test="walk-again"]').getBoundingClientRect();

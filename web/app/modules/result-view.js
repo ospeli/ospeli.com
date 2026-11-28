@@ -54,7 +54,10 @@ export function resultModel({ m, rg, records, list, oneWalkTop = null, day, cloc
   // A change a person marked (ospeli_maps_change_set): walks 1 to N before, later walks after.
   const afterWalk = Number.isInteger(m.changeAfterWalk) && m.changeAfterWalk > 0 && records.length ? Math.min(m.changeAfterWalk, records.length) : null;
   const walks = records.map((r, i) => {
-    const items = walkItems(list, r);
+    // Steps after the visit (the core marks them afterVisit) are on their own clock: not in the bar or the walk's totals.
+    const all = walkItems(list, r);
+    const apart = all.some((x) => !x.afterVisit);
+    const items = apart ? all.filter((x) => !x.afterVisit) : all; const later = apart ? all.filter((x) => x.afterVisit) : [];
     const info = rg.walks[i] || {};
     const usable = !r.clockMoved && info.usable !== false;
     const pos = !usable ? [] : oneWalkTop ? items.filter((x) => x.onList && oneWalkTop.includes(x.stepId)).map((x) => x.p) : longestPositions(items, lo ? lo.walks[i].longest : info.longest);
@@ -62,7 +65,8 @@ export function resultModel({ m, rg, records, list, oneWalkTop = null, day, cloc
     const elapsed = sum('waitSec') + sum('workSec') + sum('waitNotSeenSec') + sum('workNotSeenSec');
     return { n: i + 1, rec: r, items, pos, usable, elapsed, wait: sum('waitSec'), work: sum('workSec'), notSeen: sum('waitNotSeenSec') + sum('workNotSeenSec'),
       when: r.startedAt ? `${day(r.startedAt)}, ${clock(r.startedAt)}` : '', note: r.clockMoved ? ' (may be wrong)' : r.stoppedEarly ? ' (stopped early)' : '',
-      longest: longestLine(items, pos, { usable }), again: againLines(list, [r]) };
+      longest: longestLine(items, pos, { usable }), again: againLines(list, [r]),
+      after: later.length ? `After the visit: ${later.map((x) => `${x.name} started ${minWords(x.waitSec)} after it and took ${minWords(x.workSec)}`).join('; ')}. Not in the bar or the totals.` : '' };
   });
   const compare = afterWalk ? compareModel({ list, records, rg, afterWalk }) : null;
   const deptId = m.walk?.department || null;
@@ -120,7 +124,8 @@ export function barsCard(model, change = null, read = null) {
       });
       const row = h('div', { class: 'bar-row' },
         h('span', { class: 'bar-label' }, `Walk ${w.n} · ${w.when} · ${minWords(w.elapsed)}${w.note}`), bar, nums,
-        h('p', { class: 'bar-longest', 'data-test': 'bar-longest' }, w.longest));
+        h('p', { class: 'bar-longest', 'data-test': 'bar-longest' }, w.longest),
+        w.after ? h('p', { class: 'bar-after', 'data-test': 'bar-after' }, w.after) : null);
       // Where a person marked the change: one line in words between the last "before" bar and the first "after" bar.
       return model.compare?.both && w.n === model.afterWalk + 1
         ? [h('p', { class: 'bar-change', 'data-test': 'bar-change' }, `Change made after walk ${model.afterWalk}: walks above it are before, below it after.`), row] : row;
@@ -179,6 +184,7 @@ export function tableCard(model, after = null) {
         h('th', { scope: 'row', role: 'rowheader' },
           h('b', r.marked ? { 'data-test': 'row-again' } : {}, r.kind === 'extra' ? `+ ${r.name}` : `${r.order}. ${r.name}${r.marked ? ', done again' : ''}`),
           h('span', { class: 'rt-role' }, ` · ${r.role}`),
+          r.afterVisit && r.kind !== 'extra' ? h('span', { class: 'rt-only', 'data-test': 'after-visit-row' }, 'After the visit: time since the visit ended, then hands-on. Not in the totals.') : null,
           r.kind === 'extra' ? h('span', { class: 'rt-only', 'data-test': 'only-on' }, `Not on the list · Only on walk ${r.walk}`) : null,
           nameLink(model, r)),
         r.cells.map((c, k) => h('td', { role: 'cell', class: colCls(k), 'data-status': c.status, ...(c.status === 'timed' ? { 'data-sec': `${c.waitSec},${c.workSec}`, ...(c.stoppedSec ? { 'data-stood': String(c.stoppedSec) } : {}) } : {}) },
@@ -210,6 +216,8 @@ export function compareCard(model, after = null) {
           h('th', { scope: 'row', role: 'rowheader' },
             h('b', {}, r.kind === 'extra' ? `+ ${r.name}` : r.kind === 'again' ? `${r.order}. ${r.name}, done again` : `${r.order}. ${r.name}`), h('span', { class: 'rt-role' }, ` · ${r.role}`),
             r.kind === 'extra' ? h('span', { class: 'rt-only' }, 'Not on the list') : null,
+            // A step after the patient or item has left (Builder, 28 Nov): on its own clock, in none of the totals.
+            r.afterVisit && r.kind !== 'extra' ? h('span', { class: 'rt-only', 'data-test': 'after-visit-row' }, 'After the visit: time since the visit ended, then hands-on. Not in the totals.') : null,
             r.kind === 'again' ? h('span', { class: 'rt-only', 'data-test': 'again-row' }, 'Its later times on the same walk') : null,
             r.againText ? h('span', { class: 'rt-again', 'data-test': 'done-again' }, r.againText) : null,
             r.reasonText ? h('span', { class: 'rt-reason', 'data-test': 'row-reason' }, r.reasonText) : null,
@@ -311,9 +319,9 @@ export function actionsRow({ ctx, model, list, records, department, again, text 
 export function summaryOf({ model, headLines, headline, totals, read }) {
   return summaryText({
     head: headLines, headline, totals, count: model.walks.length,
-    walks: model.walks.map((w) => `Walk ${w.n}${model.compare?.both ? (w.n > model.afterWalk ? ' (after the change)' : ' (before the change)') : ''}, ${w.when}: ${minWords(w.elapsed)} start to finish${w.note} · waiting ${minWords(w.wait)} · hands-on ${minWords(w.work)}${w.notSeen ? ` · ${minWords(w.notSeen)} not seen` : ''}. ${w.longest}`),
+    walks: model.walks.map((w) => `Walk ${w.n}${model.compare?.both ? (w.n > model.afterWalk ? ' (after the change)' : ' (before the change)') : ''}, ${w.when}: ${minWords(w.elapsed)} start to finish${w.note} · waiting ${minWords(w.wait)} · hands-on ${minWords(w.work)}${w.notSeen ? ` · ${minWords(w.notSeen)} not seen` : ''}. ${w.longest}${w.after ? `. ${w.after}` : ''}`),
     columns: model.walks.map((w) => `walk ${w.n}`),
-    rows: model.rows.map((r) => ({ extra: r.kind === 'extra', name: r.kind === 'extra' ? `${r.name} (${r.role}, not on the list)` : `${r.order}. ${r.name} (${r.role})`, cells: r.cells.map(cellWords) })),
+    rows: model.rows.map((r) => ({ extra: r.kind === 'extra', name: r.kind === 'extra' ? `${r.name} (${r.role}, not on the list)` : `${r.order}. ${r.name} (${r.role}${r.afterVisit ? ', after the visit' : ''})`, cells: r.cells.map(cellWords) })),
     read,
     notes: [model.againAll, model.namesFrom],
     compare: compareLines(model),

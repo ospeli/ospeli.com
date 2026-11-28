@@ -100,7 +100,7 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     assert.deepEqual([(await stored(page))[0].steps[2].waitReason, (await stored(page))[0].steps[2].stopReason], [undefined, undefined]);
     // Finish: the first line of the result names the longest wait and the reason recorded on the walk.
     await page.locator('[data-test="walk-finish"]').tap();
-    await page.locator('[data-test="walk-finish-yes"]').tap();
+    await page.locator('[data-test="walk-finish-yes"], [data-test="walk-check-later"]').first().tap();
     await page.waitForFunction(() => /^#\/process\/map-/.test(location.hash));
     await page.waitForFunction(() => /Longest wait/.test(document.querySelector('main')?.textContent || ''));
     // Step 2 took its name from the list as it started (was “Step 2”, left for later, before the tap-through sheet).

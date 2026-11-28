@@ -131,7 +131,7 @@ test('From your walks: nothing before a walk; after a finished walk, its longest
     assert.equal(await page.locator('[data-test="walk-sheet"]').count(), 0);
   }
   const second = await page.evaluate(async () => { const { runCommand } = await import('./core/commands.js'); return (await runCommand(window.ospeli.core, 'ospeli_walks_get', {}, { type: 'human', role: 'radiographer' })).walk.steps[1].name; });
-  await page.tap('[data-test="walk-finish"]'); await page.tap('[data-test="walk-finish-yes"]');
+  await page.tap('[data-test="walk-finish"]'); await page.tap('[data-test="walk-finish-yes"], [data-test="walk-check-later"]');
   await page.waitForSelector('[data-test="walk-answer"]');
   await go(page, '#/home');
   await page.waitForSelector('[data-test="now-walks"]');

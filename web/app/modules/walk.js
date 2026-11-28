@@ -29,7 +29,7 @@ const UNDO_MS = 10000;
 // againOf: the map whose saved step list is walked again (a repeat walk), or null for a first walk.
 export async function renderWalk(box, ctx, againOf = null) {
   // picked: which of the two answers the person chose by hand (the other may be the offer, already chosen).
-  const ui = { busy: false, sheet: false, more: false, name: '', role: '', picked: { name: false, role: false }, msg: false, next: false, confirm: false, undoUntil: 0, question: null, error: '', flash: null, kept: null, rename: false, title: '', startError: null, typed: false, from: { name: null, role: null }, follow: false };
+  const ui = { busy: false, sheet: false, more: false, name: '', role: '', picked: { name: false, role: false }, msg: false, next: false, confirm: false, check: false, checkEdit: null, undoUntil: 0, question: null, error: '', flash: null, kept: null, rename: false, title: '', startError: null, typed: false, from: { name: null, role: null }, follow: false };
   const root = document.documentElement;
   root.dataset.walkFull = '1';
   let data = null; let again = null; let offset = 0; let timer = null; let undoTimer = null; let lock = null; let stopped = false;
@@ -272,9 +272,11 @@ export async function renderWalk(box, ctx, againOf = null) {
     const step = w.state === 'step';
     const row = (p) => {
       const running = p.state === 'running';
-      const word = running ? 'Timing now' : p.state === 'next' && !step ? 'Next' : p.afterVisit && p.state !== 'timed' ? 'After the visit' : '';
+      const word = running ? 'Timing now' : p.state === 'next' && !step ? 'Next' : '';
       // A timed row says what the taps gave, to check against what was just seen: the wait before it, then its hands-on time.
-      const timed = p.state === 'timed' ? `waited ${min(p.waitSec)} · ${min(p.workSec)} ${p.role === 'Patient' ? 'patient step' : 'hands-on'}${p.times > 1 ? ` · done ${p.times} times` : ''}` : null;
+      // A step after the visit is on its own clock: how long after the visit's last step it started.
+      const timed = p.state !== 'timed' ? null : p.afterVisit ? `started ${min(p.waitSec)} after the visit · took ${min(p.workSec)}`
+        : `waited ${min(p.waitSec)} · ${min(p.workSec)} ${p.role === 'Patient' ? 'patient step' : 'hands-on'}${p.times > 1 ? ` · done ${p.times} times` : ''}`;
       return h('li', {}, h('button', { type: 'button', class: `walk-rowbtn is-${p.state}`, 'data-test': 'walk-list-row', 'data-n': String(p.n), 'data-state': p.state, 'data-cmd': running ? 'ospeli_walks_step_done' : 'ospeli_walks_step_start',
         disabled: step && !running ? true : null, ...(running ? { 'aria-current': 'step' } : {}),
         onclick: () => (running ? done() : starts({ fresh: true, list: { listStep: p.n, picked: true } })) },
@@ -285,12 +287,58 @@ export async function renderWalk(box, ctx, againOf = null) {
     return h('section', { class: 'walk-list', 'data-test': 'walk-list', 'aria-labelledby': 'wk-list-h' },
       h('h2', { id: 'wk-list-h' }, 'Example steps. Yours may differ.'),
       h('p', { class: 'walk-list-hint', 'data-test': 'walk-list-hint' }, step ? 'Tap it again when it ends.' : 'Tap a step when it starts. Any order.'),
-      h('ol', { class: 'walk-rows' }, w.list.map(row),
+      h('ol', { class: 'walk-rows' }, w.list.filter((p) => !p.afterVisit).map(row),
+        // Steps that happen once the patient or item has left: under their own heading, never offered as next.
+        w.list.some((p) => p.afterVisit) ? h('li', { class: 'walk-after-head', 'data-test': 'walk-after-head' }, h('b', {}, 'After the visit'), ' Not counted in the visit’s totals.') : null,
+        w.list.filter((p) => p.afterVisit).map(row),
         h('li', {}, h('button', { type: 'button', class: 'walk-rowbtn is-other', 'data-test': 'walk-list-other', 'data-cmd': 'ospeli_walks_step_start', disabled: step ? true : null,
           onclick: () => starts({ fresh: true, list: {} }) }, h('span', { class: 'wl-n', 'aria-hidden': 'true' }, '+'), h('span', { class: 'wl-what' }, h('b', {}, 'Another step'), h('span', { class: 'wl-role' }, 'Not on this list. Name it after.')),
           // A step that is not on the list is running: its row says so, and no list row reads as next.
           step && !w.running?.name ? h('span', { class: 'wl-state', 'data-test': 'walk-other-now' }, 'Timing now') : null)))); 
   }
+  // "Check the names" (#170 point 3; decision record 23 Nov 2026): the finish question of a first walk
+  // that kept names or roles from the example list. The steps in order with their times, the list's
+  // words marked in words; one tap says they are right and finishes; any one can be changed first,
+  // from the words offered (own words are typed on the map, after finishing). Finishing without
+  // saying so stays one tap, and the marks then stay on the map. Step names and roles only: never a
+  // person's name, and no time is changed here.
+  function checkNames(w, { finish }) {
+    const fl = w.fromList || { names: 0, roles: 0 };
+    const markOf = (s) => (s.nameFrom === 'list' && s.roleFrom === 'list' ? 'Name and role from the list' : s.nameFrom === 'list' ? 'Name from the list' : s.roleFrom === 'list' ? 'Role from the list' : null);
+    const set = async (s, input, said) => { const out = await tap('ospeli_walks_step_name', { step: s.n, ...input }); if (out) say(said); draw(); };
+    const chips = (s, kind, label, list) => h('div', { class: 'walk-chips wc-chips', role: 'group', 'aria-label': `${label} Step ${s.n}` },
+      h('span', { class: 'walk-row-word', 'aria-hidden': 'true' }, kind === 'name' ? 'Step' : 'Role'),
+      list.map((c) => h('button', { type: 'button', class: 'chip-btn walk-chip', 'data-test': `walk-check-${kind}`, 'data-cmd': 'ospeli_walks_step_name', 'aria-pressed': String(s[kind] === c && s[`${kind}From`] !== 'list'),
+        onclick: () => set(s, kind === 'name' ? { name: c, nameFrom: 'chosen' } : { role: c, roleFrom: 'chosen' }, `Step ${s.n}: ${kind === 'name' ? 'name' : 'role'} is ${c}. Your choice.`) }, c)));
+    const row = (s) => {
+      const mark = markOf(s); const open = ui.checkEdit === s.n;
+      const times = s.afterVisit ? `After the visit · started ${min(s.waitSec)} after it · took ${min(s.workSec)}` : `waited ${min(s.waitSec)} · ${min(s.workSec)} ${s.role === 'Patient' ? 'patient step' : 'hands-on'}`;
+      return h('li', { class: `wc-row${mark ? ' is-marked' : ''}${open ? ' is-open' : ''}`, 'data-test': 'walk-check-row', 'data-n': String(s.n) },
+        h('div', { class: 'wc-what' }, h('b', {}, `${s.n}. ${s.name}`), h('span', { class: 'wc-role' }, ` · ${s.role}`),
+          h('span', { class: 'wc-times' }, times),
+          mark ? h('span', { class: 'wc-mark', 'data-test': 'walk-check-mark' }, mark) : null),
+        h('button', { type: 'button', class: 'btn btn-ghost walk-change wc-change', 'data-test': 'walk-check-change', 'aria-expanded': String(open), 'aria-label': `${open ? 'Close' : 'Change'} step ${s.n}, ${s.name}`,
+          onclick: () => { ui.checkEdit = open ? null : s.n; draw(); } }, open ? 'Close' : 'Change'),
+        open ? h('div', { class: 'wc-edit', 'data-test': 'walk-check-edit' },
+          chips(s, 'name', 'What happened?', data.stepChips), chips(s, 'role', 'Which role did it? A role, never a name.', data.roleChips),
+          h('p', { class: 'meta' }, 'Your own words? Finish, then use Edit map.')) : null);
+    };
+    const left = fl.names + fl.roles;
+    return h('section', { class: 'walk walk-check has-sheet', 'data-test': 'walk-check', 'data-state': w.state, 'aria-labelledby': 'wk-check-h' },
+      h('h1', { id: 'wk-check-h', tabindex: '-1' }, 'Check the names'),
+      h('p', { class: 'wc-lead', 'data-test': 'walk-check-lead' }, 'Step names and job roles only. Marked ones came from the example list.'),
+      h('ol', { class: 'wc-rows' }, w.steps.map(row)),
+      h('p', { class: 'meta walk-foot' }, 'Times are not changed here. People decide; Ospeli suggests.'),
+      h('div', { class: 'walk-bar', 'data-test': 'walk-bar' },
+        h('div', { class: 'walk-confirm wc-actions', role: 'group', 'aria-label': 'Finish the walk' },
+          h('p', { 'data-test': 'walk-check-count' }, left ? h('b', {}, 'Do the marked names and roles match what you saw?') : h('b', {}, 'No name or role is from the list now.')),
+          h('div', { class: 'form-actions' },
+            left ? h('button', { type: 'button', class: 'btn', 'data-test': 'walk-check-ok', 'data-cmd': 'ospeli_walks_finish', onclick: () => finish({ namesConfirmed: true }) }, 'Yes, all correct')
+              : h('button', { type: 'button', class: 'btn', 'data-test': 'walk-finish-yes', 'data-cmd': 'ospeli_walks_finish', onclick: () => finish() }, 'Finish'),
+            h('button', { type: 'button', class: 'btn btn-ghost', 'data-test': 'walk-check-back', onclick: () => { ui.check = false; ui.checkEdit = null; ui.follow = true; draw(); } }, 'Keep walking'),
+            left ? h('button', { type: 'button', class: 'linkish wc-later', 'data-test': 'walk-check-later', 'data-cmd': 'ospeli_walks_finish', onclick: () => finish() }, 'Finish, check later') : null))));
+  }
+
   // After a tap the list follows: the row before the present one sits at the top, so the step done
   // last, the present step and the next one are the three in sight above the bar.
   function followList() {
@@ -457,6 +505,9 @@ export async function renderWalk(box, ctx, againOf = null) {
               const p = pending();
               if (p && !(await savePending(p))) { draw(); return; }
               if (ui.sheet === true) resetSheet();
+              // Names or roles that came from the example list: "Check the names" is the finish question (#170 point 3).
+              const fl = data.walk.fromList || { names: 0, roles: 0 };
+              if (!rp && fl.names + fl.roles > 0) { ui.check = true; ui.checkEdit = null; ui.flash = null; say('Check the names. Step names and job roles only.'); draw(); window.scrollTo(0, 0); box.querySelector('#wk-check-h')?.focus({ preventScroll: true }); return; }
               ui.confirm = true; draw();
               const yes = box.querySelector('[data-test="walk-finish-yes"], [data-test="walk-finish-none"]');
               yes?.focus({ preventScroll: true });
@@ -478,6 +529,8 @@ export async function renderWalk(box, ctx, againOf = null) {
                 h('button', { type: 'button', class: 'btn', 'data-test': 'walk-finish-yes', 'data-cmd': 'ospeli_walks_finish', onclick: () => finish() }, 'Yes, finish'),
                 h('button', { type: 'button', class: 'btn btn-ghost', onclick: () => { ui.confirm = false; draw(); } }, 'Keep walking')),
             ]));
+    if (ui.check && !rp && !step) { box.replaceChildren(checkNames(w, { finish })); return; }
+    ui.check = false;
     const listed = !rp && !!w.list;
     const fromList = !!ui.flash && !!ui.flash.name && (ui.flash.nameFrom === 'list' || ui.flash.roleFrom === 'list');
     box.replaceChildren(h('section', { class: `walk ${step ? 'is-step' : 'is-waiting'}${rp ? ' is-repeat' : ''}${listed ? ' has-list' : ''}${listed && ui.flash ? ' has-flash' : ''}${showSheet || ui.confirm ? ' has-sheet' : ''}`, 'data-test': 'walk', 'data-state': w.state, 'aria-labelledby': 'wk-h' },

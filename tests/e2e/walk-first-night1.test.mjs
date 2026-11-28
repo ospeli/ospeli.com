@@ -96,11 +96,15 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     assert.equal(await page.locator('[data-test="walk-finish"]').count(), 1);
     assert.ok(fin.y >= 0 && fin.y + fin.height <= height && fin.height >= 44, `Finish walk is on the first screen (${fin.y} to ${fin.y + fin.height} of ${height})`);
     await tap('[data-test="walk-finish"]');
-    await page.waitForSelector('[data-test="walk-confirm"]');
-    await mainOnScreen(page, 'finish asked');
-    const yes = await page.locator('[data-test="walk-finish-yes"]').boundingBox();
-    assert.ok(yes.y >= 0 && yes.y + yes.height <= height, 'the answer is on the screen too');
-    await tap('[data-test="walk-finish-yes"]');
+    // Since 28 Nov a first walk that kept the list's names finishes on "Check the names" (#170 point 3):
+    // the walk's main button gives way to that screen's answers, which must all be on the screen.
+    // "Finish, check later" is the one-tap finish that changes nothing, as "Yes, finish" was.
+    await page.waitForSelector('[data-test="walk-check"]');
+    for (const sel of ['walk-check-ok', 'walk-check-back', 'walk-check-later']) {
+      const b = await page.locator(`[data-test="${sel}"]`).boundingBox();
+      assert.ok(b.y >= 0 && b.y + b.height <= height && b.height >= 44, `${sel} is on the screen (${b.y} to ${b.y + b.height} of ${height})`);
+    }
+    await tap('[data-test="walk-check-later"]');
     await page.waitForSelector('[data-test="pm-stats"]');
     assert.equal(taps, 15, 'start 1, six steps of 2 taps, finish 2');
     const w = (await stored(page))[0];
@@ -246,7 +250,7 @@ test('390 px: after "Step interrupted" the main button carries the same step on 
     await page.tap('[data-test="walk-main"]'); await state(page, 'waiting');
   }
   await page.tap('[data-test="walk-finish"]');
-  await page.tap('[data-test="walk-finish-yes"]');
+  await page.tap('[data-test="walk-check-later"]');
   await page.waitForSelector('[data-test="pm-stats"]');
   const one = (await stored(page))[0];
   assert.deepEqual(one.steps.map((s) => s.name), IMAGING.map((s) => s[0]), 'six steps, each once');

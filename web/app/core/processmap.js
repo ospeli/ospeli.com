@@ -184,7 +184,18 @@ export function personalDetailIn(text) {
 }
 
 // ---- analysis ----
-export function analyse(list) {
+// Steps marked afterVisit (a walk's steps after the patient or item has left) are counted in steps and
+// roles and kept in afterVisit ({ steps, wait, work }); they are in no time, share, handover or longest wait.
+export function analyse(all) {
+  const apart = all.some((s) => s.afterVisit) && all.some((s) => !s.afterVisit);
+  const list = apart ? all.filter((s) => !s.afterVisit) : all; const later = apart ? all.filter((s) => s.afterVisit) : [];
+  const out = analyseVisit(list);
+  if (!apart) return out;
+  const roles = [...out.roles]; for (const s of later) if (!roles.includes(s.role)) roles.push(s.role);
+  return { ...out, steps: all.length, roles, infoSteps: out.infoSteps + later.filter((s) => s.msg).length,
+    afterVisit: { steps: later.length, wait: later.reduce((n, s) => n + (+s.wait || 0), 0), work: later.reduce((n, s) => n + (+s.work || 0), 0) } };
+}
+function analyseVisit(list) {
   let t = 0; let prevStart = 0; let prevEnd = 0; let work = 0; let wait = 0; let handoffs = 0; let msgs = 0;
   const timed = list.map((s, i) => {
     const base = s.par && i > 0 ? prevStart : prevEnd;

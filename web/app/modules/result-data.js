@@ -29,7 +29,8 @@ export function recordFromSteps(list, walk) {
       ...(s.interrupted ? { interrupted: true } : {}), ...(s.interruptedWaitSec ? { interruptedWaitSec: s.interruptedWaitSec } : {}), ...(s.interruptions ? { interruptions: s.interruptions } : {}),
       ...(s.waitReason ? { waitReason: s.waitReason } : {}), ...(s.stopReason ? { stopReason: s.stopReason } : {}), ...(s.typed ? { typed: true } : {}),
       // From the walk (Builder, 27 Nov): the step was done again on that visit; where its name and role came from (#170).
-      ...(s.again ? { again: true } : {}), ...(s.nameFrom ? { nameFrom: s.nameFrom } : {}), ...(s.roleFrom ? { roleFrom: s.roleFrom } : {}) })),
+      ...(s.again ? { again: true } : {}), ...(s.nameFrom ? { nameFrom: s.nameFrom } : {}), ...(s.roleFrom ? { roleFrom: s.roleFrom } : {}),
+      ...(s.afterVisit ? { afterVisit: true } : {}) })),
     notTimed: list.filter((s) => !timed.includes(s)).map((s) => s.id) };
 }
 
@@ -48,7 +49,9 @@ export function walkItems(list, rec) {
       // Marked on the walk as done again (#189 item 2): a step with its own taps. On a first walk it is its own list step.
       marked: !!s.again,
       planned: !!(on && st.plannedWait), waitSec: s.waitSec || 0, workSec: s.workSec || 0, waitNotSeenSec: s.waitNotSeenSec || 0, workNotSeenSec: s.workNotSeenSec || 0,
-      interruptions: interruptionsOf(s), stoppedSec: s.interruptedWaitSec || 0, waitBeforeSec: waitBeforeOf(s), reason: waitReasonOf(s), rec: s };
+      interruptions: interruptionsOf(s), stoppedSec: s.interruptedWaitSec || 0, waitBeforeSec: waitBeforeOf(s), reason: waitReasonOf(s), rec: s,
+      // After the patient or item has left: marked on the walk, or by a person on the map's step (Builder, 28 Nov).
+      afterVisit: !!(s.afterVisit || (on && st.afterVisit)) };
   });
 }
 
@@ -252,7 +255,7 @@ export function compareModel({ list, records, rg, afterWalk }) {
     o.paused = o.paused || x.waitNotSeenSec > 0; o.workPaused = o.workPaused || x.workNotSeenSec > 0;
     const rs = waitReasonText(x.rec.waitReason); if (rs) o.reasons.push(rs);
   };
-  const stepRows = new Map(list.map((st, i) => [st.id, { kind: 'step', stepId: st.id, order: i + 1, name: st.name, role: st.role, walks: {} }]));
+  const stepRows = new Map(list.map((st, i) => [st.id, { kind: 'step', stepId: st.id, order: i + 1, name: st.name, role: st.role, ...(st.afterVisit ? { afterVisit: true } : {}), walks: {} }]));
   const againRows = new Map(list.map((st, i) => [st.id, { kind: 'again', stepId: st.id, order: i + 1, name: st.name, role: st.role, walks: {} }]));
   const extras = new Map(); // anchor step id ('' first) -> Map(key -> row)
   records.forEach((r, k) => {
@@ -341,7 +344,7 @@ export function resultTable(list, records) {
   });
   rows.push(...(extrasAfter.get('') || []));
   list.forEach((st, i) => {
-    rows.push({ kind: 'step', order: i + 1, stepId: st.id, name: st.name, role: st.role, ...(st.again ? { marked: true } : {}),
+    rows.push({ kind: 'step', order: i + 1, stepId: st.id, name: st.name, role: st.role, ...(st.again ? { marked: true } : {}), ...(st.afterVisit ? { afterVisit: true } : {}),
       cells: records.map((r, k) => cellOf(perWalk[k].filter((x) => x.stepId === st.id), r, st.id)) });
     rows.push(...(extrasAfter.get(st.id) || []));
   });

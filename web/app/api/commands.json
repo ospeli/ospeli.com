@@ -5055,6 +5055,21 @@
                     "items": {
                       "type": "string"
                     }
+                  },
+                  "afterVisit": {
+                    "type": "object",
+                    "description": "Present when the map has steps marked afterVisit: how many, and their waiting and hands-on time. They are counted in steps and roles and in no other number here.",
+                    "properties": {
+                      "steps": {
+                        "type": "integer"
+                      },
+                      "wait": {
+                        "type": "integer"
+                      },
+                      "work": {
+                        "type": "integer"
+                      }
+                    }
                   }
                 }
               },
@@ -5157,22 +5172,28 @@
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "On a map made from a walk: where the step name came from. list means it was the step an example list offered next and the person walking did not change it: NOT confirmed by the observer. Absent: not recorded."
+                      "description": "On a map made from a walk: where the step name came from. list means it was the step an example list offered next and the person walking did not change it: NOT confirmed by the observer. confirmed: it came from the list and the person who walked said at Finish that it matches what they saw. Absent: not recorded."
                     },
                     "roleFrom": {
                       "type": "string",
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "On a map made from a walk: where the role came from. list means it only came with the list step: do not use it to say who does what. Absent: not recorded."
+                      "description": "On a map made from a walk: where the role came from. list means it only came with the list step: do not use it to say who does what. confirmed: it came with the list step and the person who walked said at Finish that it matches what they saw. Absent: not recorded."
                     },
                     "again": {
                       "type": "boolean",
                       "description": "On a map made from a walk: the step was done again on that visit (its own taps). Nothing is recorded about why."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step happens after the patient or item has left (for example a report being signed). It is timed from the end of the visit's last step and is in none of the visit's figures: not in start to finish, waiting, hands-on or the longest wait. Local definition, not a standard."
                     }
                   }
                 }
@@ -5234,6 +5255,21 @@
                     "type": "array",
                     "items": {
                       "type": "string"
+                    }
+                  },
+                  "afterVisit": {
+                    "type": "object",
+                    "description": "Present when the map has steps marked afterVisit: how many, and their waiting and hands-on time. They are counted in steps and roles and in no other number here.",
+                    "properties": {
+                      "steps": {
+                        "type": "integer"
+                      },
+                      "wait": {
+                        "type": "integer"
+                      },
+                      "work": {
+                        "type": "integer"
+                      }
                     }
                   }
                 }
@@ -5336,22 +5372,28 @@
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "On a map made from a walk: where the step name came from. list means it was the step an example list offered next and the person walking did not change it: NOT confirmed by the observer. Absent: not recorded."
+                      "description": "On a map made from a walk: where the step name came from. list means it was the step an example list offered next and the person walking did not change it: NOT confirmed by the observer. confirmed: it came from the list and the person who walked said at Finish that it matches what they saw. Absent: not recorded."
                     },
                     "roleFrom": {
                       "type": "string",
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "On a map made from a walk: where the role came from. list means it only came with the list step: do not use it to say who does what. Absent: not recorded."
+                      "description": "On a map made from a walk: where the role came from. list means it only came with the list step: do not use it to say who does what. confirmed: it came with the list step and the person who walked said at Finish that it matches what they saw. Absent: not recorded."
                     },
                     "again": {
                       "type": "boolean",
                       "description": "On a map made from a walk: the step was done again on that visit (its own taps). Nothing is recorded about why."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step happens after the patient or item has left (for example a report being signed). It is timed from the end of the visit's last step and is in none of the visit's figures: not in start to finish, waiting, hands-on or the longest wait. Local definition, not a standard."
                     }
                   }
                 }
@@ -5525,6 +5567,21 @@
                   "type": "string"
                 }
               },
+              "afterVisit": {
+                "type": "object",
+                "description": "Present when the map has steps marked afterVisit: how many, and their waiting and hands-on time. They are counted in steps and roles and in no other number here.",
+                "properties": {
+                  "steps": {
+                    "type": "integer"
+                  },
+                  "wait": {
+                    "type": "integer"
+                  },
+                  "work": {
+                    "type": "integer"
+                  }
+                }
+              },
               "elapsedSec": {
                 "type": "integer",
                 "minimum": 0,
@@ -5610,6 +5667,21 @@
                 "type": "array",
                 "items": {
                   "type": "string"
+                }
+              },
+              "afterVisit": {
+                "type": "object",
+                "description": "Present when the map has steps marked afterVisit: how many, and their waiting and hands-on time. They are counted in steps and roles and in no other number here.",
+                "properties": {
+                  "steps": {
+                    "type": "integer"
+                  },
+                  "wait": {
+                    "type": "integer"
+                  },
+                  "work": {
+                    "type": "integer"
+                  }
                 }
               },
               "elapsedSec": {
@@ -6327,6 +6399,10 @@
           "par": {
             "type": "boolean",
             "description": "true when the step starts alongside the step before it instead of after it."
+          },
+          "afterVisit": {
+            "type": "boolean",
+            "description": "true to mark the step as happening after the patient or item has left, false to take the mark off. The step happens after the patient or item has left (for example a report being signed). It is timed from the end of the visit's last step and is in none of the visit's figures: not in start to finish, waiting, hands-on or the longest wait. Local definition, not a standard. The mark is a fact about the step, so it is kept on both versions of the map."
           },
           "plannedWait": {
             "type": "boolean",
@@ -7690,22 +7766,28 @@
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. confirmed: it came from the list and the person who walked said at Finish that the names match what they saw on this one walk. Absent: not recorded."
                     },
                     "roleFrom": {
                       "type": "string",
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. confirmed: it came with the list step and the person who walked said at Finish that it matches what they saw. Absent: not recorded."
                     },
                     "again": {
                       "type": "boolean",
                       "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step happens after the patient or item has left (for example a report being signed). It is timed from the end of the visit's last step and is in none of the visit's figures: not in start to finish, waiting, hands-on or the longest wait. Local definition, not a standard."
                     }
                   }
                 }
@@ -7763,6 +7845,18 @@
                   }
                 }
               },
+              "fromList": {
+                "type": "object",
+                "description": "How many ended steps carry a name, and a role, that came from the example list and that the person has not confirmed (see ospeli_walks_finish namesConfirmed).",
+                "properties": {
+                  "names": {
+                    "type": "integer"
+                  },
+                  "roles": {
+                    "type": "integer"
+                  }
+                }
+              },
               "askReason": {
                 "type": [
                   "object",
@@ -7791,6 +7885,21 @@
                   "elapsedSec"
                 ],
                 "properties": {
+                  "afterVisit": {
+                    "type": "object",
+                    "description": "Present when steps after the visit were timed: how many, and their waiting (from the end of the visit's last step) and hands-on seconds. They are counted in steps and in no other total; elapsedSec ends at the visit's last step once the walk is finished.",
+                    "properties": {
+                      "steps": {
+                        "type": "integer"
+                      },
+                      "waitSec": {
+                        "type": "integer"
+                      },
+                      "workSec": {
+                        "type": "integer"
+                      }
+                    }
+                  },
                   "steps": {
                     "type": "integer"
                   },
@@ -8201,22 +8310,28 @@
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. confirmed: it came from the list and the person who walked said at Finish that the names match what they saw on this one walk. Absent: not recorded."
                     },
                     "roleFrom": {
                       "type": "string",
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. confirmed: it came with the list step and the person who walked said at Finish that it matches what they saw. Absent: not recorded."
                     },
                     "again": {
                       "type": "boolean",
                       "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step happens after the patient or item has left (for example a report being signed). It is timed from the end of the visit's last step and is in none of the visit's figures: not in start to finish, waiting, hands-on or the longest wait. Local definition, not a standard."
                     }
                   }
                 }
@@ -8274,6 +8389,18 @@
                   }
                 }
               },
+              "fromList": {
+                "type": "object",
+                "description": "How many ended steps carry a name, and a role, that came from the example list and that the person has not confirmed (see ospeli_walks_finish namesConfirmed).",
+                "properties": {
+                  "names": {
+                    "type": "integer"
+                  },
+                  "roles": {
+                    "type": "integer"
+                  }
+                }
+              },
               "askReason": {
                 "type": [
                   "object",
@@ -8302,6 +8429,21 @@
                   "elapsedSec"
                 ],
                 "properties": {
+                  "afterVisit": {
+                    "type": "object",
+                    "description": "Present when steps after the visit were timed: how many, and their waiting (from the end of the visit's last step) and hands-on seconds. They are counted in steps and in no other total; elapsedSec ends at the visit's last step once the walk is finished.",
+                    "properties": {
+                      "steps": {
+                        "type": "integer"
+                      },
+                      "waitSec": {
+                        "type": "integer"
+                      },
+                      "workSec": {
+                        "type": "integer"
+                      }
+                    }
+                  },
                   "steps": {
                     "type": "integer"
                   },
@@ -8710,22 +8852,28 @@
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. confirmed: it came from the list and the person who walked said at Finish that the names match what they saw on this one walk. Absent: not recorded."
                     },
                     "roleFrom": {
                       "type": "string",
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. confirmed: it came with the list step and the person who walked said at Finish that it matches what they saw. Absent: not recorded."
                     },
                     "again": {
                       "type": "boolean",
                       "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step happens after the patient or item has left (for example a report being signed). It is timed from the end of the visit's last step and is in none of the visit's figures: not in start to finish, waiting, hands-on or the longest wait. Local definition, not a standard."
                     }
                   }
                 }
@@ -8783,6 +8931,18 @@
                   }
                 }
               },
+              "fromList": {
+                "type": "object",
+                "description": "How many ended steps carry a name, and a role, that came from the example list and that the person has not confirmed (see ospeli_walks_finish namesConfirmed).",
+                "properties": {
+                  "names": {
+                    "type": "integer"
+                  },
+                  "roles": {
+                    "type": "integer"
+                  }
+                }
+              },
               "askReason": {
                 "type": [
                   "object",
@@ -8811,6 +8971,21 @@
                   "elapsedSec"
                 ],
                 "properties": {
+                  "afterVisit": {
+                    "type": "object",
+                    "description": "Present when steps after the visit were timed: how many, and their waiting (from the end of the visit's last step) and hands-on seconds. They are counted in steps and in no other total; elapsedSec ends at the visit's last step once the walk is finished.",
+                    "properties": {
+                      "steps": {
+                        "type": "integer"
+                      },
+                      "waitSec": {
+                        "type": "integer"
+                      },
+                      "workSec": {
+                        "type": "integer"
+                      }
+                    }
+                  },
                   "steps": {
                     "type": "integer"
                   },
@@ -9233,22 +9408,28 @@
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. confirmed: it came from the list and the person who walked said at Finish that the names match what they saw on this one walk. Absent: not recorded."
                     },
                     "roleFrom": {
                       "type": "string",
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. confirmed: it came with the list step and the person who walked said at Finish that it matches what they saw. Absent: not recorded."
                     },
                     "again": {
                       "type": "boolean",
                       "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step happens after the patient or item has left (for example a report being signed). It is timed from the end of the visit's last step and is in none of the visit's figures: not in start to finish, waiting, hands-on or the longest wait. Local definition, not a standard."
                     }
                   }
                 }
@@ -9306,6 +9487,18 @@
                   }
                 }
               },
+              "fromList": {
+                "type": "object",
+                "description": "How many ended steps carry a name, and a role, that came from the example list and that the person has not confirmed (see ospeli_walks_finish namesConfirmed).",
+                "properties": {
+                  "names": {
+                    "type": "integer"
+                  },
+                  "roles": {
+                    "type": "integer"
+                  }
+                }
+              },
               "askReason": {
                 "type": [
                   "object",
@@ -9334,6 +9527,21 @@
                   "elapsedSec"
                 ],
                 "properties": {
+                  "afterVisit": {
+                    "type": "object",
+                    "description": "Present when steps after the visit were timed: how many, and their waiting (from the end of the visit's last step) and hands-on seconds. They are counted in steps and in no other total; elapsedSec ends at the visit's last step once the walk is finished.",
+                    "properties": {
+                      "steps": {
+                        "type": "integer"
+                      },
+                      "waitSec": {
+                        "type": "integer"
+                      },
+                      "workSec": {
+                        "type": "integer"
+                      }
+                    }
+                  },
                   "steps": {
                     "type": "integer"
                   },
@@ -9744,22 +9952,28 @@
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. confirmed: it came from the list and the person who walked said at Finish that the names match what they saw on this one walk. Absent: not recorded."
                     },
                     "roleFrom": {
                       "type": "string",
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. confirmed: it came with the list step and the person who walked said at Finish that it matches what they saw. Absent: not recorded."
                     },
                     "again": {
                       "type": "boolean",
                       "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step happens after the patient or item has left (for example a report being signed). It is timed from the end of the visit's last step and is in none of the visit's figures: not in start to finish, waiting, hands-on or the longest wait. Local definition, not a standard."
                     }
                   }
                 }
@@ -9817,6 +10031,18 @@
                   }
                 }
               },
+              "fromList": {
+                "type": "object",
+                "description": "How many ended steps carry a name, and a role, that came from the example list and that the person has not confirmed (see ospeli_walks_finish namesConfirmed).",
+                "properties": {
+                  "names": {
+                    "type": "integer"
+                  },
+                  "roles": {
+                    "type": "integer"
+                  }
+                }
+              },
               "askReason": {
                 "type": [
                   "object",
@@ -9845,6 +10071,21 @@
                   "elapsedSec"
                 ],
                 "properties": {
+                  "afterVisit": {
+                    "type": "object",
+                    "description": "Present when steps after the visit were timed: how many, and their waiting (from the end of the visit's last step) and hands-on seconds. They are counted in steps and in no other total; elapsedSec ends at the visit's last step once the walk is finished.",
+                    "properties": {
+                      "steps": {
+                        "type": "integer"
+                      },
+                      "waitSec": {
+                        "type": "integer"
+                      },
+                      "workSec": {
+                        "type": "integer"
+                      }
+                    }
+                  },
                   "steps": {
                     "type": "integer"
                   },
@@ -10257,22 +10498,28 @@
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. confirmed: it came from the list and the person who walked said at Finish that the names match what they saw on this one walk. Absent: not recorded."
                     },
                     "roleFrom": {
                       "type": "string",
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. confirmed: it came with the list step and the person who walked said at Finish that it matches what they saw. Absent: not recorded."
                     },
                     "again": {
                       "type": "boolean",
                       "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step happens after the patient or item has left (for example a report being signed). It is timed from the end of the visit's last step and is in none of the visit's figures: not in start to finish, waiting, hands-on or the longest wait. Local definition, not a standard."
                     }
                   }
                 }
@@ -10330,6 +10577,18 @@
                   }
                 }
               },
+              "fromList": {
+                "type": "object",
+                "description": "How many ended steps carry a name, and a role, that came from the example list and that the person has not confirmed (see ospeli_walks_finish namesConfirmed).",
+                "properties": {
+                  "names": {
+                    "type": "integer"
+                  },
+                  "roles": {
+                    "type": "integer"
+                  }
+                }
+              },
               "askReason": {
                 "type": [
                   "object",
@@ -10358,6 +10617,21 @@
                   "elapsedSec"
                 ],
                 "properties": {
+                  "afterVisit": {
+                    "type": "object",
+                    "description": "Present when steps after the visit were timed: how many, and their waiting (from the end of the visit's last step) and hands-on seconds. They are counted in steps and in no other total; elapsedSec ends at the visit's last step once the walk is finished.",
+                    "properties": {
+                      "steps": {
+                        "type": "integer"
+                      },
+                      "waitSec": {
+                        "type": "integer"
+                      },
+                      "workSec": {
+                        "type": "integer"
+                      }
+                    }
+                  },
                   "steps": {
                     "type": "integer"
                   },
@@ -10496,6 +10770,12 @@
           "nextStarted": {
             "type": "boolean",
             "description": "The next step started the moment this one ended."
+          },
+          "step": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 60,
+            "description": "First walk only: name this ended step (its number, from 1) and not the one that ended last, for example at \"Check the names\" before finishing. Send name or role (or both) with nameFrom or roleFrom; nothing else."
           },
           "listStep": {
             "type": "integer",
@@ -10827,22 +11107,28 @@
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. confirmed: it came from the list and the person who walked said at Finish that the names match what they saw on this one walk. Absent: not recorded."
                     },
                     "roleFrom": {
                       "type": "string",
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. confirmed: it came with the list step and the person who walked said at Finish that it matches what they saw. Absent: not recorded."
                     },
                     "again": {
                       "type": "boolean",
                       "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step happens after the patient or item has left (for example a report being signed). It is timed from the end of the visit's last step and is in none of the visit's figures: not in start to finish, waiting, hands-on or the longest wait. Local definition, not a standard."
                     }
                   }
                 }
@@ -10900,6 +11186,18 @@
                   }
                 }
               },
+              "fromList": {
+                "type": "object",
+                "description": "How many ended steps carry a name, and a role, that came from the example list and that the person has not confirmed (see ospeli_walks_finish namesConfirmed).",
+                "properties": {
+                  "names": {
+                    "type": "integer"
+                  },
+                  "roles": {
+                    "type": "integer"
+                  }
+                }
+              },
               "askReason": {
                 "type": [
                   "object",
@@ -10928,6 +11226,21 @@
                   "elapsedSec"
                 ],
                 "properties": {
+                  "afterVisit": {
+                    "type": "object",
+                    "description": "Present when steps after the visit were timed: how many, and their waiting (from the end of the visit's last step) and hands-on seconds. They are counted in steps and in no other total; elapsedSec ends at the visit's last step once the walk is finished.",
+                    "properties": {
+                      "steps": {
+                        "type": "integer"
+                      },
+                      "waitSec": {
+                        "type": "integer"
+                      },
+                      "workSec": {
+                        "type": "integer"
+                      }
+                    }
+                  },
                   "steps": {
                     "type": "integer"
                   },
@@ -11366,22 +11679,28 @@
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. confirmed: it came from the list and the person who walked said at Finish that the names match what they saw on this one walk. Absent: not recorded."
                     },
                     "roleFrom": {
                       "type": "string",
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. confirmed: it came with the list step and the person who walked said at Finish that it matches what they saw. Absent: not recorded."
                     },
                     "again": {
                       "type": "boolean",
                       "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step happens after the patient or item has left (for example a report being signed). It is timed from the end of the visit's last step and is in none of the visit's figures: not in start to finish, waiting, hands-on or the longest wait. Local definition, not a standard."
                     }
                   }
                 }
@@ -11439,6 +11758,18 @@
                   }
                 }
               },
+              "fromList": {
+                "type": "object",
+                "description": "How many ended steps carry a name, and a role, that came from the example list and that the person has not confirmed (see ospeli_walks_finish namesConfirmed).",
+                "properties": {
+                  "names": {
+                    "type": "integer"
+                  },
+                  "roles": {
+                    "type": "integer"
+                  }
+                }
+              },
               "askReason": {
                 "type": [
                   "object",
@@ -11467,6 +11798,21 @@
                   "elapsedSec"
                 ],
                 "properties": {
+                  "afterVisit": {
+                    "type": "object",
+                    "description": "Present when steps after the visit were timed: how many, and their waiting (from the end of the visit's last step) and hands-on seconds. They are counted in steps and in no other total; elapsedSec ends at the visit's last step once the walk is finished.",
+                    "properties": {
+                      "steps": {
+                        "type": "integer"
+                      },
+                      "waitSec": {
+                        "type": "integer"
+                      },
+                      "workSec": {
+                        "type": "integer"
+                      }
+                    }
+                  },
                   "steps": {
                     "type": "integer"
                   },
@@ -11878,22 +12224,28 @@
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. confirmed: it came from the list and the person who walked said at Finish that the names match what they saw on this one walk. Absent: not recorded."
                     },
                     "roleFrom": {
                       "type": "string",
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. confirmed: it came with the list step and the person who walked said at Finish that it matches what they saw. Absent: not recorded."
                     },
                     "again": {
                       "type": "boolean",
                       "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step happens after the patient or item has left (for example a report being signed). It is timed from the end of the visit's last step and is in none of the visit's figures: not in start to finish, waiting, hands-on or the longest wait. Local definition, not a standard."
                     }
                   }
                 }
@@ -11951,6 +12303,18 @@
                   }
                 }
               },
+              "fromList": {
+                "type": "object",
+                "description": "How many ended steps carry a name, and a role, that came from the example list and that the person has not confirmed (see ospeli_walks_finish namesConfirmed).",
+                "properties": {
+                  "names": {
+                    "type": "integer"
+                  },
+                  "roles": {
+                    "type": "integer"
+                  }
+                }
+              },
               "askReason": {
                 "type": [
                   "object",
@@ -11979,6 +12343,21 @@
                   "elapsedSec"
                 ],
                 "properties": {
+                  "afterVisit": {
+                    "type": "object",
+                    "description": "Present when steps after the visit were timed: how many, and their waiting (from the end of the visit's last step) and hands-on seconds. They are counted in steps and in no other total; elapsedSec ends at the visit's last step once the walk is finished.",
+                    "properties": {
+                      "steps": {
+                        "type": "integer"
+                      },
+                      "waitSec": {
+                        "type": "integer"
+                      },
+                      "workSec": {
+                        "type": "integer"
+                      }
+                    }
+                  },
                   "steps": {
                     "type": "integer"
                   },
@@ -12399,22 +12778,28 @@
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. confirmed: it came from the list and the person who walked said at Finish that the names match what they saw on this one walk. Absent: not recorded."
                     },
                     "roleFrom": {
                       "type": "string",
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. confirmed: it came with the list step and the person who walked said at Finish that it matches what they saw. Absent: not recorded."
                     },
                     "again": {
                       "type": "boolean",
                       "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step happens after the patient or item has left (for example a report being signed). It is timed from the end of the visit's last step and is in none of the visit's figures: not in start to finish, waiting, hands-on or the longest wait. Local definition, not a standard."
                     }
                   }
                 }
@@ -12472,6 +12857,18 @@
                   }
                 }
               },
+              "fromList": {
+                "type": "object",
+                "description": "How many ended steps carry a name, and a role, that came from the example list and that the person has not confirmed (see ospeli_walks_finish namesConfirmed).",
+                "properties": {
+                  "names": {
+                    "type": "integer"
+                  },
+                  "roles": {
+                    "type": "integer"
+                  }
+                }
+              },
               "askReason": {
                 "type": [
                   "object",
@@ -12500,6 +12897,21 @@
                   "elapsedSec"
                 ],
                 "properties": {
+                  "afterVisit": {
+                    "type": "object",
+                    "description": "Present when steps after the visit were timed: how many, and their waiting (from the end of the visit's last step) and hands-on seconds. They are counted in steps and in no other total; elapsedSec ends at the visit's last step once the walk is finished.",
+                    "properties": {
+                      "steps": {
+                        "type": "integer"
+                      },
+                      "waitSec": {
+                        "type": "integer"
+                      },
+                      "workSec": {
+                        "type": "integer"
+                      }
+                    }
+                  },
                   "steps": {
                     "type": "integer"
                   },
@@ -12910,22 +13322,28 @@
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. confirmed: it came from the list and the person who walked said at Finish that the names match what they saw on this one walk. Absent: not recorded."
                     },
                     "roleFrom": {
                       "type": "string",
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. confirmed: it came with the list step and the person who walked said at Finish that it matches what they saw. Absent: not recorded."
                     },
                     "again": {
                       "type": "boolean",
                       "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step happens after the patient or item has left (for example a report being signed). It is timed from the end of the visit's last step and is in none of the visit's figures: not in start to finish, waiting, hands-on or the longest wait. Local definition, not a standard."
                     }
                   }
                 }
@@ -12983,6 +13401,18 @@
                   }
                 }
               },
+              "fromList": {
+                "type": "object",
+                "description": "How many ended steps carry a name, and a role, that came from the example list and that the person has not confirmed (see ospeli_walks_finish namesConfirmed).",
+                "properties": {
+                  "names": {
+                    "type": "integer"
+                  },
+                  "roles": {
+                    "type": "integer"
+                  }
+                }
+              },
               "askReason": {
                 "type": [
                   "object",
@@ -13011,6 +13441,21 @@
                   "elapsedSec"
                 ],
                 "properties": {
+                  "afterVisit": {
+                    "type": "object",
+                    "description": "Present when steps after the visit were timed: how many, and their waiting (from the end of the visit's last step) and hands-on seconds. They are counted in steps and in no other total; elapsedSec ends at the visit's last step once the walk is finished.",
+                    "properties": {
+                      "steps": {
+                        "type": "integer"
+                      },
+                      "waitSec": {
+                        "type": "integer"
+                      },
+                      "workSec": {
+                        "type": "integer"
+                      }
+                    }
+                  },
                   "steps": {
                     "type": "integer"
                   },
@@ -13101,6 +13546,10 @@
             "pattern": "^walk-[0-9]{3,}$",
             "maxLength": 16,
             "description": "A walk id, e.g. walk-001. Leave out to mean the walk in progress on this device."
+          },
+          "namesConfirmed": {
+            "type": "boolean",
+            "description": "true when the person looked at \"Check the names\" and said they are right: every step name and role still marked as from the list becomes \"confirmed\". The person who walked says these step names and roles match what they saw on this one walk. It does not mean the times were checked, that this is the usual process, or that anyone else agreed. Left out or false: those marks stay on the map as not confirmed."
           },
           "leftover": {
             "type": "string",
@@ -13426,22 +13875,28 @@
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. Absent: not recorded."
+                      "description": "Where the step name came from. chosen: the person tapped that step. list: it was the step the list offered next and the person did not change it, so it is NOT confirmed by the observer. typed: the person's own words. confirmed: it came from the list and the person who walked said at Finish that the names match what they saw on this one walk. Absent: not recorded."
                     },
                     "roleFrom": {
                       "type": "string",
                       "enum": [
                         "chosen",
                         "list",
-                        "typed"
+                        "typed",
+                        "confirmed"
                       ],
-                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. Absent: not recorded."
+                      "description": "Where the role came from, kept apart from the name. list: the role the example list gives that step; the person did not choose it, so do not use it to say who does what. chosen or typed: the person's own answer. confirmed: it came with the list step and the person who walked said at Finish that it matches what they saw. Absent: not recorded."
                     },
                     "again": {
                       "type": "boolean",
                       "description": "true when the step was done again on this visit: a list step timed a second time, or marked by the person. It has its own start and end taps. Nothing is recorded about why."
+                    },
+                    "afterVisit": {
+                      "type": "boolean",
+                      "description": "The step happens after the patient or item has left (for example a report being signed). It is timed from the end of the visit's last step and is in none of the visit's figures: not in start to finish, waiting, hands-on or the longest wait. Local definition, not a standard."
                     }
                   }
                 }
@@ -13499,6 +13954,18 @@
                   }
                 }
               },
+              "fromList": {
+                "type": "object",
+                "description": "How many ended steps carry a name, and a role, that came from the example list and that the person has not confirmed (see ospeli_walks_finish namesConfirmed).",
+                "properties": {
+                  "names": {
+                    "type": "integer"
+                  },
+                  "roles": {
+                    "type": "integer"
+                  }
+                }
+              },
               "askReason": {
                 "type": [
                   "object",
@@ -13527,6 +13994,21 @@
                   "elapsedSec"
                 ],
                 "properties": {
+                  "afterVisit": {
+                    "type": "object",
+                    "description": "Present when steps after the visit were timed: how many, and their waiting (from the end of the visit's last step) and hands-on seconds. They are counted in steps and in no other total; elapsedSec ends at the visit's last step once the walk is finished.",
+                    "properties": {
+                      "steps": {
+                        "type": "integer"
+                      },
+                      "waitSec": {
+                        "type": "integer"
+                      },
+                      "workSec": {
+                        "type": "integer"
+                      }
+                    }
+                  },
                   "steps": {
                     "type": "integer"
                   },

@@ -955,6 +955,28 @@ html[data-site="connect"] .layout { display: block; }
 .walk-side .walk-finish:disabled { opacity: 1; color: #5B6B7A; border-color: var(--line); background: transparent; cursor: default; }
 .walk-bar .walk-confirm .form-actions { display: grid; gap: 6px; }
 .walk-bar .walk-confirm .btn { justify-content: center; }
+/* Walk list: steps after the visit sit under their own heading (28 Nov). */
+.walk-after-head { margin-top: 8px; padding: 8px 4px 2px; border-top: 1.5px dashed var(--line-strong); font-size: .9375rem; color: var(--ink); }
+.walk-after-head b { color: var(--navy); }
+.bar-after { margin: 2px 0 0; font-size: .9375rem; color: var(--ink); }
+/* "Check the names", the finish question of a first walk that kept the list's words (#170 point 3). */
+.walk-check h1 { font-size: 1.375rem; margin: 0 0 2px; color: var(--navy); }
+.walk-check h1:focus { outline: none; }
+.walk-check .wc-lead { margin: 0 0 10px; font-size: 1rem; color: var(--ink); }
+.wc-rows { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 6px; }
+.wc-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 6px 8px; background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 8px 8px 12px; }
+.wc-row.is-marked { border-style: dashed; border-color: var(--line-strong); }
+.wc-what { min-width: 0; font-size: 1rem; color: var(--navy); overflow-wrap: anywhere; }
+.wc-what .wc-role { color: var(--ink); }
+.wc-what .wc-times, .wc-what .wc-mark { display: block; font-size: .9375rem; color: var(--ink); }
+.wc-what .wc-mark { font-weight: 800; color: var(--navy); }
+.wc-what .wc-mark::before { content: "◇ "; }
+.wc-row .wc-change { min-height: 44px; min-width: 76px; justify-content: center; }
+.wc-edit { grid-column: 1 / -1; display: grid; gap: 8px; padding-top: 4px; border-top: 1.5px solid var(--line); }
+.wc-edit .wc-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0; }
+.wc-edit .walk-chip { min-height: 44px; }
+.wc-edit .meta { margin: 0; font-size: .9375rem; }
+.wc-actions .wc-later { min-height: 44px; font: inherit; font-size: 1rem; font-weight: 700; color: var(--navy); text-decoration: underline; background: none; border: 0; cursor: pointer; justify-self: center; padding: 0 12px; }
 
 /* Result page, crew night 9 (walk-first week, night 2): "Walk the next patient" is the main button
    on a walked map and in the list of maps; the headline first; one "How to read this". */

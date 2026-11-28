@@ -18,6 +18,11 @@
 //     the patient or item), kept inside that step's waiting as interruptedWaitSec, and the step
 //     says how many times it was interrupted. Practice in the manner of value stream mapping,
 //     not a standard;
+//   after the visit        = a step that happens once the patient or item has left (the department
+//     list's "later" steps, for example a report being signed). It is timed on its own clock, from the
+//     end of the visit's last step before it, and is in none of the visit's figures: not in start to
+//     finish, waiting, hands-on, the share of waiting or the longest wait. Start to finish ends at the
+//     visit's last step. Where a walk timed nothing but such steps, they are ordinary steps;
 //   planned or required wait = a wait a person marked on the map as needed by the process itself.
 //     It still counts as waiting; it is only left out of "longest wait". Ospeli holds no list of
 //     such waits: the mark records what staff said.
@@ -82,7 +87,8 @@ export function nextPlanIndex(walk) {
   for (const s of walk.steps) if (s.planIndex != null) top = Math.max(top, s.planIndex);
   if (walk.current?.planIndex != null) top = Math.max(top, walk.current.planIndex);
   for (const i of walk.skipped || []) top = Math.max(top, i);
-  return top + 1 < walk.plan.length ? top + 1 : null;
+  // A step that happens after the visit is never offered as next: its row can still be tapped.
+  return top + 1 < walk.plan.length && !walk.plan[top + 1].afterVisit ? top + 1 : null;
 }
 // The next list step did not happen on this visit: one tap, and it can be undone.
 export function skipNext(walk) {
@@ -102,20 +108,22 @@ export function assignLast(walk, { listIndex = null, offList = false }) {
   if (!walk.plan) throw new Error('This walk has no saved step list.');
   if (!last) throw new Error('No step has ended yet.');
   // The name is no longer the one that was typed (#190 point 3).
-  delete last.typed; delete last.nameFrom; delete last.roleFrom; delete last.atStart;
+  delete last.typed; delete last.nameFrom; delete last.roleFrom; delete last.atStart; delete last.afterVisit;
   if (offList) { last.planIndex = null; last.name = null; last.role = null; last.msg = false; return walk; }
   const p = walk.plan[listIndex];
   if (!p) throw new Error(`The list has ${walk.plan.length} steps.`);
   last.planIndex = listIndex; last.name = p.name; last.role = p.role; last.msg = !!p.msg;
+  if (p.afterVisit) last.afterVisit = true;
   // A list step that was timed after all is no longer "did not happen": the record says one or the other.
   walk.skipped = (walk.skipped || []).filter((i) => i !== listIndex);
   return walk;
 }
-// The list steps not timed and not marked "did not happen", in list order.
+// The list steps not timed and not marked "did not happen", in list order. A step that happens
+// after the visit is not among them: leaving it untimed is neither stopping early nor "did not happen".
 export function planLeft(walk) {
   if (!walk.plan) return [];
   const seen = new Set([...walk.steps.map((s) => s.planIndex), ...(walk.skipped || [])].filter((i) => i != null));
-  return walk.plan.map((p, i) => ({ ...p, n: i + 1 })).filter((p) => !seen.has(p.n - 1));
+  return walk.plan.map((p, i) => ({ ...p, n: i + 1 })).filter((p) => !seen.has(p.n - 1) && !p.afterVisit);
 }
 
 // Where a step's name and its role came from (#170, decision record 23 Nov 2026), kept apart:
@@ -127,9 +135,50 @@ export function planLeft(walk) {
 //   stays with it through an undo of "Step done".
 //   again: the step was done again on this visit (a list step timed a second time, or marked by the
 //   person). It is its own step with its own taps; nothing says why.
-export const NAME_SOURCES = ['chosen', 'list', 'typed'];
+//   confirmed: it came from the list, and at Finish the person who walked said the step names and
+//   roles match what they saw on this one walk ("Check the names", #170 point 3). It says nothing
+//   about the times, about the department's usual way of working, or about anyone else agreeing.
+export const NAME_SOURCES = ['chosen', 'list', 'typed', 'confirmed'];
+export const CONFIRM_MEANS = 'The person who walked says these step names and roles match what they saw on this one walk. It does not mean the times were checked, that this is the usual process, or that anyone else agreed.';
+// How many ended steps still carry a name, or a role, that came from the list and nobody confirmed.
+export const fromListCount = (walk) => ({ names: walk.steps.filter((s) => s.nameFrom === 'list').length, roles: walk.steps.filter((s) => s.roleFrom === 'list').length });
+// "Check the names", confirmed in one tap: every name and role still marked as the list's becomes
+// "confirmed", and the walk keeps when. Names and roles the person chose or typed are left as they are.
+export function confirmNames(walk, at) {
+  const n = fromListCount(walk);
+  for (const s of walk.steps) { if (s.nameFrom === 'list') s.nameFrom = 'confirmed'; if (s.roleFrom === 'list') s.roleFrom = 'confirmed'; }
+  walk.namesConfirmedAt = at;
+  return n;
+}
+// Name an earlier step of a first walk (its number, from 1): at "Check the names" any one step can be
+// changed. The words are the person's own answer now, so their source is what is passed (chosen or typed).
+export function nameStep(walk, n, { name, role, typed = false, nameFrom = null, roleFrom = null }) {
+  if (walk.plan) throw new Error('On a repeat walk a step keeps the name on the saved list. Change it on the map.');
+  const s = walk.steps[n - 1];
+  if (!s) throw new Error(`This walk has ${walk.steps.length} ${walk.steps.length === 1 ? 'step that has' : 'steps that have'} ended.`);
+  if (name != null) {
+    s.name = name;
+    if (typed) { s.typed = true; s.nameFrom = 'typed'; } else { delete s.typed; if (nameFrom) s.nameFrom = nameFrom; else delete s.nameFrom; }
+    if (laterName(walk, name)) s.afterVisit = true; else delete s.afterVisit;
+  }
+  if (role != null) { s.role = role; if (roleFrom) s.roleFrom = roleFrom; else delete s.roleFrom; }
+  return walk;
+}
 const sourced = (s) => ({ ...(s.nameFrom ? { nameFrom: s.nameFrom } : {}), ...(s.roleFrom ? { roleFrom: s.roleFrom } : {}), ...(s.atStart ? { atStart: true } : {}) });
 const openPause = (walk) => (walk.pauses || []).find((p) => !p.endAt) || null;
+// ---- steps after the visit ----
+// True when the walk keeps its after-the-visit steps apart: it has at least one step of the visit itself.
+const keepsApart = (walk) => walk.steps.some((s) => !s.afterVisit) && walk.steps.some((s) => s.afterVisit);
+// Is this step (of walk.steps) kept apart from the visit?
+export const isAfterVisit = (walk, s) => !!s.afterVisit && keepsApart(walk);
+// When the visit ended: the end of its last step that is not after the visit (any step when none is). Null with no step.
+export function visitEndAt(walk) {
+  const apart = keepsApart(walk);
+  for (let i = walk.steps.length - 1; i >= 0; i--) if (!apart || !walk.steps[i].afterVisit) return walk.steps[i].endAt;
+  return null;
+}
+// Is this name one of the department list's steps that happen after the visit? (First walks only.)
+const laterName = (walk, name) => !walk.plan && !!name && !!walkVocab(walk.department)?.later.some((x) => x[0] === name);
 // 'paused' while the person has stepped out, 'step' while a step is running, otherwise 'waiting'.
 export const walkState = (walk) => (openPause(walk) ? 'paused' : walk.current ? 'step' : 'waiting');
 // What is under way behind a pause: 'step' or 'waiting'.
@@ -211,7 +260,7 @@ export const WAIT_REASONS_BASIS = 'Example setting, not a standard.';
 export const WAIT_REASON_MIN_SEC = 120;
 export const waitReasonText = (id) => WAIT_REASONS.find((r) => r.id === id)?.text || null;
 // What a step keeps when it is interrupted, carried on, ended or brought back by an undo.
-const carried = (s) => ({ ...(s.waitReason ? { waitReason: s.waitReason } : {}), ...(s.stopReason ? { stopReason: s.stopReason, stopOf: s.stopOf || 0 } : {}), ...(s.stopWas?.length ? { stopWas: s.stopWas } : {}), ...(s.typed ? { typed: true } : {}), ...(s.again ? { again: true } : {}) });
+const carried = (s) => ({ ...(s.waitReason ? { waitReason: s.waitReason } : {}), ...(s.stopReason ? { stopReason: s.stopReason, stopOf: s.stopOf || 0 } : {}), ...(s.stopWas?.length ? { stopWas: s.stopWas } : {}), ...(s.typed ? { typed: true } : {}), ...(s.again ? { again: true } : {}), ...(s.afterVisit ? { afterVisit: true } : {}) });
 // The answer for a stop is taken away (the stop was undone, or the reason was): the answer given
 // for the stop before it, if any, is the step's answer again (#190 points 1 and 2).
 function dropStopReason(s) {
@@ -320,11 +369,11 @@ export function stepStart(walk, at, { listStep = null, picked = false } = {}) {
       // A list step marked "did not happen" and then started after all: the mark comes back if the tap is undone.
       const was = (walk.skipped || []).includes(i);
       walk.skipped = (walk.skipped || []).filter((x) => x !== i);
-      walk.current = { startAt: at, planIndex: i, ...(again ? { again: true } : {}), ...(was ? { wasSkipped: true } : {}) };
+      walk.current = { startAt: at, planIndex: i, ...(again ? { again: true } : {}), ...(was ? { wasSkipped: true } : {}), ...(walk.plan[i].afterVisit ? { afterVisit: true } : {}) };
     } else {
       const item = walkList(walk)?.[i];
       if (!item) throw new Error('This walk has no step list with that step.');
-      walk.current = { startAt: at, name: item.name, ...(item.role ? { role: item.role, roleFrom: 'list' } : {}), nameFrom: picked ? 'chosen' : 'list', atStart: true, ...(again ? { again: true } : {}) };
+      walk.current = { startAt: at, name: item.name, ...(item.role ? { role: item.role, roleFrom: 'list' } : {}), nameFrom: picked ? 'chosen' : 'list', atStart: true, ...(again ? { again: true } : {}), ...(item.later ? { afterVisit: true } : {}) };
     }
     walk.last = 'start';
     return walk;
@@ -403,10 +452,12 @@ export function nameLast(walk, { name, role, msg, typed, nameFrom = null, roleFr
     if (name != null) { if (typed) s.nameFrom = 'typed'; else if (nameFrom) s.nameFrom = nameFrom; else delete s.nameFrom; }
     if (role != null) { if (roleFrom) s.roleFrom = roleFrom; else delete s.roleFrom; }
     if (again != null) { if (again) s.again = true; else delete s.again; }
+    // First walk: a step given the name of a list step that happens after the visit is one; given another name, it is not.
+    if (name != null && !walk.plan) { if (laterName(walk, name)) s.afterVisit = true; else delete s.afterVisit; }
   };
   if (walk.current?.gaps?.length && !nextStarted) {
     const c = walk.current; src(c);
-    if (walk.plan && c.planIndex != null && ((name != null && name !== walk.plan[c.planIndex].name) || (role != null && role !== walk.plan[c.planIndex].role))) delete c.planIndex;
+    if (walk.plan && c.planIndex != null && ((name != null && name !== walk.plan[c.planIndex].name) || (role != null && role !== walk.plan[c.planIndex].role))) { delete c.planIndex; delete c.afterVisit; }
     if (name != null) { c.name = name; if (typed) c.typed = true; else delete c.typed; }
     if (role != null) c.role = role;
     if (msg != null) c.msg = !!msg;
@@ -416,7 +467,7 @@ export function nameLast(walk, { name, role, msg, typed, nameFrom = null, roleFr
   if (!last) throw new Error('No step has ended yet.');
   src(last);
   // A step given its own words on a repeat walk is no longer the list step it was offered as.
-  if (walk.plan && last.planIndex != null && ((name != null && name !== last.name) || (role != null && role !== last.role))) delete last.planIndex;
+  if (walk.plan && last.planIndex != null && ((name != null && name !== last.name) || (role != null && role !== last.role))) { delete last.planIndex; delete last.afterVisit; }
   if (name != null) { last.name = name; if (typed) last.typed = true; else delete last.typed; }
   if (role != null) last.role = role;
   if (msg != null) last.msg = !!msg;
@@ -464,9 +515,15 @@ export function undoLast(walk) {
 // The measured steps, recomputed from the stored tap times.
 // Time that fell inside a pause is taken out of the wait or the step it fell in and kept beside
 // it as "not seen" (waitNotSeenSec, workNotSeenSec), so nothing is counted that nobody watched.
+// A step of the visit waits from the end of the visit step before it; a step after the visit waits
+// from the end of the visit's last step before it, on its own clock (see "after the visit" above).
 export function walkSteps(walk) {
+  const apart = keepsApart(walk);
+  let visitEnd = walk.startedAt;
   return walk.steps.map((s, i) => {
-    const from = i === 0 ? walk.startedAt : walk.steps[i - 1].endAt;
+    const after = apart && !!s.afterVisit;
+    const from = apart ? visitEnd : i === 0 ? walk.startedAt : walk.steps[i - 1].endAt;
+    if (!after) visitEnd = s.endAt;
     const waitNotSeenSec = Math.min(secs(walk, from, s.startAt), pausedWhole(walk, from, s.startAt));
     const workNotSeenSec = Math.min(secs(walk, s.startAt, s.endAt), pausedWhole(walk, s.startAt, s.endAt));
     // The time the step stood still between an interruption and carrying on, less any of it not
@@ -480,20 +537,24 @@ export function walkSteps(walk) {
       ...(waitNotSeenSec ? { waitNotSeenSec } : {}), ...(workNotSeenSec ? { workNotSeenSec } : {}),
       ...(interruptedWaitSec ? { interruptedWaitSec } : {}), ...(interruptions ? { interruptions } : {}),
       ...(s.waitReason ? { waitReason: s.waitReason } : {}), ...(stopReasonOf(s) ? { stopReason: s.stopReason } : {}), ...(s.typed ? { typed: true } : {}),
-      ...(s.nameFrom ? { nameFrom: s.nameFrom } : {}), ...(s.roleFrom ? { roleFrom: s.roleFrom } : {}), ...(s.again ? { again: true } : {}),
+      ...(s.nameFrom ? { nameFrom: s.nameFrom } : {}), ...(s.roleFrom ? { roleFrom: s.roleFrom } : {}), ...(s.again ? { again: true } : {}), ...(after ? { afterVisit: true } : {}),
     };
   });
 }
 
 // elapsedSec is the whole walk, start to finish, with any time not seen inside it.
 // notSeenSec is the paused time inside the steps and waits recorded so far.
+// Steps after the visit are counted in steps and kept in afterVisit ({ steps, waitSec, workSec });
+// they are in no other figure, and start to finish ends at the visit's last step.
 export function walkTotals(walk, now = null) {
-  const steps = walkSteps(walk);
+  const all = walkSteps(walk);
+  const steps = all.filter((s) => !s.afterVisit); const later = all.filter((s) => s.afterVisit);
   const workSec = steps.reduce((n, s) => n + s.workSec, 0); const waitSec = steps.reduce((n, s) => n + s.waitSec, 0);
   const notSeenSec = steps.reduce((n, s) => n + (s.waitNotSeenSec || 0) + (s.workNotSeenSec || 0), 0);
-  const end = walk.finishedAt || now || (walk.steps.length ? walk.steps[walk.steps.length - 1].endAt : walk.startedAt);
+  const end = walk.finishedAt || now || visitEndAt(walk) || walk.startedAt;
   const interruptions = steps.reduce((n, s) => n + (s.interruptions || 0), 0);
-  return { steps: steps.length, workSec, waitSec, notSeenSec, elapsedSec: secs(walk, walk.startedAt, end), ...(interruptions ? { interruptions } : {}) };
+  return { steps: all.length, workSec, waitSec, notSeenSec, elapsedSec: secs(walk, walk.startedAt, end), ...(interruptions ? { interruptions } : {}),
+    ...(later.length ? { afterVisit: { steps: later.length, waitSec: later.reduce((n, s) => n + s.waitSec, 0), workSec: later.reduce((n, s) => n + s.workSec, 0) } } : {}) };
 }
 
 // Share of the observed time that was waiting, as a whole percentage: waiting / (waiting + hands-on).
@@ -509,7 +570,7 @@ export function mapStepsFromWalk(walk, mapId) {
     ...(s.waitNotSeenSec ? { waitNotSeenSec: s.waitNotSeenSec } : {}), ...(s.workNotSeenSec ? { workNotSeenSec: s.workNotSeenSec } : {}),
     ...(s.interruptedWaitSec ? { interruptedWaitSec: s.interruptedWaitSec } : {}), ...(s.interruptions ? { interruptions: s.interruptions } : {}),
     ...(s.waitReason ? { waitReason: s.waitReason } : {}), ...(s.stopReason ? { stopReason: s.stopReason } : {}), ...(s.typed ? { typed: true } : {}),
-    ...(s.nameFrom ? { nameFrom: s.nameFrom } : {}), ...(s.roleFrom ? { roleFrom: s.roleFrom } : {}), ...(s.again ? { again: true } : {}),
+    ...(s.nameFrom ? { nameFrom: s.nameFrom } : {}), ...(s.roleFrom ? { roleFrom: s.roleFrom } : {}), ...(s.again ? { again: true } : {}), ...(s.afterVisit ? { afterVisit: true } : {}),
   }));
 }
 
@@ -549,7 +610,7 @@ export function fmtClock(sec) {
 // Left out: a wait marked planned or required (it is needed, so it is not the question to ask).
 // A wait that was partly not seen is compared by its seen part, which is the least it can have
 // been, and is then named as "at least" that long: a shorter wait is never named over it.
-export const waitCanBeNamed = (x) => !x.plannedWait;
+export const waitCanBeNamed = (x) => !x.plannedWait && !x.afterVisit;
 // How a named wait reads: "27 min", or "at least 27 min" with the part not seen beside it.
 export const waitWords = (x) => (x.waitNotSeenSec ? `at least ${fmtSeconds(x.wait)}` : fmtSeconds(x.wait));
 export const notSeenWords = (x) => (x.waitNotSeenSec ? ` (${fmtSeconds(x.waitNotSeenSec)} more of it not seen)` : '');
@@ -575,6 +636,7 @@ export const WALK_BASIS = {
   limits: 'Method: a process walk in the manner of lean value stream mapping (Rother and Shook, Learning to See). One walk is one observation.',
   clock: 'Local definition: a tap stamped earlier than the tap before it (a step tap, Pause or I am back) means the device clock was set back.',
   planned: 'Local definition: a planned or required wait is one a person marked as needed by the process itself. It counts as waiting and is left out of the longest wait. Ospeli keeps no list of such waits.',
+  afterVisit: 'Local definition: a step that happens after the patient or item has left is timed from the end of the visit\'s last step and is in none of the visit\'s figures.',
   interrupted: 'Local definition, in the manner of value stream mapping practice (not a standard): a step that was interrupted and carried on is one step. The time it stood still counts as waiting, inside that step, and the step says how many times it was interrupted. It is not part of the wait before the step, so it is never named as the longest wait.',
   notSeen: 'Local definition: time between Pause and I am back is not seen. It is neither waiting nor hands-on. A wait that was partly not seen is compared by the part that was seen and named as "at least" that long.',
 };
@@ -713,7 +775,7 @@ export function recordFromWalk(walk, { finishedAt, mapId = null, leftover = 'not
   const left = planLeft(walk).map((p) => p.id);
   const tot = walkTotals({ ...walk, finishedAt });
   return {
-    id: walk.id, startedAt: walk.startedAt, finishedAt, guidanceSeen: !!walk.guidanceSeenAt,
+    id: walk.id, startedAt: walk.startedAt, finishedAt, guidanceSeen: !!walk.guidanceSeenAt, ...(walk.namesConfirmedAt ? { namesConfirmed: true } : {}),
     ...(clockMoved(walk) ? { clockMoved: true } : {}), ...(tot.notSeenSec ? { notSeenSec: tot.notSeenSec } : {}),
     steps: walkSteps(walk).map((s, i) => ({
       stepId: walk.plan ? (s.planIndex != null ? ids[s.planIndex] : null) : `${mapId}-s${i + 1}`,
@@ -721,7 +783,7 @@ export function recordFromWalk(walk, { finishedAt, mapId = null, leftover = 'not
       waitSec: s.waitSec, workSec: s.workSec, ...(s.waitNotSeenSec ? { waitNotSeenSec: s.waitNotSeenSec } : {}), ...(s.workNotSeenSec ? { workNotSeenSec: s.workNotSeenSec } : {}),
       ...(s.interrupted ? { interrupted: true } : {}), ...(s.interruptedWaitSec ? { interruptedWaitSec: s.interruptedWaitSec } : {}), ...(s.interruptions ? { interruptions: s.interruptions } : {}),
       ...(s.waitReason ? { waitReason: s.waitReason } : {}), ...(s.stopReason ? { stopReason: s.stopReason } : {}), ...(s.typed ? { typed: true } : {}),
-      ...(s.nameFrom ? { nameFrom: s.nameFrom } : {}), ...(s.roleFrom ? { roleFrom: s.roleFrom } : {}), ...(s.again ? { again: true } : {}) })),
+      ...(s.nameFrom ? { nameFrom: s.nameFrom } : {}), ...(s.roleFrom ? { roleFrom: s.roleFrom } : {}), ...(s.again ? { again: true } : {}), ...(s.afterVisit ? { afterVisit: true } : {}) })),
     ...(walk.plan ? { didNotHappen: [...(walk.skipped || []).map((i) => ids[i]), ...(leftover === 'did-not-happen' ? left : [])] } : {}),
     // List steps left when the walk was finished and not said to be missing: the person stopped early.
     ...(walk.plan && left.length && leftover !== 'did-not-happen' ? { stoppedEarly: true, notTimed: left } : {}),
@@ -764,20 +826,27 @@ function span(vals) {
 export function walkRanges(list, records) {
   const order = list.map((s) => s.id);
   const planned = new Set(list.filter((s) => s.plannedWait).map((s) => s.id));
+  const laterIds = new Set(list.filter((s) => s.afterVisit).map((s) => s.id));
   const nameOf = (id) => list.find((s) => s.id === id)?.name;
   const walks = records.map((r, i) => {
-    const sum = (k) => r.steps.reduce((n, s) => n + (s[k] || 0), 0);
+    // Steps after the visit are in none of the walk's figures; afterVisit says what they were.
+    // (marked on the walk, or by a person on the map's step afterwards; a walk of nothing else keeps them in.)
+    const isLater = (s) => !!s.afterVisit || (!!s.stepId && laterIds.has(s.stepId));
+    const apart = r.steps.some((s) => !isLater(s));
+    const visit = apart ? r.steps.filter((s) => !isLater(s)) : r.steps; const later = apart ? r.steps.filter(isLater) : [];
+    const sum = (k) => visit.reduce((n, s) => n + (s[k] || 0), 0);
     const waitSec = sum('waitSec'); const workSec = sum('workSec'); const notSeenSec = sum('waitNotSeenSec') + sum('workNotSeenSec');
     const usable = !r.clockMoved; const complete = usable && !r.stoppedEarly;
     // This walk's own longest wait: by the seen part, 30 s or more, planned waits left out, ties all named.
-    const open = r.steps.map((s, p) => ({ ...s, p })).filter((s) => !(s.stepId && planned.has(s.stepId)) && (!s.stepId || order.includes(s.stepId)));
+    const open = visit.map((s, p) => ({ ...s, p })).filter((s) => !(s.stepId && planned.has(s.stepId)) && (!s.stepId || order.includes(s.stepId)));
     // The wait before the step: time it stood still after an interruption is not ranked (#180 point 2).
     const max = Math.max(0, ...open.map(waitBeforeOf));
     const longest = usable && max >= MIN_LONGEST_WAIT_SEC ? open.filter((s) => waitBeforeOf(s) === max).map((s) => ({ key: s.stepId || `off:${s.name}`, name: s.stepId ? nameOf(s.stepId) : s.name, waitSec: waitBeforeOf(s), ...(s.waitNotSeenSec ? { atLeast: true } : {}) })) : [];
     return { n: i + 1, id: r.id, startedAt: r.startedAt, finishedAt: r.finishedAt, usable, complete, ...(r.clockMoved ? { clockMoved: true } : {}), ...(r.stoppedEarly ? { stoppedEarly: true } : {}),
       guidanceSeen: r.guidanceSeen, elapsedSec: waitSec + workSec + notSeenSec, waitSec, workSec, notSeenSec, waitNotSeenSec: sum('waitNotSeenSec'), workNotSeenSec: sum('workNotSeenSec'),
-      plannedWaitSec: r.steps.reduce((n, s) => n + (s.stepId && planned.has(s.stepId) ? s.waitSec : 0), 0),
-      steps: r.steps.length, offList: r.steps.filter((s) => !s.stepId).length, longest };
+      plannedWaitSec: visit.reduce((n, s) => n + (s.stepId && planned.has(s.stepId) ? s.waitSec : 0), 0),
+      steps: r.steps.length, offList: r.steps.filter((s) => !s.stepId).length, longest,
+      ...(later.length ? { afterVisit: { steps: later.length, waitSec: later.reduce((n, s) => n + s.waitSec, 0), workSec: later.reduce((n, s) => n + s.workSec, 0) } } : {}) };
   });
   const used = records.filter((r) => !r.clockMoved);
   const full = walks.filter((w) => w.complete);
@@ -788,10 +857,11 @@ export function walkRanges(list, records) {
       if (!at.length) { if ((r.didNotHappen || []).includes(st.id)) didNot += 1; continue; }
       happened += 1; if (at.length > 1) again += 1;
       work.push([at.reduce((n, s) => n + s.workSec, 0), at.some((s) => s.workNotSeenSec)]);
+      // A step after the visit waits from the visit's last step, whichever step that was.
       const first = at[0]; const before = first.p > 0 ? r.steps[first.p - 1].stepId : null;
-      if (li === 0 ? first.p === 0 : before === order[li - 1]) wait.push([waitBeforeOf(first), !!first.waitNotSeenSec]);
+      if (first.afterVisit || (li === 0 ? first.p === 0 : before === order[li - 1])) wait.push([waitBeforeOf(first), !!first.waitNotSeenSec]);
     }
-    return { stepId: st.id, happened, of: used.length, didNotHappen: didNot, again, work: span(work), wait: span(wait) };
+    return { stepId: st.id, happened, of: used.length, didNotHappen: didNot, again, work: span(work), wait: span(wait), ...(st.afterVisit ? { afterVisit: true } : {}) };
   });
   // Where the longest wait fell, walk by walk: the test of whether it stays in one place.
   const tally = new Map();

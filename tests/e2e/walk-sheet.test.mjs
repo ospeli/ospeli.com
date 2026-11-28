@@ -84,8 +84,9 @@ for (const [width, height] of [[360, 640], [390, 844]]) {
     }
     await easy(page, 'six steps timed');
     await tap('[data-test="walk-finish"]');
-    await page.waitForSelector('[data-test="walk-confirm"]');
-    await tap('[data-test="walk-finish-yes"]');
+    // "Check the names" is the finish question now (28 Nov); "Finish, check later" keeps the list's marks.
+    await page.waitForSelector('[data-test="walk-check"]');
+    await tap('[data-test="walk-check-later"]');
     await page.waitForSelector('[data-test="pm-stats"]');
     assert.ok(taps <= 15, `${taps} taps: start 1, six steps of 2 taps, finish 2`);
     const w = (await stored(page))[0];
