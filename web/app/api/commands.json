@@ -26066,7 +26066,8 @@
                   "type": "boolean"
                 },
                 "counts": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "toCome, waiting, withClinician, finished, missed, empty, longestWaitMinutes (arrived to now) and longestPastBookedMinutes: of the patients waiting, the most minutes past the later of arrival and the booked time (null: nobody waiting)."
                 },
                 "noTimes": {
                   "type": "integer",
@@ -26166,7 +26167,14 @@
                     "integer",
                     "null"
                   ],
-                  "description": "Booked or arrived: minutes past the booked slot time now (0 before it)."
+                  "description": "Minutes past the booked time now (0 before it); null once called. Not arrived (booked): from the booked time to now. Arrived: from the later of arrival and the booked time to now, as in the waiting time measure, so a patient who arrives late has waited 0 minutes past the booked time on arrival."
+                },
+                "arrivedAfterBookedMinutes": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "description": "Arrived, called or finished: minutes the patient arrived after the booked time (0 when early or on time); null before arrival. About the patient's arrival, not the clinic running late."
                 },
                 "noTimes": {
                   "type": "boolean",
@@ -26178,7 +26186,7 @@
                 },
                 "late": {
                   "type": "boolean",
-                  "description": "Still waiting or not arrived 15 minutes or more past the booked time (an example setting, not a standard)."
+                  "description": "pastBookedMinutes is 15 or more (an example setting, not a standard): not arrived 15 minutes past the booked time, or waiting 15 minutes past the later of arrival and the booked time."
                 },
                 "mayMarkMissed": {
                   "type": "boolean",
@@ -26404,7 +26412,8 @@
                   "type": "boolean"
                 },
                 "counts": {
-                  "type": "object"
+                  "type": "object",
+                  "description": "toCome, waiting, withClinician, finished, missed, empty, longestWaitMinutes (arrived to now) and longestPastBookedMinutes: of the patients waiting, the most minutes past the later of arrival and the booked time (null: nobody waiting)."
                 },
                 "noTimes": {
                   "type": "integer",

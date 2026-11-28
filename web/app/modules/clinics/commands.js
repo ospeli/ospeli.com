@@ -23,7 +23,7 @@ import {
 import { CODE_EVENT_TYPES, deriveCodes, appointmentsByCode, codeLabel } from '../../core/codes.js';
 import {
   SESSION_TYPE, CODE_KIND, GUIDE_SUBJECT, ON_TIME_MINUTES, MIN_GROUP, GUIDE_RULES, guideOn, clinicView, missedRate, slotUtilisation, usedSlots, referralToFirst, clinicWait, clinicWaitPastBooked,
-  startPunctuality, queueOf, dayOf, moveTargets, sessionsFromDerived, waitingReferrals, MOVE_NOTICE_HOURS, LATE_MINUTES, ruleMissedHigh, ruleEmptySoon, ruleArrivalsBunched,
+  startPunctuality, queueOf, dayOf, moveTargets, sessionsFromDerived, waitingReferrals, MOVE_NOTICE_HOURS, LATE_MINUTES, pastBookedMinutes, arrivedAfterBookedMinutes, ruleMissedHigh, ruleEmptySoon, ruleArrivalsBunched,
 } from './logic.js';
 
 export const id = 'clinics';
@@ -110,8 +110,10 @@ async function state(core) {
 const placeName = (s, id_) => { const p = id_ ? s.places.get(id_) : null; return p ? currentWords(p.name) : null; };
 const clinicName = (st, s) => `${SERVICES[s.service] || 'Clinic'}${placeName(st, s.placeId) ? `, ${placeName(st, s.placeId)}` : ''}`;
 const hhmmAt = (ms, offsetMinutes) => new Date(ms + offsetMinutes * MIN).toISOString().slice(11, 16);
-// Minutes past the booked slot time now (0 before it): an early arrival's long wait is not the clinic running late.
-const pastBooked = (st, a) => Math.max(0, Math.round((Date.parse(st.now) - dueMs(st.d, a)) / MIN));
+// Minutes past the booked slot time now (0 before it). Not arrived: from the booked time. Arrived: from the later
+// of arrival and the booked time (#193), so neither an early nor a late arrival reads as the clinic running late.
+const arrivedMs = (a) => (a.arrivedAt ? Date.parse(a.arrivedAt) : null);
+const pastBooked = (st, a) => pastBookedMinutes(Date.parse(st.now), dueMs(st.d, a), a.state === 'booked' ? null : arrivedMs(a));
 const siteClock = (st, iso) => (iso ? hhmmAt(Date.parse(iso), st.offsetMinutes) : null);
 const clinicsOn = (st, date) => [...clinicView(st.d).sessions.values()].filter((s) => s.date === date).sort((a, b) => a.startMs - b.startMs || (a.id < b.id ? -1 : 1));
 const noShowPicks = () => catalogue().reasons.noShow.filter((r) => r !== 'No answer at the door'); // a round's reason, never a clinic's
@@ -141,17 +143,18 @@ const PATIENT_OUT = { type: 'object', required: ['appointmentId', 'code', 'label
   slotTime: { type: 'string' }, slotType: { type: 'string' }, slotTypeWord: { type: 'string' }, state: { type: 'string' }, stateName: { type: 'string' },
   arrivedAt: NULLABLE('string'), calledAt: NULLABLE('string'), finishedAt: NULLABLE('string'),
   waitMinutes: { type: ['integer', 'null'], description: 'Minutes from arrived to called, or to now while still waiting.' },
-  pastBookedMinutes: { type: ['integer', 'null'], description: 'Booked or arrived: minutes past the booked slot time now (0 before it).' },
+  pastBookedMinutes: { type: ['integer', 'null'], description: 'Minutes past the booked time now (0 before it); null once called. Not arrived (booked): from the booked time to now. Arrived: from the later of arrival and the booked time to now, as in the waiting time measure, so a patient who arrives late has waited 0 minutes past the booked time on arrival.' },
+  arrivedAfterBookedMinutes: { type: ['integer', 'null'], description: 'Arrived, called or finished: minutes the patient arrived after the booked time (0 when early or on time); null before arrival. About the patient\'s arrival, not the clinic running late.' },
   noTimes: { type: 'boolean', description: 'true: closed as "Seen, no times": seen, but the call and finish were not tapped, so there is no call or finish time.' },
   mayUndo: { type: 'boolean', description: 'true: the last step (arrived, called, or a missed appointment) may be undone with ospeli_slots_step_correct while the clinic is not yet marked held.' },
-  late: { type: 'boolean', description: 'Still waiting or not arrived 15 minutes or more past the booked time (an example setting, not a standard).' },
+  late: { type: 'boolean', description: 'pastBookedMinutes is 15 or more (an example setting, not a standard): not arrived 15 minutes past the booked time, or waiting 15 minutes past the later of arrival and the booked time.' },
   mayMarkMissed: { type: 'boolean', description: 'true: still booked after the booked time plus the grace, so "Missed appointment" may be recorded.' },
   clocks: { type: 'object', description: 'The site\'s own clock (HH:MM) for arrived, called and finished; null until then.' },
   missedFrom: NULLABLE('string'), rebook: { type: 'boolean', description: 'This booking replaces a cancelled or missed one.' } } };
 const CLINIC_OUT = { type: 'object', required: ['sessionId', 'service', 'name', 'start', 'state'], properties: {
   sessionId: { type: 'string' }, service: { type: 'string' }, serviceWord: { type: 'string' }, name: { type: 'string', description: 'The clinic: a service at a place, never a person.' },
   placeId: NULLABLE('string'), date: { type: 'string' }, start: { type: 'string' }, end: { type: 'string' }, state: { type: 'string' }, stateName: { type: 'string' }, reason: NULLABLE('string'),
-  runningNow: { type: 'boolean' }, counts: { type: 'object' },
+  runningNow: { type: 'boolean' }, counts: { type: 'object', description: 'toCome, waiting, withClinician, finished, missed, empty, longestWaitMinutes (arrived to now) and longestPastBookedMinutes: of the patients waiting, the most minutes past the later of arrival and the booked time (null: nobody waiting).' },
   noTimes: { type: 'integer', description: 'Day summary: patients closed as "Seen, no times" (seen, but the call and finish were not tapped). They are left out of the start, wait and overrun figures.' },
   firstCalledAtMost: { type: 'boolean', description: 'Day summary: true when a patient seen with no times arrived before the first recorded call, so the first call may have been sooner than shown.' },
   overrunAtLeast: { type: 'boolean', description: 'Day summary: true when some patients have no finish time, so the last recorded finish is only the earliest the clinic can have ended.' },
@@ -174,7 +177,7 @@ function patientOut(st, { a }) {
     state: a.state, stateName: a.state === 'cancelled' ? LEFT_REASON : a.noTimes ? NO_TIMES_NAME : APPOINTMENT_STATES[a.state].name, noTimes: Boolean(a.noTimes),
     mayUndo: a.state === 'arrived' || a.state === 'called' || (a.state === 'no-show' && !a.rebookedBy), arrivedAt: a.arrivedAt, calledAt: a.calledAt, finishedAt: a.finishedAt,
     clocks: { arrived: siteClock(st, a.arrivedAt), called: siteClock(st, a.calledAt), finished: siteClock(st, a.finishedAt) },
-    waitMinutes: waitMinutes(a, st.now), pastBookedMinutes: past, late: past != null && past >= LATE_MINUTES, mayMarkMissed: a.state === 'booked' && from != null && Date.parse(st.now) >= from, missedFrom: from == null ? null : new Date(from).toISOString(), rebook: Boolean(a.rebookOf) };
+    waitMinutes: waitMinutes(a, st.now), pastBookedMinutes: past, arrivedAfterBookedMinutes: arrivedAfterBookedMinutes(dueMs(st.d, a), arrivedMs(a)), late: past != null && past >= LATE_MINUTES, mayMarkMissed: a.state === 'booked' && from != null && Date.parse(st.now) >= from, missedFrom: from == null ? null : new Date(from).toISOString(), rebook: Boolean(a.rebookOf) };
 }
 
 // ---- the queue ----
