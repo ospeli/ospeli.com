@@ -139,7 +139,7 @@ test('after a bed action, keyboard focus stays on that bed (issue #11)', async (
   await page.waitForSelector('dialog[open] [data-action]');
   await page.focus('dialog[open] [data-action]');
   await page.keyboard.press('Enter');
-  await page.waitForFunction((n) => window.ospeli.core.eventCount().then((c) => c > n), before);
+  await waitUntil(page, async (n) => (await window.ospeli.core.eventCount()) > n, before);
   await page.waitForFunction((b) => document.activeElement?.dataset?.bed === b, id);
   assert.equal(await page.getAttribute('#toast', 'role'), 'status');
   assert.deepEqual(errors, []);

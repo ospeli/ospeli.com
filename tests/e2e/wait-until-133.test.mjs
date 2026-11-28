@@ -29,3 +29,21 @@ test('#133: waitUntil waits for an async check that becomes true a second later;
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+test('#133: on a value that is never true, waitForFunction with a check that hands back a promise goes on at once; waitUntil fails with a clear message', async () => {
+  const { context, page, errors } = await openPage(env, { width: 390 });
+  const before = await page.evaluate(() => window.ospeli.core.eventCount());
+  // No event is stored in this test, so "more events than before" is never true.
+  const promiseCheck = (n) => window.ospeli.core.eventCount().then((c) => c > n);
+  const asyncCheck = async (n) => (await window.ospeli.core.eventCount()) > n;
+  let t = Date.now();
+  await page.waitForFunction(promiseCheck, before, { timeout: 2000 });
+  await page.waitForFunction(asyncCheck, before, { timeout: 2000 });
+  assert.ok(Date.now() - t < 2000, 'both old forms went on before their 2 s timeout, on a check that was never true (the fault in #133)');
+  assert.equal(await page.evaluate(() => window.ospeli.core.eventCount()), before, 'nothing was stored, so the check really was false');
+  t = Date.now();
+  await assert.rejects(waitUntil(page, asyncCheck, before, { timeout: 1000 }), /waitUntil: still not true after 1000 ms \(last answer false\)/);
+  assert.ok(Date.now() - t >= 1000, 'waitUntil waited its full time before failing');
+  assert.deepEqual(errors, []);
+  await context.close();
+});
