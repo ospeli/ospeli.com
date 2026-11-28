@@ -13,7 +13,7 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { startApp, openPage, chooseDepartment, setRole } from './helpers.mjs';
 import { ROLES } from '../../web/app/core/model.js';
-import { walkIt } from './result-seed.mjs';
+import { twoWalkMap } from './result-seed.mjs';
 
 let env;
 before(async () => { env = await startApp(); });
@@ -279,13 +279,11 @@ test('Imaging, 390 px: with an overdue work order and a waiting proposal on the 
 // ---------------------------------------------------------------- 8. desktop
 test('1280x800: the rail, the content beside it and the ribbon at the foot of the content, on Now, Journey, Maps, Me and a two-walk result', async () => {
   const { page, context, errors } = await openPage(env, { width: 1280, height: 800, department: 'imaging', clock: CLOCK });
-  const w1 = await walkIt(page, [{ wait: 60, work: 120, name: 'Arrived', role: 'Patient' }, { wait: 240, work: 180, name: 'Scan', role: 'Imaging staff' }]);
-  const mapId = w1.map?.id || w1.mapId || w1.walk?.mapId;
-  await walkIt(page, [{ wait: 90, work: 100 }, { wait: 300, work: 200 }], { mapId });
+  const mapId = await twoWalkMap(page);
   await asHuman(page, 'ospeli_walks_start', { guidanceSeen: true, department: 'imaging' }, 'radiographer');
-  for (const h of ['#/home', '#/journey', '#/process', '#/me', `#/process/map/${mapId}`]) {
-    await page.evaluate((x) => { location.hash = x; }, h);
-    await page.waitForFunction((x) => document.documentElement.dataset.route?.startsWith(x.split('/').slice(0, 3).join('/')), h);
+  for (const h of ['#/home', '#/journey', '#/process', '#/me', `#/process/${mapId}`]) {
+    await go(page, h);
+    if (h.endsWith(mapId)) await page.waitForSelector('[data-test="result-table"]');
     await page.waitForFunction(() => { const r = document.querySelector('#walk-ribbon'); return r && !r.hidden; });
     await page.waitForTimeout(300);
     const look = await page.evaluate(() => {
