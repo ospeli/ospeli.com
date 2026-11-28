@@ -176,7 +176,8 @@ for (const [width, height] of [[360, 740], [390, 844]]) {
     const { page, context, errors } = await openPage(env, { width, height, touch: true, department: 'pharmacy', clock: CLOCK });
     // The visible words for the tiles the Domain lead misread, and one per department.
     const want = {
-      pharmacy: { collected: /^Ready to collect \d+ requests?$/, received: /^Not started \d+ requests?$/ },
+      // #197: each pharmacy tile shows its oldest, as the laboratory's do, and says a request on hold.
+      pharmacy: { collected: /^Ready to collect \d+ requests?( oldest .+?)?( \d+ on hold)?$/, received: /^Not started \d+ requests?( oldest .+?)?( \d+ on hold)?$/ },
       outpatients: { arrive: /^Booked, not arrived \d+ patients?$/, wait: /^Arrived, waiting \d+ patients?$/, seen: /^With clinician \d+ patients?$/ },
       laboratory: { received: /^In the lab \d+ requests?( oldest .+)?$/, done: /^Released \d+ requests?, last 24 h$/ },
       wards: { arrive: /^Waiting for a bed \d+ patients?$/, ready: /^Expected to leave \d+ beds?$/, leave: /^Awaiting vehicle \d+ journeys?$/ },

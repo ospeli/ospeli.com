@@ -118,10 +118,28 @@ export async function flowCounts(run, dept) {
       timed(['ready', 'leave'], out, (j) => j.waitMinutes, 'for a vehicle', 'journey', 'waiting for a vehicle');
     }
   } else if (dept.id === 'pharmacy') {
-    const o = await read('ospeli_pharmacy_overview', {});
-    if (o) {
-      put('received', o.counts.raised || 0, 'received, not started yet', 'not started'); put('prepared', o.counts.started || 0, 'being prepared');
-      put('checked', o.counts.checked || 0, 'checked, not ready yet', 'checked, not ready'); put('collected', o.counts.ready || 0, 'ready, waiting to be collected', 'ready to collect');
+    // Issue #197: every open request is on the strip, a request on hold on the tile of the step it
+    // reached ("1 on hold"), and each tile shows its oldest request (time since its last step, or
+    // since it was put on hold), as the laboratory's tiles do. Requests never head the strip.
+    const TILES = [['raised', 'received', 'received, not started yet', 'not started'], ['started', 'prepared', 'being prepared'],
+      ['checked', 'checked', 'checked, not ready yet', 'checked, not ready'], ['ready', 'collected', 'ready, waiting to be collected', 'ready to collect']];
+    const q = await read('ospeli_pharmacy_queue_list', { format: 'short', limit: 500 });
+    if (q) {
+      TILES.forEach(([stage, tile, words, show], i) => {
+        const here = q.requests.filter((r) => r.stage === stage);
+        put(tile, here.length, words, show);
+        const held = here.filter((r) => r.held).length;
+        if (held) c[tile].also = `${held} on hold`;
+        timed([tile, TILES[i + 1]?.[1] || tile], here, (r) => r.sinceStepMinutes, 'since the last step', 'request', 'with no step time', undefined, tile);
+      });
+      mergeUntimed(untimed);
+    } else {
+      // The overview's counts only: a held request has no step there, so it is said on the first tile.
+      const o = await read('ospeli_pharmacy_overview', {});
+      if (o) {
+        TILES.forEach(([stage, tile, words, show]) => put(tile, o.counts[stage] || 0, words, show));
+        if (o.counts['on-hold']) c.received.also = `${o.counts['on-hold']} more on hold`;
+      }
     }
   } else if (dept.id === 'laboratory') {
     const r = await read('ospeli_diagnostics_requests_list', { stage: 'current', limit: 500 });
