@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 
 const read = (p) => readFileSync(new URL(`../../web/${p}`, import.meta.url), 'utf8');
 const firstModule = (text) => {
-  const at = text.indexOf('Built today');
+  const at = text.indexOf('In the app today'); // was "Built today" (#195: eight are first versions)
   assert.ok(at >= 0, 'says what is built today');
   return text.slice(at).match(/app\/#\/([a-z-]+)/)[1];
 };
