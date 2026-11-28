@@ -29,21 +29,25 @@ const filled = (page) => page.evaluate(() => [...document.querySelectorAll('a, b
 }).map((el) => ({ text: el.textContent.trim(), href: el.getAttribute('href'), h: el.getBoundingClientRect().height })));
 
 for (const [width, height] of [[1440, 900], [1280, 800]]) {
-  test(`desktop ${width} px: one filled button opens the walk, the slide fits one screen, two screens at most with rows closed`, async () => {
+  test(`desktop ${width} px: one filled button opens the walk, the first screen is headline and button only, two screens at most with rows closed`, async () => {
     const { context, page, errors } = await open(width, height);
     const btns = await filled(page);
     assert.equal(btns.length, 1, JSON.stringify(btns));
     assert.match(btns[0].text, /^Try a walk/);
     assert.equal(btns[0].href, 'app/#/process/walk');
     const m = await page.evaluate(() => ({
-      slide: document.querySelector('.slide').getBoundingClientRect().bottom,
+      first: document.querySelector('.act').getBoundingClientRect().bottom,
+      visit: document.querySelector('.visit').getBoundingClientRect().top,
       page: document.documentElement.scrollHeight,
       closed: [...document.querySelectorAll('details')].every((d) => !d.open),
       rows: document.querySelectorAll('details').length,
     }));
     assert.equal(m.rows, 5);
     assert.ok(m.closed, 'every row starts closed');
-    if (width === 1440) assert.ok(m.slide <= 900, `slide ends at ${m.slide} px`);
+    // Founder, 28 Nov: the first screen is only the headline, the button and the line under it;
+    // the visit bar and its chip sit below it.
+    assert.ok(m.first <= height, `headline, button and line end at ${m.first} px`);
+    assert.ok(m.visit >= height, `visit bar starts at ${m.visit} px, inside the first screen`);
     assert.ok(m.page <= 2 * 900 + 100, `page is ${m.page} px with rows closed`);
     assert.deepEqual(errors, []);
     await context.close();
